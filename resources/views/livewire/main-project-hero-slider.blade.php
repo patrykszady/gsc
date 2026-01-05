@@ -41,22 +41,22 @@
             if (url) slide.image = url;
         },
         startAutoplay() {
-            this.autoplay = setInterval(() => this.next(), 3000);
+            this.autoplay = setInterval(() => this.next(true), 3000);
         },
         stopAutoplay() {
             clearInterval(this.autoplay);
         },
-        next() {
+        next(shouldRefresh = false) {
             this.currentSlide = (this.currentSlide + 1) % this.slides.length;
-            this.refreshCurrentImage();
+            if (shouldRefresh) this.refreshCurrentImage();
         },
-        prev() {
+        prev(shouldRefresh = false) {
             this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
-            this.refreshCurrentImage();
+            if (shouldRefresh) this.refreshCurrentImage();
         },
-        goTo(index) {
+        goTo(index, shouldRefresh = false) {
             this.currentSlide = index;
-            this.refreshCurrentImage();
+            if (shouldRefresh) this.refreshCurrentImage();
         },
         handleTouchStart(e) {
             this.touchStartX = e.changedTouches[0].screenX;
