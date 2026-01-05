@@ -6,30 +6,40 @@
                 title: 'Kitchens',
                 button: 'Show Kitchens',
                 link: '/projects/kitchens',
+                projectType: 'kitchen',
                 image: @js($slideImages['kitchen'])
             },
             {
                 title: 'Bathrooms',
                 button: 'Show Bathrooms',
                 link: '/projects/bathrooms',
+                projectType: 'bathroom',
                 image: @js($slideImages['bathroom'])
             },
             {
                 title: 'Mudrooms\nLaundry Rooms',
                 button: 'Show Mudrooms',
                 link: '/projects/mudrooms',
+                projectType: 'mudroom',
                 image: @js($slideImages['mudroom'])
             },
             {
                 title: 'Home Remodels',
                 button: 'Show Home Remodels',
                 link: '/projects/home-remodels',
+                projectType: 'home-remodel',
                 image: @js($slideImages['home-remodel'])
             }
         ],
         autoplay: null,
         touchStartX: 0,
         touchEndX: 0,
+        async refreshCurrentImage() {
+            const slide = this.slides[this.currentSlide];
+            if (!slide?.projectType) return;
+            const url = await $wire.randomHeroImage(slide.projectType);
+            if (url) slide.image = url;
+        },
         startAutoplay() {
             this.autoplay = setInterval(() => this.next(), 3000);
         },
@@ -38,12 +48,15 @@
         },
         next() {
             this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+            this.refreshCurrentImage();
         },
         prev() {
             this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
+            this.refreshCurrentImage();
         },
         goTo(index) {
             this.currentSlide = index;
+            this.refreshCurrentImage();
         },
         handleTouchStart(e) {
             this.touchStartX = e.changedTouches[0].screenX;

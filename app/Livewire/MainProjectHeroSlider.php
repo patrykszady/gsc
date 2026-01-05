@@ -8,20 +8,52 @@ use Livewire\Component;
 
 class MainProjectHeroSlider extends Component
 {
-    protected function randomCoverUrlForType(string $projectType): ?string
+    protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
-        $cover = ProjectImage::query()
+        $query = ProjectImage::query()
             ->where('is_cover', true)
             ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-            ->inRandomOrder()
-            ->first();
+            ->when($excludeImageId, fn ($q) => $q->where('id', '!=', $excludeImageId));
 
-        return $cover?->url;
+        return $query->inRandomOrder()->first();
+    }
+
+    protected function randomCoverUrlForType(string $projectType, ?int $excludeImageId = null): ?string
+    {
+        return $this->randomCoverForType($projectType, $excludeImageId)?->url;
+    }
+
+    public function randomHeroImage(string $projectType): ?string
+    {
+        $projectType = strtolower(trim($projectType));
+
+        $fallback = match ($projectType) {
+            'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
+            'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
+            'mudroom' => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
+            'home-remodel' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
+            default => null,
+        };
+
+        // Avoid repeating the same image when a type has multiple covers.
+        $lastIdKey = "hero.last-image-id.{$projectType}.v3";
+        $excludeId = Cache::get($lastIdKey);
+
+        $image = $this->randomCoverForType($projectType, is_int($excludeId) ? $excludeId : null)
+            ?? $this->randomCoverForType($projectType);
+
+        if (! $image) {
+            return $fallback;
+        }
+
+        Cache::put($lastIdKey, $image->id, now()->addHours(6));
+
+        return $image->url;
     }
 
     public function render()
     {
-        $slideImages = Cache::remember('hero.slide-images.v1', now()->addMinutes(30), function () {
+        $slideImages = Cache::remember('hero.slide-images.v3', now()->addMinutes(30), function () {
             return [
                 'kitchen' => $this->randomCoverUrlForType('kitchen')
                     ?? 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
