@@ -1,0 +1,111 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\AreaServed;
+use Illuminate\Database\Seeder;
+
+class AreaServedSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $areas = [
+            ['city' => 'Arlington Heights', 'slug' => 'arlington-heights'],
+            ['city' => 'Barrington', 'slug' => 'barrington'],
+            ['city' => 'Barrington Hills', 'slug' => 'barrington-hills'],
+            ['city' => 'Buffalo Grove', 'slug' => 'buffalo-grove'],
+            ['city' => 'Chicago', 'slug' => 'chicago'],
+            ['city' => 'Countryside', 'slug' => 'countryside'],
+            ['city' => 'Deer Park', 'slug' => 'deer-park'],
+            ['city' => 'Deerfield', 'slug' => 'deerfield'],
+            ['city' => 'Deerpath', 'slug' => 'deerpath'],
+            ['city' => 'Des Plaines', 'slug' => 'des-plaines'],
+            ['city' => 'Elgin', 'slug' => 'elgin'],
+            ['city' => 'Elk Grove Village', 'slug' => 'elk-grove-village'],
+            ['city' => 'Elmwood Park', 'slug' => 'elmwood-park'],
+            ['city' => 'Evanston', 'slug' => 'evanston'],
+            ['city' => 'Forest Lake', 'slug' => 'forest-lake'],
+            ['city' => 'Forest Park', 'slug' => 'forest-park'],
+            ['city' => 'Forest View', 'slug' => 'forest-view'],
+            ['city' => 'Fort Hill', 'slug' => 'fort-hill'],
+            ['city' => 'Fox Lake', 'slug' => 'fox-lake'],
+            ['city' => 'Fox Lake Hills', 'slug' => 'fox-lake-hills'],
+            ['city' => 'Fox Point North', 'slug' => 'fox-point-north'],
+            ['city' => 'Fox River Grove', 'slug' => 'fox-river-grove'],
+            ['city' => 'Glencoe', 'slug' => 'glencoe'],
+            ['city' => 'Glenview', 'slug' => 'glenview'],
+            ['city' => 'Grayslake', 'slug' => 'grayslake'],
+            ['city' => 'Great Lakes', 'slug' => 'great-lakes'],
+            ['city' => 'Green Oaks', 'slug' => 'green-oaks'],
+            ['city' => 'Gurnee', 'slug' => 'gurnee'],
+            ['city' => 'Harwood Heights', 'slug' => 'harwood-heights'],
+            ['city' => 'Hawthorn Woods', 'slug' => 'hawthorn-woods'],
+            ['city' => 'Highland Park', 'slug' => 'highland-park'],
+            ['city' => 'Hoffman Estates', 'slug' => 'hoffman-estates'],
+            ['city' => 'Hometown', 'slug' => 'hometown'],
+            ['city' => 'Homewood', 'slug' => 'homewood'],
+            ['city' => 'Indian Creek', 'slug' => 'indian-creek'],
+            ['city' => 'Inverness', 'slug' => 'inverness'],
+            ['city' => 'Kenilworth', 'slug' => 'kenilworth'],
+            ['city' => 'Kildeer', 'slug' => 'kildeer'],
+            ['city' => 'Lake Barrington', 'slug' => 'lake-barrington'],
+            ['city' => 'Lake Bluff', 'slug' => 'lake-bluff'],
+            ['city' => 'Lake Forest', 'slug' => 'lake-forest'],
+            ['city' => 'Lake Villa', 'slug' => 'lake-villa'],
+            ['city' => 'Lake Zurich', 'slug' => 'lake-zurich'],
+            ['city' => 'Libertyville', 'slug' => 'libertyville'],
+            ['city' => 'Lincolnshire', 'slug' => 'lincolnshire'],
+            ['city' => 'Lincolnwood', 'slug' => 'lincolnwood'],
+            ['city' => 'Lindenhurst', 'slug' => 'lindenhurst'],
+            ['city' => 'Long Grove', 'slug' => 'long-grove'],
+            ['city' => 'Long Lake', 'slug' => 'long-lake'],
+            ['city' => 'Melrose Park', 'slug' => 'melrose-park'],
+            ['city' => 'Morton Grove', 'slug' => 'morton-grove'],
+            ['city' => 'Mount Prospect', 'slug' => 'mount-prospect'],
+            ['city' => 'Mundelein', 'slug' => 'mundelein'],
+            ['city' => 'Niles', 'slug' => 'niles'],
+            ['city' => 'Norridge', 'slug' => 'norridge'],
+            ['city' => 'North Barrington', 'slug' => 'north-barrington'],
+            ['city' => 'Northbrook', 'slug' => 'northbrook'],
+            ['city' => 'Northfield', 'slug' => 'northfield'],
+            ['city' => 'Northlake', 'slug' => 'northlake'],
+            ['city' => 'Oak Forest', 'slug' => 'oak-forest'],
+            ['city' => 'Oak Lawn', 'slug' => 'oak-lawn'],
+            ['city' => 'Oak Park', 'slug' => 'oak-park'],
+            ['city' => 'Orland Hills', 'slug' => 'orland-hills'],
+            ['city' => 'Orland Park', 'slug' => 'orland-park'],
+            ['city' => 'Palatine', 'slug' => 'palatine'],
+            ['city' => 'Palos Park', 'slug' => 'palos-park'],
+            ['city' => 'Park Forest', 'slug' => 'park-forest'],
+            ['city' => 'Park Ridge', 'slug' => 'park-ridge'],
+            ['city' => 'Port Barrington', 'slug' => 'port-barrington'],
+            ['city' => 'Prospect Heights', 'slug' => 'prospect-heights'],
+            ['city' => 'River Forest', 'slug' => 'river-forest'],
+            ['city' => 'River Grove', 'slug' => 'river-grove'],
+            ['city' => 'Riverdale', 'slug' => 'riverdale'],
+            ['city' => 'Riverside', 'slug' => 'riverside'],
+            ['city' => 'Riverwoods', 'slug' => 'riverwoods'],
+            ['city' => 'Rolling Meadows', 'slug' => 'rolling-meadows'],
+            ['city' => 'Rosemont', 'slug' => 'rosemont'],
+            ['city' => 'Round Lake', 'slug' => 'round-lake'],
+            ['city' => 'Schaumburg', 'slug' => 'schaumburg'],
+            ['city' => 'Schiller Park', 'slug' => 'schiller-park'],
+            ['city' => 'Skokie', 'slug' => 'skokie'],
+            ['city' => 'South Barrington', 'slug' => 'south-barrington'],
+            ['city' => 'Streamwood', 'slug' => 'streamwood'],
+            ['city' => 'Vernon Hills', 'slug' => 'vernon-hills'],
+            ['city' => 'Western Springs', 'slug' => 'western-springs'],
+            ['city' => 'Wheeling', 'slug' => 'wheeling'],
+            ['city' => 'Willow Springs', 'slug' => 'willow-springs'],
+            ['city' => 'Wilmette', 'slug' => 'wilmette'],
+            ['city' => 'Winnetka', 'slug' => 'winnetka'],
+        ];
+
+        foreach ($areas as $area) {
+            AreaServed::updateOrCreate(
+                ['slug' => $area['slug']],
+                $area
+            );
+        }
+    }
+}

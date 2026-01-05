@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Auto-start GSC development environment
+if [ -d "/home/patryk/web/gsc" ]; then
+  echo "🚀 Starting GSC dev environment..."
+  cd /home/patryk/web/gsc && ./start-dev.sh
+fi

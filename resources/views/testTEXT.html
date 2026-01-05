@@ -1,0 +1,53 @@
+    {{-- Hero Section (placeholder) --}}
+    <section class="relative isolate overflow-hidden bg-white">
+        <div class="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
+            <div class="mx-auto max-w-2xl text-center">
+                <h1 class="font-heading text-4xl font-semibold uppercase tracking-tight text-gray-900 sm:text-6xl">
+                    Quality Construction, <br>Family Values
+                </h1>
+                <p class="mt-8 text-lg text-gray-600">
+                    GS Construction is a father-son remodeling company serving the Chicago area. 
+                    We bring decades of experience and a personal touch to every project.
+                </p>
+                <div class="mt-10 flex items-center justify-center gap-x-6">
+                    <flux:button href="/contact" variant="primary">
+                        Get a Free Quote
+                    </flux:button>
+                    <a href="/projects" class="text-sm font-semibold text-gray-900">
+                        View Our Work <span aria-hidden="true">→</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- Services preview (placeholder) --}}
+    <section class="bg-gray-50 py-24 sm:py-32">
+        <div class="mx-auto max-w-7xl px-6 lg:px-8">
+            <div class="mx-auto max-w-2xl text-center">
+                <h2 class="font-heading text-3xl font-semibold uppercase tracking-tight text-gray-900 sm:text-4xl">Our Services</h2>
+                <p class="mt-4 text-lg text-gray-600">From kitchens to basements, we handle it all.</p>
+            </div>
+            <div class="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach(['Kitchens', 'Bathrooms', 'Home Remodels', 'Basements'] as $service)
+                    <div class="rounded-2xl bg-white p-8 shadow ring-1 ring-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">{{ $service }}</h3>
+                        <p class="mt-2 text-sm text-gray-600">Quality craftsmanship for your {{ strtolower($service) }}.</p>
+                        <a href="/projects/{{ Str::slug($service) }}" class="mt-4 inline-block text-sm font-semibold text-sky-600 hover:text-sky-500">
+                            Learn more →
+                        </a>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+
+
+
+Get In Touch
+Contact Us
+Ready to start your project? Reach out to Gregory and Patryk for a free consultation.
+
+Let's Build Something Beautiful Together
+Whether you're dreaming of a new kitchen, a luxurious bathroom, or a complete home transformation, we're here to make it happen. Contact us today to schedule your free consultation.
