@@ -27,15 +27,13 @@ class MainProjectHeroSlider extends Component
                     ?? 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
                 'bathroom' => $this->randomCoverUrlForType('bathroom')
                     ?? 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
-                // No dedicated "mudroom" type yet; treat as "other" for now.
-                'mudrooms' => $this->randomCoverUrlForType('other')
+                'mudrooms' => $this->randomCoverUrlForType('mudroom')
                     ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
-                'mudroom' => $this->randomCoverUrlForType('other')
+                'mudroom' => $this->randomCoverUrlForType('mudroom')
                     ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
-                // "Home Remodels" maps best to whole-home renovations.
-                'home-remodels' => $this->randomCoverUrlForType('whole-home')
+                'home-remodels' => $this->randomCoverUrlForType('home-remodel')
                     ?? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
-                'home-remodel' => $this->randomCoverUrlForType('whole-home')
+                'home-remodel' => $this->randomCoverUrlForType('home-remodel')
                     ?? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
             ];
         });

@@ -19,7 +19,7 @@
                     @if($detectedCity)
                         {{ $detectedCity }}'s Trusted Home Remodeling Experts
                     @else
-                        Let's Build Something Beautiful Together
+                        Let's Build Beautiful Spaces Together
                     @endif
                 </h2>
                 <p class="mt-4 text-lg/8 text-gray-600 dark:text-gray-400">

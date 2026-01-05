@@ -85,9 +85,10 @@ class TestimonialsSection extends Component
 
         $imageUrl = null;
         if ($projectType) {
-            $cacheKey = "testimonial.project-image.{$projectType}.v1";
+            $cacheKey = "testimonial.project-image.{$testimonial->id}.{$projectType}.v3";
 
             $imageUrl = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($projectType) {
+                // Use any random image from any published project of this type.
                 $image = ProjectImage::query()
                     ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
                     ->inRandomOrder()
@@ -122,11 +123,11 @@ class TestimonialsSection extends Component
             'kitchens', 'kitchen' => 'kitchen',
             'bathrooms', 'bathroom' => 'bathroom',
             'basements', 'basement' => 'basement',
-            'home-remodels', 'home remodels', 'whole-home', 'whole home' => 'whole-home',
+            'home-remodel', 'home-remodels', 'home remodel', 'home remodels', 'whole-home', 'whole home' => 'home-remodel',
             'additions', 'addition' => 'addition',
+            'mudroom', 'mudrooms', 'laundry', 'laundry room', 'laundry rooms', 'mudroom/laundry', 'mudroom / laundry' => 'mudroom',
             'exteriors', 'exterior' => 'exterior',
-            'decks', 'deck', 'patios', 'patio' => 'deck',
-            default => 'other',
+            default => null,
         };
     }
 

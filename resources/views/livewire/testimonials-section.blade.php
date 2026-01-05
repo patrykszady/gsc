@@ -87,7 +87,7 @@
                 </div>
 
                 {{-- Desktop: Right column --}}
-                <div class="hidden flex-col lg:flex">
+                <div class="relative hidden flex-col lg:flex">
                     {{-- 5-star image --}}
                     <div>
                         <img

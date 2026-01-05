@@ -44,4 +44,9 @@ return [
         'inbox_id' => env('MAILTRAP_INBOX_ID'),
     ],
 
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+    ],
+
 ];

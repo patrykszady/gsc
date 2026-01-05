@@ -67,10 +67,9 @@ class Project extends Model
             'bathroom' => 'Bathroom Remodel',
             'basement' => 'Basement Finish',
             'addition' => 'Home Addition',
-            'whole-home' => 'Whole Home Renovation',
+            'home-remodel' => 'Home Remodel',
+            'mudroom' => 'Mudroom / Laundry',
             'exterior' => 'Exterior/Siding',
-            'deck' => 'Deck/Patio',
-            'other' => 'Other',
         ];
     }
 }
