@@ -168,32 +168,51 @@ if (isset($__slots)) unset($__slots);
 
 
     
+    <script>
+        // Track CTA button clicks with GA4 recommended parameters
+        window.trackCTA = function(buttonText, buttonLocation) {
+            const eventData = {
+                button_text: buttonText,
+                button_location: buttonLocation || 'unknown',
+                page_path: window.location.pathname,
+                page_title: document.title
+            };
+            console.log('[GA Event] cta_click', eventData);
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'cta_click', eventData);
+            }
+        };
+
+        // Track form interactions
+        window.trackFormStart = function(formName) {
+            const eventData = {
+                form_name: formName,
+                page_path: window.location.pathname
+            };
+            console.log('[GA Event] form_start', eventData);
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'form_start', eventData);
+            }
+        };
+    </script>
+
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(config('services.google.analytics_id')): ?>
         <script>
             document.addEventListener('livewire:init', () => {
+                // Track successful form submission (GA4 recommended event)
                 Livewire.on('contact-form-submitted', () => {
-                    console.log('[GA Event] form_submission - Contact Form');
-                    gtag('event', 'form_submission', {
-                        event_category: 'Contact',
-                        event_label: 'Contact Form'
-                    });
+                    const eventData = {
+                        form_name: 'contact',
+                        page_path: window.location.pathname,
+                        currency: 'USD',
+                        value: 100 // Estimated lead value
+                    };
+                    console.log('[GA Event] generate_lead', eventData);
+                    gtag('event', 'generate_lead', eventData);
                 });
             });
         </script>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-
-    
-    <script>
-        window.trackCTA = function(label) {
-            console.log('[GA Event] cta_click -', label);
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'cta_click', {
-                    event_category: 'CTA',
-                    event_label: label
-                });
-            }
-        };
-    </script>
 </body>
 </html>
 <?php /**PATH /home/patryk/web/gsc/resources/views/components/layouts/app.blade.php ENDPATH**/ ?>

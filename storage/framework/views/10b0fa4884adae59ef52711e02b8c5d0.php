@@ -67,14 +67,14 @@ if (isset($__slots)) unset($__slots);
             <div class="mt-8 flex items-center justify-center gap-x-6">
                 <?php if (isset($component)) { $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => '/contact','variant' => 'primary','class' => 'font-semibold uppercase tracking-wide']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => '/contact','variant' => 'primary','class' => 'font-semibold uppercase tracking-wide','@click' => 'trackCTA(\'Schedule Free Consultation\', \'projects_page_cta\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('flux::button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => '/contact','variant' => 'primary','class' => 'font-semibold uppercase tracking-wide']); ?>
+<?php $component->withAttributes(['href' => '/contact','variant' => 'primary','class' => 'font-semibold uppercase tracking-wide','@click' => 'trackCTA(\'Schedule Free Consultation\', \'projects_page_cta\')']); ?>
                     Schedule Free Consultation
                  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
@@ -86,7 +86,7 @@ if (isset($__slots)) unset($__slots);
 <?php $component = $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
 <?php unset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
 <?php endif; ?>
-                <a href="/about" class="text-sm/6 font-semibold text-zinc-900 dark:text-white">
+                <a href="/about" class="text-sm/6 font-semibold text-zinc-900 dark:text-white" @click="trackCTA('About Us', 'projects_page_secondary')">
                     About Us <span aria-hidden="true">→</span>
                 </a>
             </div>

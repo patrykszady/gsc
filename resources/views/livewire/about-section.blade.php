@@ -48,11 +48,7 @@
 
             {{-- Image + Quote --}}
             <div class="lg:mt-[4.5rem] lg:pl-4">
-                <img
-                    src="{{ asset('images/greg-patryk.jpg') }}"
-                    alt="Gregory and Patryk - GS Construction"
-                    class="w-full max-w-lg rounded-xl shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 lg:max-w-none"
-                />
+                <livewire:team-photo-slider />
                 {{-- Quote animates only when it enters view (independent of checkmarks) --}}
                 <blockquote
                     x-data="{ quoteVisible: false }"

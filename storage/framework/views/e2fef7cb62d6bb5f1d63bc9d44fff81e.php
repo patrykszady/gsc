@@ -1,32 +1,33 @@
 <div
     x-data="{
         currentSlide: 0,
+        areaCity: <?php echo \Illuminate\Support\Js::from($area?->city)->toHtml() ?>,
         slides: [
             {
                 title: 'Kitchens',
                 button: 'Show Kitchens',
-                link: '/projects/kitchens',
+                link: '/projects?type=kitchen',
                 projectType: 'kitchen',
                 image: <?php echo \Illuminate\Support\Js::from($slideImages['kitchen'])->toHtml() ?>
             },
             {
                 title: 'Bathrooms',
                 button: 'Show Bathrooms',
-                link: '/projects/bathrooms',
+                link: '/projects?type=bathroom',
                 projectType: 'bathroom',
                 image: <?php echo \Illuminate\Support\Js::from($slideImages['bathroom'])->toHtml() ?>
             },
             {
                 title: 'Mudrooms\nLaundry Rooms',
                 button: 'Show Mudrooms',
-                link: '/projects/mudrooms',
+                link: '/projects?type=mudroom',
                 projectType: 'mudroom',
                 image: <?php echo \Illuminate\Support\Js::from($slideImages['mudroom'])->toHtml() ?>
             },
             {
                 title: 'Home Remodels',
                 button: 'Show Home Remodels',
-                link: '/projects/home-remodels',
+                link: '/projects?type=home-remodel',
                 projectType: 'home-remodel',
                 image: <?php echo \Illuminate\Support\Js::from($slideImages['home-remodel'])->toHtml() ?>
             }
@@ -115,6 +116,11 @@
                             class="font-heading text-4xl font-bold text-white drop-shadow-lg sm:text-5xl lg:text-6xl"
                             x-html="slide.title.replace('\n', '<br>')"
                         ></h2>
+                        <p 
+                            x-show="areaCity" 
+                            x-text="'in ' + areaCity"
+                            class="mt-2 text-xl font-medium text-white drop-shadow-lg sm:text-2xl"
+                        ></p>
                         <div class="mt-6">
                             <a
                                 :href="slide.link"

@@ -121,7 +121,7 @@
                         <a
                             href="<?php echo e($area ? route('area.testimonials', $area) : route('testimonials.index')); ?>"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
-                            @click="trackCTA('Read More Testimonials')"
+                            @click="trackCTA('Read More Testimonials', 'testimonials_section_desktop')"
                         >
                             Read More
                         </a>
@@ -192,7 +192,7 @@
                         <a
                             href="<?php echo e($area ? route('area.testimonials', $area) : route('testimonials.index')); ?>"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
-                            @click="trackCTA('Read More Testimonials - Mobile')"
+                            @click="trackCTA('Read More Testimonials', 'testimonials_section_mobile')"
                         >
                             Read More
                         </a>

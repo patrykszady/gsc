@@ -44,14 +44,14 @@
                     <div class="mt-6">
                         <?php if (isset($component)) { $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => ''.e($content['cta_href']).'','variant' => 'primary','class' => 'w-full font-semibold uppercase tracking-wide sm:w-auto','@click' => 'trackCTA(\''.e($content['cta_text']).'\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => ''.e($content['cta_href']).'','variant' => 'primary','class' => 'w-full font-semibold uppercase tracking-wide sm:w-auto','@click' => 'trackCTA(\''.e($content['cta_text']).'\', \'about_section\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('flux::button'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e($content['cta_href']).'','variant' => 'primary','class' => 'w-full font-semibold uppercase tracking-wide sm:w-auto','@click' => 'trackCTA(\''.e($content['cta_text']).'\')']); ?>
+<?php $component->withAttributes(['href' => ''.e($content['cta_href']).'','variant' => 'primary','class' => 'w-full font-semibold uppercase tracking-wide sm:w-auto','@click' => 'trackCTA(\''.e($content['cta_text']).'\', \'about_section\')']); ?>
                             <?php echo e($content['cta_text']); ?>
 
                          <?php echo $__env->renderComponent(); ?>
@@ -70,11 +70,26 @@
 
             
             <div class="lg:mt-[4.5rem] lg:pl-4">
-                <img
-                    src="<?php echo e(asset('images/greg-patryk.jpg')); ?>"
-                    alt="Gregory and Patryk - GS Construction"
-                    class="w-full max-w-lg rounded-xl shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 lg:max-w-none"
-                />
+                <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('team-photo-slider', []);
+
+$key = null;
+
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-3696096364-0', null);
+
+$__html = app('livewire')->mount($__name, $__params, $key);
+
+echo $__html;
+
+unset($__html);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
                 
                 <blockquote
                     x-data="{ quoteVisible: false }"

@@ -588,6 +588,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     <button 
                         type="submit" 
                         class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
+                        @click="trackFormStart('contact')"
                     >
                         <span wire:loading.remove wire:target="submit">Send message</span>
                         <span wire:loading wire:target="submit">Sending...</span>
