@@ -4,7 +4,7 @@
     <section class="relative mt-8 h-[250px] overflow-hidden sm:h-[300px] lg:h-[350px]">
         
         <div
-            class="absolute inset-0 bg-fixed bg-cover bg-center"
+            class="absolute inset-0 bg-center bg-cover bg-scroll md:bg-fixed"
             style="background-image: url('<?php echo e(asset('images/gs_map.png')); ?>');"
         ></div>
 

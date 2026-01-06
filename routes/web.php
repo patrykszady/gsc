@@ -27,9 +27,21 @@ Route::get('/areas/{area:slug}', function (AreaServed $area) {
 })->name('area.home');
 
 Route::view('/testimonials', 'testimonials')->name('testimonials.index');
+Route::view('/about', 'about')->name('about');
+Route::view('/contact', 'contact')->name('contact');
+Route::view('/projects', 'projects')->name('projects.index');
 Route::get('/areas/{area:slug}/testimonials', function (AreaServed $area) {
     return view('testimonials', ['area' => $area]);
 })->name('area.testimonials');
+Route::get('/areas/{area:slug}/about', function (AreaServed $area) {
+    return view('about', ['area' => $area]);
+})->name('area.about');
+Route::get('/areas/{area:slug}/contact', function (AreaServed $area) {
+    return view('contact', ['area' => $area]);
+})->name('area.contact');
+Route::get('/areas/{area:slug}/projects', function (AreaServed $area) {
+    return view('projects', ['area' => $area]);
+})->name('area.projects');
 Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
 
 // Admin auth

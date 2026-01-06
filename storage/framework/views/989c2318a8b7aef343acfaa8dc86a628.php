@@ -1,4 +1,28 @@
-<div x-data="{ open: false }" class="mt-4 border-t border-gray-900/10 pt-4 dark:border-white/10">
+<div 
+    id="areas-served"
+    x-data="{ open: false }"
+    x-init="
+        if (window.location.hash === '#areas-served') {
+            open = true;
+            $nextTick(() => {
+                setTimeout(() => {
+                    $el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            });
+        }
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash === '#areas-served') {
+                open = true;
+                $nextTick(() => {
+                    setTimeout(() => {
+                        $el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }, 100);
+                });
+            }
+        });
+    "
+    class="mt-4 border-t border-gray-900/10 pt-4 dark:border-white/10"
+>
     <button
         @click="open = !open"
         class="mx-auto flex items-center gap-2 text-xs font-semibold tracking-wide text-gray-600 uppercase hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"

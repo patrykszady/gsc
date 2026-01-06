@@ -63,7 +63,7 @@
                         </dt>
                         <dd>
                             <span class="font-medium text-gray-900 dark:text-white">Service Area</span><br>
-                            <span>Chicagoland Northwest Suburbs</span>
+                            <span>{{ $area ? $area->city . ' and surrounding Chicagoland areas' : 'Chicagoland Northwest Suburbs' }}</span>
                         </dd>
                     </div>
                 </dl>
@@ -73,6 +73,19 @@
         {{-- Right Column: Contact Form --}}
         <form wire:submit="submit" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
             <div class="mx-auto max-w-xl lg:mr-0 lg:max-w-lg">
+                {{-- Rate limit error --}}
+                @error('form') 
+                    <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                        {{ $message }}
+                    </div>
+                @enderror
+
+                {{-- Honeypot field - hidden from humans, bots will fill it --}}
+                <div class="absolute -left-[9999px] opacity-0" aria-hidden="true" tabindex="-1">
+                    <label for="website">Website</label>
+                    <input type="text" wire:model="website" id="website" name="website" autocomplete="off" tabindex="-1" />
+                </div>
+
                 <div class="grid grid-cols-1 gap-x-8 gap-y-3">
                     {{-- Name --}}
                     <div>
@@ -111,15 +124,16 @@
                         <label for="phone" class="block text-sm/6 font-semibold text-gray-900 dark:text-white">Cell Phone</label>
                         <div class="mt-1.5">
                             <flux:input 
-                                wire:model="phone" 
+                                wire:model.blur="phone" 
                                 id="phone" 
                                 type="tel" 
                                 autocomplete="tel"
+                                mask="(999) 999-9999"
                                 placeholder="(555) 123-4567"
                                 class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
                             />
                         </div>
-                        @error('phone') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        @error('phoneDigits') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- Address with Google Places Autocomplete (Flux-styled, new API) --}}
@@ -461,6 +475,7 @@
                     <button 
                         type="submit" 
                         class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
+                        @click="trackFormStart('contact')"
                     >
                         <span wire:loading.remove wire:target="submit">Send message</span>
                         <span wire:loading wire:target="submit">Sending...</span>

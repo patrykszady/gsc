@@ -63,7 +63,7 @@
                         </dt>
                         <dd>
                             <span class="font-medium text-gray-900 dark:text-white">Service Area</span><br>
-                            <span>Chicagoland Northwest Suburbs</span>
+                            <span><?php echo e($area ? $area->city . ' and surrounding Chicagoland areas' : 'Chicagoland Northwest Suburbs'); ?></span>
                         </dd>
                     </div>
                 </dl>
@@ -73,6 +73,27 @@
         
         <form wire:submit="submit" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
             <div class="mx-auto max-w-xl lg:mr-0 lg:max-w-lg">
+                
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> 
+                    <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                        <?php echo e($message); ?>
+
+                    </div>
+                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                
+                <div class="absolute -left-[9999px] opacity-0" aria-hidden="true" tabindex="-1">
+                    <label for="website">Website</label>
+                    <input type="text" wire:model="website" id="website" name="website" autocomplete="off" tabindex="-1" />
+                </div>
+
                 <div class="grid grid-cols-1 gap-x-8 gap-y-3">
                     
                     <div>
@@ -150,14 +171,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         <div class="mt-1.5">
                             <?php if (isset($component)) { $__componentOriginal26c546557cdc09040c8dd00b2090afd0 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal26c546557cdc09040c8dd00b2090afd0 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::input.index','data' => ['wire:model' => 'phone','id' => 'phone','type' => 'tel','autocomplete' => 'tel','placeholder' => '(555) 123-4567','class' => '!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::input.index','data' => ['wire:model.blur' => 'phone','id' => 'phone','type' => 'tel','autocomplete' => 'tel','mask' => '(999) 999-9999','placeholder' => '(555) 123-4567','class' => '!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('flux::input'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'phone','id' => 'phone','type' => 'tel','autocomplete' => 'tel','placeholder' => '(555) 123-4567','class' => '!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500']); ?>
+<?php $component->withAttributes(['wire:model.blur' => 'phone','id' => 'phone','type' => 'tel','autocomplete' => 'tel','mask' => '(999) 999-9999','placeholder' => '(555) 123-4567','class' => '!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal26c546557cdc09040c8dd00b2090afd0)): ?>
@@ -169,7 +190,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php unset($__componentOriginal26c546557cdc09040c8dd00b2090afd0); ?>
 <?php endif; ?>
                         </div>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['phone'];
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['phoneDigits'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
