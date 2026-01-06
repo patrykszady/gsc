@@ -9,26 +9,28 @@ use Spatie\Sitemap\Tags\Url;
 
 class GenerateSitemap extends Command
 {
-    protected $signature = 'sitemap:generate';
+    protected $signature = 'sitemap:generate {--url= : Base URL for the sitemap (defaults to APP_URL)}';
 
     protected $description = 'Generate the sitemap for the website';
 
     public function handle(): int
     {
-        $this->info('Generating sitemap...');
+        $baseUrl = $this->option('url') ?: config('app.url');
+        
+        $this->info("Generating sitemap with base URL: {$baseUrl}");
 
         $sitemap = Sitemap::create();
 
         // Add static pages
         $sitemap->add(
-            Url::create('/')
+            Url::create("{$baseUrl}/")
                 ->setLastModificationDate(now())
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                 ->setPriority(1.0)
         );
 
         $sitemap->add(
-            Url::create('/testimonials')
+            Url::create("{$baseUrl}/testimonials")
                 ->setLastModificationDate(now())
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                 ->setPriority(0.8)
@@ -39,14 +41,14 @@ class GenerateSitemap extends Command
 
         foreach ($areas as $area) {
             $sitemap->add(
-                Url::create("/areas/{$area->slug}")
+                Url::create("{$baseUrl}/areas/{$area->slug}")
                     ->setLastModificationDate($area->updated_at ?? now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority(0.7)
             );
 
             $sitemap->add(
-                Url::create("/areas/{$area->slug}/testimonials")
+                Url::create("{$baseUrl}/areas/{$area->slug}/testimonials")
                     ->setLastModificationDate($area->updated_at ?? now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority(0.6)
