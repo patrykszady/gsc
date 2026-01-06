@@ -8,6 +8,7 @@
         hovering: false,
         dragging: false,
         intervalMs: 650,
+        preloaded: false,
         src() {
             if (!this.frames.length) return null;
             return this.frames[this.position - 1] ?? this.frames[0] ?? null;
@@ -25,6 +26,22 @@
             clearInterval(this.timer);
             this.timer = null;
         },
+        preloadInitial() {
+            // Preload first 3 frames immediately on init
+            this.frames.slice(0, 3).forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+        },
+        preloadAll() {
+            if (this.preloaded) return;
+            this.preloaded = true;
+            // Preload remaining frames in background
+            this.frames.slice(3).forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+        },
         play() {
             this.inView = true;
             // Always start from the first image when entering view.
@@ -32,6 +49,7 @@
             this.started = true;
             this.stop();
             this.start();
+            this.preloadAll();
         },
         pause() {
             this.inView = false;
@@ -54,6 +72,7 @@
             this.start();
         },
     }"
+    x-init="preloadInitial()"
     @pointerup.window="endDrag()"
     @pointercancel.window="endDrag()"
     x-intersect:enter.threshold.35="play()"
