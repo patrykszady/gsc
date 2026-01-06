@@ -11,6 +11,9 @@ Route::get('/', function () {
     return view('home');
 })->name('home');
 
+Route::view('/testimonials', 'testimonials')->name('testimonials.index');
+Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
+
 // Admin auth
 Route::get('/admin/login', Login::class)->name('admin.login')->middleware('guest');
 Route::post('/admin/logout', function () {

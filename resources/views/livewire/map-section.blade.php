@@ -1,7 +1,7 @@
 <div>
     {{-- Parallax Map Section --}}
     {{-- The image is fixed to the viewport, section acts as a window/mask --}}
-    <section class="relative h-[250px] overflow-hidden sm:h-[300px] lg:h-[350px]">
+    <section class="relative mt-8 h-[250px] overflow-hidden sm:h-[300px] lg:h-[350px]">
         {{-- Fixed background image --}}
         <div
             class="absolute inset-0 bg-fixed bg-cover bg-center"

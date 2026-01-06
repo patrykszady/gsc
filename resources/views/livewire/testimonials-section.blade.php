@@ -114,7 +114,7 @@
                     {{-- Desktop: Read More button --}}
                     <div class="mt-6">
                         <a
-                            :href="'/testimonials/' + (current?.slug || '')"
+                            :href="'/testimonials'"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
                         >
                             Read More
