@@ -124,5 +124,33 @@
     <x-footer />
 
     @fluxScripts
+
+    {{-- Analytics event tracking --}}
+    @if(config('services.google.analytics_id'))
+        <script>
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('contact-form-submitted', () => {
+                    console.log('[GA Event] form_submission - Contact Form');
+                    gtag('event', 'form_submission', {
+                        event_category: 'Contact',
+                        event_label: 'Contact Form'
+                    });
+                });
+            });
+        </script>
+    @endif
+
+    {{-- Debug: Log CTA clicks to console --}}
+    <script>
+        window.trackCTA = function(label) {
+            console.log('[GA Event] cta_click -', label);
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'cta_click', {
+                    event_category: 'CTA',
+                    event_label: label
+                });
+            }
+        };
+    </script>
 </body>
 </html>

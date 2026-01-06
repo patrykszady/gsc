@@ -132,8 +132,19 @@ class ContactSection extends Component
             userMessage: $this->message,
             availability: $this->availability,
         ));
+
+        // Log the contact form submission
+        \Log::info('Contact form submitted', [
+            'name' => $this->name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'address' => $this->address,
+        ]);
         
         session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
+
+        // Dispatch browser event for analytics tracking
+        $this->dispatch('contact-form-submitted');
 
         $this->reset(['name', 'email', 'phone', 'address', 'message', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
     }

@@ -123,7 +123,7 @@
 
         {{-- Desktop CTA --}}
         <div class="hidden lg:flex lg:items-center lg:gap-x-6">
-            <flux:button href="/contact" variant="primary" class="font-bold uppercase tracking-wide">
+            <flux:button href="/contact" variant="primary" class="font-bold uppercase tracking-wide" @click="trackCTA('Start Your Project - Navbar')">
                 START YOUR PROJECT
             </flux:button>
         </div>
@@ -206,7 +206,7 @@
                         <a href="/reviews" class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Reviews</a>
                     </div>
                     <div class="py-6">
-                        <flux:button href="/contact" variant="primary" class="w-full justify-center">
+                        <flux:button href="/contact" variant="primary" class="w-full justify-center" @click="trackCTA('Start Your Project - Mobile Menu')">
                             START YOUR PROJECT
                         </flux:button>
                         <div class="mt-4 space-y-2 text-center text-sm text-zinc-600 dark:text-zinc-300">

@@ -40,7 +40,14 @@
                         <img src="{{ $featured['image'] }}" alt="{{ $featured['name'] }}" class="size-10 flex-none rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div class="flex-auto">
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $featured['name'] }}</div>
-                            <div class="text-gray-600 dark:text-gray-400">{{ $featured['location'] }} · {{ $featured['date'] }}</div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                @if($featured['area_slug'])
+                                    <a href="/areas/{{ $featured['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $featured['location'] }}</a>
+                                @else
+                                    {{ $featured['location'] }}
+                                @endif
+                                · {{ $featured['date'] }}
+                            </div>
                         </div>
                         <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" class="h-10 w-auto flex-none" />
                     </figcaption>
@@ -57,7 +64,13 @@
                         <img src="{{ $leftTop['image'] }}" alt="{{ $leftTop['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $leftTop['name'] }}</div>
-                            <div class="text-gray-600 dark:text-gray-400">{{ $leftTop['location'] }}</div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                @if($leftTop['area_slug'])
+                                    <a href="/areas/{{ $leftTop['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $leftTop['location'] }}</a>
+                                @else
+                                    {{ $leftTop['location'] }}
+                                @endif
+                            </div>
                         </div>
                     </figcaption>
                 </figure>
@@ -73,7 +86,13 @@
                         <img src="{{ $rightTop['image'] }}" alt="{{ $rightTop['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $rightTop['name'] }}</div>
-                            <div class="text-gray-600 dark:text-gray-400">{{ $rightTop['location'] }}</div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                @if($rightTop['area_slug'])
+                                    <a href="/areas/{{ $rightTop['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $rightTop['location'] }}</a>
+                                @else
+                                    {{ $rightTop['location'] }}
+                                @endif
+                            </div>
                         </div>
                     </figcaption>
                 </figure>
@@ -89,7 +108,13 @@
                         <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
-                            <div class="text-gray-600 dark:text-gray-400">{{ $testimonial['location'] }}</div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                @if($testimonial['area_slug'])
+                                    <a href="/areas/{{ $testimonial['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
+                                @else
+                                    {{ $testimonial['location'] }}
+                                @endif
+                            </div>
                         </div>
                     </figcaption>
                 </figure>
@@ -105,7 +130,13 @@
                         <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
-                            <div class="text-gray-600 dark:text-gray-400">{{ $testimonial['location'] }}</div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                @if($testimonial['area_slug'])
+                                    <a href="/areas/{{ $testimonial['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
+                                @else
+                                    {{ $testimonial['location'] }}
+                                @endif
+                            </div>
                         </div>
                     </figcaption>
                 </figure>
@@ -121,7 +152,13 @@
                         <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
-                            <div class="text-gray-600 dark:text-gray-400">{{ $testimonial['location'] }}</div>
+                            <div class="text-gray-600 dark:text-gray-400">
+                                @if($testimonial['area_slug'])
+                                    <a href="/areas/{{ $testimonial['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
+                                @else
+                                    {{ $testimonial['location'] }}
+                                @endif
+                            </div>
                         </div>
                     </figcaption>
                 </figure>

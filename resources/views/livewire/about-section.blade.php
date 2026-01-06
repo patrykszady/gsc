@@ -73,7 +73,7 @@
 
                     {{-- CTA Button --}}
                     <div class="mt-6">
-                        <flux:button href="/contact" variant="primary" class="w-full font-semibold uppercase tracking-wide sm:w-auto">
+                        <flux:button href="/contact" variant="primary" class="w-full font-semibold uppercase tracking-wide sm:w-auto" @click="trackCTA('Contact Gregory & Patryk')">
                             Contact Gregory & Patryk
                         </flux:button>
                     </div>

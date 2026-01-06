@@ -79,7 +79,12 @@
                     <div class="mt-4">
                         <div class="font-semibold text-gray-900 dark:text-white" x-text="current?.name"></div>
                         <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            <span x-text="current?.location"></span>
+                            <template x-if="current?.area_slug">
+                                <a :href="'/areas/' + current.area_slug" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400" x-text="current?.location"></a>
+                            </template>
+                            <template x-if="!current?.area_slug">
+                                <span x-text="current?.location"></span>
+                            </template>
                             <span x-show="current?.date"> · </span>
                             <span x-text="current?.date"></span>
                         </div>
@@ -116,6 +121,7 @@
                         <a
                             href="{{ $area ? route('area.testimonials', $area) : route('testimonials.index') }}"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
+                            @click="trackCTA('Read More Testimonials')"
                         >
                             Read More
                         </a>
@@ -171,7 +177,12 @@
                         <div>
                             <div class="font-semibold text-gray-900 dark:text-white" x-text="current?.name"></div>
                             <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                <span x-text="current?.location"></span>
+                                <template x-if="current?.area_slug">
+                                    <a :href="'/areas/' + current.area_slug" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400" x-text="current?.location"></a>
+                                </template>
+                                <template x-if="!current?.area_slug">
+                                    <span x-text="current?.location"></span>
+                                </template>
                                 <span x-show="current?.date"> · </span>
                                 <span x-text="current?.date"></span>
                             </div>
@@ -181,6 +192,7 @@
                         <a
                             href="{{ $area ? route('area.testimonials', $area) : route('testimonials.index') }}"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
+                            @click="trackCTA('Read More Testimonials - Mobile')"
                         >
                             Read More
                         </a>

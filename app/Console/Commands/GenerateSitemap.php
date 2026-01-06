@@ -53,9 +53,20 @@ class GenerateSitemap extends Command
             );
         }
 
-        $sitemap->writeToFile(public_path('sitemap.xml'));
+        // Write to storage first, then copy to public (for Forge zero-downtime deployments)
+        $storagePath = storage_path('app/sitemap.xml');
+        $publicPath = public_path('sitemap.xml');
 
-        $this->info('Sitemap generated successfully at public/sitemap.xml');
+        $sitemap->writeToFile($storagePath);
+
+        // Copy to public directory
+        if (copy($storagePath, $publicPath)) {
+            $this->info('Sitemap generated successfully at public/sitemap.xml');
+        } else {
+            $this->warn('Sitemap saved to storage/app/sitemap.xml but could not copy to public/');
+            $this->warn('You may need to manually symlink or copy it.');
+        }
+
         $this->info('Total URLs: ' . (2 + ($areas->count() * 2)));
 
         return Command::SUCCESS;
