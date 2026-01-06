@@ -2,12 +2,15 @@
 
 namespace App\Livewire;
 
+use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
 use Livewire\Component;
 
 class TestimonialsGrid extends Component
 {
+    public ?AreaServed $area = null;
+
     public function render()
     {
         $testimonials = Testimonial::query()
@@ -29,6 +32,7 @@ class TestimonialsGrid extends Component
         return view('livewire.testimonials-grid', [
             'featured' => $featured,
             'testimonials' => $others,
+            'area' => $this->area,
         ]);
     }
 

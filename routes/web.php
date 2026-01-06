@@ -5,13 +5,31 @@ use App\Livewire\Admin\Login;
 use App\Livewire\Admin\ProjectForm;
 use App\Livewire\Admin\ProjectList;
 use App\Livewire\Admin\TagList;
+use App\Models\AreaServed;
 use Illuminate\Support\Facades\Route;
+
+// Dynamic robots.txt using APP_URL
+Route::get('/robots.txt', function () {
+    $content = "User-agent: *\n";
+    $content .= "Disallow: /admin/\n";
+    $content .= "Disallow: /api/\n\n";
+    $content .= "Sitemap: " . config('app.url') . "/sitemap.xml\n";
+    
+    return response($content, 200)->header('Content-Type', 'text/plain');
+});
 
 Route::get('/', function () {
     return view('home');
 })->name('home');
 
+Route::get('/areas/{area:slug}', function (AreaServed $area) {
+    return view('home', ['area' => $area]);
+})->name('area.home');
+
 Route::view('/testimonials', 'testimonials')->name('testimonials.index');
+Route::get('/areas/{area:slug}/testimonials', function (AreaServed $area) {
+    return view('testimonials', ['area' => $area]);
+})->name('area.testimonials');
 Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
 
 // Admin auth

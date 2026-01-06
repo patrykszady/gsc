@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
 use Illuminate\Support\Facades\Cache;
@@ -10,6 +11,8 @@ use Livewire\Component;
 
 class TestimonialsSection extends Component
 {
+    public ?AreaServed $area = null;
+
     public array $current = [];
 
     public array $recentIds = [];
@@ -133,6 +136,8 @@ class TestimonialsSection extends Component
 
     public function render()
     {
-        return view('livewire.testimonials-section');
+        return view('livewire.testimonials-section', [
+            'area' => $this->area,
+        ]);
     }
 }

@@ -48,7 +48,10 @@
                                 <a href="/contact" class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Contact</a>
                             </li>
                             <li>
-                                <a href="/areas-served" class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
+                                <a href="/contact" class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Contact</a>
+                            </li>
+                            <li>
+                                <a href="/areas" class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
                             </li>
                         </ul>
                     </div>

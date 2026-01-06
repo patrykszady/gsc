@@ -12,6 +12,8 @@ use Livewire\Component;
 
 class ContactSection extends Component
 {
+    public ?AreaServed $area = null;
+
     #[Validate('required|min:2')]
     public string $name = '';
 
@@ -195,6 +197,7 @@ class ContactSection extends Component
             'unavailableSundays' => $unavailableSundays,
             'minSelectableDate' => $minSelectableDate,
             'times' => $times,
+            'area' => $this->area,
         ]);
     }
 }

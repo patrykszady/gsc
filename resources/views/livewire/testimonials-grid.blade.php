@@ -8,7 +8,13 @@
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="mx-auto max-w-2xl text-center">
             <h2 class="text-base/7 font-semibold text-sky-600 dark:text-sky-400">Testimonials</h2>
-            <p class="mt-2 font-heading text-4xl font-semibold tracking-tight text-balance text-gray-900 sm:text-5xl dark:text-white">Your neighbours love us</p>
+            <p class="mt-2 font-heading text-4xl font-semibold tracking-tight text-balance text-gray-900 sm:text-5xl dark:text-white">
+                @if($area)
+                    Your neighbours in {{ $area->city }} love us
+                @else
+                    Your neighbours love us
+                @endif
+            </p>
         </div>
         @php
             // 4 visible rows on desktop: top row (left + featured + right) + row2 (4) + row3 (4) + row4 (4) = 15 total

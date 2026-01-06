@@ -2,12 +2,15 @@
 
 namespace App\Livewire;
 
+use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 
 class MainProjectHeroSlider extends Component
 {
+    public ?AreaServed $area = null;
+
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
         $query = ProjectImage::query()
@@ -72,6 +75,7 @@ class MainProjectHeroSlider extends Component
 
         return view('livewire.main-project-hero-slider', [
             'slideImages' => $slideImages,
+            'area' => $this->area,
         ]);
     }
 }

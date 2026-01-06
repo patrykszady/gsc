@@ -114,7 +114,7 @@
                     {{-- Desktop: Read More button --}}
                     <div class="mt-6">
                         <a
-                            :href="'/testimonials'"
+                            href="{{ $area ? route('area.testimonials', $area) : route('testimonials.index') }}"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
                         >
                             Read More
@@ -179,7 +179,7 @@
                     </div>
                     <div class="mt-4">
                         <a
-                            :href="'/testimonials/' + (current?.slug || '')"
+                            href="{{ $area ? route('area.testimonials', $area) : route('testimonials.index') }}"
                             class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
                         >
                             Read More

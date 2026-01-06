@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\TestimonialProjectTypeClassifier;
@@ -9,6 +10,9 @@ use App\Services\TestimonialProjectTypeClassifier;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Schedule sitemap regeneration daily
+Schedule::command('sitemap:generate')->daily();
 
 Artisan::command('gsc:classify-testimonials
     {--only-missing : Only update rows where project_type is null/empty}
