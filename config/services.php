@@ -37,6 +37,11 @@ return [
 
     'google' => [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY'),
+        'analytics_id' => env('GOOGLE_ANALYTICS_ID'),
+    ],
+
+    'microsoft' => [
+        'clarity_id' => env('MICROSOFT_CLARITY_ID'),
     ],
 
     'mailtrap' => [
