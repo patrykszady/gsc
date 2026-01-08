@@ -103,8 +103,28 @@ class GenerateSitemap extends Command
             $this->line("  Added static: /{$uri}");
         }
 
-        // Projects were removed from area routes - area page generation skipped
-        // Only generating site-wide pages now
+        // Add area-served pages
+        $this->info("Adding area-served pages to sitemap...");
+        $areas = AreaServed::orderBy('city')->get();
+        $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
+        $areaCount = 0;
+
+        foreach ($areas as $area) {
+            foreach ($areaPages as $page) {
+                $uri = $page ? "areas-served/{$area->slug}/{$page}" : "areas-served/{$area->slug}";
+                $priority = $page === '' ? 0.7 : 0.6; // Area home pages slightly higher
+                
+                $sitemap->add(
+                    Url::create("{$baseUrl}/{$uri}")
+                        ->setLastModificationDate(now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority($priority)
+                );
+                $urlCount++;
+                $areaCount++;
+            }
+        }
+        $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × " . count($areaPages) . " page types)");
 
         // Add project pages with images for image sitemap
         $this->info("Adding project images to sitemap...");
@@ -144,6 +164,7 @@ class GenerateSitemap extends Command
         $this->info("=== Summary ===");
         $this->info("Total URLs: {$urlCount}");
         $this->info("  - Static pages: " . $staticRoutes->count());
+        $this->info("  - Area pages: {$areaCount}");
         $this->info("  - Project pages: " . $projects->count());
         $this->info("  - Images indexed: {$imageCount}");
 

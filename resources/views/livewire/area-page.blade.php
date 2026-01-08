@@ -1,4 +1,59 @@
 <div>
+    {{-- Breadcrumb Schema for all area pages --}}
+    @php
+        $breadcrumbItems = [
+            ['name' => 'Areas Served', 'url' => route('areas.index')],
+            ['name' => $area->city, 'url' => $area->url],
+        ];
+        
+        if ($page !== 'home') {
+            $pageNames = [
+                'contact' => 'Contact',
+                'testimonials' => 'Testimonials',
+                'projects' => 'Projects',
+                'about' => 'About',
+                'services' => 'Services',
+            ];
+            $breadcrumbItems[] = ['name' => $pageNames[$page] ?? ucfirst($page)];
+        }
+    @endphp
+    <x-breadcrumb-schema :items="$breadcrumbItems" />
+
+    {{-- Visual Breadcrumb Navigation --}}
+    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol role="list" class="flex items-center space-x-2 text-sm">
+                <li>
+                    <a href="/" wire:navigate class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Home</a>
+                </li>
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <a href="{{ route('areas.index') }}" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
+                </li>
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    @if($page === 'home')
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $area->city }}</span>
+                    @else
+                        <a href="{{ $area->url }}" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">{{ $area->city }}</a>
+                    @endif
+                </li>
+                @if($page !== 'home')
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ ucfirst($page) }}</span>
+                </li>
+                @endif
+            </ol>
+        </nav>
+    </div>
+
     @switch($page)
         @case('home')
             {{-- Area Home Page --}}
@@ -231,25 +286,28 @@
 
         @case('services')
             {{-- Area Services Page --}}
-            <livewire:main-project-hero-slider 
-                project-type="mixed"
-                :slides="[
+            @php
+                $serviceSlides = [
                     [
-                        'heading' => '{$area->city} Kitchen Remodeling',
+                        'heading' => $area->city . ' Kitchen Remodeling',
                         'subheading' => 'Transform your kitchen with custom cabinets, countertops, and complete renovations',
                         'type' => 'kitchen',
                     ],
                     [
-                        'heading' => '{$area->city} Bathroom Remodeling',
+                        'heading' => $area->city . ' Bathroom Remodeling',
                         'subheading' => 'Create your personal spa retreat with luxury showers, tubs, and tile work',
                         'type' => 'bathroom',
                     ],
                     [
-                        'heading' => '{$area->city} Home Remodeling',
+                        'heading' => $area->city . ' Home Remodeling',
                         'subheading' => 'Complete home renovations, room additions, and open floor plans',
                         'type' => 'home-remodel',
                     ],
-                ]"
+                ];
+            @endphp
+            <livewire:main-project-hero-slider 
+                project-type="mixed"
+                :slides="$serviceSlides"
                 primary-cta-text="Get a Free Quote"
                 :primary-cta-url="$area->pageUrl('contact')"
                 secondary-cta-text="View Our Work"

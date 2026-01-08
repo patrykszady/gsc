@@ -1,4 +1,78 @@
 <div>
+    
+    <?php
+        $breadcrumbItems = [
+            ['name' => 'Areas Served', 'url' => route('areas.index')],
+            ['name' => $area->city, 'url' => $area->url],
+        ];
+        
+        if ($page !== 'home') {
+            $pageNames = [
+                'contact' => 'Contact',
+                'testimonials' => 'Testimonials',
+                'projects' => 'Projects',
+                'about' => 'About',
+                'services' => 'Services',
+            ];
+            $breadcrumbItems[] = ['name' => $pageNames[$page] ?? ucfirst($page)];
+        }
+    ?>
+    <?php if (isset($component)) { $__componentOriginal4f890e046689735d2e8d34b0645836b5 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal4f890e046689735d2e8d34b0645836b5 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.breadcrumb-schema','data' => ['items' => $breadcrumbItems]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('breadcrumb-schema'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['items' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($breadcrumbItems)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal4f890e046689735d2e8d34b0645836b5)): ?>
+<?php $attributes = $__attributesOriginal4f890e046689735d2e8d34b0645836b5; ?>
+<?php unset($__attributesOriginal4f890e046689735d2e8d34b0645836b5); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal4f890e046689735d2e8d34b0645836b5)): ?>
+<?php $component = $__componentOriginal4f890e046689735d2e8d34b0645836b5; ?>
+<?php unset($__componentOriginal4f890e046689735d2e8d34b0645836b5); ?>
+<?php endif; ?>
+
+    
+    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol role="list" class="flex items-center space-x-2 text-sm">
+                <li>
+                    <a href="/" wire:navigate class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Home</a>
+                </li>
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <a href="<?php echo e(route('areas.index')); ?>" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
+                </li>
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($page === 'home'): ?>
+                        <span class="ml-2 text-gray-700 dark:text-gray-300"><?php echo e($area->city); ?></span>
+                    <?php else: ?>
+                        <a href="<?php echo e($area->url); ?>" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"><?php echo e($area->city); ?></a>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </li>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($page !== 'home'): ?>
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="ml-2 text-gray-700 dark:text-gray-300"><?php echo e(ucfirst($page)); ?></span>
+                </li>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </ol>
+        </nav>
+    </div>
+
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php switch($page):
         case ('home'): ?>
             
@@ -545,26 +619,29 @@ if (isset($__slots)) unset($__slots);
         <?php case ('services'): ?>
             
             <?php
-$__split = function ($name, $params = []) {
-    return [$name, $params];
-};
-[$__name, $__params] = $__split('main-project-hero-slider', ['projectType' => 'mixed','slides' => [
+                $serviceSlides = [
                     [
-                        'heading' => '{$area->city} Kitchen Remodeling',
+                        'heading' => $area->city . ' Kitchen Remodeling',
                         'subheading' => 'Transform your kitchen with custom cabinets, countertops, and complete renovations',
                         'type' => 'kitchen',
                     ],
                     [
-                        'heading' => '{$area->city} Bathroom Remodeling',
+                        'heading' => $area->city . ' Bathroom Remodeling',
                         'subheading' => 'Create your personal spa retreat with luxury showers, tubs, and tile work',
                         'type' => 'bathroom',
                     ],
                     [
-                        'heading' => '{$area->city} Home Remodeling',
+                        'heading' => $area->city . ' Home Remodeling',
                         'subheading' => 'Complete home renovations, room additions, and open floor plans',
                         'type' => 'home-remodel',
                     ],
-                ],'primaryCtaText' => 'Get a Free Quote','primaryCtaUrl' => $area->pageUrl('contact'),'secondaryCtaText' => 'View Our Work','secondaryCtaUrl' => $area->pageUrl('projects')]);
+                ];
+            ?>
+            <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('main-project-hero-slider', ['projectType' => 'mixed','slides' => $serviceSlides,'primaryCtaText' => 'Get a Free Quote','primaryCtaUrl' => $area->pageUrl('contact'),'secondaryCtaText' => 'View Our Work','secondaryCtaUrl' => $area->pageUrl('projects')]);
 
 $key = null;
 
