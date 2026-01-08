@@ -5,32 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
-    <title><?php echo e($title ?? config('app.name', 'GS Construction')); ?></title>
+    
+    <?php echo \Artesaos\SEOTools\Facades\SEOMeta::generate(); ?>
+
+    <?php echo \Artesaos\SEOTools\Facades\OpenGraph::generate(); ?>
+
+    <?php echo \Artesaos\SEOTools\Facades\TwitterCard::generate(); ?>
+
 
     
-    <meta name="description" content="<?php echo e($metaDescription ?? 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.'); ?>">
-    <link rel="canonical" href="<?php echo e(url()->current()); ?>">
-
-    
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="<?php echo e(url()->current()); ?>">
-    <meta property="og:title" content="<?php echo e($title ?? config('app.name', 'GS Construction')); ?>">
-    <meta property="og:description" content="<?php echo e($metaDescription ?? 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.'); ?>">
-    <meta property="og:image" content="<?php echo e(asset('images/og-image.jpg')); ?>">
-    <meta property="og:locale" content="en_US">
-    <meta property="og:site_name" content="GS Construction">
-
-    
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="<?php echo e($title ?? config('app.name', 'GS Construction')); ?>">
-    <meta name="twitter:description" content="<?php echo e($metaDescription ?? 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.'); ?>">
-    <meta name="twitter:image" content="<?php echo e(asset('images/og-image.jpg')); ?>">
-
-    
-    <meta name="robots" content="index, follow">
     <meta name="author" content="GS Construction">
     <meta name="geo.region" content="US-IL">
     <meta name="geo.placename" content="Chicago">
+
+    
+    <?php if (isset($component)) { $__componentOriginal9f6e625d1ce17e59441d87429e0d36f0 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9f6e625d1ce17e59441d87429e0d36f0 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.hreflang','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('hreflang'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9f6e625d1ce17e59441d87429e0d36f0)): ?>
+<?php $attributes = $__attributesOriginal9f6e625d1ce17e59441d87429e0d36f0; ?>
+<?php unset($__attributesOriginal9f6e625d1ce17e59441d87429e0d36f0); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9f6e625d1ce17e59441d87429e0d36f0)): ?>
+<?php $component = $__componentOriginal9f6e625d1ce17e59441d87429e0d36f0; ?>
+<?php unset($__componentOriginal9f6e625d1ce17e59441d87429e0d36f0); ?>
+<?php endif; ?>
 
     
     <link rel="icon" type="image/x-icon" href="<?php echo e(asset('favicon.ico')); ?>">
@@ -82,35 +90,26 @@
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "HomeAndConstructionBusiness",
-        "name": "GS Construction & Remodeling",
-        "description": "Family-owned home remodeling company specializing in kitchen, bathroom, and whole-home renovations in the Chicagoland area.",
-        "url": "<?php echo e(config('app.url')); ?>",
-        "logo": "<?php echo e(asset('images/logo.png')); ?>",
-        "image": "<?php echo e(asset('images/og-image.jpg')); ?>",
-        "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Chicago",
-            "addressRegion": "IL",
-            "addressCountry": "US"
-        },
-        "areaServed": {
-            "@type": "State",
-            "name": "Illinois"
-        },
-        "priceRange": "$$",
-        "sameAs": [
-            "<?php echo e(config('socials.facebook.url')); ?>",
-            "<?php echo e(config('socials.instagram.url')); ?>",
-            "<?php echo e(config('socials.google.url')); ?>",
-            "<?php echo e(config('socials.yelp.url')); ?>",
-            "<?php echo e(config('socials.houzz.url')); ?>"
-        ]
-    }
-    </script>
+    <?php if (isset($component)) { $__componentOriginal4c0f6c0bd58a583f0b502ced662d3ed1 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal4c0f6c0bd58a583f0b502ced662d3ed1 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.schema-org','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('schema-org'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal4c0f6c0bd58a583f0b502ced662d3ed1)): ?>
+<?php $attributes = $__attributesOriginal4c0f6c0bd58a583f0b502ced662d3ed1; ?>
+<?php unset($__attributesOriginal4c0f6c0bd58a583f0b502ced662d3ed1); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal4c0f6c0bd58a583f0b502ced662d3ed1)): ?>
+<?php $component = $__componentOriginal4c0f6c0bd58a583f0b502ced662d3ed1; ?>
+<?php unset($__componentOriginal4c0f6c0bd58a583f0b502ced662d3ed1); ?>
+<?php endif; ?>
 </head>
 <body class="min-h-screen bg-white font-sans text-zinc-900 antialiased dark:bg-slate-950 dark:text-zinc-100">
     

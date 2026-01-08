@@ -57,6 +57,66 @@ class ProjectImage extends Model
         return $this->url;
     }
 
+    /**
+     * Get WebP URL for the main image (if available).
+     */
+    public function getWebpUrlAttribute(): ?string
+    {
+        $webpPath = $this->webp_path ?? null;
+        
+        if ($webpPath && Storage::disk($this->disk)->exists($webpPath)) {
+            return Storage::disk($this->disk)->url($webpPath);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get WebP thumbnail URL for a given size (if available).
+     */
+    public function getWebpThumbnailUrl(string $size = 'medium'): ?string
+    {
+        $thumbnails = $this->thumbnails ?? [];
+        $webpKey = "{$size}_webp";
+        
+        if (isset($thumbnails[$webpKey])) {
+            return Storage::disk($this->disk)->url($thumbnails[$webpKey]);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get SEO-friendly alt text for the image.
+     * Falls back to a descriptive format if custom alt text looks like a filename.
+     */
+    public function getSeoAltTextAttribute(): string
+    {
+        // Check if alt_text looks like a filename (contains underscores or file extension patterns)
+        $hasDescriptiveAlt = $this->alt_text 
+            && !preg_match('/^[_A-Za-z0-9]+$/', $this->alt_text)
+            && !preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $this->alt_text);
+
+        if ($hasDescriptiveAlt) {
+            return $this->alt_text;
+        }
+
+        // Generate descriptive alt text from project info
+        $project = $this->project;
+        if (!$project) {
+            return 'Home remodeling project photo by GS Construction';
+        }
+
+        $projectType = ucfirst(str_replace('-', ' ', $project->project_type ?? 'remodeling'));
+        $location = $project->location ? " in {$project->location}" : '';
+        
+        if ($this->is_cover) {
+            return "{$projectType} project{$location} - featured image by GS Construction";
+        }
+
+        return "{$projectType} project{$location} by GS Construction";
+    }
+
     public function deleteFile(): void
     {
         // Delete main image

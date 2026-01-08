@@ -1,4 +1,4 @@
-<section class="relative isolate bg-white dark:bg-gray-900">
+<section class="relative bg-white dark:bg-gray-900">
     <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
         {{-- Left Column: Image, Heading, Contact Info --}}
         <div class="relative px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
@@ -6,28 +6,39 @@
                 
 
                 {{-- Greg & Patryk Image --}}
-                <div class="mb-4">
+                <div 
+                    x-data="{ showSlider: false }"
+                    x-init="setTimeout(() => showSlider = true, 5000)"
+                    class="relative mb-4 aspect-[4/3] w-full max-w-md overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/10 dark:ring-white/10"
+                >
+                    {{-- Static Image (shows first for 5 seconds) --}}
                     <img 
+                        x-show="!showSlider"
+                        x-transition:leave="transition-all duration-700 ease-in-out"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0"
                         src="{{ asset('images/greg-patryk.jpg') }}" 
                         alt="Greg and Patryk - GS Construction" 
-                        class="aspect-[4/3] w-full max-w-md rounded-2xl object-cover shadow-xl ring-1 ring-gray-900/10 dark:ring-white/10"
+                        class="absolute inset-0 h-full w-full object-cover"
                     />
+                    {{-- Slider (shows after 5 seconds) --}}
+                    <div
+                        x-show="showSlider"
+                        x-transition:enter="transition-all duration-700 ease-out"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        class="absolute inset-0"
+                    >
+                        <livewire:team-photo-slider />
+                    </div>
                 </div>
 
                 {{-- Heading --}}
                 <h2 class="font-heading text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl dark:text-white">
-                    @if($detectedCity)
-                        {{ $detectedCity }}'s Trusted Home Remodeling Experts
-                    @else
-                        Let's Build Beautiful Spaces Together
-                    @endif
+                    Let's Build Beautiful Spaces Together
                 </h2>
                 <p class="mt-4 text-lg/8 text-gray-600 dark:text-gray-400">
-                    @if($detectedCity)
-                        Proudly serving {{ $detectedCity }} and surrounding communities. Whether you're dreaming of a new kitchen, a luxurious bathroom, or a complete home transformation, we're here to make it happen.
-                    @else
-                        Whether you're dreaming of a new kitchen, a luxurious bathroom, or a complete home transformation, we're here to make it happen. Contact us today to schedule your free consultation.
-                    @endif
+                    Whether you're dreaming of a new kitchen, a luxurious bathroom, or a complete home transformation, we're here to make it happen. Contact us today to schedule your free consultation.
                 </p>
 
                 {{-- Contact Info --}}

@@ -1,23 +1,52 @@
 <x-layouts.app
-    :title="isset($area) ? 'Home Remodeling in ' . $area->city . ' | GS Construction | Family Business' : 'GS Construction | Home Remodeling | Family Business'"
-    :metaDescription="isset($area) ? 'Professional kitchen, bathroom, and home remodeling services in ' . $area->city . '. GS Construction is a family-owned business serving ' . $area->city . ' and surrounding areas.' : 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.'"
+    title="GS Construction | Remodeling Contractors | Family Business"
+    metaDescription="Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area."
 >
     {{-- Main Project Hero Slider --}}
-    <livewire:main-project-hero-slider :area="$area ?? null" />
+    @php
+        $homeSlides = [
+            [
+                'title' => 'Kitchens',
+                'button' => 'Kitchen Remodeling',
+                'link' => route('services.kitchen'),
+                'projectType' => 'kitchen',
+                'alt' => 'Kitchen remodeling services in Chicagoland',
+            ],
+            [
+                'title' => 'Bathrooms',
+                'button' => 'Bathroom Remodeling',
+                'link' => route('services.bathroom'),
+                'projectType' => 'bathroom',
+                'alt' => 'Bathroom remodeling services in Chicagoland',
+            ],
+            [
+                'title' => 'Home Remodels',
+                'button' => 'Home Remodeling',
+                'link' => route('services.home'),
+                'projectType' => 'home-remodel',
+                'alt' => 'Whole home remodeling services in Chicagoland',
+            ],
+        ];
+    @endphp
+    <livewire:main-project-hero-slider 
+        :slides="$homeSlides"
+        secondary-cta-text="Schedule Free Consult"
+        :secondary-cta-url="route('contact')"
+    />
 
     {{-- About Section --}}
-    <livewire:about-section :area="$area ?? null" />
+    <livewire:about-section />
 
     {{-- Timelapse Section --}}
     <livewire:timelapse-section />
 
     {{-- Testimonials Section --}}
-    <livewire:testimonials-section :area="$area ?? null" />
+    <livewire:testimonials-section />
     
     {{-- Map Parallax Section --}}
-    <livewire:map-section :area="$area ?? null" />
+    <livewire:map-section />
 
     {{-- Contact Section --}}
-    <livewire:contact-section :area="$area ?? null" />
+    <livewire:contact-section />
 
 </x-layouts.app>

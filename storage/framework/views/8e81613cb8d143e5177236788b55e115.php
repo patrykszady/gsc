@@ -1,13 +1,13 @@
 <?php if (isset($component)) { $__componentOriginal5863877a5171c196453bfa0bd807e410 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal5863877a5171c196453bfa0bd807e410 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => isset($area) ? 'About Us | Home Remodeling in ' . $area->city . ' | GS Construction' : 'About Us | GS Construction | Family-Owned Home Remodeling','metaDescription' => isset($area) ? 'Meet Gregory and Patryk, the father-son team behind GS Construction. Serving ' . $area->city . ' with over 40 years of combined experience in kitchen, bathroom, and home remodeling.' : 'Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => 'About Us | GS Construction | Family-Owned Home Remodeling','metaDescription' => 'Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('layouts.app'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'About Us | Home Remodeling in ' . $area->city . ' | GS Construction' : 'About Us | GS Construction | Family-Owned Home Remodeling'),'metaDescription' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Meet Gregory and Patryk, the father-son team behind GS Construction. Serving ' . $area->city . ' with over 40 years of combined experience in kitchen, bathroom, and home remodeling.' : 'Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area.')]); ?>
+<?php $component->withAttributes(['title' => 'About Us | GS Construction | Family-Owned Home Remodeling','metaDescription' => 'Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area.']); ?>
     <?php
         // Get one image from each of 6 different projects
         $galleryImages = \App\Models\ProjectImage::query()
@@ -36,24 +36,15 @@
                 <div class="mx-auto max-w-7xl px-6 pt-12 pb-16 sm:pt-16 lg:px-8 lg:pt-12">
                     <div class="mx-auto max-w-2xl gap-x-14 lg:mx-0 lg:flex lg:max-w-none lg:items-center">
                         <div class="relative w-full lg:max-w-xl lg:shrink-0 xl:max-w-2xl">
-                            <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400"><?php echo e(isset($area) ? 'About Us in ' . $area->city : 'About Us'); ?></p>
+                            <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">About Us</p>
                             <h1 class="font-heading mt-2 text-4xl font-bold tracking-tight text-zinc-900 sm:text-6xl dark:text-white">
-                                <?php echo e(isset($area) ? 'Trusted Family Remodelers in ' . $area->city : 'A Family Business Built on Trust'); ?>
-
+                                A Family Business Built on Trust
                             </h1>
                             <p class="mt-8 text-lg font-medium text-zinc-600 sm:max-w-md sm:text-xl/8 lg:max-w-none dark:text-zinc-300">
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($area)): ?>
-                                Serving <?php echo e($area->city); ?> and surrounding communities, GS Construction & Remodeling is more than a business—it's a family legacy. Run by Gregory and Patryk, a father-son duo with over 40 years of combined experience, we bring heart, skill, and dedication to every <?php echo e($area->city); ?> home.
-                                <?php else: ?>
                                 GS Construction & Remodeling is more than a business—it's a family legacy. Run by Gregory and Patryk, a father-son duo with over 40 years of combined experience, we bring heart, skill, and dedication to every project.
-                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </p>
                             <p class="mt-4 text-base text-zinc-500 sm:max-w-md lg:max-w-none dark:text-zinc-400">
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($area)): ?>
-                                From the initial consultation to the final walkthrough, we're personally involved in your <?php echo e($area->city); ?> project. We believe in building lasting relationships with our clients, not just beautiful spaces.
-                                <?php else: ?>
                                 From the initial consultation to the final walkthrough, we're personally involved in your project. We believe in building lasting relationships with our clients, not just beautiful spaces.
-                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </p>
                         </div>
                         
@@ -62,13 +53,13 @@
                             <div class="ml-auto w-40 flex-none space-y-4 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-0 xl:pt-80">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($galleryImages->count() > 0): ?>
                                 <div class="relative">
-                                    <img src="<?php echo e($galleryImages[0]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[0]->alt_text ?? 'GS Construction project'); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                    <img src="<?php echo e($galleryImages[0]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[0]->seo_alt_text); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
                                     <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                 </div>
                                 <?php endif; ?>
                                 <?php if($galleryImages->count() > 5): ?>
                                 <div class="relative">
-                                    <img src="<?php echo e($galleryImages[5]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[5]->alt_text ?? 'GS Construction project'); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                    <img src="<?php echo e($galleryImages[5]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[5]->seo_alt_text); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
                                     <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                 </div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -76,13 +67,13 @@
                             <div class="mr-auto w-40 flex-none space-y-4 sm:mr-0 sm:pt-52 lg:pt-36">
                                 <?php if($galleryImages->count() > 1): ?>
                                 <div class="relative">
-                                    <img src="<?php echo e($galleryImages[1]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[1]->alt_text ?? 'GS Construction project'); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                    <img src="<?php echo e($galleryImages[1]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[1]->seo_alt_text); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
                                     <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                 </div>
                                 <?php endif; ?>
                                 <?php if($galleryImages->count() > 2): ?>
                                 <div class="relative">
-                                    <img src="<?php echo e($galleryImages[2]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[2]->alt_text ?? 'GS Construction project'); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                    <img src="<?php echo e($galleryImages[2]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[2]->seo_alt_text); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
                                     <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                 </div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -90,13 +81,13 @@
                             <div class="w-40 flex-none space-y-4 pt-32 sm:pt-0">
                                 <?php if($galleryImages->count() > 3): ?>
                                 <div class="relative">
-                                    <img src="<?php echo e($galleryImages[3]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[3]->alt_text ?? 'GS Construction project'); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                    <img src="<?php echo e($galleryImages[3]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[3]->seo_alt_text); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
                                     <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                 </div>
                                 <?php endif; ?>
                                 <?php if($galleryImages->count() > 4): ?>
                                 <div class="relative">
-                                    <img src="<?php echo e($galleryImages[4]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[4]->alt_text ?? 'GS Construction project'); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                    <img src="<?php echo e($galleryImages[4]->getThumbnailUrl('medium')); ?>" alt="<?php echo e($galleryImages[4]->seo_alt_text); ?>" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
                                     <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                 </div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -213,71 +204,26 @@ if (isset($__slots)) unset($__slots);
             </dl>
         </div>
 
-        
-        
-        <div class="mt-10 sm:mt-12">
-            <?php
-$__split = function ($name, $params = []) {
-    return [$name, $params];
-};
-[$__name, $__params] = $__split('main-project-hero-slider', ['area' => $area ?? null]);
-
-$key = null;
-
-$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1415144451-1', null);
-
-$__html = app('livewire')->mount($__name, $__params, $key);
-
-echo $__html;
-
-unset($__html);
-unset($__name);
-unset($__params);
-unset($__split);
-if (isset($__slots)) unset($__slots);
-?>
-        </div>
-        <!-- CTA section -->
-        <div class="relative isolate px-6 py-10 sm:py-12 lg:px-8">
-            <div aria-hidden="true" class="absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-20 blur-3xl">
-                <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[max(50%,38rem)] aspect-[1313/771] w-[82.0625rem] bg-linear-to-tr from-sky-300 to-sky-600"></div>
-            </div>
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
-                    <?php echo e(isset($area) ? 'Ready to Transform Your ' . $area->city . ' Home?' : 'Ready to Transform Your Home?'); ?>
-
-                </h2>
-                <p class="mx-auto mt-6 max-w-xl text-lg/8 text-zinc-600 dark:text-zinc-300">
-                    Let's discuss your project. Schedule a free consultation and see why <?php echo e(isset($area) ? $area->city : 'Chicagoland'); ?> homeowners trust GS Construction.
-                </p>
-                <div class="mt-10 flex items-center justify-center gap-x-6">
-                    <?php if (isset($component)) { $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => '/contact','variant' => 'primary','class' => 'font-semibold uppercase tracking-wide','@click' => 'trackCTA(\'Schedule Free Consultation\', \'about_page_cta\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('flux::button'); ?>
+        <?php if (isset($component)) { $__componentOriginal2424f88af0578cc9ff2355583d50a0f4 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal2424f88af0578cc9ff2355583d50a0f4 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.cta-section','data' => ['heading' => 'Ready to Transform Your Home?','description' => 'Let\'s discuss your project. Schedule a free consultation and see why Chicagoland homeowners trust GS Construction.','primaryText' => 'Schedule Free Consultation','primaryHref' => '/contact','secondaryText' => 'View Our Work','secondaryHref' => '/projects']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('cta-section'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => '/contact','variant' => 'primary','class' => 'font-semibold uppercase tracking-wide','@click' => 'trackCTA(\'Schedule Free Consultation\', \'about_page_cta\')']); ?>
-                        Schedule Free Consultation
-                     <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes(['heading' => 'Ready to Transform Your Home?','description' => 'Let\'s discuss your project. Schedule a free consultation and see why Chicagoland homeowners trust GS Construction.','primaryText' => 'Schedule Free Consultation','primaryHref' => '/contact','secondaryText' => 'View Our Work','secondaryHref' => '/projects']); ?>
+<?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $attributes = $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__attributesOriginal2424f88af0578cc9ff2355583d50a0f4)): ?>
+<?php $attributes = $__attributesOriginal2424f88af0578cc9ff2355583d50a0f4; ?>
+<?php unset($__attributesOriginal2424f88af0578cc9ff2355583d50a0f4); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $component = $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__componentOriginal2424f88af0578cc9ff2355583d50a0f4)): ?>
+<?php $component = $__componentOriginal2424f88af0578cc9ff2355583d50a0f4; ?>
+<?php unset($__componentOriginal2424f88af0578cc9ff2355583d50a0f4); ?>
 <?php endif; ?>
-                    <a href="/projects" class="text-sm/6 font-semibold text-zinc-900 dark:text-white" @click="trackCTA('View Our Work', 'about_page_secondary')">
-                        View Our Work <span aria-hidden="true">→</span>
-                    </a>
-                </div>
-            </div>
-        </div>
     </main>
  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>

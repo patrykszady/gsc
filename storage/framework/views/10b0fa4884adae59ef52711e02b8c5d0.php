@@ -1,13 +1,13 @@
 <?php if (isset($component)) { $__componentOriginal5863877a5171c196453bfa0bd807e410 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal5863877a5171c196453bfa0bd807e410 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => isset($area) ? 'Projects in ' . $area->city . ' | GS Construction' : 'Our Projects | GS Construction | Home Remodeling Portfolio','metaDescription' => isset($area) ? 'Browse our portfolio of kitchen, bathroom, and home remodeling projects in ' . $area->city . '. See the quality craftsmanship of GS Construction.' : 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => 'Our Projects | GS Construction | Home Remodeling Portfolio','metaDescription' => 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('layouts.app'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Projects in ' . $area->city . ' | GS Construction' : 'Our Projects | GS Construction | Home Remodeling Portfolio'),'metaDescription' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Browse our portfolio of kitchen, bathroom, and home remodeling projects in ' . $area->city . '. See the quality craftsmanship of GS Construction.' : 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area.')]); ?>
+<?php $component->withAttributes(['title' => 'Our Projects | GS Construction | Home Remodeling Portfolio','metaDescription' => 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area.']); ?>
     
     <?php
 $__split = function ($name, $params = []) {
@@ -35,7 +35,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('projects-grid', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('projects-grid', []);
 
 $key = null;
 

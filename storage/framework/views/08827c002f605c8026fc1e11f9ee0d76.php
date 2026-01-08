@@ -44,8 +44,6 @@
         },
         play() {
             this.inView = true;
-            // Always start from the first image when entering view.
-            this.position = 1;
             this.started = true;
             this.stop();
             this.start();
@@ -75,8 +73,8 @@
     x-init="preloadInitial()"
     @pointerup.window="endDrag()"
     @pointercancel.window="endDrag()"
-    x-intersect:enter.threshold.35="play()"
-    x-intersect:leave.threshold.10="pause()"
+    x-intersect:enter.full="play()"
+    x-intersect:leave.full="pause()"
     class="relative w-full overflow-hidden bg-white dark:bg-slate-950"
 >
     <div class="relative h-[375px] sm:h-[450px] lg:h-[525px]">

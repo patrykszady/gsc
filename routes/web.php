@@ -5,7 +5,12 @@ use App\Livewire\Admin\Login;
 use App\Livewire\Admin\ProjectForm;
 use App\Livewire\Admin\ProjectList;
 use App\Livewire\Admin\TagList;
-use App\Models\AreaServed;
+use App\Livewire\AreaPage;
+use App\Livewire\AreasServedPage;
+use App\Livewire\ServicePage;
+use App\Livewire\ServicesPage;
+use App\Livewire\TestimonialPage;
+use App\Services\SeoService;
 use Illuminate\Support\Facades\Route;
 
 // Dynamic robots.txt using APP_URL
@@ -19,30 +24,55 @@ Route::get('/robots.txt', function () {
 });
 
 Route::get('/', function () {
+    SeoService::home();
     return view('home');
 })->name('home');
 
-Route::get('/areas/{area:slug}', function (AreaServed $area) {
-    return view('home', ['area' => $area]);
-})->name('area.home');
+Route::get('/testimonials', function () {
+    SeoService::testimonials();
+    return view('testimonials');
+})->name('testimonials.index');
 
-Route::view('/testimonials', 'testimonials')->name('testimonials.index');
-Route::view('/about', 'about')->name('about');
-Route::view('/contact', 'contact')->name('contact');
-Route::view('/projects', 'projects')->name('projects.index');
-Route::get('/areas/{area:slug}/testimonials', function (AreaServed $area) {
-    return view('testimonials', ['area' => $area]);
-})->name('area.testimonials');
-Route::get('/areas/{area:slug}/about', function (AreaServed $area) {
-    return view('about', ['area' => $area]);
-})->name('area.about');
-Route::get('/areas/{area:slug}/contact', function (AreaServed $area) {
-    return view('contact', ['area' => $area]);
-})->name('area.contact');
-Route::get('/areas/{area:slug}/projects', function (AreaServed $area) {
-    return view('projects', ['area' => $area]);
-})->name('area.projects');
+Route::get('/testimonials/{testimonial}', TestimonialPage::class)->name('testimonials.show');
+
+Route::get('/about', function () {
+    SeoService::about();
+    return view('about');
+})->name('about');
+
+Route::get('/contact', function () {
+    SeoService::contact();
+    return view('contact');
+})->name('contact');
+
+Route::get('/projects', function () {
+    SeoService::projects(null, request('type'));
+    return view('projects');
+})->name('projects.index');
+
+Route::get('/services', ServicesPage::class)->name('services.index');
+
 Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
+
+// Areas Served
+Route::get('/areas-served', AreasServedPage::class)->name('areas.index');
+Route::get('/areas-served/{area}', AreaPage::class)
+    ->defaults('page', 'home')
+    ->name('areas.show');
+Route::get('/areas-served/{area}/{page}', AreaPage::class)
+    ->where('page', 'contact|testimonials|projects|about|services')
+    ->name('areas.page');
+
+// Service landing pages
+Route::get('/services/kitchen-remodeling', ServicePage::class)
+    ->defaults('service', 'kitchen-remodeling')
+    ->name('services.kitchen');
+Route::get('/services/bathroom-remodeling', ServicePage::class)
+    ->defaults('service', 'bathroom-remodeling')
+    ->name('services.bathroom');
+Route::get('/services/home-remodeling', ServicePage::class)
+    ->defaults('service', 'home-remodeling')
+    ->name('services.home');
 
 // Admin auth
 Route::get('/admin/login', Login::class)->name('admin.login')->middleware('guest');

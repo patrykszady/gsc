@@ -1,0 +1,11 @@
+
+
+<ui-option-empty class="data-hidden:hidden">
+    <div class="flex items-center justify-center h-10">
+        <div class="text-sm text-zinc-500 dark:text-zinc-400 font-medium">
+            <?php echo e($slot); ?>
+
+        </div>
+    </div>
+</ui-option-empty>
+<?php /**PATH /home/patryk/web/gsc/vendor/livewire/flux-pro/stubs/resources/views/flux/command/empty.blade.php ENDPATH**/ ?>

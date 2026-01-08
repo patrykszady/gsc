@@ -4,8 +4,6 @@ namespace App\Livewire;
 
 use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Validate;
@@ -311,49 +309,9 @@ class ContactSection extends Component
         return false;
     }
 
-    protected function getUserCity(): ?string
-    {
-        $ip = request()->ip();
-        
-        // Don't geolocate localhost/private IPs
-        if (in_array($ip, ['127.0.0.1', '::1']) || str_starts_with($ip, '192.168.') || str_starts_with($ip, '10.')) {
-            return null;
-        }
-
-        // Cache the result for 24 hours per IP
-        return Cache::remember("geo_city_{$ip}", 86400, function () use ($ip) {
-            try {
-                $response = Http::timeout(3)->get("http://ip-api.com/json/{$ip}?fields=city,regionName");
-                
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $data['city'] ?? null;
-                }
-            } catch (\Exception $e) {
-                // Silently fail - geolocation is nice-to-have
-            }
-            
-            return null;
-        });
-    }
-
     public function render()
     {
         $areasServed = AreaServed::orderBy('city')->pluck('city')->toArray();
-        
-        // Get user's city from IP
-        $userCity = $this->getUserCity();
-        $detectedCity = null;
-        
-        // Check if user's city is in our served areas
-        if ($userCity) {
-            foreach ($areasServed as $city) {
-                if (strcasecmp($city, $userCity) === 0) {
-                    $detectedCity = $city;
-                    break;
-                }
-            }
-        }
 
         // Get unavailable Sundays for calendar
         $unavailableSundays = $this->getUnavailableSundays();
@@ -366,7 +324,6 @@ class ContactSection extends Component
         
         return view('livewire.contact-section', [
             'areasServed' => $areasServed,
-            'detectedCity' => $detectedCity,
             'unavailableSundays' => $unavailableSundays,
             'minSelectableDate' => $minSelectableDate,
             'times' => $times,

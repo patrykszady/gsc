@@ -1,0 +1,146 @@
+    <section
+        x-data="{
+            currentSlide: 0,
+            slides: @js($heroSlides),
+            autoplay: null,
+            touchStartX: 0,
+            touchEndX: 0,
+            async refreshCurrentImage() {
+                const url = await $wire.randomHeroImage();
+                if (url) this.slides[this.currentSlide] = url;
+            },
+            startAutoplay() {
+                this.autoplay = setInterval(() => this.next(true), 4000);
+            },
+            stopAutoplay() {
+                clearInterval(this.autoplay);
+            },
+            next(shouldRefresh = false) {
+                this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+                if (shouldRefresh) this.refreshCurrentImage();
+            },
+            prev(shouldRefresh = false) {
+                this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
+                if (shouldRefresh) this.refreshCurrentImage();
+            },
+            goTo(index) {
+                this.currentSlide = index;
+            },
+            handleTouchStart(e) {
+                this.touchStartX = e.changedTouches[0].screenX;
+            },
+            handleTouchEnd(e) {
+                this.touchEndX = e.changedTouches[0].screenX;
+                this.handleSwipe();
+            },
+            handleSwipe() {
+                const diff = this.touchStartX - this.touchEndX;
+                if (Math.abs(diff) > 50) {
+                    diff > 0 ? this.next() : this.prev();
+                }
+            }
+        }"
+        x-init="startAutoplay()"
+        @mouseenter="stopAutoplay()"
+        @mouseleave="startAutoplay()"
+        @touchstart="handleTouchStart($event)"
+        @touchend="handleTouchEnd($event)"
+        class="relative w-full overflow-hidden"
+    >
+        {{-- Slides --}}
+        <div class="relative h-[500px] sm:h-[600px] lg:h-[700px]">
+            <template x-for="(slide, index) in slides" :key="index">
+                <div
+                    x-show="currentSlide === index"
+                    x-transition:enter="transition ease-out duration-700"
+                    x-transition:enter-start="opacity-0 scale-105"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-500"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="absolute inset-0"
+                >
+                    {{-- Background Image --}}
+                    <img
+                        :src="slide"
+                        :alt="'{{ $data['title'] }} project{{ $citySuffix }}'"
+                        class="h-full w-full object-cover"
+                        loading="eager"
+                    />
+
+                    {{-- Gradient Overlay --}}
+                    <div class="absolute inset-0 bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-900/60"></div>
+                </div>
+            </template>
+
+            {{-- Content Overlay --}}
+            <div class="absolute inset-0 flex items-center">
+                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
+                    <div class="max-w-2xl">
+                        <p class="text-base font-semibold text-sky-400">
+                            Our Services{{ $area ? ' in ' . $area->city : '' }}
+                        </p>
+                        <h1 class="mt-2 font-heading text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                            {{ $data['heroHeading'] }}
+                        </h1>
+                        <p class="mt-6 text-lg leading-8 text-zinc-300 sm:text-xl">
+                            {{ $data['heroSubheading'] }}
+                        </p>
+                        <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+                            <a 
+                                href="{{ $area ? route('area.contact', $area) : route('contact') }}" 
+                                wire:navigate
+                                class="inline-flex items-center justify-center rounded-lg bg-sky-500 px-6 py-3.5 text-base font-semibold text-white shadow-lg transition hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+                                onclick="trackCTAClick('Get Free Quote', 'service-hero', '{{ $data['title'] }}')"
+                            >
+                                Get a Free Quote
+                                <svg class="ml-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </a>
+                            <a 
+                                href="{{ $area ? route('area.projects', $area) . '?type=' . $data['projectType'] : route('projects.index', ['type' => $data['projectType']]) }}" 
+                                wire:navigate
+                                class="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                                onclick="trackCTAClick('View Projects', 'service-hero', '{{ $data['title'] }}')"
+                            >
+                                View Our Work
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Slide Indicators --}}
+            <div class="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
+                <template x-for="(slide, index) in slides" :key="'dot-' + index">
+                    <button
+                        @click="goTo(index)"
+                        :class="currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3 hover:bg-white/75'"
+                        class="h-3 rounded-full transition-all duration-300"
+                        :aria-label="'Go to slide ' + (index + 1)"
+                    ></button>
+                </template>
+            </div>
+
+            {{-- Navigation Arrows --}}
+            <button
+                @click="prev()"
+                class="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-3 text-white backdrop-blur-sm transition hover:bg-black/50"
+                aria-label="Previous slide"
+            >
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <button
+                @click="next()"
+                class="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-3 text-white backdrop-blur-sm transition hover:bg-black/50"
+                aria-label="Next slide"
+            >
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+    </section>

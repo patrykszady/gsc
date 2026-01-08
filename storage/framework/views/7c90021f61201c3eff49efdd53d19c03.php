@@ -1,18 +1,18 @@
 <?php if (isset($component)) { $__componentOriginal5863877a5171c196453bfa0bd807e410 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal5863877a5171c196453bfa0bd807e410 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => isset($area) ? 'Testimonials in ' . $area->city . ' | GS Construction' : 'GS Construction | Testimonials','metaDescription' => isset($area) ? 'Read testimonials from our satisfied customers in ' . $area->city . '. See what homeowners say about GS Construction\'s kitchen, bathroom, and home remodeling services.' : 'Read testimonials from our satisfied customers. See what homeowners say about GS Construction\'s kitchen, bathroom, and home remodeling services in the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => 'GS Construction | Testimonials','metaDescription' => 'Read testimonials from our satisfied customers. See what homeowners say about GS Construction\'s kitchen, bathroom, and home remodeling services in the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('layouts.app'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Testimonials in ' . $area->city . ' | GS Construction' : 'GS Construction | Testimonials'),'metaDescription' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Read testimonials from our satisfied customers in ' . $area->city . '. See what homeowners say about GS Construction\'s kitchen, bathroom, and home remodeling services.' : 'Read testimonials from our satisfied customers. See what homeowners say about GS Construction\'s kitchen, bathroom, and home remodeling services in the Chicagoland area.')]); ?>
+<?php $component->withAttributes(['title' => 'GS Construction | Testimonials','metaDescription' => 'Read testimonials from our satisfied customers. See what homeowners say about GS Construction\'s kitchen, bathroom, and home remodeling services in the Chicagoland area.']); ?>
     <?php
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('testimonials-grid', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('testimonials-grid', []);
 
 $key = null;
 
@@ -33,7 +33,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('map-section', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('map-section', []);
 
 $key = null;
 
@@ -54,7 +54,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('testimonials-section', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('testimonials-section', ['showHeader' => false]);
 
 $key = null;
 

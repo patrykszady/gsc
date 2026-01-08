@@ -13,72 +13,106 @@ class TestimonialsSection extends Component
 {
     public ?AreaServed $area = null;
 
+    public bool $showHeader = true;
+
+    public ?string $projectType = null;
+
     public array $current = [];
 
-    public array $recentIds = [];
+    public array $shownIds = [];
+
+    public array $history = [];
+
+    public int $historyIndex = -1;
 
     public function mount(): void
     {
-        // Load initial testimonial (prioritize recent ones from last 4 years)
-        $recentCutoff = now()->subYears(4)->startOfDay();
+        // Load 10 random reviews from the last 6 years as initial pool
+        $recentCutoff = now()->subYears(6)->startOfDay();
 
-        $testimonial = Testimonial::query()
+        $initialReviews = Testimonial::query()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
+            ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
             ->inRandomOrder()
-            ->first();
+            ->take(10)
+            ->get();
 
-        // Fallback to any testimonial if no recent ones
-        if (! $testimonial) {
-            $testimonial = Testimonial::query()
+        // Fallback to any 10 random testimonials if no recent ones with this project type
+        if ($initialReviews->isEmpty()) {
+            $initialReviews = Testimonial::query()
+                ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
                 ->inRandomOrder()
-                ->first();
+                ->take(10)
+                ->get();
         }
 
-        if ($testimonial) {
-            $this->current = $this->formatTestimonial($testimonial);
-            $this->addToRecent($testimonial->id);
+        // Final fallback to any testimonials if none match project type
+        if ($initialReviews->isEmpty()) {
+            $initialReviews = Testimonial::query()
+                ->inRandomOrder()
+                ->take(10)
+                ->get();
+        }
+
+        if ($initialReviews->isNotEmpty()) {
+            // Format all initial reviews and add to history
+            foreach ($initialReviews as $testimonial) {
+                $this->history[] = $this->formatTestimonial($testimonial);
+                $this->shownIds[] = $testimonial->id;
+            }
+            
+            // Start with the first one
+            $this->current = $this->history[0];
+            $this->historyIndex = 0;
         }
     }
 
     public function nextTestimonial(): void
     {
-        $this->loadRandomTestimonial();
+        // If we're not at the end of history, move forward
+        if ($this->historyIndex < count($this->history) - 1) {
+            $this->historyIndex++;
+            $this->current = $this->history[$this->historyIndex];
+            return;
+        }
+
+        // Load a new random testimonial not yet shown (only from last 6 years)
+        $recentCutoff = now()->subYears(6)->startOfDay();
+        
+        $testimonial = Testimonial::query()
+            ->whereNotNull('review_date')
+            ->where('review_date', '>=', $recentCutoff)
+            ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+            ->whereNotIn('id', $this->shownIds)
+            ->inRandomOrder()
+            ->first();
+
+        // If all recent testimonials have been shown, wrap to beginning of history
+        if (! $testimonial) {
+            $this->historyIndex = 0;
+            $this->current = $this->history[$this->historyIndex];
+            return;
+        }
+
+        $this->current = $this->formatTestimonial($testimonial);
+        $this->shownIds[] = $testimonial->id;
+        
+        // Add to history
+        $this->history[] = $this->current;
+        $this->historyIndex = count($this->history) - 1;
     }
 
     public function prevTestimonial(): void
     {
-        $this->loadRandomTestimonial();
-    }
-
-    protected function loadRandomTestimonial(): void
-    {
-        $testimonial = Testimonial::query()
-            ->whereNotIn('id', $this->recentIds)
-            ->inRandomOrder()
-            ->first();
-
-        // If all testimonials have been shown recently, reset and pick any
-        if (! $testimonial) {
-            $this->recentIds = [];
-            $testimonial = Testimonial::query()
-                ->inRandomOrder()
-                ->first();
-        }
-
-        if ($testimonial) {
-            $this->current = $this->formatTestimonial($testimonial);
-            $this->addToRecent($testimonial->id);
-        }
-    }
-
-    protected function addToRecent(int $id): void
-    {
-        $this->recentIds[] = $id;
-
-        // Keep only the last 12
-        if (count($this->recentIds) > 12) {
-            $this->recentIds = array_slice($this->recentIds, -12);
+        // Move backward in history, wrap to end if at beginning
+        if ($this->historyIndex > 0) {
+            $this->historyIndex--;
+            $this->current = $this->history[$this->historyIndex];
+        } else {
+            // Wrap to the end of history
+            $this->historyIndex = count($this->history) - 1;
+            $this->current = $this->history[$this->historyIndex];
         }
     }
 
@@ -107,7 +141,7 @@ class TestimonialsSection extends Component
 
         return [
             'id' => $testimonial->id,
-            'slug' => Str::slug($testimonial->reviewer_name.'-'.$testimonial->id),
+            'slug' => $testimonial->slug,
             'name' => $testimonial->reviewer_name,
             'location' => $testimonial->project_location,
             'area_slug' => AreaServed::where('city', $cityName)->value('slug'),

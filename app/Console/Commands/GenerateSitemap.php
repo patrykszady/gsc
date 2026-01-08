@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Models\Project;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Spatie\Sitemap\Sitemap;
@@ -22,6 +23,7 @@ class GenerateSitemap extends Command
 
         $sitemap = Sitemap::create();
         $urlCount = 0;
+        $imageCount = 0;
 
         // Get all registered routes
         $routes = collect(Route::getRoutes()->getRoutes());
@@ -68,6 +70,10 @@ class GenerateSitemap extends Command
             'projects' => 0.8,
             'contact' => 0.8,
             'about' => 0.7,
+            'services/kitchen-remodeling' => 0.9,
+            'services/bathroom-remodeling' => 0.9,
+            'services/home-remodeling' => 0.9,
+            'services/basement-remodeling' => 0.9,
         ];
 
         $changeFrequencies = [
@@ -76,6 +82,10 @@ class GenerateSitemap extends Command
             'projects' => Url::CHANGE_FREQUENCY_WEEKLY,
             'contact' => Url::CHANGE_FREQUENCY_MONTHLY,
             'about' => Url::CHANGE_FREQUENCY_MONTHLY,
+            'services/kitchen-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'services/bathroom-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'services/home-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'services/basement-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
         ];
 
         foreach ($staticRoutes as $route) {
@@ -93,54 +103,27 @@ class GenerateSitemap extends Command
             $this->line("  Added static: /{$uri}");
         }
 
-        // Add area-specific pages dynamically based on registered routes
-        $areas = AreaServed::all();
+        // Projects were removed from area routes - area page generation skipped
+        // Only generating site-wide pages now
 
-        // Detect area sub-pages from routes (routes like areas/{area:slug} or areas/{area:slug}/*)
-        $areaRoutes = $routes->filter(function ($route) {
-            $uri = $route->uri();
-            return (str_starts_with($uri, 'areas/{area') || str_starts_with($uri, 'areas/{area:slug}'))
-                && in_array('GET', $route->methods());
-        });
-
-        // Build sub-pages config from detected routes
-        $areaSubPages = [];
-        foreach ($areaRoutes as $route) {
-            $uri = $route->uri();
-            // Handle both {area} and {area:slug} parameter styles
-            $subPath = preg_replace('/^areas\/\{area(:slug)?\}/', '', $uri);
-            $subPath = $subPath ?: ''; // main area page
+        // Add project pages with images for image sitemap
+        $this->info("Adding project images to sitemap...");
+        $projects = Project::where('is_published', true)->with('images')->get();
+        
+        foreach ($projects as $project) {
+            $projectUrl = Url::create("{$baseUrl}/projects?project={$project->slug}")
+                ->setLastModificationDate($project->updated_at ?? now())
+                ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                ->setPriority(0.6);
             
-            // Set priority based on sub-page type
-            $priority = match($subPath) {
-                '' => 0.7,
-                '/testimonials' => 0.6,
-                '/projects' => 0.6,
-                '/contact' => 0.6,
-                '/about' => 0.5,
-                default => 0.5,
-            };
-            
-            $areaSubPages[$subPath] = [
-                'priority' => $priority,
-                'freq' => Url::CHANGE_FREQUENCY_MONTHLY,
-            ];
-            
-            $this->line("  Found area route: /areas/{slug}{$subPath}");
-        }
-
-        $this->info("Found " . count($areaSubPages) . " area sub-page types for " . $areas->count() . " areas");
-
-        foreach ($areas as $area) {
-            foreach ($areaSubPages as $subPage => $config) {
-                $sitemap->add(
-                    Url::create("{$baseUrl}/areas/{$area->slug}{$subPage}")
-                        ->setLastModificationDate($area->updated_at ?? now())
-                        ->setChangeFrequency($config['freq'])
-                        ->setPriority($config['priority'])
-                );
-                $urlCount++;
+            // Add images to URL (Spatie sitemap supports images)
+            foreach ($project->images as $image) {
+                $projectUrl->addImage($image->url, $project->title);
+                $imageCount++;
             }
+            
+            $sitemap->add($projectUrl);
+            $urlCount++;
         }
 
         // Write to storage first, then copy to public (for Forge zero-downtime deployments)
@@ -161,7 +144,8 @@ class GenerateSitemap extends Command
         $this->info("=== Summary ===");
         $this->info("Total URLs: {$urlCount}");
         $this->info("  - Static pages: " . $staticRoutes->count());
-        $this->info("  - Area pages: " . ($areas->count() * count($areaSubPages)));
+        $this->info("  - Project pages: " . $projects->count());
+        $this->info("  - Images indexed: {$imageCount}");
 
         return Command::SUCCESS;
     }

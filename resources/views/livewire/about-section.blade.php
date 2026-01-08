@@ -15,20 +15,10 @@
                         {{ $content['body'] }}
                     </p>
 
-                    {{-- Features List with delayed scroll animation --}}
-                    <ul
-                        x-data="{ shown: false }"
-                        x-intersect:enter.once.threshold.55="setTimeout(() => shown = true, 500)"
-                        class="mt-6 space-y-3 text-base text-zinc-600 dark:text-zinc-300"
-                    >
-                        @foreach($content['features'] as $index => $feature)
-                        <li
-                            x-show="shown"
-                            x-transition:enter="transition ease-out duration-500 delay-{{ ($index + 1) * 100 }}"
-                            x-transition:enter-start="opacity-0 translate-x-4"
-                            x-transition:enter-end="opacity-100 translate-x-0"
-                            class="flex items-start gap-3"
-                        >
+                    {{-- Features List --}}
+                    <ul class="mt-6 space-y-3 text-base text-zinc-600 dark:text-zinc-300">
+                        @foreach($content['features'] as $feature)
+                        <li class="flex items-start gap-3">
                             <svg class="mt-0.5 size-5 flex-shrink-0 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
                             </svg>
@@ -37,11 +27,14 @@
                         @endforeach
                     </ul>
 
-                    {{-- CTA Button --}}
-                    <div class="mt-6">
-                        <flux:button href="{{ $content['cta_href'] }}" variant="primary" class="w-full font-semibold uppercase tracking-wide sm:w-auto" @click="trackCTA('{{ $content['cta_text'] }}', 'about_section')">
+                    {{-- CTA Buttons --}}
+                    <div class="mt-6 flex flex-wrap items-center gap-4">
+                        <x-buttons.cta href="{{ $content['cta_href'] }}" class="w-full sm:w-auto">
                             {{ $content['cta_text'] }}
-                        </flux:button>
+                        </x-buttons.cta>
+                        <x-buttons.cta href="/about" variant="secondary" class="w-full sm:w-auto">
+                            About Us
+                        </x-buttons.cta>
                     </div>
                 </div>
             </div>
@@ -49,14 +42,8 @@
             {{-- Image + Quote --}}
             <div class="lg:mt-[4.5rem] lg:pl-4">
                 <livewire:team-photo-slider />
-                {{-- Quote animates only when it enters view (independent of checkmarks) --}}
-                <blockquote
-                    x-data="{ quoteVisible: false }"
-                    x-intersect:enter.once.threshold.35="setTimeout(() => quoteVisible = true, 250)"
-                    x-cloak
-                    :class="quoteVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'"
-                    class="mt-4 border-l-4 border-sky-500 pl-4 italic text-lg text-zinc-800 transition duration-700 ease-out dark:text-zinc-100"
-                >
+                {{-- Quote --}}
+                <blockquote class="mt-4 border-l-4 border-sky-500 pl-4 italic text-lg text-zinc-800 dark:text-zinc-100">
                     "{{ $content['quote'] }}"
                 </blockquote>
             </div>

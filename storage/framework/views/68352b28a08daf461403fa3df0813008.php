@@ -1,8 +1,12 @@
-<header class="bg-white dark:bg-slate-950" x-data="{ mobileMenuOpen: false, projectsOpen: true }">
+<header class="relative z-50 bg-white dark:bg-slate-950" x-data="{ mobileMenuOpen: false, projectsOpen: true }">
+    <?php
+        $homeUrl = $area ? $area->url : '/';
+        $contactUrl = $area ? $area->pageUrl('contact') : '/contact';
+    ?>
     <nav aria-label="Global" class="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8">
         
         <div class="flex items-center gap-x-4">
-            <a href="/" wire:navigate.hover class="flex items-center gap-x-3">
+            <a href="<?php echo e($homeUrl); ?>" wire:navigate.hover class="flex items-center gap-x-3">
                 <img src="<?php echo e(asset('favicon-source.png')); ?>" alt="GS Construction" class="h-12 w-auto" />
                 <span class="font-heading text-xl font-bold tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
             </a>
@@ -24,68 +28,34 @@
 
         
         <div class="hidden lg:flex lg:items-center lg:gap-x-8">
-            <a href="/projects?type=kitchen" wire:navigate.hover class="text-base font-medium text-zinc-700 hover:text-sky-600 dark:text-zinc-200 dark:hover:text-sky-400">Kitchens</a>
-            <a href="/projects?type=bathroom" wire:navigate.hover class="text-base font-medium text-zinc-700 hover:text-sky-600 dark:text-zinc-200 dark:hover:text-sky-400">Bathrooms</a>
-            <a href="/projects" wire:navigate.hover class="text-base font-bold text-zinc-800 hover:text-sky-600 dark:text-zinc-100 dark:hover:text-sky-400">Projects</a>
-
             
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                <button
-                    type="button"
-                    @click="open = !open"
-                    class="flex items-center justify-center rounded-md p-2 text-zinc-700 hover:text-sky-600 dark:text-zinc-200 dark:hover:text-sky-400"
-                    :aria-expanded="open"
-                >
-                    <span class="sr-only">More</span>
-                    <svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-
-                <div
-                    x-show="open"
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 translate-y-1"
-                    x-transition:enter-end="opacity-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="opacity-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 translate-y-1"
-                    class="absolute right-0 z-10 mt-3 w-48 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-gray-900/5 dark:bg-slate-900 dark:ring-white/10"
-                    @click.away="open = false"
-                >
-                    <div class="py-2">
-                        <a href="/about" wire:navigate.hover class="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-sky-400">About</a>
-                        <a href="/contact" wire:navigate.hover class="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-sky-400">Contact</a>
-                        <a href="/testimonials" wire:navigate.hover class="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-sky-400">Reviews</a>
-                    </div>
-                </div>
-            </div>
-
-            <a href="/testimonials" wire:navigate.hover class="text-base font-bold text-zinc-800 hover:text-sky-600 dark:text-zinc-100 dark:hover:text-sky-400">Reviews</a>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $navLinks; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $link): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <a href="<?php echo e($link['href']); ?>" wire:navigate.hover class="text-base <?php echo e($link['bold'] ? 'font-bold text-zinc-800 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-200'); ?> hover:text-sky-600 dark:hover:text-sky-400"><?php echo e($link['label']); ?></a>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
 
         
         <div class="hidden lg:flex lg:items-center lg:gap-x-6">
-            <?php if (isset($component)) { $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => '/contact','variant' => 'primary','class' => 'font-bold uppercase tracking-wide','@click' => 'trackCTA(\'Start Your Project\', \'navbar_desktop\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('flux::button'); ?>
+            <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => $contactUrl,'size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => '/contact','variant' => 'primary','class' => 'font-bold uppercase tracking-wide','@click' => 'trackCTA(\'Start Your Project\', \'navbar_desktop\')']); ?>
-                START YOUR PROJECT
+<?php $component->withAttributes(['href' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($contactUrl),'size' => 'sm']); ?>
+                Start Your Project
              <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $attributes = $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $component = $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
 <?php endif; ?>
         </div>
     </nav>
@@ -123,7 +93,7 @@
             class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 dark:bg-slate-950 dark:ring-white/10"
         >
             <div class="flex items-center justify-between">
-                <a href="/" wire:navigate class="flex items-center gap-x-3">
+                <a href="<?php echo e($homeUrl); ?>" wire:navigate class="flex items-center gap-x-3">
                     <img src="<?php echo e(asset('favicon-source.png')); ?>" alt="GS Construction" class="h-10 w-auto" />
                     <span class="font-heading text-lg font-semibold uppercase tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
                 </a>
@@ -137,34 +107,31 @@
             <div class="mt-6 flow-root">
                 <div class="-my-6 divide-y divide-gray-500/10 dark:divide-white/10">
                     <div class="space-y-2 py-6">
-                        <a href="/projects?type=kitchen" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Kitchens</a>
-                        <a href="/projects?type=bathroom" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Bathrooms</a>
-                        <a href="/projects" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-bold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Projects</a>
-                        <a href="/about" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">About</a>
-                        <a href="/contact" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Contact</a>
-                        <a href="/testimonials" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-bold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Reviews</a>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $navLinks; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $link): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <a href="<?php echo e($link['href']); ?>" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 <?php echo e($link['bold'] ? 'font-bold' : 'font-semibold'); ?> text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5"><?php echo e($link['label']); ?></a>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
                     <div class="py-6">
-                        <?php if (isset($component)) { $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => '/contact','variant' => 'primary','class' => 'w-full justify-center','@click' => 'trackCTA(\'Start Your Project\', \'navbar_mobile\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('flux::button'); ?>
+                        <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => $contactUrl,'size' => 'sm','class' => 'w-full']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => '/contact','variant' => 'primary','class' => 'w-full justify-center','@click' => 'trackCTA(\'Start Your Project\', \'navbar_mobile\')']); ?>
-                            START YOUR PROJECT
+<?php $component->withAttributes(['href' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($contactUrl),'size' => 'sm','class' => 'w-full']); ?>
+                            Start Your Project
                          <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $attributes = $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $component = $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
 <?php endif; ?>
                         <div class="mt-4 space-y-2 text-center text-sm text-zinc-600 dark:text-zinc-300">
                             <a href="tel:8474304439" class="block hover:text-zinc-900 dark:hover:text-zinc-100">(847) 430-4439</a>

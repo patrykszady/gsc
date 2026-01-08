@@ -1,19 +1,44 @@
 <?php if (isset($component)) { $__componentOriginal5863877a5171c196453bfa0bd807e410 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal5863877a5171c196453bfa0bd807e410 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => isset($area) ? 'Home Remodeling in ' . $area->city . ' | GS Construction | Family Business' : 'GS Construction | Home Remodeling | Family Business','metaDescription' => isset($area) ? 'Professional kitchen, bathroom, and home remodeling services in ' . $area->city . '. GS Construction is a family-owned business serving ' . $area->city . ' and surrounding areas.' : 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.layouts.app','data' => ['title' => 'GS Construction | Remodeling Contractors | Family Business','metaDescription' => 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('layouts.app'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Home Remodeling in ' . $area->city . ' | GS Construction | Family Business' : 'GS Construction | Home Remodeling | Family Business'),'metaDescription' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(isset($area) ? 'Professional kitchen, bathroom, and home remodeling services in ' . $area->city . '. GS Construction is a family-owned business serving ' . $area->city . ' and surrounding areas.' : 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.')]); ?>
+<?php $component->withAttributes(['title' => 'GS Construction | Remodeling Contractors | Family Business','metaDescription' => 'Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area.']); ?>
     
+    <?php
+        $homeSlides = [
+            [
+                'title' => 'Kitchens',
+                'button' => 'Kitchen Remodeling',
+                'link' => route('services.kitchen'),
+                'projectType' => 'kitchen',
+                'alt' => 'Kitchen remodeling services in Chicagoland',
+            ],
+            [
+                'title' => 'Bathrooms',
+                'button' => 'Bathroom Remodeling',
+                'link' => route('services.bathroom'),
+                'projectType' => 'bathroom',
+                'alt' => 'Bathroom remodeling services in Chicagoland',
+            ],
+            [
+                'title' => 'Home Remodels',
+                'button' => 'Home Remodeling',
+                'link' => route('services.home'),
+                'projectType' => 'home-remodel',
+                'alt' => 'Whole home remodeling services in Chicagoland',
+            ],
+        ];
+    ?>
     <?php
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('main-project-hero-slider', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('main-project-hero-slider', ['slides' => $homeSlides,'secondaryCtaText' => 'Schedule Free Consult','secondaryCtaUrl' => route('contact')]);
 
 $key = null;
 
@@ -35,7 +60,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('about-section', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('about-section', []);
 
 $key = null;
 
@@ -79,7 +104,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('testimonials-section', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('testimonials-section', []);
 
 $key = null;
 
@@ -101,7 +126,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('map-section', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('map-section', []);
 
 $key = null;
 
@@ -123,7 +148,7 @@ if (isset($__slots)) unset($__slots);
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
-[$__name, $__params] = $__split('contact-section', ['area' => $area ?? null]);
+[$__name, $__params] = $__split('contact-section', []);
 
 $key = null;
 

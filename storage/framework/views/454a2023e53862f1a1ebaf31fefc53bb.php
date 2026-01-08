@@ -3,11 +3,25 @@
         currentSlide: 0,
         backgrounds: <?php echo \Illuminate\Support\Js::from($backgroundImages)->toHtml() ?>,
         autoplay: null,
+        isVisible: false,
         startAutoplay() {
+            if (!this.isVisible) return;
+            this.stopAutoplay();
             this.autoplay = setInterval(() => this.next(), 5000);
         },
         stopAutoplay() {
-            clearInterval(this.autoplay);
+            if (this.autoplay) {
+                clearInterval(this.autoplay);
+                this.autoplay = null;
+            }
+        },
+        handleVisibility(visible) {
+            this.isVisible = visible;
+            if (visible) {
+                this.startAutoplay();
+            } else {
+                this.stopAutoplay();
+            }
         },
         async next() {
             const prevSlide = this.currentSlide;
@@ -20,7 +34,8 @@
             }
         }
     }"
-    x-init="startAutoplay()"
+    x-intersect:enter.full="handleVisibility(true)"
+    x-intersect:leave.full="handleVisibility(false)"
     class="relative w-full overflow-hidden rounded-xl shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800"
 >
     
@@ -34,6 +49,7 @@
                 x-transition:leave="transition-opacity duration-500 ease-in-out"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
+                x-bind:class="{ 'transition-none': !isVisible }"
                 class="absolute inset-0"
             >
                 <img

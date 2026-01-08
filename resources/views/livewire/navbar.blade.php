@@ -1,8 +1,12 @@
-<header class="bg-white dark:bg-slate-950" x-data="{ mobileMenuOpen: false, projectsOpen: true }">
+<header class="relative z-50 bg-white dark:bg-slate-950" x-data="{ mobileMenuOpen: false, projectsOpen: true }">
+    @php
+        $homeUrl = $area ? $area->url : '/';
+        $contactUrl = $area ? $area->pageUrl('contact') : '/contact';
+    @endphp
     <nav aria-label="Global" class="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8">
         {{-- Logo + Brand Name --}}
         <div class="flex items-center gap-x-4">
-            <a href="/" wire:navigate.hover class="flex items-center gap-x-3">
+            <a href="{{ $homeUrl }}" wire:navigate.hover class="flex items-center gap-x-3">
                 <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" class="h-12 w-auto" />
                 <span class="font-heading text-xl font-bold tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
             </a>
@@ -24,51 +28,17 @@
 
         {{-- Desktop navigation --}}
         <div class="hidden lg:flex lg:items-center lg:gap-x-8">
-            <a href="/projects?type=kitchen" wire:navigate.hover class="text-base font-medium text-zinc-700 hover:text-sky-600 dark:text-zinc-200 dark:hover:text-sky-400">Kitchens</a>
-            <a href="/projects?type=bathroom" wire:navigate.hover class="text-base font-medium text-zinc-700 hover:text-sky-600 dark:text-zinc-200 dark:hover:text-sky-400">Bathrooms</a>
-            <a href="/projects" wire:navigate.hover class="text-base font-bold text-zinc-800 hover:text-sky-600 dark:text-zinc-100 dark:hover:text-sky-400">Projects</a>
-
-            {{-- More menu dropdown --}}
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                <button
-                    type="button"
-                    @click="open = !open"
-                    class="flex items-center justify-center rounded-md p-2 text-zinc-700 hover:text-sky-600 dark:text-zinc-200 dark:hover:text-sky-400"
-                    :aria-expanded="open"
-                >
-                    <span class="sr-only">More</span>
-                    <svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-
-                <div
-                    x-show="open"
-                    x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 translate-y-1"
-                    x-transition:enter-end="opacity-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="opacity-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 translate-y-1"
-                    class="absolute right-0 z-10 mt-3 w-48 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-gray-900/5 dark:bg-slate-900 dark:ring-white/10"
-                    @click.away="open = false"
-                >
-                    <div class="py-2">
-                        <a href="/about" wire:navigate.hover class="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-sky-400">About</a>
-                        <a href="/contact" wire:navigate.hover class="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-sky-400">Contact</a>
-                        <a href="/testimonials" wire:navigate.hover class="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-sky-600 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-sky-400">Reviews</a>
-                    </div>
-                </div>
-            </div>
-
-            <a href="/testimonials" wire:navigate.hover class="text-base font-bold text-zinc-800 hover:text-sky-600 dark:text-zinc-100 dark:hover:text-sky-400">Reviews</a>
+            {{-- All nav links --}}
+            @foreach($navLinks as $link)
+                <a href="{{ $link['href'] }}" wire:navigate.hover class="text-base {{ $link['bold'] ? 'font-bold text-zinc-800 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-200' }} hover:text-sky-600 dark:hover:text-sky-400">{{ $link['label'] }}</a>
+            @endforeach
         </div>
 
         {{-- Desktop CTA --}}
         <div class="hidden lg:flex lg:items-center lg:gap-x-6">
-            <flux:button href="/contact" variant="primary" class="font-bold uppercase tracking-wide" @click="trackCTA('Start Your Project', 'navbar_desktop')">
-                START YOUR PROJECT
-            </flux:button>
+            <x-buttons.cta :href="$contactUrl" size="sm">
+                Start Your Project
+            </x-buttons.cta>
         </div>
     </nav>
 
@@ -105,7 +75,7 @@
             class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 dark:bg-slate-950 dark:ring-white/10"
         >
             <div class="flex items-center justify-between">
-                <a href="/" wire:navigate class="flex items-center gap-x-3">
+                <a href="{{ $homeUrl }}" wire:navigate class="flex items-center gap-x-3">
                     <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" class="h-10 w-auto" />
                     <span class="font-heading text-lg font-semibold uppercase tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
                 </a>
@@ -119,17 +89,14 @@
             <div class="mt-6 flow-root">
                 <div class="-my-6 divide-y divide-gray-500/10 dark:divide-white/10">
                     <div class="space-y-2 py-6">
-                        <a href="/projects?type=kitchen" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Kitchens</a>
-                        <a href="/projects?type=bathroom" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Bathrooms</a>
-                        <a href="/projects" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-bold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Projects</a>
-                        <a href="/about" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">About</a>
-                        <a href="/contact" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-semibold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Contact</a>
-                        <a href="/testimonials" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 font-bold text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">Reviews</a>
+                        @foreach($navLinks as $link)
+                            <a href="{{ $link['href'] }}" wire:navigate class="-mx-3 block rounded-lg px-3 py-2 text-base/7 {{ $link['bold'] ? 'font-bold' : 'font-semibold' }} text-gray-900 hover:bg-gray-50 dark:text-zinc-100 dark:hover:bg-white/5">{{ $link['label'] }}</a>
+                        @endforeach
                     </div>
                     <div class="py-6">
-                        <flux:button href="/contact" variant="primary" class="w-full justify-center" @click="trackCTA('Start Your Project', 'navbar_mobile')">
-                            START YOUR PROJECT
-                        </flux:button>
+                        <x-buttons.cta :href="$contactUrl" size="sm" class="w-full">
+                            Start Your Project
+                        </x-buttons.cta>
                         <div class="mt-4 space-y-2 text-center text-sm text-zinc-600 dark:text-zinc-300">
                             <a href="tel:8474304439" class="block hover:text-zinc-900 dark:hover:text-zinc-100">(847) 430-4439</a>
                             <a href="mailto:patryk@gs.construction" class="block hover:text-zinc-900 dark:hover:text-zinc-100">patryk@gs.construction</a>

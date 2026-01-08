@@ -83,13 +83,13 @@
                                 <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">About</a>
                             </li>
                             <li>
-                                <a href="/reviews" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Reviews</a>
+                                <a href="/testimonials" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Reviews</a>
                             </li>
                             <li>
                                 <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Contact</a>
                             </li>
                             <li>
-                                <a href="#areas-served" class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
+                                <a href="/areas-served" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
                             </li>
                         </ul>
                     </div>
@@ -117,19 +117,16 @@
                 <div class="md:grid md:grid-cols-2 md:gap-8">
                     
                     <div>
-                        <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">More Projects</h3>
+                        <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Services</h3>
                         <ul role="list" class="mt-6 space-y-4">
                             <li>
-                                <a href="/projects?type=basement" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Basement Projects</a>
+                                <a href="/services/kitchen-remodeling" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Kitchen Remodeling</a>
                             </li>
                             <li>
-                                <a href="/projects?type=addition" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Addition Projects</a>
+                                <a href="/services/bathroom-remodeling" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Bathroom Remodeling</a>
                             </li>
                             <li>
-                                <a href="/projects?type=fireplace" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Fireplace Projects</a>
-                            </li>
-                            <li>
-                                <a href="/projects" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">All Projects</a>
+                                <a href="/services/home-remodeling" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Home Remodeling</a>
                             </li>
                         </ul>
                     </div>

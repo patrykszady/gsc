@@ -21,6 +21,7 @@ class ImageService
 
     protected int $maxWidth = 3200;
     protected int $quality = 92;
+    protected int $webpQuality = 85;
 
     public function upload(UploadedFile $file, Project $project, array $options = []): ProjectImage
     {
@@ -49,8 +50,11 @@ class ImageService
 
         // Store the main image
         Storage::disk('public')->put($path, $encoded);
+        
+        // Generate WebP version for modern browsers
+        $webpPath = $this->generateWebP($file, $basePath, $filename);
 
-        // Generate thumbnails
+        // Generate thumbnails (now also creates WebP versions)
         $thumbnails = $this->generateThumbnails($file, $basePath, $filename);
 
         // Create database record
@@ -64,14 +68,41 @@ class ImageService
             'size' => strlen($encoded),
             'width' => $width,
             'height' => $height,
-            'alt_text' => $options['alt_text'] ?? pathinfo($originalFilename, PATHINFO_FILENAME),
+            'alt_text' => $options['alt_text'] ?? $this->generateAltText($project, $originalFilename),
             'caption' => $options['caption'] ?? null,
             'is_cover' => $options['is_cover'] ?? false,
             'sort_order' => $options['sort_order'] ?? 0,
             'thumbnails' => $thumbnails,
+            'webp_path' => $webpPath,
         ]);
 
         return $projectImage;
+    }
+
+    /**
+     * Generate WebP version of the main image for better performance.
+     */
+    protected function generateWebP(UploadedFile $file, string $basePath, string $filename): ?string
+    {
+        try {
+            $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+            $webpFilename = "{$nameWithoutExt}.webp";
+            $webpPath = "{$basePath}/{$webpFilename}";
+            
+            $image = Image::read($file);
+            
+            if ($image->width() > $this->maxWidth) {
+                $image->scale(width: $this->maxWidth);
+            }
+            
+            $encoded = $image->toWebp($this->webpQuality)->toString();
+            Storage::disk('public')->put($webpPath, $encoded);
+            
+            return $webpPath;
+        } catch (\Exception $e) {
+            // WebP generation failed, continue without it
+            return null;
+        }
     }
 
     protected function generateThumbnails(UploadedFile $file, string $basePath, string $filename): array
@@ -93,6 +124,21 @@ class ImageService
             Storage::disk('public')->put($thumbPath, $encoded);
             
             $thumbnails[$size] = $thumbPath;
+            
+            // Also generate WebP version of thumbnail
+            try {
+                $webpThumbFilename = "{$nameWithoutExt}_{$size}.webp";
+                $webpThumbPath = "{$basePath}/thumbs/{$webpThumbFilename}";
+                
+                $webpImage = Image::read($file);
+                $webpImage->cover($width, $height);
+                $webpEncoded = $webpImage->toWebp($this->webpQuality)->toString();
+                Storage::disk('public')->put($webpThumbPath, $webpEncoded);
+                
+                $thumbnails["{$size}_webp"] = $webpThumbPath;
+            } catch (\Exception $e) {
+                // WebP thumbnail generation failed, continue
+            }
         }
 
         return $thumbnails;
@@ -106,6 +152,26 @@ class ImageService
             'webp' => $image->toWebp($this->quality)->toString(),
             default => $image->toJpeg($this->quality)->toString(),
         };
+    }
+
+    /**
+     * Generate SEO-friendly alt text for an image.
+     */
+    protected function generateAltText(Project $project, string $originalFilename): string
+    {
+        $type = ucfirst(str_replace('-', ' ', $project->project_type ?? 'home'));
+        $location = $project->location;
+        
+        // Build descriptive alt text
+        $parts = ["{$type} remodeling"];
+        
+        if ($location) {
+            $parts[] = "in {$location}";
+        }
+        
+        $parts[] = 'by GS Construction';
+
+        return implode(' ', $parts);
     }
 
     public function delete(ProjectImage $image): void

@@ -11,28 +11,70 @@ class TestimonialsGrid extends Component
 {
     public ?AreaServed $area = null;
 
+    public int $visibleRows = 3; // Start with 3 rows (top + row2 + row3)
+
+    public function loadMore(): void
+    {
+        $this->visibleRows += 2; // Load 2 more rows each time
+    }
+
     public function render()
     {
-        $testimonials = Testimonial::query()
+        // Get raw testimonials for schema
+        $rawTestimonials = Testimonial::query()->get();
+        
+        // First 10 random from the last 6 years
+        $recentCutoff = now()->subYears(6)->startOfDay();
+        
+        $recentTestimonials = Testimonial::query()
+            ->whereNotNull('review_date')
+            ->where('review_date', '>=', $recentCutoff)
             ->inRandomOrder()
-            ->get()
+            ->take(10)
+            ->get();
+        
+        $recentIds = $recentTestimonials->pluck('id')->toArray();
+        
+        // Then random older ones
+        $olderTestimonials = Testimonial::query()
+            ->whereNotIn('id', $recentIds)
+            ->inRandomOrder()
+            ->get();
+        
+        // Combine: recent first, then older
+        $allTestimonials = $recentTestimonials->concat($olderTestimonials);
+        
+        $testimonials = $allTestimonials
             ->map(fn ($t) => $this->formatTestimonial($t));
 
-        // Pick a random featured testimonial (biased toward longer descriptions).
-        $featuredPool = $testimonials
+        // Pick a random featured testimonial from recent ones (biased toward longer descriptions).
+        $recentFormatted = $recentTestimonials->map(fn ($t) => $this->formatTestimonial($t));
+        
+        $featuredPool = $recentFormatted
             ->sortByDesc(fn ($t) => strlen($t['description'] ?? ''))
             ->take(6)
             ->values();
 
         $featured = ($featuredPool->isNotEmpty() ? $featuredPool : $testimonials)->random();
 
-        // Remaining testimonials - already in random order.
+        // Remaining testimonials - keep order (recent first).
         $others = $testimonials->reject(fn ($t) => $t['id'] === $featured['id'])->values();
+
+        // Calculate how many testimonials we can show based on visible rows
+        // Row 1: featured (2 cols) + leftTop + rightTop = 3 testimonials from $others (indices 0, 1)
+        // Row 2: 4 testimonials (indices 2-5)
+        // Row 3: 4 testimonials (indices 6-9)
+        // Row 4+: 4 testimonials each
+        $maxVisible = 2 + (($this->visibleRows - 1) * 4); // 2 for top row sides, then 4 per additional row
+        $hasMore = $others->count() > $maxVisible;
 
         return view('livewire.testimonials-grid', [
             'featured' => $featured,
             'testimonials' => $others,
+            'rawTestimonials' => $rawTestimonials,
             'area' => $this->area,
+            'visibleRows' => $this->visibleRows,
+            'hasMore' => $hasMore,
         ]);
     }
 
@@ -58,6 +100,7 @@ class TestimonialsGrid extends Component
 
         return [
             'id' => $testimonial->id,
+            'slug' => $testimonial->slug,
             'name' => $testimonial->reviewer_name,
             'location' => $testimonial->project_location,
             'area_slug' => AreaServed::where('city', $cityName)->value('slug'),

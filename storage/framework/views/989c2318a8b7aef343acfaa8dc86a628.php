@@ -49,7 +49,8 @@
         <div class="columns-2 gap-x-4 sm:columns-3 md:columns-4 lg:columns-6">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $areas; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $area): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <a
-                    href="<?php echo e(route('area.home', $area)); ?>"
+                    href="<?php echo e($area->url); ?>"
+                    wire:navigate.hover
                     class="block text-xs leading-5 text-gray-500 hover:text-sky-600 dark:text-gray-400 dark:hover:text-sky-400"
                 >
                     <?php echo e($area->city); ?>

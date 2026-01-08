@@ -26,6 +26,14 @@ class AreaServed extends Model
      */
     public function getUrlAttribute(): string
     {
-        return route('area.home', $this);
+        return route('areas.show', $this->slug);
+    }
+
+    /**
+     * Get URL for a specific page within this area.
+     */
+    public function pageUrl(string $page): string
+    {
+        return route('areas.page', ['area' => $this->slug, 'page' => $page]);
     }
 }

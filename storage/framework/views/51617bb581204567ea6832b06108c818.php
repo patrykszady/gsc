@@ -19,19 +19,9 @@
                     </p>
 
                     
-                    <ul
-                        x-data="{ shown: false }"
-                        x-intersect:enter.once.threshold.55="setTimeout(() => shown = true, 500)"
-                        class="mt-6 space-y-3 text-base text-zinc-600 dark:text-zinc-300"
-                    >
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $content['features']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $feature): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <li
-                            x-show="shown"
-                            x-transition:enter="transition ease-out duration-500 delay-<?php echo e(($index + 1) * 100); ?>"
-                            x-transition:enter-start="opacity-0 translate-x-4"
-                            x-transition:enter-end="opacity-100 translate-x-0"
-                            class="flex items-start gap-3"
-                        >
+                    <ul class="mt-6 space-y-3 text-base text-zinc-600 dark:text-zinc-300">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $content['features']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $feature): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <li class="flex items-start gap-3">
                             <svg class="mt-0.5 size-5 flex-shrink-0 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
                             </svg>
@@ -41,28 +31,49 @@
                     </ul>
 
                     
-                    <div class="mt-6">
-                        <?php if (isset($component)) { $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'e60dd9d2c3a62d619c9acb38f20d5aa5::button.index','data' => ['href' => ''.e($content['cta_href']).'','variant' => 'primary','class' => 'w-full font-semibold uppercase tracking-wide sm:w-auto','@click' => 'trackCTA(\''.e($content['cta_text']).'\', \'about_section\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('flux::button'); ?>
+                    <div class="mt-6 flex flex-wrap items-center gap-4">
+                        <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => ''.e($content['cta_href']).'','class' => 'w-full sm:w-auto']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['href' => ''.e($content['cta_href']).'','variant' => 'primary','class' => 'w-full font-semibold uppercase tracking-wide sm:w-auto','@click' => 'trackCTA(\''.e($content['cta_text']).'\', \'about_section\')']); ?>
+<?php $component->withAttributes(['href' => ''.e($content['cta_href']).'','class' => 'w-full sm:w-auto']); ?>
                             <?php echo e($content['cta_text']); ?>
 
                          <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $attributes = $__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__attributesOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580)): ?>
-<?php $component = $__componentOriginalc04b147acd0e65cc1a77f86fb0e81580; ?>
-<?php unset($__componentOriginalc04b147acd0e65cc1a77f86fb0e81580); ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+                        <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => '/about','variant' => 'secondary','class' => 'w-full sm:w-auto']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['href' => '/about','variant' => 'secondary','class' => 'w-full sm:w-auto']); ?>
+                            About Us
+                         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
 <?php endif; ?>
                     </div>
                 </div>
@@ -91,13 +102,7 @@ unset($__split);
 if (isset($__slots)) unset($__slots);
 ?>
                 
-                <blockquote
-                    x-data="{ quoteVisible: false }"
-                    x-intersect:enter.once.threshold.35="setTimeout(() => quoteVisible = true, 250)"
-                    x-cloak
-                    :class="quoteVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'"
-                    class="mt-4 border-l-4 border-sky-500 pl-4 italic text-lg text-zinc-800 transition duration-700 ease-out dark:text-zinc-100"
-                >
+                <blockquote class="mt-4 border-l-4 border-sky-500 pl-4 italic text-lg text-zinc-800 dark:text-zinc-100">
                     "<?php echo e($content['quote']); ?>"
                 </blockquote>
             </div>

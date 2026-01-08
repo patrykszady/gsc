@@ -2,7 +2,10 @@
     class="relative isolate bg-white py-10 sm:py-16 dark:bg-zinc-900"
     x-data="{ 
         isMobile: window.innerWidth < 640,
+        hideFilters: <?php echo \Illuminate\Support\Js::from($hideFilters)->toHtml() ?>,
         init() {
+            // Only auto-adjust perPage on the main projects page (not on service pages)
+            if (this.hideFilters) return;
             if (this.isMobile && $wire.perPage !== 3) {
                 $wire.setPerPage(3);
             } else if (!this.isMobile && $wire.perPage !== 9) {
@@ -41,7 +44,7 @@
         </div>
 
         
-        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($projectTypes->count() > 1): ?>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($projectTypes->count() > 1 && !$hideFilters): ?>
         <div id="projects-grid" class="mt-8 flex flex-wrap justify-center gap-2">
             <button
                 wire:click="clearFilter"
@@ -70,7 +73,7 @@
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($project->images->first()): ?>
                     <img
                         src="<?php echo e($project->images->first()->getThumbnailUrl('medium')); ?>"
-                        alt="<?php echo e($project->title); ?>"
+                        alt="<?php echo e($project->images->first()->seo_alt_text); ?>"
                         class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                         loading="lazy"
                     />
@@ -143,7 +146,7 @@
         </div>
 
         
-        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($projects->hasPages()): ?>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($projects->hasPages() && !$hideFilters): ?>
         <div class="mt-10">
             <?php echo e($projects->links(data: ['scrollTo' => '#projects-grid'])); ?>
 

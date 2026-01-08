@@ -2,7 +2,10 @@
     class="relative isolate bg-white py-10 sm:py-16 dark:bg-zinc-900"
     x-data="{ 
         isMobile: window.innerWidth < 640,
+        hideFilters: @js($hideFilters),
         init() {
+            // Only auto-adjust perPage on the main projects page (not on service pages)
+            if (this.hideFilters) return;
             if (this.isMobile && $wire.perPage !== 3) {
                 $wire.setPerPage(3);
             } else if (!this.isMobile && $wire.perPage !== 9) {
@@ -40,7 +43,7 @@
         </div>
 
         {{-- Filter buttons --}}
-        @if($projectTypes->count() > 1)
+        @if($projectTypes->count() > 1 && !$hideFilters)
         <div id="projects-grid" class="mt-8 flex flex-wrap justify-center gap-2">
             <button
                 wire:click="clearFilter"
@@ -68,7 +71,7 @@
                     @if($project->images->first())
                     <img
                         src="{{ $project->images->first()->getThumbnailUrl('medium') }}"
-                        alt="{{ $project->title }}"
+                        alt="{{ $project->images->first()->seo_alt_text }}"
                         class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                         loading="lazy"
                     />
@@ -136,7 +139,7 @@
         </div>
 
         {{-- Pagination --}}
-        @if($projects->hasPages())
+        @if($projects->hasPages() && !$hideFilters)
         <div class="mt-10">
             {{ $projects->links(data: ['scrollTo' => '#projects-grid']) }}
         </div>

@@ -49,7 +49,8 @@
         <div class="columns-2 gap-x-4 sm:columns-3 md:columns-4 lg:columns-6">
             @foreach($areas as $area)
                 <a
-                    href="{{ route('area.home', $area) }}"
+                    href="{{ $area->url }}"
+                    wire:navigate.hover
                     class="block text-xs leading-5 text-gray-500 hover:text-sky-600 dark:text-gray-400 dark:hover:text-sky-400"
                 >
                     {{ $area->city }}

@@ -1,12 +1,12 @@
 <x-layouts.app
-    :title="isset($area) ? 'Projects in ' . $area->city . ' | GS Construction' : 'Our Projects | GS Construction | Home Remodeling Portfolio'"
-    :metaDescription="isset($area) ? 'Browse our portfolio of kitchen, bathroom, and home remodeling projects in ' . $area->city . '. See the quality craftsmanship of GS Construction.' : 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area.'"
+    title="Our Projects | GS Construction | Home Remodeling Portfolio"
+    metaDescription="Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area."
 >
     {{-- Timelapse Section --}}
     <livewire:timelapse-section />
 
     {{-- Projects Grid --}}
-    <livewire:projects-grid :area="$area ?? null" />
+    <livewire:projects-grid />
 
     {{-- CTA Section --}}
     <div class="relative isolate z-0 bg-white px-6 py-12 sm:py-16 lg:px-8 dark:bg-zinc-900">

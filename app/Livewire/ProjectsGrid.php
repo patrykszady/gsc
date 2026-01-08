@@ -19,6 +19,19 @@ class ProjectsGrid extends Component
 
     public int $perPage = 9;
 
+    public bool $hideFilters = false;
+
+    public function mount(?string $projectType = null, ?int $limit = null, bool $hideFilters = false): void
+    {
+        if ($projectType) {
+            $this->type = $projectType;
+        }
+        if ($limit) {
+            $this->perPage = $limit;
+        }
+        $this->hideFilters = $hideFilters;
+    }
+
     public function setPerPage(int $count): void
     {
         $this->perPage = $count;
