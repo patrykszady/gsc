@@ -23,6 +23,17 @@ Route::get('/robots.txt', function () {
     return response($content, 200)->header('Content-Type', 'text/plain');
 });
 
+// IndexNow key verification file
+Route::get('/{key}.txt', function (string $key) {
+    $indexNowKey = config('indexnow.key');
+    
+    if (! $indexNowKey || $key !== $indexNowKey) {
+        abort(404);
+    }
+    
+    return response($indexNowKey, 200)->header('Content-Type', 'text/plain');
+})->where('key', '[a-z0-9\-]{8,128}');
+
 Route::get('/', function () {
     SeoService::home();
     return view('home');
