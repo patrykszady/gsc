@@ -27,9 +27,6 @@ class SeoService
             : 'Professional kitchen, bathroom, and home remodeling services in the Chicagoland area. GS Construction is a family-owned business with over 40 years of combined experience.';
 
         self::setTags($title, $description);
-        
-        OpenGraph::addImage(asset('images/og-image.jpg'));
-        TwitterCard::setImage(asset('images/og-image.jpg'));
     }
 
     /**
@@ -54,7 +51,10 @@ class SeoService
             $description = 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship from GS Construction.';
         }
 
-        self::setTags($title, $description);
+        // Get a relevant cover image
+        $image = $type ? self::getCoverImageForType($type) : self::getCoverImageForType('kitchen');
+
+        self::setTags($title, $description, $image);
     }
 
     /**
@@ -156,7 +156,10 @@ class SeoService
             ? "Expert remodeling services in {$city}, IL. Kitchen renovations, bathroom remodels, and complete home renovations. Free consultations available."
             : 'Expert remodeling services in Chicago. Kitchen renovations, bathroom remodels, basement finishing, and complete home renovations. Free consultations available.';
 
-        self::setTags($title, $description);
+        // Get a kitchen image as the default for services overview
+        $image = self::getCoverImageForType('kitchen');
+
+        self::setTags($title, $description, $image);
         
         SEOMeta::addKeyword([
             'remodeling services',
@@ -200,7 +203,17 @@ class SeoService
         
         $description = "Expert {$service['label']} services in the Chicagoland area. GS Construction delivers quality kitchen, bathroom, and home renovations.";
 
-        self::setTags($title, $description);
+        // Get a relevant cover image for this service type
+        $projectType = match ($serviceType) {
+            'kitchen-remodeling' => 'kitchen',
+            'bathroom-remodeling' => 'bathroom',
+            'home-remodeling' => 'home-remodel',
+            'basement-remodeling' => 'basement',
+            default => null,
+        };
+        $image = $projectType ? self::getCoverImageForType($projectType) : null;
+
+        self::setTags($title, $description, $image);
         
         // Add service-specific keywords
         $keywords = $service['keywords'];
@@ -234,7 +247,7 @@ class SeoService
     /**
      * Helper to set common meta tags.
      */
-    protected static function setTags(string $title, string $description): void
+    protected static function setTags(string $title, string $description, ?string $image = null): void
     {
         SEOMeta::setTitle($title);
         SEOMeta::setDescription($description);
@@ -244,7 +257,26 @@ class SeoService
         OpenGraph::setUrl(url()->current());
         OpenGraph::addProperty('locale', 'en_US');
         
+        // Set OG image for social sharing (iMessage, Facebook, etc.)
+        $ogImage = $image ?? asset('images/greg-patryk.jpg');
+        OpenGraph::addImage($ogImage, ['width' => 1200, 'height' => 630]);
+        
         TwitterCard::setTitle($title);
         TwitterCard::setDescription($description);
+        TwitterCard::setImage($ogImage);
+    }
+
+    /**
+     * Get a random cover image URL for a project type.
+     */
+    protected static function getCoverImageForType(string $projectType): ?string
+    {
+        $image = \App\Models\ProjectImage::query()
+            ->where('is_cover', true)
+            ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('project_type', $projectType))
+            ->inRandomOrder()
+            ->first();
+
+        return $image?->url;
     }
 }
