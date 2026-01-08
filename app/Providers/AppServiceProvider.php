@@ -8,6 +8,7 @@ use App\Models\Testimonial;
 use App\Observers\AreaServedObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,5 +30,10 @@ class AppServiceProvider extends ServiceProvider
         Testimonial::observe(TestimonialObserver::class);
         AreaServed::observe(AreaServedObserver::class);
         Project::observe(ProjectObserver::class);
+
+        // Allow authenticated admin users to access Log Viewer in production
+        Gate::define('viewLogViewer', function ($user) {
+            return $user !== null;
+        });
     }
 }
