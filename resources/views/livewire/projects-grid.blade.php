@@ -26,13 +26,23 @@
         {{-- Header --}}
         <div class="mx-auto max-w-2xl text-center">
             <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Our Work</p>
+            @if($hideFilters)
+            {{-- Use H2 when embedded in another page (service pages have H1 in hero) --}}
+            <h2 class="mt-2 font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
+            @else
+            {{-- Use H1 when this is the main projects page --}}
             <h1 class="mt-2 font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
+            @endif
                 @if($area)
                     GS Construction Projects in {{ $area->city }}
                 @else
                     Our Projects
                 @endif
+            @if($hideFilters)
+            </h2>
+            @else
             </h1>
+            @endif
             <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
                 @if($area)
                     Browse GS Construction's portfolio of completed home remodeling projects in {{ $area->city }} and surrounding areas. From kitchens to bathrooms, see the quality craftsmanship our family brings to every project.

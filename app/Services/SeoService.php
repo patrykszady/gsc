@@ -116,9 +116,10 @@ class SeoService
     {
         $city = $area?->city;
         
+        // Keep under 70 chars with suffix
         $title = $city
-            ? "{$city} Remodeling Reviews | Customer Testimonials"
-            : 'Customer Reviews & Testimonials | GS Construction';
+            ? "{$city} Remodeling Reviews"
+            : 'Customer Reviews & Testimonials';
         
         $description = $city
             ? "Read reviews from {$city} homeowners about their remodeling experience with GS Construction. 5-star rated kitchen and bathroom renovations."
@@ -134,9 +135,21 @@ class SeoService
     {
         $name = $testimonial->reviewer_name;
         $location = $testimonial->project_location;
-        $projectType = $testimonial->project_type ? ucfirst($testimonial->project_type) : 'Home';
+        $rawType = $testimonial->project_type ?? 'home';
         
-        $title = "{$name}'s {$projectType} Remodeling Review | GS Construction";
+        // Normalize project type for display (remove hyphens, proper capitalization)
+        $projectType = match(strtolower($rawType)) {
+            'home-remodel' => 'Home',
+            'kitchen' => 'Kitchen',
+            'bathroom' => 'Bathroom',
+            'basement' => 'Basement',
+            default => ucfirst(str_replace('-', ' ', $rawType)),
+        };
+        
+        // Keep under 70 chars total (with " | GS Construction" = 18 chars suffix)
+        // So page title should be ~52 chars max
+        $shortName = strlen($name) > 15 ? explode(' ', $name)[0] : $name;
+        $title = "{$shortName}'s {$projectType} Remodel Review";
         
         $description = Str::limit($testimonial->review_description, 155);
 
@@ -150,9 +163,10 @@ class SeoService
     {
         $city = $area?->city;
         
+        // Keep under 70 chars with suffix
         $title = $city
-            ? "About GS Construction | {$city} Remodeling Contractors"
-            : 'About GS Construction | Meet Greg & Patryk';
+            ? "About Us | {$city} Contractors"
+            : 'About Us | Meet Greg & Patryk';
         
         $description = $city
             ? "Learn about GS Construction, a family-owned remodeling company serving {$city}. Meet Greg & Patryk and discover our 40+ years of combined experience."
@@ -171,9 +185,10 @@ class SeoService
     {
         $city = $area?->city;
         
+        // Keep under 70 chars with suffix
         $title = $city
-            ? "Contact GS Construction | {$city} Remodeling Quote"
-            : 'Contact GS Construction | Get a Free Quote';
+            ? "Contact Us | Free {$city} Quote"
+            : 'Contact Us | Get a Free Quote';
         
         $description = $city
             ? "Contact GS Construction for a free remodeling quote in {$city}. Call (847) 430-4439 or fill out our form for kitchen, bathroom, and home renovation estimates."
@@ -200,9 +215,11 @@ class SeoService
     {
         $city = $area?->city;
         
+        // Keep titles under 70 chars (with " | GS Construction" suffix = 18 chars)
+        // Max page title: ~52 chars for longest city names (17 chars)
         $title = $city
-            ? "{$city} Remodeling Services | Kitchen, Bathroom & Home | GS Construction"
-            : 'Our Services | Kitchen, Bathroom & Home Remodeling | GS Construction';
+            ? "{$city} Kitchen & Bathroom Remodeling"
+            : 'Kitchen, Bathroom & Home Remodeling';
         
         $description = $city
             ? "Expert remodeling services in {$city}, IL. Kitchen renovations, bathroom remodels, and complete home renovations. Free consultations available."

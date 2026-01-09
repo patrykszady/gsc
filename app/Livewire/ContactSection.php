@@ -492,6 +492,11 @@ class ContactSection extends Component
                     'error-codes' => $result['error-codes'] ?? [],
                     'ip' => request()->ip(),
                     'hostname' => $result['hostname'] ?? null,
+                    'name' => $this->name,
+                    'email' => $this->email,
+                    'phone' => $this->phoneDigits,
+                    'address' => $this->address,
+                    'message' => \Str::limit($this->message, 200),
                 ]);
                 return false;
             }
@@ -499,6 +504,7 @@ class ContactSection extends Component
             \Log::debug('Turnstile verification passed', [
                 'ip' => request()->ip(),
                 'hostname' => $result['hostname'] ?? null,
+                'email' => $this->email,
             ]);
 
             return true;

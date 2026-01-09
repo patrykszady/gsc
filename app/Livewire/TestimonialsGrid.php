@@ -20,9 +20,6 @@ class TestimonialsGrid extends Component
 
     public function render()
     {
-        // Get raw testimonials for schema
-        $rawTestimonials = Testimonial::query()->get();
-        
         // First 10 random from the last 6 years
         $recentCutoff = now()->subYears(6)->startOfDay();
         
@@ -71,7 +68,6 @@ class TestimonialsGrid extends Component
         return view('livewire.testimonials-grid', [
             'featured' => $featured,
             'testimonials' => $others,
-            'rawTestimonials' => $rawTestimonials,
             'area' => $this->area,
             'visibleRows' => $this->visibleRows,
             'hasMore' => $hasMore,

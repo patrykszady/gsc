@@ -10,7 +10,7 @@ return [
          * The default configurations to be used by the meta generator.
          */
         'defaults'       => [
-            'title'        => 'GS Construction & Remodeling',
+            'title'        => 'GS Construction', // Short suffix to keep total under 70 chars
             'titleBefore'  => false, // Put defaults.title after page title
             'description'  => 'Professional kitchen, bathroom, and home remodeling services. Family-owned business serving the Chicagoland area with over 40 years of combined experience.',
             'separator'    => ' | ',

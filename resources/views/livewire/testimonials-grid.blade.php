@@ -1,7 +1,4 @@
 <div class="relative isolate bg-white pt-6 pb-6 sm:pt-10 sm:pb-10 dark:bg-gray-900">
-    {{-- Review Schema for rich snippets --}}
-    <x-review-schema :testimonials="$rawTestimonials" />
-    
     <div aria-hidden="true" class="absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-30 blur-3xl">
         <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[max(50%,38rem)] aspect-[1313/771] w-[82.0625rem] bg-gradient-to-tr from-sky-300 to-sky-600"></div>
     </div>
@@ -49,7 +46,7 @@
                     </blockquote>
                     <figcaption class="flex flex-col gap-4 border-t border-gray-900/10 px-6 py-4 dark:border-white/10">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-4 sm:flex-nowrap">
-                            <img src="{{ $featured['image'] }}" alt="{{ $featured['name'] }}" class="size-10 flex-none rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
+                            <img src="{{ $featured['image'] }}" alt="{{ $featured['name'] }}" width="40" height="40" loading="lazy" class="size-10 flex-none rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                             <div class="flex-auto">
                                 <div class="font-semibold text-gray-900 dark:text-white">{{ $featured['name'] }}</div>
                                 <div class="text-gray-600 dark:text-gray-400">
@@ -61,7 +58,7 @@
                                     · {{ $featured['date'] }}
                                 </div>
                             </div>
-                            <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" class="h-10 w-auto flex-none" />
+                            <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" width="116" height="40" class="h-10 w-auto flex-none" />
                         </div>
                         <div>
                             <x-buttons.cta href="{{ route('testimonials.show', $featured['slug']) }}" variant="secondary" size="sm">
@@ -79,7 +76,7 @@
                         <p>"{{ Str::limit($leftTop['description'], 180) }}"</p>
                     </blockquote>
                     <figcaption class="mt-6 flex items-center gap-x-4">
-                        <img src="{{ $leftTop['image'] }}" alt="{{ $leftTop['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
+                        <img src="{{ $leftTop['image'] }}" alt="{{ $leftTop['name'] }}" width="40" height="40" loading="lazy" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div class="flex-auto">
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $leftTop['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
@@ -106,7 +103,7 @@
                         <p>"{{ Str::limit($rightTop['description'], 180) }}"</p>
                     </blockquote>
                     <figcaption class="mt-6 flex items-center gap-x-4">
-                        <img src="{{ $rightTop['image'] }}" alt="{{ $rightTop['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
+                        <img src="{{ $rightTop['image'] }}" alt="{{ $rightTop['name'] }}" width="40" height="40" loading="lazy" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div class="flex-auto">
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $rightTop['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
@@ -133,7 +130,7 @@
                         <p>"{{ Str::limit($testimonial['description'], 190) }}"</p>
                     </blockquote>
                     <figcaption class="mt-6 flex items-center gap-x-4">
-                        <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
+                        <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" width="40" height="40" loading="lazy" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div class="flex-auto">
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
@@ -160,7 +157,7 @@
                         <p>"{{ Str::limit($testimonial['description'], 190) }}"</p>
                     </blockquote>
                     <figcaption class="mt-6 flex items-center gap-x-4">
-                        <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
+                        <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" width="40" height="40" loading="lazy" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                         <div class="flex-auto">
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
@@ -196,7 +193,7 @@
                             <p>"{{ Str::limit($testimonial['description'], 190) }}"</p>
                         </blockquote>
                         <figcaption class="mt-6 flex items-center gap-x-4">
-                            <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
+                            <img src="{{ $testimonial['image'] }}" alt="{{ $testimonial['name'] }}" width="40" height="40" loading="lazy" class="size-10 rounded-full bg-gray-50 object-cover dark:bg-gray-700" />
                             <div class="flex-auto">
                                 <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
                                 <div class="text-gray-600 dark:text-gray-400">

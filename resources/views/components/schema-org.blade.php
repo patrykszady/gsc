@@ -5,6 +5,31 @@ use App\Models\AreaServed;
 $reviewCount = Testimonial::count();
 $areas = AreaServed::pluck('city')->toArray();
 
+// Get featured testimonials for embedding in LocalBusiness schema
+// Google requires reviews to be nested in the parent entity, not standalone
+$featuredTestimonials = Testimonial::latest('review_date')
+    ->take(5)
+    ->get();
+
+// Build review array for LocalBusiness schema
+$reviews = $featuredTestimonials->map(function ($item) {
+    return [
+        '@type' => 'Review',
+        'reviewRating' => [
+            '@type' => 'Rating',
+            'ratingValue' => '5',
+            'bestRating' => '5',
+            'worstRating' => '1',
+        ],
+        'author' => [
+            '@type' => 'Person',
+            'name' => $item->reviewer_name,
+        ],
+        'reviewBody' => $item->review_description,
+        'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),
+    ];
+})->toArray();
+
 // Build the structured data
 $localBusiness = [
     '@context' => 'https://schema.org',
@@ -59,6 +84,9 @@ $localBusiness = [
         'ratingCount' => $reviewCount,
         'reviewCount' => $reviewCount,
     ],
+    // Reviews must be nested inside the LocalBusiness, not standalone
+    // Standalone Review with itemReviewed is invalid for rich results
+    'review' => $reviews,
     'hasOfferCatalog' => [
         '@type' => 'OfferCatalog',
         'name' => 'Home Remodeling Services',

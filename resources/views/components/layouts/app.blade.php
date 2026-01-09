@@ -40,54 +40,6 @@
     {{-- Dynamic head content (preload links, etc.) --}}
     @stack('head')
 
-    {{-- Google Analytics with Domain Source Tracking --}}
-    @if(config('services.google.analytics_id'))
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google.analytics_id') }}"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '{{ config('services.google.analytics_id') }}', {
-                // Track which domain the user entered from
-                'custom_map': {
-                    'dimension1': 'entry_domain',
-                    'dimension2': 'domain_source'
-                }
-            });
-            
-            // Send custom event for alternate domain entries
-            @if(isset($domainSource) && $domainSource !== 'direct')
-            gtag('event', 'domain_entry', {
-                'entry_domain': '{{ session('entry_domain', request()->getHost()) }}',
-                'domain_source': '{{ $domainSource }}',
-                'event_category': 'acquisition',
-                'event_label': '{{ $domainSource }}'
-            });
-            @endif
-        </script>
-    @endif
-
-    {{-- Microsoft Clarity --}}
-    @if(config('services.microsoft.clarity_id'))
-        <script type="text/javascript">
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", "{{ config('services.microsoft.clarity_id') }}");
-        </script>
-    @endif
-
-    {{-- Google Places API for address autocomplete (new async loading pattern) --}}
-    @if(config('services.google.places_api_key'))
-        <script>
-            (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
-                key: "{{ config('services.google.places_api_key') }}",
-                v: "weekly"
-            });
-        </script>
-    @endif
-
     {{-- Comprehensive Schema.org Structured Data --}}
     <x-schema-org />
 </head>
@@ -134,6 +86,63 @@
         };
     </script>
 
+    {{-- Deferred Third-Party Scripts (loaded after main content for better LCP) --}}
+    <script>
+        // Load analytics after page is interactive
+        function loadDeferredScripts() {
+            @if(config('services.google.analytics_id'))
+            // Google Analytics
+            const gaScript = document.createElement('script');
+            gaScript.async = true;
+            gaScript.src = 'https://www.googletagmanager.com/gtag/js?id={{ config('services.google.analytics_id') }}';
+            document.head.appendChild(gaScript);
+            
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            window.gtag = gtag;
+            gtag('js', new Date());
+            gtag('config', '{{ config('services.google.analytics_id') }}', {
+                'custom_map': {
+                    'dimension1': 'entry_domain',
+                    'dimension2': 'domain_source'
+                }
+            });
+            @if(isset($domainSource) && $domainSource !== 'direct')
+            gtag('event', 'domain_entry', {
+                'entry_domain': '{{ session('entry_domain', request()->getHost()) }}',
+                'domain_source': '{{ $domainSource }}',
+                'event_category': 'acquisition',
+                'event_label': '{{ $domainSource }}'
+            });
+            @endif
+            @endif
+
+            @if(config('services.microsoft.clarity_id'))
+            // Microsoft Clarity
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "{{ config('services.microsoft.clarity_id') }}");
+            @endif
+
+            @if(config('services.google.places_api_key'))
+            // Google Places API (only loads when needed via importLibrary)
+            (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+                key: "{{ config('services.google.places_api_key') }}",
+                v: "weekly"
+            });
+            @endif
+        }
+        
+        // Use requestIdleCallback for best performance, fallback to setTimeout
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(loadDeferredScripts, { timeout: 3000 });
+        } else {
+            setTimeout(loadDeferredScripts, 1500);
+        }
+    </script>
+
     @if(config('services.google.analytics_id'))
         <script>
             document.addEventListener('livewire:init', () => {
@@ -146,7 +155,9 @@
                         value: 100 // Estimated lead value
                     };
                     console.log('[GA Event] generate_lead', eventData);
-                    gtag('event', 'generate_lead', eventData);
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'generate_lead', eventData);
+                    }
                 });
             });
         </script>

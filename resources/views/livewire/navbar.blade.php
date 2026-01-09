@@ -7,7 +7,7 @@
         {{-- Logo + Brand Name --}}
         <div class="flex items-center gap-x-4">
             <a href="{{ $homeUrl }}" wire:navigate.hover class="flex items-center gap-x-3">
-                <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" class="h-12 w-auto" />
+                <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" width="48" height="48" class="h-12 w-auto" />
                 <span class="font-heading text-xl font-bold tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
             </a>
         </div>
@@ -77,7 +77,7 @@
         >
             <div class="flex items-center justify-between">
                 <a href="{{ $homeUrl }}" wire:navigate class="flex items-center gap-x-3">
-                    <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" class="h-10 w-auto" />
+                    <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" width="40" height="40" class="h-10 w-auto" />
                     <span id="mobile-menu-title" class="font-heading text-lg font-semibold uppercase tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
                 </a>
                 <button type="button" @click="mobileMenuOpen = false" class="-m-2.5 min-h-[44px] min-w-[44px] rounded-md p-2.5 text-gray-700 dark:text-zinc-200">

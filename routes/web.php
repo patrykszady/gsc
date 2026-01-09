@@ -120,6 +120,15 @@ Route::get('/services', ServicesPage::class)->name('services.index');
 
 Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
 
+// Legacy /areas/ redirects (correct path is /areas-served/)
+Route::redirect('/areas', '/areas-served', 301);
+Route::get('/areas/{area}', function (string $area) {
+    return redirect("/areas-served/{$area}", 301);
+});
+Route::get('/areas/{area}/{page}', function (string $area, string $page) {
+    return redirect("/areas-served/{$area}/{$page}", 301);
+})->where('page', 'contact|testimonials|projects|about|services');
+
 // Areas Served
 Route::get('/areas-served', AreasServedPage::class)->name('areas.index');
 Route::get('/areas-served/{area}', AreaPage::class)

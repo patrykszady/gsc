@@ -8,8 +8,7 @@
 {{-- Preload the LCP image (first slide) for faster rendering --}}
 @if($firstSlide)
 @push('head')
-<link rel="preload" as="image" href="{{ $firstSlide['thumb'] }}" fetchpriority="high">
-<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" fetchpriority="high">
+<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" fetchpriority="high" imagesizes="100vw">
 @endpush
 @endif
 
@@ -132,7 +131,9 @@
                 src="{{ $firstSlide['thumb'] }}"
                 alt=""
                 aria-hidden="true"
-                fetchpriority="high"
+                width="300"
+                height="169"
+                fetchpriority="low"
                 class="absolute inset-0 h-full w-full object-cover blur-xl scale-110"
                 :class="isThumbLoaded(0) ? 'opacity-100' : 'opacity-0'"
                 @load="thumbsLoaded.includes(0) || thumbsLoaded.push(0)"
@@ -142,6 +143,8 @@
                 x-ref="firstSlideImg"
                 src="{{ $firstSlide['image'] }}"
                 alt="{{ $firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project' }}"
+                width="2400"
+                height="1350"
                 fetchpriority="high"
                 decoding="async"
                 class="absolute inset-0 h-full w-full object-cover"
