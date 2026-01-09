@@ -5,7 +5,7 @@
     {{-- Breadcrumb --}}
     <div class="mx-auto max-w-3xl px-6 pt-8 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
-            <ol role="list" class="flex items-center space-x-2 text-sm">
+            <ol class="flex items-center space-x-2 text-sm">
                 <li>
                     <a href="{{ route('home') }}" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home</a>
                 </li>

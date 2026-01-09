@@ -38,7 +38,7 @@
                     {{-- GS Construction Links --}}
                     <div>
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">GS Construction</h3>
-                        <ul role="list" class="mt-6 space-y-4">
+                        <ul class="mt-6 space-y-4">
                             <li>
                                 <a href="/projects" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Projects</a>
                             </li>
@@ -60,7 +60,7 @@
                     {{-- Projects --}}
                     <div class="mt-10 md:mt-0">
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Projects</h3>
-                        <ul role="list" class="mt-6 space-y-4">
+                        <ul class="mt-6 space-y-4">
                             <li>
                                 <a href="/projects?type=kitchen" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Projects</a>
                             </li>
@@ -81,7 +81,7 @@
                     {{-- Services --}}
                     <div>
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Services</h3>
-                        <ul role="list" class="mt-6 space-y-4">
+                        <ul class="mt-6 space-y-4">
                             <li>
                                 <a href="/services/kitchen-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Remodeling</a>
                             </li>
@@ -97,7 +97,7 @@
                     {{-- About --}}
                     <div class="mt-10 md:mt-0">
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">About</h3>
-                        <ul role="list" class="mt-6 space-y-4">
+                        <ul class="mt-6 space-y-4">
                             <li>
                                 <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About Greg & Patryk</a>
                             </li>

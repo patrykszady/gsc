@@ -7,7 +7,7 @@
     {{-- Visual Breadcrumb Navigation --}}
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
-            <ol role="list" class="flex items-center space-x-2 text-sm">
+            <ol class="flex items-center space-x-2 text-sm">
                 <li>
                     <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home</a>
                 </li>

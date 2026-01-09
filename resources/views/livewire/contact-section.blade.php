@@ -414,11 +414,13 @@
                                                     <button
                                                         type="button"
                                                         @click="$wire.toggleTime(activeDate, time)"
+                                                        :aria-pressed="isTimeSelected(time)"
+                                                        :aria-label="'Select ' + time + ' on ' + formatDisplayDate(activeDate)"
                                                         :class="{
                                                             'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-500': isTimeSelected(time),
                                                             'border-zinc-200 dark:border-zinc-600 text-zinc-700 dark:text-zinc-300 hover:border-sky-300 hover:bg-sky-50 dark:hover:border-sky-600 dark:hover:bg-sky-900/20': !isTimeSelected(time)
                                                         }"
-                                                        class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                                                        class="min-h-[44px] rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
                                                         x-text="time"
                                                     ></button>
                                                 </template>
@@ -445,8 +447,8 @@
                                                     <template x-for="time in (timeSelections[date] || [])" :key="date + time">
                                                         <span class="inline-flex items-center gap-1 rounded-full bg-sky-100 py-1 pl-2.5 pr-1 text-xs font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
                                                             <span x-text="time"></span>
-                                                            <button type="button" @click="$wire.removeTimeSelection(date, time)" class="rounded-full p-0.5 hover:bg-sky-200 dark:hover:bg-sky-800">
-                                                                <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                            <button type="button" @click="$wire.removeTimeSelection(date, time)" class="inline-flex items-center justify-center rounded-full p-1.5 -mr-1 hover:bg-sky-200 dark:hover:bg-sky-800" aria-label="Remove time slot">
+                                                                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                                                                 </svg>
                                                             </button>
