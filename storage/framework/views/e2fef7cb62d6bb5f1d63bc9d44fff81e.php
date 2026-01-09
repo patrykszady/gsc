@@ -1,7 +1,17 @@
 <?php
     $citySuffix = $area ? ' in ' . $area->city : '';
     $isServiceMode = $mode === 'service';
+    // First slide image for preloading
+    $firstSlide = $renderedSlides[0] ?? null;
 ?>
+
+
+<?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstSlide): ?>
+<?php $__env->startPush('head'); ?>
+<link rel="preload" as="image" href="<?php echo e($firstSlide['image']); ?>" fetchpriority="high">
+<?php $__env->stopPush(); ?>
+<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
 <div
     x-data="{
         currentSlide: 0,
@@ -9,10 +19,50 @@
         mode: <?php echo \Illuminate\Support\Js::from($mode)->toHtml() ?>,
         projectTypeFilter: <?php echo \Illuminate\Support\Js::from($projectType)->toHtml() ?>,
         slides: <?php echo \Illuminate\Support\Js::from($renderedSlides)->toHtml() ?>,
+        loadedImages: [],
+        firstSlideWasCached: false,
+        showFirstSlideBlur: false,
         autoplay: null,
         isHovered: false,
         isVisible: true,
         isTabVisible: true,
+        init() {
+            // Mark already-cached images as loaded immediately
+            this.slides.forEach((slide, index) => {
+                if (window.imageCache?.has(slide.image)) {
+                    this.loadedImages.push(index);
+                }
+            });
+            // First slide is always marked loaded (server-rendered)
+            if (!this.loadedImages.includes(0)) this.loadedImages.push(0);
+            // Check if first slide was browser-cached
+            const firstImg = this.$refs.firstSlideImg;
+            if (firstImg?.complete && firstImg?.naturalWidth > 0) {
+                this.firstSlideWasCached = true;
+            } else {
+                this.showFirstSlideBlur = true;
+            }
+            this.startAutoplay();
+            document.addEventListener('visibilitychange', () => this.handleTabVisibility());
+            // Preload next slides after initial render
+            this.$nextTick(() => this.preloadNextSlides());
+        },
+        preloadNextSlides() {
+            // Preload all slide images after first paint
+            this.slides.forEach((slide, index) => {
+                if (index > 0 && !this.loadedImages.includes(index)) {
+                    const img = new Image();
+                    img.src = slide.image;
+                    img.onload = () => {
+                        if (!this.loadedImages.includes(index)) this.loadedImages.push(index);
+                        window.imageCache?.set(slide.image, slide.image);
+                    };
+                }
+            });
+        },
+        isLoaded(index) {
+            return this.loadedImages.includes(index);
+        },
         startAutoplay() {
             if (!this.isVisible || !this.isTabVisible || this.isHovered) return;
             this.stopAutoplay();
@@ -44,19 +94,53 @@
             }
         }
     }"
-    x-init="
-        startAutoplay();
-        document.addEventListener('visibilitychange', () => handleTabVisibility());
-    "
     x-intersect:enter.threshold.40="handleVisibility(true)"
     x-intersect:leave.threshold.40="handleVisibility(false)"
     class="relative w-full overflow-hidden"
 >
     
     <div class="relative h-[500px] sm:h-[600px] lg:h-[700px]">
+        
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstSlide): ?>
+        <div
+            x-show="currentSlide === 0"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="absolute inset-0"
+        >
+            
+            <img
+                x-cloak
+                x-show="showFirstSlideBlur && !isLoaded(0)"
+                src="<?php echo e($firstSlide['thumb']); ?>"
+                alt=""
+                aria-hidden="true"
+                class="absolute inset-0 h-full w-full object-cover blur-xl scale-110 opacity-100"
+            />
+            
+            <img
+                x-ref="firstSlideImg"
+                src="<?php echo e($firstSlide['image']); ?>"
+                alt="<?php echo e($firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project'); ?>"
+                fetchpriority="high"
+                decoding="async"
+                class="absolute inset-0 h-full w-full object-cover"
+                :class="firstSlideWasCached ? 'opacity-100' : (isLoaded(0) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
+                @load="loadedImages.includes(0) || loadedImages.push(0)"
+            />
+            
+            <div class="absolute inset-0 bg-black/20"></div>
+        </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        
         <template x-for="(slide, index) in slides" :key="index">
             <div
-                x-show="currentSlide === index"
+                x-show="currentSlide === index && index > 0"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
@@ -67,11 +151,24 @@
             >
                 
                 <img
-                    :src="slide.image"
-                    :alt="slide.heading ? slide.heading : slide.alt"
-                    class="absolute inset-0 h-full w-full object-cover"
+                    x-cloak
+                    x-show="!window.imageCache?.has(slide.image) && !isLoaded(index)"
+                    :src="slide.thumb"
+                    alt=""
+                    aria-hidden="true"
+                    class="absolute inset-0 h-full w-full object-cover blur-xl scale-110 opacity-100"
                 />
-
+                
+                <img
+                    :src="slide.image"
+                    :alt="slide.imageAlt || slide.heading || slide.alt"
+                    :loading="index === 0 ? 'eager' : 'lazy'"
+                    :fetchpriority="index === 0 ? 'high' : 'auto'"
+                    decoding="async"
+                    class="absolute inset-0 h-full w-full object-cover"
+                    :class="window.imageCache?.has(slide.image) ? 'opacity-100' : (isLoaded(index) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
+                    @load="loadedImages.includes(index) || loadedImages.push(index)"
+                />
                 
                 <div class="absolute inset-0 bg-black/20"></div>
             </div>

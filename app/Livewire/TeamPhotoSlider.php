@@ -34,6 +34,7 @@ class TeamPhotoSlider extends Component
             $this->backgroundImages[$index] = [
                 'id' => $newImage->id,
                 'url' => $newImage->url,
+                'thumb' => $newImage->getWebpThumbnailUrl('thumb') ?? $newImage->getThumbnailUrl('thumb') ?? $newImage->url,
             ];
             return $newImage->url;
         }
@@ -53,6 +54,7 @@ class TeamPhotoSlider extends Component
         return $images->map(fn ($img) => [
             'id' => $img->id,
             'url' => $img->url,
+            'thumb' => $img->getWebpThumbnailUrl('thumb') ?? $img->getThumbnailUrl('thumb') ?? $img->url,
         ])->toArray();
     }
 

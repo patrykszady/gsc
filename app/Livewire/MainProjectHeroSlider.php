@@ -37,6 +37,20 @@ class MainProjectHeroSlider extends Component
         return $this->randomCoverForType($projectType, $excludeImageId)?->url;
     }
 
+    /**
+     * Get image data with blur placeholder for a project type.
+     */
+    protected function randomCoverDataForType(string $projectType, ?int $excludeImageId = null): ?array
+    {
+        $image = $this->randomCoverForType($projectType, $excludeImageId);
+        
+        if (!$image) {
+            return null;
+        }
+        
+        return $this->buildImageData($image);
+    }
+
     protected function getFilteredSlideImages(string $type, int $count): array
     {
         $fallback = $this->getFallbackForType($type);
@@ -47,15 +61,42 @@ class MainProjectHeroSlider extends Component
             ->inRandomOrder()
             ->limit($count)
             ->get()
-            ->map(fn ($image) => $image->url)
+            ->map(fn ($image) => $this->buildImageData($image))
             ->toArray();
 
         // Pad with fallback if we don't have enough images
         while (count($images) < $count) {
-            $images[] = $fallback;
+            $images[] = $this->buildFallbackImageData($fallback);
         }
 
         return $images;
+    }
+
+    /**
+     * Build image data array with blur placeholder and full-size URL.
+     */
+    protected function buildImageData(ProjectImage $image): array
+    {
+        return [
+            'url' => $image->getWebpUrlAttribute() ?? $image->url,
+            'thumb' => $image->getWebpThumbnailUrl('small') ?? $image->getThumbnailUrl('small'),
+            'alt' => $image->seo_alt_text,
+        ];
+    }
+
+    /**
+     * Build fallback image data (Unsplash images support URL params for sizing).
+     */
+    protected function buildFallbackImageData(string $url): array
+    {
+        // For Unsplash, we can use URL params for a tiny blur placeholder
+        $thumbUrl = str_replace(['w=1920', 'q=80'], ['w=50', 'q=30'], $url);
+        
+        return [
+            'url' => $url,
+            'thumb' => $thumbUrl,
+            'alt' => 'Home remodeling project by GS Construction',
+        ];
     }
 
     protected function getFallbackForType(string $type): string
@@ -77,7 +118,10 @@ class MainProjectHeroSlider extends Component
             
             // Merge images with slides (slides contain heading/subheading)
             $renderedSlides = collect($this->slides)->map(function ($slide, $index) use ($images) {
-                $slide['image'] = $images[$index] ?? $this->getFallbackForType($this->projectType);
+                $imageData = $images[$index] ?? $this->buildFallbackImageData($this->getFallbackForType($this->projectType));
+                $slide['image'] = $imageData['url'];
+                $slide['thumb'] = $imageData['thumb'];
+                $slide['imageAlt'] = $imageData['alt'];
                 return $slide;
             })->toArray();
 
@@ -98,7 +142,10 @@ class MainProjectHeroSlider extends Component
         if ($this->projectType === 'mixed') {
             $renderedSlides = collect($this->slides)->map(function ($slide) {
                 $type = $slide['type'] ?? 'home-remodel';
-                $slide['image'] = $this->randomCoverUrlForType($type) ?? $this->getFallbackForType($type);
+                $imageData = $this->randomCoverDataForType($type) ?? $this->buildFallbackImageData($this->getFallbackForType($type));
+                $slide['image'] = $imageData['url'];
+                $slide['thumb'] = $imageData['thumb'];
+                $slide['imageAlt'] = $imageData['alt'];
                 return $slide;
             })->toArray();
 
@@ -116,22 +163,25 @@ class MainProjectHeroSlider extends Component
         }
 
         // Default mode: show all project types (home page)
-        $slideImages = [
-            'kitchen' => $this->randomCoverUrlForType('kitchen')
-                ?? 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
-            'bathroom' => $this->randomCoverUrlForType('bathroom')
-                ?? 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
-            'mudroom' => $this->randomCoverUrlForType('mudroom')
-                ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
-            'basement' => $this->randomCoverUrlForType('basement')
-                ?? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
-            'home-remodel' => $this->randomCoverUrlForType('home-remodel')
-                ?? 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
+        $slideImageData = [
+            'kitchen' => $this->randomCoverDataForType('kitchen')
+                ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80'),
+            'bathroom' => $this->randomCoverDataForType('bathroom')
+                ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80'),
+            'mudroom' => $this->randomCoverDataForType('mudroom')
+                ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80'),
+            'basement' => $this->randomCoverDataForType('basement')
+                ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80'),
+            'home-remodel' => $this->randomCoverDataForType('home-remodel')
+                ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80'),
         ];
 
         // Merge slide images into slides config
-        $renderedSlides = collect($this->slides)->map(function ($slide) use ($slideImages) {
-            $slide['image'] = $slideImages[$slide['projectType']] ?? $slide['image'] ?? null;
+        $renderedSlides = collect($this->slides)->map(function ($slide) use ($slideImageData) {
+            $imageData = $slideImageData[$slide['projectType']] ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80');
+            $slide['image'] = $imageData['url'];
+            $slide['thumb'] = $imageData['thumb'];
+            $slide['imageAlt'] = $imageData['alt'];
             return $slide;
         })->toArray();
 

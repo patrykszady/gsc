@@ -1,19 +1,22 @@
 <div class="bg-white dark:bg-zinc-900">
+    {{-- Review Schema for SEO --}}
+    <x-review-schema :testimonial="$testimonial" />
+    
     {{-- Breadcrumb --}}
     <div class="mx-auto max-w-3xl px-6 pt-8 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
             <ol role="list" class="flex items-center space-x-2 text-sm">
                 <li>
-                    <a href="{{ route('home') }}" wire:navigate class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Home</a>
+                    <a href="{{ route('home') }}" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home</a>
                 </li>
                 <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
-                    <a href="{{ route('testimonials.index') }}" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Testimonials</a>
+                    <a href="{{ route('testimonials.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Testimonials</a>
                 </li>
                 <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
                     <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $testimonial->reviewer_name }}</span>
@@ -27,10 +30,12 @@
         {{-- Project Thumbnail --}}
         @if($thumbnailUrl)
             <div class="mb-8 overflow-hidden rounded-2xl">
-                <img 
-                    src="{{ $thumbnailUrl }}" 
+                <x-lqip-image 
+                    :src="$thumbnailUrl" 
+                    :thumb="$thumbnailThumbUrl ?? $thumbnailUrl"
                     alt="{{ ucfirst($testimonial->project_type ?? 'Project') }} remodeling in {{ $testimonial->project_location }}" 
-                    class="aspect-[16/9] w-full object-cover"
+                    aspectRatio="16/9"
+                    class="w-full"
                 />
             </div>
         @endif
@@ -54,11 +59,24 @@
 
             {{-- Reviewer info --}}
             <figcaption class="mt-10 flex items-center gap-x-6 border-t border-gray-200 pt-10 dark:border-gray-700">
-                <img 
-                    src="{{ $imageUrl }}" 
-                    alt="{{ $testimonial->reviewer_name }}" 
-                    class="size-16 rounded-full bg-gray-50 object-cover dark:bg-gray-700" 
-                />
+                <div 
+                    x-data="{
+                        loaded: window.imageCache?.has('{{ $imageUrl }}') ?? false,
+                        onLoad() {
+                            this.loaded = true;
+                            window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}');
+                        }
+                    }"
+                    class="relative size-16 overflow-hidden rounded-full bg-gray-50 dark:bg-gray-700"
+                >
+                    <img
+                        src="{{ $imageUrl }}"
+                        alt="{{ $testimonial->reviewer_name }}"
+                        class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+                        :class="loaded ? 'opacity-100' : 'opacity-0'"
+                        @load="onLoad()"
+                    />
+                </div>
                 <div>
                     <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ $testimonial->reviewer_name }}</div>
                     <div class="mt-1 text-base text-gray-600 dark:text-gray-400">

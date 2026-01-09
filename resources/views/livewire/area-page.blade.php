@@ -24,27 +24,27 @@
         <nav class="flex" aria-label="Breadcrumb">
             <ol role="list" class="flex items-center space-x-2 text-sm">
                 <li>
-                    <a href="/" wire:navigate class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Home</a>
+                    <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home</a>
                 </li>
                 <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
-                    <a href="{{ route('areas.index') }}" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
+                    <a href="{{ route('areas.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Areas Served</a>
                 </li>
                 <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
                     @if($page === 'home')
                         <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $area->city }}</span>
                     @else
-                        <a href="{{ $area->url }}" wire:navigate class="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">{{ $area->city }}</a>
+                        <a href="{{ $area->url }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">{{ $area->city }}</a>
                     @endif
                 </li>
                 @if($page !== 'home')
                 <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
                     <span class="ml-2 text-gray-700 dark:text-gray-300">{{ ucfirst($page) }}</span>
@@ -192,13 +192,13 @@
                                     <div class="ml-auto w-40 flex-none space-y-4 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-0 xl:pt-80">
                                         @if($galleryImages->count() > 0)
                                         <div class="relative">
-                                            <img src="{{ $galleryImages[0]->getThumbnailUrl('medium') }}" alt="{{ $galleryImages[0]->seo_alt_text }}" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                            <x-lqip-image :image="$galleryImages[0]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
                                             <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                         </div>
                                         @endif
                                         @if($galleryImages->count() > 5)
                                         <div class="relative">
-                                            <img src="{{ $galleryImages[5]->getThumbnailUrl('medium') }}" alt="{{ $galleryImages[5]->seo_alt_text }}" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                            <x-lqip-image :image="$galleryImages[5]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
                                             <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                         </div>
                                         @endif
@@ -206,13 +206,13 @@
                                     <div class="mr-auto w-40 flex-none space-y-4 sm:mr-0 sm:pt-52 lg:pt-36">
                                         @if($galleryImages->count() > 1)
                                         <div class="relative">
-                                            <img src="{{ $galleryImages[1]->getThumbnailUrl('medium') }}" alt="{{ $galleryImages[1]->seo_alt_text }}" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                            <x-lqip-image :image="$galleryImages[1]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
                                             <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                         </div>
                                         @endif
                                         @if($galleryImages->count() > 2)
                                         <div class="relative">
-                                            <img src="{{ $galleryImages[2]->getThumbnailUrl('medium') }}" alt="{{ $galleryImages[2]->seo_alt_text }}" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                            <x-lqip-image :image="$galleryImages[2]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
                                             <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                         </div>
                                         @endif
@@ -220,13 +220,13 @@
                                     <div class="w-40 flex-none space-y-4 pt-32 sm:pt-0">
                                         @if($galleryImages->count() > 3)
                                         <div class="relative">
-                                            <img src="{{ $galleryImages[3]->getThumbnailUrl('medium') }}" alt="{{ $galleryImages[3]->seo_alt_text }}" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                            <x-lqip-image :image="$galleryImages[3]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
                                             <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                         </div>
                                         @endif
                                         @if($galleryImages->count() > 4)
                                         <div class="relative">
-                                            <img src="{{ $galleryImages[4]->getThumbnailUrl('medium') }}" alt="{{ $galleryImages[4]->seo_alt_text }}" class="aspect-square w-full rounded-xl bg-zinc-900/5 object-cover shadow-lg dark:bg-zinc-700/5" loading="lazy" />
+                                            <x-lqip-image :image="$galleryImages[4]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
                                             <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
                                         </div>
                                         @endif

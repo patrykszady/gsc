@@ -106,11 +106,31 @@
                                 </svg>
                             </button>
 
-                            <img
-                                src="{{ $imageUrl }}"
-                                alt="{{ $current['name'] ?? '' }}"
-                                class="aspect-square w-full rounded-2xl bg-sky-50 object-cover dark:bg-sky-900/20"
-                            />
+                            <div 
+                                x-data="{ 
+                                    imgLoaded: window.imageCache?.has('{{ $imageUrl }}') || false,
+                                    wasCached: window.imageCache?.has('{{ $imageUrl }}') || false,
+                                    init() {
+                                        this.$nextTick(() => {
+                                            const img = this.$refs.testimonialImg;
+                                            if (img?.complete && img?.naturalWidth > 0) {
+                                                this.imgLoaded = true;
+                                                this.wasCached = true;
+                                            }
+                                        });
+                                    }
+                                }"
+                                class="relative aspect-square w-full overflow-hidden rounded-2xl bg-sky-50 dark:bg-sky-900/20"
+                            >
+                                <img
+                                    x-ref="testimonialImg"
+                                    src="{{ $imageUrl }}"
+                                    alt="{{ $current['name'] ?? '' }}"
+                                    class="absolute inset-0 h-full w-full object-cover"
+                                    :class="wasCached ? 'opacity-100' : (imgLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
+                                    @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
+                                />
+                            </div>
                             {{-- Reviewer info under image on desktop --}}
                             <div class="mt-4">
                                 <div class="font-semibold text-gray-900 dark:text-white">{{ $current['name'] ?? '' }}</div>
@@ -200,11 +220,31 @@
                         {{-- Mobile: Reviewer info with image + Read More --}}
                         <figcaption class="text-base lg:hidden">
                             <div class="flex items-center gap-4">
-                                <img
-                                    src="{{ $imageUrl }}"
-                                    alt="{{ $current['name'] ?? '' }}"
-                                    class="size-14 rounded-xl bg-sky-50 object-cover dark:bg-sky-900/20"
-                                />
+                                <div 
+                                    x-data="{ 
+                                        imgLoaded: window.imageCache?.has('{{ $imageUrl }}') || false,
+                                        wasCached: window.imageCache?.has('{{ $imageUrl }}') || false,
+                                        init() {
+                                            this.$nextTick(() => {
+                                                const img = this.$refs.testimonialImgMobile;
+                                                if (img?.complete && img?.naturalWidth > 0) {
+                                                    this.imgLoaded = true;
+                                                    this.wasCached = true;
+                                                }
+                                            });
+                                        }
+                                    }"
+                                    class="relative size-14 overflow-hidden rounded-xl bg-sky-50 dark:bg-sky-900/20"
+                                >
+                                    <img
+                                        x-ref="testimonialImgMobile"
+                                        src="{{ $imageUrl }}"
+                                        alt="{{ $current['name'] ?? '' }}"
+                                        class="absolute inset-0 h-full w-full object-cover"
+                                        :class="wasCached ? 'opacity-100' : (imgLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
+                                        @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
+                                    />
+                                </div>
                                 <div>
                                     <div class="font-semibold text-gray-900 dark:text-white">{{ $current['name'] ?? '' }}</div>
                                     <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">

@@ -41,7 +41,7 @@
 
             {{-- Image + Quote --}}
             <div class="lg:mt-[4.5rem] lg:pl-4">
-                <livewire:team-photo-slider />
+                <livewire:team-photo-slider wire:key="about-slider" />
                 {{-- Quote --}}
                 <blockquote class="mt-4 border-l-4 border-sky-500 pl-4 italic text-lg text-zinc-800 dark:text-zinc-100">
                     "{{ $content['quote'] }}"

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\RedirectLegacyUrls;
+use App\Http\Middleware\TrackDomainSource;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,8 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
         
-        // SEO: Handle legacy URL redirects
+        // SEO: Track domain source for analytics and handle legacy redirects
         $middleware->web(append: [
+            TrackDomainSource::class,
             RedirectLegacyUrls::class,
         ]);
     })

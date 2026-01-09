@@ -87,9 +87,9 @@ $__split = function ($name, $params = []) {
 };
 [$__name, $__params] = $__split('team-photo-slider', []);
 
-$key = null;
+$key = 'about-slider';
 
-$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-3696096364-0', null);
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-3696096364-0', 'about-slider');
 
 $__html = app('livewire')->mount($__name, $__params, $key);
 

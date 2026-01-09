@@ -24,24 +24,46 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
-    {{-- Fonts (local + preloaded) --}}
+    {{-- Fonts (local + preloaded - only Latin subset, ext loaded on demand via CSS) --}}
     <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2') }}" crossorigin>
-    <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2') }}" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('node_modules/@fontsource-variable/roboto-slab/files/roboto-slab-latin-wght-normal.woff2') }}" crossorigin>
-    <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('node_modules/@fontsource-variable/roboto-slab/files/roboto-slab-latin-ext-wght-normal.woff2') }}" crossorigin>
 
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @fluxAppearance
 
-    {{-- Google Analytics --}}
+    {{-- Initialize image cache for LQIP (must be before any components) --}}
+    <script>
+        window.imageCache = window.imageCache || new Map();
+    </script>
+
+    {{-- Dynamic head content (preload links, etc.) --}}
+    @stack('head')
+
+    {{-- Google Analytics with Domain Source Tracking --}}
     @if(config('services.google.analytics_id'))
         <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google.analytics_id') }}"></script>
         <script>
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '{{ config('services.google.analytics_id') }}');
+            gtag('config', '{{ config('services.google.analytics_id') }}', {
+                // Track which domain the user entered from
+                'custom_map': {
+                    'dimension1': 'entry_domain',
+                    'dimension2': 'domain_source'
+                }
+            });
+            
+            // Send custom event for alternate domain entries
+            @if(isset($domainSource) && $domainSource !== 'direct')
+            gtag('event', 'domain_entry', {
+                'entry_domain': '{{ session('entry_domain', request()->getHost()) }}',
+                'domain_source': '{{ $domainSource }}',
+                'event_category': 'acquisition',
+                'event_label': '{{ $domainSource }}'
+            });
+            @endif
         </script>
     @endif
 

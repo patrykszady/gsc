@@ -1,11 +1,16 @@
-@props(['testimonials' => collect()])
+@props(['testimonials' => collect(), 'testimonial' => null])
 
-@if($testimonials->count() > 0)
+@php
+// Handle single testimonial or collection
+$items = $testimonial ? collect([$testimonial]) : $testimonials;
+@endphp
+
+@if($items->count() > 0)
 @php
 $reviews = [];
 
-foreach ($testimonials as $testimonial) {
-    $reviews[] = [
+foreach ($items as $item) {
+    $review = [
         '@type' => 'Review',
         'reviewRating' => [
             '@type' => 'Rating',
@@ -15,10 +20,10 @@ foreach ($testimonials as $testimonial) {
         ],
         'author' => [
             '@type' => 'Person',
-            'name' => $testimonial->reviewer_name,
+            'name' => $item->reviewer_name,
         ],
-        'reviewBody' => $testimonial->review_description,
-        'datePublished' => $testimonial->created_at->toIso8601String(),
+        'reviewBody' => $item->review_description,
+        'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),
         'itemReviewed' => [
             '@type' => 'HomeAndConstructionBusiness',
             'name' => 'GS Construction & Remodeling',
@@ -27,23 +32,45 @@ foreach ($testimonials as $testimonial) {
     ];
     
     // Add location if available
-    if ($testimonial->project_location) {
-        $reviews[count($reviews) - 1]['locationCreated'] = [
+    if ($item->project_location) {
+        $review['locationCreated'] = [
             '@type' => 'Place',
             'address' => [
                 '@type' => 'PostalAddress',
-                'addressLocality' => $testimonial->project_location,
+                'addressLocality' => preg_replace('/,\s*[A-Z]{2}$/', '', $item->project_location),
                 'addressRegion' => 'IL',
                 'addressCountry' => 'US',
             ],
         ];
     }
+    
+    // Add about (the service reviewed) if project type is available
+    if ($item->project_type) {
+        $serviceType = match(strtolower($item->project_type)) {
+            'kitchen', 'kitchens' => 'Kitchen Remodeling',
+            'bathroom', 'bathrooms' => 'Bathroom Remodeling',
+            'basement', 'basements' => 'Basement Remodeling',
+            'addition', 'additions' => 'Home Addition',
+            'mudroom', 'mudrooms', 'laundry' => 'Mudroom & Laundry Remodeling',
+            default => ucfirst($item->project_type) . ' Remodeling',
+        };
+        
+        $review['about'] = [
+            '@type' => 'Service',
+            'name' => $serviceType,
+            'provider' => [
+                '@id' => 'https://gs.construction/#business',
+            ],
+        ];
+    }
+    
+    $reviews[] = $review;
 }
 
-$schema = [
-    '@context' => 'https://schema.org',
-    '@graph' => $reviews,
-];
+// For single review, output directly; for multiple, use @graph
+$schema = count($reviews) === 1 
+    ? array_merge(['@context' => 'https://schema.org'], $reviews[0])
+    : ['@context' => 'https://schema.org', '@graph' => $reviews];
 @endphp
 
 <script type="application/ld+json">

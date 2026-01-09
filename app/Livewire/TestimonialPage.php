@@ -50,7 +50,25 @@ class TestimonialPage extends Component
                 ->first();
 
             if ($image) {
-                return $image->url;
+                return $image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url;
+            }
+        }
+
+        return null;
+    }
+
+    protected function getThumbnailThumbUrl(): ?string
+    {
+        $projectType = $this->normalizeProjectType($this->testimonial->project_type);
+
+        if ($projectType) {
+            $image = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                ->inRandomOrder()
+                ->first();
+
+            if ($image) {
+                return $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
             }
         }
 
@@ -88,6 +106,7 @@ class TestimonialPage extends Component
         return view('livewire.testimonial-page', [
             'imageUrl' => $this->getImageUrl(),
             'thumbnailUrl' => $this->getThumbnailUrl(),
+            'thumbnailThumbUrl' => $this->getThumbnailThumbUrl(),
             'areaSlug' => $this->getAreaSlug(),
         ]);
     }

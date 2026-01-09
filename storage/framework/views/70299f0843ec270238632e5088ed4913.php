@@ -6,38 +6,16 @@
                 
 
                 
-                <div 
-                    x-data="{ showSlider: false }"
-                    x-init="setTimeout(() => showSlider = true, 5000)"
-                    class="relative mb-4 aspect-[4/3] w-full max-w-md overflow-hidden rounded-2xl shadow-xl ring-1 ring-gray-900/10 dark:ring-white/10"
-                >
-                    
-                    <img 
-                        x-show="!showSlider"
-                        x-transition:leave="transition-all duration-700 ease-in-out"
-                        x-transition:leave-start="opacity-100"
-                        x-transition:leave-end="opacity-0"
-                        src="<?php echo e(asset('images/greg-patryk.jpg')); ?>" 
-                        alt="Greg and Patryk - GS Construction" 
-                        class="absolute inset-0 h-full w-full object-cover"
-                    />
-                    
-                    <div
-                        x-show="showSlider"
-                        x-transition:enter="transition-all duration-700 ease-out"
-                        x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100"
-                        class="absolute inset-0"
-                    >
-                        <?php
+                <div class="mb-4 max-w-md">
+                    <?php
 $__split = function ($name, $params = []) {
     return [$name, $params];
 };
 [$__name, $__params] = $__split('team-photo-slider', []);
 
-$key = null;
+$key = 'contact-slider';
 
-$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-364300701-0', null);
+$key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-364300701-0', 'contact-slider');
 
 $__html = app('livewire')->mount($__name, $__params, $key);
 
@@ -49,7 +27,6 @@ unset($__params);
 unset($__split);
 if (isset($__slots)) unset($__slots);
 ?>
-                    </div>
                 </div>
 
                 
@@ -348,19 +325,23 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             x-transition:leave-end="opacity-0 scale-95"
                             class="absolute z-50 mt-1 w-full rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-zinc-800"
                             x-cloak
+                            role="listbox"
+                            aria-label="Address suggestions"
                         >
                             <template x-for="(prediction, index) in predictions" :key="prediction.placeId">
                                 <button
                                     type="button"
+                                    role="option"
+                                    :aria-selected="selectedIndex === index"
                                     @click="selectPrediction(prediction)"
                                     @mouseenter="selectedIndex = index"
                                     :class="{
                                         'bg-zinc-100 dark:bg-zinc-700': selectedIndex === index,
                                         'text-zinc-900 dark:text-white': true
                                     }"
-                                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                    class="flex w-full min-h-[44px] items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                 >
-                                    <svg class="size-4 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <svg class="size-4 shrink-0 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                                     </svg>

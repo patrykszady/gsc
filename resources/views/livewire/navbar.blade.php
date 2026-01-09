@@ -17,7 +17,7 @@
             <button
                 type="button"
                 @click="mobileMenuOpen = true"
-                class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700 dark:text-zinc-200"
+                class="-m-2.5 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md p-2.5 text-gray-700 dark:text-zinc-200"
             >
                 <span class="sr-only">Open main menu</span>
                 <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -49,6 +49,7 @@
         class="lg:hidden"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="mobile-menu-title"
     >
         {{-- Background backdrop --}}
         <div
@@ -77,9 +78,9 @@
             <div class="flex items-center justify-between">
                 <a href="{{ $homeUrl }}" wire:navigate class="flex items-center gap-x-3">
                     <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" class="h-10 w-auto" />
-                    <span class="font-heading text-lg font-semibold uppercase tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
+                    <span id="mobile-menu-title" class="font-heading text-lg font-semibold uppercase tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
                 </a>
-                <button type="button" @click="mobileMenuOpen = false" class="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-zinc-200">
+                <button type="button" @click="mobileMenuOpen = false" class="-m-2.5 min-h-[44px] min-w-[44px] rounded-md p-2.5 text-gray-700 dark:text-zinc-200">
                     <span class="sr-only">Close menu</span>
                     <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />

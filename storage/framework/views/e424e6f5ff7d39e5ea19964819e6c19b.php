@@ -125,11 +125,31 @@
                                 </svg>
                             </button>
 
-                            <img
-                                src="<?php echo e($imageUrl); ?>"
-                                alt="<?php echo e($current['name'] ?? ''); ?>"
-                                class="aspect-square w-full rounded-2xl bg-sky-50 object-cover dark:bg-sky-900/20"
-                            />
+                            <div 
+                                x-data="{ 
+                                    imgLoaded: window.imageCache?.has('<?php echo e($imageUrl); ?>') || false,
+                                    wasCached: window.imageCache?.has('<?php echo e($imageUrl); ?>') || false,
+                                    init() {
+                                        this.$nextTick(() => {
+                                            const img = this.$refs.testimonialImg;
+                                            if (img?.complete && img?.naturalWidth > 0) {
+                                                this.imgLoaded = true;
+                                                this.wasCached = true;
+                                            }
+                                        });
+                                    }
+                                }"
+                                class="relative aspect-square w-full overflow-hidden rounded-2xl bg-sky-50 dark:bg-sky-900/20"
+                            >
+                                <img
+                                    x-ref="testimonialImg"
+                                    src="<?php echo e($imageUrl); ?>"
+                                    alt="<?php echo e($current['name'] ?? ''); ?>"
+                                    class="absolute inset-0 h-full w-full object-cover"
+                                    :class="wasCached ? 'opacity-100' : (imgLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
+                                    @load="imgLoaded = true; window.imageCache?.set('<?php echo e($imageUrl); ?>', '<?php echo e($imageUrl); ?>')"
+                                />
+                            </div>
                             
                             <div class="mt-4">
                                 <div class="font-semibold text-gray-900 dark:text-white"><?php echo e($current['name'] ?? ''); ?></div>
@@ -255,11 +275,31 @@
                         
                         <figcaption class="text-base lg:hidden">
                             <div class="flex items-center gap-4">
-                                <img
-                                    src="<?php echo e($imageUrl); ?>"
-                                    alt="<?php echo e($current['name'] ?? ''); ?>"
-                                    class="size-14 rounded-xl bg-sky-50 object-cover dark:bg-sky-900/20"
-                                />
+                                <div 
+                                    x-data="{ 
+                                        imgLoaded: window.imageCache?.has('<?php echo e($imageUrl); ?>') || false,
+                                        wasCached: window.imageCache?.has('<?php echo e($imageUrl); ?>') || false,
+                                        init() {
+                                            this.$nextTick(() => {
+                                                const img = this.$refs.testimonialImgMobile;
+                                                if (img?.complete && img?.naturalWidth > 0) {
+                                                    this.imgLoaded = true;
+                                                    this.wasCached = true;
+                                                }
+                                            });
+                                        }
+                                    }"
+                                    class="relative size-14 overflow-hidden rounded-xl bg-sky-50 dark:bg-sky-900/20"
+                                >
+                                    <img
+                                        x-ref="testimonialImgMobile"
+                                        src="<?php echo e($imageUrl); ?>"
+                                        alt="<?php echo e($current['name'] ?? ''); ?>"
+                                        class="absolute inset-0 h-full w-full object-cover"
+                                        :class="wasCached ? 'opacity-100' : (imgLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
+                                        @load="imgLoaded = true; window.imageCache?.set('<?php echo e($imageUrl); ?>', '<?php echo e($imageUrl); ?>')"
+                                    />
+                                </div>
                                 <div>
                                     <div class="font-semibold text-gray-900 dark:text-white"><?php echo e($current['name'] ?? ''); ?></div>
                                     <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">

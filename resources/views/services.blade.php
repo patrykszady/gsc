@@ -58,10 +58,10 @@
                         <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">
                             Kitchen Remodeling
                         </h2>
-                        <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
                             Transform your kitchen into the heart of your home. From custom cabinetry and premium countertops to complete renovations – we create beautiful, functional spaces where families gather and memories are made.
                         </p>
-                        <ul class="mt-6 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <ul class="mt-6 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
                             <li class="flex items-start gap-2">
                                 <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -110,10 +110,10 @@
                         <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">
                             Bathroom Remodeling
                         </h2>
-                        <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
                             Create your personal spa retreat with expert bathroom renovations. From luxurious walk-in showers and soaking tubs to modern vanities and tile work – we design bathrooms that combine comfort with style.
                         </p>
-                        <ul class="mt-6 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <ul class="mt-6 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
                             <li class="flex items-start gap-2">
                                 <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -162,10 +162,10 @@
                         <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">
                             Home Remodeling
                         </h2>
-                        <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
                             Comprehensive home renovations that breathe new life into your entire living space. From room additions and open floor plans to complete home makeovers – we handle projects of any scale with precision.
                         </p>
-                        <ul class="mt-6 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <ul class="mt-6 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
                             <li class="flex items-start gap-2">
                                 <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -214,10 +214,10 @@
                         <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">
                             Basement Remodeling
                         </h2>
-                        <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
                             Unlock your basement's potential with expert finishing and renovation services. Whether you envision a home theater, guest suite, or recreation room – we transform unused space into valuable living areas.
                         </p>
-                        <ul class="mt-6 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <ul class="mt-6 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
                             <li class="flex items-start gap-2">
                                 <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>

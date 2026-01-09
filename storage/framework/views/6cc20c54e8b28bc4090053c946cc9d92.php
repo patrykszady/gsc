@@ -48,14 +48,20 @@
 
     
     <link rel="preload" as="font" type="font/woff2" href="<?php echo e(Vite::asset('node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2')); ?>" crossorigin>
-    <link rel="preload" as="font" type="font/woff2" href="<?php echo e(Vite::asset('node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-ext-wght-normal.woff2')); ?>" crossorigin>
     <link rel="preload" as="font" type="font/woff2" href="<?php echo e(Vite::asset('node_modules/@fontsource-variable/roboto-slab/files/roboto-slab-latin-wght-normal.woff2')); ?>" crossorigin>
-    <link rel="preload" as="font" type="font/woff2" href="<?php echo e(Vite::asset('node_modules/@fontsource-variable/roboto-slab/files/roboto-slab-latin-ext-wght-normal.woff2')); ?>" crossorigin>
 
     
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     <?php echo app('flux')->fluxAppearance(); ?>
 
+
+    
+    <script>
+        window.imageCache = window.imageCache || new Map();
+    </script>
+
+    
+    <?php echo $__env->yieldPushContent('head'); ?>
 
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(config('services.google.analytics_id')): ?>
@@ -64,7 +70,23 @@
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '<?php echo e(config('services.google.analytics_id')); ?>');
+            gtag('config', '<?php echo e(config('services.google.analytics_id')); ?>', {
+                // Track which domain the user entered from
+                'custom_map': {
+                    'dimension1': 'entry_domain',
+                    'dimension2': 'domain_source'
+                }
+            });
+            
+            // Send custom event for alternate domain entries
+            <?php if(isset($domainSource) && $domainSource !== 'direct'): ?>
+            gtag('event', 'domain_entry', {
+                'entry_domain': '<?php echo e(session('entry_domain', request()->getHost())); ?>',
+                'domain_source': '<?php echo e($domainSource); ?>',
+                'event_category': 'acquisition',
+                'event_label': '<?php echo e($domainSource); ?>'
+            });
+            <?php endif; ?>
         </script>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 

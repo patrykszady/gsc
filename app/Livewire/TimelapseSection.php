@@ -19,6 +19,7 @@ class TimelapseSection extends Component
             $allowed = ['jpg', 'jpeg', 'png', 'webp'];
             $files = collect(File::files($dir))
                 ->filter(fn ($file) => in_array(strtolower($file->getExtension()), $allowed, true))
+                ->filter(fn ($file) => ! str_contains($file->getFilename(), '-thumb')) // Exclude thumb files
                 ->sortBy(fn ($file) => $file->getFilename(), SORT_NATURAL | SORT_FLAG_CASE)
                 ->values()
                 ->map(fn ($file) => asset('images/timelapse1/' . $file->getFilename()))

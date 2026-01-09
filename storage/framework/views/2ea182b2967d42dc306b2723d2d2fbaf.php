@@ -14,7 +14,7 @@
                 </p>
 
                 
-                <p class="text-sm/6 text-balance text-gray-600 dark:text-gray-400">
+                <p class="text-sm/6 text-balance text-gray-700 dark:text-gray-300">
                     <a href="tel:8474304439" class="hover:text-sky-600 dark:hover:text-sky-400">(847) 430-4439</a><br>
                     <a href="mailto:patryk@gs.construction" class="hover:text-sky-600 dark:hover:text-sky-400">patryk@gs.construction</a>
                 </p>
@@ -32,7 +32,7 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['content' => ''.e($social['label']).'']); ?>
-                            <a href="<?php echo e($social['url']); ?>" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                            <a href="<?php echo e($social['url']); ?>" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                                 <span class="sr-only"><?php echo e($social['label']); ?></span>
                                 <?php if (isset($component)) { $__componentOriginal511d4862ff04963c3c16115c05a86a9d = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal511d4862ff04963c3c16115c05a86a9d = $attributes; } ?>
@@ -77,19 +77,19 @@
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">GS Construction</h3>
                         <ul role="list" class="mt-6 space-y-4">
                             <li>
-                                <a href="/projects" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Projects</a>
+                                <a href="/projects" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Projects</a>
                             </li>
                             <li>
-                                <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">About</a>
+                                <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About</a>
                             </li>
                             <li>
-                                <a href="/testimonials" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Reviews</a>
+                                <a href="/testimonials" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
                             </li>
                             <li>
-                                <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Contact</a>
+                                <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact</a>
                             </li>
                             <li>
-                                <a href="/areas-served" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Areas Served</a>
+                                <a href="/areas-served" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Areas Served</a>
                             </li>
                         </ul>
                     </div>
@@ -99,16 +99,16 @@
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Projects</h3>
                         <ul role="list" class="mt-6 space-y-4">
                             <li>
-                                <a href="/projects?type=kitchen" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Kitchen Projects</a>
+                                <a href="/projects?type=kitchen" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Projects</a>
                             </li>
                             <li>
-                                <a href="/projects?type=bathroom" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Bathroom Projects</a>
+                                <a href="/projects?type=bathroom" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Bathroom Projects</a>
                             </li>
                             <li>
-                                <a href="/projects?type=home-remodel" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Home Remodel Projects</a>
+                                <a href="/projects?type=home-remodel" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home Remodel Projects</a>
                             </li>
                             <li>
-                                <a href="/projects?type=mudroom" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Laundry & Mudroom Projects</a>
+                                <a href="/projects?type=mudroom" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Laundry & Mudroom Projects</a>
                             </li>
                         </ul>
                     </div>
@@ -120,13 +120,13 @@
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Services</h3>
                         <ul role="list" class="mt-6 space-y-4">
                             <li>
-                                <a href="/services/kitchen-remodeling" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Kitchen Remodeling</a>
+                                <a href="/services/kitchen-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Remodeling</a>
                             </li>
                             <li>
-                                <a href="/services/bathroom-remodeling" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Bathroom Remodeling</a>
+                                <a href="/services/bathroom-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Bathroom Remodeling</a>
                             </li>
                             <li>
-                                <a href="/services/home-remodeling" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Home Remodeling</a>
+                                <a href="/services/home-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home Remodeling</a>
                             </li>
                         </ul>
                     </div>
@@ -136,10 +136,10 @@
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">About</h3>
                         <ul role="list" class="mt-6 space-y-4">
                             <li>
-                                <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">About Greg & Patryk</a>
+                                <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About Greg & Patryk</a>
                             </li>
                             <li>
-                                <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300">Contact Greg & Patryk</a>
+                                <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact Greg & Patryk</a>
                             </li>
                             
                             <li>

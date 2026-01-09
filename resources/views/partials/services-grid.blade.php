@@ -40,12 +40,17 @@
         ],
     ];
 
-    // Helper to get cover image
-    $getCoverImage = function ($projectType) {
+    // Helper to get cover image with thumbnail
+    $getCoverImageData = function ($projectType) {
         $fallbacks = [
             'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
             'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
             'home-remodel' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
+        ];
+        $fallbackThumbs = [
+            'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=50&q=30',
+            'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=50&q=30',
+            'home-remodel' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=50&q=30',
         ];
 
         $image = ProjectImage::query()
@@ -54,7 +59,19 @@
             ->inRandomOrder()
             ->first();
 
-        return $image?->url ?? ($fallbacks[$projectType] ?? $fallbacks['home-remodel']);
+        if ($image) {
+            return [
+                'url' => $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium'),
+                'thumb' => $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb'),
+                'alt' => $image->seo_alt_text,
+            ];
+        }
+
+        return [
+            'url' => $fallbacks[$projectType] ?? $fallbacks['home-remodel'],
+            'thumb' => $fallbackThumbs[$projectType] ?? $fallbackThumbs['home-remodel'],
+            'alt' => ucfirst($projectType) . ' remodeling by GS Construction',
+        ];
     };
 @endphp
 
@@ -62,13 +79,15 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             @foreach ($services as $service)
+                @php $imageData = $getCoverImageData($service['projectType']); @endphp
                 <div class="group relative overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition hover:shadow-xl dark:bg-zinc-800 dark:ring-zinc-700">
                     <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ $service['gradient'] }}">
-                        <img 
-                            src="{{ $getCoverImage($service['projectType']) }}" 
-                            alt="{{ $service['title'] }}" 
-                            class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        >
+                        <x-lqip-image 
+                            :src="$imageData['url']"
+                            :thumb="$imageData['thumb']"
+                            :alt="$imageData['alt']"
+                            class="h-full w-full transition duration-300 group-hover:scale-105"
+                        />
                     </div>
                     <div class="p-6 lg:p-8">
                         <h2 class="text-xl font-bold text-zinc-900 lg:text-2xl dark:text-white">

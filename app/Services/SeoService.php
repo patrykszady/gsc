@@ -13,18 +13,70 @@ use Illuminate\Support\Str;
 class SeoService
 {
     /**
+     * Apply domain-specific SEO enhancements.
+     * Call this at the end of any page's SEO setup when on alternate domains.
+     */
+    public static function applyDomainEnhancements(): void
+    {
+        $domainConfig = view()->shared('domainConfig');
+        $isAlternateDomain = view()->shared('isAlternateDomain', false);
+        $primaryDomain = config('services.domains.primary', 'gs.construction');
+        
+        if (!$domainConfig) {
+            return;
+        }
+        
+        // Add domain-specific keywords
+        if (!empty($domainConfig['keywords'])) {
+            SEOMeta::addKeyword($domainConfig['keywords']);
+        }
+        
+        // Set canonical to primary domain (critical for SEO)
+        // This tells search engines the primary domain is authoritative
+        if ($isAlternateDomain) {
+            $canonicalUrl = 'https://' . $primaryDomain . request()->getRequestUri();
+            SEOMeta::setCanonical($canonicalUrl);
+            OpenGraph::setUrl($canonicalUrl);
+        }
+    }
+
+    /**
+     * Get domain-aware title enhancement.
+     * Adds domain-specific prefix/suffix if on alternate domain.
+     */
+    public static function getDomainAwareTitle(string $baseTitle): string
+    {
+        $domainConfig = view()->shared('domainConfig');
+        
+        if (!$domainConfig || empty($domainConfig['title_prefix'])) {
+            return $baseTitle;
+        }
+        
+        // Only enhance home page or main landing pages
+        return $baseTitle;
+    }
+
+    /**
      * Set SEO tags for the home page.
+     * Domain-aware: uses domain-specific title/description if on alternate domain.
      */
     public static function home(?AreaServed $area = null): void
     {
         $city = $area?->city;
-        $title = $city
-            ? "{$city} Kitchen & Bathroom Remodeling Contractors"
-            : 'Kitchen & Bathroom Remodeling Contractors Chicago';
+        $domainConfig = view()->shared('domainConfig');
+        $isAlternateDomain = view()->shared('isAlternateDomain', false);
         
-        $description = $city
-            ? "Professional kitchen, bathroom, and home remodeling services in {$city}, IL. GS Construction is a family-owned business with over 40 years of combined experience."
-            : 'Professional kitchen, bathroom, and home remodeling services in the Chicagoland area. GS Construction is a family-owned business with over 40 years of combined experience.';
+        // Use domain-specific title/description if on alternate domain
+        if ($isAlternateDomain && $domainConfig) {
+            $title = $domainConfig['title_prefix'] . ' | GS Construction Chicago';
+            $description = $domainConfig['description'];
+        } elseif ($city) {
+            $title = "{$city} Kitchen & Bathroom Remodeling Contractors";
+            $description = "Professional kitchen, bathroom, and home remodeling services in {$city}, IL. GS Construction is a family-owned business with over 40 years of combined experience.";
+        } else {
+            $title = 'Kitchen & Bathroom Remodeling Contractors Chicago';
+            $description = 'Professional kitchen, bathroom, and home remodeling services in the Chicagoland area. GS Construction is a family-owned business with over 40 years of combined experience.';
+        }
 
         self::setTags($title, $description);
     }
@@ -264,6 +316,9 @@ class SeoService
         TwitterCard::setTitle($title);
         TwitterCard::setDescription($description);
         TwitterCard::setImage($ogImage);
+        
+        // Apply domain-specific SEO enhancements (keywords, canonical)
+        self::applyDomainEnhancements();
     }
 
     /**

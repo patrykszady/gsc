@@ -54,4 +54,33 @@ return [
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Alternate Domains Configuration
+    |--------------------------------------------------------------------------
+    |
+    | SEO configuration for alternate domains that redirect to the main site.
+    | Each domain has specific SEO focus, tracking source, and meta info.
+    |
+    */
+    'domains' => [
+        'primary' => env('APP_DOMAIN', 'gs.construction'),
+        'alternates' => [
+            'gsconstruction.design' => [
+                'source' => 'design_domain',
+                'seo_focus' => 'design',
+                'title_prefix' => 'Kitchen & Bath Design',
+                'description' => 'Award-winning kitchen and bathroom design services in Chicago. Transform your space with GS Construction\'s expert designers.',
+                'keywords' => ['kitchen design', 'bathroom design', 'remodeling design', 'Chicago interior design', 'custom cabinetry design'],
+            ],
+            'gsconstruction.services' => [
+                'source' => 'services_domain',
+                'seo_focus' => 'services',
+                'title_prefix' => 'Professional Remodeling Services',
+                'description' => 'Full-service home remodeling in Chicago. Kitchen, bathroom, and whole-home renovation services by licensed contractors.',
+                'keywords' => ['remodeling services', 'renovation services', 'Chicago contractors', 'home improvement', 'licensed remodelers'],
+            ],
+        ],
+    ],
+
 ];
