@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\BlockSpamBots;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\TrackDomainSource;
 use Illuminate\Foundation\Application;
@@ -14,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
+        
+        // Block spam bots and malicious crawlers early
+        $middleware->web(prepend: [
+            BlockSpamBots::class,
+        ]);
         
         // SEO: Track domain source for analytics and handle legacy redirects
         $middleware->web(append: [

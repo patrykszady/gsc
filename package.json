@@ -4,9 +4,13 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "lighthouse": "lhci autorun",
+        "lighthouse:desktop": "lhci autorun --collect.settings.preset=desktop",
+        "lighthouse:url": "lhci autorun --collect.url"
     },
     "devDependencies": {
+        "@lhci/cli": "^0.15.1",
         "@tailwindcss/vite": "^4.1.0",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",

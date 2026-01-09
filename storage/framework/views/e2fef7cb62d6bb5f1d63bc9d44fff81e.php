@@ -8,6 +8,7 @@
 
 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstSlide): ?>
 <?php $__env->startPush('head'); ?>
+<link rel="preload" as="image" href="<?php echo e($firstSlide['thumb']); ?>" fetchpriority="high">
 <link rel="preload" as="image" href="<?php echo e($firstSlide['image']); ?>" fetchpriority="high">
 <?php $__env->stopPush(); ?>
 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -20,8 +21,8 @@
         projectTypeFilter: <?php echo \Illuminate\Support\Js::from($projectType)->toHtml() ?>,
         slides: <?php echo \Illuminate\Support\Js::from($renderedSlides)->toHtml() ?>,
         loadedImages: [],
+        thumbsLoaded: [],
         firstSlideWasCached: false,
-        showFirstSlideBlur: false,
         autoplay: null,
         isHovered: false,
         isVisible: true,
@@ -31,16 +32,19 @@
             this.slides.forEach((slide, index) => {
                 if (window.imageCache?.has(slide.image)) {
                     this.loadedImages.push(index);
+                    this.thumbsLoaded.push(index);
                 }
             });
-            // First slide is always marked loaded (server-rendered)
-            if (!this.loadedImages.includes(0)) this.loadedImages.push(0);
             // Check if first slide was browser-cached
             const firstImg = this.$refs.firstSlideImg;
             if (firstImg?.complete && firstImg?.naturalWidth > 0) {
                 this.firstSlideWasCached = true;
-            } else {
-                this.showFirstSlideBlur = true;
+                if (!this.loadedImages.includes(0)) this.loadedImages.push(0);
+            }
+            // Check if first thumb was cached
+            const firstThumb = this.$refs.firstSlideThumb;
+            if (firstThumb?.complete && firstThumb?.naturalWidth > 0) {
+                if (!this.thumbsLoaded.includes(0)) this.thumbsLoaded.push(0);
             }
             this.startAutoplay();
             document.addEventListener('visibilitychange', () => this.handleTabVisibility());
@@ -62,6 +66,9 @@
         },
         isLoaded(index) {
             return this.loadedImages.includes(index);
+        },
+        isThumbLoaded(index) {
+            return this.thumbsLoaded.includes(index);
         },
         startAutoplay() {
             if (!this.isVisible || !this.isTabVisible || this.isHovered) return;
@@ -101,6 +108,12 @@
     
     <div class="relative h-[500px] sm:h-[600px] lg:h-[700px]">
         
+        <div 
+            x-show="!isLoaded(0) && !isThumbLoaded(0)"
+            class="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-800 animate-pulse"
+        ></div>
+        
+        
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstSlide): ?>
         <div
             x-show="currentSlide === 0"
@@ -114,12 +127,15 @@
         >
             
             <img
-                x-cloak
-                x-show="showFirstSlideBlur && !isLoaded(0)"
+                x-ref="firstSlideThumb"
+                x-show="!firstSlideWasCached && !isLoaded(0)"
                 src="<?php echo e($firstSlide['thumb']); ?>"
                 alt=""
                 aria-hidden="true"
-                class="absolute inset-0 h-full w-full object-cover blur-xl scale-110 opacity-100"
+                fetchpriority="high"
+                class="absolute inset-0 h-full w-full object-cover blur-xl scale-110"
+                :class="isThumbLoaded(0) ? 'opacity-100' : 'opacity-0'"
+                @load="thumbsLoaded.includes(0) || thumbsLoaded.push(0)"
             />
             
             <img
@@ -150,20 +166,26 @@
                 class="absolute inset-0"
             >
                 
+                <div 
+                    x-show="!isLoaded(index) && !isThumbLoaded(index)"
+                    class="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-800 animate-pulse"
+                ></div>
+                
                 <img
-                    x-cloak
                     x-show="!window.imageCache?.has(slide.image) && !isLoaded(index)"
                     :src="slide.thumb"
                     alt=""
                     aria-hidden="true"
-                    class="absolute inset-0 h-full w-full object-cover blur-xl scale-110 opacity-100"
+                    class="absolute inset-0 h-full w-full object-cover blur-xl scale-110"
+                    :class="isThumbLoaded(index) ? 'opacity-100' : 'opacity-0'"
+                    @load="thumbsLoaded.includes(index) || thumbsLoaded.push(index)"
                 />
                 
                 <img
                     :src="slide.image"
                     :alt="slide.imageAlt || slide.heading || slide.alt"
-                    :loading="index === 0 ? 'eager' : 'lazy'"
-                    :fetchpriority="index === 0 ? 'high' : 'auto'"
+                    loading="lazy"
+                    fetchpriority="auto"
                     decoding="async"
                     class="absolute inset-0 h-full w-full object-cover"
                     :class="window.imageCache?.has(slide.image) ? 'opacity-100' : (isLoaded(index) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
@@ -280,10 +302,10 @@
                     @mouseenter="isHovered = true; stopAutoplay()"
                     @mouseleave="isHovered = false; startAutoplay()"
                 >
-                    <h2
+                    <h1
                         class="font-heading text-4xl font-bold text-white drop-shadow-lg sm:text-5xl lg:text-6xl"
                         x-html="slide.title.replace('\n', '<br>')"
-                    ></h2>
+                    ></h1>
                     <p 
                         x-show="areaCity" 
                         x-text="'in ' + areaCity"

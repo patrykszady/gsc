@@ -68,14 +68,14 @@ class SeoService
         
         // Use domain-specific title/description if on alternate domain
         if ($isAlternateDomain && $domainConfig) {
-            $title = $domainConfig['title_prefix'] . ' | GS Construction Chicago';
+            $title = $domainConfig['title_prefix'] . ' | GS Construction';
             $description = $domainConfig['description'];
         } elseif ($city) {
-            $title = "{$city} Kitchen & Bathroom Remodeling Contractors";
-            $description = "Professional kitchen, bathroom, and home remodeling services in {$city}, IL. GS Construction is a family-owned business with over 40 years of combined experience.";
+            $title = "{$city} Remodeling Contractors | GS Construction";
+            $description = "Kitchen, bathroom & home remodeling in {$city}, IL. Family-owned with 40+ years experience.";
         } else {
-            $title = 'Kitchen & Bathroom Remodeling Contractors Chicago';
-            $description = 'Professional kitchen, bathroom, and home remodeling services in the Chicagoland area. GS Construction is a family-owned business with over 40 years of combined experience.';
+            $title = 'Remodeling Contractors Chicago | GS Construction';
+            $description = 'Kitchen, bathroom & home remodeling in Chicagoland. Family-owned with 40+ years experience.';
         }
 
         self::setTags($title, $description);

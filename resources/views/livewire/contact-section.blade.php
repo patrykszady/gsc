@@ -464,6 +464,52 @@
                     </div>
                 </div>
 
+                {{-- Cloudflare Turnstile (Anti-Spam) --}}
+                {{-- Cloudflare Turnstile (Invisible Anti-Spam) --}}
+                @if($turnstileEnabled && $turnstileSiteKey)
+                <div wire:ignore class="sr-only">
+                    <div
+                        x-data="{
+                            init() {
+                                // Load Turnstile script if not already loaded
+                                if (!window.turnstile) {
+                                    const script = document.createElement('script');
+                                    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                                    script.async = true;
+                                    script.defer = true;
+                                    script.onload = () => this.renderWidget();
+                                    document.head.appendChild(script);
+                                } else {
+                                    this.renderWidget();
+                                }
+                            },
+                            renderWidget() {
+                                if (window.turnstile && this.$refs.turnstileWidget) {
+                                    window.turnstile.render(this.$refs.turnstileWidget, {
+                                        sitekey: '{{ $turnstileSiteKey }}',
+                                        theme: 'auto',
+                                        size: 'invisible',
+                                        callback: (token) => {
+                                            @this.set('turnstileToken', token);
+                                        },
+                                        'expired-callback': () => {
+                                            @this.set('turnstileToken', '');
+                                            console.warn('Turnstile token expired');
+                                        },
+                                        'error-callback': (error) => {
+                                            @this.set('turnstileToken', '');
+                                            console.error('Turnstile error:', error);
+                                        }
+                                    });
+                                }
+                            }
+                        }"
+                    >
+                        <div x-ref="turnstileWidget"></div>
+                    </div>
+                </div>
+                @endif
+
                 {{-- Submit Button --}}
                 <div class="mt-4 flex justify-end">
                     <button 

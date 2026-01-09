@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Validate;
@@ -34,6 +35,9 @@ class ContactSection extends Component
 
     // Honeypot field - should remain empty (bots will fill it)
     public string $website = '';
+
+    // Cloudflare Turnstile token
+    public string $turnstileToken = '';
 
     // Timestamp when form was loaded (for time-based protection)
     public int $formLoadedAt = 0;
@@ -156,7 +160,7 @@ class ContactSection extends Component
             
             // Show generic success message to not alert spammers
             session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
-            $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
+            $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'turnstileToken', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
             return;
         }
 
@@ -194,7 +198,7 @@ class ContactSection extends Component
         // Dispatch browser event for analytics tracking
         $this->dispatch('contact-form-submitted');
 
-        $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
+        $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'turnstileToken', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
     }
 
     /**
@@ -203,6 +207,17 @@ class ContactSection extends Component
      */
     protected function detectSpam(): ?string
     {
+        // 0. Turnstile verification (if enabled)
+        if (config('services.turnstile.enabled') && config('services.turnstile.secret_key')) {
+            if (empty($this->turnstileToken)) {
+                return 'turnstile_missing';
+            }
+            
+            if (!$this->verifyTurnstile()) {
+                return 'turnstile_failed';
+            }
+        }
+
         // 1. Honeypot check - if filled, it's a bot
         if (!empty($this->website)) {
             return 'honeypot_filled';
@@ -225,7 +240,27 @@ class ContactSection extends Component
         }
 
         // 5. Check for common spam keywords
-        $spamKeywords = ['viagra', 'cialis', 'casino', 'lottery', 'bitcoin', 'crypto', 'investment opportunity', 'make money fast'];
+        $spamKeywords = [
+            // Classic spam
+            'viagra', 'cialis', 'casino', 'lottery', 'bitcoin', 'crypto', 
+            'investment opportunity', 'make money fast', 'click here', 'act now', 
+            'limited time', 'congratulations', 'winner', 'free money', 
+            'nigerian prince', 'inheritance',
+            // SEO/Marketing spam (like "Daniel Wright" email)
+            'seo services', 'web traffic', 'backlinks', 'google ranking',
+            'first page', 'search engine', 'digital marketing', 'lead generation',
+            'show you a demo', 'quick demo', 'free demo', 'schedule a demo',
+            'grow your business', 'boost your', 'increase your sales',
+            'live within 24 hours', 'within 24 hours', '24 hours',
+            'people searching for what you sell', 'in front of',
+            'qualified leads', 'potential customers', 'target audience',
+            // Web design/dev spam
+            'redesign your website', 'website redesign', 'new website',
+            'mobile friendly', 'web development services',
+            // Generic sales pitch patterns
+            'would you like me to', 'interested in learning more',
+            'free consultation', 'no obligation', 'risk free',
+        ];
         $content = strtolower($this->name . ' ' . $this->message);
         foreach ($spamKeywords as $keyword) {
             if (str_contains($content, $keyword)) {
@@ -240,6 +275,27 @@ class ContactSection extends Component
             if ($letterCount > 0 && ($uppercaseCount / $letterCount) > 0.5) {
                 return 'excessive_caps';
             }
+        }
+
+        // 7. Excessive URLs in message (spam often contains multiple links)
+        $urlCount = preg_match_all('/https?:\/\/|www\./i', $this->message);
+        if ($urlCount >= 2) {
+            return 'excessive_urls';
+        }
+
+        // 8. Disposable email domain check
+        if ($this->isDisposableEmail($this->email)) {
+            return 'disposable_email';
+        }
+
+        // 9. Marketing/spam email domain check
+        if ($this->isSpamEmailDomain($this->email)) {
+            return 'spam_email_domain';
+        }
+
+        // 10. Message doesn't mention remodeling-related terms (likely not a real inquiry)
+        if (!$this->mentionsRemodelingTopics($this->message)) {
+            return 'no_remodeling_context';
         }
 
         return null;
@@ -309,6 +365,151 @@ class ContactSection extends Component
         return false;
     }
 
+    /**
+     * Check if email is from a disposable/temporary email service.
+     */
+    protected function isDisposableEmail(string $email): bool
+    {
+        $disposableDomains = [
+            'tempmail.com', 'temp-mail.org', 'guerrillamail.com', 'guerrillamail.net',
+            'mailinator.com', '10minutemail.com', 'throwaway.email', 'fakeinbox.com',
+            'yopmail.com', 'sharklasers.com', 'trashmail.com', 'maildrop.cc',
+            'getnada.com', 'mailnesia.com', 'tempail.com', 'dispostable.com',
+            'mintemail.com', 'mohmal.com', 'emailondeck.com', 'temp.email',
+            'tempr.email', 'discard.email', 'throwawaymail.com', 'fakemailgenerator.com',
+            'tempinbox.com', 'tempmailaddress.com', 'disposableemailaddresses.com',
+            'spamgourmet.com', 'mytrashmail.com', 'mailcatch.com', 'spamdecoy.net',
+            'jetable.org', 'kasmail.com', 'crazymailing.com', 'filzmail.com',
+            'safetymail.info', 'inboxalias.com', 'spamobox.com', 'nwldx.com',
+            'mailforspam.com', 'spambox.us', 'tempmailgen.com', 'burnermail.io',
+        ];
+
+        $domain = strtolower(explode('@', $email)[1] ?? '');
+        
+        return in_array($domain, $disposableDomains);
+    }
+
+    /**
+     * Check if email is from a known spam/marketing email domain.
+     * These are domains used by spammers for outreach campaigns.
+     */
+    protected function isSpamEmailDomain(string $email): bool
+    {
+        $spamDomains = [
+            // Known spam/marketing domains
+            'jmailservice.com', // The "Daniel Wright" spam
+            'mailservice.com', 'emailservice.com', 'fastmail.services',
+            'businessmail.com', 'promail.services', 'mailpro.services',
+            'leadgen.email', 'outreach.email', 'coldmail.email',
+            'marketingmail.com', 'salesmail.com', 'prospectmail.com',
+            // Generic fake-looking domains (pattern: [word]service.com)
+        ];
+
+        $domain = strtolower(explode('@', $email)[1] ?? '');
+        
+        // Direct match
+        if (in_array($domain, $spamDomains)) {
+            return true;
+        }
+        
+        // Pattern match: domains with "service", "mail", "lead", "outreach" in them
+        // but not legitimate providers like gmail, hotmail, etc.
+        $legitimateMailProviders = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'aol.com', 'icloud.com', 'protonmail.com', 'fastmail.com', 'zoho.com'];
+        if (!in_array($domain, $legitimateMailProviders)) {
+            if (preg_match('/(jmail|mailservice|emailservice|leadgen|outreach|coldmail|prospecting)/i', $domain)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the message mentions remodeling-related topics.
+     * Real inquiries typically mention kitchens, bathrooms, renovations, etc.
+     */
+    protected function mentionsRemodelingTopics(string $message): bool
+    {
+        $message = strtolower($message);
+        
+        $remodelingKeywords = [
+            // Rooms/areas
+            'kitchen', 'bathroom', 'bath', 'basement', 'bedroom', 'living room',
+            'dining room', 'garage', 'attic', 'laundry', 'mudroom', 'closet',
+            'master', 'guest', 'powder room', 'half bath', 'full bath',
+            // Project types
+            'remodel', 'renovation', 'renovate', 'addition', 'extension',
+            'update', 'upgrade', 'refresh', 'makeover', 'redo', 'gut',
+            'restore', 'transform', 'convert', 'finish', 'unfinish',
+            // Specific work
+            'cabinets', 'countertop', 'counters', 'flooring', 'tile', 'tiles',
+            'backsplash', 'sink', 'faucet', 'shower', 'tub', 'bathtub', 
+            'toilet', 'vanity', 'mirror', 'lighting', 'fixtures',
+            'appliances', 'island', 'pantry', 'storage',
+            'drywall', 'paint', 'painting', 'trim', 'molding', 'crown',
+            'windows', 'doors', 'roof', 'siding', 'deck', 'patio', 'porch',
+            // Materials
+            'granite', 'quartz', 'marble', 'hardwood', 'laminate', 'vinyl',
+            'ceramic', 'porcelain', 'stone', 'brick', 'wood', 'stainless',
+            // Intent signals
+            'quote', 'estimate', 'bid', 'cost', 'price', 'budget',
+            'interested', 'looking', 'need', 'want', 'help', 'project',
+            'home', 'house', 'condo', 'apartment', 'property',
+            'contractor', 'builder', 'work', 'job',
+            // Timeline
+            'soon', 'asap', 'months', 'weeks', 'spring', 'summer', 'fall', 'winter',
+            // Questions about the company
+            'available', 'schedule', 'appointment', 'meet', 'visit', 'see',
+            'portfolio', 'references', 'licensed', 'insured', 'warranty',
+        ];
+
+        foreach ($remodelingKeywords as $keyword) {
+            if (str_contains($message, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Verify Cloudflare Turnstile token.
+     */
+    protected function verifyTurnstile(): bool
+    {
+        try {
+            $response = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                'secret' => config('services.turnstile.secret_key'),
+                'response' => $this->turnstileToken,
+                'remoteip' => request()->ip(),
+            ]);
+
+            $result = $response->json();
+            
+            if (!($result['success'] ?? false)) {
+                \Log::warning('Turnstile verification failed', [
+                    'error-codes' => $result['error-codes'] ?? [],
+                    'ip' => request()->ip(),
+                    'hostname' => $result['hostname'] ?? null,
+                ]);
+                return false;
+            }
+
+            \Log::debug('Turnstile verification passed', [
+                'ip' => request()->ip(),
+                'hostname' => $result['hostname'] ?? null,
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            \Log::error('Turnstile verification error', [
+                'error' => $e->getMessage(),
+            ]);
+            // Allow form submission if Turnstile API fails (graceful degradation)
+            return true;
+        }
+    }
+
     public function render()
     {
         $areasServed = AreaServed::orderBy('city')->pluck('city')->toArray();
@@ -328,6 +529,8 @@ class ContactSection extends Component
             'minSelectableDate' => $minSelectableDate,
             'times' => $times,
             'area' => $this->area,
+            'turnstileSiteKey' => config('services.turnstile.site_key'),
+            'turnstileEnabled' => config('services.turnstile.enabled') && config('services.turnstile.secret_key'),
         ]);
     }
 }
