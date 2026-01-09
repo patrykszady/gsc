@@ -147,7 +147,19 @@ class ContactSection extends Component
         // Ensure digits-only phone is always in sync (covers defer/blur updates)
         $this->phoneDigits = preg_replace('/\D+/', '', $this->phone);
 
-        // Spam protection checks
+        // VALIDATION FIRST - always show real validation errors to users
+        $this->validate();
+
+        // Rate limiting: 3 submissions per IP per hour
+        $rateLimitKey = 'contact-form:' . request()->ip();
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 3)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            $this->addError('form', "Too many submissions. Please try again in {$seconds} seconds.");
+            return;
+        }
+        RateLimiter::hit($rateLimitKey, 3600); // 1 hour decay
+
+        // Spam protection checks (after validation passes)
         $spamReason = $this->detectSpam();
         if ($spamReason) {
             \Log::warning('Spam submission blocked', [
@@ -163,17 +175,6 @@ class ContactSection extends Component
             $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'turnstileToken', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
             return;
         }
-
-        // Rate limiting: 3 submissions per IP per hour
-        $rateLimitKey = 'contact-form:' . request()->ip();
-        if (RateLimiter::tooManyAttempts($rateLimitKey, 3)) {
-            $seconds = RateLimiter::availableIn($rateLimitKey);
-            $this->addError('form', "Too many submissions. Please try again in {$seconds} seconds.");
-            return;
-        }
-        RateLimiter::hit($rateLimitKey, 3600); // 1 hour decay
-
-        $this->validate();
 
         // Send email notification
         Mail::to(config('mail.from.address'))->send(new ContactFormSubmission(
