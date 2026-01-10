@@ -497,7 +497,7 @@
                                     window.turnstile.render(this.$refs.turnstileWidget, {
                                         sitekey: '{{ $turnstileSiteKey }}',
                                         theme: 'auto',
-                                        size: 'invisible',
+                                        size: 'flexible',
                                         callback: (token) => {
                                             @this.set('turnstileToken', token);
                                         },
