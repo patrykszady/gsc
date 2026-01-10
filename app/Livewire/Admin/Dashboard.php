@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\ContactSubmission;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Tag;
@@ -20,10 +21,14 @@ class Dashboard extends Component
             'publishedCount' => Project::published()->count(),
             'imageCount' => ProjectImage::count(),
             'tagCount' => Tag::count(),
+            'leadCount' => ContactSubmission::count(),
+            'leadsToday' => ContactSubmission::whereDate('created_at', today())->count(),
+            'leadsThisWeek' => ContactSubmission::where('created_at', '>=', now()->subWeek())->count(),
             'recentProjects' => Project::with('coverImage')
                 ->latest()
                 ->take(5)
                 ->get(),
+            'recentLeads' => ContactSubmission::latest()->take(5)->get(),
         ]);
     }
 }

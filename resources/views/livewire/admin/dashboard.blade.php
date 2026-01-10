@@ -50,6 +50,23 @@
                 </div>
             </div>
         </flux:card>
+
+        <flux:card class="cursor-pointer transition hover:shadow-md" onclick="window.location='{{ route('admin.leads.index') }}'">
+            <div class="flex items-center gap-4">
+                <div class="flex size-12 items-center justify-center rounded-lg bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                    <flux:icon.envelope class="size-6" />
+                </div>
+                <div>
+                    <div class="text-2xl font-bold text-zinc-900 dark:text-white">{{ $leadCount }}</div>
+                    <div class="text-sm text-zinc-500 dark:text-zinc-400">
+                        Leads 
+                        @if($leadsToday > 0)
+                            <span class="text-green-600">(+{{ $leadsToday }} today)</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </flux:card>
     </div>
 
     {{-- Quick Actions --}}
@@ -62,8 +79,60 @@
             <flux:button href="{{ route('admin.projects.index') }}" variant="ghost" icon="folder">
                 View All Projects
             </flux:button>
+            <flux:button href="{{ route('admin.leads.index') }}" variant="ghost" icon="envelope">
+                View Leads
+                @if($leadsThisWeek > 0)
+                    <flux:badge color="green" size="sm" class="ml-2">{{ $leadsThisWeek }}</flux:badge>
+                @endif
+            </flux:button>
         </div>
     </div>
+
+    {{-- Recent Leads --}}
+    @if($recentLeads->isNotEmpty())
+    <div class="mb-8">
+        <div class="mb-4 flex items-center justify-between">
+            <flux:heading size="lg">Recent Leads</flux:heading>
+            <flux:button href="{{ route('admin.leads.index') }}" variant="ghost" size="sm">
+                View All →
+            </flux:button>
+        </div>
+        <flux:card class="overflow-hidden !p-0">
+            <flux:table>
+                <flux:table.columns>
+                    <flux:table.column>Contact</flux:table.column>
+                    <flux:table.column>City</flux:table.column>
+                    <flux:table.column>When</flux:table.column>
+                    <flux:table.column></flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @foreach($recentLeads as $lead)
+                        <flux:table.row>
+                            <flux:table.cell>
+                                <div>
+                                    <div class="font-medium text-zinc-900 dark:text-white">{{ $lead->name }}</div>
+                                    <div class="text-sm text-zinc-500">{{ $lead->email }}</div>
+                                </div>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-zinc-600 dark:text-zinc-300">
+                                {{ $lead->city ?? '—' }}
+                            </flux:table.cell>
+                            <flux:table.cell class="text-zinc-500 dark:text-zinc-400">
+                                {{ $lead->created_at->diffForHumans() }}
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <div class="flex gap-2">
+                                    <flux:button href="mailto:{{ $lead->email }}" size="sm" variant="ghost" icon="envelope" />
+                                    <flux:button href="tel:{{ $lead->phone }}" size="sm" variant="ghost" icon="phone" />
+                                </div>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+        </flux:card>
+    </div>
+    @endif
 
     {{-- Recent Projects --}}
     <div>

@@ -5,6 +5,7 @@ use App\Livewire\Admin\Login;
 use App\Livewire\Admin\ProjectForm;
 use App\Livewire\Admin\ProjectList;
 use App\Livewire\Admin\TagList;
+use App\Livewire\Admin\ContactSubmissions;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
 use App\Livewire\ServicePage;
@@ -170,4 +171,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     
     // Tags
     Route::get('/tags', TagList::class)->name('tags.index');
+    
+    // Contact Submissions / Leads
+    Route::get('/leads', ContactSubmissions::class)->name('leads.index');
 });
