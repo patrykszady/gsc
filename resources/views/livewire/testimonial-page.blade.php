@@ -49,7 +49,7 @@
 
             {{-- 5 stars --}}
             <div class="mb-6">
-                <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" width="93" height="32" class="h-8 w-auto" />
+                <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" width="224" height="32" class="h-8 w-auto" />
             </div>
 
             {{-- Review text --}}

@@ -5,10 +5,10 @@
     $firstSlide = $renderedSlides[0] ?? null;
 @endphp
 
-{{-- Preload the LCP image (first slide) for faster rendering --}}
+{{-- Preload the LCP image (first slide) for faster rendering with responsive srcset --}}
 @if($firstSlide)
 @push('head')
-<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" fetchpriority="high" imagesizes="100vw">
+<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" imagesrcset="{{ $firstSlide['srcset'] ?? '' }}" imagesizes="100vw" fetchpriority="high">
 @endpush
 @endif
 
@@ -142,6 +142,8 @@
             <img
                 x-ref="firstSlideImg"
                 src="{{ $firstSlide['image'] }}"
+                srcset="{{ $firstSlide['srcset'] ?? '' }}"
+                sizes="100vw"
                 alt="{{ $firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project' }}"
                 width="2400"
                 height="1350"
@@ -188,6 +190,8 @@
                 {{-- Full-size image --}}
                 <img
                     :src="slide.image"
+                    :srcset="slide.srcset || ''"
+                    sizes="100vw"
                     :alt="slide.imageAlt || slide.heading || slide.alt"
                     width="2400"
                     height="1350"

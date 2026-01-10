@@ -136,12 +136,21 @@
                             async init() {
                                 await this.loadPlacesLibrary();
                             },
+                            async waitForGoogle(maxRetries = 20) {
+                                for (let i = 0; i < maxRetries; i++) {
+                                    if (window.google?.maps?.importLibrary) return true;
+                                    await new Promise(r => setTimeout(r, 250));
+                                }
+                                return false;
+                            },
                             async loadPlacesLibrary() {
                                 try {
+                                    const googleReady = await this.waitForGoogle();
+                                    if (!googleReady) return;
                                     await google.maps.importLibrary('places');
                                     this.placesReady = true;
                                 } catch (e) {
-                                    console.error('Failed to load Places library:', e);
+                                    // Silently fail - autocomplete is enhancement, not required
                                 }
                             },
                             async search() {

@@ -5,7 +5,7 @@
             <div class="space-y-6">
                 {{-- GS Logo (same as navbar) --}}
                 <a href="/" wire:navigate.hover>
-                    <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" width="64" height="64" class="h-16 w-auto" />
+                    <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" width="99" height="64" class="h-16 w-auto" />
                 </a>
 
                 {{-- Company Name --}}
@@ -38,21 +38,21 @@
                     {{-- GS Construction Links --}}
                     <div>
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">GS Construction</h3>
-                        <ul class="mt-6 space-y-4">
+                        <ul class="mt-4 space-y-1">
                             <li>
-                                <a href="/projects" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Projects</a>
+                                <a href="/projects" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Projects</a>
                             </li>
                             <li>
-                                <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About</a>
+                                <a href="/about" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About</a>
                             </li>
                             <li>
-                                <a href="/testimonials" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
+                                <a href="/testimonials" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
                             </li>
                             <li>
-                                <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact</a>
+                                <a href="/contact" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact</a>
                             </li>
                             <li>
-                                <a href="/areas-served" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Areas Served</a>
+                                <a href="/areas-served" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Areas Served</a>
                             </li>
                         </ul>
                     </div>
@@ -60,18 +60,18 @@
                     {{-- Projects --}}
                     <div class="mt-10 md:mt-0">
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Projects</h3>
-                        <ul class="mt-6 space-y-4">
+                        <ul class="mt-4 space-y-1">
                             <li>
-                                <a href="/projects?type=kitchen" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Projects</a>
+                                <a href="/projects?type=kitchen" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Projects</a>
                             </li>
                             <li>
-                                <a href="/projects?type=bathroom" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Bathroom Projects</a>
+                                <a href="/projects?type=bathroom" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Bathroom Projects</a>
                             </li>
                             <li>
-                                <a href="/projects?type=home-remodel" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home Remodel Projects</a>
+                                <a href="/projects?type=home-remodel" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home Remodel Projects</a>
                             </li>
                             <li>
-                                <a href="/projects?type=mudroom" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Laundry & Mudroom Projects</a>
+                                <a href="/projects?type=mudroom" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Laundry & Mudroom Projects</a>
                             </li>
                         </ul>
                     </div>
@@ -81,15 +81,15 @@
                     {{-- Services --}}
                     <div>
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Services</h3>
-                        <ul class="mt-6 space-y-4">
+                        <ul class="mt-4 space-y-1">
                             <li>
-                                <a href="/services/kitchen-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Remodeling</a>
+                                <a href="/services/kitchen-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Kitchen Remodeling</a>
                             </li>
                             <li>
-                                <a href="/services/bathroom-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Bathroom Remodeling</a>
+                                <a href="/services/bathroom-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Bathroom Remodeling</a>
                             </li>
                             <li>
-                                <a href="/services/home-remodeling" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home Remodeling</a>
+                                <a href="/services/home-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home Remodeling</a>
                             </li>
                         </ul>
                     </div>
@@ -97,17 +97,17 @@
                     {{-- About --}}
                     <div class="mt-10 md:mt-0">
                         <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">About</h3>
-                        <ul class="mt-6 space-y-4">
+                        <ul class="mt-4 space-y-1">
                             <li>
-                                <a href="/about" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About Greg & Patryk</a>
+                                <a href="/about" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About Greg & Patryk</a>
                             </li>
                             <li>
-                                <a href="/contact" wire:navigate.hover class="text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact Greg & Patryk</a>
+                                <a href="/contact" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact Greg & Patryk</a>
                             </li>
                             {{-- Socials Dropdown --}}
                             <li>
                                 <flux:dropdown position="top">
-                                    <flux:button variant="ghost" size="sm" icon:trailing="chevron-up" class="!px-0 !text-gray-600 hover:!text-gray-900 dark:!text-gray-400 dark:hover:!text-gray-300">
+                                    <flux:button variant="ghost" size="sm" icon:trailing="chevron-up" class="!px-0 !py-2 !text-gray-600 hover:!text-gray-900 dark:!text-gray-400 dark:hover:!text-gray-300">
                                         Socials
                                     </flux:button>
                                     <flux:menu>
@@ -130,10 +130,10 @@
 
         {{-- Bottom Section - Compact --}}
         <div class="mt-8 border-t border-gray-900/10 pt-6 dark:border-white/10">
-            <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+            <p class="text-center text-xs text-gray-600 dark:text-gray-400">
                 GS Construction & Remodeling, Inc. DBA GS Construction & Remodeling. DBA GS Construction. AKA Greg & Son Construction, Co. Copyright &copy; {{ date('Y') }}. We're just a small Construction and Remodeling Company in Chicago.
             </p>
-            <p class="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
+            <p class="mt-1 text-center text-xs text-gray-600 dark:text-gray-400">
                 <span class="font-medium">Grzegorz Szady: I Love You dad!</span> <span class="italic">— You encourage and challenge me to strive every day. -Patryk Szady</span>
             </p>
         </div>

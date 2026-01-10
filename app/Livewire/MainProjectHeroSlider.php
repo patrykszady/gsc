@@ -73,14 +73,28 @@ class MainProjectHeroSlider extends Component
     }
 
     /**
-     * Build image data array with blur placeholder and full-size URL.
+     * Build image data array with blur placeholder, full-size URL, and responsive srcset.
      */
     protected function buildImageData(ProjectImage $image): array
     {
+        // Get URLs for different sizes
+        $largeUrl = $image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url;
+        $mediumUrl = $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium');
+        $smallUrl = $image->getWebpThumbnailUrl('small') ?? $image->getThumbnailUrl('small');
+        $thumbUrl = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
+        
         return [
-            'url' => $image->getWebpUrlAttribute() ?? $image->url,
-            'thumb' => $image->getWebpThumbnailUrl('small') ?? $image->getThumbnailUrl('small'),
+            'url' => $largeUrl,
+            'medium' => $mediumUrl,
+            'small' => $smallUrl,
+            'thumb' => $thumbUrl,
             'alt' => $image->seo_alt_text,
+            // Srcset for responsive images
+            'srcset' => implode(', ', array_filter([
+                $smallUrl ? "{$smallUrl} 300w" : null,
+                $mediumUrl ? "{$mediumUrl} 600w" : null,
+                $largeUrl ? "{$largeUrl} 2400w" : null,
+            ])),
         ];
     }
 
@@ -89,13 +103,18 @@ class MainProjectHeroSlider extends Component
      */
     protected function buildFallbackImageData(string $url): array
     {
-        // For Unsplash, we can use URL params for a tiny blur placeholder
+        // For Unsplash, we can use URL params for different sizes
         $thumbUrl = str_replace(['w=1920', 'q=80'], ['w=50', 'q=30'], $url);
+        $smallUrl = str_replace(['w=1920', 'q=80'], ['w=640', 'q=75'], $url);
+        $mediumUrl = str_replace(['w=1920', 'q=80'], ['w=1024', 'q=80'], $url);
         
         return [
             'url' => $url,
+            'medium' => $mediumUrl,
+            'small' => $smallUrl,
             'thumb' => $thumbUrl,
             'alt' => 'Home remodeling project by GS Construction',
+            'srcset' => "{$smallUrl} 640w, {$mediumUrl} 1024w, {$url} 1920w",
         ];
     }
 
