@@ -170,6 +170,10 @@ class ContactSection extends Component
                 'name' => $this->name,
                 'email' => $this->email,
                 'phone' => $this->phoneDigits,
+                'address' => $this->address,
+                'message' => $this->message,
+                'availability' => $this->availability,
+                'time_taken' => time() - $this->formLoadedAt,
             ]);
             
             // Store spam submission for review
@@ -194,13 +198,17 @@ class ContactSection extends Component
         // Store submission in database (independent of GA/email)
         $this->storeSubmission();
 
-        // Log the contact form submission
+        // Log the contact form submission with full details
         Log::channel('submissions')->info('Contact form submitted', [
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phoneDigits,
             'address' => $this->address,
+            'message' => $this->message,
+            'availability' => $this->availability,
             'area' => $this->area?->city,
+            'ip' => request()->ip(),
+            'time_taken' => time() - $this->formLoadedAt,
         ]);
         
         // Server-side GA4 tracking (works even if client blocks GA)
@@ -242,8 +250,8 @@ class ContactSection extends Component
             return 'submitted_too_fast';
         }
 
-        // 3. Gibberish detection - check for random character patterns
-        if ($this->containsGibberish($this->name) || $this->containsGibberish($this->message)) {
+        // 3. Gibberish detection - only check message (names can be foreign with unusual patterns)
+        if ($this->containsGibberish($this->message)) {
             return 'gibberish_detected';
         }
 
@@ -319,7 +327,8 @@ class ContactSection extends Component
      */
     protected function containsGibberish(string $text): bool
     {
-        if (strlen($text) < 10) {
+        // Only check longer text to avoid false positives on short messages
+        if (strlen($text) < 20) {
             return false;
         }
 
@@ -329,8 +338,8 @@ class ContactSection extends Component
         
         if ($consonants > 0 && $vowels > 0) {
             $ratio = $consonants / $vowels;
-            // Normal English has ~1.5-2 consonants per vowel, gibberish often has 3+
-            if ($ratio > 4) {
+            // Normal English has ~1.5-2 consonants per vowel, gibberish often has 5+
+            if ($ratio > 5) {
                 return true;
             }
         }
@@ -543,8 +552,23 @@ class ContactSection extends Component
         }
         
         try {
-            // Generate a client_id from session or create one
-            $clientId = session('ga_client_id') ?? request()->cookie('_ga_client_id') ?? \Str::uuid()->toString();
+            // Try to get GA client_id in order of reliability:
+            // 1. GA's own cookie (most reliable)
+            // 2. Our session-stored ID
+            // 3. Generate new UUID (VPN/incognito sessions)
+            $gaCookie = request()->cookie('_ga');
+            if ($gaCookie && preg_match('/GA\d+\.\d+\.(.+)/', $gaCookie, $matches)) {
+                $clientId = $matches[1]; // Extract client_id from _ga cookie
+                $trackingSource = 'ga_cookie';
+            } elseif (session()->has('ga_client_id')) {
+                $clientId = session('ga_client_id');
+                $trackingSource = 'session';
+            } else {
+                // Generate and store for this session
+                $clientId = \Str::uuid()->toString();
+                session(['ga_client_id' => $clientId]);
+                $trackingSource = 'generated';
+            }
             
             Http::timeout(5)->post("https://www.google-analytics.com/mp/collect?measurement_id={$measurementId}&api_secret={$apiSecret}", [
                 'client_id' => $clientId,
@@ -555,7 +579,8 @@ class ContactSection extends Component
                             'event_category' => 'contact',
                             'event_label' => 'contact_form_submission',
                             'value' => 1,
-                            'source' => 'server_side',
+                            'tracking_method' => 'server_side',
+                            'client_id_source' => $trackingSource, // 'ga_cookie', 'session', or 'generated' (VPN/incognito)
                             'page_location' => request()->fullUrl(),
                             'page_referrer' => request()->header('referer'),
                             'user_agent' => request()->userAgent(),

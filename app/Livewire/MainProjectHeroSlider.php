@@ -77,15 +77,20 @@ class MainProjectHeroSlider extends Component
      */
     protected function buildImageData(ProjectImage $image): array
     {
-        // Get URLs for different sizes
+        // Get URLs for different sizes - prefer WebP, fallback to JPG
         $largeUrl = $image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url;
         $heroUrl = $image->getWebpThumbnailUrl('hero') ?? $image->getThumbnailUrl('hero');
         $mediumUrl = $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium');
         $smallUrl = $image->getWebpThumbnailUrl('small') ?? $image->getThumbnailUrl('small');
         $thumbUrl = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
         
+        // For mobile LCP: use hero (1200px) as default instead of large (2400px)
+        // This is better for mobile where viewport is typically under 640px
+        $defaultUrl = $heroUrl ?? $largeUrl;
+        
         return [
-            'url' => $largeUrl,
+            'url' => $defaultUrl, // Changed from $largeUrl - hero is better default for mobile
+            'large' => $largeUrl, // Keep large available for desktop
             'hero' => $heroUrl,
             'medium' => $mediumUrl,
             'small' => $smallUrl,
@@ -145,6 +150,7 @@ class MainProjectHeroSlider extends Component
                 $imageData = $images[$index] ?? $this->buildFallbackImageData($this->getFallbackForType($this->projectType));
                 $slide['image'] = $imageData['url'];
                 $slide['thumb'] = $imageData['thumb'];
+                $slide['srcset'] = $imageData['srcset'] ?? '';
                 $slide['imageAlt'] = $imageData['alt'];
                 return $slide;
             })->toArray();
@@ -169,6 +175,7 @@ class MainProjectHeroSlider extends Component
                 $imageData = $this->randomCoverDataForType($type) ?? $this->buildFallbackImageData($this->getFallbackForType($type));
                 $slide['image'] = $imageData['url'];
                 $slide['thumb'] = $imageData['thumb'];
+                $slide['srcset'] = $imageData['srcset'] ?? '';
                 $slide['imageAlt'] = $imageData['alt'];
                 return $slide;
             })->toArray();
@@ -205,6 +212,7 @@ class MainProjectHeroSlider extends Component
             $imageData = $slideImageData[$slide['projectType']] ?? $this->buildFallbackImageData('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80');
             $slide['image'] = $imageData['url'];
             $slide['thumb'] = $imageData['thumb'];
+            $slide['srcset'] = $imageData['srcset'] ?? '';
             $slide['imageAlt'] = $imageData['alt'];
             return $slide;
         })->toArray();

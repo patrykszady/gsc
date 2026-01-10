@@ -2,10 +2,7 @@
     title="GS Construction | Remodeling Contractors | Family Business"
     metaDescription="Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area."
 >
-    {{-- Preload LCP image for faster paint --}}
-    @push('head')
-    <link rel="preload" as="image" href="{{ asset('images/greg-patryk.webp') }}" type="image/webp" fetchpriority="high">
-    @endpush
+    {{-- Note: LCP preload is handled by the hero slider component itself --}}
 
     {{-- Main Project Hero Slider --}}
     @php
