@@ -1,24 +1,24 @@
-@php
+<?php
     $citySuffix = $area ? ' in ' . $area->city : '';
     $isServiceMode = $mode === 'service';
     // First slide image for preloading
     $firstSlide = $renderedSlides[0] ?? null;
-@endphp
+?>
 
-{{-- Preload the LCP image (first slide) for faster rendering --}}
-@if($firstSlide)
-@push('head')
-<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" fetchpriority="high" imagesizes="100vw">
-@endpush
-@endif
+
+<?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstSlide): ?>
+<?php $__env->startPush('head'); ?>
+<link rel="preload" as="image" href="<?php echo e($firstSlide['image']); ?>" fetchpriority="high" imagesizes="100vw">
+<?php $__env->stopPush(); ?>
+<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
 <div
     x-data="{
         currentSlide: 0,
-        areaCity: @js($area?->city),
-        mode: @js($mode),
-        projectTypeFilter: @js($projectType),
-        slides: @js($renderedSlides),
+        areaCity: <?php echo \Illuminate\Support\Js::from($area?->city)->toHtml() ?>,
+        mode: <?php echo \Illuminate\Support\Js::from($mode)->toHtml() ?>,
+        projectTypeFilter: <?php echo \Illuminate\Support\Js::from($projectType)->toHtml() ?>,
+        slides: <?php echo \Illuminate\Support\Js::from($renderedSlides)->toHtml() ?>,
         loadedImages: [],
         thumbsLoaded: [],
         firstSlideWasCached: false,
@@ -72,7 +72,7 @@
         startAutoplay() {
             if (!this.isVisible || !this.isTabVisible || this.isHovered) return;
             this.stopAutoplay();
-            this.autoplay = setInterval(() => this.next(), {{ $isServiceMode ? 4000 : 5000 }});
+            this.autoplay = setInterval(() => this.next(), <?php echo e($isServiceMode ? 4000 : 5000); ?>);
         },
         stopAutoplay() {
             if (this.autoplay) {
@@ -104,16 +104,16 @@
     x-intersect:leave.threshold.40="handleVisibility(false)"
     class="relative w-full overflow-hidden"
 >
-    {{-- Slides --}}
+    
     <div class="relative h-[500px] sm:h-[600px] lg:h-[700px]">
-        {{-- Skeleton/shimmer background (shows immediately before anything loads) --}}
+        
         <div 
             x-show="!isLoaded(0) && !isThumbLoaded(0)"
             class="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-800 animate-pulse"
         ></div>
         
-        {{-- First slide rendered directly in HTML for fastest LCP --}}
-        @if($firstSlide)
+        
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstSlide): ?>
         <div
             x-show="currentSlide === 0"
             x-transition:enter="transition ease-out duration-300"
@@ -124,11 +124,11 @@
             x-transition:leave-end="opacity-0"
             class="absolute inset-0"
         >
-            {{-- Blur placeholder (shows while main image loads) --}}
+            
             <img
                 x-ref="firstSlideThumb"
                 x-show="!firstSlideWasCached && !isLoaded(0)"
-                src="{{ $firstSlide['thumb'] }}"
+                src="<?php echo e($firstSlide['thumb']); ?>"
                 alt=""
                 aria-hidden="true"
                 width="300"
@@ -138,11 +138,11 @@
                 :class="isThumbLoaded(0) ? 'opacity-100' : 'opacity-0'"
                 @load="thumbsLoaded.includes(0) || thumbsLoaded.push(0)"
             />
-            {{-- Full-size image with fetchpriority=high for LCP --}}
+            
             <img
                 x-ref="firstSlideImg"
-                src="{{ $firstSlide['image'] }}"
-                alt="{{ $firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project' }}"
+                src="<?php echo e($firstSlide['image']); ?>"
+                alt="<?php echo e($firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project'); ?>"
                 width="2400"
                 height="1350"
                 fetchpriority="high"
@@ -151,12 +151,12 @@
                 :class="firstSlideWasCached ? 'opacity-100' : (isLoaded(0) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                 @load="loadedImages.includes(0) || loadedImages.push(0)"
             />
-            {{-- Overlay --}}
+            
             <div class="absolute inset-0 bg-black/20"></div>
         </div>
-        @endif
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-        {{-- Remaining slides rendered via Alpine template --}}
+        
         <template x-for="(slide, index) in slides" :key="index">
             <div
                 x-show="currentSlide === index && index > 0"
@@ -168,12 +168,12 @@
                 x-transition:leave-end="opacity-0"
                 class="absolute inset-0"
             >
-                {{-- Skeleton for slides that haven't started loading --}}
+                
                 <div 
                     x-show="!isLoaded(index) && !isThumbLoaded(index)"
                     class="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-800 animate-pulse"
                 ></div>
-                {{-- Blur placeholder (shows while main image loads) --}}
+                
                 <img
                     x-show="!window.imageCache?.has(slide.image) && !isLoaded(index)"
                     :src="slide.thumb"
@@ -185,7 +185,7 @@
                     :class="isThumbLoaded(index) ? 'opacity-100' : 'opacity-0'"
                     @load="thumbsLoaded.includes(index) || thumbsLoaded.push(index)"
                 />
-                {{-- Full-size image --}}
+                
                 <img
                     :src="slide.image"
                     :alt="slide.imageAlt || slide.heading || slide.alt"
@@ -198,13 +198,13 @@
                     :class="window.imageCache?.has(slide.image) ? 'opacity-100' : (isLoaded(index) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                     @load="loadedImages.includes(index) || loadedImages.push(index)"
                 />
-                {{-- Overlay --}}
+                
                 <div class="absolute inset-0 bg-black/20"></div>
             </div>
         </template>
 
-        @if($isServiceMode)
-        {{-- Service Page Content (per-slide) --}}
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isServiceMode): ?>
+        
         <template x-for="(slide, index) in slides" :key="'content-' + index">
             <div
                 x-show="currentSlide === index"
@@ -222,11 +222,12 @@
                     @mouseleave="isHovered = false; startAutoplay()"
                 >
                     <div class="lg:max-w-[50%]">
-                        @if($label)
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($label): ?>
                         <span x-show="index === 0" class="inline-flex items-center rounded-full bg-sky-500 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white shadow-lg">
-                            {{ $label }}
+                            <?php echo e($label); ?>
+
                         </span>
-                        @endif
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <h1 
                             class="mt-3 font-heading text-4xl font-bold text-white drop-shadow-lg sm:text-5xl lg:text-6xl"
                             x-text="slide.heading"
@@ -237,23 +238,61 @@
                             class="mt-4 text-lg text-white drop-shadow-lg sm:text-xl"
                         ></p>
                         <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-                            @if($primaryCtaUrl && $primaryCtaText)
-                            <x-buttons.cta href="{{ $primaryCtaUrl }}" size="lg">
-                                {{ $primaryCtaText }}
-                            </x-buttons.cta>
-                            @endif
-                            @if($secondaryCtaUrl && $secondaryCtaText)
-                            <x-buttons.cta href="{{ $secondaryCtaUrl }}" variant="secondary" size="lg" :onDark="true">
-                                {{ $secondaryCtaText }}
-                            </x-buttons.cta>
-                            @endif
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($primaryCtaUrl && $primaryCtaText): ?>
+                            <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => ''.e($primaryCtaUrl).'','size' => 'lg']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['href' => ''.e($primaryCtaUrl).'','size' => 'lg']); ?>
+                                <?php echo e($primaryCtaText); ?>
+
+                             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($secondaryCtaUrl && $secondaryCtaText): ?>
+                            <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => ''.e($secondaryCtaUrl).'','variant' => 'secondary','size' => 'lg','onDark' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['href' => ''.e($secondaryCtaUrl).'','variant' => 'secondary','size' => 'lg','onDark' => true]); ?>
+                                <?php echo e($secondaryCtaText); ?>
+
+                             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                     </div>
                 </div>
             </div>
         </template>
-        @else
-        {{-- Home Page Content (per-slide) --}}
+        <?php else: ?>
+        
         <template x-for="(slide, index) in slides" :key="'content-' + index">
             <div
                 x-show="currentSlide === index"
@@ -285,19 +324,38 @@
                             class="inline-flex items-center justify-center rounded-lg bg-sky-500 px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-lg transition hover:bg-sky-600"
                             x-text="slide.button"
                         ></a>
-                        @if($secondaryCtaUrl && $secondaryCtaText)
-                        <x-buttons.cta href="{{ $secondaryCtaUrl }}" variant="secondary" size="lg" :onDark="true">
-                            {{ $secondaryCtaText }}
-                        </x-buttons.cta>
-                        @endif
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($secondaryCtaUrl && $secondaryCtaText): ?>
+                        <?php if (isset($component)) { $__componentOriginalc91de951028fe2f549c3df803b776551 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc91de951028fe2f549c3df803b776551 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.buttons.cta','data' => ['href' => ''.e($secondaryCtaUrl).'','variant' => 'secondary','size' => 'lg','onDark' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('buttons.cta'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['href' => ''.e($secondaryCtaUrl).'','variant' => 'secondary','size' => 'lg','onDark' => true]); ?>
+                            <?php echo e($secondaryCtaText); ?>
+
+                         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $attributes = $__attributesOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__attributesOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc91de951028fe2f549c3df803b776551)): ?>
+<?php $component = $__componentOriginalc91de951028fe2f549c3df803b776551; ?>
+<?php unset($__componentOriginalc91de951028fe2f549c3df803b776551); ?>
+<?php endif; ?>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
                 </div>
             </div>
         </template>
-        @endif
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     </div>
 
-    {{-- Dot Indicators (display only) --}}
+    
     <div class="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 gap-2">
         <template x-for="(slide, index) in slides" :key="'dot-' + index">
             <div
@@ -307,3 +365,4 @@
         </template>
     </div>
 </div>
+<?php /**PATH /home/patryk/web/gsc/resources/views/livewire/main-project-hero-slider.blade.php ENDPATH**/ ?>

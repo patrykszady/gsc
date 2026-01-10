@@ -49,7 +49,10 @@
                     <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br from-sky-500 to-blue-600">
                         <img 
                             src="{{ asset('images/services/kitchen-hero.jpg') }}" 
-                            alt="Kitchen Remodeling" 
+                            alt="Kitchen Remodeling"
+                            width="800"
+                            height="450"
+                            loading="lazy"
                             class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onerror="this.style.display='none'"
                         >
@@ -101,7 +104,10 @@
                     <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600">
                         <img 
                             src="{{ asset('images/services/bathroom-hero.jpg') }}" 
-                            alt="Bathroom Remodeling" 
+                            alt="Bathroom Remodeling"
+                            width="800"
+                            height="450"
+                            loading="lazy"
                             class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onerror="this.style.display='none'"
                         >
@@ -153,7 +159,10 @@
                     <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600">
                         <img 
                             src="{{ asset('images/services/home-hero.jpg') }}" 
-                            alt="Home Remodeling" 
+                            alt="Home Remodeling"
+                            width="800"
+                            height="450"
+                            loading="lazy"
                             class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onerror="this.style.display='none'"
                         >
@@ -205,7 +214,10 @@
                     <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br from-amber-500 to-orange-600">
                         <img 
                             src="{{ asset('images/services/basement-hero.jpg') }}" 
-                            alt="Basement Remodeling" 
+                            alt="Basement Remodeling"
+                            width="800"
+                            height="450"
+                            loading="lazy"
                             class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             onerror="this.style.display='none'"
                         >

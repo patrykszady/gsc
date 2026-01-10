@@ -2,7 +2,7 @@
     x-data="{
         currentSlide: 0,
         previousSlide: null,
-        backgrounds: @js($backgroundImages),
+        backgrounds: <?php echo \Illuminate\Support\Js::from($backgroundImages)->toHtml() ?>,
         autoplay: null,
         isVisible: false,
         isTabVisible: true,
@@ -13,7 +13,7 @@
         introThumbLoaded: false,
         introTimer: null,
         introTimerDone: false,
-        noBgLoaded: window.imageCache?.has('{{ asset('images/greg-patryk-no-background.png') }}') || false,
+        noBgLoaded: window.imageCache?.has('<?php echo e(asset('images/greg-patryk-no-background.png')); ?>') || false,
         init() {
             document.addEventListener('visibilitychange', () => this.handleTabVisibility());
             // Check if element is already in viewport (intersection may have fired before init)
@@ -27,7 +27,7 @@
             if (full?.complete && full?.naturalWidth > 0) {
                 this.introLoaded = true;
                 this.introWasCached = true;
-                window.imageCache?.set('{{ asset('images/greg-patryk.jpg') }}', true);
+                window.imageCache?.set('<?php echo e(asset('images/greg-patryk.jpg')); ?>', true);
             } else {
                 this.showIntroBlur = true;
             }
@@ -35,7 +35,7 @@
             const noBgImg = this.$refs.noBgImg;
             if (noBgImg?.complete && noBgImg?.naturalWidth > 0) {
                 this.noBgLoaded = true;
-                window.imageCache?.set('{{ asset('images/greg-patryk-no-background.png') }}', true);
+                window.imageCache?.set('<?php echo e(asset('images/greg-patryk-no-background.png')); ?>', true);
             }
             // Start intro timer if conditions are met
             if (this.introLoaded && this.isVisible && this.isTabVisible) {
@@ -124,9 +124,9 @@
     x-intersect:leave.threshold.40="handleVisibility(false)"
     class="relative w-full overflow-hidden rounded-xl shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800"
 >
-    {{-- Background Images (rotating) --}}
+    
     <div class="relative aspect-[4/3] w-full bg-zinc-200 dark:bg-zinc-700">
-        {{-- Intro Phase: greg-patryk.jpg with LQIP --}}
+        
         <div
             x-show="introPhase"
             x-transition:leave="transition-all duration-500 ease-out"
@@ -134,12 +134,12 @@
             x-transition:leave-end="opacity-0 scale-110"
             class="absolute inset-0 z-20"
         >
-            {{-- Blur placeholder (only shown when full image is loading) --}}
+            
             <img
                 x-cloak
                 x-show="showIntroBlur && !introLoaded"
                 x-ref="introThumb"
-                src="{{ asset('images/greg-patryk-thumb.jpg') }}"
+                src="<?php echo e(asset('images/greg-patryk-thumb.jpg')); ?>"
                 alt=""
                 aria-hidden="true"
                 width="300"
@@ -149,22 +149,22 @@
                 :class="introThumbLoaded ? 'opacity-100' : 'opacity-0'"
                 class="h-full w-full object-cover object-bottom blur-md"
             />
-            {{-- Full intro image (layers on top when loaded) --}}
+            
             <img
                 x-ref="introFull"
-                src="{{ asset('images/greg-patryk.jpg') }}"
+                src="<?php echo e(asset('images/greg-patryk.jpg')); ?>"
                 alt="Gregory and Patryk - GS Construction"
                 width="1200"
                 height="1600"
                 fetchpriority="high"
                 decoding="async"
-                @load="introLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk.jpg') }}', true); startIntroTimer()"
+                @load="introLoaded = true; window.imageCache?.set('<?php echo e(asset('images/greg-patryk.jpg')); ?>', true); startIntroTimer()"
                 :class="introWasCached ? 'opacity-100' : (introLoaded ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                 class="absolute inset-0 h-full w-full object-cover object-bottom"
             />
         </div>
 
-        {{-- Sliding Phase: Background images - current fades in over previous --}}
+        
         <template x-for="(bg, index) in backgrounds" :key="index">
             <div
                 x-show="!introPhase && (currentSlide === index || previousSlide === index)"
@@ -184,7 +184,7 @@
             </div>
         </template>
 
-        {{-- Subtle overlay for better foreground visibility (sliding phase only) --}}
+        
         <div 
             x-cloak
             x-show="!introPhase"
@@ -194,17 +194,17 @@
             class="absolute inset-0 z-20 bg-gradient-to-t from-black/20 via-transparent to-black/10"
         ></div>
 
-        {{-- Foreground: Greg & Patryk no-background (always loads, visible in sliding phase) --}}
+        
         <div class="absolute inset-x-0 bottom-0 z-30 flex justify-center" wire:ignore>
             <img
                 x-ref="noBgImg"
-                src="{{ asset('images/greg-patryk-no-background.png') }}"
+                src="<?php echo e(asset('images/greg-patryk-no-background.png')); ?>"
                 alt="Gregory and Patryk - GS Construction"
                 width="800"
                 height="1000"
                 loading="eager"
                 decoding="async"
-                @load="noBgLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk-no-background.png') }}', true); tryEndIntro()"
+                @load="noBgLoaded = true; window.imageCache?.set('<?php echo e(asset('images/greg-patryk-no-background.png')); ?>', true); tryEndIntro()"
                 class="h-auto max-h-full w-auto max-w-full opacity-0 transition-opacity duration-500"
                 :class="(!introPhase && noBgLoaded) && 'opacity-100'"
                 style="filter: drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white) drop-shadow(2px 0 0 white) drop-shadow(-2px 0 0 white) drop-shadow(0 2px 0 white) drop-shadow(0 -2px 0 white);"
@@ -212,7 +212,7 @@
         </div>
     </div>
 
-    {{-- Dot Indicators (sliding phase only) --}}
+    
     <div 
         x-cloak
         x-show="!introPhase"
@@ -231,3 +231,4 @@
         </template>
     </div>
 </div>
+<?php /**PATH /home/patryk/web/gsc/resources/views/livewire/team-photo-slider.blade.php ENDPATH**/ ?>

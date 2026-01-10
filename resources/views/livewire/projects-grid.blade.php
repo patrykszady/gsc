@@ -82,6 +82,8 @@
                     <x-lqip-image 
                         :image="$project->images->first()"
                         size="medium"
+                        width="600"
+                        height="450"
                         class="h-full w-full transition duration-300 group-hover:scale-105"
                     />
                     @else

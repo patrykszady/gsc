@@ -56,7 +56,10 @@
                         <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ $service['gradient'] }}">
                             <img 
                                 src="{{ $service['image'] }}" 
-                                alt="{{ $service['title'] }}" 
+                                alt="{{ $service['title'] }}"
+                                width="800"
+                                height="450"
+                                loading="lazy"
                                 class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                             >
                         </div>

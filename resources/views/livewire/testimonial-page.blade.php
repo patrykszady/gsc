@@ -72,6 +72,9 @@
                     <img
                         src="{{ $imageUrl }}"
                         alt="{{ $testimonial->reviewer_name }}"
+                        width="64"
+                        height="64"
+                        loading="lazy"
                         class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
                         :class="loaded ? 'opacity-100' : 'opacity-0'"
                         @load="onLoad()"

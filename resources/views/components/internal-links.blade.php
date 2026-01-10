@@ -73,6 +73,8 @@ if ($projects->isEmpty()) {
                             <img 
                                 src="{{ $project->images->first()->getThumbnailUrl('thumb') }}" 
                                 alt="{{ $project->title }}"
+                                width="40"
+                                height="40"
                                 class="h-10 w-10 rounded object-cover"
                                 loading="lazy"
                             >

@@ -22,8 +22,9 @@
     </div>
 
     {{-- Hero Section --}}
-    <section class="relative bg-gradient-to-br from-zinc-900 to-zinc-800 py-24 sm:py-32">
-        <div class="absolute inset-0 bg-[url('/images/hero-pattern.svg')] opacity-10"></div>
+    <section class="relative bg-zinc-900 py-24 sm:py-32">
+        <div class="absolute inset-0 bg-cover bg-center opacity-40" style="background-image: url('/images/gs_map.png')"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-zinc-900/40"></div>
         <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="text-center">
                 <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
