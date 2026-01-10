@@ -18,11 +18,14 @@
     if ($image) {
         $fullUrl = $image->getWebpThumbnailUrl($size) ?? $image->getThumbnailUrl($size);
         $thumbUrl = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb') ?? $fullUrl;
-        $altText = $alt ?: $image->seo_alt_text;
+        // Fallback alt text: use seo_alt_text, then generate from project if available
+        $altText = $alt 
+            ?: $image->seo_alt_text 
+            ?: ($image->project ? ucfirst(str_replace('-', ' ', $image->project->project_type)) . ' remodeling by GS Construction' : 'GS Construction remodeling project');
     } else {
         $fullUrl = $src;
         $thumbUrl = $thumb ?? $src;
-        $altText = $alt;
+        $altText = $alt ?: 'GS Construction remodeling';
     }
     
     // Build aspect ratio class
@@ -57,14 +60,23 @@
         thumbLoaded: false,
         wasCached: false,
         showBlur: false,
+        inViewport: {{ $eager ? 'true' : 'false' }},
         init() {
             // Check if browser already has the image cached (complete)
             const fullImg = this.$refs.fullImg;
             if (fullImg?.complete && fullImg?.naturalWidth > 0) {
                 this.wasCached = true;
                 this.loaded = true;
-            } else {
+            } else if (this.inViewport) {
                 this.showBlur = true;
+            }
+        },
+        onEnterViewport() {
+            if (!this.inViewport) {
+                this.inViewport = true;
+                if (!this.loaded && !this.wasCached) {
+                    this.showBlur = true;
+                }
             }
         },
         onLoad() {
@@ -72,14 +84,15 @@
             window.imageCache?.set('{{ $fullUrl }}', '{{ $fullUrl }}');
         }
     }"
+    @if(!$eager) x-intersect:enter.once="onEnterViewport()" @endif
     {{ $attributes->merge(['class' => "relative overflow-hidden bg-zinc-200 dark:bg-zinc-700 $aspectClass $roundedClass $class"]) }}
 >
-    {{-- Blur placeholder (only shown when full image is loading) --}}
+    {{-- Blur placeholder (only shown when in viewport and full image is loading) --}}
     <img
         x-cloak
         x-ref="thumbImg"
-        x-show="showBlur && !loaded"
-        src="{{ $thumbUrl }}"
+        x-show="showBlur && !loaded && inViewport"
+        :src="inViewport ? '{{ $thumbUrl }}' : ''"
         alt=""
         aria-hidden="true"
         class="absolute inset-0 h-full w-full {{ $objectClass }} blur-xl scale-110"
@@ -87,13 +100,16 @@
         @load="thumbLoaded = true"
     />
     
-    {{-- Full-size image --}}
+    {{-- Full-size image (only load src when in viewport for non-eager) --}}
     <img
         x-ref="fullImg"
+        @if($eager)
         src="{{ $fullUrl }}"
+        @else
+        :src="inViewport ? '{{ $fullUrl }}' : ''"
+        @endif
         alt="{{ $altText }}"
-        loading="{{ $loading }}"
-        fetchpriority="{{ $fetchpriority }}"
+        @if($eager) fetchpriority="high" @endif
         decoding="async"
         @if($width) width="{{ $width }}" @endif
         @if($height) height="{{ $height }}" @endif

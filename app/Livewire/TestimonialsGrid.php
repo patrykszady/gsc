@@ -11,6 +11,8 @@ class TestimonialsGrid extends Component
 {
     public ?AreaServed $area = null;
 
+    public bool $showHeader = true;
+
     public int $visibleRows = 3; // Start with 3 rows (top + row2 + row3)
 
     public function loadMore(): void

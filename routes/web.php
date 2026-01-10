@@ -137,7 +137,7 @@ Route::get('/areas-served/{area}', AreaPage::class)
     ->defaults('page', 'home')
     ->name('areas.show');
 Route::get('/areas-served/{area}/{page}', AreaPage::class)
-    ->where('page', 'contact|testimonials|projects|about|services')
+    ->where('page', 'contact|testimonials|projects|about|services|kitchen-remodeling|bathroom-remodeling|home-remodeling')
     ->name('areas.page');
 
 // Service landing pages

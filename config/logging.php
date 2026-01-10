@@ -127,6 +127,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'submissions' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/submissions.log'),
+            'level' => 'debug',
+            'days' => 90, // Keep 90 days of submission logs
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

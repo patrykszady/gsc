@@ -18,12 +18,15 @@ class ContactSubmission extends Model
         'referrer',
         'user_agent',
         'ip_address',
+        'status',
+        'spam_reason',
         'utm_source',
         'utm_medium',
         'utm_campaign',
     ];
 
     protected $casts = [
+        'availability' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

@@ -68,13 +68,14 @@ class SeoService
         
         // Use domain-specific title/description if on alternate domain
         if ($isAlternateDomain && $domainConfig) {
-            $title = $domainConfig['title_prefix'] . ' | GS Construction';
+            $title = $domainConfig['title_prefix'];
             $description = $domainConfig['description'];
         } elseif ($city) {
-            $title = "{$city} Remodeling Contractors | GS Construction";
+            // Keep under 52 chars - suffix adds ~18 chars
+            $title = "{$city} Remodeling Contractors";
             $description = "Kitchen, bathroom & home remodeling in {$city}, IL. Family-owned with 40+ years experience.";
         } else {
-            $title = 'Remodeling Contractors Chicago | GS Construction';
+            $title = 'Remodeling Contractors Chicago';
             $description = 'Kitchen, bathroom & home remodeling in Chicagoland. Family-owned with 40+ years experience.';
         }
 
@@ -202,7 +203,8 @@ class SeoService
      */
     public static function areasServed(): void
     {
-        $title = 'Areas We Serve | Chicagoland Kitchen & Bathroom Remodeling';
+        // Keep under 52 chars (suffix adds ~18 chars)
+        $title = 'Areas We Serve';
         $description = 'GS Construction serves the Chicago Northwest Suburbs including Arlington Heights, Palatine, Lake Zurich, Barrington, and more. Expert kitchen, bathroom, and home remodeling.';
 
         self::setTags($title, $description);
@@ -268,7 +270,8 @@ class SeoService
 
         $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'keywords' => []];
         
-        $title = "{$service['label']} Contractors Chicago | GS Construction";
+        // Keep under 52 chars - suffix adds ~18 chars
+        $title = "{$service['label']} Chicago";
         
         $description = "Expert {$service['label']} services in the Chicagoland area. GS Construction delivers quality kitchen, bathroom, and home renovations.";
 
@@ -287,6 +290,69 @@ class SeoService
         // Add service-specific keywords
         $keywords = $service['keywords'];
         SEOMeta::addKeyword($keywords);
+    }
+
+    /**
+     * Set SEO tags for an area-specific service page.
+     * Example: /areas-served/palatine/bathroom-remodeling
+     */
+    public static function areaService(AreaServed $area, string $serviceType): void
+    {
+        $city = $area->city;
+        
+        $services = [
+            'kitchen-remodeling' => [
+                'label' => 'Kitchen Remodeling',
+                'shortLabel' => 'Kitchen',
+                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors'],
+            ],
+            'bathroom-remodeling' => [
+                'label' => 'Bathroom Remodeling',
+                'shortLabel' => 'Bathroom',
+                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors'],
+            ],
+            'home-remodeling' => [
+                'label' => 'Home Remodeling',
+                'shortLabel' => 'Home',
+                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors'],
+            ],
+        ];
+
+        $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'shortLabel' => 'Remodeling', 'keywords' => []];
+        
+        // Primary keyword targeting: "{City} {Service}" e.g. "Palatine Bathroom Remodeling"
+        // Keep under 52 chars total - for long city names, use short label
+        $fullTitle = "{$city} {$service['label']}";
+        $title = strlen($fullTitle) > 45 
+            ? "{$city} {$service['shortLabel']} Remodel"
+            : $fullTitle;
+        
+        $description = "Expert {$service['label']} in {$city}, IL. Family-owned with 40+ years experience. Free estimates.";
+
+        // Get a relevant cover image for this service type
+        $projectType = match ($serviceType) {
+            'kitchen-remodeling' => 'kitchen',
+            'bathroom-remodeling' => 'bathroom',
+            'home-remodeling' => 'home-remodel',
+            default => null,
+        };
+        $image = $projectType ? self::getCoverImageForType($projectType) : null;
+
+        self::setTags($title, $description, $image);
+        
+        // Add area + service specific keywords
+        $cityLower = strtolower($city);
+        $areaKeywords = array_merge(
+            $service['keywords'],
+            [
+                "{$cityLower} {$service['shortLabel']} remodeling",
+                "{$cityLower} {$service['shortLabel']} contractors",
+                "{$cityLower} remodeling company",
+                "{$city} IL contractors",
+                "{$service['shortLabel']} remodel {$cityLower}",
+            ]
+        );
+        SEOMeta::addKeyword($areaKeywords);
     }
 
     /**

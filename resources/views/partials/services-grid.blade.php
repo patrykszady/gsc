@@ -108,7 +108,7 @@
                         </ul>
                         <div class="mt-6 lg:mt-8">
                             <a 
-                                href="/services/{{ $service['slug'] }}" 
+                                href="{{ isset($area) ? $area->pageUrl($service['slug']) : '/services/' . $service['slug'] }}" 
                                 wire:navigate
                                 class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 lg:px-6 lg:py-3"
                             >

@@ -7,7 +7,9 @@
     </div>
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
         
+        @if($showHeader)
         <x-testimonials-header :area="$area" :show-subtitle="true" />
+        @endif
         @php
             // Calculate visible testimonials based on visibleRows
             // Row 1: featured (2 cols) + leftTop + rightTop = 2 from $testimonials

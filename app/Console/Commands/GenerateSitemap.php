@@ -107,9 +107,11 @@ class GenerateSitemap extends Command
         $this->info("Adding area-served pages to sitemap...");
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
+        $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
         $areaCount = 0;
 
         foreach ($areas as $area) {
+            // Standard area pages
             foreach ($areaPages as $page) {
                 $uri = $page ? "areas-served/{$area->slug}/{$page}" : "areas-served/{$area->slug}";
                 $priority = $page === '' ? 0.7 : 0.6; // Area home pages slightly higher
@@ -123,8 +125,23 @@ class GenerateSitemap extends Command
                 $urlCount++;
                 $areaCount++;
             }
+            
+            // Area-specific service pages (high priority for local SEO)
+            foreach ($areaServicePages as $servicePage) {
+                $uri = "areas-served/{$area->slug}/{$servicePage}";
+                
+                $sitemap->add(
+                    Url::create("{$baseUrl}/{$uri}")
+                        ->setLastModificationDate(now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
+                        ->setPriority(0.8) // High priority for local service keywords
+                );
+                $urlCount++;
+                $areaCount++;
+            }
         }
-        $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × " . count($areaPages) . " page types)");
+        $totalPageTypes = count($areaPages) + count($areaServicePages);
+        $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × {$totalPageTypes} page types)");
 
         // Add project pages with images for image sitemap
         $this->info("Adding project images to sitemap...");

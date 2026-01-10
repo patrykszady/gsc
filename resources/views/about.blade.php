@@ -2,6 +2,11 @@
     title="About Us | GS Construction | Family-Owned Home Remodeling"
     metaDescription="Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area."
 >
+    {{-- Preload LCP image for faster paint --}}
+    @push('head')
+    <link rel="preload" as="image" href="{{ asset('images/greg-patryk.webp') }}" type="image/webp" fetchpriority="high">
+    @endpush
+
     {{-- Breadcrumb Schema --}}
     <x-breadcrumb-schema :items="[
         ['name' => 'About'],

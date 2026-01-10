@@ -13,6 +13,9 @@
                 'projects' => 'Projects',
                 'about' => 'About',
                 'services' => 'Services',
+                'kitchen-remodeling' => 'Kitchen Remodeling',
+                'bathroom-remodeling' => 'Bathroom Remodeling',
+                'home-remodeling' => 'Home Remodeling',
             ];
             $breadcrumbItems[] = ['name' => $pageNames[$page] ?? ucfirst($page)];
         }
@@ -105,14 +108,14 @@
 
         @case('contact')
             {{-- Area Contact Page --}}
-            <x-cta-section 
-                heading="Let's Start Your {{ $area->city }} Project"
-                description="Ready to transform your {{ $area->city }} home? Schedule a free consultation with Greg & Patryk."
-                primaryText="About GS Construction"
-                :primaryHref="$area->pageUrl('about')"
-                secondaryText="View Our Work"
-                :secondaryHref="$area->pageUrl('projects')"
-            />
+            <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <h1 class="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+                    Contact {{ $area->city }} Remodeling Contractors
+                </h1>
+                <p class="mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-300">
+                    Ready to transform your {{ $area->city }} home? Schedule a free consultation with Greg & Patryk.
+                </p>
+            </div>
 
             <livewire:contact-section :area="$area" />
 
@@ -123,7 +126,17 @@
 
         @case('testimonials')
             {{-- Area Testimonials Page --}}
-            <livewire:testimonials-grid :area="$area" />
+            <div class="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8 text-center">
+                <p class="text-sm font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">Testimonials</p>
+                <h1 class="mt-2 font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+                    {{ $area->city }} Remodeling Reviews
+                </h1>
+                <p class="mt-4 mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-300">
+                    Read what {{ $area->city }} homeowners say about working with GS Construction.
+                </p>
+            </div>
+
+            <livewire:testimonials-grid :area="$area" :show-header="false" />
 
             <livewire:map-section />
 
@@ -318,6 +331,132 @@
             @include('partials.services-grid', ['area' => $area])
             @break
 
+        @case('kitchen-remodeling')
+        @case('bathroom-remodeling')
+        @case('home-remodeling')
+            {{-- Area-Specific Service Page (e.g., Palatine Bathroom Remodeling) --}}
+            @php
+                $serviceConfig = [
+                    'kitchen-remodeling' => [
+                        'label' => 'Kitchen Remodeling',
+                        'projectType' => 'kitchen',
+                        'heading' => $area->city . ' Kitchen Remodeling',
+                        'subheading' => 'Transform your kitchen with custom cabinets, countertops, and modern designs',
+                        'description' => "Looking for professional kitchen remodeling in {$area->city}? GS Construction specializes in complete kitchen renovations, from cabinet installation to countertop upgrades. Our family-owned business has served {$area->city} homeowners for years with quality craftsmanship.",
+                        'features' => [
+                            'Custom cabinet design and installation',
+                            'Granite, quartz, and marble countertops',
+                            'Kitchen island and layout optimization',
+                            'Modern lighting and electrical upgrades',
+                            'Flooring installation',
+                            'Backsplash and tile work',
+                        ],
+                    ],
+                    'bathroom-remodeling' => [
+                        'label' => 'Bathroom Remodeling',
+                        'projectType' => 'bathroom',
+                        'heading' => $area->city . ' Bathroom Remodeling',
+                        'subheading' => 'Create your dream bathroom with custom showers, vanities, and tile work',
+                        'description' => "Need bathroom remodeling in {$area->city}? GS Construction delivers stunning bathroom renovations, from walk-in showers to complete master bath transformations. We've helped countless {$area->city} families create beautiful, functional bathrooms.",
+                        'features' => [
+                            'Walk-in shower and tub installation',
+                            'Custom vanity and cabinetry',
+                            'Tile flooring and wall installation',
+                            'Plumbing fixture upgrades',
+                            'Heated flooring systems',
+                            'Accessibility modifications',
+                        ],
+                    ],
+                    'home-remodeling' => [
+                        'label' => 'Home Remodeling',
+                        'projectType' => 'home-remodel',
+                        'heading' => $area->city . ' Home Remodeling',
+                        'subheading' => 'Complete home renovations, additions, and whole-house transformations',
+                        'description' => "Planning a home remodel in {$area->city}? GS Construction handles complete home renovations, from open floor plan conversions to room additions. Our team brings 40+ years of experience to every {$area->city} project.",
+                        'features' => [
+                            'Open floor plan conversions',
+                            'Room additions and extensions',
+                            'Basement finishing',
+                            'Interior redesign and layout changes',
+                            'Structural modifications',
+                            'Complete home renovation',
+                        ],
+                    ],
+                ];
+                $config = $serviceConfig[$page];
+            @endphp
+            
+            {{-- Hero with projects slider --}}
+            <livewire:main-project-hero-slider 
+                :project-type="$config['projectType']"
+                heading="{{ $config['heading'] }}"
+                subheading="{{ $config['subheading'] }}"
+                primary-cta-text="Get Free Quote"
+                :primary-cta-url="$area->pageUrl('contact')"
+                secondary-cta-text="View {{ $config['label'] }} Projects"
+                :secondary-cta-url="$area->pageUrl('projects')"
+            />
+
+            {{-- Service Description Section --}}
+            <section class="bg-white py-16 dark:bg-zinc-900">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="grid gap-12 lg:grid-cols-2">
+                        <div>
+                            <h2 class="font-heading text-3xl font-bold text-zinc-900 dark:text-white">
+                                Professional {{ $config['label'] }} in {{ $area->city }}
+                            </h2>
+                            <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
+                                {{ $config['description'] }}
+                            </p>
+                            <p class="mt-4 text-zinc-600 dark:text-zinc-400">
+                                As a family-owned business with over 40 years of combined experience, Greg and Patryk personally oversee every project. We're not just contractors—we're your neighbors committed to delivering exceptional results for {{ $area->city }} homeowners.
+                            </p>
+                            <div class="mt-8">
+                                <a href="{{ $area->pageUrl('contact') }}" wire:navigate class="inline-flex items-center rounded-lg bg-sky-600 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-500">
+                                    Schedule Free Consultation
+                                    <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="rounded-xl bg-zinc-50 p-8 dark:bg-zinc-800">
+                            <h3 class="font-heading text-xl font-semibold text-zinc-900 dark:text-white">
+                                Our {{ $config['label'] }} Services Include:
+                            </h3>
+                            <ul class="mt-6 space-y-4">
+                                @foreach($config['features'] as $feature)
+                                <li class="flex items-start">
+                                    <svg class="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-zinc-700 dark:text-zinc-300">{{ $feature }}</span>
+                                </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- Projects for this service type --}}
+            <livewire:projects-grid :area="$area" :type="$config['projectType']" />
+
+            {{-- Testimonials --}}
+            <livewire:testimonials-section :area="$area" />
+
+            {{-- Contact CTA --}}
+            <x-cta-section 
+                variant="blue"
+                heading="Ready for Your {{ $area->city }} {{ $config['label'] }} Project?"
+                description="Get a free estimate from Greg & Patryk. We'll visit your home and provide a detailed quote."
+                primary-cta-text="Get Free Quote"
+                :primary-cta-url="$area->pageUrl('contact')"
+                secondary-cta-text="Call (847) 430-4439"
+                secondary-cta-url="tel:+18474304439"
+            />
+            @break
+
         @default
             {{-- Fallback to home --}}
             <livewire:about-section />
@@ -333,14 +472,20 @@
                 <a href="{{ $area->url }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'home' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Home
                 </a>
-                <a href="{{ $area->pageUrl('services') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'services' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
-                    Services
+                <a href="{{ $area->pageUrl('kitchen-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'kitchen-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                    Kitchen
+                </a>
+                <a href="{{ $area->pageUrl('bathroom-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'bathroom-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                    Bathroom
+                </a>
+                <a href="{{ $area->pageUrl('home-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'home-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                    Home Remodel
                 </a>
                 <a href="{{ $area->pageUrl('projects') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'projects' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Projects
                 </a>
                 <a href="{{ $area->pageUrl('testimonials') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'testimonials' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
-                    Testimonials
+                    Reviews
                 </a>
                 <a href="{{ $area->pageUrl('about') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'about' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     About

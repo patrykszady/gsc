@@ -28,6 +28,7 @@
         isHovered: false,
         isVisible: true,
         isTabVisible: true,
+        nextToLoad: 1,
         init() {
             // Mark already-cached images as loaded immediately
             this.slides.forEach((slide, index) => {
@@ -49,21 +50,37 @@
             }
             this.startAutoplay();
             document.addEventListener('visibilitychange', () => this.handleTabVisibility());
-            // Preload next slides after initial render
-            this.$nextTick(() => this.preloadNextSlides());
+            // Start sequential loading only when visible
+            if (this.isVisible) {
+                this.loadNextImage();
+            }
         },
-        preloadNextSlides() {
-            // Preload all slide images after first paint
-            this.slides.forEach((slide, index) => {
-                if (index > 0 && !this.loadedImages.includes(index)) {
-                    const img = new Image();
-                    img.src = slide.image;
-                    img.onload = () => {
-                        if (!this.loadedImages.includes(index)) this.loadedImages.push(index);
-                        window.imageCache?.set(slide.image, slide.image);
-                    };
-                }
-            });
+        loadNextImage() {
+            // Only load if visible and there are more images to load
+            if (!this.isVisible || this.nextToLoad >= this.slides.length) return;
+            
+            const index = this.nextToLoad;
+            if (this.loadedImages.includes(index)) {
+                // Already loaded, move to next
+                this.nextToLoad++;
+                this.loadNextImage();
+                return;
+            }
+            
+            const slide = this.slides[index];
+            const img = new Image();
+            img.onload = () => {
+                if (!this.loadedImages.includes(index)) this.loadedImages.push(index);
+                window.imageCache?.set(slide.image, slide.image);
+                this.nextToLoad++;
+                // Load next image after a small delay to not block main thread
+                setTimeout(() => this.loadNextImage(), 100);
+            };
+            img.onerror = () => {
+                this.nextToLoad++;
+                this.loadNextImage();
+            };
+            img.src = slide.image;
         },
         isLoaded(index) {
             return this.loadedImages.includes(index);
@@ -89,6 +106,8 @@
             this.isVisible = isVisible;
             if (isVisible && this.isTabVisible && !this.isHovered) {
                 this.startAutoplay();
+                // Start loading images when entering viewport
+                this.loadNextImage();
             } else {
                 this.stopAutoplay();
             }

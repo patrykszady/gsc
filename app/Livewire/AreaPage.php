@@ -30,6 +30,9 @@ class AreaPage extends Component
             'projects' => SeoService::projects($area),
             'about' => SeoService::about($area),
             'services' => SeoService::services($area),
+            'kitchen-remodeling' => SeoService::areaService($area, 'kitchen-remodeling'),
+            'bathroom-remodeling' => SeoService::areaService($area, 'bathroom-remodeling'),
+            'home-remodeling' => SeoService::areaService($area, 'home-remodeling'),
             default => SeoService::home($area),
         };
     }

@@ -6,6 +6,7 @@ use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
 use App\Models\ContactSubmission;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Validate;
@@ -163,13 +164,16 @@ class ContactSection extends Component
         // Spam protection checks (after validation passes)
         $spamReason = $this->detectSpam();
         if ($spamReason) {
-            \Log::warning('Spam submission blocked', [
+            Log::channel('submissions')->warning('Spam submission blocked', [
                 'reason' => $spamReason,
                 'ip' => request()->ip(),
                 'name' => $this->name,
                 'email' => $this->email,
                 'phone' => $this->phoneDigits,
             ]);
+            
+            // Store spam submission for review
+            $this->storeSubmission('spam', $spamReason);
             
             // Show generic success message to not alert spammers
             session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
@@ -191,7 +195,7 @@ class ContactSection extends Component
         $this->storeSubmission();
 
         // Log the contact form submission
-        \Log::info('Contact form submitted', [
+        Log::channel('submissions')->info('Contact form submitted', [
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phoneDigits,
@@ -496,7 +500,7 @@ class ContactSection extends Component
             $result = $response->json();
             
             if (!($result['success'] ?? false)) {
-                \Log::warning('Turnstile verification failed', [
+                Log::channel('submissions')->warning('Turnstile verification failed', [
                     'error-codes' => $result['error-codes'] ?? [],
                     'ip' => request()->ip(),
                     'hostname' => $result['hostname'] ?? null,
@@ -509,7 +513,7 @@ class ContactSection extends Component
                 return false;
             }
 
-            \Log::debug('Turnstile verification passed', [
+            Log::channel('submissions')->debug('Turnstile verification passed', [
                 'ip' => request()->ip(),
                 'hostname' => $result['hostname'] ?? null,
                 'email' => $this->email,
@@ -517,7 +521,7 @@ class ContactSection extends Component
 
             return true;
         } catch (\Exception $e) {
-            \Log::error('Turnstile verification error', [
+            Log::channel('submissions')->error('Turnstile verification error', [
                 'error' => $e->getMessage(),
             ]);
             // Allow form submission if Turnstile API fails (graceful degradation)
@@ -569,8 +573,11 @@ class ContactSection extends Component
     /**
      * Store form submission in database for reliable tracking.
      * This provides a backup independent of email delivery and analytics.
+     * 
+     * @param string $status 'pending' for legitimate, 'spam' for blocked
+     * @param string|null $spamReason Reason for spam classification
      */
-    protected function storeSubmission(): void
+    protected function storeSubmission(string $status = 'pending', ?string $spamReason = null): void
     {
         try {
             ContactSubmission::create([
@@ -585,13 +592,15 @@ class ContactSection extends Component
                 'referrer' => request()->header('referer'),
                 'user_agent' => request()->userAgent(),
                 'ip_address' => request()->ip(),
+                'status' => $status,
+                'spam_reason' => $spamReason,
                 'utm_source' => session('utm_source') ?? request()->input('utm_source'),
                 'utm_medium' => session('utm_medium') ?? request()->input('utm_medium'),
                 'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
             ]);
         } catch (\Exception $e) {
             // Don't let database failure affect form submission
-            \Log::warning('Failed to store contact submission', ['error' => $e->getMessage()]);
+            Log::channel('submissions')->error('Failed to store contact submission', ['error' => $e->getMessage()]);
         }
     }
 
