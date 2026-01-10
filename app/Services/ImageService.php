@@ -15,6 +15,8 @@ class ImageService
         'thumb' => [150, 150],
         'small' => [300, 300],
         'medium' => [600, 600],
+        // Hero image for tablets/small desktops (16:9)
+        'hero' => [1200, 675],
         // Used for hero/large displays (16:9)
         'large' => [2400, 1350],
     ];
@@ -197,5 +199,73 @@ class ImageService
         
         // Set this one as cover
         $image->update(['is_cover' => true]);
+    }
+
+    /**
+     * Regenerate thumbnails for an existing image.
+     */
+    public function regenerateThumbnails(ProjectImage $image, ?string $specificSize = null, bool $onlyMissing = false): array
+    {
+        $generated = 0;
+        $skipped = 0;
+
+        $originalPath = $image->path;
+        $basePath = dirname($originalPath);
+        $filename = basename($originalPath);
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+        // Read the original image once
+        $originalFile = Storage::disk('public')->get($originalPath);
+        
+        $sizesToGenerate = $specificSize 
+            ? [$specificSize => $this->thumbnailSizes[$specificSize] ?? null]
+            : $this->thumbnailSizes;
+
+        $thumbnails = $image->thumbnails ?? [];
+
+        foreach ($sizesToGenerate as $size => [$width, $height]) {
+            if ($width === null) {
+                continue;
+            }
+
+            $thumbFilename = "{$nameWithoutExt}_{$size}.{$extension}";
+            $thumbPath = "{$basePath}/thumbs/{$thumbFilename}";
+            $webpThumbFilename = "{$nameWithoutExt}_{$size}.webp";
+            $webpThumbPath = "{$basePath}/thumbs/{$webpThumbFilename}";
+
+            // Skip if only generating missing and file exists
+            if ($onlyMissing && Storage::disk('public')->exists($thumbPath)) {
+                $skipped++;
+                continue;
+            }
+
+            // Generate JPEG/PNG thumbnail
+            $img = Image::read($originalFile);
+            $img->cover($width, $height);
+            $encoded = $this->encodeImage($img, $extension);
+            Storage::disk('public')->put($thumbPath, $encoded);
+            $thumbnails[$size] = $thumbPath;
+            $generated++;
+
+            // Generate WebP version
+            try {
+                if (!$onlyMissing || !Storage::disk('public')->exists($webpThumbPath)) {
+                    $webpImg = Image::read($originalFile);
+                    $webpImg->cover($width, $height);
+                    $webpEncoded = $webpImg->toWebp($this->webpQuality)->toString();
+                    Storage::disk('public')->put($webpThumbPath, $webpEncoded);
+                    $thumbnails["{$size}_webp"] = $webpThumbPath;
+                    $generated++;
+                }
+            } catch (\Exception $e) {
+                // WebP generation failed, continue
+            }
+        }
+
+        // Update the image record with new thumbnail paths
+        $image->update(['thumbnails' => $thumbnails]);
+
+        return ['generated' => $generated, 'skipped' => $skipped];
     }
 }

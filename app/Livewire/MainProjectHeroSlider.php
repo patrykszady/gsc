@@ -79,20 +79,23 @@ class MainProjectHeroSlider extends Component
     {
         // Get URLs for different sizes
         $largeUrl = $image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url;
+        $heroUrl = $image->getWebpThumbnailUrl('hero') ?? $image->getThumbnailUrl('hero');
         $mediumUrl = $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium');
         $smallUrl = $image->getWebpThumbnailUrl('small') ?? $image->getThumbnailUrl('small');
         $thumbUrl = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
         
         return [
             'url' => $largeUrl,
+            'hero' => $heroUrl,
             'medium' => $mediumUrl,
             'small' => $smallUrl,
             'thumb' => $thumbUrl,
             'alt' => $image->seo_alt_text,
-            // Srcset for responsive images
+            // Srcset for responsive images - includes all breakpoints
             'srcset' => implode(', ', array_filter([
                 $smallUrl ? "{$smallUrl} 300w" : null,
                 $mediumUrl ? "{$mediumUrl} 600w" : null,
+                $heroUrl ? "{$heroUrl} 1200w" : null,
                 $largeUrl ? "{$largeUrl} 2400w" : null,
             ])),
         ];
@@ -105,16 +108,18 @@ class MainProjectHeroSlider extends Component
     {
         // For Unsplash, we can use URL params for different sizes
         $thumbUrl = str_replace(['w=1920', 'q=80'], ['w=50', 'q=30'], $url);
-        $smallUrl = str_replace(['w=1920', 'q=80'], ['w=640', 'q=75'], $url);
-        $mediumUrl = str_replace(['w=1920', 'q=80'], ['w=1024', 'q=80'], $url);
+        $smallUrl = str_replace(['w=1920', 'q=80'], ['w=300', 'q=75'], $url);
+        $mediumUrl = str_replace(['w=1920', 'q=80'], ['w=600', 'q=80'], $url);
+        $heroUrl = str_replace(['w=1920', 'q=80'], ['w=1200', 'q=80'], $url);
         
         return [
             'url' => $url,
+            'hero' => $heroUrl,
             'medium' => $mediumUrl,
             'small' => $smallUrl,
             'thumb' => $thumbUrl,
             'alt' => 'Home remodeling project by GS Construction',
-            'srcset' => "{$smallUrl} 640w, {$mediumUrl} 1024w, {$url} 1920w",
+            'srcset' => "{$smallUrl} 300w, {$mediumUrl} 600w, {$heroUrl} 1200w, {$url} 1920w",
         ];
     }
 

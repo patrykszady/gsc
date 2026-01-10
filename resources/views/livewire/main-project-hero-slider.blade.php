@@ -3,12 +3,14 @@
     $isServiceMode = $mode === 'service';
     // First slide image for preloading
     $firstSlide = $renderedSlides[0] ?? null;
+    // Responsive sizes: use smaller images on smaller screens
+    $heroSizes = '(max-width: 640px) 600px, (max-width: 1024px) 1200px, 2400px';
 @endphp
 
 {{-- Preload the LCP image (first slide) for faster rendering with responsive srcset --}}
 @if($firstSlide)
 @push('head')
-<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" imagesrcset="{{ $firstSlide['srcset'] ?? '' }}" imagesizes="100vw" fetchpriority="high">
+<link rel="preload" as="image" href="{{ $firstSlide['image'] }}" imagesrcset="{{ $firstSlide['srcset'] ?? '' }}" imagesizes="{{ $heroSizes }}" fetchpriority="high">
 @endpush
 @endif
 
@@ -143,7 +145,7 @@
                 x-ref="firstSlideImg"
                 src="{{ $firstSlide['image'] }}"
                 srcset="{{ $firstSlide['srcset'] ?? '' }}"
-                sizes="100vw"
+                sizes="{{ $heroSizes }}"
                 alt="{{ $firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project' }}"
                 width="2400"
                 height="1350"
@@ -191,7 +193,7 @@
                 <img
                     :src="slide.image"
                     :srcset="slide.srcset || ''"
-                    sizes="100vw"
+                    sizes="{{ $heroSizes }}"
                     :alt="slide.imageAlt || slide.heading || slide.alt"
                     width="2400"
                     height="1350"

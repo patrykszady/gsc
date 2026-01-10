@@ -119,6 +119,7 @@ Route::get('/projects', function () {
 Route::get('/services', ServicesPage::class)->name('services.index');
 
 Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
+Route::redirect('/contact-us', '/contact', 301);
 
 // Legacy /areas/ redirects (correct path is /areas-served/)
 Route::redirect('/areas', '/areas-served', 301);
