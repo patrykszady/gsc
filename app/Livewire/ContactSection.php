@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
+use App\Models\ContactSubmission;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
@@ -186,13 +187,20 @@ class ContactSection extends Component
             availability: $this->availability,
         ));
 
+        // Store submission in database (independent of GA/email)
+        $this->storeSubmission();
+
         // Log the contact form submission
         \Log::info('Contact form submitted', [
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phoneDigits,
             'address' => $this->address,
+            'area' => $this->area?->city,
         ]);
+        
+        // Server-side GA4 tracking (works even if client blocks GA)
+        $this->sendServerSideAnalytics();
         
         session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
 
@@ -514,6 +522,76 @@ class ContactSection extends Component
             ]);
             // Allow form submission if Turnstile API fails (graceful degradation)
             return true;
+        }
+    }
+    
+    /**
+     * Send server-side analytics to GA4 via Measurement Protocol.
+     * This tracks form submissions even when client-side GA is blocked.
+     */
+    protected function sendServerSideAnalytics(): void
+    {
+        $measurementId = config('services.google.measurement_id');
+        $apiSecret = config('services.google.measurement_api_secret');
+        
+        if (! $measurementId || ! $apiSecret) {
+            return;
+        }
+        
+        try {
+            // Generate a client_id from session or create one
+            $clientId = session('ga_client_id') ?? request()->cookie('_ga_client_id') ?? \Str::uuid()->toString();
+            
+            Http::timeout(5)->post("https://www.google-analytics.com/mp/collect?measurement_id={$measurementId}&api_secret={$apiSecret}", [
+                'client_id' => $clientId,
+                'events' => [
+                    [
+                        'name' => 'generate_lead',
+                        'params' => [
+                            'event_category' => 'contact',
+                            'event_label' => 'contact_form_submission',
+                            'value' => 1,
+                            'source' => 'server_side',
+                            'page_location' => request()->fullUrl(),
+                            'page_referrer' => request()->header('referer'),
+                            'user_agent' => request()->userAgent(),
+                            'city' => $this->area?->city ?? 'not_specified',
+                        ],
+                    ],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            // Don't let analytics failure affect form submission
+            \Log::warning('Server-side GA4 tracking failed', ['error' => $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Store form submission in database for reliable tracking.
+     * This provides a backup independent of email delivery and analytics.
+     */
+    protected function storeSubmission(): void
+    {
+        try {
+            ContactSubmission::create([
+                'name' => $this->name,
+                'email' => $this->email,
+                'phone' => $this->phoneDigits,
+                'address' => $this->address,
+                'message' => $this->message,
+                'availability' => $this->availability,
+                'city' => $this->area?->city,
+                'source' => request()->header('X-Requested-With') === 'XMLHttpRequest' ? 'ajax' : 'web',
+                'referrer' => request()->header('referer'),
+                'user_agent' => request()->userAgent(),
+                'ip_address' => request()->ip(),
+                'utm_source' => session('utm_source') ?? request()->input('utm_source'),
+                'utm_medium' => session('utm_medium') ?? request()->input('utm_medium'),
+                'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
+            ]);
+        } catch (\Exception $e) {
+            // Don't let database failure affect form submission
+            \Log::warning('Failed to store contact submission', ['error' => $e->getMessage()]);
         }
     }
 

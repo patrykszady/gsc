@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\BlockSpamBots;
 use App\Http\Middleware\CacheStaticAssets;
+use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\TrackDomainSource;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             TrackDomainSource::class,
             RedirectLegacyUrls::class,
             CacheStaticAssets::class,
+            CaptureUtmParameters::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

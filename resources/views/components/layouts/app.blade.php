@@ -64,33 +64,168 @@
 
     @fluxScripts
 
-    {{-- Analytics event tracking --}}
+    {{-- Analytics event tracking with fallback for blocked users --}}
     <script>
-        // Track CTA button clicks with GA4 recommended parameters
+        // Session tracking for users who might have GA blocked
+        (function() {
+            const sessionKey = 'gs_session';
+            const eventsKey = 'gs_events';
+            
+            // Generate or retrieve session ID
+            if (!sessionStorage.getItem(sessionKey)) {
+                sessionStorage.setItem(sessionKey, 'gs_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));
+            }
+            
+            // Track event locally (works even if GA is blocked)
+            window.trackEventLocal = function(eventName, eventData) {
+                const events = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                events.push({
+                    event: eventName,
+                    data: eventData,
+                    timestamp: Date.now(),
+                    session: sessionStorage.getItem(sessionKey),
+                    page: window.location.pathname,
+                    referrer: document.referrer || 'direct'
+                });
+                // Keep last 50 events
+                if (events.length > 50) events.shift();
+                localStorage.setItem(eventsKey, JSON.stringify(events));
+            };
+            
+            // Track page view timing
+            window.trackPageTiming = function() {
+                const timing = performance.timing || {};
+                const loadTime = timing.loadEventEnd - timing.navigationStart;
+                const domReady = timing.domContentLoadedEventEnd - timing.navigationStart;
+                return { loadTime, domReady };
+            };
+            
+            // Track scroll depth
+            let maxScroll = 0;
+            let scrollMilestones = { 25: false, 50: false, 75: false, 90: false };
+            window.addEventListener('scroll', function() {
+                const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+                maxScroll = Math.max(maxScroll, scrollPercent);
+                
+                [25, 50, 75, 90].forEach(function(milestone) {
+                    if (scrollPercent >= milestone && !scrollMilestones[milestone]) {
+                        scrollMilestones[milestone] = true;
+                        window.trackEventLocal('scroll_depth', { depth: milestone });
+                        if (typeof gtag !== 'undefined') {
+                            gtag('event', 'scroll', { percent_scrolled: milestone });
+                        }
+                    }
+                });
+            }, { passive: true });
+            
+            // Track time on page
+            const pageStartTime = Date.now();
+            window.addEventListener('beforeunload', function() {
+                const timeOnPage = Math.round((Date.now() - pageStartTime) / 1000);
+                window.trackEventLocal('page_exit', { 
+                    time_on_page: timeOnPage,
+                    max_scroll: maxScroll 
+                });
+                // Send beacon for reliable tracking even on page exit
+                if (navigator.sendBeacon && typeof gtag !== 'undefined') {
+                    const data = new FormData();
+                    data.append('time_on_page', timeOnPage);
+                    data.append('max_scroll', maxScroll);
+                    // GA4 doesn't support sendBeacon directly, but we log locally
+                }
+            });
+            
+            // Track engagement time (user is actively interacting)
+            let engagementTime = 0;
+            let lastActivity = Date.now();
+            let isEngaged = true;
+            
+            ['click', 'scroll', 'keypress', 'mousemove', 'touchstart'].forEach(function(event) {
+                document.addEventListener(event, function() {
+                    if (!isEngaged) {
+                        isEngaged = true;
+                    }
+                    lastActivity = Date.now();
+                }, { passive: true });
+            });
+            
+            setInterval(function() {
+                if (isEngaged && (Date.now() - lastActivity < 30000)) {
+                    engagementTime++;
+                } else {
+                    isEngaged = false;
+                }
+            }, 1000);
+            
+            // Expose engagement time
+            window.getEngagementTime = function() { return engagementTime; };
+        })();
+        
+        // Track CTA button clicks with GA4 + local fallback
         window.trackCTA = function(buttonText, buttonLocation) {
             const eventData = {
                 button_text: buttonText,
                 button_location: buttonLocation || 'unknown',
                 page_path: window.location.pathname,
-                page_title: document.title
+                page_title: document.title,
+                engagement_time: window.getEngagementTime ? window.getEngagementTime() : 0
             };
             console.log('[GA Event] cta_click', eventData);
+            window.trackEventLocal('cta_click', eventData);
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'cta_click', eventData);
             }
         };
 
-        // Track form interactions
+        // Track form interactions with timing
         window.trackFormStart = function(formName) {
             const eventData = {
                 form_name: formName,
-                page_path: window.location.pathname
+                page_path: window.location.pathname,
+                time_to_form: window.getEngagementTime ? window.getEngagementTime() : 0
             };
             console.log('[GA Event] form_start', eventData);
+            window.trackEventLocal('form_start', eventData);
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'form_start', eventData);
             }
         };
+        
+        // Track outbound link clicks
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a[href]');
+            if (link && link.hostname !== window.location.hostname) {
+                const eventData = {
+                    link_url: link.href,
+                    link_text: link.textContent?.trim().substring(0, 100),
+                    page_path: window.location.pathname
+                };
+                window.trackEventLocal('outbound_click', eventData);
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'click', { 
+                        event_category: 'outbound',
+                        event_label: link.href
+                    });
+                }
+            }
+        });
+        
+        // Track phone/email clicks
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a[href^="tel:"], a[href^="mailto:"]');
+            if (link) {
+                const isPhone = link.href.startsWith('tel:');
+                const eventData = {
+                    contact_type: isPhone ? 'phone' : 'email',
+                    contact_value: link.href.replace(/^(tel:|mailto:)/, ''),
+                    page_path: window.location.pathname
+                };
+                window.trackEventLocal('contact_click', eventData);
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', isPhone ? 'phone_call' : 'email_click', eventData);
+                }
+            }
+        });
     </script>
 
     {{-- Deferred Third-Party Scripts (loaded after main content for better LCP) --}}
