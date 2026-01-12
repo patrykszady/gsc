@@ -56,6 +56,37 @@ class ContactSection extends Component
     // Times selected per date
     public array $timeSelections = [];
 
+    public function placeholder(): string
+    {
+        return <<<'HTML'
+        <section class="relative bg-white dark:bg-gray-900">
+            <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
+                <div class="relative px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
+                    <div class="mx-auto max-w-xl lg:mx-0 lg:max-w-lg space-y-4">
+                        <div class="aspect-[4/3] max-w-md bg-zinc-200 dark:bg-zinc-700 rounded-xl animate-pulse"></div>
+                        <div class="h-12 w-3/4 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        <div class="h-6 w-full bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        <div class="space-y-3 pt-4">
+                            <div class="h-5 w-48 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                            <div class="h-5 w-56 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                            <div class="h-5 w-44 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
+                    <div class="mx-auto max-w-xl lg:max-w-lg space-y-4">
+                        <div class="h-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        <div class="h-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        <div class="h-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        <div class="h-32 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                        <div class="h-12 w-1/3 bg-sky-200 dark:bg-sky-800 rounded animate-pulse"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        HTML;
+    }
+
     public function mount(): void
     {
         $this->formLoadedAt = time();

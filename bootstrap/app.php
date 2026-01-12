@@ -4,6 +4,7 @@ use App\Http\Middleware\BlockSpamBots;
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\RedirectLegacyUrls;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackDomainSource;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,12 +24,13 @@ return Application::configure(basePath: dirname(__DIR__))
             BlockSpamBots::class,
         ]);
         
-        // SEO: Track domain source for analytics, handle legacy redirects, and cache static assets
+        // SEO: Track domain source for analytics, handle legacy redirects, cache static assets, and add security headers
         $middleware->web(append: [
             TrackDomainSource::class,
             RedirectLegacyUrls::class,
             CacheStaticAssets::class,
             CaptureUtmParameters::class,
+            SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

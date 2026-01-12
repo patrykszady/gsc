@@ -13,6 +13,34 @@ class AboutSection extends Component
     public ?string $serviceTitle = null;
     public ?string $serviceShortTitle = null;
 
+    public function placeholder(): string
+    {
+        return <<<'HTML'
+        <section class="overflow-hidden bg-zinc-50 py-8 sm:py-10 dark:bg-slate-950">
+            <div class="mx-auto max-w-7xl px-6 lg:px-8">
+                <div class="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-start">
+                    <div class="lg:pr-8">
+                        <div class="lg:max-w-lg space-y-4">
+                            <div class="h-4 w-24 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                            <div class="h-8 w-3/4 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                            <div class="h-20 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                            <div class="space-y-3">
+                                <div class="h-5 w-full bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                                <div class="h-5 w-5/6 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                                <div class="h-5 w-4/5 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:mt-[4.5rem] lg:pl-4">
+                        <div class="aspect-[4/3] w-full bg-zinc-200 dark:bg-zinc-700 rounded-xl animate-pulse"></div>
+                        <div class="mt-4 h-16 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        HTML;
+    }
+
     public function render()
     {
         $content = $this->getContent();

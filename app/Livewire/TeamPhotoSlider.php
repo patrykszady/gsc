@@ -15,8 +15,12 @@ class TeamPhotoSlider extends Component
         $this->backgroundImages = $this->getRandomCoverImages(5);
     }
 
-    public function refreshBackgroundImage(int $index): ?string
+    public function refreshBackgroundImage(?int $index): ?string
     {
+        if ($index === null) {
+            return null;
+        }
+
         // Get a new random image, excluding current ones
         $excludeIds = collect($this->backgroundImages)
             ->pluck('id')

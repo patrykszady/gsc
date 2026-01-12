@@ -20,7 +20,6 @@ class BlockSpamBots
         'dataforseobot',
         'serpstatbot',
         'bytespider',
-        'petalbot',
         'megaindex',
         'linkdexbot',
         'exabot',

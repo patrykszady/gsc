@@ -25,6 +25,26 @@ class TestimonialsSection extends Component
 
     public int $historyIndex = -1;
 
+    public function placeholder(): string
+    {
+        return <<<'HTML'
+        <div class="relative isolate bg-white py-16 sm:py-20 lg:py-24 dark:bg-slate-950">
+            <div class="mx-auto max-w-7xl px-6 lg:px-8">
+                <div class="mx-auto max-w-2xl text-center space-y-4">
+                    <div class="h-4 w-24 mx-auto bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                    <div class="h-10 w-3/4 mx-auto bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                    <div class="h-6 w-full bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
+                </div>
+                <div class="mt-12 flex justify-center gap-8">
+                    <div class="w-72 h-80 bg-zinc-200 dark:bg-zinc-700 rounded-2xl animate-pulse"></div>
+                    <div class="hidden md:block w-96 h-96 bg-zinc-200 dark:bg-zinc-700 rounded-2xl animate-pulse"></div>
+                    <div class="hidden lg:block w-72 h-80 bg-zinc-200 dark:bg-zinc-700 rounded-2xl animate-pulse"></div>
+                </div>
+            </div>
+        </div>
+        HTML;
+    }
+
     public function mount(): void
     {
         // Load 10 random reviews from the last 6 years as initial pool
