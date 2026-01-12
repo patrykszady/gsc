@@ -41,7 +41,6 @@ class BlockSpamBots
         'py-requests', // Often used by scrapers
         'python-urllib',
         'python-requests',
-        'curl/', // Curl with no real user agent often = bot
         'libwww-perl',
         'lwp-trivial',
         'wget',

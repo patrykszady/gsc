@@ -36,19 +36,19 @@
         :secondary-cta-url="route('contact')"
     />
 
-    {{-- About Section --}}
-    <livewire:about-section />
+    {{-- About Section (lazy loaded - below fold) --}}
+    <livewire:about-section lazy />
 
-    {{-- Timelapse Section --}}
-    <livewire:timelapse-section />
+    {{-- Timelapse Section (lazy loaded - below fold) --}}
+    <livewire:timelapse-section lazy />
 
-    {{-- Testimonials Section --}}
-    <livewire:testimonials-section />
+    {{-- Testimonials Section (lazy loaded - below fold) --}}
+    <livewire:testimonials-section lazy />
     
-    {{-- Map Parallax Section --}}
-    <livewire:map-section />
+    {{-- Map Parallax Section (lazy loaded - below fold) --}}
+    <livewire:map-section lazy />
 
-    {{-- Contact Section --}}
-    <livewire:contact-section />
+    {{-- Contact Section (lazy loaded - below fold) --}}
+    <livewire:contact-section lazy />
 
 </x-layouts.app>

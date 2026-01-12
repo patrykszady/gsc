@@ -22,8 +22,8 @@ class ImageService
     ];
 
     protected int $maxWidth = 3200;
-    protected int $quality = 92;
-    protected int $webpQuality = 85;
+    protected int $quality = 90;
+    protected int $webpQuality = 80; // Reduced from 85 for better performance
 
     public function upload(UploadedFile $file, Project $project, array $options = []): ProjectImage
     {

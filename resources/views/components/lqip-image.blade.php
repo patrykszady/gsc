@@ -45,9 +45,9 @@
     // Object fit class
     $objectClass = "object-$objectFit";
     
-    // Loading strategy
+    // Loading strategy - use 'low' priority for lazy images to prioritize LCP
     $loading = $eager ? 'eager' : 'lazy';
-    $fetchpriority = $eager ? 'high' : 'auto';
+    $fetchpriority = $eager ? 'high' : 'low';
     
     // Unique ID for this image instance
     $imageId = 'lqip-' . md5($fullUrl . microtime());
@@ -109,7 +109,7 @@
         :src="inViewport ? '{{ $fullUrl }}' : ''"
         @endif
         alt="{{ $altText }}"
-        @if($eager) fetchpriority="high" @endif
+        fetchpriority="{{ $fetchpriority }}"
         decoding="async"
         @if($width) width="{{ $width }}" @endif
         @if($height) height="{{ $height }}" @endif

@@ -14,7 +14,7 @@
     $webpUrl = $image->getWebpThumbnailUrl($size);
     $altText = $alt ?? $image->seo_alt_text;
     $loading = $eager ? 'eager' : 'lazy';
-    $fetchpriority = $eager ? 'high' : 'auto';
+    $fetchpriority = $eager ? 'high' : 'low';
 @endphp
 
 <picture>

@@ -77,29 +77,17 @@ Disallow: /
 User-agent: Baiduspider
 Disallow: /
 
-User-agent: Amazonbot
-Disallow: /
+# ============================================
+# AI BOTS - ALLOWED FOR VISIBILITY
+# ============================================
+# Allowing AI crawlers so GS Construction appears 
+# in AI-generated answers when people ask about
+# remodeling services in the Chicago area.
 
-User-agent: ClaudeBot
-Disallow: /
-
-User-agent: anthropic-ai
-Disallow: /
-
-User-agent: GPTBot
-Disallow: /
-
-User-agent: ChatGPT-User
-Disallow: /
-
-User-agent: CCBot
-Disallow: /
-
-User-agent: Google-Extended
-Disallow: /
-
-# FacebookBot - ALLOW for link previews on Facebook/Instagram
-# Applebot - ALLOW for Siri, Spotlight, Safari suggestions
+# Amazonbot - Powers Alexa answers (ALLOW)
+# ClaudeBot - Powers Claude AI (ALLOW)  
+# GPTBot/ChatGPT-User - Powers ChatGPT (ALLOW)
+# Google-Extended - Powers Gemini/Bard (ALLOW)
 
 User-agent: omgili
 Disallow: /

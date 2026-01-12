@@ -66,8 +66,10 @@
 
     @fluxScripts
 
-    {{-- Analytics event tracking with fallback for blocked users --}}
+    {{-- Analytics event tracking (deferred to reduce TBT) --}}
     <script>
+        // Defer analytics setup to after page is interactive
+        requestIdleCallback(function() {
         // Session tracking for users who might have GA blocked
         (function() {
             const sessionKey = 'gs_session';
@@ -228,6 +230,7 @@
                 }
             }
         });
+        }, { timeout: 2000 }); // End requestIdleCallback
     </script>
 
     {{-- Deferred Third-Party Scripts (loaded after main content for better LCP) --}}
