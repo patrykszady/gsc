@@ -44,21 +44,43 @@ $serviceSlug = match($serviceKey) {
     default => 'basement-remodeling',
 };
 
-// Route names use short keys (kitchen, bathroom, home, basement)
-$routeKey = match($serviceKey) {
-    'kitchen' => 'kitchen',
-    'bathroom' => 'bathroom',
-    'home-remodel' => 'home',
-    default => 'basement',
-};
-
 $serviceData = $serviceTypes[$serviceSlug] ?? $serviceTypes['kitchen-remodeling'];
+
+// Build URL - use area page URL if area provided
+$serviceUrl = $area 
+    ? $area->pageUrl($serviceSlug)
+    : url("/services/{$serviceSlug}");
+
+// Build feature list for schema - handle both string and array formats
+$featureList = [];
+if (!empty($service['features'])) {
+    foreach ($service['features'] as $feature) {
+        if (is_string($feature)) {
+            $featureList[] = [
+                '@type' => 'Offer',
+                'itemOffered' => [
+                    '@type' => 'Service',
+                    'name' => $feature,
+                ],
+            ];
+        } elseif (is_array($feature) && isset($feature['title'])) {
+            $featureList[] = [
+                '@type' => 'Offer',
+                'itemOffered' => [
+                    '@type' => 'Service',
+                    'name' => $feature['title'],
+                    'description' => $feature['description'] ?? '',
+                ],
+            ];
+        }
+    }
+}
 
 $schema = [
     '@context' => 'https://schema.org',
     '@type' => 'Service',
     'name' => $city ? "{$city} {$serviceData['name']}" : $serviceData['name'],
-    'description' => $service['metaDescription'] ?? $serviceData['description'],
+    'description' => $service['description'] ?? $service['metaDescription'] ?? $serviceData['description'],
     'serviceType' => $serviceData['serviceType'],
     'category' => $serviceData['category'],
     'provider' => [
@@ -69,9 +91,7 @@ $schema = [
         'url' => 'https://gs.construction',
     ],
     'areaServed' => $areaServed,
-    'url' => $area 
-        ? route("area.services.{$routeKey}", $area) 
-        : route("services.{$routeKey}"),
+    'url' => $serviceUrl,
     'offers' => [
         '@type' => 'Offer',
         'availability' => 'https://schema.org/InStock',
@@ -85,19 +105,16 @@ $schema = [
         ],
     ],
     'termsOfService' => 'https://gs.construction/contact',
-    'hasOfferCatalog' => [
+];
+
+// Only add hasOfferCatalog if we have features
+if (!empty($featureList)) {
+    $schema['hasOfferCatalog'] = [
         '@type' => 'OfferCatalog',
         'name' => "{$serviceData['name']} Services",
-        'itemListElement' => array_map(fn($feature) => [
-            '@type' => 'Offer',
-            'itemOffered' => [
-                '@type' => 'Service',
-                'name' => $feature['title'],
-                'description' => $feature['description'],
-            ],
-        ], $service['features'] ?? []),
-    ],
-];
+        'itemListElement' => $featureList,
+    ];
+}
 
 // Note: aggregateRating is NOT valid on Service type for Google rich results.
 // Valid parent types are: Book, Course, Event, Game, HowTo, LocalBusiness, Movie,

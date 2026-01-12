@@ -364,7 +364,8 @@ class SeoService
             ? "{$city} {$service['shortLabel']} Remodel"
             : $fullTitle;
         
-        $description = "Expert {$service['label']} in {$city}, IL. Family-owned with 40+ years experience. Free estimates.";
+        // Enhanced description with "near me" signals and call-to-action
+        $description = "Looking for {$service['label']} in {$city}, IL? GS Construction offers expert {$service['shortLabel']} remodeling services near you. Family-owned, 40+ years experience. Free estimates!";
 
         // Get a relevant cover image for this service type
         $projectType = match ($serviceType) {
@@ -377,16 +378,28 @@ class SeoService
 
         self::setTags($title, $description, $image);
         
-        // Add area + service specific keywords
+        // Add area + service specific keywords (helps with semantic relevance)
         $cityLower = strtolower($city);
+        $serviceLabel = strtolower($service['label']);
+        $shortLabel = strtolower($service['shortLabel']);
+        
         $areaKeywords = array_merge(
             $service['keywords'],
             [
-                "{$cityLower} {$service['shortLabel']} remodeling",
-                "{$cityLower} {$service['shortLabel']} contractors",
-                "{$cityLower} remodeling company",
-                "{$city} IL contractors",
-                "{$service['shortLabel']} remodel {$cityLower}",
+                // Primary local keywords
+                "{$cityLower} {$serviceLabel}",
+                "{$cityLower} {$shortLabel} contractors",
+                "{$cityLower} {$shortLabel} remodelers",
+                "{$serviceLabel} {$cityLower} il",
+                "{$shortLabel} remodel near {$cityLower}",
+                // "Near me" signals (helps semantic matching)
+                "{$shortLabel} remodeling near me",
+                "{$shortLabel} contractors near me",
+                "best {$shortLabel} remodelers {$cityLower}",
+                // Long-tail variations
+                "{$cityLower} {$shortLabel} renovation",
+                "{$shortLabel} remodeling company {$cityLower}",
+                "{$city} IL {$shortLabel} remodel",
             ]
         );
         SEOMeta::addKeyword($areaKeywords);

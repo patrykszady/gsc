@@ -351,6 +351,12 @@
                             'Flooring installation',
                             'Backsplash and tile work',
                         ],
+                        'faqs' => [
+                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Kitchen remodeling costs in {$area->city} typically range from \$25,000 to \$75,000+ depending on scope, materials, and finishes. We provide free in-home estimates with detailed breakdowns for your specific project."],
+                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "Most kitchen remodels in {$area->city} take 4-8 weeks depending on complexity. We work efficiently while maintaining quality, and keep you informed throughout the process."],
+                            ['question' => "Do you handle kitchen remodeling permits in {$area->city}?", 'answer' => "Yes, GS Construction handles all necessary permits for {$area->city} kitchen remodeling projects. We're familiar with local building codes and ensure your project is fully compliant."],
+                            ['question' => "Can you remodel my kitchen while I live in my {$area->city} home?", 'answer' => "Absolutely! Most of our {$area->city} clients stay in their homes during kitchen remodels. We set up temporary kitchen areas and minimize disruption to your daily routine."],
+                        ],
                     ],
                     'bathroom-remodeling' => [
                         'label' => 'Bathroom Remodeling',
@@ -365,6 +371,12 @@
                             'Plumbing fixture upgrades',
                             'Heated flooring systems',
                             'Accessibility modifications',
+                        ],
+                        'faqs' => [
+                            ['question' => "How much does bathroom remodeling cost in {$area->city}?", 'answer' => "Bathroom remodeling in {$area->city} typically costs \$15,000 to \$45,000+ depending on size and finishes. Master bathrooms and custom tile work are on the higher end. We offer free estimates tailored to your vision."],
+                            ['question' => "How long does a bathroom remodel take?", 'answer' => "Most bathroom remodels in {$area->city} take 2-4 weeks. Larger master bath renovations may take 4-6 weeks. We provide a detailed timeline before starting work."],
+                            ['question' => "Do you install walk-in showers in {$area->city}?", 'answer' => "Yes! Walk-in showers are one of our most popular requests in {$area->city}. We install frameless glass, custom tile, and accessible designs for all needs."],
+                            ['question' => "Can you make my bathroom more accessible?", 'answer' => "Absolutely. We specialize in accessibility modifications including grab bars, walk-in tubs, curbless showers, and wider doorways for {$area->city} homeowners."],
                         ],
                     ],
                     'home-remodeling' => [
@@ -381,10 +393,28 @@
                             'Structural modifications',
                             'Complete home renovation',
                         ],
+                        'faqs' => [
+                            ['question' => "What does whole home remodeling include in {$area->city}?", 'answer' => "Whole home remodeling in {$area->city} can include kitchen and bathroom renovations, open floor plan conversions, room additions, basement finishing, and complete interior updates. We customize every project to your needs."],
+                            ['question' => "How long does a whole home remodel take?", 'answer' => "Complete home remodels in {$area->city} typically take 3-6 months depending on scope. We create detailed project timelines and keep you updated throughout construction."],
+                            ['question' => "Do you handle room additions in {$area->city}?", 'answer' => "Yes, we handle room additions including sunrooms, master suites, and second-story additions for {$area->city} homes. We manage everything from design through construction."],
+                            ['question' => "Can you convert my {$area->city} home to an open floor plan?", 'answer' => "Open floor plan conversions are one of our specialties! We safely remove walls (including load-bearing walls with proper engineering) to create the modern, open layout you want."],
+                        ],
                     ],
                 ];
                 $config = $serviceConfig[$page];
+                
+                // Get nearby areas for internal linking (exclude current area)
+                $nearbyAreas = \App\Models\AreaServed::where('id', '!=', $area->id)
+                    ->inRandomOrder()
+                    ->take(6)
+                    ->get();
             @endphp
+            
+            {{-- Service Schema for rich results --}}
+            <x-service-schema :service="$config" :area="$area" />
+            
+            {{-- FAQ Schema for rich snippets --}}
+            <x-faq-schema :faqs="$config['faqs']" />
             
             {{-- Hero with projects slider --}}
             <livewire:main-project-hero-slider 
@@ -441,6 +471,90 @@
 
             {{-- Projects for this service type --}}
             <livewire:projects-grid :area="$area" :type="$config['projectType']" />
+
+            {{-- FAQ Section --}}
+            <section class="bg-white py-16 dark:bg-zinc-900">
+                <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white text-center mb-8">
+                        Frequently Asked Questions About {{ $config['label'] }} in {{ $area->city }}
+                    </h2>
+                    <dl class="space-y-6">
+                        @foreach($config['faqs'] as $faq)
+                        <div x-data="{ open: false }" class="border-b border-zinc-200 pb-6 dark:border-zinc-700">
+                            <dt>
+                                <button @click="open = !open" class="flex w-full items-start justify-between text-left">
+                                    <span class="text-base font-semibold text-zinc-900 dark:text-white">{{ $faq['question'] }}</span>
+                                    <span class="ml-6 flex h-7 items-center">
+                                        <svg :class="open ? 'rotate-180' : ''" class="h-5 w-5 transform text-zinc-500 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </span>
+                                </button>
+                            </dt>
+                            <dd x-show="open" x-collapse class="mt-4 pr-12">
+                                <p class="text-base text-zinc-600 dark:text-zinc-400">{{ $faq['answer'] }}</p>
+                            </dd>
+                        </div>
+                        @endforeach
+                    </dl>
+                </div>
+            </section>
+
+            {{-- Why Choose Us Section --}}
+            <section class="bg-zinc-50 py-16 dark:bg-zinc-800">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white text-center mb-12">
+                        Why {{ $area->city }} Homeowners Choose GS Construction
+                    </h2>
+                    <div class="grid gap-8 md:grid-cols-3">
+                        <div class="text-center">
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
+                                <svg class="h-6 w-6 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">Family-Owned & Operated</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Greg and Patryk personally oversee every {{ $area->city }} project. You work directly with the owners, not salespeople.</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
+                                <svg class="h-6 w-6 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                </svg>
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">40+ Years Experience</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Combined decades of remodeling expertise. We've seen it all and know how to handle any challenge your {{ $area->city }} home presents.</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
+                                <svg class="h-6 w-6 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">5-Star Reviews</h3>
+                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Consistently rated 5 stars by {{ $area->city }} homeowners on Google, Houzz, and Yelp. Our reputation speaks for itself.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- Nearby Areas Section for Internal Linking --}}
+            @if($nearbyAreas->count() > 0)
+            <section class="bg-white py-12 dark:bg-zinc-900">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
+                        {{ $config['label'] }} in Nearby Areas
+                    </h2>
+                    <div class="flex flex-wrap gap-3">
+                        @foreach($nearbyAreas as $nearbyArea)
+                        <a href="{{ $nearbyArea->pageUrl($page) }}" wire:navigate class="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
+                            {{ $nearbyArea->city }} {{ $config['label'] }}
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+            @endif
 
             {{-- Testimonials --}}
             <livewire:testimonials-section :area="$area" />
