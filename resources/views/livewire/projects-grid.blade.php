@@ -75,7 +75,7 @@
         {{-- Projects Grid --}}
         <div class="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
             @forelse($projects as $project)
-            <article class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+            <a href="{{ route('projects.show', $project) }}" wire:navigate class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
                 {{-- Project Image --}}
                 <div class="relative aspect-[4/3] overflow-hidden">
                     @if($project->images->first())
@@ -140,8 +140,13 @@
                         Completed {{ $project->completed_at->format('F Y') }}
                     </p>
                     @endif
+
+                    {{-- View Project Link --}}
+                    <p class="mt-3 text-sm font-medium text-sky-600 group-hover:text-sky-500 dark:text-sky-400 dark:group-hover:text-sky-300">
+                        View Project →
+                    </p>
                 </div>
-            </article>
+            </a>
             @empty
             <div class="col-span-full py-12 text-center">
                 <p class="text-lg text-zinc-500 dark:text-zinc-400">No projects found.</p>

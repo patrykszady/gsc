@@ -5,7 +5,8 @@
             <div class="space-y-6">
                 {{-- GS Logo (same as navbar) --}}
                 <a href="/" wire:navigate.hover>
-                    <img src="{{ asset('favicon-source.png') }}" alt="GS Construction" width="99" height="64" class="h-16 w-auto" />
+                    <img src="{{ asset('images/logo.svg') }}" alt="GS Construction" width="80" height="80" class="size-20 dark:hidden" />
+                    <img src="{{ asset('images/logo-dark.svg') }}" alt="GS Construction" width="80" height="80" class="hidden size-20 dark:block" />
                 </a>
 
                 {{-- Company Name --}}

@@ -154,7 +154,7 @@
                                         {{ Str::limit($submission->message, 60) }}
                                     </div>
                                     @if($submission->availability)
-                                        <div class="mt-1 text-xs text-zinc-500">📅 {{ $submission->availability }}</div>
+                                        <div class="mt-1 text-xs text-zinc-500">📅 {{ is_array($submission->availability) ? implode(', ', $submission->availability) : $submission->availability }}</div>
                                     @endif
                                 </flux:table.cell>
                                 <flux:table.cell>

@@ -1,4 +1,10 @@
 <div class="bg-white dark:bg-zinc-900">
+    {{-- Breadcrumb Schema --}}
+    <x-breadcrumb-schema :items="[
+        ['name' => 'Testimonials', 'url' => route('testimonials.index')],
+        ['name' => $testimonial->reviewer_name],
+    ]" />
+
     {{-- Breadcrumb --}}
     <div class="mx-auto max-w-3xl px-6 pt-8 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
@@ -49,7 +55,8 @@
 
             {{-- 5 stars --}}
             <div class="mb-6">
-                <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" width="224" height="32" class="h-8 w-auto" />
+                <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" width="224" height="32" class="h-8 w-auto dark:hidden" />
+                <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" width="224" height="32" class="hidden h-8 w-auto dark:block" />
             </div>
 
             {{-- Review text --}}

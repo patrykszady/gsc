@@ -8,76 +8,15 @@ use App\Livewire\Admin\TagList;
 use App\Livewire\Admin\ContactSubmissions;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
+use App\Livewire\ProjectPage;
 use App\Livewire\ServicePage;
 use App\Livewire\ServicesPage;
 use App\Livewire\TestimonialPage;
 use App\Services\SeoService;
 use Illuminate\Support\Facades\Route;
 
-// Dynamic robots.txt using APP_URL
-Route::get('/robots.txt', function () {
-    $baseUrl = config('app.url');
-    
-    $content = <<<ROBOTS
-# GS Construction & Remodeling
-# https://gs.construction
-
-# Allow all crawlers
-User-agent: *
-
-# Disallow admin and internal paths
-Disallow: /admin/
-Disallow: /livewire/
-Disallow: /log-viewer/
-Disallow: /storage/
-
-# Disallow query parameters that create duplicate content
-Disallow: /*?*
-
-# Allow important query parameters for filtering (override above)
-Allow: /projects?type=
-Allow: /areas-served?
-
-# Crawl-delay for polite crawling (optional, respected by some bots)
-Crawl-delay: 1
-
-# Sitemaps
-Sitemap: {$baseUrl}/sitemap.xml
-
-# AI Training Bots - Opt out of AI training
-User-agent: GPTBot
-Disallow: /
-
-User-agent: ChatGPT-User
-Disallow: /
-
-User-agent: CCBot
-Disallow: /
-
-User-agent: anthropic-ai
-Disallow: /
-
-User-agent: Claude-Web
-Disallow: /
-
-User-agent: Google-Extended
-Disallow: /
-
-User-agent: FacebookBot
-Disallow: /
-
-User-agent: Bytespider
-Disallow: /
-
-User-agent: Amazonbot
-Disallow: /
-
-# Host directive (helps some search engines)
-Host: {$baseUrl}
-ROBOTS;
-
-    return response($content, 200)->header('Content-Type', 'text/plain');
-});
+// Note: robots.txt is served as a static file from public/robots.txt
+// This ensures fastest response and works even if PHP is down.
 
 // IndexNow key verification file
 Route::get('/{key}.txt', function (string $key) {
@@ -116,6 +55,8 @@ Route::get('/projects', function () {
     SeoService::projects(null, request('type'));
     return view('projects');
 })->name('projects.index');
+
+Route::get('/projects/{project}', ProjectPage::class)->name('projects.show');
 
 Route::get('/services', ServicesPage::class)->name('services.index');
 

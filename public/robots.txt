@@ -80,9 +80,6 @@ Disallow: /
 User-agent: Amazonbot
 Disallow: /
 
-User-agent: Applebot
-Disallow: /
-
 User-agent: ClaudeBot
 Disallow: /
 
@@ -101,8 +98,8 @@ Disallow: /
 User-agent: Google-Extended
 Disallow: /
 
-User-agent: FacebookBot
-Disallow: /
+# FacebookBot - ALLOW for link previews on Facebook/Instagram
+# Applebot - ALLOW for Siri, Spotlight, Safari suggestions
 
 User-agent: omgili
 Disallow: /

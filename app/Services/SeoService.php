@@ -244,6 +244,43 @@ class SeoService
     }
 
     /**
+     * Set SEO tags for individual project page.
+     */
+    public static function project(Project $project): void
+    {
+        $types = Project::projectTypes();
+        $typeLabel = $types[$project->project_type] ?? ucfirst(str_replace('-', ' ', $project->project_type));
+        
+        // Build title: "Project Title | Kitchen Remodel"
+        $title = $project->title;
+        if ($project->location) {
+            $title .= " in {$project->location}";
+        }
+        
+        // Build description
+        $description = $project->description 
+            ? Str::limit($project->description, 155)
+            : "View our {$typeLabel} project" . ($project->location ? " in {$project->location}" : '') . ". See photos and details of this beautiful renovation by GS Construction.";
+
+        // Get cover image
+        $image = null;
+        if ($project->relationLoaded('images') && $project->images->isNotEmpty()) {
+            $coverImage = $project->images->firstWhere('is_cover', true) ?? $project->images->first();
+            $image = $coverImage->getWebpThumbnailUrl('large') ?? $coverImage->getThumbnailUrl('large') ?? $coverImage->url;
+        }
+
+        self::setTags($title, $description, $image);
+        
+        SEOMeta::addKeyword([
+            $typeLabel,
+            'remodeling project',
+            $project->location ?? 'Chicago',
+            'before and after',
+            'home renovation',
+        ]);
+    }
+
+    /**
      * Set SEO tags for a service page.
      */
     public static function service(string $serviceType): void
@@ -353,30 +390,6 @@ class SeoService
             ]
         );
         SEOMeta::addKeyword($areaKeywords);
-    }
-
-    /**
-     * Set SEO tags for a single project.
-     */
-    public static function project(Project $project): void
-    {
-        $type = ucfirst(str_replace('-', ' ', $project->project_type));
-        $location = $project->location;
-        
-        $title = $location
-            ? "{$type} Remodel in {$location} | GS Construction"
-            : "{$project->title} | GS Construction";
-        
-        $description = $project->description
-            ?: "View our {$type} remodeling project" . ($location ? " in {$location}" : '') . ". Quality craftsmanship by GS Construction.";
-
-        self::setTags($title, $description);
-        
-        // Set project image for social sharing
-        if ($cover = $project->images->where('is_cover', true)->first() ?? $project->images->first()) {
-            OpenGraph::addImage($cover->url);
-            TwitterCard::setImage($cover->url);
-        }
     }
 
     /**

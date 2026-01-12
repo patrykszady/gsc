@@ -99,17 +99,11 @@ $schema = [
     ],
 ];
 
-// Add aggregate rating if we have testimonials
-$reviewCount = \App\Models\Testimonial::where('project_type', $serviceKey)->count();
-if ($reviewCount > 0) {
-    $schema['aggregateRating'] = [
-        '@type' => 'AggregateRating',
-        'ratingValue' => '5',
-        'bestRating' => '5',
-        'worstRating' => '1',
-        'ratingCount' => $reviewCount,
-    ];
-}
+// Note: aggregateRating is NOT valid on Service type for Google rich results.
+// Valid parent types are: Book, Course, Event, Game, HowTo, LocalBusiness, Movie,
+// Organization, Product, Recipe, SoftwareApplication, etc.
+// The LocalBusiness schema in schema-org.blade.php already includes aggregateRating
+// and reviews, which is the correct place for them.
 @endphp
 
 <script type="application/ld+json">

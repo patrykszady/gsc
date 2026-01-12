@@ -152,11 +152,8 @@
                         <div class="relative hidden flex-col lg:flex">
                             {{-- 5-star image --}}
                             <div>
-                                <img
-                                    src="{{ asset('images/gs construction five starts.png') }}"
-                                    alt="5 Stars"
-                                    class="h-7 w-auto"
-                                />
+                                <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" class="h-10 w-auto dark:hidden" />
+                                <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" class="hidden h-10 w-auto dark:block" />
                             </div>
 
                             {{-- Quote --}}
@@ -198,11 +195,8 @@
                         <div class="lg:hidden">
                             {{-- 5-star image --}}
                             <div>
-                                <img
-                                    src="{{ asset('images/gs construction five starts.png') }}"
-                                    alt="5 Stars"
-                                    class="h-6 w-auto"
-                                />
+                                <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" class="h-8 w-auto dark:hidden" />
+                                <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" class="hidden h-8 w-auto dark:block" />
                             </div>
 
                             {{-- Quote --}}

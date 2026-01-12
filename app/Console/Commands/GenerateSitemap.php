@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\AreaServed;
 use App\Models\Project;
+use App\Models\Testimonial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Spatie\Sitemap\Sitemap;
@@ -36,19 +37,30 @@ class GenerateSitemap extends Command
             'api',
             'robots.txt',
             'log-viewer',
-            'reviews',     // redirect route
-            'flux/',       // internal flux assets
-            'livewire/',   // internal livewire assets
-            'up',          // health check
-            'sanctum',     // sanctum routes
+            'reviews',      // redirect to /testimonials
+            'contact-us',   // redirect to /contact
+            'flux/',        // internal flux assets
+            'livewire/',    // internal livewire assets
+            'up',           // health check
+            'sanctum',      // sanctum routes
+        ];
+        
+        // Exact URIs to exclude (redirects)
+        $excludeExact = [
+            'areas',        // redirect to /areas-served
         ];
 
         // Static pages from routes (non-parameterized GET routes)
-        $staticRoutes = $routes->filter(function ($route) use ($excludePatterns) {
+        $staticRoutes = $routes->filter(function ($route) use ($excludePatterns, $excludeExact) {
             $uri = $route->uri();
             
             // Skip routes with parameters
             if (str_contains($uri, '{')) {
+                return false;
+            }
+            
+            // Skip exact matches (redirects)
+            if (in_array($uri, $excludeExact)) {
                 return false;
             }
             
@@ -143,25 +155,41 @@ class GenerateSitemap extends Command
         $totalPageTypes = count($areaPages) + count($areaServicePages);
         $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × {$totalPageTypes} page types)");
 
-        // Add project pages with images for image sitemap
-        $this->info("Adding project images to sitemap...");
-        $projects = Project::where('is_published', true)->with('images')->get();
-        
-        foreach ($projects as $project) {
-            $projectUrl = Url::create("{$baseUrl}/projects?project={$project->slug}")
-                ->setLastModificationDate($project->updated_at ?? now())
-                ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                ->setPriority(0.6);
-            
-            // Add images to URL (Spatie sitemap supports images)
-            foreach ($project->images as $image) {
-                $projectUrl->addImage($image->url, $project->title);
-                $imageCount++;
-            }
-            
-            $sitemap->add($projectUrl);
+        // Add individual testimonial pages
+        $this->info("Adding testimonial pages to sitemap...");
+        $testimonials = Testimonial::orderBy('review_date', 'desc')->get();
+        $testimonialCount = 0;
+
+        foreach ($testimonials as $testimonial) {
+            $sitemap->add(
+                Url::create("{$baseUrl}/testimonials/{$testimonial->slug}")
+                    ->setLastModificationDate($testimonial->updated_at ?? $testimonial->review_date ?? now())
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(0.6)
+            );
             $urlCount++;
+            $testimonialCount++;
         }
+        $this->line("  Added {$testimonialCount} testimonial pages");
+
+        // Add individual project pages
+        $this->info("Adding project pages to sitemap...");
+        $projects = Project::where('is_published', true)->with('images')->get();
+        $projectCount = 0;
+        $imageCount = 0;
+
+        foreach ($projects as $project) {
+            $sitemap->add(
+                Url::create("{$baseUrl}/projects/{$project->slug}")
+                    ->setLastModificationDate($project->updated_at ?? now())
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(0.7)
+            );
+            $urlCount++;
+            $projectCount++;
+            $imageCount += $project->images->count();
+        }
+        $this->line("  Added {$projectCount} project pages ({$imageCount} total images)");
 
         // Write to storage first, then copy to public (for Forge zero-downtime deployments)
         $storagePath = storage_path('app/sitemap.xml');
@@ -182,8 +210,8 @@ class GenerateSitemap extends Command
         $this->info("Total URLs: {$urlCount}");
         $this->info("  - Static pages: " . $staticRoutes->count());
         $this->info("  - Area pages: {$areaCount}");
-        $this->info("  - Project pages: " . $projects->count());
-        $this->info("  - Images indexed: {$imageCount}");
+        $this->info("  - Testimonial pages: {$testimonialCount}");
+        $this->info("  - Project pages: {$projectCount} ({$imageCount} images)");
 
         return Command::SUCCESS;
     }

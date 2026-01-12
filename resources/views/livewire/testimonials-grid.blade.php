@@ -60,7 +60,8 @@
                                     · {{ $featured['date'] }}
                                 </div>
                             </div>
-                            <img src="{{ asset('images/gs construction five starts.png') }}" alt="5 Stars" width="280" height="40" class="h-10 w-auto flex-none" />
+                            <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" width="280" height="40" class="h-10 w-auto flex-none dark:hidden" />
+                            <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" width="280" height="40" class="hidden h-10 w-auto flex-none dark:block" />
                         </div>
                         <div>
                             <x-buttons.cta href="{{ route('testimonials.show', $featured['slug']) }}" variant="secondary" size="sm">
