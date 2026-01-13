@@ -26,6 +26,14 @@
         {{-- Header --}}
         <div class="mx-auto max-w-2xl text-center">
             <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Our Work</p>
+            @php
+                $typeLabels = [
+                    'kitchen' => 'Kitchen',
+                    'bathroom' => 'Bathroom',
+                    'home-remodel' => 'Home Remodeling',
+                ];
+                $typeLabel = $type ? ($typeLabels[$type] ?? ucfirst($type)) : null;
+            @endphp
             @if($hideFilters)
             {{-- Use H2 when embedded in another page (service pages have H1 in hero) --}}
             <h2 class="mt-2 font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
@@ -33,8 +41,12 @@
             {{-- Use H1 when this is the main projects page --}}
             <h1 class="mt-2 font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
             @endif
-                @if($area)
+                @if($area && $typeLabel)
+                    {{ $typeLabel }} Projects in {{ $area->city }}
+                @elseif($area)
                     GS Construction Projects in {{ $area->city }}
+                @elseif($typeLabel)
+                    {{ $typeLabel }} Projects
                 @else
                     Our Projects
                 @endif
@@ -44,7 +56,9 @@
             </h1>
             @endif
             <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
-                @if($area)
+                @if($area && $typeLabel)
+                    Browse our {{ strtolower($typeLabel) }} remodeling projects completed in {{ $area->city }}. See the quality craftsmanship our family brings to every {{ strtolower($typeLabel) }} project.
+                @elseif($area)
                     Browse GS Construction's portfolio of completed home remodeling projects in {{ $area->city }} and surrounding areas. From kitchens to bathrooms, see the quality craftsmanship our family brings to every project.
                 @else
                     Browse GS Construction's portfolio of completed home remodeling projects throughout Chicagoland. From kitchens to bathrooms, basements to whole-home renovations, see the quality craftsmanship our family brings to every project.

@@ -100,7 +100,67 @@ class AboutSection extends Component
     {
         $title = $this->serviceTitle;
         $shortTitle = $this->serviceShortTitle ?? $title;
+        $city = $this->area?->city;
+        $ctaHref = $this->area ? $this->area->pageUrl('contact') : '/contact';
         
+        // Area-specific service content (e.g., "Bathroom Remodeling in Arlington Heights")
+        if ($city) {
+            $serviceKeywords = [
+                'Kitchen Remodeling' => [
+                    'label' => "{$city} Kitchen Remodeling",
+                    'intro' => "<strong class=\"font-semibold text-zinc-900 dark:text-white\">GS Construction & Remodeling</strong> is a family business serving {$city} homeowners. Run by Gregory and Patryk, a <strong class=\"font-semibold text-zinc-900 dark:text-white\">father-son team</strong> with over 40 years of combined kitchen remodeling experience.",
+                    'body' => "From custom cabinets to countertop installation, we handle every aspect of your {$city} kitchen remodel with care. We make sure you're comfortable with every decision, catching concerns early so your project stays smooth and stress-free.",
+                    'features' => [
+                        'Custom kitchen design and layout planning',
+                        "Dedicated {$city} kitchen remodeling specialists",
+                        'On-site supervision for every project',
+                        'Top-notch craftsmanship guaranteed',
+                    ],
+                    'quote' => "Your {$city} kitchen remodel is in good hands with us.",
+                ],
+                'Bathroom Remodeling' => [
+                    'label' => "{$city} Bathroom Remodeling",
+                    'intro' => "<strong class=\"font-semibold text-zinc-900 dark:text-white\">GS Construction & Remodeling</strong> is a family business serving {$city} homeowners. Run by Gregory and Patryk, a <strong class=\"font-semibold text-zinc-900 dark:text-white\">father-son team</strong> with over 40 years of combined bathroom remodeling experience.",
+                    'body' => "From walk-in showers to complete master bath transformations, we handle every aspect of your {$city} bathroom remodel with care. We make sure you're comfortable with every decision, catching concerns early so your project stays smooth and stress-free.",
+                    'features' => [
+                        'Custom bathroom design and tile work',
+                        "Dedicated {$city} bathroom remodeling specialists",
+                        'On-site supervision for every project',
+                        'Top-notch craftsmanship guaranteed',
+                    ],
+                    'quote' => "Your {$city} bathroom remodel is in good hands with us.",
+                ],
+                'Home Remodeling' => [
+                    'label' => "{$city} Home Remodeling",
+                    'intro' => "<strong class=\"font-semibold text-zinc-900 dark:text-white\">GS Construction & Remodeling</strong> is a family business serving {$city} homeowners. Run by Gregory and Patryk, a <strong class=\"font-semibold text-zinc-900 dark:text-white\">father-son team</strong> with over 40 years of combined home remodeling experience.",
+                    'body' => "From open floor plan conversions to complete home renovations, we handle every aspect of your {$city} home remodel with care. We make sure you're comfortable with every decision, catching concerns early so your project stays smooth and stress-free.",
+                    'features' => [
+                        'Whole home renovation expertise',
+                        "Dedicated {$city} home remodeling specialists",
+                        'On-site supervision for every project',
+                        'Top-notch craftsmanship guaranteed',
+                    ],
+                    'quote' => "Your {$city} home remodel is in good hands with us.",
+                ],
+            ];
+            
+            $serviceData = $serviceKeywords[$title] ?? null;
+            
+            if ($serviceData) {
+                return [
+                    'label' => $serviceData['label'],
+                    'heading' => 'GS CONSTRUCTION & REMODELING',
+                    'intro' => $serviceData['intro'],
+                    'body' => $serviceData['body'],
+                    'features' => $serviceData['features'],
+                    'quote' => $serviceData['quote'],
+                    'cta_text' => 'Contact Gregory & Patryk',
+                    'cta_href' => $ctaHref,
+                ];
+            }
+        }
+        
+        // Fallback for non-area service pages
         return [
             'label' => $shortTitle . ' Experts',
             'heading' => "Expert {$shortTitle} Services",

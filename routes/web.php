@@ -63,6 +63,11 @@ Route::get('/services', ServicesPage::class)->name('services.index');
 Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
 Route::redirect('/contact-us', '/contact', 301);
 
+// Legacy root-level service URLs → new /services/* pattern
+Route::redirect('/bathroom-remodeling', '/services/bathrooms', 301);
+Route::redirect('/kitchen-remodeling', '/services/kitchens', 301);
+Route::redirect('/home-remodeling', '/services/home-remodeling', 301);
+
 // Legacy /areas/ redirects (correct path is /areas-served/)
 Route::redirect('/areas', '/areas-served', 301);
 Route::get('/areas/{area}', function (string $area) {
@@ -98,16 +103,28 @@ Route::get('/areas-served/{area}/home-remodeling', function (string $area) {
     return redirect("/areas-served/{$area}/services/home-remodeling", 301);
 });
 
-// Service landing pages
-Route::get('/services/kitchen-remodeling', ServicePage::class)
+// Redirects from long service names under /services/ path
+Route::get('/areas-served/{area}/services/kitchen-remodeling', function (string $area) {
+    return redirect("/areas-served/{$area}/services/kitchens", 301);
+});
+Route::get('/areas-served/{area}/services/bathroom-remodeling', function (string $area) {
+    return redirect("/areas-served/{$area}/services/bathrooms", 301);
+});
+
+// Service landing pages (short URLs)
+Route::get('/services/kitchens', ServicePage::class)
     ->defaults('service', 'kitchen-remodeling')
     ->name('services.kitchen');
-Route::get('/services/bathroom-remodeling', ServicePage::class)
+Route::get('/services/bathrooms', ServicePage::class)
     ->defaults('service', 'bathroom-remodeling')
     ->name('services.bathroom');
 Route::get('/services/home-remodeling', ServicePage::class)
     ->defaults('service', 'home-remodeling')
     ->name('services.home');
+
+// Redirects from old service URLs
+Route::redirect('/services/kitchen-remodeling', '/services/kitchens', 301);
+Route::redirect('/services/bathroom-remodeling', '/services/bathrooms', 301);
 
 // Admin auth
 Route::get('/admin/login', Login::class)->name('admin.login')->middleware('guest');

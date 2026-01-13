@@ -446,9 +446,6 @@
             {{-- Service Schema for rich results --}}
             <x-service-schema :service="$config" :area="$area" />
             
-            {{-- FAQ Schema for rich snippets --}}
-            <x-faq-schema :faqs="$config['faqs']" />
-            
             {{-- Hero with projects slider --}}
             <livewire:main-project-hero-slider 
                 :project-type="$config['projectType']"
@@ -475,116 +472,25 @@
                 :secondary-cta-url="$area->pageUrl('projects')"
             />
 
-            {{-- Service Description Section --}}
-            <section class="bg-white py-16 dark:bg-zinc-900">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="grid gap-12 lg:grid-cols-2">
-                        <div>
-                            <h2 class="font-heading text-3xl font-bold text-zinc-900 dark:text-white">
-                                Professional {{ $config['label'] }} in {{ $area->city }}
-                            </h2>
-                            <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
-                                {{ $config['description'] }}
-                            </p>
-                            <p class="mt-4 text-zinc-600 dark:text-zinc-400">
-                                As a family-owned business with over 40 years of combined experience, Greg and Patryk personally oversee every project. We're not just contractors—we're your neighbors committed to delivering exceptional results for {{ $area->city }} homeowners.
-                            </p>
-                            <div class="mt-8">
-                                <a href="{{ $area->pageUrl('contact') }}" wire:navigate class="inline-flex items-center rounded-lg bg-sky-600 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-500">
-                                    Schedule Free Consultation
-                                    <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </a>
-                            </div>
-                        </div>
-                        <div class="rounded-xl bg-zinc-50 p-8 dark:bg-zinc-800">
-                            <h3 class="font-heading text-xl font-semibold text-zinc-900 dark:text-white">
-                                Our {{ $config['label'] }} Services Include:
-                            </h3>
-                            <ul class="mt-6 space-y-4">
-                                @foreach($config['features'] as $feature)
-                                <li class="flex items-start">
-                                    <svg class="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-sky-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    <span class="text-zinc-700 dark:text-zinc-300">{{ $feature }}</span>
-                                </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {{-- About Section with service-specific keywords --}}
+            <livewire:about-section 
+                variant="service" 
+                :area="$area" 
+                :service-title="$config['label']" 
+                :service-short-title="$config['label']" 
+            />
+
+            {{-- Timelapse Section --}}
+            <livewire:timelapse-section />
 
             {{-- Projects for this service type --}}
             <livewire:projects-grid :area="$area" :type="$config['projectType']" />
 
-            {{-- FAQ Section --}}
-            <section class="bg-white py-16 dark:bg-zinc-900">
-                <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white text-center mb-8">
-                        Frequently Asked Questions About {{ $config['label'] }} in {{ $area->city }}
-                    </h2>
-                    <dl class="space-y-6">
-                        @foreach($config['faqs'] as $faq)
-                        <div x-data="{ open: false }" class="border-b border-zinc-200 pb-6 dark:border-zinc-700">
-                            <dt>
-                                <button @click="open = !open" class="flex w-full items-start justify-between text-left">
-                                    <span class="text-base font-semibold text-zinc-900 dark:text-white">{{ $faq['question'] }}</span>
-                                    <span class="ml-6 flex h-7 items-center">
-                                        <svg :class="open ? 'rotate-180' : ''" class="h-5 w-5 transform text-zinc-500 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </span>
-                                </button>
-                            </dt>
-                            <dd x-show="open" x-collapse class="mt-4 pr-12">
-                                <p class="text-base text-zinc-600 dark:text-zinc-400">{{ $faq['answer'] }}</p>
-                            </dd>
-                        </div>
-                        @endforeach
-                    </dl>
-                </div>
-            </section>
+            {{-- Testimonials --}}
+            <livewire:testimonials-section :area="$area" />
 
-            {{-- Why Choose Us Section --}}
-            <section class="bg-zinc-50 py-16 dark:bg-zinc-800">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white text-center mb-12">
-                        Why {{ $area->city }} Homeowners Choose GS Construction
-                    </h2>
-                    <div class="grid gap-8 md:grid-cols-3">
-                        <div class="text-center">
-                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
-                                <svg class="h-6 w-6 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                            </div>
-                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">Family-Owned & Operated</h3>
-                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Greg and Patryk personally oversee every {{ $area->city }} project. You work directly with the owners, not salespeople.</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
-                                <svg class="h-6 w-6 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                                </svg>
-                            </div>
-                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">40+ Years Experience</h3>
-                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Combined decades of remodeling expertise. We've seen it all and know how to handle any challenge your {{ $area->city }} home presents.</p>
-                        </div>
-                        <div class="text-center">
-                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
-                                <svg class="h-6 w-6 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                </svg>
-                            </div>
-                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">5-Star Reviews</h3>
-                            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Consistently rated 5 stars by {{ $area->city }} homeowners on Google, Houzz, and Yelp. Our reputation speaks for itself.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {{-- Map Section --}}
+            <livewire:map-section />
 
             {{-- Nearby Areas Section for Internal Linking --}}
             @if($nearbyAreas->count() > 0)
@@ -604,19 +510,8 @@
             </section>
             @endif
 
-            {{-- Testimonials --}}
-            <livewire:testimonials-section :area="$area" />
-
-            {{-- Contact CTA --}}
-            <x-cta-section 
-                variant="blue"
-                heading="Ready for Your {{ $area->city }} {{ $config['label'] }} Project?"
-                description="Get a free estimate from Greg & Patryk. We'll visit your home and provide a detailed quote."
-                primary-cta-text="Get Free Quote"
-                :primary-cta-url="$area->pageUrl('contact')"
-                secondary-cta-text="Call (847) 430-4439"
-                secondary-cta-url="tel:+18474304439"
-            />
+            {{-- Contact Section --}}
+            <livewire:contact-section :area="$area" />
             @break
 
         @default
