@@ -260,13 +260,21 @@ class ContactSection extends Component
     protected function detectSpam(): ?string
     {
         // 0. Turnstile verification (if enabled)
+        // Note: We only block on failed verification, not missing token
+        // (missing token could be due to ad blockers, network issues, etc.)
         if (config('services.turnstile.enabled') && config('services.turnstile.secret_key')) {
-            if (empty($this->turnstileToken)) {
-                return 'turnstile_missing';
-            }
-            
-            if (!$this->verifyTurnstile()) {
-                return 'turnstile_failed';
+            if (!empty($this->turnstileToken)) {
+                if (!$this->verifyTurnstile()) {
+                    return 'turnstile_failed';
+                }
+            } else {
+                // Log missing token for monitoring but don't block
+                // Real users may have ad blockers or slow connections
+                Log::channel('submissions')->info('Turnstile token missing (not blocked)', [
+                    'ip' => request()->ip(),
+                    'name' => $this->name,
+                    'email' => $this->email,
+                ]);
             }
         }
 
