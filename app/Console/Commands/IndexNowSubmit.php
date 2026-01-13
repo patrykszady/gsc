@@ -109,8 +109,13 @@ class IndexNowSubmit extends Command
     {
         $urls = [];
 
-        // Projects don't have individual pages based on routes, skip for now
-        // Add if you have individual project pages in the future
+        // Projects
+        if (class_exists(Project::class)) {
+            $projects = Project::all();
+            foreach ($projects as $project) {
+                $urls[] = route('projects.show', $project);
+            }
+        }
 
         // Testimonials
         if (class_exists(Testimonial::class)) {
@@ -125,9 +130,13 @@ class IndexNowSubmit extends Command
             $areas = AreaServed::all();
             foreach ($areas as $area) {
                 $urls[] = route('areas.show', $area);
-                // Include sub-pages
+                // Include sub-pages (generic pages)
                 foreach (['contact', 'testimonials', 'projects', 'about', 'services'] as $page) {
                     $urls[] = route('areas.page', ['area' => $area, 'page' => $page]);
+                }
+                // Include service-specific pages for each area
+                foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'] as $service) {
+                    $urls[] = route('areas.page', ['area' => $area, 'page' => $service]);
                 }
             }
         }

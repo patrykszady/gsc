@@ -78,8 +78,25 @@ Route::get('/areas-served/{area}', AreaPage::class)
     ->defaults('page', 'home')
     ->name('areas.show');
 Route::get('/areas-served/{area}/{page}', AreaPage::class)
-    ->where('page', 'contact|testimonials|projects|about|services|kitchen-remodeling|bathroom-remodeling|home-remodeling')
+    ->where('page', 'contact|testimonials|projects|about|services')
     ->name('areas.page');
+
+// Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchens)
+Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
+    ->defaults('page', 'service')
+    ->where('service', 'kitchens|bathrooms|home-remodeling')
+    ->name('areas.service');
+
+// Redirects from old area-service URLs to new pattern
+Route::get('/areas-served/{area}/kitchen-remodeling', function (string $area) {
+    return redirect("/areas-served/{$area}/services/kitchens", 301);
+});
+Route::get('/areas-served/{area}/bathroom-remodeling', function (string $area) {
+    return redirect("/areas-served/{$area}/services/bathrooms", 301);
+});
+Route::get('/areas-served/{area}/home-remodeling', function (string $area) {
+    return redirect("/areas-served/{$area}/services/home-remodeling", 301);
+});
 
 // Service landing pages
 Route::get('/services/kitchen-remodeling', ServicePage::class)

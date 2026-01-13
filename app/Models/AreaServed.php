@@ -36,4 +36,13 @@ class AreaServed extends Model
     {
         return route('areas.page', ['area' => $this->slug, 'page' => $page]);
     }
+
+    /**
+     * Get URL for a specific service page within this area.
+     * e.g., /areas-served/arlington-heights/services/kitchens
+     */
+    public function serviceUrl(string $service): string
+    {
+        return route('areas.service', ['area' => $this->slug, 'service' => $service]);
+    }
 }

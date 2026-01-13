@@ -331,7 +331,7 @@ class SeoService
 
     /**
      * Set SEO tags for an area-specific service page.
-     * Example: /areas-served/palatine/bathroom-remodeling
+     * Example: /areas-served/palatine/services/bathrooms
      */
     public static function areaService(AreaServed $area, string $serviceType): void
     {

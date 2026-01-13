@@ -14,27 +14,38 @@ class AreaPage extends Component
     public AreaServed $area;
 
     public string $page = 'home';
+    
+    public ?string $service = null;
 
-    public function mount(AreaServed $area, ?string $page = null): void
+    public function mount(AreaServed $area, ?string $page = null, ?string $service = null): void
     {
         $this->area = $area;
         $this->page = $page ?? 'home';
+        $this->service = $service;
 
         // Share area with all views (for navbar, footer, etc.)
         View::share('currentArea', $area);
 
         // Set SEO based on page type
-        match ($this->page) {
-            'contact' => SeoService::contact($area),
-            'testimonials' => SeoService::testimonials($area),
-            'projects' => SeoService::projects($area),
-            'about' => SeoService::about($area),
-            'services' => SeoService::services($area),
-            'kitchen-remodeling' => SeoService::areaService($area, 'kitchen-remodeling'),
-            'bathroom-remodeling' => SeoService::areaService($area, 'bathroom-remodeling'),
-            'home-remodeling' => SeoService::areaService($area, 'home-remodeling'),
-            default => SeoService::home($area),
-        };
+        if ($this->page === 'service' && $this->service) {
+            // Map URL slugs to internal service types
+            $serviceMap = [
+                'kitchens' => 'kitchen-remodeling',
+                'bathrooms' => 'bathroom-remodeling',
+                'home-remodeling' => 'home-remodeling',
+            ];
+            $serviceType = $serviceMap[$this->service] ?? abort(404);
+            SeoService::areaService($area, $serviceType);
+        } else {
+            match ($this->page) {
+                'contact' => SeoService::contact($area),
+                'testimonials' => SeoService::testimonials($area),
+                'projects' => SeoService::projects($area),
+                'about' => SeoService::about($area),
+                'services' => SeoService::services($area),
+                default => SeoService::home($area),
+            };
+        }
     }
 
     public function render()
@@ -42,6 +53,7 @@ class AreaPage extends Component
         return view('livewire.area-page', [
             'area' => $this->area,
             'page' => $this->page,
+            'service' => $this->service,
         ]);
     }
 }

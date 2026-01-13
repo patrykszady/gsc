@@ -6,16 +6,21 @@
             ['name' => $area->city, 'url' => $area->url],
         ];
         
-        if ($page !== 'home') {
+        if ($page === 'service' && $service) {
+            $serviceNames = [
+                'kitchens' => 'Kitchen Remodeling',
+                'bathrooms' => 'Bathroom Remodeling',
+                'home-remodeling' => 'Home Remodeling',
+            ];
+            $breadcrumbItems[] = ['name' => 'Services', 'url' => $area->pageUrl('services')];
+            $breadcrumbItems[] = ['name' => $serviceNames[$service] ?? ucfirst($service)];
+        } elseif ($page !== 'home') {
             $pageNames = [
                 'contact' => 'Contact',
                 'testimonials' => 'Testimonials',
                 'projects' => 'Projects',
                 'about' => 'About',
                 'services' => 'Services',
-                'kitchen-remodeling' => 'Kitchen Remodeling',
-                'bathroom-remodeling' => 'Bathroom Remodeling',
-                'home-remodeling' => 'Home Remodeling',
             ];
             $breadcrumbItems[] = ['name' => $pageNames[$page] ?? ucfirst($page)];
         }
@@ -45,13 +50,29 @@
                         <a href="{{ $area->url }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">{{ $area->city }}</a>
                     @endif
                 </li>
-                @if($page !== 'home')
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ ucfirst($page) }}</span>
-                </li>
+                @if($page === 'service' && $service)
+                    <li class="flex items-center">
+                        <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                        </svg>
+                        <a href="{{ $area->pageUrl('services') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Services</a>
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                        </svg>
+                        @php
+                            $serviceLabels = ['kitchens' => 'Kitchens', 'bathrooms' => 'Bathrooms', 'home-remodeling' => 'Home Remodeling'];
+                        @endphp
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $serviceLabels[$service] ?? ucfirst($service) }}</span>
+                    </li>
+                @elseif($page !== 'home')
+                    <li class="flex items-center">
+                        <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">{{ ucfirst($page) }}</span>
+                    </li>
                 @endif
             </ol>
         </nav>
@@ -334,12 +355,22 @@
         @case('kitchen-remodeling')
         @case('bathroom-remodeling')
         @case('home-remodeling')
+        @case('service')
             {{-- Area-Specific Service Page (e.g., Palatine Bathroom Remodeling) --}}
             @php
+                // Map new URL slugs to internal service keys
+                $serviceKey = match($service ?? $page) {
+                    'kitchens' => 'kitchen-remodeling',
+                    'bathrooms' => 'bathroom-remodeling',
+                    'home-remodeling' => 'home-remodeling',
+                    default => $page,
+                };
+                
                 $serviceConfig = [
                     'kitchen-remodeling' => [
                         'label' => 'Kitchen Remodeling',
                         'projectType' => 'kitchen',
+                        'urlSlug' => 'kitchens',
                         'heading' => $area->city . ' Kitchen Remodeling',
                         'subheading' => 'Transform your kitchen with custom cabinets, countertops, and modern designs',
                         'description' => "Looking for professional kitchen remodeling in {$area->city}? GS Construction specializes in complete kitchen renovations, from cabinet installation to countertop upgrades. Our family-owned business has served {$area->city} homeowners for years with quality craftsmanship.",
@@ -361,6 +392,7 @@
                     'bathroom-remodeling' => [
                         'label' => 'Bathroom Remodeling',
                         'projectType' => 'bathroom',
+                        'urlSlug' => 'bathrooms',
                         'heading' => $area->city . ' Bathroom Remodeling',
                         'subheading' => 'Create your dream bathroom with custom showers, vanities, and tile work',
                         'description' => "Need bathroom remodeling in {$area->city}? GS Construction delivers stunning bathroom renovations, from walk-in showers to complete master bath transformations. We've helped countless {$area->city} families create beautiful, functional bathrooms.",
@@ -382,6 +414,7 @@
                     'home-remodeling' => [
                         'label' => 'Home Remodeling',
                         'projectType' => 'home-remodel',
+                        'urlSlug' => 'home-remodeling',
                         'heading' => $area->city . ' Home Remodeling',
                         'subheading' => 'Complete home renovations, additions, and whole-house transformations',
                         'description' => "Planning a home remodel in {$area->city}? GS Construction handles complete home renovations, from open floor plan conversions to room additions. Our team brings 40+ years of experience to every {$area->city} project.",
@@ -401,7 +434,7 @@
                         ],
                     ],
                 ];
-                $config = $serviceConfig[$page];
+                $config = $serviceConfig[$serviceKey];
                 
                 // Get nearby areas for internal linking (exclude current area)
                 $nearbyAreas = \App\Models\AreaServed::where('id', '!=', $area->id)
@@ -419,8 +452,23 @@
             {{-- Hero with projects slider --}}
             <livewire:main-project-hero-slider 
                 :project-type="$config['projectType']"
-                heading="{{ $config['heading'] }}"
-                subheading="{{ $config['subheading'] }}"
+                :slides="[
+                    [
+                        'heading' => $config['heading'],
+                        'subheading' => $config['subheading'],
+                        'type' => $config['projectType'],
+                    ],
+                    [
+                        'heading' => $config['heading'],
+                        'subheading' => $config['subheading'],
+                        'type' => $config['projectType'],
+                    ],
+                    [
+                        'heading' => $config['heading'],
+                        'subheading' => $config['subheading'],
+                        'type' => $config['projectType'],
+                    ],
+                ]"
                 primary-cta-text="Get Free Quote"
                 :primary-cta-url="$area->pageUrl('contact')"
                 secondary-cta-text="View {{ $config['label'] }} Projects"
@@ -547,7 +595,7 @@
                     </h2>
                     <div class="flex flex-wrap gap-3">
                         @foreach($nearbyAreas as $nearbyArea)
-                        <a href="{{ $nearbyArea->pageUrl($page) }}" wire:navigate class="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
+                        <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate class="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
                             {{ $nearbyArea->city }} {{ $config['label'] }}
                         </a>
                         @endforeach
@@ -586,13 +634,13 @@
                 <a href="{{ $area->url }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'home' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Home
                 </a>
-                <a href="{{ $area->pageUrl('kitchen-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'kitchen-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                <a href="{{ $area->serviceUrl('kitchens') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'kitchens' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Kitchen
                 </a>
-                <a href="{{ $area->pageUrl('bathroom-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'bathroom-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                <a href="{{ $area->serviceUrl('bathrooms') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'bathrooms' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Bathroom
                 </a>
-                <a href="{{ $area->pageUrl('home-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'home-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                <a href="{{ $area->serviceUrl('home-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'home-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Home Remodel
                 </a>
                 <a href="{{ $area->pageUrl('projects') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'projects' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">

@@ -119,7 +119,7 @@ class GenerateSitemap extends Command
         $this->info("Adding area-served pages to sitemap...");
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
-        $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
+        $areaServicePages = ['kitchens', 'bathrooms', 'home-remodeling'];
         $areaCount = 0;
 
         foreach ($areas as $area) {
@@ -140,7 +140,7 @@ class GenerateSitemap extends Command
             
             // Area-specific service pages (high priority for local SEO)
             foreach ($areaServicePages as $servicePage) {
-                $uri = "areas-served/{$area->slug}/{$servicePage}";
+                $uri = "areas-served/{$area->slug}/services/{$servicePage}";
                 
                 $sitemap->add(
                     Url::create("{$baseUrl}/{$uri}")

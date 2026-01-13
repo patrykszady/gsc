@@ -4,6 +4,7 @@
     $services = [
         [
             'slug' => 'kitchen-remodeling',
+            'urlSlug' => 'kitchens',
             'title' => 'Kitchen Remodeling',
             'projectType' => 'kitchen',
             'description' => 'Transform your kitchen into the heart of your home. From custom cabinetry and premium countertops to complete renovations – we create beautiful, functional spaces where families gather and memories are made.',
@@ -16,6 +17,7 @@
         ],
         [
             'slug' => 'bathroom-remodeling',
+            'urlSlug' => 'bathrooms',
             'title' => 'Bathroom Remodeling',
             'projectType' => 'bathroom',
             'description' => 'Create your personal spa retreat with expert bathroom renovations. From luxurious walk-in showers and soaking tubs to modern vanities and tile work – we design bathrooms that combine comfort with style.',
@@ -28,6 +30,7 @@
         ],
         [
             'slug' => 'home-remodeling',
+            'urlSlug' => 'home-remodeling',
             'title' => 'Home Remodeling',
             'projectType' => 'home-remodel',
             'description' => 'Comprehensive home renovations that breathe new life into your entire living space. From room additions and open floor plans to complete home makeovers – we handle projects of any scale with precision.',
@@ -108,7 +111,7 @@
                         </ul>
                         <div class="mt-6 lg:mt-8">
                             <a 
-                                href="{{ isset($area) ? $area->pageUrl($service['slug']) : '/services/' . $service['slug'] }}" 
+                                href="{{ isset($area) ? $area->serviceUrl($service['urlSlug']) : '/services/' . $service['slug'] }}" 
                                 wire:navigate
                                 class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 lg:px-6 lg:py-3"
                             >
