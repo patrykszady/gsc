@@ -227,6 +227,15 @@
                 window.trackEventLocal('contact_click', eventData);
                 if (typeof gtag !== 'undefined') {
                     gtag('event', isPhone ? 'phone_call' : 'email_click', eventData);
+                    
+                    // Google Ads click-to-call conversion tracking
+                    if (isPhone) {
+                        gtag('event', 'conversion', {
+                            'send_to': 'AW-17856827614/aJ93CLr_heYbEN6h5sJC',
+                            'value': 1.0,
+                            'currency': 'USD'
+                        });
+                    }
                 }
             }
         });
@@ -254,6 +263,9 @@
                     'dimension2': 'domain_source'
                 }
             });
+            
+            // Google Ads conversion tracking
+            gtag('config', 'AW-17856827614');
             @if(isset($domainSource) && $domainSource !== 'direct')
             gtag('event', 'domain_entry', {
                 'entry_domain': '{{ session('entry_domain', request()->getHost()) }}',
@@ -304,6 +316,13 @@
                     console.log('[GA Event] generate_lead', eventData);
                     if (typeof gtag !== 'undefined') {
                         gtag('event', 'generate_lead', eventData);
+                        
+                        // Google Ads form submission conversion tracking
+                        gtag('event', 'conversion', {
+                            'send_to': 'AW-17856827614/RnBJCKCGk-YbEN6h5sJC',
+                            'value': 1.0,
+                            'currency': 'USD'
+                        });
                     }
                 });
             });
