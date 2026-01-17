@@ -8,7 +8,7 @@
     ]" />
 
     {{-- Visual Breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
             <ol class="flex items-center space-x-2 text-sm">
                 <li>
@@ -26,22 +26,54 @@
 
     <main>
         {{-- Hero Section --}}
-        <x-cta-section 
-            heading="Let's Start Your Project"
-            description="Ready to transform your home? Schedule a free consultation with Greg & Patryk."
-            primaryText="About GS Construction"
-            primaryHref="/about"
-            secondaryText="View Our Work"
-            secondaryHref="/projects"
+        @php
+            $homeSlides = [
+                [
+                    'title' => "Schedule Your Free Consultation",
+                    'subheading' => 'We’ll meet at your home soon to learn about your goals and project needs.',
+                    'button' => 'Get a Free Quote',
+                    'link' => '#contact-form',
+                    'projectType' => 'bathroom',
+                    'alt' => 'Home remodeling services in Chicagoland',
+                ],
+                [
+                    'title' => "Let's Start Your Project",
+                    'subheading' => 'Ready to transform your home? Schedule a free consultation with Greg & Patryk.',
+                    'button' => 'Start Your Project',
+                    'link' => '#contact-form',
+                    'projectType' => 'home-remodel',
+                    'alt' => 'Home remodeling services in Chicagoland',
+                ],
+                [
+                    'title' => "Start Your Home Project",
+                    'subheading' => 'Get a free consultation and clear next steps from GS Construction.',
+                    'button' => 'Request Free Consultation',
+                    'link' => '#contact-form',
+                    'projectType' => 'kitchen',
+                    'alt' => 'Home remodeling services in Chicagoland',
+                ],
+            ];
+
+            shuffle($homeSlides);
+        @endphp
+        <livewire:main-project-hero-slider 
+            :slides="$homeSlides"
+            height-classes="h-[360px] sm:h-[380px] lg:h-[420px]"
+            :autoplay-interval="8000"
         />
 
         {{-- Contact Section --}}
-        <livewire:contact-section />
+        <div id="contact-form" class="scroll-mt-24">
+            <livewire:contact-section />
+        </div>
 
         {{-- Map Section --}}
         <livewire:map-section />
 
         {{-- Testimonials Section --}}
         <livewire:testimonials-section />
+
+        {{-- Services Section --}}
+        @include('partials.services-grid')
     </main>
 </x-layouts.app>

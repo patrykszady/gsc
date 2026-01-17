@@ -56,6 +56,9 @@ class ContactSection extends Component
     // Times selected per date
     public array $timeSelections = [];
 
+    // Toggle for showing consultation scheduling options
+    public bool $showConsultationOptions = false;
+
     public function placeholder(): string
     {
         return <<<'HTML'
@@ -677,15 +680,17 @@ class ContactSection extends Component
 
         // Flux calendar expects a Y-m-d date string ("today" shorthand exists, but "tomorrow" does not)
         $minSelectableDate = now()->addDay()->format('Y-m-d');
+        $maxSelectableDate = now()->addMonthNoOverflow()->endOfMonth()->format('Y-m-d');
         
-        // Available time slots
-        $times = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
+        // Available time slots (2-hour windows)
+        $times = ['8-10 AM', '10-12 PM', '12-2 PM', '2-4 PM', '4-6 PM'];
         
         return view('livewire.contact-section', [
             'areasServed' => $areasServed,
             'unavailableSundays' => $unavailableSundays,
             'minSelectableDate' => $minSelectableDate,
             'times' => $times,
+            'maxSelectableDate' => $maxSelectableDate,
             'area' => $this->area,
             'turnstileSiteKey' => config('services.turnstile.site_key'),
             'turnstileEnabled' => config('services.turnstile.enabled') && config('services.turnstile.secret_key'),

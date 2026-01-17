@@ -65,6 +65,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mark for prefetch - Livewire handles the navigation prefetch
         }
     });
+
+    // Smooth scroll for in-page anchors
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('a[href^="#"]');
+        if (!link) return;
+
+        const href = link.getAttribute('href');
+        if (!href || href.length < 2) return;
+
+        const target = document.querySelector(href);
+        if (!target) return;
+
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.replaceState(null, '', href);
+    });
 });
 
 // Persist image cache across Livewire navigations

@@ -28,7 +28,7 @@
     <x-breadcrumb-schema :items="$breadcrumbItems" />
 
     {{-- Visual Breadcrumb Navigation --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
             <ol class="flex items-center space-x-2 text-sm">
                 <li>
@@ -129,20 +129,54 @@
 
         @case('contact')
             {{-- Area Contact Page --}}
-            <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                <h1 class="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
-                    Contact {{ $area->city }} Remodeling Contractors
-                </h1>
-                <p class="mt-4 max-w-2xl text-lg text-zinc-600 dark:text-zinc-300">
-                    Ready to transform your {{ $area->city }} home? Schedule a free consultation with Greg & Patryk.
-                </p>
-            </div>
+            @php
+                $homeSlides = [
+                    [
+                        'title' => "Schedule Your Free Consultation",
+                        'subheading' => 'We’ll meet at your home soon to learn about your goals and project needs.',
+                        'button' => 'Get a Free Quote',
+                        'link' => '#contact-form',
+                        'projectType' => 'bathroom',
+                        'alt' => "Home remodeling services in {$area->city}",
+                    ],
+                    [
+                        'title' => "Let's Start Your Project",
+                        'subheading' => 'Ready to transform your home? Schedule a free consultation with Greg & Patryk.',
+                        'button' => 'Start Your Project',
+                        'link' => '#contact-form',
+                        'projectType' => 'home-remodel',
+                        'alt' => "Remodeling contractor in {$area->city}",
+                    ],
+                    [
+                        'title' => "Start Your Home Project",
+                        'subheading' => 'Get a free consultation and clear next steps from GS Construction.',
+                        'button' => 'Request Free Consultation',
+                        'link' => '#contact-form',
+                        'projectType' => 'kitchen',
+                        'alt' => "{$area->city} remodeling and renovation services",
+                    ],
+                ];
 
-            <livewire:contact-section :area="$area" />
+                shuffle($homeSlides);
+            @endphp
+
+            <livewire:main-project-hero-slider 
+                :slides="$homeSlides"
+                :area="$area"
+                height-classes="h-[360px] sm:h-[380px] lg:h-[420px]"
+                :autoplay-interval="8000"
+            />
+
+            <div id="contact-form" class="scroll-mt-24">
+                <livewire:contact-section :area="$area" />
+            </div>
 
             <livewire:map-section />
 
             <livewire:testimonials-section :area="$area" />
+
+            {{-- Services Section --}}
+            @include('partials.services-grid', ['area' => $area])
             @break
 
         @case('testimonials')

@@ -15,7 +15,11 @@
                     Let's Build Beautiful Spaces Together
                 </h2>
                 <p class="mt-4 text-lg/8 text-gray-600 dark:text-gray-400">
-                    Whether you're dreaming of a new kitchen, a luxurious bathroom, or a complete home transformation, we're here to make it happen. Contact us today to schedule your free consultation.
+                    @if($area)
+                        GS Construction is a father-and-son construction company specializing in residential remodeling and renovations in {{ $area->city }}. Expect clear communication, quality craftsmanship, and a straightforward plan—reach out today to schedule a free in-home consultation and get a detailed estimate and honest feedback.
+                    @else
+                        GS Construction is a father-and-son Chicagoland construction company specializing in residential remodeling and renovations. Expect clear communication, quality craftsmanship, and a straightforward plan—reach out today to schedule a free in-home consultation and get a detailed estimate and honest feedback.
+                    @endif
                 </p>
 
                 {{-- Contact Info --}}
@@ -50,8 +54,8 @@
                             </svg>
                         </dt>
                         <dd>
-                            <span class="font-medium text-gray-900 dark:text-white">Service Area</span><br>
-                            <span>{{ $area ? $area->city . ' and surrounding Chicagoland areas' : 'Chicagoland Northwest Suburbs' }}</span>
+                            <a href="/areas-served" wire:navigate class="font-medium text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-200">Service Area</a><br>
+                            <span>{{ $area ? $area->city . ' and surrounding Chicagoland areas' : 'Chicagoland, Northwest and North Shore Suburbs' }}</span>
                         </dd>
                     </div>
                 </dl>
@@ -60,7 +64,10 @@
 
         {{-- Right Column: Contact Form --}}
         <form wire:submit="submit" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
-            <div class="mx-auto max-w-xl lg:mr-0 lg:max-w-lg">
+            <div
+                x-data="{ expanded: $wire.entangle('showConsultationOptions') }"
+                :class="expanded ? 'mx-auto max-w-xl lg:mr-0 lg:max-w-lg' : 'mx-auto max-w-xl lg:mr-0 lg:max-w-lg lg:sticky lg:top-8'"
+            >
                 {{-- Rate limit error --}}
                 @error('form') 
                     <div class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-400">
@@ -124,15 +131,62 @@
                         @error('phoneDigits') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Address with Google Places Autocomplete (Flux-styled, new API) --}}
+                    {{-- Message --}}
+                    <div>
+                        <label for="message" class="block text-sm/6 font-semibold text-gray-900 dark:text-white">Message</label>
+                        <div class="mt-1.5">
+                            <flux:textarea 
+                                wire:model="message" 
+                                id="message" 
+                                rows="2"
+                                placeholder="Tell us about your project..."
+                                class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                            />
+                        </div>
+                        @error('message') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Schedule Consultation Toggle --}}
+                    <div class="pt-2">
+                        <button
+                            type="button"
+                            wire:click="$toggle('showConsultationOptions')"
+                            class="group inline-flex items-center gap-2 text-sm font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
+                            aria-expanded="{{ $showConsultationOptions ? 'true' : 'false' }}"
+                        >
+                            <span class="flex size-5 items-center justify-center rounded-full border-2 border-current transition-colors" :class="{ 'bg-sky-600 border-sky-600 dark:bg-sky-500 dark:border-sky-500': $wire.showConsultationOptions }">
+                                <svg
+                                    class="size-3 transition-transform duration-200"
+                                    :class="{ 'rotate-180': $wire.showConsultationOptions, 'text-white': $wire.showConsultationOptions, 'text-current': !$wire.showConsultationOptions }"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke-width="3"
+                                    stroke="currentColor"
+                                >
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </span>
+                            <span>Schedule A Free Consultation</span>
+                        </button>
+                    </div>
+
+                    {{-- Collapsible Consultation Options --}}
                     <div
-                        x-data="{
-                            open: false,
-                            query: @entangle('address'),
-                            predictions: [],
-                            selectedIndex: -1,
-                            placesReady: false,
-                            areasServed: @js($areasServed),
+                        x-data="{ expanded: $wire.entangle('showConsultationOptions') }"
+                        x-show="expanded"
+                        x-collapse
+                        x-cloak
+                        class="space-y-3"
+                    >
+                        {{-- Address with Google Places Autocomplete (Flux-styled, new API) --}}
+                        <div
+                            x-data="{
+                                open: false,
+                                query: @entangle('address'),
+                                predictions: [],
+                                selectedIndex: -1,
+                                placesReady: false,
+                                areasServed: @js($areasServed),
                             async init() {
                                 await this.loadPlacesLibrary();
                             },
@@ -270,21 +324,6 @@
                         @error('address') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Message --}}
-                    <div>
-                        <label for="message" class="block text-sm/6 font-semibold text-gray-900 dark:text-white">Message</label>
-                        <div class="mt-1.5">
-                            <flux:textarea 
-                                wire:model="message" 
-                                id="message" 
-                                rows="4"
-                                placeholder="Tell us about your project..."
-                                class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
-                            />
-                        </div>
-                        @error('message') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-                    </div>
-
                     {{-- Availability Scheduler --}}
                     <div
                         x-data="{
@@ -403,6 +442,7 @@
                                         multiple 
                                         wire:model.live="selectedDates" 
                                         min="{{ $minSelectableDate }}"
+                                        max="{{ $maxSelectableDate }}"
                                         :unavailable="$unavailableSundays"
                                         fixed-weeks
                                     />
@@ -418,7 +458,7 @@
                                                 </svg>
                                                 <span class="text-sm font-medium text-zinc-900 dark:text-white" x-text="formatDisplayDate(activeDate)"></span>
                                             </div>
-                                            <div class="grid grid-cols-2 gap-2">
+                                            <div class="grid grid-cols-1 gap-2">
                                                 <template x-for="time in times" :key="time">
                                                     <button
                                                         type="button"
@@ -471,6 +511,7 @@
                             </template>
                         </div>
                     </div>
+                    {{-- End Collapsible Consultation Options --}}
                 </div>
 
                 {{-- Cloudflare Turnstile (Anti-Spam) --}}

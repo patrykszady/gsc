@@ -48,13 +48,28 @@ class TestimonialsGrid extends Component
 
         // Pick a random featured testimonial from recent ones (biased toward longer descriptions).
         $recentFormatted = $recentTestimonials->map(fn ($t) => $this->formatTestimonial($t));
-        
-        $featuredPool = $recentFormatted
+
+        $featuredPoolSource = $recentFormatted;
+        if ($this->area) {
+            $areaSlug = $this->area->slug;
+            $areaFeatured = $recentFormatted->filter(fn ($t) => $t['area_slug'] === $areaSlug);
+            if ($areaFeatured->isNotEmpty()) {
+                $featuredPoolSource = $areaFeatured;
+            }
+        }
+
+        $featuredPool = $featuredPoolSource
             ->sortByDesc(fn ($t) => strlen($t['description'] ?? ''))
             ->take(6)
             ->values();
 
         $featured = ($featuredPool->isNotEmpty() ? $featuredPool : $testimonials)->random();
+
+        if ($this->area) {
+            $areaSlug = $this->area->slug;
+            [$areaFirst, $other] = $testimonials->partition(fn ($t) => $t['area_slug'] === $areaSlug);
+            $testimonials = $areaFirst->concat($other)->values();
+        }
 
         // Remaining testimonials - keep order (recent first).
         $others = $testimonials->reject(fn ($t) => $t['id'] === $featured['id'])->values();

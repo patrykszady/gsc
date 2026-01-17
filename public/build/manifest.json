@@ -16,7 +16,7 @@
     "src": "node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-1bwabiEN.css",
+    "file": "assets/app-8KR_yXMh.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -25,7 +25,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DfzyCqlA.js",
+    "file": "assets/app-CJYXqi0j.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true

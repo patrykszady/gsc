@@ -91,7 +91,7 @@
         startAutoplay() {
             if (!this.isVisible || !this.isTabVisible || this.isHovered) return;
             this.stopAutoplay();
-            this.autoplay = setInterval(() => this.next(), {{ $isServiceMode ? 4000 : 5000 }});
+            this.autoplay = setInterval(() => this.next(), {{ $autoplayInterval ?? ($isServiceMode ? 4000 : 5000) }});
         },
         stopAutoplay() {
             if (this.autoplay) {
@@ -126,7 +126,7 @@
     class="relative w-full overflow-hidden"
 >
     {{-- Slides --}}
-    <div class="relative h-[500px] sm:h-[600px] lg:h-[700px]">
+    <div class="relative {{ $heightClasses ?? 'h-[500px] sm:h-[600px] lg:h-[700px]' }}">
         {{-- Skeleton/shimmer background (shows immediately before anything loads) --}}
         <div 
             x-show="!isLoaded(0) && !isThumbLoaded(0)"
@@ -302,11 +302,30 @@
                     <p 
                         x-show="areaCity" 
                         x-text="'in ' + areaCity"
-                        class="mt-2 text-xl font-medium text-white drop-shadow-lg sm:text-2xl"
+                        class="mt-2 text-sm font-semibold uppercase tracking-wide text-white drop-shadow-lg sm:text-base"
+                    ></p>
+                    <p 
+                        x-show="slide.subheading"
+                        x-text="slide.subheading"
+                        class="mt-4 text-lg text-white drop-shadow-lg sm:text-xl"
                     ></p>
                     <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
                         <a
                             :href="slide.link"
+                            x-on:click.prevent="
+                                const el = document.querySelector(slide.link);
+                                if (!el) return;
+                                const start = window.scrollY;
+                                const end = el.offsetTop - 96;
+                                const duration = 250;
+                                const startTime = performance.now();
+                                (function scroll(now) {
+                                    const elapsed = now - startTime;
+                                    const progress = Math.min(elapsed / duration, 1);
+                                    window.scrollTo(0, start + (end - start) * progress);
+                                    if (progress < 1) requestAnimationFrame(scroll);
+                                })(startTime);
+                            "
                             class="inline-flex items-center justify-center rounded-lg bg-sky-500 px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-lg transition hover:bg-sky-600"
                             x-text="slide.button"
                         ></a>

@@ -3,7 +3,7 @@
         $homeUrl = $area ? $area->url : '/';
         $contactUrl = $area ? $area->pageUrl('contact') : '/contact';
     @endphp
-    <nav aria-label="Global" class="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8">
+    <nav aria-label="Global" class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-8">
         {{-- Logo + Brand Name --}}
         <div class="flex items-center gap-x-4">
             <a href="{{ $homeUrl }}" wire:navigate.hover class="flex items-center gap-x-3">

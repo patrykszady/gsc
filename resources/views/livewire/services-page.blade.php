@@ -22,16 +22,15 @@
     </div>
 
     {{-- Hero Section with Image Slider --}}
-    <livewire:main-project-hero-slider 
-        project-type="mixed"
-        :slides="[
+    @php
+        $serviceSlides = [
             [
                 'heading' => 'Kitchen Remodeling Contractors',
                 'subheading' => 'Transform your kitchen with custom cabinets, countertops, and complete renovations',
                 'type' => 'kitchen',
             ],
             [
-                'heading' => 'Bathroom Remodeling Contractors',
+                'heading' => 'Bathroom Remodeling Company',
                 'subheading' => 'Create your personal spa retreat with luxury showers, tubs, and tile work',
                 'type' => 'bathroom',
             ],
@@ -40,7 +39,74 @@
                 'subheading' => 'Complete home renovations, room additions, and open floor plans',
                 'type' => 'home-remodel',
             ],
-        ]"
+            [
+                'heading' => 'Residential Remodeling Company',
+                'subheading' => 'Upgrade your home with a clear plan, quality craftsmanship, and honest guidance',
+                'type' => 'home-remodel',
+            ],
+            [
+                'heading' => 'Kitchen Remodeling Company',
+                'subheading' => 'Design-forward kitchens built for everyday living and long-term value',
+                'type' => 'kitchen',
+            ],
+            [
+                'heading' => 'Bathroom Remodeling Contractors',
+                'subheading' => 'Modernize your bathroom with custom tile, lighting, and fixture upgrades',
+                'type' => 'bathroom',
+            ],
+            [
+                'heading' => 'Home Renovation Company',
+                'subheading' => 'Thoughtful renovations that improve function, comfort, and resale value',
+                'type' => 'home-remodel',
+            ],
+            [
+                'heading' => 'Kitchen Renovation Contractors',
+                'subheading' => 'From layout planning to finish selections, we handle the full build',
+                'type' => 'kitchen',
+            ],
+            [
+                'heading' => 'Bathroom Renovation Company',
+                'subheading' => 'Clean, modern bathrooms with durable materials and expert installation',
+                'type' => 'bathroom',
+            ],
+            [
+                'heading' => 'Home Improvement Contractors',
+                'subheading' => 'A dependable remodeling team for upgrades, updates, and full renovations',
+                'type' => 'home-remodel',
+            ],
+            [
+                'heading' => 'Kitchen & Bath Remodeling',
+                'subheading' => 'Premium finishes, precise craftsmanship, and a process you can trust',
+                'type' => 'kitchen',
+            ],
+            [
+                'heading' => 'Full Service Remodeling Company',
+                'subheading' => 'Plan, design, and build with one team from start to finish',
+                'type' => 'home-remodel',
+            ],
+            [
+                'heading' => 'Residential Remodeling Contractors',
+                'subheading' => 'Reliable timelines, transparent pricing, and quality work you’ll notice',
+                'type' => 'home-remodel',
+            ],
+            [
+                'heading' => 'Bathroom Remodel Contractors',
+                'subheading' => 'Upgrade fixtures, tile, and layout for a better daily routine',
+                'type' => 'bathroom',
+            ],
+            [
+                'heading' => 'Kitchen Remodel Contractors',
+                'subheading' => 'Smart storage, durable surfaces, and a kitchen built to last',
+                'type' => 'kitchen',
+            ],
+        ];
+
+        shuffle($serviceSlides);
+    @endphp
+
+    <livewire:main-project-hero-slider 
+        project-type="mixed"
+        :slides="$serviceSlides"
         primary-cta-text="Get a Free Quote"
         primary-cta-url="/contact"
         secondary-cta-text="View Our Work"

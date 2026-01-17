@@ -21,6 +21,8 @@ class MainProjectHeroSlider extends Component
     public ?string $secondaryCtaText = null;
     public ?string $secondaryCtaUrl = null;
     public int $slideCount = 3; // Number of slides for filtered mode
+    public ?string $heightClasses = null;
+    public int $autoplayInterval = 5000; // Autoplay interval in ms
 
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
