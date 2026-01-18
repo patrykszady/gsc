@@ -45,8 +45,11 @@
     {{-- Testimonials Section (lazy loaded - below fold) --}}
     <livewire:testimonials-section lazy />
     
-    {{-- Map Parallax Section (lazy loaded - below fold) --}}
-    <livewire:map-section lazy />
+    {{-- Static Map Section (parallax with bg-fixed) - hidden for now --}}
+    {{-- <livewire:static-map-section lazy /> --}}
+    
+    {{-- Dynamic Map Section --}}
+    <livewire:map-section />
 
     {{-- Contact Section (lazy loaded - below fold) --}}
     <livewire:contact-section lazy />
