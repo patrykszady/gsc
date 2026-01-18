@@ -36,7 +36,12 @@
                     map: null,
                     geocoder: null,
                     circles: [],
+                    animationId: null,
+                    initialized: false,
                     async init() {
+                        if (this.initialized) return;
+                        this.initialized = true;
+                        
                         await this.waitForGoogleMaps();
                         if (!window.google?.maps?.importLibrary) return;
 
@@ -73,6 +78,11 @@
                         this.startPulseAnimation();
                     },
                     startPulseAnimation() {
+                        // Cancel any existing animation
+                        if (this.animationId) {
+                            cancelAnimationFrame(this.animationId);
+                        }
+                        
                         // Each circle pulses independently with its own phase offset
                         let time = 0;
                         const animate = () => {
@@ -92,9 +102,9 @@
                                 circle.setOptions({ fillOpacity: opacity });
                             });
                             
-                            requestAnimationFrame(animate);
+                            this.animationId = requestAnimationFrame(animate);
                         };
-                        requestAnimationFrame(animate);
+                        this.animationId = requestAnimationFrame(animate);
                     },
                     async renderZipCircles(zipCounts, maxCountSafe) {
                         // Clear any existing circles first
