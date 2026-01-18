@@ -91,7 +91,7 @@
         startAutoplay() {
             if (!this.isVisible || !this.isTabVisible || this.isHovered) return;
             this.stopAutoplay();
-            this.autoplay = setInterval(() => this.next(), {{ $autoplayInterval ?? ($isServiceMode ? 4000 : 5000) }});
+            this.autoplay = setInterval(() => this.next(), 3000);
         },
         stopAutoplay() {
             if (this.autoplay) {

@@ -59,7 +59,7 @@
                 this.introTimer = setTimeout(() => {
                     this.introTimerDone = true;
                     this.tryEndIntro();
-                }, 5000);
+                }, 2000);
             }
         },
         tryEndIntro() {
@@ -106,7 +106,7 @@
         startAutoplay() {
             if (!this.isVisible || !this.isTabVisible || this.introPhase) return;
             this.stopAutoplay();
-            this.autoplay = setInterval(() => this.next(), 5000);
+            this.autoplay = setInterval(() => this.next(), 3000);
         },
         stopAutoplay() {
             if (this.autoplay) {

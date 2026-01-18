@@ -55,7 +55,10 @@
                             streetViewControl: false,
                             fullscreenControl: false,
                             zoomControl: false,
-                            gestureHandling: 'greedy',
+                            gestureHandling: 'cooperative',
+                            draggable: false,
+                            scrollwheel: false,
+                            keyboardShortcuts: false,
                             minZoom: 9,
                             maxZoom: 15,
                             styles: [
@@ -86,7 +89,7 @@
                         // Each circle pulses independently with its own phase offset
                         let time = 0;
                         const animate = () => {
-                            time += 0.04; // Moderate speed
+                            time += 0.05; // Slightly faster pulse
                             
                             this.circles.forEach((circle, i) => {
                                 // Each circle has its own phase offset for independent pulsing
