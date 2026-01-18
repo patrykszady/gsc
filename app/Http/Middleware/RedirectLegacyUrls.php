@@ -30,8 +30,7 @@ class RedirectLegacyUrls
         '/contact-us' => '/contact',
         '/get-quote' => '/contact',
         '/free-estimate' => '/contact',
-        '/service-areas' => '/',
-        '/locations' => '/',
+        '/service-areas' => '/areas-served',
     ];
 
     /**

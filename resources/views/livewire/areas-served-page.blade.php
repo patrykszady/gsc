@@ -1,7 +1,15 @@
 <div>
+    @php
+        $pageLabelMap = [
+            'areas-served' => 'Areas Served',
+            'areas' => 'Areas',
+            'locations' => 'Locations',
+        ];
+        $pageLabel = $pageLabelMap[$currentRoute] ?? 'Areas Served';
+    @endphp
     {{-- Breadcrumb Schema --}}
     <x-breadcrumb-schema :items="[
-        ['name' => 'Areas Served'],
+        ['name' => $pageLabel],
     ]" />
 
     {{-- Visual Breadcrumb Navigation --}}
@@ -15,24 +23,35 @@
                     <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Areas Served</span>
+                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $pageLabel }}</span>
                 </li>
             </ol>
         </nav>
     </div>
 
     {{-- Hero Section --}}
-    <section class="relative bg-zinc-900 py-24 sm:py-32">
-        <div class="absolute inset-0 bg-cover bg-center opacity-40" style="background-image: url('/images/gs_map.png')"></div>
+    <section class="relative overflow-hidden bg-zinc-900 min-h-[420px] sm:min-h-[520px] lg:min-h-[640px]">
+        <div class="absolute inset-0">
+            <livewire:map-section height-classes="h-[420px] sm:h-[520px] lg:h-[640px]" />
+        </div>
         <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-zinc-900/40"></div>
-        <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
             <div class="text-center">
-                <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                    Areas We Serve
-                </h1>
-                <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
-                    Serving homeowners throughout the Chicago Northwest Suburbs with professional kitchen, bathroom, and home remodeling services.
-                </p>
+                {{-- /areas-served variant --}}
+                <div @class(['hidden' => $currentRoute !== 'areas-served'])>
+                    <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">Areas We Serve</h1>
+                    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional kitchen remodels, bathroom renovations, and home remodeling services.</p>
+                </div>
+                {{-- /areas variant --}}
+                <div @class(['hidden' => $currentRoute !== 'areas'])>
+                    <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">Areas We Service</h1>
+                    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Providing expert kitchen remodels, bathroom renovations, and home remodeling services across Chicagoland, Northwest Suburbs, and the North Shore.</p>
+                </div>
+                {{-- /locations variant --}}
+                <div @class(['hidden' => $currentRoute !== 'locations'])>
+                    <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">Locations We Serve</h1>
+                    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional kitchen remodels, bathroom renovations, and home remodeling services.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -73,7 +92,7 @@
     <x-cta-section 
         variant="blue"
         heading="Don't See Your Area?"
-        description="We serve the entire Chicago Northwest Suburbs. Contact us to discuss your project."
+        description="We serve Chicagoland, Northwest Suburbs, and the North Shore. Contact us to discuss your project."
         primary-cta-text="Contact Us"
         primary-cta-url="/contact"
     />

@@ -68,16 +68,33 @@ Route::redirect('/bathroom-remodeling', '/services/bathrooms', 301);
 Route::redirect('/kitchen-remodeling', '/services/kitchens', 301);
 Route::redirect('/home-remodeling', '/services/home-remodeling', 301);
 
-// Legacy /areas/ redirects (correct path is /areas-served/)
-Route::redirect('/areas', '/areas-served', 301);
-Route::get('/areas/{area}', function (string $area) {
-    return redirect("/areas-served/{$area}", 301);
-});
-Route::get('/areas/{area}/{page}', function (string $area, string $page) {
-    return redirect("/areas-served/{$area}/{$page}", 301);
-})->where('page', 'contact|testimonials|projects|about|services');
+// /areas alias (same content as /areas-served, noindex + canonical handled in component)
+Route::get('/areas', AreasServedPage::class)->name('areas.alias.index');
+Route::get('/areas/{area}', AreaPage::class)
+    ->defaults('page', 'home')
+    ->name('areas.alias.show');
+Route::get('/areas/{area}/{page}', AreaPage::class)
+    ->where('page', 'contact|testimonials|projects|about|services')
+    ->name('areas.alias.page');
+Route::get('/areas/{area}/services/{service}', AreaPage::class)
+    ->defaults('page', 'service')
+    ->where('service', 'kitchens|bathrooms|home-remodeling')
+    ->name('areas.alias.service');
 
-// Areas Served
+// Locations alias (keep canonical on /areas-served)
+Route::get('/locations', AreasServedPage::class)->name('locations.index');
+Route::get('/locations/{area}', AreaPage::class)
+    ->defaults('page', 'home')
+    ->name('locations.show');
+Route::get('/locations/{area}/{page}', AreaPage::class)
+    ->where('page', 'contact|testimonials|projects|about|services')
+    ->name('locations.page');
+Route::get('/locations/{area}/services/{service}', AreaPage::class)
+    ->defaults('page', 'service')
+    ->where('service', 'kitchens|bathrooms|home-remodeling')
+    ->name('locations.service');
+
+// Areas Served (canonical)
 Route::get('/areas-served', AreasServedPage::class)->name('areas.index');
 Route::get('/areas-served/{area}', AreaPage::class)
     ->defaults('page', 'home')

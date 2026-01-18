@@ -9,12 +9,14 @@ use Illuminate\Support\Str;
 class MapSection extends Component
 {
     public ?AreaServed $area = null;
+    public string $heightClasses = 'h-[250px] sm:h-[300px] lg:h-[350px]';
 
     public function placeholder(): string
     {
-        return <<<'HTML'
+        $heightClasses = $this->heightClasses;
+        return <<<HTML
         <div>
-            <section class="relative mt-8 h-[250px] overflow-hidden sm:h-[300px] lg:h-[350px]">
+            <section class="relative mt-8 overflow-hidden {$heightClasses}">
                 <div class="absolute inset-0 bg-zinc-200 dark:bg-zinc-700 animate-pulse"></div>
             </section>
         </div>
@@ -34,12 +36,13 @@ class MapSection extends Component
                 'lat' => 42.0907,
                 'lng' => -87.9756,
             ],
+            'heightClasses' => $this->heightClasses,
         ]);
     }
 
     protected function loadZipCountsFromCsv()
     {
-        $path = public_path('gs-projects.csv');
+        $path = public_path('project-zipcodes.csv');
         if (!is_file($path)) {
             return collect();
         }

@@ -134,9 +134,9 @@
                         </p>
                         <p class="mt-8 max-w-xl text-base/7 text-zinc-600 dark:text-zinc-400">
                             @if(isset($area))
-                            With deep roots in {{ $area->city }} and the greater Chicagoland area, we understand the unique needs of local homeowners. From historic home renovations to modern kitchen makeovers, we bring the same level of care and craftsmanship to every project—big or small.
+                            With deep roots in {{ $area->city }} and throughout Chicagoland, Northwest Suburbs, and North Shore, we understand the unique needs of local homeowners. From historic home renovations to modern kitchen makeovers, we bring the same level of care and craftsmanship to every project—big or small.
                             @else
-                            With roots in the Chicagoland area, we understand the unique needs of local homeowners. From historic home renovations to modern kitchen makeovers, we bring the same level of care and craftsmanship to every project—big or small.
+                            With roots throughout Chicagoland, Northwest Suburbs, and North Shore, we understand the unique needs of local homeowners. From historic home renovations to modern kitchen makeovers, we bring the same level of care and craftsmanship to every project—big or small.
                             @endif
                         </p>
                         <p class="mt-4 max-w-xl text-base/7 text-zinc-600 dark:text-zinc-400">

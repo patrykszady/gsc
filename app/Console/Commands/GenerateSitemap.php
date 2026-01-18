@@ -45,9 +45,10 @@ class GenerateSitemap extends Command
             'sanctum',      // sanctum routes
         ];
         
-        // Exact URIs to exclude (redirects)
+        // Exact URIs to exclude (redirects and noindex aliases)
         $excludeExact = [
-            'areas',        // redirect to /areas-served
+            'areas',        // alias of /areas-served (noindex)
+            'locations',    // alias of /areas-served (noindex)
         ];
 
         // Static pages from routes (non-parameterized GET routes)

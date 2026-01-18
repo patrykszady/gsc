@@ -55,7 +55,7 @@
                         </dt>
                         <dd>
                             <a href="/areas-served" wire:navigate class="font-medium text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-200">Service Area</a><br>
-                            <span>{{ $area ? $area->city . ' and surrounding Chicagoland areas' : 'Chicagoland, Northwest and North Shore Suburbs' }}</span>
+                            <span>{{ $area ? $area->city . ' and surrounding Chicagoland areas' : 'Chicagoland, Northwest Suburbs, and the North Shore' }}</span>
                         </dd>
                     </div>
                 </dl>
