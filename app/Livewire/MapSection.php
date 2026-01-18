@@ -39,7 +39,7 @@ class MapSection extends Component
 
     protected function loadZipCountsFromCsv()
     {
-        $path = storage_path('app/gs-projects.csv');
+        $path = public_path('gs-projects.csv');
         if (!is_file($path)) {
             return collect();
         }
