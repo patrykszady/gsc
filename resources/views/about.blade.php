@@ -1,5 +1,5 @@
 <x-layouts.app
-    title="About Us | GS Construction | Family-Owned Home Remodeling"
+    title="About GS Construction"
     metaDescription="Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area."
 >
     {{-- Preload LCP image for faster paint --}}

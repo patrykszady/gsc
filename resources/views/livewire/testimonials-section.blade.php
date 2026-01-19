@@ -11,6 +11,14 @@
             this.stopAutoplay();
             this.autoplay = setInterval(() => $wire.nextTestimonial(), 4000);
         },
+        scheduleAutoplay() {
+            const run = () => this.startAutoplay();
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(run, { timeout: 1200 });
+            } else {
+                setTimeout(run, 200);
+            }
+        },
         stopAutoplay() {
             if (this.autoplay) {
                 clearInterval(this.autoplay);
@@ -20,7 +28,7 @@
         handleVisibility(isVisible) {
             this.isVisible = isVisible;
             if (isVisible && this.isTabVisible && !this.isHovered) {
-                this.startAutoplay();
+                this.scheduleAutoplay();
             } else {
                 this.stopAutoplay();
             }
@@ -28,7 +36,7 @@
         handleTabVisibility() {
             this.isTabVisible = !document.hidden;
             if (this.isTabVisible && this.isVisible && !this.isHovered) {
-                this.startAutoplay();
+                this.scheduleAutoplay();
             } else {
                 this.stopAutoplay();
             }
@@ -39,7 +47,7 @@
         },
         resumeAutoplay() {
             this.isHovered = false;
-            this.startAutoplay();
+            this.scheduleAutoplay();
         },
         handleTouchStart(e) {
             this.touchStartX = e.changedTouches[0].screenX;
@@ -56,8 +64,8 @@
             }
         }
      }"
-     x-init="
-        startAutoplay();
+      x-init="
+          scheduleAutoplay();
         document.addEventListener('visibilitychange', () => handleTabVisibility());
      "
      x-intersect:enter.threshold.40="handleVisibility(true)"

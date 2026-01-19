@@ -76,6 +76,9 @@
             <flux:button href="{{ route('admin.projects.create') }}" icon="plus">
                 New Project
             </flux:button>
+            <flux:button href="{{ route('admin.testimonials.create') }}" icon="star">
+                New Review
+            </flux:button>
             <flux:button href="{{ route('admin.projects.index') }}" variant="ghost" icon="folder">
                 View All Projects
             </flux:button>

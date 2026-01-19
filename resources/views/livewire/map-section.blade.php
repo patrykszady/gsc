@@ -16,8 +16,20 @@
         @else
             {{-- Fixed map - clip-path on parent creates the mask effect --}}
             <div
-                x-data="projectZipMap(@js($zipCounts), {{ $maxCount }}, @js($mapCenter))"
-                x-init="init()"
+                x-data="{
+                    zipCounts: @js($zipCounts),
+                    maxCount: {{ $maxCount }},
+                    mapCenter: @js($mapCenter),
+                    mapModuleLoaded: false,
+                    async init() {
+                        if (this.mapModuleLoaded) return;
+                        this.mapModuleLoaded = true;
+                        const { createProjectZipMap } = await window.loadProjectZipMap();
+                        Object.assign(this, createProjectZipMap(this.zipCounts, this.maxCount, this.mapCenter));
+                        await this.initMap();
+                    }
+                }"
+                x-intersect:enter.once="init()"
                 class="fixed inset-0 h-screen w-full"
                 wire:ignore
             >

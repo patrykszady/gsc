@@ -34,6 +34,10 @@
             <flux:navlist.item icon="tag" href="{{ route('admin.tags.index') }}" :current="request()->routeIs('admin.tags.*')">
                 Tags
             </flux:navlist.item>
+
+            <flux:navlist.item icon="star" href="{{ route('admin.testimonials.create') }}" :current="request()->routeIs('admin.testimonials.*')">
+                Reviews
+            </flux:navlist.item>
         </flux:navlist>
 
         <flux:spacer />

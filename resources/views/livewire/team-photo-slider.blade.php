@@ -70,7 +70,7 @@
         },
         endIntro() {
             this.introPhase = false;
-            this.startAutoplay();
+            this.scheduleAutoplay();
             // Start loading background images when intro ends
             this.loadNextBackground();
         },
@@ -108,6 +108,14 @@
             this.stopAutoplay();
             this.autoplay = setInterval(() => this.next(), 3000);
         },
+        scheduleAutoplay() {
+            const run = () => this.startAutoplay();
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(run, { timeout: 1200 });
+            } else {
+                setTimeout(run, 200);
+            }
+        },
         stopAutoplay() {
             if (this.autoplay) {
                 clearInterval(this.autoplay);
@@ -124,7 +132,7 @@
                 if (this.introPhase && this.introLoaded) {
                     this.startIntroTimer();
                 } else if (!this.introPhase) {
-                    this.startAutoplay();
+                    this.scheduleAutoplay();
                     this.loadNextBackground();
                 }
             } else {
@@ -137,7 +145,7 @@
                 if (this.introPhase && this.introLoaded) {
                     this.startIntroTimer();
                 } else if (!this.introPhase) {
-                    this.startAutoplay();
+                    this.scheduleAutoplay();
                 }
             } else {
                 this.stopAutoplay();

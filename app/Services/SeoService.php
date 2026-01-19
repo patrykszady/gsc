@@ -75,7 +75,7 @@ class SeoService
             $title = "{$city} Remodeling Contractors";
             $description = "Kitchen, bathroom & home remodeling in {$city}, IL. Family-owned with 40+ years experience.";
         } else {
-            $title = 'Remodeling Contractors Chicago';
+            $title = 'Remodeling Contractors';
             $description = 'Kitchen, bathroom & home remodeling in Chicagoland. Family-owned with 40+ years experience.';
         }
 
@@ -94,13 +94,13 @@ class SeoService
             $title = "{$typeLabel} Remodeling Projects in {$city}";
             $description = "Browse our {$typeLabel} remodeling projects in {$city}. See the quality craftsmanship from GS Construction.";
         } elseif ($typeLabel) {
-            $title = "{$typeLabel} Remodeling Projects | GS Construction";
+            $title = "{$typeLabel} Remodeling Projects";
             $description = "Browse our {$typeLabel} remodeling portfolio. See kitchen, bathroom, and home renovation projects completed by GS Construction.";
         } elseif ($city) {
             $title = "Remodeling Projects in {$city}";
             $description = "Browse our remodeling projects in {$city}. Kitchen, bathroom, and whole-home renovations by GS Construction.";
         } else {
-            $title = 'Our Remodeling Projects | GS Construction';
+            $title = 'Remodeling Projects';
             $description = 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship from GS Construction.';
         }
 
@@ -166,8 +166,8 @@ class SeoService
         
         // Keep under 70 chars with suffix
         $title = $city
-            ? "About Us | {$city} Contractors"
-            : 'About Us | Meet Greg & Patryk';
+            ? "About {$city} Contractors"
+            : 'About GS Construction';
         
         $description = $city
             ? "Learn about GS Construction, a family-owned remodeling company serving {$city}. Meet Greg & Patryk and discover our 40+ years of combined experience."
@@ -188,8 +188,8 @@ class SeoService
         
         // Keep under 70 chars with suffix
         $title = $city
-            ? "Contact Us | Free {$city} Quote"
-            : 'Contact Us | Get a Free Quote';
+            ? "Contact Us for a Free {$city} Quote"
+            : 'Contact GS Construction';
         
         $description = $city
             ? "Contact GS Construction for a free remodeling quote in {$city}. Call (847) 430-4439 or fill out our form for kitchen, bathroom, and home renovation estimates."

@@ -51,31 +51,6 @@ $serviceUrl = $area
     ? $area->pageUrl($serviceSlug)
     : url("/services/{$serviceSlug}");
 
-// Build feature list for schema - handle both string and array formats
-$featureList = [];
-if (!empty($service['features'])) {
-    foreach ($service['features'] as $feature) {
-        if (is_string($feature)) {
-            $featureList[] = [
-                '@type' => 'Offer',
-                'itemOffered' => [
-                    '@type' => 'Service',
-                    'name' => $feature,
-                ],
-            ];
-        } elseif (is_array($feature) && isset($feature['title'])) {
-            $featureList[] = [
-                '@type' => 'Offer',
-                'itemOffered' => [
-                    '@type' => 'Service',
-                    'name' => $feature['title'],
-                    'description' => $feature['description'] ?? '',
-                ],
-            ];
-        }
-    }
-}
-
 $schema = [
     '@context' => 'https://schema.org',
     '@type' => 'Service',
@@ -92,29 +67,7 @@ $schema = [
     ],
     'areaServed' => $areaServed,
     'url' => $serviceUrl,
-    'offers' => [
-        '@type' => 'Offer',
-        'availability' => 'https://schema.org/InStock',
-        'priceSpecification' => [
-            '@type' => 'PriceSpecification',
-            'priceCurrency' => 'USD',
-            'eligibleTransactionVolume' => [
-                '@type' => 'PriceSpecification',
-                'description' => 'Free estimates available',
-            ],
-        ],
-    ],
-    'termsOfService' => 'https://gs.construction/contact',
 ];
-
-// Only add hasOfferCatalog if we have features
-if (!empty($featureList)) {
-    $schema['hasOfferCatalog'] = [
-        '@type' => 'OfferCatalog',
-        'name' => "{$serviceData['name']} Services",
-        'itemListElement' => $featureList,
-    ];
-}
 
 // Note: aggregateRating is NOT valid on Service type for Google rich results.
 // Valid parent types are: Book, Course, Event, Game, HowTo, LocalBusiness, Movie,

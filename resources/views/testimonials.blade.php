@@ -1,5 +1,5 @@
 <x-layouts.app
-    title="GS Construction | Testimonials"
+    title="Customer Reviews & Testimonials"
     metaDescription="Read testimonials from our satisfied customers. See what homeowners say about GS Construction's kitchen, bathroom, and home remodeling services in the Chicagoland area."
 >
     {{-- Breadcrumb Schema --}}

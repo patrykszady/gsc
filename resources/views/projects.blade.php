@@ -1,5 +1,5 @@
 <x-layouts.app
-    title="Our Projects | GS Construction | Home Remodeling Portfolio"
+    title="Remodeling Projects"
     metaDescription="Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area."
 >
     {{-- Breadcrumb Schema --}}

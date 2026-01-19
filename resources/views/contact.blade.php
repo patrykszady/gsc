@@ -1,5 +1,5 @@
 <x-layouts.app
-    title="Contact Us | GS Construction | Family-Owned Home Remodeling"
+    title="Contact GS Construction"
     metaDescription="Get in touch with GS Construction for your home remodeling project. Free consultations for kitchen, bathroom, and whole-home renovations in Chicagoland."
 >
     {{-- Breadcrumb Schema --}}

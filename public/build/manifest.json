@@ -25,9 +25,18 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BVNiGchk.js",
+    "file": "assets/app-UnUuh5X0.js",
     "name": "app",
     "src": "resources/js/app.js",
-    "isEntry": true
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/projectZipMap.js"
+    ]
+  },
+  "resources/js/projectZipMap.js": {
+    "file": "assets/projectZipMap-9HFzREht.js",
+    "name": "projectZipMap",
+    "src": "resources/js/projectZipMap.js",
+    "isDynamicEntry": true
   }
 }

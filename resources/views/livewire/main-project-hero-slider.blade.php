@@ -4,7 +4,7 @@
     // First slide image for preloading
     $firstSlide = $renderedSlides[0] ?? null;
     // Responsive sizes: use smaller images on smaller screens
-    $heroSizes = '(max-width: 640px) 600px, (max-width: 1024px) 1200px, 2400px';
+    $heroSizes = '(max-width: 640px) 480px, (max-width: 1024px) 960px, 1600px';
 @endphp
 
 {{-- Preload the LCP image (first slide) for faster rendering with responsive srcset --}}
@@ -48,11 +48,19 @@
             if (firstThumb?.complete && firstThumb?.naturalWidth > 0) {
                 if (!this.thumbsLoaded.includes(0)) this.thumbsLoaded.push(0);
             }
-            this.startAutoplay();
+            this.scheduleAutoplay();
             document.addEventListener('visibilitychange', () => this.handleTabVisibility());
             // Start sequential loading only when visible
             if (this.isVisible) {
                 this.loadNextImage();
+            }
+        },
+        scheduleAutoplay() {
+            const run = () => this.startAutoplay();
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(run, { timeout: 1200 });
+            } else {
+                setTimeout(run, 200);
             }
         },
         loadNextImage() {
@@ -105,7 +113,7 @@
         handleVisibility(isVisible) {
             this.isVisible = isVisible;
             if (isVisible && this.isTabVisible && !this.isHovered) {
-                this.startAutoplay();
+                this.scheduleAutoplay();
                 // Start loading images when entering viewport
                 this.loadNextImage();
             } else {
@@ -115,7 +123,7 @@
         handleTabVisibility() {
             this.isTabVisible = !document.hidden;
             if (this.isTabVisible && this.isVisible && !this.isHovered) {
-                this.startAutoplay();
+                this.scheduleAutoplay();
             } else {
                 this.stopAutoplay();
             }
@@ -166,8 +174,8 @@
                 srcset="{{ $firstSlide['srcset'] ?? '' }}"
                 sizes="{{ $heroSizes }}"
                 alt="{{ $firstSlide['imageAlt'] ?? $firstSlide['alt'] ?? 'Home remodeling project' }}"
-                width="2400"
-                height="1350"
+                width="1600"
+                height="900"
                 fetchpriority="high"
                 decoding="async"
                 class="absolute inset-0 h-full w-full object-cover"
@@ -214,8 +222,8 @@
                     :srcset="slide.srcset || ''"
                     sizes="{{ $heroSizes }}"
                     :alt="slide.imageAlt || slide.heading || slide.alt"
-                    width="2400"
-                    height="1350"
+                    width="1600"
+                    height="900"
                     loading="lazy"
                     fetchpriority="auto"
                     decoding="async"
@@ -312,28 +320,34 @@
                     <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
                         <a
                             :href="slide.link"
-                            x-on:click.prevent="
-                                const el = document.querySelector(slide.link);
-                                if (!el) return;
-                                const start = window.scrollY;
-                                const end = el.offsetTop - 96;
-                                const duration = 250;
-                                const startTime = performance.now();
-                                (function scroll(now) {
-                                    const elapsed = now - startTime;
-                                    const progress = Math.min(elapsed / duration, 1);
-                                    window.scrollTo(0, start + (end - start) * progress);
-                                    if (progress < 1) requestAnimationFrame(scroll);
-                                })(startTime);
+                            x-on:click="
+                                if (slide.link.startsWith('#')) {
+                                    $event.preventDefault();
+                                    const el = document.querySelector(slide.link);
+                                    if (!el) return;
+                                    const start = window.scrollY;
+                                    const end = el.offsetTop - 96;
+                                    const duration = 250;
+                                    const startTime = performance.now();
+                                    (function scroll(now) {
+                                        const elapsed = now - startTime;
+                                        const progress = Math.min(elapsed / duration, 1);
+                                        window.scrollTo(0, start + (end - start) * progress);
+                                        if (progress < 1) requestAnimationFrame(scroll);
+                                    })(startTime);
+                                }
                             "
                             class="inline-flex items-center justify-center rounded-lg bg-sky-500 px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-lg transition hover:bg-sky-600"
                             x-text="slide.button"
                         ></a>
-                        @if($secondaryCtaUrl && $secondaryCtaText)
-                        <x-buttons.cta href="{{ $secondaryCtaUrl }}" variant="secondary" size="lg" :onDark="true">
-                            {{ $secondaryCtaText }}
-                        </x-buttons.cta>
-                        @endif
+                        <a
+                            x-show="slide.secondaryButton || '{{ $secondaryCtaText }}'"
+                            :href="slide.secondaryLink || '{{ $secondaryCtaUrl }}'"
+                            class="inline-flex items-center justify-center rounded-lg border border-transparent px-6 py-3 text-base font-semibold capitalize tracking-wide text-white transition hover:border-white"
+                        >
+                            <span x-text="slide.secondaryButton || '{{ $secondaryCtaText }}'"></span>
+                            <span class="ml-2">&rarr;</span>
+                        </a>
                     </div>
                 </div>
             </div>
