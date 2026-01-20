@@ -30,12 +30,28 @@
     </div>
 
     {{-- Hero Section --}}
-    <section class="relative overflow-hidden bg-zinc-900 min-h-[420px] sm:min-h-[520px] lg:min-h-[640px]">
-        <div class="absolute inset-0">
+    <section 
+        x-data="{ mapExploring: false }"
+        @map-interaction.window="mapExploring = $event.detail.active"
+        class="relative overflow-hidden bg-zinc-900 min-h-[420px] sm:min-h-[520px] lg:min-h-[640px]"
+    >
+        <div class="absolute inset-0 z-0">
             <livewire:map-section height-classes="h-[420px] sm:h-[520px] lg:h-[640px]" />
         </div>
-        <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-zinc-900/40"></div>
-        <div class="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+        <div 
+            x-show="!mapExploring"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-zinc-900/40"
+        ></div>
+        <div 
+            x-show="!mapExploring"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="pointer-events-none relative z-20 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8"
+        >
             <div class="text-center">
                 {{-- /areas-served variant --}}
                 <div @class(['hidden' => $currentRoute !== 'areas-served'])>

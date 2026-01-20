@@ -82,6 +82,9 @@
             <flux:button href="{{ route('admin.projects.index') }}" variant="ghost" icon="folder">
                 View All Projects
             </flux:button>
+            <flux:button href="{{ route('admin.testimonials.index') }}" variant="ghost" icon="star">
+                View All Reviews
+            </flux:button>
             <flux:button href="{{ route('admin.leads.index') }}" variant="ghost" icon="envelope">
                 View Leads
                 @if($leadsThisWeek > 0)

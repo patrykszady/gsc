@@ -15,6 +15,7 @@ export function createProjectZipMap(zipCounts, maxCount, mapCenter) {
             const { Map } = await google.maps.importLibrary('maps');
             await google.maps.importLibrary('geocoding');
 
+            // Start with map locked - requires click to interact
             this.map = new Map(this.$refs.map, {
                 center: mapCenter,
                 zoom: 10,
@@ -22,10 +23,10 @@ export function createProjectZipMap(zipCounts, maxCount, mapCenter) {
                 streetViewControl: false,
                 fullscreenControl: false,
                 zoomControl: false,
-                gestureHandling: 'cooperative',
+                gestureHandling: 'none',
                 draggable: false,
                 scrollwheel: false,
-                keyboardShortcuts: false,
+                disableDoubleClickZoom: true,
                 minZoom: 9,
                 maxZoom: 15,
                 styles: [

@@ -35,7 +35,7 @@
                 Tags
             </flux:navlist.item>
 
-            <flux:navlist.item icon="star" href="{{ route('admin.testimonials.create') }}" :current="request()->routeIs('admin.testimonials.*')">
+            <flux:navlist.item icon="star" href="{{ route('admin.testimonials.index') }}" :current="request()->routeIs('admin.testimonials.*')">
                 Reviews
             </flux:navlist.item>
         </flux:navlist>

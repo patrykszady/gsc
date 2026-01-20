@@ -3,6 +3,7 @@
 use App\Http\Middleware\BlockSpamBots;
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
+use App\Http\Middleware\DetectCountry;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackDomainSource;
@@ -25,7 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         
         // SEO: Track domain source for analytics, handle legacy redirects, cache static assets, and add security headers
+        // DetectCountry: Uses Cloudflare CF-IPCountry header for geo-based features (GA only for US, visible Turnstile for non-US)
         $middleware->web(append: [
+            DetectCountry::class,
             TrackDomainSource::class,
             RedirectLegacyUrls::class,
             CacheStaticAssets::class,

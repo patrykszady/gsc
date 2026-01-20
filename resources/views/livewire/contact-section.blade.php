@@ -515,9 +515,14 @@
                 </div>
 
                 {{-- Cloudflare Turnstile (Anti-Spam) --}}
-                {{-- Cloudflare Turnstile (Invisible Anti-Spam) --}}
+                {{-- Invisible for US visitors, visible challenge for non-US visitors --}}
                 @if($turnstileEnabled && $turnstileSiteKey)
-                <div wire:ignore class="sr-only">
+                <div wire:ignore @class(['sr-only' => $isUSVisitor, 'mt-4' => !$isUSVisitor])>
+                    @if(!$isUSVisitor)
+                    <p class="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Please complete the security check below:
+                    </p>
+                    @endif
                     <div
                         x-data="{
                             init() {
@@ -538,7 +543,7 @@
                                     window.turnstile.render(this.$refs.turnstileWidget, {
                                         sitekey: '{{ $turnstileSiteKey }}',
                                         theme: 'auto',
-                                        size: 'flexible',
+                                        size: '{{ $isUSVisitor ? 'invisible' : 'flexible' }}',
                                         callback: (token) => {
                                             @this.set('turnstileToken', token);
                                         },

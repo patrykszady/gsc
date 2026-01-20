@@ -76,7 +76,7 @@ class TestimonialForm extends Component
 
         session()->flash('success', $this->testimonial->wasRecentlyCreated ? 'Review created successfully.' : 'Review updated successfully.');
 
-        $this->redirect(route('admin.testimonials.create'), navigate: true);
+        $this->redirect(route('admin.testimonials.index'), navigate: true);
     }
 
     public function render()

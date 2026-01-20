@@ -694,6 +694,10 @@ class ContactSection extends Component
             'area' => $this->area,
             'turnstileSiteKey' => config('services.turnstile.site_key'),
             'turnstileEnabled' => config('services.turnstile.enabled') && config('services.turnstile.secret_key'),
+            // Pass visitor country info for Turnstile visibility decision
+            'isUSVisitor' => session('visitor_country', 'XX') === 'US' 
+                || in_array(session('visitor_country', 'XX'), ['US', 'PR', 'VI', 'GU', 'AS', 'MP']),
+            'visitorCountry' => session('visitor_country', 'XX'),
         ]);
     }
 }

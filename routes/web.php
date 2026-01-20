@@ -7,6 +7,7 @@ use App\Livewire\Admin\ProjectList;
 use App\Livewire\Admin\TagList;
 use App\Livewire\Admin\ContactSubmissions;
 use App\Livewire\Admin\TestimonialForm;
+use App\Livewire\Admin\TestimonialList;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
 use App\Livewire\ProjectPage;
@@ -169,5 +170,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/leads', ContactSubmissions::class)->name('leads.index');
 
     // Testimonials / Reviews
+    Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');
     Route::get('/testimonials/create', TestimonialForm::class)->name('testimonials.create');
+    Route::get('/testimonials/{testimonial}/edit', TestimonialForm::class)->name('testimonials.edit');
 });

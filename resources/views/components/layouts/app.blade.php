@@ -27,7 +27,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
 
     {{-- Preconnect to third-party origins for faster loading --}}
+    {{-- Only preconnect to Google Analytics for US visitors (privacy/GDPR compliance) --}}
+    @if(($isUSVisitor ?? false) && config('services.google.analytics_id'))
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+    @endif
     <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin>
     @if(config('services.google.places_api_key'))
     <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
@@ -246,8 +249,10 @@
     <script>
         // Load analytics after page is interactive
         function loadDeferredScripts() {
-            @if(config('services.google.analytics_id'))
-            // Google Analytics
+            {{-- Google Analytics: Only load for US visitors (privacy/GDPR compliance) --}}
+            {{-- Country detection via Cloudflare CF-IPCountry header in DetectCountry middleware --}}
+            @if(($isUSVisitor ?? false) && config('services.google.analytics_id'))
+            // Google Analytics (US visitors only)
             const gaScript = document.createElement('script');
             gaScript.async = true;
             gaScript.src = 'https://www.googletagmanager.com/gtag/js?id={{ config('services.google.analytics_id') }}';
@@ -260,7 +265,8 @@
             gtag('config', '{{ config('services.google.analytics_id') }}', {
                 'custom_map': {
                     'dimension1': 'entry_domain',
-                    'dimension2': 'domain_source'
+                    'dimension2': 'domain_source',
+                    'dimension3': 'visitor_country'
                 }
             });
             
@@ -274,6 +280,11 @@
                 'event_label': '{{ $domainSource }}'
             });
             @endif
+            @else
+            // Analytics disabled for non-US visitors (country: {{ $visitorCountry ?? 'unknown' }})
+            // Define gtag as no-op so existing gtag() calls don't throw errors
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function() {};
             @endif
 
             @if(config('services.microsoft.clarity_id'))
@@ -302,7 +313,8 @@
         }
     </script>
 
-    @if(config('services.google.analytics_id'))
+    {{-- GA conversion tracking for form submissions (US visitors only) --}}
+    @if(($isUSVisitor ?? false) && config('services.google.analytics_id'))
         <script>
             document.addEventListener('livewire:init', () => {
                 // Track successful form submission (GA4 recommended event)

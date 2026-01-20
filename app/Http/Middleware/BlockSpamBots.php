@@ -45,7 +45,7 @@ class BlockSpamBots
         'wget',
         'httrack',
         'java/',
-        'headlesschrome', // Headless browser often = scraper
+        // Note: HeadlessChrome removed - used by legitimate tools like Lighthouse, GTmetrix, PageSpeed Insights
     ];
 
     /**
