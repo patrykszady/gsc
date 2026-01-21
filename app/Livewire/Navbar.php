@@ -28,13 +28,19 @@ class Navbar extends Component
             '/testimonials' => 'testimonials',
             '/about' => 'about',
             '/services' => 'services',
-            '/services/kitchen-remodeling' => 'services',
-            '/services/bathroom-remodeling' => 'services',
-            '/services/home-remodeling' => 'services',
+        ];
+
+        // Map service-specific hrefs to area-specific service pages
+        $areaServiceMap = [
+            '/services/kitchen-remodeling' => 'kitchens',
+            '/services/bathroom-remodeling' => 'bathrooms',
+            '/services/home-remodeling' => 'home-remodeling',
         ];
 
         if (isset($areaPageMap[$link['href']])) {
             $link['href'] = $this->area->pageUrl($areaPageMap[$link['href']]);
+        } elseif (isset($areaServiceMap[$link['href']])) {
+            $link['href'] = $this->area->serviceUrl($areaServiceMap[$link['href']]);
         }
 
         return $link;
