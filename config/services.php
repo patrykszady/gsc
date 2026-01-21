@@ -37,7 +37,7 @@ return [
 
     'google' => [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY'),
-        'analytics_id' => env('GOOGLE_ANALYTICS_GTAG'),
+        'analytics_id' => env('GOOGLE_ANALYTICS_GTAG', env('GOOGLE_MEASUREMENT_ID', env('GOOGLE_ANALYTICS_ID'))),
         'measurement_id' => env('GOOGLE_MEASUREMENT_ID'), // GA4 Measurement ID (G-XXXXXXXXXX)
         'measurement_api_secret' => env('GOOGLE_MEASUREMENT_API_SECRET'), // GA4 Measurement Protocol API Secret
     ],
