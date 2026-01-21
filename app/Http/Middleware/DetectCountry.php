@@ -33,7 +33,10 @@ class DetectCountry
         session(['visitor_country' => $country]);
         
         // Determine if visitor is from the US (includes US territories)
-        $isUS = in_array($country, ['US', 'PR', 'VI', 'GU', 'AS', 'MP']);
+        // Default to US when country is unknown ('XX') or header missing - better to track than miss visits
+        // Only exclude visitors we KNOW are outside the US
+        $usCountries = ['US', 'PR', 'VI', 'GU', 'AS', 'MP'];
+        $isUS = in_array($country, $usCountries) || $country === 'XX';
         
         // Share with all views
         View::share('visitorCountry', $country);
