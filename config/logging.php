@@ -69,7 +69,7 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 60), // Keep 2 months of logs
+            'days' => env('LOG_DAILY_DAYS', 90), // Keep 90 days of logs
             'replace_placeholders' => true,
         ],
 

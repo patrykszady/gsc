@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\BlockSpamBots;
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\DetectCountry;
@@ -20,10 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
         
-        // Block spam bots and malicious crawlers early
-        $middleware->web(prepend: [
-            BlockSpamBots::class,
-        ]);
+        // Bot blocking now handled by Cloudflare WAF + Bot Fight Mode
         
         // SEO: Track domain source for analytics, handle legacy redirects, cache static assets, and add security headers
         // DetectCountry: Uses Cloudflare CF-IPCountry header for geo-based features (GA only for US, visible Turnstile for non-US)

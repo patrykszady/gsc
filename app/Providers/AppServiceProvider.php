@@ -31,9 +31,9 @@ class AppServiceProvider extends ServiceProvider
         AreaServed::observe(AreaServedObserver::class);
         Project::observe(ProjectObserver::class);
 
-        // Allow authenticated admin users to access Log Viewer in production
+        // Restrict Log Viewer access to specific admin email only
         Gate::define('viewLogViewer', function ($user) {
-            return $user !== null;
+            return $user?->email === 'patryk@gs.construction';
         });
     }
 }
