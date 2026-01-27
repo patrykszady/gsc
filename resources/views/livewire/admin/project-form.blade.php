@@ -61,36 +61,21 @@
                 </flux:card>
 
                 {{-- Image Upload --}}
-                <flux:card x-data="imageUploadPreviews()">
+                <flux:card>
                     <flux:heading size="lg" class="mb-4">Images</flux:heading>
 
-                    {{-- Upload Zone --}}
-                    <div 
-                        x-on:dragover.prevent="isDragging = true"
-                        x-on:dragleave.prevent="isDragging = false"
-                        x-on:drop.prevent="isDragging = false; $refs.fileInput.files = $event.dataTransfer.files; generatePreviews($event.dataTransfer.files); $refs.fileInput.dispatchEvent(new Event('change'))"
-                        :class="{ 'border-sky-500 bg-sky-50 dark:bg-sky-900/20': isDragging }"
-                        class="relative mb-4 rounded-lg border-2 border-dashed border-zinc-300 p-8 text-center transition-colors dark:border-zinc-600"
-                    >
-                        <input 
-                            type="file" 
-                            wire:model="uploads" 
-                            x-ref="fileInput"
-                            x-on:change="generatePreviews($event.target.files)"
-                            multiple 
-                            accept="image/*"
-                            class="absolute inset-0 size-full cursor-pointer opacity-0"
-                        >
-                        <flux:icon.cloud-arrow-up class="mx-auto size-12 text-zinc-400" />
-                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            <span class="font-semibold text-sky-500">Click to upload</span> or drag and drop
-                        </p>
-                        <p class="mt-1 text-xs text-zinc-500">PNG, JPG, WebP up to 10MB each</p>
-                    </div>
+                    {{-- Upload Zone with Progress --}}
+                    <flux:file-upload wire:model="uploads" multiple :disabled="$errors->has('uploads')">
+                        <flux:file-upload.dropzone 
+                            heading="Drop files here or click to browse" 
+                            text="PNG, JPG, WebP up to 10MB each"
+                            with-progress
+                        />
+                    </flux:file-upload>
 
                     {{-- Upload Errors --}}
                     @if($errors->has('uploads') || $errors->has('uploads.*'))
-                        <div class="mb-4 space-y-1">
+                        <div class="mt-4 space-y-1">
                             @foreach($errors->get('uploads') as $message)
                                 <p class="text-sm text-red-600">{{ $message }}</p>
                             @endforeach
@@ -102,59 +87,40 @@
                         </div>
                     @endif
 
-                    {{-- Upload Progress --}}
-                    <div wire:loading wire:target="uploads" class="mb-4">
-                        <flux:callout icon="arrow-path" class="animate-pulse">
-                            Uploading images...
-                        </flux:callout>
-                    </div>
-
                     {{-- New Uploads Preview --}}
                     @if(count($uploads) > 0)
-                        <div class="mb-4">
+                        <div class="mt-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">New Uploads</h4>
-                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                            <div class="flex flex-col gap-2">
                                 {{-- Non-duplicates first --}}
                                 @foreach($uploads as $index => $upload)
                                     @if(!in_array($index, $duplicateIndices))
-                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
-                                            <template x-if="previews[{{ $index }}]">
-                                                <img :src="previews[{{ $index }}]" alt="Upload preview" class="size-full object-cover">
-                                            </template>
-                                            <template x-if="!previews[{{ $index }}]">
-                                                <div class="flex size-full flex-col items-center justify-center text-zinc-400">
-                                                    <flux:icon.photo class="size-8" />
-                                                    <span class="mt-1 text-xs">{{ $upload->getClientOriginalName() }}</span>
-                                                </div>
-                                            </template>
-                                            <button 
-                                                type="button"
-                                                wire:click="removeUpload({{ $index }})"
-                                                class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                                            >
-                                                <flux:icon.x-mark class="size-4" />
-                                            </button>
-                                        </div>
+                                        <flux:file-item 
+                                            :heading="$upload->getClientOriginalName()"
+                                            :size="$upload->getSize()"
+                                        >
+                                            <x-slot name="actions">
+                                                <flux:file-item.remove 
+                                                    wire:click="removeUpload({{ $index }})" 
+                                                    aria-label="Remove file: {{ $upload->getClientOriginalName() }}" 
+                                                />
+                                            </x-slot>
+                                        </flux:file-item>
                                     @endif
                                 @endforeach
                                 
                                 {{-- Duplicates after --}}
                                 @foreach($uploads as $index => $upload)
                                     @if(in_array($index, $duplicateIndices))
-                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 opacity-50 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
-                                            <template x-if="previews[{{ $index }}]">
-                                                <img :src="previews[{{ $index }}]" alt="Upload preview" class="size-full object-cover grayscale">
-                                            </template>
-                                            <template x-if="!previews[{{ $index }}]">
-                                                <div class="flex size-full flex-col items-center justify-center text-zinc-400">
-                                                    <flux:icon.photo class="size-8" />
-                                                    <span class="mt-1 text-xs">{{ $upload->getClientOriginalName() }}</span>
-                                                </div>
-                                            </template>
-                                            <div class="absolute right-2 top-2">
-                                                <span class="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white shadow">Duplicate</span>
-                                            </div>
-                                        </div>
+                                        <flux:file-item 
+                                            :heading="$upload->getClientOriginalName()"
+                                            :size="$upload->getSize()"
+                                            invalid
+                                        >
+                                            <x-slot name="actions">
+                                                <flux:badge color="amber" size="sm">Duplicate</flux:badge>
+                                            </x-slot>
+                                        </flux:file-item>
                                     @endif
                                 @endforeach
                             </div>
@@ -163,7 +129,7 @@
 
                     {{-- Existing Images --}}
                     @if(count($existingImages) > 0)
-                        <div>
+                        <div class="mt-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Project Images</h4>
                             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                                 @foreach($existingImages as $image)
@@ -279,30 +245,3 @@
         </div>
     </form>
 </div>
-
-@script
-<script>
-    Alpine.data('imageUploadPreviews', () => ({
-        isDragging: false,
-        previews: {},
-        
-        generatePreviews(files) {
-            // Clear old previews when new files are selected
-            this.previews = {};
-            let index = 0;
-            
-            for (const file of files) {
-                if (file.type.startsWith('image/')) {
-                    const currentIndex = index;
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.previews[currentIndex] = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-                index++;
-            }
-        }
-    }));
-</script>
-@endscript
