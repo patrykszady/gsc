@@ -61,19 +61,11 @@
                 </flux:card>
 
                 {{-- Image Upload --}}
-                <flux:card x-data="{ previews: {} }" x-on:livewire-upload-start="previews = {}">
+                <flux:card x-data="imagePreviewHandler()" x-init="init()">
                     <flux:heading size="lg" class="mb-4">Images</flux:heading>
 
                     {{-- Upload Zone with Progress --}}
-                    <flux:file-upload wire:model="uploads" multiple :disabled="$errors->has('uploads')" x-on:change="
-                        Array.from($event.target.files).forEach((file, i) => {
-                            if (file.type.startsWith('image/')) {
-                                const reader = new FileReader();
-                                reader.onload = (e) => { previews[i] = e.target.result; };
-                                reader.readAsDataURL(file);
-                            }
-                        })
-                    ">
+                    <flux:file-upload wire:model="uploads" multiple :disabled="$errors->has('uploads')">
                         <flux:file-upload.dropzone 
                             heading="Drop files here or click to browse" 
                             text="PNG, JPG, WebP up to 10MB each"
@@ -263,3 +255,34 @@
         </div>
     </form>
 </div>
+
+@script
+<script>
+    Alpine.data('imagePreviewHandler', () => ({
+        previews: {},
+        
+        init() {
+            // Find the file input inside the flux:file-upload component
+            this.$nextTick(() => {
+                const fileInput = this.$el.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.addEventListener('change', (e) => this.handleFiles(e.target.files));
+                }
+            });
+        },
+        
+        handleFiles(files) {
+            this.previews = {};
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.previews[index] = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }));
+</script>
+@endscript
