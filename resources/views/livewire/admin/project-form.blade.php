@@ -61,7 +61,7 @@
                 </flux:card>
 
                 {{-- Image Upload --}}
-                <flux:card x-data="imagePreviewHandler()" x-init="init()">
+                <flux:card>
                     <flux:heading size="lg" class="mb-4">Images</flux:heading>
 
                     {{-- Upload Zone with Progress --}}
@@ -87,7 +87,7 @@
                         </div>
                     @endif
 
-                    {{-- New Uploads Preview --}}
+                    {{-- New Uploads Preview using Flux file-item --}}
                     @if(count($uploads) > 0)
                         <div class="mt-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">New Uploads</h4>
@@ -96,14 +96,11 @@
                                 @foreach($uploads as $index => $upload)
                                     @if(!in_array($index, $duplicateIndices))
                                         <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
-                                            <template x-if="previews[{{ $index }}]">
-                                                <img :src="previews[{{ $index }}]" alt="Upload preview" class="size-full object-cover">
-                                            </template>
-                                            <template x-if="!previews[{{ $index }}]">
-                                                <div class="flex size-full items-center justify-center">
-                                                    <flux:icon.photo class="size-8 text-zinc-400" />
-                                                </div>
-                                            </template>
+                                            <img 
+                                                src="{{ $upload->temporaryUrl() }}" 
+                                                alt="{{ $upload->getClientOriginalName() }}" 
+                                                class="size-full object-cover"
+                                            >
                                             <button 
                                                 type="button"
                                                 wire:click="removeUpload({{ $index }})"
@@ -119,14 +116,11 @@
                                 @foreach($uploads as $index => $upload)
                                     @if(in_array($index, $duplicateIndices))
                                         <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
-                                            <template x-if="previews[{{ $index }}]">
-                                                <img :src="previews[{{ $index }}]" alt="Upload preview" class="size-full object-cover opacity-50 grayscale">
-                                            </template>
-                                            <template x-if="!previews[{{ $index }}]">
-                                                <div class="flex size-full items-center justify-center">
-                                                    <flux:icon.photo class="size-8 text-zinc-400" />
-                                                </div>
-                                            </template>
+                                            <img 
+                                                src="{{ $upload->temporaryUrl() }}" 
+                                                alt="{{ $upload->getClientOriginalName() }}" 
+                                                class="size-full object-cover opacity-50 grayscale"
+                                            >
                                             <div class="absolute right-2 top-2">
                                                 <flux:badge color="amber" size="sm">Duplicate</flux:badge>
                                             </div>
@@ -255,34 +249,3 @@
         </div>
     </form>
 </div>
-
-@script
-<script>
-    Alpine.data('imagePreviewHandler', () => ({
-        previews: {},
-        
-        init() {
-            // Find the file input inside the flux:file-upload component
-            this.$nextTick(() => {
-                const fileInput = this.$el.querySelector('input[type="file"]');
-                if (fileInput) {
-                    fileInput.addEventListener('change', (e) => this.handleFiles(e.target.files));
-                }
-            });
-        },
-        
-        handleFiles(files) {
-            this.previews = {};
-            Array.from(files).forEach((file, index) => {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.previews[index] = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-    }));
-</script>
-@endscript
