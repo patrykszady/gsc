@@ -91,36 +91,32 @@
                     @if(count($uploads) > 0)
                         <div class="mt-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">New Uploads</h4>
-                            <div class="flex flex-col gap-2">
+                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                                 {{-- Non-duplicates first --}}
                                 @foreach($uploads as $index => $upload)
                                     @if(!in_array($index, $duplicateIndices))
-                                        <flux:file-item 
-                                            :heading="$upload->getClientOriginalName()"
-                                            :size="$upload->getSize()"
-                                        >
-                                            <x-slot name="actions">
-                                                <flux:file-item.remove 
-                                                    wire:click="removeUpload({{ $index }})" 
-                                                    aria-label="Remove file: {{ $upload->getClientOriginalName() }}" 
-                                                />
-                                            </x-slot>
-                                        </flux:file-item>
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
+                                            <img src="{{ $upload->temporaryUrl() }}" alt="Upload preview" class="size-full object-cover">
+                                            <button 
+                                                type="button"
+                                                wire:click="removeUpload({{ $index }})"
+                                                class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                            >
+                                                <flux:icon.x-mark class="size-4" />
+                                            </button>
+                                        </div>
                                     @endif
                                 @endforeach
                                 
                                 {{-- Duplicates after --}}
                                 @foreach($uploads as $index => $upload)
                                     @if(in_array($index, $duplicateIndices))
-                                        <flux:file-item 
-                                            :heading="$upload->getClientOriginalName()"
-                                            :size="$upload->getSize()"
-                                            invalid
-                                        >
-                                            <x-slot name="actions">
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
+                                            <img src="{{ $upload->temporaryUrl() }}" alt="Upload preview" class="size-full object-cover opacity-50 grayscale">
+                                            <div class="absolute right-2 top-2">
                                                 <flux:badge color="amber" size="sm">Duplicate</flux:badge>
-                                            </x-slot>
-                                        </flux:file-item>
+                                            </div>
+                                        </div>
                                     @endif
                                 @endforeach
                             </div>
