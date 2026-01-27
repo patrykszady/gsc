@@ -7,14 +7,14 @@ use Illuminate\Support\Facades\Log;
 
 class IndexNowService
 {
-    protected string $key;
+    protected ?string $key;
     protected string $host;
     protected string $endpoint;
     protected bool $enabled;
 
     public function __construct()
     {
-        $this->key = config('indexnow.key', '');
+        $this->key = config('indexnow.key') ?? '';
         $this->host = parse_url(config('app.url'), PHP_URL_HOST) ?? '';
         $this->endpoint = config('indexnow.endpoint', 'https://api.indexnow.org/indexnow');
         $this->enabled = config('indexnow.enabled', false);
