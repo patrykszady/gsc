@@ -141,18 +141,6 @@ class ProjectForm extends Component
             ->toArray();
     }
 
-    public function removeUpload(int $index): void
-    {
-        unset($this->uploads[$index]);
-        $this->uploads = array_values($this->uploads);
-
-        // Clear stale validation errors for removed indexes.
-        $this->resetValidation();
-        
-        // Recalculate duplicates after removal
-        $this->removeDuplicateUploads();
-    }
-
     public function removeExistingImage(int $imageId): void
     {
         $image = ProjectImage::find($imageId);

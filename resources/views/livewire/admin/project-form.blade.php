@@ -103,7 +103,7 @@
                                             >
                                             <button 
                                                 type="button"
-                                                wire:click="removeUpload({{ $index }})"
+                                                wire:click="$removeUpload('uploads', '{{ $upload->getFilename() }}')"
                                                 class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
                                             >
                                                 <flux:icon.x-mark class="size-4" />

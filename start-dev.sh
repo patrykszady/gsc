@@ -18,7 +18,7 @@ if lsof -Pi :8003 -sTCP:LISTEN -t >/dev/null 2>&1; then
   echo "✅ Laravel server already running (pid: $SERVE_PID)"
 else
   echo "🔄 Starting Laravel dev server (http://127.0.0.1:8003)..."
-  nohup php artisan serve --host=127.0.0.1 --port=8003 --no-interaction >"$LOG_DIR/serve.log" 2>&1 &
+  nohup php -d upload_max_filesize=10M -d post_max_size=500M -d max_file_uploads=100 artisan serve --host=127.0.0.1 --port=8003 --no-interaction >"$LOG_DIR/serve.log" 2>&1 &
   SERVE_PID=$!
   sleep 0.7
   if ps -p "$SERVE_PID" >/dev/null 2>&1; then
