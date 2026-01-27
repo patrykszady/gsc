@@ -61,15 +61,14 @@
                 </flux:card>
 
                 {{-- Image Upload --}}
-                <flux:card>
+                <flux:card x-data="imageUploadPreviews()">
                     <flux:heading size="lg" class="mb-4">Images</flux:heading>
 
                     {{-- Upload Zone --}}
                     <div 
-                        x-data="{ isDragging: false }"
                         x-on:dragover.prevent="isDragging = true"
                         x-on:dragleave.prevent="isDragging = false"
-                        x-on:drop.prevent="isDragging = false; $refs.fileInput.files = $event.dataTransfer.files; $refs.fileInput.dispatchEvent(new Event('change'))"
+                        x-on:drop.prevent="isDragging = false; $refs.fileInput.files = $event.dataTransfer.files; generatePreviews($event.dataTransfer.files); $refs.fileInput.dispatchEvent(new Event('change'))"
                         :class="{ 'border-sky-500 bg-sky-50 dark:bg-sky-900/20': isDragging }"
                         class="relative mb-4 rounded-lg border-2 border-dashed border-zinc-300 p-8 text-center transition-colors dark:border-zinc-600"
                     >
@@ -77,6 +76,7 @@
                             type="file" 
                             wire:model="uploads" 
                             x-ref="fileInput"
+                            x-on:change="generatePreviews($event.target.files)"
                             multiple 
                             accept="image/*"
                             class="absolute inset-0 size-full cursor-pointer opacity-0"
@@ -117,28 +117,16 @@
                                 {{-- Non-duplicates first --}}
                                 @foreach($uploads as $index => $upload)
                                     @if(!in_array($index, $duplicateIndices))
-                                        @php
-                                            $previewUrl = null;
-                                            $previewError = null;
-                                            try {
-                                                $previewUrl = $upload->temporaryUrl();
-                                            } catch (\Exception $e) {
-                                                $previewError = $e->getMessage();
-                                            }
-                                        @endphp
-                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $previewError ?? $upload->getClientOriginalName() }}">
-                                            @if($previewUrl)
-                                                <img src="{{ $previewUrl }}" alt="Upload preview" class="size-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="hidden size-full flex-col items-center justify-center text-red-400">
-                                                    <flux:icon.exclamation-circle class="size-8" />
-                                                    <span class="mt-1 text-xs">Failed to load</span>
-                                                </div>
-                                            @else
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
+                                            <template x-if="previews[{{ $index }}]">
+                                                <img :src="previews[{{ $index }}]" alt="Upload preview" class="size-full object-cover">
+                                            </template>
+                                            <template x-if="!previews[{{ $index }}]">
                                                 <div class="flex size-full flex-col items-center justify-center text-zinc-400">
                                                     <flux:icon.photo class="size-8" />
                                                     <span class="mt-1 text-xs">{{ $upload->getClientOriginalName() }}</span>
                                                 </div>
-                                            @endif
+                                            </template>
                                             <button 
                                                 type="button"
                                                 wire:click="removeUpload({{ $index }})"
@@ -153,28 +141,16 @@
                                 {{-- Duplicates after --}}
                                 @foreach($uploads as $index => $upload)
                                     @if(in_array($index, $duplicateIndices))
-                                        @php
-                                            $previewUrl = null;
-                                            $previewError = null;
-                                            try {
-                                                $previewUrl = $upload->temporaryUrl();
-                                            } catch (\Exception $e) {
-                                                $previewError = $e->getMessage();
-                                            }
-                                        @endphp
-                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 opacity-50 dark:bg-zinc-800" title="{{ $previewError ?? $upload->getClientOriginalName() }}">
-                                            @if($previewUrl)
-                                                <img src="{{ $previewUrl }}" alt="Upload preview" class="size-full object-cover grayscale" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="hidden size-full flex-col items-center justify-center text-red-400">
-                                                    <flux:icon.exclamation-circle class="size-8" />
-                                                    <span class="mt-1 text-xs">Failed to load</span>
-                                                </div>
-                                            @else
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 opacity-50 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
+                                            <template x-if="previews[{{ $index }}]">
+                                                <img :src="previews[{{ $index }}]" alt="Upload preview" class="size-full object-cover grayscale">
+                                            </template>
+                                            <template x-if="!previews[{{ $index }}]">
                                                 <div class="flex size-full flex-col items-center justify-center text-zinc-400">
                                                     <flux:icon.photo class="size-8" />
                                                     <span class="mt-1 text-xs">{{ $upload->getClientOriginalName() }}</span>
                                                 </div>
-                                            @endif
+                                            </template>
                                             <div class="absolute right-2 top-2">
                                                 <span class="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white shadow">Duplicate</span>
                                             </div>
@@ -303,3 +279,30 @@
         </div>
     </form>
 </div>
+
+@script
+<script>
+    Alpine.data('imageUploadPreviews', () => ({
+        isDragging: false,
+        previews: {},
+        
+        generatePreviews(files) {
+            // Clear old previews when new files are selected
+            this.previews = {};
+            let index = 0;
+            
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const currentIndex = index;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.previews[currentIndex] = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+                index++;
+            }
+        }
+    }));
+</script>
+@endscript
