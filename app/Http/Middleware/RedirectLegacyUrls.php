@@ -76,12 +76,15 @@ class RedirectLegacyUrls
             return redirect(rtrim($path, '/'), 301);
         }
         
-        // Force lowercase URLs
-        $lowercasePath = strtolower($path);
-        if ($path !== $lowercasePath && $path !== '/') {
-            $query = $request->getQueryString();
-            $newUrl = $lowercasePath . ($query ? '?' . $query : '');
-            return redirect($newUrl, 301);
+        // Force lowercase URLs (except for Livewire routes which have case-sensitive filenames)
+        // Livewire 3 uses /livewire/, Livewire 4 uses /livewire-{hash}/
+        if (!str_starts_with($path, '/livewire')) {
+            $lowercasePath = strtolower($path);
+            if ($path !== $lowercasePath && $path !== '/') {
+                $query = $request->getQueryString();
+                $newUrl = $lowercasePath . ($query ? '?' . $query : '');
+                return redirect($newUrl, 301);
+            }
         }
 
         return $next($request);

@@ -114,17 +114,72 @@
                         <div class="mb-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">New Uploads</h4>
                             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                {{-- Non-duplicates first --}}
                                 @foreach($uploads as $index => $upload)
-                                    <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                                        <img src="{{ $upload->temporaryUrl() }}" alt="Upload preview" class="size-full object-cover">
-                                        <button 
-                                            type="button"
-                                            wire:click="removeUpload({{ $index }})"
-                                            class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                                        >
-                                            <flux:icon.x-mark class="size-4" />
-                                        </button>
-                                    </div>
+                                    @if(!in_array($index, $duplicateIndices))
+                                        @php
+                                            $previewUrl = null;
+                                            $previewError = null;
+                                            try {
+                                                $previewUrl = $upload->temporaryUrl();
+                                            } catch (\Exception $e) {
+                                                $previewError = $e->getMessage();
+                                            }
+                                        @endphp
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $previewError ?? $upload->getClientOriginalName() }}">
+                                            @if($previewUrl)
+                                                <img src="{{ $previewUrl }}" alt="Upload preview" class="size-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="hidden size-full flex-col items-center justify-center text-red-400">
+                                                    <flux:icon.exclamation-circle class="size-8" />
+                                                    <span class="mt-1 text-xs">Failed to load</span>
+                                                </div>
+                                            @else
+                                                <div class="flex size-full flex-col items-center justify-center text-zinc-400">
+                                                    <flux:icon.photo class="size-8" />
+                                                    <span class="mt-1 text-xs">{{ $upload->getClientOriginalName() }}</span>
+                                                </div>
+                                            @endif
+                                            <button 
+                                                type="button"
+                                                wire:click="removeUpload({{ $index }})"
+                                                class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                            >
+                                                <flux:icon.x-mark class="size-4" />
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endforeach
+                                
+                                {{-- Duplicates after --}}
+                                @foreach($uploads as $index => $upload)
+                                    @if(in_array($index, $duplicateIndices))
+                                        @php
+                                            $previewUrl = null;
+                                            $previewError = null;
+                                            try {
+                                                $previewUrl = $upload->temporaryUrl();
+                                            } catch (\Exception $e) {
+                                                $previewError = $e->getMessage();
+                                            }
+                                        @endphp
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 opacity-50 dark:bg-zinc-800" title="{{ $previewError ?? $upload->getClientOriginalName() }}">
+                                            @if($previewUrl)
+                                                <img src="{{ $previewUrl }}" alt="Upload preview" class="size-full object-cover grayscale" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="hidden size-full flex-col items-center justify-center text-red-400">
+                                                    <flux:icon.exclamation-circle class="size-8" />
+                                                    <span class="mt-1 text-xs">Failed to load</span>
+                                                </div>
+                                            @else
+                                                <div class="flex size-full flex-col items-center justify-center text-zinc-400">
+                                                    <flux:icon.photo class="size-8" />
+                                                    <span class="mt-1 text-xs">{{ $upload->getClientOriginalName() }}</span>
+                                                </div>
+                                            @endif
+                                            <div class="absolute right-2 top-2">
+                                                <span class="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white shadow">Duplicate</span>
+                                            </div>
+                                        </div>
+                                    @endif
                                 @endforeach
                             </div>
                         </div>

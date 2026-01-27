@@ -1,4 +1,7 @@
 <div class="bg-white dark:bg-zinc-900">
+    {{-- Project Schema with ImageObject data --}}
+    <x-project-schema :project="$project" />
+
     {{-- Breadcrumb Schema --}}
     @php
         $breadcrumbItems = [
@@ -87,9 +90,8 @@
                 @foreach($project->images as $image)
                     <div class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800">
                         <x-lqip-image 
-                            :src="$image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url" 
-                            :thumb="$image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb')"
-                            :alt="$image->alt_text ?? $project->title" 
+                            :image="$image"
+                            size="large"
                             aspectRatio="4/3"
                             class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
@@ -117,9 +119,8 @@
                             <div class="relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800">
                                 @if($related->images->first())
                                     <x-lqip-image 
-                                        :src="$related->images->first()->getWebpThumbnailUrl('medium') ?? $related->images->first()->getThumbnailUrl('medium')" 
-                                        :thumb="$related->images->first()->getWebpThumbnailUrl('thumb') ?? $related->images->first()->getThumbnailUrl('thumb')"
-                                        :alt="$related->title" 
+                                        :image="$related->images->first()"
+                                        size="medium"
                                         aspectRatio="4/3"
                                         class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     />

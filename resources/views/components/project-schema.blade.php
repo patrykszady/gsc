@@ -3,7 +3,6 @@
 @if($project)
 @php
 $coverImage = $project->images->where('is_cover', true)->first() ?? $project->images->first();
-$images = $project->images->map(fn($img) => $img->url)->toArray();
 
 $schema = [
     '@context' => 'https://schema.org',
@@ -44,13 +43,16 @@ if ($coverImage) {
     $schema['thumbnailUrl'] = $coverImage->getThumbnailUrl('medium');
 }
 
-// Add all project images as associated media
-if (count($images) > 0) {
-    $schema['associatedMedia'] = array_map(fn($url, $i) => [
+// Add all project images as associated media with proper alt text
+if ($project->images->isNotEmpty()) {
+    $schema['associatedMedia'] = $project->images->map(fn($img, $i) => [
         '@type' => 'ImageObject',
-        'url' => $url,
+        'url' => $img->url,
+        'contentUrl' => $img->url,
+        'name' => $img->seo_alt_text,
+        'description' => $img->caption ?? $img->seo_alt_text,
         'position' => $i + 1,
-    ], $images, array_keys($images));
+    ])->toArray();
 }
 
 // Filter null values from keywords

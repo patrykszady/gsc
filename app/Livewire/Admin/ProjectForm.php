@@ -43,6 +43,9 @@ class ProjectForm extends Component
     #[Validate(['uploads.*' => 'image|max:10240'])] // 10MB max per image
     public array $uploads = [];
 
+    // Track duplicate upload indices
+    public array $duplicateIndices = [];
+
     // Existing images
     public array $existingImages = [];
 
@@ -91,6 +94,51 @@ class ProjectForm extends Component
         foreach (array_keys($this->uploads) as $index) {
             $this->validateOnly("uploads.{$index}");
         }
+
+        // Remove duplicates based on file content hash
+        $this->removeDuplicateUploads();
+    }
+
+    /**
+     * Detect duplicate uploads based on original filename.
+     * Marks duplicates instead of removing them.
+     */
+    protected function removeDuplicateUploads(): void
+    {
+        $seenFilenames = [];
+        $this->duplicateIndices = [];
+
+        // Get original filenames of existing images for this project
+        $existingFilenames = $this->getExistingImageFilenames();
+
+        foreach ($this->uploads as $index => $upload) {
+            try {
+                $filename = $upload->getClientOriginalName();
+                
+                // Mark as duplicate if matches existing project image or already seen
+                if (in_array($filename, $existingFilenames) || isset($seenFilenames[$filename])) {
+                    $this->duplicateIndices[] = $index;
+                } else {
+                    $seenFilenames[$filename] = true;
+                }
+            } catch (\Exception $e) {
+                // If we can't read info, don't mark as duplicate
+            }
+        }
+    }
+
+    /**
+     * Get original filenames of existing images for this project.
+     */
+    protected function getExistingImageFilenames(): array
+    {
+        if (!$this->project) {
+            return [];
+        }
+
+        return $this->project->images()
+            ->pluck('original_filename')
+            ->toArray();
     }
 
     public function removeUpload(int $index): void
@@ -100,6 +148,9 @@ class ProjectForm extends Component
 
         // Clear stale validation errors for removed indexes.
         $this->resetValidation();
+        
+        // Recalculate duplicates after removal
+        $this->removeDuplicateUploads();
     }
 
     public function removeExistingImage(int $imageId): void
@@ -179,12 +230,17 @@ class ProjectForm extends Component
             $project = Project::create($data);
         }
 
-        // Upload new images
+        // Upload new images (skip duplicates)
         if (!empty($this->uploads)) {
             $imageService = app(ImageService::class);
             $sortOrder = $project->images()->max('sort_order') ?? 0;
 
-            foreach ($this->uploads as $upload) {
+            foreach ($this->uploads as $index => $upload) {
+                // Skip duplicates
+                if (in_array($index, $this->duplicateIndices)) {
+                    continue;
+                }
+                
                 $sortOrder++;
                 $imageService->upload($upload, $project, [
                     'sort_order' => $sortOrder,
@@ -193,6 +249,7 @@ class ProjectForm extends Component
             }
 
             $this->uploads = [];
+            $this->duplicateIndices = [];
         }
 
         session()->flash('success', $this->project?->exists ? 'Project updated successfully.' : 'Project created successfully.');
