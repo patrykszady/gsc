@@ -51,10 +51,17 @@ class ProjectImage extends Model
         $thumbnails = $this->thumbnails ?? [];
         
         if (isset($thumbnails[$size])) {
-            return Storage::disk($this->disk)->url($thumbnails[$size]);
+            $thumbnailPath = $thumbnails[$size];
+            if (Storage::disk($this->disk)->exists($thumbnailPath)) {
+                return Storage::disk($this->disk)->url($thumbnailPath);
+            }
         }
         
-        return $this->url;
+        if (Storage::disk($this->disk)->exists($this->path)) {
+            return $this->url;
+        }
+
+        return null;
     }
 
     /**
