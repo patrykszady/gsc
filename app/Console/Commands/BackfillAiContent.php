@@ -141,8 +141,10 @@ class BackfillAiContent extends Command
             }
 
             if ($useQueue) {
+                // Stagger jobs 5 seconds apart to avoid rate limits
                 GenerateAiContentJob::dispatch($image, $overwrite, false)
-                    ->onQueue('ai-content');
+                    ->onQueue('ai-content')
+                    ->delay(now()->addSeconds($queued * 5));
                 $queued++;
                 continue;
             }
@@ -241,8 +243,10 @@ class BackfillAiContent extends Command
             }
 
             if ($useQueue) {
+                // Stagger jobs 5 seconds apart to avoid rate limits
                 GenerateAiContentJob::dispatch($project, $overwrite, false)
-                    ->onQueue('ai-content');
+                    ->onQueue('ai-content')
+                    ->delay(now()->addSeconds($queued * 5));
                 $queued++;
                 continue;
             }

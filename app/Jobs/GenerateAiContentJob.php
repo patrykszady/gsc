@@ -18,7 +18,7 @@ class GenerateAiContentJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
-    public array $backoff = [30, 60, 120, 300]; // Exponential backoff for rate limits
+    public array $backoff = [60, 120, 300, 600]; // Aggressive backoff for Gemini rate limits (1, 2, 5, 10 min)
 
     /**
      * Create a new job instance.
