@@ -86,11 +86,6 @@ class GenerateAiContentJob implements ShouldQueue
         if (!empty($updateData)) {
             $image->updateQuietly($updateData);
 
-            Log::info('GenerateAiContentJob: Updated image content', [
-                'image_id' => $image->id,
-                'fields' => array_keys($updateData),
-            ]);
-
             if ($this->regenerateSitemap) {
                 $this->regenerateSitemap();
             }
@@ -120,10 +115,6 @@ class GenerateAiContentJob implements ShouldQueue
         }
 
         $project->updateQuietly(['description' => $description]);
-
-        Log::info('GenerateAiContentJob: Updated project description', [
-            'project_id' => $project->id,
-        ]);
 
         if ($this->regenerateSitemap) {
             $this->regenerateSitemap();
