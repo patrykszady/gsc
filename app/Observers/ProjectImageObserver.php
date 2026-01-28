@@ -4,11 +4,16 @@ namespace App\Observers;
 
 use App\Jobs\GenerateAiContentJob;
 use App\Models\ProjectImage;
+use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
 class ProjectImageObserver
 {
+    public function __construct(
+        protected IndexNowService $indexNow
+    ) {}
+
     /**
      * Handle the ProjectImage "created" event.
      * When a new image is uploaded, queue AI content generation.
@@ -17,6 +22,10 @@ class ProjectImageObserver
     {
         // Fill basic alt_text/caption immediately (for instant SEO)
         $this->fillBasicContent($image);
+
+        // Regenerate sitemap and notify IndexNow
+        $this->regenerateSitemap();
+        $this->submitToIndexNow($image);
 
         // Queue AI-powered content generation for richer SEO
         if (config('services.google.gemini_api_key')) {
@@ -32,6 +41,10 @@ class ProjectImageObserver
      */
     public function updated(ProjectImage $image): void
     {
+        // Regenerate sitemap and notify IndexNow on any update
+        $this->regenerateSitemap();
+        $this->submitToIndexNow($image);
+
         // Only re-generate if content was explicitly cleared
         $wasCleared = ($image->wasChanged('alt_text') && empty($image->alt_text))
             || ($image->wasChanged('caption') && empty($image->caption));
@@ -54,6 +67,7 @@ class ProjectImageObserver
     public function deleted(ProjectImage $image): void
     {
         $this->regenerateSitemap();
+        $this->submitToIndexNow($image);
     }
 
     /**
@@ -132,6 +146,33 @@ class ProjectImageObserver
             Artisan::call('sitemap:generate');
         } catch (\Exception $e) {
             Log::warning('ProjectImageObserver: Failed to regenerate sitemap', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    protected function submitToIndexNow(ProjectImage $image): void
+    {
+        if (! config('indexnow.auto_submit', true)) {
+            return;
+        }
+
+        $project = $image->project;
+        if (! $project || ! $project->is_published) {
+            return;
+        }
+
+        try {
+            // Submit the project page URL (images are part of the project page)
+            $urls = [
+                route('projects.show', $project),
+                route('projects.index'),
+            ];
+
+            $this->indexNow->submitBatch($urls);
+        } catch (\Exception $e) {
+            Log::warning('IndexNow: Failed to submit project image URL', [
+                'image_id' => $image->id,
                 'error' => $e->getMessage(),
             ]);
         }

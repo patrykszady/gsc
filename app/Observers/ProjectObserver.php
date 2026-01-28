@@ -69,8 +69,9 @@ class ProjectObserver
         }
 
         try {
-            // Projects page (gallery) is affected when projects change
+            // Submit both the individual project page and the gallery index
             $urls = [
+                route('projects.show', $project),
                 route('projects.index'),
             ];
 

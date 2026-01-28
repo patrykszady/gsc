@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Testimonial;
 use App\Services\IndexNowService;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
 class TestimonialObserver
@@ -14,19 +15,31 @@ class TestimonialObserver
 
     public function created(Testimonial $testimonial): void
     {
+        $this->regenerateSitemap();
         $this->submitToIndexNow($testimonial);
     }
 
     public function updated(Testimonial $testimonial): void
     {
+        $this->regenerateSitemap();
         $this->submitToIndexNow($testimonial);
     }
 
     public function deleted(Testimonial $testimonial): void
     {
-        // Notify IndexNow that the URL no longer exists
-        // IndexNow will handle it appropriately
+        $this->regenerateSitemap();
         $this->submitToIndexNow($testimonial);
+    }
+
+    protected function regenerateSitemap(): void
+    {
+        try {
+            Artisan::call('sitemap:generate');
+        } catch (\Exception $e) {
+            Log::warning('TestimonialObserver: Failed to regenerate sitemap', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function submitToIndexNow(Testimonial $testimonial): void
