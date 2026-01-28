@@ -40,6 +40,8 @@ return [
         'analytics_id' => env('GOOGLE_ANALYTICS_GTAG', env('GOOGLE_MEASUREMENT_ID', env('GOOGLE_ANALYTICS_ID'))),
         'measurement_id' => env('GOOGLE_MEASUREMENT_ID'), // GA4 Measurement ID (G-XXXXXXXXXX)
         'measurement_api_secret' => env('GOOGLE_MEASUREMENT_API_SECRET'), // GA4 Measurement Protocol API Secret
+        'gemini_api_key' => env('GOOGLE_GEMINI_API_KEY'),
+        'gemini_model' => env('GOOGLE_GEMINI_MODEL', 'gemini-2.0-flash'),
     ],
 
     'microsoft' => [
@@ -54,6 +56,7 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o'), // For image analysis
     ],
 
     /*

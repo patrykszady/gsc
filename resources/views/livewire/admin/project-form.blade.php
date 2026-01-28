@@ -87,45 +87,40 @@
                         </div>
                     @endif
 
-                    {{-- New Uploads Preview using Flux file-item --}}
+                    {{-- Uploaded Files List --}}
                     @if(count($uploads) > 0)
                         <div class="mt-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">New Uploads</h4>
                             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                                {{-- Non-duplicates first --}}
                                 @foreach($uploads as $index => $upload)
-                                    @if(!in_array($index, $duplicateIndices))
-                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
-                                            <img 
-                                                src="{{ $upload->temporaryUrl() }}" 
-                                                alt="{{ $upload->getClientOriginalName() }}" 
-                                                class="size-full object-cover"
-                                            >
-                                            <button 
-                                                type="button"
-                                                wire:click="$removeUpload('uploads', '{{ $upload->getFilename() }}')"
-                                                class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                                            >
-                                                <flux:icon.x-mark class="size-4" />
-                                            </button>
-                                        </div>
-                                    @endif
-                                @endforeach
-                                
-                                {{-- Duplicates after --}}
-                                @foreach($uploads as $index => $upload)
-                                    @if(in_array($index, $duplicateIndices))
-                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
-                                            <img 
-                                                src="{{ $upload->temporaryUrl() }}" 
-                                                alt="{{ $upload->getClientOriginalName() }}" 
-                                                class="size-full object-cover opacity-50 grayscale"
-                                            >
-                                            <div class="absolute right-2 top-2">
+                                    <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 {{ in_array($index, $duplicateIndices) ? 'ring-2 ring-amber-500' : '' }}" title="{{ $upload->getClientOriginalName() }}">
+                                        <img 
+                                            src="{{ $upload->temporaryUrl() }}" 
+                                            alt="{{ $upload->getClientOriginalName() }}" 
+                                            class="size-full object-cover {{ in_array($index, $duplicateIndices) ? 'opacity-50 grayscale' : '' }}"
+                                        >
+                                        
+                                        {{-- Duplicate badge --}}
+                                        @if(in_array($index, $duplicateIndices))
+                                            <div class="absolute left-2 top-2">
                                                 <flux:badge color="amber" size="sm">Duplicate</flux:badge>
                                             </div>
+                                        @endif
+
+                                        {{-- Remove button --}}
+                                        <button 
+                                            type="button"
+                                            wire:click="$removeUpload('uploads', '{{ $upload->getFilename() }}')"
+                                            class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                        >
+                                            <flux:icon.x-mark class="size-4" />
+                                        </button>
+                                        
+                                        {{-- Filename overlay --}}
+                                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                            <p class="truncate text-xs text-white">{{ $upload->getClientOriginalName() }}</p>
                                         </div>
-                                    @endif
+                                    </div>
                                 @endforeach
                             </div>
                         </div>

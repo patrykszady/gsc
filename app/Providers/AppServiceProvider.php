@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\AreaServed;
 use App\Models\Project;
+use App\Models\ProjectImage;
 use App\Models\Testimonial;
 use App\Observers\AreaServedObserver;
+use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
 use Illuminate\Support\Facades\Gate;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
         Testimonial::observe(TestimonialObserver::class);
         AreaServed::observe(AreaServedObserver::class);
         Project::observe(ProjectObserver::class);
+        ProjectImage::observe(ProjectImageObserver::class);
 
         // Restrict Log Viewer access to specific admin emails only
         Gate::define('viewLogViewer', function ($user) {

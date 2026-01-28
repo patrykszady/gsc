@@ -10,6 +10,7 @@ use App\Livewire\Admin\TestimonialForm;
 use App\Livewire\Admin\TestimonialList;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
+use App\Livewire\ProjectImagePage;
 use App\Livewire\ProjectPage;
 use App\Livewire\ServicePage;
 use App\Livewire\ServicesPage;
@@ -59,6 +60,7 @@ Route::get('/projects', function () {
 })->name('projects.index');
 
 Route::get('/projects/{project}', ProjectPage::class)->name('projects.show');
+Route::get('/projects/{project}/photos/{image}', ProjectImagePage::class)->name('projects.image');
 
 Route::get('/services', ServicesPage::class)->name('services.index');
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\AreaServed;
 use App\Models\Project;
 use App\Services\SeoService;
 use Livewire\Attributes\Layout;
@@ -41,11 +42,25 @@ class ProjectPage extends Component
             ->get();
     }
 
+    protected function getLocationArea(): ?AreaServed
+    {
+        if (!$this->project->location) {
+            return null;
+        }
+
+        // Extract city name from location (e.g., "Arlington Heights, IL" -> "Arlington Heights")
+        $city = preg_replace('/,?\s*(IL|Illinois)$/i', '', $this->project->location);
+        $city = trim($city);
+
+        return AreaServed::where('city', $city)->first();
+    }
+
     public function render()
     {
         return view('livewire.project-page', [
             'projectTypeLabel' => $this->getProjectTypeLabel(),
             'relatedProjects' => $this->getRelatedProjects(),
+            'locationArea' => $this->getLocationArea(),
         ]);
     }
 }

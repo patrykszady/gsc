@@ -2,8 +2,10 @@
 
 namespace App\Observers;
 
+use App\Jobs\GenerateAiContentJob;
 use App\Models\Project;
 use App\Services\IndexNowService;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
 class ProjectObserver
@@ -14,17 +16,45 @@ class ProjectObserver
 
     public function created(Project $project): void
     {
+        $this->regenerateSitemap();
         $this->submitToIndexNow($project);
+        
+        // Queue AI description generation for new projects (with delay to allow images to be added first)
+        if (config('services.google.gemini_api_key') && empty($project->description)) {
+            GenerateAiContentJob::dispatch($project, overwrite: false, regenerateSitemap: true)
+                ->onQueue('ai-content')
+                ->delay(now()->addMinutes(2)); // Wait for images to be uploaded
+        }
     }
 
     public function updated(Project $project): void
     {
+        $this->regenerateSitemap();
         $this->submitToIndexNow($project);
+        
+        // Re-queue AI description if it was cleared
+        if ($project->wasChanged('description') && empty($project->description) && config('services.google.gemini_api_key')) {
+            GenerateAiContentJob::dispatch($project, overwrite: false, regenerateSitemap: true)
+                ->onQueue('ai-content')
+                ->delay(now()->addSeconds(10));
+        }
     }
 
     public function deleted(Project $project): void
     {
+        $this->regenerateSitemap();
         $this->submitToIndexNow($project);
+    }
+
+    protected function regenerateSitemap(): void
+    {
+        try {
+            Artisan::call('sitemap:generate');
+        } catch (\Exception $e) {
+            Log::warning('Failed to regenerate sitemap', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function submitToIndexNow(Project $project): void

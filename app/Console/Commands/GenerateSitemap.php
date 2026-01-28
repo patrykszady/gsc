@@ -173,24 +173,55 @@ class GenerateSitemap extends Command
         }
         $this->line("  Added {$testimonialCount} testimonial pages");
 
-        // Add individual project pages
+        // Add individual project pages with images
         $this->info("Adding project pages to sitemap...");
         $projects = Project::where('is_published', true)->with('images')->get();
         $projectCount = 0;
         $imageCount = 0;
+        $photoPageCount = 0;
 
         foreach ($projects as $project) {
-            $sitemap->add(
-                Url::create("{$baseUrl}/projects/{$project->slug}")
-                    ->setLastModificationDate($project->updated_at ?? now())
-                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                    ->setPriority(0.7)
-            );
+            $url = Url::create("{$baseUrl}/projects/{$project->slug}")
+                ->setLastModificationDate($project->updated_at ?? now())
+                ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                ->setPriority(0.7);
+            
+            // Add project images to sitemap for Google Image Search
+            foreach ($project->images as $image) {
+                $imageUrl = $image->getThumbnailUrl('large'); // Use large size for better quality
+                if ($imageUrl) {
+                    $url->addImage(
+                        url: $imageUrl,
+                        caption: $image->alt_text ?? '',
+                        title: $project->title . ($image->is_cover ? ' - Featured Image' : ''),
+                    );
+                    $imageCount++;
+                }
+            }
+            
+            $sitemap->add($url);
             $urlCount++;
             $projectCount++;
-            $imageCount += $project->images->count();
+
+            // Add individual photo pages for each project image
+            foreach ($project->images as $image) {
+                $sitemap->add(
+                    Url::create("{$baseUrl}/projects/{$project->slug}/photos/{$image->id}")
+                        ->setLastModificationDate($image->updated_at ?? $project->updated_at ?? now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.5)
+                        ->addImage(
+                            url: $image->getThumbnailUrl('large'),
+                            caption: $image->alt_text ?? '',
+                            title: $project->title . ' - Photo',
+                        )
+                );
+                $urlCount++;
+                $photoPageCount++;
+            }
         }
-        $this->line("  Added {$projectCount} project pages ({$imageCount} total images)");
+        $this->line("  Added {$projectCount} project pages ({$imageCount} images in sitemap)");
+        $this->line("  Added {$photoPageCount} individual photo pages");
 
         // Write to storage first, then copy to public (for Forge zero-downtime deployments)
         $storagePath = storage_path('app/sitemap.xml');
@@ -213,6 +244,7 @@ class GenerateSitemap extends Command
         $this->info("  - Area pages: {$areaCount}");
         $this->info("  - Testimonial pages: {$testimonialCount}");
         $this->info("  - Project pages: {$projectCount} ({$imageCount} images)");
+        $this->info("  - Photo pages: {$photoPageCount}");
 
         return Command::SUCCESS;
     }

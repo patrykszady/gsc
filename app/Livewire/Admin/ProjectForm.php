@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Admin;
 
+use App\Jobs\ProcessProjectImage;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Tag;
-use App\Services\ImageService;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -218,10 +218,10 @@ class ProjectForm extends Component
             $project = Project::create($data);
         }
 
-        // Upload new images (skip duplicates)
+        // Upload new images (skip duplicates) - dispatch to queue for background processing
         if (!empty($this->uploads)) {
-            $imageService = app(ImageService::class);
             $sortOrder = $project->images()->max('sort_order') ?? 0;
+            $isFirstImage = $project->images()->count() === 0;
 
             foreach ($this->uploads as $index => $upload) {
                 // Skip duplicates
@@ -230,17 +230,31 @@ class ProjectForm extends Component
                 }
                 
                 $sortOrder++;
-                $imageService->upload($upload, $project, [
-                    'sort_order' => $sortOrder,
-                    'is_cover' => $project->images()->count() === 0, // First image is cover
-                ]);
+                
+                // Get the full filesystem path to the temp file
+                // getRealPath() returns the absolute path from TemporaryUploadedFile
+                $tempPath = $upload->getRealPath();
+                
+                // Dispatch job to process image in background
+                ProcessProjectImage::dispatch(
+                    projectId: $project->id,
+                    tempPath: $tempPath,
+                    originalFilename: $upload->getClientOriginalName(),
+                    mimeType: $upload->getMimeType(),
+                    sortOrder: $sortOrder,
+                    isCover: $isFirstImage && $sortOrder === 1,
+                );
             }
 
             $this->uploads = [];
             $this->duplicateIndices = [];
         }
 
-        session()->flash('success', $this->project?->exists ? 'Project updated successfully.' : 'Project created successfully.');
+        $message = $this->project?->exists 
+            ? 'Project updated successfully.' 
+            : 'Project created successfully. Images are processing in the background.';
+        
+        session()->flash('success', $message);
         
         $this->redirect(route('admin.projects.edit', $project), navigate: true);
     }
