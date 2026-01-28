@@ -140,157 +140,76 @@
                 {{-- Gallery Grid --}}
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($project->images as $index => $image)
-                        <button 
-                            @click="open({{ $index }})"
-                            class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-zoom-in text-left w-full"
+                        <div 
+                            x-data="{ 
+                                showCaption: false,
+                                lastInputWasTouch: false
+                            }"
+                            class="relative"
                         >
-                            <x-lqip-image 
-                                :image="$image"
-                                size="large"
-                                aspectRatio="4/3"
-                                class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            {{-- Zoom icon overlay --}}
-                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                <span class="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 dark:bg-zinc-900/90 rounded-full p-3 shadow-lg">
-                                    <svg class="h-6 w-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                    </svg>
-                                </span>
+                            <div 
+                                @touchstart="lastInputWasTouch = true"
+                                @mouseenter="if (!lastInputWasTouch) showCaption = true"
+                                @mouseleave="showCaption = false; lastInputWasTouch = false"
+                                @click="
+                                    if (lastInputWasTouch) {
+                                        if (showCaption) {
+                                            open({{ $index }});
+                                            showCaption = false;
+                                        } else {
+                                            showCaption = true;
+                                        }
+                                    } else {
+                                        open({{ $index }});
+                                    }
+                                "
+                                @click.outside="showCaption = false; lastInputWasTouch = false"
+                                class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer"
+                            >
+                                <x-lqip-image 
+                                    :image="$image"
+                                    size="large"
+                                    aspectRatio="4/3"
+                                    class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                                
+                                {{-- Caption overlay --}}
+                                <div 
+                                    x-show="showCaption"
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0"
+                                    x-transition:enter-end="opacity-100"
+                                    x-transition:leave="transition ease-in duration-150"
+                                    x-transition:leave-start="opacity-100"
+                                    x-transition:leave-end="opacity-0"
+                                    class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4"
+                                >
+                                    {{-- Caption text --}}
+                                    @if($image->caption)
+                                        <p class="text-sm text-white leading-relaxed line-clamp-3">{{ $image->caption }}</p>
+                                    @endif
+                                    
+                                    {{-- Centered zoom icon (outline only) --}}
+                                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <svg class="h-10 w-10 text-white drop-shadow-lg" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                {{-- Featured badge --}}
+                                @if($image->is_cover)
+                                    <span class="absolute top-3 left-3 inline-flex items-center rounded-full bg-sky-500 px-2.5 py-0.5 text-xs font-medium text-white shadow-sm z-10">
+                                        Featured
+                                    </span>
+                                @endif
                             </div>
-                            @if($image->is_cover)
-                                <span class="absolute top-3 left-3 inline-flex items-center rounded-full bg-sky-500 px-2.5 py-0.5 text-xs font-medium text-white shadow-sm">
-                                    Featured
-                                </span>
-                            @endif
-                        </button>
-                        {{-- Caption below image --}}
-                        @if($image->caption)
-                            <p class="mt-2 -mb-2 text-sm text-gray-600 dark:text-gray-400 lg:col-span-1">{{ $image->caption }}</p>
-                        @endif
+                        </div>
                     @endforeach
                 </div>
 
-                {{-- Lightbox Modal --}}
-                <template x-teleport="body">
-                    <div 
-                        x-show="lightbox" 
-                        x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100"
-                        x-transition:leave-end="opacity-0"
-                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[40px] overscroll-none"
-                        @click="close()"
-                        x-data="{ 
-                            touchStartX: 0, 
-                            touchStartY: 0,
-                            swiping: false
-                        }"
-                        @touchstart="
-                            touchStartX = $event.touches[0].clientX;
-                            touchStartY = $event.touches[0].clientY;
-                            swiping = true;
-                        "
-                        @touchmove.prevent="
-                            if (!swiping) return;
-                        "
-                        @touchend="
-                            if (!swiping) return;
-                            swiping = false;
-                            const touchEndX = $event.changedTouches[0].clientX;
-                            const touchEndY = $event.changedTouches[0].clientY;
-                            const diffX = touchStartX - touchEndX;
-                            const diffY = touchStartY - touchEndY;
-                            // Only swipe if horizontal movement is greater than vertical
-                            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-                                if (diffX > 0) { $parent.next(); } 
-                                else { $parent.prev(); }
-                            }
-                        "
-                    >
-                        {{-- Close button --}}
-                        <button 
-                            @click.stop="$parent.close()" 
-                            class="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-                            title="Close (Esc)"
-                        >
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-
-                        {{-- Left click zone (navigate prev) --}}
-                        <div 
-                            class="absolute left-0 top-0 bottom-0 w-1/3 cursor-w-resize z-10"
-                            @click.stop="$parent.prev()"
-                        ></div>
-
-                        {{-- Right click zone (navigate next) --}}
-                        <div 
-                            class="absolute right-0 top-0 bottom-0 w-1/3 cursor-e-resize z-10"
-                            @click.stop="$parent.next()"
-                        ></div>
-
-                        {{-- Image container (center) --}}
-                        <div class="relative max-w-[80vw] max-h-[80vh] z-20" @click.stop>
-                            <picture>
-                                <source :srcset="current.webpUrl" type="image/webp" x-show="current.webpUrl">
-                                <img 
-                                    :src="current.url" 
-                                    :alt="current.alt"
-                                    class="max-w-[80vw] max-h-[80vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                                >
-                            </picture>
-
-                            {{-- Caption overlay (bottom of image) --}}
-                            <div 
-                                x-show="current.caption" 
-                                class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 pt-12 rounded-b-lg"
-                            >
-                                <p x-text="current.caption" class="text-white text-lg text-center"></p>
-                            </div>
-
-                            {{-- Dot indicators (bottom center, over image) --}}
-                            <div class="absolute bottom-4 inset-x-0 flex justify-center gap-2 z-10">
-                                <template x-for="(img, idx) in images" :key="'dot-' + idx">
-                                    <button
-                                        @click.stop="currentIndex = idx"
-                                        :class="currentIndex === idx ? 'bg-white w-8' : 'bg-white/50 w-3 hover:bg-white/70'"
-                                        class="h-3 rounded-full transition-all duration-300 shadow-lg"
-                                        :title="`Go to photo ${idx + 1}`"
-                                    ></button>
-                                </template>
-                            </div>
-
-                            {{-- Links overlay (top left of image) --}}
-                            <div class="absolute top-4 left-4 flex items-center gap-3 text-sm z-10">
-                                <a 
-                                    :href="current.pageUrl" 
-                                    @click.stop
-                                    class="text-white/80 hover:text-white inline-flex items-center gap-1 transition-colors bg-black/50 px-3 py-1.5 rounded-full"
-                                >
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                    Photo page
-                                </a>
-                                <a 
-                                    :href="current.originalUrl" 
-                                    target="_blank"
-                                    @click.stop
-                                    class="text-white/80 hover:text-white inline-flex items-center gap-1 transition-colors bg-black/50 px-3 py-1.5 rounded-full"
-                                >
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                    Full size
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </template>
+                {{-- Lightbox Component --}}
+                <x-lightbox />
             </div>
         @endif
     </div>

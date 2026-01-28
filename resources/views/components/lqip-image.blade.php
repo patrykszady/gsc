@@ -17,6 +17,7 @@
     // Determine URLs from either ProjectImage model or direct props
     if ($image) {
         $fullUrl = $image->getWebpThumbnailUrl($size) ?? $image->getThumbnailUrl($size);
+        // Use the smallest thumbnail (thumb = 150x150) for progressive blur placeholder
         $thumbUrl = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb') ?? $fullUrl;
         // Fallback alt text: use seo_alt_text, then generate from project if available
         $altText = $alt 
@@ -45,77 +46,77 @@
     // Object fit class
     $objectClass = "object-$objectFit";
     
-    // Loading strategy - use 'low' priority for lazy images to prioritize LCP
+    // Loading strategy
     $loading = $eager ? 'eager' : 'lazy';
     $fetchpriority = $eager ? 'high' : 'low';
-    
-    // Unique ID for this image instance
-    $imageId = 'lqip-' . md5($fullUrl . microtime());
 @endphp
 
 @if($fullUrl)
+{{-- 
+    Progressive blur image component:
+    1. Shows blurred thumbnail immediately (visible by default via CSS)
+    2. Loads full image in background (hidden by default via CSS)
+    3. When full image loads, fades it in over the blur
+    4. Caches in window.imageCache for cross-page reuse
+--}}
 <div 
     x-data="{
         loaded: false,
-        thumbLoaded: false,
-        wasCached: false,
-        showBlur: false,
-        inViewport: {{ $eager ? 'true' : 'false' }},
+        cached: false,
         init() {
-            // Check if browser already has the image cached (complete)
-            const fullImg = this.$refs.fullImg;
-            if (fullImg?.complete && fullImg?.naturalWidth > 0) {
-                this.wasCached = true;
+            // Check global cache first - if cached, show immediately without blur
+            if (window.imageCache?.has('{{ $fullUrl }}')) {
+                this.cached = true;
                 this.loaded = true;
-            } else if (this.inViewport) {
-                this.showBlur = true;
+                return;
             }
-        },
-        onEnterViewport() {
-            if (!this.inViewport) {
-                this.inViewport = true;
-                if (!this.loaded && !this.wasCached) {
-                    this.showBlur = true;
+            
+            // Check if browser already has the image cached (complete)
+            // Use $nextTick to ensure refs are available
+            this.$nextTick(() => {
+                const fullImg = this.$refs.fullImg;
+                if (fullImg?.complete && fullImg?.naturalWidth > 0) {
+                    this.cached = true;
+                    this.loaded = true;
+                    window.imageCache?.set('{{ $fullUrl }}', '{{ $fullUrl }}');
                 }
-            }
+            });
         },
         onLoad() {
             this.loaded = true;
             window.imageCache?.set('{{ $fullUrl }}', '{{ $fullUrl }}');
         }
     }"
-    @if(!$eager) x-intersect:enter.once="onEnterViewport()" @endif
+    x-init="$nextTick(() => { if ($refs.fullImg?.complete && $refs.fullImg?.naturalWidth > 0) { loaded = true; cached = true; } })"
     {{ $attributes->merge(['class' => "relative overflow-hidden bg-zinc-200 dark:bg-zinc-700 $aspectClass $roundedClass $class"]) }}
 >
-    {{-- Blur placeholder (only shown when in viewport and full image is loading) --}}
+    {{-- Progressive blur placeholder (smallest thumbnail, heavily blurred) --}}
+    {{-- Visible by default, hidden after full image loads --}}
     <img
-        x-cloak
-        x-ref="thumbImg"
-        x-show="showBlur && !loaded && inViewport"
-        :src="inViewport ? '{{ $thumbUrl }}' : ''"
+        src="{{ $thumbUrl }}"
         alt=""
         aria-hidden="true"
-        class="absolute inset-0 h-full w-full {{ $objectClass }} blur-xl scale-110"
-        :class="thumbLoaded ? 'opacity-100' : 'opacity-0'"
-        @load="thumbLoaded = true"
+        loading="eager"
+        decoding="async"
+        class="absolute inset-0 h-full w-full {{ $objectClass }} blur-lg scale-105 transition-opacity duration-500"
+        :class="(loaded || cached) ? 'opacity-0' : 'opacity-100'"
     />
     
-    {{-- Full-size image (only load src when in viewport for non-eager) --}}
+    {{-- Full-size image - hidden by default, fades in over blur when loaded --}}
     <img
         x-ref="fullImg"
-        @if($eager)
         src="{{ $fullUrl }}"
-        @else
-        :src="inViewport ? '{{ $fullUrl }}' : ''"
-        @endif
         alt="{{ $altText }}"
+        loading="{{ $loading }}"
         fetchpriority="{{ $fetchpriority }}"
         decoding="async"
         @if($width) width="{{ $width }}" @endif
         @if($height) height="{{ $height }}" @endif
-        class="absolute inset-0 h-full w-full {{ $objectClass }}"
-        :class="wasCached ? 'opacity-100' : (loaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
+        style="opacity: 0;"
+        class="absolute inset-0 h-full w-full {{ $objectClass }} transition-opacity duration-500"
+        :style="(loaded || cached) ? 'opacity: 1' : 'opacity: 0'"
         @load="onLoad()"
+        onload="this.parentElement.__x && (this.parentElement.__x.$data.loaded = true)"
     />
 </div>
 @endif

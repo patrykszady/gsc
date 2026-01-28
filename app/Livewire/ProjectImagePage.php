@@ -35,11 +35,26 @@ class ProjectImagePage extends Component
 
         $this->project = $project;
         $this->image = $image;
-
         $this->loadImageNavigation();
         
         // Set SEO meta
         $this->setSeoMeta();
+    }
+    
+    /**
+     * Return text as-is (kept for compatibility with view usage).
+     */
+    public function localizeText(?string $text): ?string
+    {
+        return $text;
+    }
+    
+    /**
+     * Get the canonical URL (without area for area variations).
+     */
+    public function getCanonicalUrl(): string
+    {
+        return route('projects.image', [$this->project, $this->image]);
     }
     
     protected function loadImageNavigation(): void
@@ -92,21 +107,30 @@ class ProjectImagePage extends Component
 
     protected function setSeoMeta(): void
     {
-        $title = $this->image->alt_text ?: "{$this->project->title} - Photo {$this->currentPosition}";
-        $description = $this->image->caption 
+        // Get location-aware text
+        $location = $this->project->location;
+        
+        $title = $this->localizeText($this->image->alt_text) 
+            ?: "{$this->project->title} - Photo {$this->currentPosition}";
+        
+        $description = $this->localizeText($this->image->caption) 
             ?: "View photo {$this->currentPosition} of {$this->totalImages} from {$this->project->title}. "
-               . ($this->project->location ? "Located in {$this->project->location}. " : '')
+               . ($location ? "Located in {$location}. " : '')
                . "Professional remodeling by GS Construction.";
 
         $imageUrl = $this->image->getThumbnailUrl('large');
+        
+        // Canonical always points to the base URL (no area)
+        $canonicalUrl = $this->getCanonicalUrl();
+        $currentUrl = $canonicalUrl;
 
         SEOMeta::setTitle($title);
         SEOMeta::setDescription($description);
-        SEOMeta::setCanonical(route('projects.image', [$this->project, $this->image]));
+        SEOMeta::setCanonical($canonicalUrl);
 
         OpenGraph::setTitle($title);
         OpenGraph::setDescription($description);
-        OpenGraph::setUrl(route('projects.image', [$this->project, $this->image]));
+        OpenGraph::setUrl($currentUrl);
         OpenGraph::addProperty('type', 'article');
         OpenGraph::addImage($imageUrl);
 
@@ -117,7 +141,7 @@ class ProjectImagePage extends Component
         JsonLd::setType('ImageObject');
         JsonLd::setTitle($title);
         JsonLd::setDescription($description);
-        JsonLd::setUrl(route('projects.image', [$this->project, $this->image]));
+        JsonLd::setUrl($currentUrl);
         JsonLd::addValue('contentUrl', $imageUrl);
         JsonLd::addValue('thumbnail', $this->image->getThumbnailUrl('thumb'));
         JsonLd::addValue('representativeOfPage', $this->image->is_cover);

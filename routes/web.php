@@ -59,6 +59,26 @@ Route::get('/projects', function () {
     return view('projects');
 })->name('projects.index');
 
+// API endpoint for background image preloading
+Route::get('/api/project-images', function () {
+    $images = \App\Models\ProjectImage::all()
+        ->flatMap(function ($image) {
+            $urls = [];
+            // Get medium size (most commonly used)
+            $url = $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium');
+            if ($url) $urls[] = $url;
+            // Get thumb for blur placeholders
+            $thumb = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
+            if ($thumb) $urls[] = $thumb;
+            return $urls;
+        })
+        ->unique()
+        ->values();
+    
+    return response()->json($images)
+        ->header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+})->name('api.project-images');
+
 Route::get('/projects/{project}', ProjectPage::class)->name('projects.show');
 Route::get('/projects/{project}/photos/{image}', ProjectImagePage::class)->name('projects.image');
 

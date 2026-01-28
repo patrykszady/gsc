@@ -179,6 +179,7 @@ class GenerateSitemap extends Command
         $projectCount = 0;
         $imageCount = 0;
         $photoPageCount = 0;
+        
 
         foreach ($projects as $project) {
             $url = Url::create("{$baseUrl}/projects/{$project->slug}")
@@ -203,10 +204,13 @@ class GenerateSitemap extends Command
             $urlCount++;
             $projectCount++;
 
-            // Add individual photo pages for each project image
+            // Add individual photo pages for each project image (using slugs)
             foreach ($project->images as $image) {
+                $imageSlug = $image->slug ?: $image->id; // Fallback to ID if no slug
+                
+                // Base photo page (canonical)
                 $sitemap->add(
-                    Url::create("{$baseUrl}/projects/{$project->slug}/photos/{$image->id}")
+                    Url::create("{$baseUrl}/projects/{$project->slug}/photos/{$imageSlug}")
                         ->setLastModificationDate($image->updated_at ?? $project->updated_at ?? now())
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority(0.5)
@@ -218,6 +222,7 @@ class GenerateSitemap extends Command
                 );
                 $urlCount++;
                 $photoPageCount++;
+                
             }
         }
         $this->line("  Added {$projectCount} project pages ({$imageCount} images in sitemap)");

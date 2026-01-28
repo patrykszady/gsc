@@ -21,6 +21,14 @@ class ProjectPage extends Component
         }
 
         $this->project = $project->load('images');
+        
+        // Sort images: featured (is_cover) first, then randomize the rest
+        $this->project->setRelation('images', 
+            $this->project->images
+                ->sortByDesc('is_cover')
+                ->groupBy('is_cover')
+                ->flatMap(fn($group, $key) => $key ? $group : $group->shuffle())
+        );
 
         SeoService::project($project);
     }

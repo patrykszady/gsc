@@ -42,6 +42,22 @@ class Project extends Model
     {
         return 'slug';
     }
+    
+    /**
+     * Resolve child route binding for nested routes (e.g., /projects/{project}/photos/{image}).
+     */
+    public function resolveChildRouteBinding($childType, $value, $field)
+    {
+        // For image bindings, use our images relationship and support slug or ID
+        if ($childType === 'image') {
+            return $this->images()
+                ->where('slug', $value)
+                ->orWhere('id', $value)
+                ->first();
+        }
+        
+        return parent::resolveChildRouteBinding($childType, $value, $field);
+    }
 
     public function images(): HasMany
     {
