@@ -72,11 +72,11 @@ class SeoService
             $description = $domainConfig['description'];
         } elseif ($city) {
             // Keep under 52 chars - suffix adds ~18 chars
-            $title = "{$city} Remodeling Contractors";
-            $description = "Kitchen, bathroom & home remodeling in {$city}, IL. Family-owned with 40+ years experience.";
+            $title = "Kitchen & Bathroom Remodeling in {$city}";
+            $description = "Top-rated kitchen remodeling & bathroom renovations in {$city}, IL. Family-owned contractors with 40+ years experience. Free estimates available!";
         } else {
-            $title = 'Remodeling Contractors';
-            $description = 'Kitchen, bathroom & home remodeling in Chicagoland. Family-owned with 40+ years experience.';
+            $title = 'Kitchen & Bathroom Remodeling Contractors';
+            $description = 'Expert kitchen remodeling & bathroom renovations in Chicagoland. Family-owned contractors with 40+ years experience. Arlington Heights, Palatine & more.';
         }
 
         self::setTags($title, $description);
@@ -91,17 +91,17 @@ class SeoService
         $typeLabel = $type ? ucfirst(str_replace('-', ' ', $type)) : null;
         
         if ($typeLabel && $city) {
-            $title = "{$typeLabel} Remodeling Projects in {$city}";
-            $description = "Browse our {$typeLabel} remodeling projects in {$city}. See the quality craftsmanship from GS Construction.";
+            $title = "{$typeLabel} Remodeling in {$city} - Our Work";
+            $description = "See our {$typeLabel} remodeling projects in {$city}, IL. Before & after photos showcasing quality kitchen & bathroom renovations by local contractors.";
         } elseif ($typeLabel) {
-            $title = "{$typeLabel} Remodeling Projects";
-            $description = "Browse our {$typeLabel} remodeling portfolio. See kitchen, bathroom, and home renovation projects completed by GS Construction.";
+            $title = "{$typeLabel} Remodeling Portfolio";
+            $description = "Browse our {$typeLabel} remodeling before & after photos. See real kitchen, bathroom & home renovation projects in the Chicago suburbs.";
         } elseif ($city) {
-            $title = "Remodeling Projects in {$city}";
-            $description = "Browse our remodeling projects in {$city}. Kitchen, bathroom, and whole-home renovations by GS Construction.";
+            $title = "Remodeling Projects in {$city}, IL";
+            $description = "View kitchen, bathroom & home remodeling projects in {$city}. Real before & after photos from your neighbors. Get inspired for your renovation!";
         } else {
-            $title = 'Remodeling Projects';
-            $description = 'Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship from GS Construction.';
+            $title = 'Kitchen & Bathroom Remodeling Portfolio';
+            $description = 'Browse our kitchen, bathroom & home remodeling projects in Chicagoland. Before & after photos from Arlington Heights, Palatine, Lake Zurich & more.';
         }
 
         // Get a relevant cover image
@@ -119,12 +119,12 @@ class SeoService
         
         // Keep under 70 chars with suffix
         $title = $city
-            ? "{$city} Remodeling Reviews"
-            : 'Customer Reviews & Testimonials';
+            ? "Remodeling Reviews in {$city}, IL"
+            : 'Kitchen & Bathroom Remodeling Reviews';
         
         $description = $city
-            ? "Read reviews from {$city} homeowners about their remodeling experience with GS Construction. 5-star rated kitchen and bathroom renovations."
-            : 'Read what our customers say about GS Construction. 5-star reviews from satisfied homeowners throughout Chicagoland.';
+            ? "5-star reviews from {$city} homeowners. See what your neighbors say about their kitchen remodeling & bathroom renovation experience with us."
+            : '5-star rated kitchen & bathroom remodeling in Chicago suburbs. Read reviews from Arlington Heights, Palatine, Buffalo Grove & more homeowners.';
 
         self::setTags($title, $description);
     }
@@ -166,12 +166,12 @@ class SeoService
         
         // Keep under 70 chars with suffix
         $title = $city
-            ? "About {$city} Contractors"
-            : 'About GS Construction';
+            ? "Remodeling Contractors in {$city}"
+            : 'About Us - Family-Owned Contractors';
         
         $description = $city
-            ? "Learn about GS Construction, a family-owned remodeling company serving {$city}. Meet Greg & Patryk and discover our 40+ years of combined experience."
-            : 'Learn about GS Construction, a family-owned Chicago remodeling company. Meet Greg & Patryk and discover our 40+ years of combined experience.';
+            ? "Meet GS Construction - family-owned kitchen & bathroom remodeling contractors serving {$city}, IL. 40+ years combined experience. Licensed & insured."
+            : 'Meet Greg & Patryk - family-owned kitchen & bathroom remodeling contractors in Chicago. 40+ years combined experience. Licensed & insured.';
 
         self::setTags($title, $description);
         
@@ -188,12 +188,12 @@ class SeoService
         
         // Keep under 70 chars with suffix
         $title = $city
-            ? "Contact Us for a Free {$city} Quote"
-            : 'Contact GS Construction';
+            ? "Free {$city} Remodeling Estimate"
+            : 'Get a Free Remodeling Quote';
         
         $description = $city
-            ? "Contact GS Construction for a free remodeling quote in {$city}. Call (847) 430-4439 or fill out our form for kitchen, bathroom, and home renovation estimates."
-            : 'Contact GS Construction for a free remodeling quote. Call (847) 430-4439 or fill out our form for kitchen, bathroom, and home renovation estimates.';
+            ? "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call (847) 430-4439 or schedule online. Same-week consultations available!"
+            : 'Get a free kitchen or bathroom remodeling estimate in Chicago suburbs. Call (847) 430-4439 or schedule online. Same-week consultations available!';
 
         self::setTags($title, $description);
     }
@@ -204,8 +204,8 @@ class SeoService
     public static function areasServed(): void
     {
         // Keep under 52 chars (suffix adds ~18 chars)
-        $title = 'Areas We Serve';
-        $description = 'GS Construction serves the Chicago Northwest Suburbs including Arlington Heights, Palatine, Lake Zurich, Barrington, and more. Expert kitchen, bathroom, and home remodeling.';
+        $title = 'Service Areas - Chicago Suburbs';
+        $description = 'Kitchen & bathroom remodeling in Arlington Heights, Palatine, Buffalo Grove, Barrington, Lake Zurich & 50+ Chicago suburbs. Local contractors, free estimates.';
 
         self::setTags($title, $description);
     }
@@ -220,12 +220,12 @@ class SeoService
         // Keep titles under 70 chars (with " | GS Construction" suffix = 18 chars)
         // Max page title: ~52 chars for longest city names (17 chars)
         $title = $city
-            ? "{$city} Kitchen & Bathroom Remodeling"
-            : 'Kitchen, Bathroom & Home Remodeling';
+            ? "Remodeling Services in {$city}, IL"
+            : 'Kitchen, Bathroom & Home Remodeling Services';
         
         $description = $city
-            ? "Expert remodeling services in {$city}, IL. Kitchen renovations, bathroom remodels, and complete home renovations. Free consultations available."
-            : 'Expert remodeling services in Chicago. Kitchen renovations, bathroom remodels, basement finishing, and complete home renovations. Free consultations available.';
+            ? "Kitchen remodeling, bathroom renovations & home remodeling in {$city}, IL. Top-rated local contractors. Free in-home estimates. Call today!"
+            : 'Kitchen remodeling, bathroom renovations & home remodeling in Chicago suburbs. Top-rated local contractors serving Palatine, Arlington Heights & more.';
 
         // Get a kitchen image as the default for services overview
         $image = self::getCoverImageForType('kitchen');
@@ -289,28 +289,34 @@ class SeoService
         $services = [
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
-                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops'],
+                'title' => 'Kitchen Remodeling Contractors Near Chicago',
+                'description' => 'Expert kitchen remodeling in Chicago suburbs. Custom cabinets, granite countertops & complete kitchen renovations. Family-owned, 40+ years experience. Free estimates!',
+                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen remodeling near me', 'kitchen contractors chicago'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
-                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile'],
+                'title' => 'Bathroom Remodeling Contractors Near Chicago',
+                'description' => 'Expert bathroom remodeling in Chicago suburbs. Walk-in showers, tub-to-shower conversions & complete bathroom renovations. Family-owned, 40+ years experience. Free estimates!',
+                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom remodeling near me', 'bathroom contractors chicago'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
-                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling'],
+                'title' => 'Home Remodeling Contractors Near Chicago',
+                'description' => 'Complete home remodeling in Chicago suburbs. Room additions, open floor plans & whole-home renovations. Family-owned, 40+ years experience. Free estimates!',
+                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'home remodeling near me', 'general contractors chicago'],
             ],
             'basement-remodeling' => [
                 'label' => 'Basement Remodeling',
-                'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel'],
+                'title' => 'Basement Finishing Contractors Near Chicago',
+                'description' => 'Expert basement finishing & remodeling in Chicago suburbs. Home theaters, guest suites & recreation rooms. Family-owned, 40+ years experience. Free estimates!',
+                'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel', 'basement remodeling near me'],
             ],
         ];
 
-        $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'keywords' => []];
+        $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'title' => 'Remodeling Services', 'description' => 'Expert remodeling services.', 'keywords' => []];
         
-        // Keep under 52 chars - suffix adds ~18 chars
-        $title = "{$service['label']} Chicago";
-        
-        $description = "Expert {$service['label']} services in the Chicagoland area. GS Construction delivers quality kitchen, bathroom, and home renovations.";
+        $title = $service['title'];
+        $description = $service['description'];
 
         // Get a relevant cover image for this service type
         $projectType = match ($serviceType) {
@@ -341,31 +347,39 @@ class SeoService
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
                 'shortLabel' => 'Kitchen',
+                'titleTemplate' => 'Kitchen Remodeling in %s, IL',
+                'descriptionTemplate' => 'Looking for kitchen remodeling in %s? Custom cabinets, countertops & complete kitchen renovations. Local contractors, 40+ years experience. Free estimate!',
                 'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
                 'shortLabel' => 'Bathroom',
+                'titleTemplate' => 'Bathroom Remodeling in %s, IL',
+                'descriptionTemplate' => 'Looking for bathroom remodeling in %s? Walk-in showers, tub conversions & complete bathroom renovations. Local contractors, 40+ years experience. Free estimate!',
                 'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
                 'shortLabel' => 'Home',
+                'titleTemplate' => 'Home Remodeling in %s, IL',
+                'descriptionTemplate' => 'Looking for home remodeling in %s? Room additions, open floor plans & complete home renovations. Local contractors, 40+ years experience. Free estimate!',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors'],
             ],
         ];
 
-        $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'shortLabel' => 'Remodeling', 'keywords' => []];
+        $service = $services[$serviceType] ?? [
+            'label' => 'Remodeling',
+            'shortLabel' => 'Remodeling',
+            'titleTemplate' => 'Remodeling in %s, IL',
+            'descriptionTemplate' => 'Expert remodeling services in %s. Local contractors with 40+ years experience.',
+            'keywords' => [],
+        ];
         
-        // Primary keyword targeting: "{City} {Service}" e.g. "Palatine Bathroom Remodeling"
-        // Keep under 52 chars total - for long city names, use short label
-        $fullTitle = "{$city} {$service['label']}";
-        $title = strlen($fullTitle) > 45 
-            ? "{$city} {$service['shortLabel']} Remodel"
-            : $fullTitle;
+        // Primary keyword targeting: "{Service} in {City}" e.g. "Kitchen Remodeling in Palatine, IL"
+        $title = sprintf($service['titleTemplate'], $city);
         
-        // Enhanced description with "near me" signals and call-to-action
-        $description = "Looking for {$service['label']} in {$city}, IL? GS Construction offers expert {$service['shortLabel']} remodeling services near you. Family-owned, 40+ years experience. Free estimates!";
+        // Enhanced description with city-specific targeting
+        $description = sprintf($service['descriptionTemplate'], $city);
 
         // Get a relevant cover image for this service type
         $projectType = match ($serviceType) {
@@ -386,20 +400,22 @@ class SeoService
         $areaKeywords = array_merge(
             $service['keywords'],
             [
-                // Primary local keywords
-                "{$cityLower} {$serviceLabel}",
-                "{$cityLower} {$shortLabel} contractors",
-                "{$cityLower} {$shortLabel} remodelers",
+                // Primary local keywords - matches "kitchen remodeling in palatine" searches
+                "{$serviceLabel} in {$cityLower}",
+                "{$serviceLabel} {$cityLower}",
                 "{$serviceLabel} {$cityLower} il",
-                "{$shortLabel} remodel near {$cityLower}",
+                "{$shortLabel} renovation in {$cityLower}",
+                "{$shortLabel} renovations {$cityLower}",
+                // Contractor-focused keywords
+                "{$shortLabel} contractors {$cityLower}",
+                "{$shortLabel} remodelers in {$cityLower}",
+                "{$cityLower} {$shortLabel} contractors",
                 // "Near me" signals (helps semantic matching)
                 "{$shortLabel} remodeling near me",
-                "{$shortLabel} contractors near me",
                 "best {$shortLabel} remodelers {$cityLower}",
                 // Long-tail variations
-                "{$cityLower} {$shortLabel} renovation",
+                "{$cityLower} il {$shortLabel} remodel",
                 "{$shortLabel} remodeling company {$cityLower}",
-                "{$city} IL {$shortLabel} remodel",
             ]
         );
         SEOMeta::addKeyword($areaKeywords);

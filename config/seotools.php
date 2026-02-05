@@ -10,11 +10,22 @@ return [
          * The default configurations to be used by the meta generator.
          */
         'defaults'       => [
-            'title'        => 'GS Construction & Remodeling', // Short suffix to keep total under 70 chars
+            'title'        => 'GS Construction', // Short suffix to keep total under 70 chars
             'titleBefore'  => false, // Put defaults.title after page title
-            'description'  => 'Professional kitchen, bathroom, and home remodeling services. Family-owned business serving the Chicagoland area with over 40 years of combined experience.',
+            'description'  => 'Kitchen remodeling & bathroom renovations in Chicago suburbs. Family-owned contractors with 40+ years experience. Arlington Heights, Palatine, Barrington & more.',
             'separator'    => ' | ',
-            'keywords'     => ['kitchen remodeling', 'bathroom remodeling', 'home remodeling', 'remodeling contractors', 'Chicago remodeling', 'Chicagoland contractors', 'kitchen renovation', 'bathroom renovation', 'home renovation'],
+            'keywords'     => [
+                // Primary service keywords
+                'kitchen remodeling', 'bathroom remodeling', 'home remodeling',
+                // "In location" search patterns
+                'kitchen remodeling in palatine', 'bathroom renovations in arlington heights',
+                'kitchen remodel chicago suburbs', 'bathroom remodel near me',
+                // Contractor keywords
+                'remodeling contractors', 'kitchen contractors', 'bathroom contractors',
+                // Location keywords
+                'chicago suburbs remodeling', 'palatine remodeling', 'arlington heights remodeling',
+                'barrington kitchen remodel', 'buffalo grove bathroom renovation',
+            ],
             'canonical'    => 'current', // Use Url::current() for canonical
             'robots'       => 'index, follow',
         ],
@@ -37,11 +48,11 @@ return [
          * The default configurations to be used by the opengraph generator.
          */
         'defaults' => [
-            'title'       => 'GS Construction & Remodeling',
-            'description' => 'Professional kitchen, bathroom, and home remodeling services in the Chicagoland area.',
+            'title'       => 'GS Construction',
+            'description' => 'Kitchen remodeling & bathroom renovations in Chicago suburbs. Family-owned contractors with 40+ years experience.',
             'url'         => null, // Use Url::current()
             'type'        => 'website',
-            'site_name'   => 'GS Construction & Remodeling',
+            'site_name'   => 'GS Construction',
             'images'      => [],
         ],
     ],
@@ -59,8 +70,8 @@ return [
          * The default configurations to be used by the json-ld generator.
          */
         'defaults' => [
-            'title'       => 'GS Construction & Remodeling',
-            'description' => 'Professional kitchen, bathroom, and home remodeling services in the Chicagoland area.',
+            'title'       => 'GS Construction',
+            'description' => 'Kitchen remodeling & bathroom renovations in Chicago suburbs. Family-owned contractors with 40+ years experience.',
             'url'         => 'current',
             'type'        => 'WebPage',
             'images'      => [],

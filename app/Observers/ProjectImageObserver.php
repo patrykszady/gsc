@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Jobs\GenerateAiContentJob;
+use App\Jobs\UploadProjectImageToGooglePlaces;
 use App\Models\ProjectImage;
 use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
@@ -32,6 +33,17 @@ class ProjectImageObserver
             GenerateAiContentJob::dispatch($image, overwrite: true, regenerateSitemap: true)
                 ->onQueue('ai-content')
                 ->delay(now()->addSeconds(5)); // Small delay to ensure image is fully saved
+        }
+
+        // Upload new images to Google Business Profile if configured
+        if (
+            config('services.google.business_profile.enabled')
+            && $image->project
+            && $image->project->is_published
+        ) {
+            UploadProjectImageToGooglePlaces::dispatch($image->id)
+                ->onQueue('media-sync')
+                ->delay(now()->addSeconds(10));
         }
     }
 

@@ -551,8 +551,10 @@ class ContactSection extends Component
             $result = $response->json();
             
             if (!($result['success'] ?? false)) {
+                $errorCodes = $result['error-codes'] ?? [];
+
                 Log::channel('submissions')->warning('Turnstile verification failed', [
-                    'error-codes' => $result['error-codes'] ?? [],
+                    'error-codes' => $errorCodes,
                     'ip' => request()->ip(),
                     'hostname' => $result['hostname'] ?? null,
                     'name' => $this->name,
@@ -561,6 +563,15 @@ class ContactSection extends Component
                     'address' => $this->address,
                     'message' => \Str::limit($this->message, 200),
                 ]);
+
+                // If the secret key is invalid/misconfigured, don't block real users.
+                if (in_array('invalid-input-secret', $errorCodes, true) || in_array('missing-input-secret', $errorCodes, true)) {
+                    Log::channel('submissions')->error('Turnstile secret key invalid or missing. Allowing submission as fallback.', [
+                        'error-codes' => $errorCodes,
+                    ]);
+                    return true;
+                }
+
                 return false;
             }
 

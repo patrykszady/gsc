@@ -19,6 +19,12 @@ class GenerateSitemap extends Command
     public function handle(): int
     {
         $baseUrl = rtrim($this->option('url') ?: config('app.url'), '/');
+        $isLocalBase = str_contains($baseUrl, '127.0.0.1') || str_contains($baseUrl, 'localhost');
+        if (app()->environment('production') && $isLocalBase) {
+            $this->error("Invalid base URL for production sitemap: {$baseUrl}");
+            $this->line('Set APP_URL to your live domain or pass --url=https://gs.construction');
+            return Command::FAILURE;
+        }
         
         $this->info("Generating sitemap with base URL: {$baseUrl}");
 
@@ -41,6 +47,8 @@ class GenerateSitemap extends Command
             'contact-us',   // redirect to /contact
             'flux/',        // internal flux assets
             'livewire/',    // internal livewire assets
+            'livewire-',    // livewire asset routes (e.g. /livewire-xxxx/livewire.js)
+            '.map',         // sourcemaps
             'up',           // health check
             'sanctum',      // sanctum routes
         ];

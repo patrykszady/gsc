@@ -27,11 +27,14 @@ class ProjectImage extends Model
         'is_cover',
         'sort_order',
         'thumbnails',
+        'google_places_media_name',
+        'google_places_uploaded_at',
     ];
 
     protected $casts = [
         'is_cover' => 'boolean',
         'thumbnails' => 'array',
+        'google_places_uploaded_at' => 'datetime',
     ];
 
     /**

@@ -42,6 +42,14 @@ return [
         'measurement_api_secret' => env('GOOGLE_MEASUREMENT_API_SECRET'), // GA4 Measurement Protocol API Secret
         'gemini_api_key' => env('GOOGLE_GEMINI_API_KEY'),
         'gemini_model' => env('GOOGLE_GEMINI_MODEL', 'gemini-2.0-flash'),
+        'business_profile' => [
+            'enabled' => env('GOOGLE_BUSINESS_PROFILE_ENABLED', false),
+            'client_id' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID'),
+            'client_secret' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET'),
+            'refresh_token' => env('GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN'),
+            'account_id' => env('GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID'),
+            'location_id' => env('GOOGLE_BUSINESS_PROFILE_LOCATION_ID'),
+        ],
     ],
 
     'microsoft' => [

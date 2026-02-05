@@ -168,6 +168,9 @@
                             </span>
                             <span>Schedule A Free Consultation</span>
                         </button>
+                        <p class="mt-1 pl-8 text-sm text-zinc-600 dark:text-zinc-400">
+                            Open to enter your address and pick available dates.
+                        </p>
                     </div>
 
                     {{-- Collapsible Consultation Options --}}
