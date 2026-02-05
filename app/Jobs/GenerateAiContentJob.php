@@ -47,9 +47,12 @@ class GenerateAiContentJob implements ShouldQueue
         $shouldRegenerateSitemap = false;
 
         // Skip if already has content and not overwriting
-        $skipContent = !$this->overwrite && !empty($image->alt_text) && !empty($image->caption);
+        $skipContent = !$this->overwrite
+            && !empty($image->alt_text)
+            && !empty($image->caption)
+            && !empty($image->seo_alt_text);
         if ($skipContent) {
-            Log::debug('GenerateAiContentJob: Skipping image content, already has content', [
+            Log::debug('GenerateAiContentJob: Skipping image content, already has alt_text, caption, and seo_alt_text', [
                 'image_id' => $image->id,
             ]);
         }
