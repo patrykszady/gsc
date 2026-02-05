@@ -37,6 +37,7 @@ class ProjectImage extends Model
         'google_places_uploaded_at' => 'datetime',
     ];
 
+
     /**
      * Get the route key for the model.
      */

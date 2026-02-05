@@ -1,16 +1,20 @@
 @php
     // Get all images for the slider
     $allImages = $project->images()->orderBy('sort_order')->get();
-    $imagesData = $allImages->map(fn($img) => [
-        'id' => $img->id,
-        'url' => $img->getWebpThumbnailUrl('large') ?: $img->getThumbnailUrl('large'),
-        'thumbUrl' => $img->getWebpThumbnailUrl('thumbnail') ?: $img->getThumbnailUrl('thumbnail'),
-        'originalUrl' => $img->url,
-        'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
-        'caption' => $this->localizeText($img->caption),
-        'isCover' => $img->is_cover,
-        'pageUrl' => route('projects.image', [$project, $img]),
-    ])->values();
+    $imagesData = $allImages->map(function ($img) use ($project) {
+        $imageKey = $img->slug ?: $img->id;
+
+        return [
+            'id' => $img->id,
+            'url' => $img->getWebpThumbnailUrl('large') ?: $img->getThumbnailUrl('large'),
+            'thumbUrl' => $img->getWebpThumbnailUrl('thumbnail') ?: $img->getThumbnailUrl('thumbnail'),
+            'originalUrl' => $img->url,
+            'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
+            'caption' => $this->localizeText($img->caption),
+            'isCover' => $img->is_cover,
+            'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
+        ];
+    })->values();
     
     $initialIndex = $allImages->search(fn($img) => $img->id === $image->id) ?: 0;
     

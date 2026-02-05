@@ -103,8 +103,12 @@ class BackfillAiContent extends Command
             $query->where(function ($q) {
                 $q->whereNull('alt_text')
                     ->orWhere('alt_text', '')
+                    ->orWhereNull('seo_alt_text')
+                    ->orWhere('seo_alt_text', '')
                     ->orWhereNull('caption')
-                    ->orWhere('caption', '');
+                    ->orWhere('caption', '')
+                    ->orWhereNull('slug')
+                    ->orWhere('slug', '');
             });
         }
 
@@ -171,6 +175,10 @@ class BackfillAiContent extends Command
                 $updateData['caption'] = $content['caption'];
             }
 
+            if (isset($content['seo_alt_text']) && ($overwrite || empty($image->seo_alt_text))) {
+                $updateData['seo_alt_text'] = $content['seo_alt_text'];
+            }
+
             if (!empty($updateData)) {
                 $image->updateQuietly($updateData);
                 $updated++;
@@ -179,6 +187,11 @@ class BackfillAiContent extends Command
                     $this->newLine();
                     $this->line("    Image #{$image->id}: " . ($content['alt_text'] ?? 'no alt'));
                 }
+            }
+
+            if (empty($image->slug)) {
+                $image->slug = $image->generateSlug();
+                $image->saveQuietly();
             }
 
             // Rate limiting - 2 seconds between requests (Gemini free tier: 15 RPM)

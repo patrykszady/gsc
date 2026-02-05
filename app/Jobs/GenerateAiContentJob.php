@@ -44,13 +44,14 @@ class GenerateAiContentJob implements ShouldQueue
     protected function processImage(AiContentService $service): void
     {
         $image = $this->model;
+        $shouldRegenerateSitemap = false;
 
         // Skip if already has content and not overwriting
-        if (!$this->overwrite && !empty($image->alt_text) && !empty($image->caption)) {
-            Log::debug('GenerateAiContentJob: Skipping image, already has content', [
+        $skipContent = !$this->overwrite && !empty($image->alt_text) && !empty($image->caption);
+        if ($skipContent) {
+            Log::debug('GenerateAiContentJob: Skipping image content, already has content', [
                 'image_id' => $image->id,
             ]);
-            return;
         }
 
         // Check if image file exists before trying to process
@@ -60,35 +61,48 @@ class GenerateAiContentJob implements ShouldQueue
                 'image_id' => $image->id,
                 'path' => $image->path,
             ]);
-            return; // Don't retry - file is missing
+            $skipContent = true;
+            // Still allow slug generation below even if file is missing
         }
 
-        $content = $service->generateImageContent($image);
+        if (!$skipContent) {
+            $content = $service->generateImageContent($image);
 
-        if ($content === null) {
-            Log::warning('GenerateAiContentJob: Failed to generate image content', [
-                'image_id' => $image->id,
-                'error' => $service->getLastError(),
-            ]);
-            return;
-        }
+            if ($content === null) {
+                Log::warning('GenerateAiContentJob: Failed to generate image content', [
+                    'image_id' => $image->id,
+                    'error' => $service->getLastError(),
+                ]);
+            } else {
+                $updateData = [];
 
-        $updateData = [];
+                if (isset($content['alt_text']) && ($this->overwrite || empty($image->alt_text))) {
+                    $updateData['alt_text'] = $content['alt_text'];
+                }
 
-        if (isset($content['alt_text']) && ($this->overwrite || empty($image->alt_text))) {
-            $updateData['alt_text'] = $content['alt_text'];
-        }
+                if (isset($content['seo_alt_text']) && ($this->overwrite || empty($image->seo_alt_text))) {
+                    $updateData['seo_alt_text'] = $content['seo_alt_text'];
+                }
 
-        if (isset($content['caption']) && ($this->overwrite || empty($image->caption))) {
-            $updateData['caption'] = $content['caption'];
-        }
+                if (isset($content['caption']) && ($this->overwrite || empty($image->caption))) {
+                    $updateData['caption'] = $content['caption'];
+                }
 
-        if (!empty($updateData)) {
-            $image->updateQuietly($updateData);
-
-            if ($this->regenerateSitemap) {
-                $this->regenerateSitemap();
+                if (!empty($updateData)) {
+                    $image->updateQuietly($updateData);
+                    $shouldRegenerateSitemap = true;
+                }
             }
+        }
+
+        if (empty($image->slug)) {
+            $image->slug = $image->generateSlug();
+            $image->saveQuietly();
+            $shouldRegenerateSitemap = true;
+        }
+
+        if ($this->regenerateSitemap && $shouldRegenerateSitemap) {
+            $this->regenerateSitemap();
         }
     }
 

@@ -61,6 +61,7 @@ Project Context:
 
 Return a JSON object with:
 - "alt_text": A concise description (max 125 chars) of what's visible in the image. Include relevant keywords like the room type, materials, or features visible.
+- "seo_alt_text": A concise SEO-optimized variant (max 125 chars). It can be similar to alt_text but should be slightly more keyword-rich if possible.
 - "caption": A longer SEO-rich description (1-2 sentences) that describes the work shown, mentions the location if known, and includes relevant keywords. Make it engaging but factual.
 
 Rules:
@@ -261,6 +262,10 @@ PROMPT;
         if (isset($decoded['alt_text']) && is_string($decoded['alt_text'])) {
             // Ensure alt_text is under 125 chars
             $result['alt_text'] = mb_substr(trim($decoded['alt_text']), 0, 125);
+        }
+
+        if (isset($decoded['seo_alt_text']) && is_string($decoded['seo_alt_text'])) {
+            $result['seo_alt_text'] = mb_substr(trim($decoded['seo_alt_text']), 0, 125);
         }
 
         if (isset($decoded['caption']) && is_string($decoded['caption'])) {

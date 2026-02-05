@@ -54,7 +54,9 @@ class ProjectImagePage extends Component
      */
     public function getCanonicalUrl(): string
     {
-        return route('projects.image', [$this->project, $this->image]);
+        $imageKey = $this->image->slug ?: $this->image->id;
+
+        return route('projects.image', ['project' => $this->project, 'image' => $imageKey]);
     }
     
     protected function loadImageNavigation(): void
@@ -88,7 +90,9 @@ class ProjectImagePage extends Component
         $this->loadImageNavigation();
         
         // Update the URL without full page navigation
-        $this->dispatch('urlChanged', url: route('projects.image', [$this->project, $this->image]));
+        $imageKey = $this->image->slug ?: $this->image->id;
+
+        $this->dispatch('urlChanged', url: route('projects.image', ['project' => $this->project, 'image' => $imageKey]));
     }
     
     public function nextImage(): void

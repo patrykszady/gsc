@@ -99,28 +99,37 @@
                     Project Photos
                     <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $images->count() }})</span>
                 </h2>
-                @php $firstImage = $images->first(); @endphp
-                <a href="{{ route('projects.image', [$project, $firstImage]) }}" 
-                   wire:navigate
-                   class="inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
-                    View full-size gallery
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                </a>
+                @php
+                    $firstImage = $images->first();
+                    $firstImageKey = $firstImage?->slug ?: $firstImage?->id;
+                @endphp
+                @if($firstImageKey)
+                    <a href="{{ route('projects.image', ['project' => $project, 'image' => $firstImageKey]) }}" 
+                       wire:navigate
+                       class="inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
+                        View full-size gallery
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </a>
+                @endif
             </div>
             <div x-data="{ 
                 lightbox: false, 
                 currentIndex: 0,
-                images: {{ Js::from($images->map(fn($img, $i) => [
-                    'id' => $img->id,
-                    'url' => $img->getThumbnailUrl('large'),
-                    'webpUrl' => $img->getWebpThumbnailUrl('large'),
-                    'originalUrl' => $img->url,
-                    'alt' => $img->alt_text ?: $img->seo_alt_text,
-                    'caption' => $img->caption,
-                    'pageUrl' => route('projects.image', [$project, $img]),
-                ])) }},
+                images: {{ Js::from($images->map(function ($img) use ($project) {
+                    $imageKey = $img->slug ?: $img->id;
+
+                    return [
+                        'id' => $img->id,
+                        'url' => $img->getThumbnailUrl('large'),
+                        'webpUrl' => $img->getWebpThumbnailUrl('large'),
+                        'originalUrl' => $img->url,
+                        'alt' => $img->alt_text ?: $img->seo_alt_text,
+                        'caption' => $img->caption,
+                        'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
+                    ];
+                })) }},
                 open(index) { 
                     this.currentIndex = index; 
                     this.lightbox = true; 
