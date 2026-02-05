@@ -84,7 +84,7 @@ class GenerateAiContentJob implements ShouldQueue
                     $updateData['alt_text'] = $content['alt_text'];
                 }
 
-                if (isset($content['seo_alt_text']) && ($this->overwrite || empty($image->seo_alt_text))) {
+                if (isset($content['seo_alt_text']) && ($this->overwrite || empty($rawSeoAltText))) {
                     $updateData['seo_alt_text'] = $content['seo_alt_text'];
                 }
 

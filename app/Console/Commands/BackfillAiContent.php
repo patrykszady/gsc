@@ -175,7 +175,8 @@ class BackfillAiContent extends Command
                 $updateData['caption'] = $content['caption'];
             }
 
-            if (isset($content['seo_alt_text']) && ($overwrite || empty($image->seo_alt_text))) {
+            $rawSeoAltText = $image->getRawOriginal('seo_alt_text');
+            if (isset($content['seo_alt_text']) && ($overwrite || empty($rawSeoAltText))) {
                 $updateData['seo_alt_text'] = $content['seo_alt_text'];
             }
 

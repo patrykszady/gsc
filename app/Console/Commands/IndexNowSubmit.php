@@ -7,13 +7,15 @@ use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\IndexNowService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
 
 class IndexNowSubmit extends Command
 {
     protected $signature = 'indexnow:submit 
                             {--url=* : Specific URLs to submit}
-                            {--all : Submit all public URLs (sitemap)}
-                            {--models : Submit all model URLs (projects, testimonials, areas)}';
+                            {--all : Submit all public URLs (sitemap + models + static)}
+                            {--models : Submit all model URLs (projects, testimonials, areas)}
+                            {--sitemap= : Submit URLs from a sitemap file or URL (defaults to public/sitemap.xml)}';
 
     protected $description = 'Submit URLs to IndexNow for faster search engine indexing';
 
@@ -42,11 +44,16 @@ class IndexNowSubmit extends Command
         if ($this->option('all')) {
             $urls = array_merge($urls, $this->getStaticUrls());
             $urls = array_merge($urls, $this->getModelUrls());
+            $urls = array_merge($urls, $this->getSitemapUrls($this->option('sitemap')));
         }
 
         // Collect model URLs
         if ($this->option('models')) {
             $urls = array_merge($urls, $this->getModelUrls());
+        }
+
+        if ($this->option('sitemap')) {
+            $urls = array_merge($urls, $this->getSitemapUrls($this->option('sitemap')));
         }
 
         // If no options specified, show help
@@ -56,6 +63,7 @@ class IndexNowSubmit extends Command
             $this->line('  php artisan indexnow:submit --url="/projects" --url="/about"');
             $this->line('  php artisan indexnow:submit --models');
             $this->line('  php artisan indexnow:submit --all');
+            $this->line('  php artisan indexnow:submit --sitemap="https://example.com/sitemap.xml"');
 
             return self::SUCCESS;
         }
@@ -142,5 +150,80 @@ class IndexNowSubmit extends Command
         }
 
         return $urls;
+    }
+
+    /**
+     * Get URLs from a sitemap file or URL.
+     */
+    protected function getSitemapUrls(?string $source = null): array
+    {
+        $source = $source ?: public_path('sitemap.xml');
+
+        $xml = $this->loadSitemapXml($source);
+        if (! $xml) {
+            return [];
+        }
+
+        $urls = [];
+
+        if (isset($xml->sitemap)) {
+            foreach ($xml->sitemap as $sitemap) {
+                $loc = (string) $sitemap->loc;
+                if ($loc) {
+                    $urls = array_merge($urls, $this->getSitemapUrls($loc));
+                }
+            }
+        }
+
+        if (isset($xml->url)) {
+            foreach ($xml->url as $url) {
+                $loc = (string) $url->loc;
+                if ($loc) {
+                    $urls[] = $loc;
+                }
+            }
+        }
+
+        return $urls;
+    }
+
+    /**
+     * Load sitemap XML from a local path or URL.
+     */
+    protected function loadSitemapXml(string $source): ?\SimpleXMLElement
+    {
+        try {
+            if (filter_var($source, FILTER_VALIDATE_URL)) {
+                $response = Http::timeout(20)->get($source);
+                if (! $response->successful()) {
+                    $this->warn("Failed to fetch sitemap URL: {$source}");
+                    return null;
+                }
+                $content = $response->body();
+            } else {
+                if (! file_exists($source)) {
+                    $this->warn("Sitemap file not found: {$source}");
+                    return null;
+                }
+                $content = file_get_contents($source);
+            }
+
+            if (! $content) {
+                $this->warn("Empty sitemap content: {$source}");
+                return null;
+            }
+
+            $xml = @simplexml_load_string($content);
+
+            if (! $xml) {
+                $this->warn("Failed to parse sitemap XML: {$source}");
+                return null;
+            }
+
+            return $xml;
+        } catch (\Throwable $e) {
+            $this->warn("Error loading sitemap {$source}: {$e->getMessage()}");
+            return null;
+        }
     }
 }
