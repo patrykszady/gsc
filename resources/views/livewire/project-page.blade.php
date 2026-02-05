@@ -91,14 +91,15 @@
         </div>
 
         {{-- Image Gallery with Lightbox --}}
-        @if($project->images->isNotEmpty())
+        @php $images = $project->images->filter(); @endphp
+        @if($images->isNotEmpty())
             {{-- Gallery header with link to full photos --}}
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
                     Project Photos
-                    <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $project->images->count() }})</span>
+                    <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $images->count() }})</span>
                 </h2>
-                @php $firstImage = $project->images->first(); @endphp
+                @php $firstImage = $images->first(); @endphp
                 <a href="{{ route('projects.image', [$project, $firstImage]) }}" 
                    wire:navigate
                    class="inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
@@ -111,7 +112,7 @@
             <div x-data="{ 
                 lightbox: false, 
                 currentIndex: 0,
-                images: {{ Js::from($project->images->map(fn($img, $i) => [
+                images: {{ Js::from($images->map(fn($img, $i) => [
                     'id' => $img->id,
                     'url' => $img->getThumbnailUrl('large'),
                     'webpUrl' => $img->getWebpThumbnailUrl('large'),
@@ -139,7 +140,7 @@
                 
                 {{-- Gallery Grid --}}
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach($project->images as $index => $image)
+                    @foreach($images as $index => $image)
                         <div 
                             x-data="{ 
                                 showCaption: false,
