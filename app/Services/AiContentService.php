@@ -59,7 +59,7 @@ Generate concise, descriptive, SEO-optimized content for this project image.
 Project Context:
 {$projectContext}
 
-Return a JSON object with:
+Return a JSON object with ALL of the following keys (all required):
 - "alt_text": A concise description (max 125 chars) of what's visible in the image. Include relevant keywords like the room type, materials, or features visible.
 - "seo_alt_text": A concise SEO-optimized variant (max 125 chars). It can be similar to alt_text but should be slightly more keyword-rich if possible.
 - "caption": A longer SEO-rich description (1-2 sentences) that describes the work shown, mentions the location if known, and includes relevant keywords. Make it engaging but factual.
@@ -270,6 +270,11 @@ PROMPT;
 
         if (isset($decoded['caption']) && is_string($decoded['caption'])) {
             $result['caption'] = trim($decoded['caption']);
+        }
+
+        if (empty($result['seo_alt_text'])) {
+            $this->lastError = 'Missing seo_alt_text in AI response: ' . $content;
+            return null;
         }
 
         return !empty($result) ? $result : null;
