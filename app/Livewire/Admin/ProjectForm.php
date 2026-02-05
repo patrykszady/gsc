@@ -6,6 +6,7 @@ use App\Jobs\ProcessProjectImage;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Tag;
+use App\Services\ImageService;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
