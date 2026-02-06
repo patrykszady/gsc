@@ -145,6 +145,77 @@ class GoogleBusinessProfileService
     }
 
     /**
+     * Fetch a media item from GBP.
+     */
+    public function getMediaItem(string $mediaName): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $url = self::MEDIA_API_BASE . "/{$mediaName}";
+
+        $response = Http::withToken($accessToken)
+            ->timeout(20)
+            ->get($url);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Get media failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to fetch media item', [
+                'media_name' => $mediaName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+
+        return $response->json();
+    }
+
+    /**
+     * Get a public Google URL for a GBP media item.
+     */
+    public function getMediaUrl(string $mediaName): ?string
+    {
+        $item = $this->getMediaItem($mediaName);
+        if (! $item) {
+            return null;
+        }
+
+        return $item['googleUrl']
+            ?? $item['thumbnailUrl']
+            ?? null;
+    }
+
+    /**
+     * Get a cached public Google URL for a GBP media item.
+     */
+    public function getMediaUrlCached(string $mediaName, int $ttlSeconds = 604800): ?string
+    {
+        if (! $mediaName) {
+            return null;
+        }
+
+        $cacheKey = 'gbp_media_url_' . $mediaName;
+
+        return Cache::remember($cacheKey, $ttlSeconds, function () use ($mediaName) {
+            return $this->getMediaUrl($mediaName);
+        });
+    }
+
+    /**
      * List all media items on the Google Business Profile location.
      */
     public function listMedia(?string $pageToken = null, int $pageSize = 100): ?array

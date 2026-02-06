@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Project;
 use App\Models\ProjectImage;
+use App\Services\GoogleBusinessProfileService;
 use Artesaos\SEOTools\Facades\JsonLd;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use Artesaos\SEOTools\Facades\SEOMeta;
@@ -123,6 +124,11 @@ class ProjectImagePage extends Component
                . "Professional remodeling by GS Construction.";
 
         $imageUrl = $this->image->getThumbnailUrl('large');
+        $googleUrl = null;
+        if ($this->image->google_places_media_name) {
+            $googleUrl = app(GoogleBusinessProfileService::class)
+                ->getMediaUrlCached($this->image->google_places_media_name);
+        }
         
         // Canonical always points to the base URL (no area)
         $canonicalUrl = $this->getCanonicalUrl();
@@ -137,16 +143,22 @@ class ProjectImagePage extends Component
         OpenGraph::setUrl($currentUrl);
         OpenGraph::addProperty('type', 'article');
         OpenGraph::addImage($imageUrl);
+        if ($googleUrl) {
+            OpenGraph::addImage($googleUrl);
+        }
 
         TwitterCard::setTitle($title);
         TwitterCard::setDescription($description);
-        TwitterCard::setImage($imageUrl);
+        TwitterCard::setImage($googleUrl ?: $imageUrl);
 
         JsonLd::setType('ImageObject');
         JsonLd::setTitle($title);
         JsonLd::setDescription($description);
         JsonLd::setUrl($currentUrl);
         JsonLd::addValue('contentUrl', $imageUrl);
+        if ($googleUrl) {
+            JsonLd::addValue('sameAs', $googleUrl);
+        }
         JsonLd::addValue('thumbnail', $this->image->getThumbnailUrl('thumb'));
         JsonLd::addValue('representativeOfPage', $this->image->is_cover);
         JsonLd::addValue('caption', $this->image->caption ?? $this->image->alt_text);

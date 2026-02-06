@@ -1,7 +1,8 @@
 @php
     // Get all images for the slider
+    $gbpService = app(\App\Services\GoogleBusinessProfileService::class);
     $allImages = $project->images()->orderBy('sort_order')->get();
-    $imagesData = $allImages->map(function ($img) use ($project) {
+    $imagesData = $allImages->map(function ($img) use ($project, $gbpService) {
         $imageKey = $img->slug ?: $img->id;
 
         return [
@@ -9,6 +10,9 @@
             'url' => $img->getWebpThumbnailUrl('large') ?: $img->getThumbnailUrl('large'),
             'thumbUrl' => $img->getWebpThumbnailUrl('thumbnail') ?: $img->getThumbnailUrl('thumbnail'),
             'originalUrl' => $img->url,
+            'googleUrl' => $img->google_places_media_name
+                ? $gbpService->getMediaUrlCached($img->google_places_media_name)
+                : null,
             'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
             'caption' => $this->localizeText($img->caption),
             'isCover' => $img->is_cover,
@@ -154,6 +158,16 @@
                             <span x-show="current.isCover" class="inline-flex items-center rounded-full bg-sky-500 px-2.5 py-1 text-xs font-medium text-white shadow-lg">
                                 Featured Photo
                             </span>
+                            <a
+                                x-show="current.googleUrl"
+                                :href="current.googleUrl"
+                                target="_blank"
+                                rel="noopener"
+                                class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-sky-700 shadow-lg hover:bg-white"
+                                @click.stop
+                            >
+                                View on Google
+                            </a>
                             {{-- Hidden but accessible Full Size link --}}
                             <a :href="current.originalUrl" 
                                target="_blank"
