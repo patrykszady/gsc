@@ -30,9 +30,34 @@ class Project extends Model
     {
         static::creating(function (Project $project) {
             if (empty($project->slug)) {
-                $project->slug = Str::slug($project->title);
+                $project->slug = static::generateUniqueSlug($project->title);
             }
         });
+    }
+
+    /**
+     * Generate a unique slug, appending a numeric suffix if needed.
+     */
+    public static function generateUniqueSlug(string $title, ?int $ignoreId = null): string
+    {
+        $slug = Str::slug($title);
+        $original = $slug;
+        $count = 1;
+
+        $query = static::where('slug', $slug);
+        if ($ignoreId) {
+            $query->where('id', '!=', $ignoreId);
+        }
+
+        while ($query->exists()) {
+            $slug = $original . '-' . ++$count;
+            $query = static::where('slug', $slug);
+            if ($ignoreId) {
+                $query->where('id', '!=', $ignoreId);
+            }
+        }
+
+        return $slug;
     }
 
     /**
