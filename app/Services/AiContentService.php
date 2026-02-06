@@ -84,7 +84,7 @@ PROMPT;
     }
 
     /**
-     * Generate an SEO-rich description for a project.
+     * Generate an SEO-rich description for a project using all image AI content.
      */
     public function generateProjectDescription(Project $project): ?string
     {
@@ -92,12 +92,6 @@ PROMPT;
             $this->lastError = 'Gemini API key not configured';
             return null;
         }
-
-        // Get cover image if available
-        $coverImage = $project->images()->where('is_cover', true)->first()
-            ?? $project->images()->orderBy('sort_order')->first();
-        
-        $imageData = $coverImage ? $this->getImageData($coverImage) : null;
 
         $projectType = match($project->project_type) {
             'kitchen' => 'kitchen remodeling',
@@ -110,34 +104,83 @@ PROMPT;
 
         $location = $project->location ?: 'the Chicago area';
 
+        // Collect up to 5 representative images for vision context
+        // Prioritize cover image first, then by sort order
+        $allImages = $project->images()
+            ->orderByDesc('is_cover')
+            ->orderBy('sort_order')
+            ->limit(5)
+            ->get();
+
+        $multiImageData = [];
+        foreach ($allImages as $img) {
+            $data = $this->getImageData($img);
+            if ($data) {
+                $multiImageData[] = $data;
+            }
+        }
+
+        // Gather AI-generated content from ALL project images
+        $imageDescriptions = $project->images()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function ($img) {
+                $parts = array_filter([
+                    $img->getRawOriginal('seo_alt_text'),
+                    $img->caption,
+                ]);
+                return implode(' — ', $parts);
+            })
+            ->filter()
+            ->values();
+
+        $imageContext = '';
+        if ($imageDescriptions->isNotEmpty()) {
+            $imageContext = "\n\nAI-generated descriptions from each project photo (use these details for accuracy):\n";
+            foreach ($imageDescriptions as $i => $desc) {
+                $imageContext .= ($i + 1) . ". {$desc}\n";
+            }
+        }
+
         $prompt = <<<PROMPT
 You are an SEO copywriter for GS Construction, a home remodeling company in Chicago.
+You are looking at {$allImages->count()} photos from this project. Study ALL the images carefully.
+
 Write a compelling project description (2-3 sentences) that:
 - Describes the type of work done ({$projectType})
 - Mentions the location ({$location})
+- References specific materials, features, or details visible across ALL the project photos
 - Highlights quality craftsmanship
 - Is SEO-optimized with relevant keywords
 - Sounds professional but approachable
 
-Project title: {$project->title}
+Project title: {$project->title}{$imageContext}
 
 Return ONLY the description text, no JSON or formatting.
 PROMPT;
 
-        return $this->callGemini($prompt, $imageData);
+        return $this->callGeminiMultiImage($prompt, $multiImageData);
     }
 
     /**
-     * Call Gemini API with optional image.
+     * Call Gemini API with optional single image.
      */
     protected function callGemini(string $prompt, ?array $imageData = null): ?string
+    {
+        return $this->callGeminiMultiImage($prompt, $imageData ? [$imageData] : []);
+    }
+
+    /**
+     * Call Gemini API with multiple images.
+     */
+    protected function callGeminiMultiImage(string $prompt, array $imagesData = [], int $maxOutputTokens = 500): ?string
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
 
         $parts = [];
 
-        // Add image first if provided
-        if ($imageData) {
+        // Add all images first
+        foreach ($imagesData as $imageData) {
             $parts[] = [
                 'inline_data' => [
                     'mime_type' => $imageData['mime_type'],
@@ -150,7 +193,7 @@ PROMPT;
         $parts[] = ['text' => $prompt];
 
         try {
-            $response = Http::timeout(60)
+            $response = Http::timeout(120)
                 ->acceptJson()
                 ->post($url, [
                     'contents' => [
@@ -160,7 +203,7 @@ PROMPT;
                     ],
                     'generationConfig' => [
                         'temperature' => 0.7,
-                        'maxOutputTokens' => 300,
+                        'maxOutputTokens' => $maxOutputTokens,
                     ],
                 ]);
         } catch (ConnectionException $e) {

@@ -88,6 +88,11 @@
                     {{ $project->description }}
                 </p>
             @endif
+            <div class="mt-6">
+                <flux:button href="{{ route('projects.index') }}" variant="primary" size="sm">
+                    Show More Projects
+                </flux:button>
+            </div>
         </div>
 
         {{-- Image Gallery with Lightbox --}}

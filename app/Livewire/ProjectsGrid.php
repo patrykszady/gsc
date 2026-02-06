@@ -21,7 +21,9 @@ class ProjectsGrid extends Component
 
     public bool $hideFilters = false;
 
-    public function mount(?string $projectType = null, ?int $limit = null, bool $hideFilters = false): void
+    public bool $showPagination = true;
+
+    public function mount(?string $projectType = null, ?int $limit = null, bool $hideFilters = false, bool $showPagination = true): void
     {
         if ($projectType) {
             $this->type = $projectType;
@@ -30,6 +32,7 @@ class ProjectsGrid extends Component
             $this->perPage = $limit;
         }
         $this->hideFilters = $hideFilters;
+        $this->showPagination = $showPagination;
     }
 
     public function setPerPage(int $count): void

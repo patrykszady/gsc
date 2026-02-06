@@ -19,13 +19,9 @@ class ProjectObserver
     {
         $this->regenerateSitemap();
         $this->submitToIndexNow($project);
-        
-        // Queue AI description generation for new projects (with delay to allow images to be added first)
-        if (config('services.google.gemini_api_key') && empty($project->description)) {
-            GenerateAiContentJob::dispatch($project, overwrite: false, regenerateSitemap: true)
-                ->onQueue('ai-content')
-                ->delay(now()->addMinutes(2)); // Wait for images to be uploaded
-        }
+
+        // Project description is now generated automatically after all image AI content
+        // completes (triggered by GenerateAiContentJob::maybeGenerateProjectDescription).
     }
 
     public function updated(Project $project): void

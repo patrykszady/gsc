@@ -121,6 +121,11 @@
                     Back to {{ $project->title }}
                 </a>
             </div>
+            <div class="shrink-0">
+                <flux:button href="{{ route('projects.index') }}" variant="primary" size="sm">
+                    Show More Projects
+                </flux:button>
+            </div>
         </div>
 
         {{-- Image Container using zoomable-image component --}}

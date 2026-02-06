@@ -109,6 +109,47 @@ class GenerateAiContentJob implements ShouldQueue
         if ($this->regenerateSitemap && $shouldRegenerateSitemap) {
             $this->regenerateSitemap();
         }
+
+        // Check if all project images now have AI content; if so, generate project description
+        $this->maybeGenerateProjectDescription($image);
+    }
+
+    /**
+     * After an image is processed, check if all project images have AI content.
+     * If so, dispatch (or run inline) the project description generation.
+     */
+    protected function maybeGenerateProjectDescription(ProjectImage $image): void
+    {
+        $project = $image->project;
+        if (!$project) {
+            return;
+        }
+
+        // Check if all images have AI-generated content
+        $totalImages = $project->images()->count();
+        $completedImages = $project->images()
+            ->whereNotNull('seo_alt_text')
+            ->where('seo_alt_text', '!=', '')
+            ->count();
+
+        if ($completedImages < $totalImages) {
+            Log::debug('GenerateAiContentJob: Waiting for remaining images', [
+                'project_id' => $project->id,
+                'completed' => $completedImages,
+                'total' => $totalImages,
+            ]);
+            return;
+        }
+
+        Log::info('GenerateAiContentJob: All images processed, generating project description', [
+            'project_id' => $project->id,
+            'image_count' => $totalImages,
+        ]);
+
+        // Always overwrite — image AI content may have improved since last description
+        static::dispatch($project, overwrite: true, regenerateSitemap: true)
+            ->onQueue('ai-content')
+            ->delay(now()->addSeconds(5));
     }
 
     protected function processProject(AiContentService $service): void

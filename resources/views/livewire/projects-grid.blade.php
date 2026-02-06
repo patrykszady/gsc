@@ -169,7 +169,7 @@
         </div>
 
         {{-- Pagination --}}
-        @if($projects->hasPages() && !$hideFilters)
+        @if($projects->hasPages() && $showPagination)
         <div class="mt-10">
             {{ $projects->links(data: ['scrollTo' => '#projects-grid']) }}
         </div>

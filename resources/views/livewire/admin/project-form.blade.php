@@ -14,7 +14,7 @@
     @endif
 
     <form wire:submit="save">
-        <div class="grid gap-6 lg:grid-cols-3">
+        <div class="grid gap-6 lg:grid-cols-3 lg:items-start">
             {{-- Main Content --}}
             <div class="space-y-6 lg:col-span-2">
                 {{-- Basic Info --}}
@@ -129,11 +129,39 @@
                     {{-- Existing Images --}}
                     @if(count($existingImages) > 0)
                         <div class="mt-4">
-                            <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Project Images</h4>
+                            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <h4 class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Project Images</h4>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    @if(count($selectedImageIds) > 0)
+                                        <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ count($selectedImageIds) }} selected
+                                        </span>
+                                    @endif
+                                    <flux:button type="button" size="sm" variant="ghost" wire:click="selectAllImages">
+                                        Select all
+                                    </flux:button>
+                                    <flux:button type="button" size="sm" variant="ghost" wire:click="clearSelectedImages">
+                                        Clear
+                                    </flux:button>
+                                    <flux:button type="button" size="sm" variant="primary" wire:click="assignTagToSelected">
+                                        Apply
+                                    </flux:button>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                                 @foreach($existingImages as $image)
-                                    <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                    <div
+                                        class="group relative aspect-square cursor-pointer overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 {{ in_array($image['id'], $selectedImageIds) ? 'ring-2 ring-sky-500' : '' }}"
+                                        wire:click="toggleImageSelection({{ $image['id'] }})"
+                                        role="button"
+                                    >
                                         <img src="{{ $image['url'] }}" alt="{{ $image['alt_text'] }}" class="size-full object-cover">
+
+                                        <div class="absolute left-2 top-2 z-10">
+                                            <label class="inline-flex items-center justify-center rounded-full bg-black/60 p-1" wire:click.stop>
+                                                <input type="checkbox" class="size-4 accent-sky-500" wire:model="selectedImageIds" value="{{ $image['id'] }}" wire:click.stop>
+                                            </label>
+                                        </div>
                                         
                                         {{-- Cover badge --}}
                                         @if($image['is_cover'])
@@ -148,6 +176,7 @@
                                                 <button 
                                                     type="button"
                                                     wire:click="setCoverImage({{ $image['id'] }})"
+                                                    wire:click.stop
                                                     class="rounded-full bg-white p-2 text-zinc-700 hover:bg-zinc-100"
                                                     title="Set as cover"
                                                 >
@@ -157,6 +186,7 @@
                                             <button 
                                                 type="button"
                                                 wire:click="removeExistingImage({{ $image['id'] }})"
+                                                wire:click.stop
                                                 wire:confirm="Delete this image?"
                                                 class="rounded-full bg-red-500 p-2 text-white hover:bg-red-600"
                                                 title="Delete"
@@ -164,16 +194,6 @@
                                                 <flux:icon.trash class="size-4" />
                                             </button>
                                         </div>
-
-                                        {{-- Tag indicator --}}
-                                        @if(count($image['tags']) > 0)
-                                            <div class="absolute bottom-2 right-2">
-                                                <flux:badge size="sm" class="!bg-black/60 !text-white">
-                                                    <flux:icon.tag class="mr-1 size-3" />
-                                                    {{ count($image['tags']) }}
-                                                </flux:badge>
-                                            </div>
-                                        @endif
                                     </div>
                                 @endforeach
                             </div>
@@ -187,7 +207,7 @@
             </div>
 
             {{-- Sidebar --}}
-            <div class="space-y-6">
+            <div class="space-y-6 lg:sticky lg:top-6 lg:self-start lg:h-fit">
                 {{-- Publish Settings --}}
                 <flux:card>
                     <flux:heading size="lg" class="mb-4">Publish</flux:heading>
@@ -204,42 +224,67 @@
                     </div>
                 </flux:card>
 
-                {{-- Tags --}}
-                <flux:card>
-                    <flux:heading size="lg" class="mb-4">Tags</flux:heading>
-                    
-                    <p class="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
-                        Tags can be added to individual images after saving the project.
-                    </p>
-
-                    {{-- Create new tag --}}
-                    <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                        <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Create New Tag</h4>
+                @if(count($existingImages) > 0)
+                    {{-- Assign Tag --}}
+                    <flux:card>
+                        <flux:heading size="lg" class="mb-4">Assign Tag</flux:heading>
                         <div class="space-y-2">
-                            <flux:input wire:model="newTagName" placeholder="Tag name" size="sm" />
-                            <flux:select wire:model="newTagType" size="sm">
-                                @foreach($tagTypes as $value => $label)
-                                    <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
+                            <flux:select wire:model="bulkTagId" variant="combobox" size="sm">
+                                <x-slot name="input">
+                                    <flux:select.input wire:model.live="tagSearch" placeholder="Select or create tag..." />
+                                </x-slot>
+                                @foreach($allTags as $tag)
+                                    <flux:select.option value="{{ $tag->id }}">{{ $tag->name }}</flux:select.option>
                                 @endforeach
+                                <flux:select.option.create wire:click="createTagFromSearch" min-length="2">
+                                    Create "<span wire:text="tagSearch"></span>"
+                                </flux:select.option.create>
                             </flux:select>
-                            <flux:button wire:click="createTag" type="button" size="sm" variant="ghost" icon="plus" class="w-full">
-                                Add Tag
-                            </flux:button>
-                        </div>
-                    </div>
-
-                    {{-- All tags list --}}
-                    @if($allTags->isNotEmpty())
-                        <div class="mt-4">
-                            <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Available Tags</h4>
                             <div class="flex flex-wrap gap-1">
                                 @foreach($allTags as $tag)
-                                    <flux:badge size="sm" color="zinc">{{ $tag->name }}</flux:badge>
+                                    <flux:badge
+                                        size="sm"
+                                        color="{{ $bulkTagId === $tag->id ? 'sky' : 'zinc' }}"
+                                        class="cursor-pointer"
+                                        wire:click="selectBulkTag({{ $tag->id }})"
+                                    >
+                                        {{ $tag->name }}
+                                    </flux:badge>
                                 @endforeach
                             </div>
                         </div>
-                    @endif
-                </flux:card>
+                    </flux:card>
+
+                    {{-- Image Tags --}}
+                    <flux:card>
+                        <flux:heading size="lg" class="mb-4">Image Tags</flux:heading>
+                        @php
+                            $selectedImages = collect($existingImages)
+                                ->filter(fn($img) => in_array($img['id'], $selectedImageIds));
+                        @endphp
+                        @if($selectedImages->isEmpty())
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                                Select images to view tags.
+                            </p>
+                        @else
+                            <div class="space-y-3">
+                                @foreach($selectedImages as $image)
+                                    <div class="flex items-start gap-2">
+                                        <img src="{{ $image['url'] }}" alt="" class="size-10 rounded object-cover">
+                                        <div class="flex flex-wrap gap-1">
+                                            @forelse($image['tags'] as $tag)
+                                                <flux:badge size="sm" color="zinc">{{ $tag['name'] }}</flux:badge>
+                                            @empty
+                                                <span class="text-xs text-zinc-400">No tags</span>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </flux:card>
+                @endif
+
             </div>
         </div>
     </form>

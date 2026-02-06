@@ -38,7 +38,7 @@ class ProjectForm extends Component
     public ?string $completed_month = null;
 
     public bool $is_featured = false;
-    public bool $is_published = false;
+    public bool $is_published = true;
 
     // File uploads
     #[Validate(['uploads.*' => 'image|max:10240'])] // 10MB max per image
@@ -50,10 +50,10 @@ class ProjectForm extends Component
     // Existing images
     public array $existingImages = [];
 
-    // Tag management
-    public array $selectedTags = [];
-    public string $newTagName = '';
-    public string $newTagType = 'general';
+    // Bulk image selection/tagging
+    public array $selectedImageIds = [];
+    public ?int $bulkTagId = null;
+    public string $tagSearch = '';
 
     public function mount(?Project $project = null): void
     {
@@ -84,9 +84,16 @@ class ProjectForm extends Component
                 'url' => $img->getThumbnailUrl('small'),
                 'alt_text' => $img->alt_text,
                 'is_cover' => $img->is_cover,
-                'tags' => $img->tags->pluck('id')->toArray(),
+                'tags' => $img->tags
+                    ->map(fn($tag) => ['id' => $tag->id, 'name' => $tag->name])
+                    ->toArray(),
             ])
             ->toArray();
+
+        if (!empty($this->selectedImageIds)) {
+            $existingIds = array_column($this->existingImages, 'id');
+            $this->selectedImageIds = array_values(array_intersect($this->selectedImageIds, $existingIds));
+        }
     }
 
     public function updatedUploads(): void
@@ -177,20 +184,74 @@ class ProjectForm extends Component
         }
     }
 
-    public function createTag(): void
+    public function selectAllImages(): void
     {
-        $this->validate([
-            'newTagName' => 'required|min:2',
-            'newTagType' => 'required',
-        ]);
+        $this->selectedImageIds = array_column($this->existingImages, 'id');
+    }
 
-        Tag::create([
-            'name' => $this->newTagName,
-            'type' => $this->newTagType,
-        ]);
+    public function clearSelectedImages(): void
+    {
+        $this->selectedImageIds = [];
+    }
 
-        $this->newTagName = '';
+    public function toggleImageSelection(int $imageId): void
+    {
+        $key = array_search($imageId, $this->selectedImageIds, true);
+
+        if ($key === false) {
+            $this->selectedImageIds[] = $imageId;
+            return;
+        }
+
+        unset($this->selectedImageIds[$key]);
+        $this->selectedImageIds = array_values($this->selectedImageIds);
+    }
+
+    public function selectBulkTag(int $tagId): void
+    {
+        $this->bulkTagId = $tagId;
+    }
+
+    public function createTagFromSearch(): void
+    {
+        $name = trim($this->tagSearch);
+
+        if ($name === '') {
+            return;
+        }
+
+        $tag = Tag::query()->where('name', $name)->first();
+
+        if (!$tag) {
+            $tag = Tag::create([
+                'name' => $name,
+                'type' => 'general',
+            ]);
+        }
+
+        $this->bulkTagId = $tag->id;
+        $this->tagSearch = '';
         $this->dispatch('tag-created');
+    }
+
+    public function assignTagToSelected(): void
+    {
+        if (!$this->project?->id || empty($this->selectedImageIds) || !$this->bulkTagId) {
+            return;
+        }
+
+        $images = ProjectImage::query()
+            ->where('project_id', $this->project->id)
+            ->whereIn('id', $this->selectedImageIds)
+            ->get();
+
+        foreach ($images as $image) {
+            $image->tags()->syncWithoutDetaching([$this->bulkTagId]);
+        }
+
+        $this->bulkTagId = null;
+        $this->clearSelectedImages();
+        $this->loadExistingImages();
     }
 
     public function save(): void

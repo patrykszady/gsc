@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\DeleteGooglePlacesMedia;
 use App\Jobs\GenerateAiContentJob;
 use App\Jobs\UploadProjectImageToGooglePlaces;
 use App\Models\ProjectImage;
@@ -70,16 +71,34 @@ class ProjectImageObserver
                 ->onQueue('ai-content')
                 ->delay(now()->addSeconds(5));
         }
+
+        // If image AI content changed, regenerate project description to incorporate new details
+        if ($image->wasChanged(['seo_alt_text', 'caption']) && config('services.google.gemini_api_key')) {
+            $this->queueProjectDescriptionRegeneration($image);
+        }
     }
 
     /**
      * Handle the ProjectImage "deleted" event.
-     * Regenerate sitemap when images are removed.
+     * Regenerate sitemap and project description when images are removed.
+     * Delete from Google Business Profile if it was uploaded.
      */
     public function deleted(ProjectImage $image): void
     {
         $this->regenerateSitemap();
         $this->submitToIndexNow($image);
+
+        // Regenerate project description since image set changed
+        if (config('services.google.gemini_api_key')) {
+            $this->queueProjectDescriptionRegeneration($image);
+        }
+
+        // Delete from Google Business Profile if it was uploaded there
+        if ($image->google_places_media_name && config('services.google.business_profile.enabled')) {
+            DeleteGooglePlacesMedia::dispatch($image->google_places_media_name)
+                ->onQueue('media-sync')
+                ->delay(now()->addSeconds(5));
+        }
     }
 
     /**
@@ -150,6 +169,22 @@ class ProjectImageObserver
         }
 
         return "Photo {$position} of {$total} from our {$projectType}{$location}.";
+    }
+
+    /**
+     * Queue project description regeneration after image changes.
+     * Waits briefly to allow any batch of image updates to settle.
+     */
+    protected function queueProjectDescriptionRegeneration(ProjectImage $image): void
+    {
+        $project = $image->project;
+        if (!$project) {
+            return;
+        }
+
+        GenerateAiContentJob::dispatch($project, overwrite: true, regenerateSitemap: true)
+            ->onQueue('ai-content')
+            ->delay(now()->addSeconds(30)); // 30s delay to let image batch finish
     }
 
     protected function regenerateSitemap(): void

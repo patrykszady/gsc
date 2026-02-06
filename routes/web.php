@@ -59,6 +59,23 @@ Route::get('/projects', function () {
     return view('projects');
 })->name('projects.index');
 
+Route::get('/projects/{type}', function (string $type) {
+    $typeMap = [
+        'kitchens' => 'kitchen',
+        'bathrooms' => 'bathroom',
+        'home-remodeling' => 'home-remodel',
+    ];
+
+    if (!isset($typeMap[$type])) {
+        abort(404);
+    }
+
+    request()->merge(['type' => $typeMap[$type]]);
+    SeoService::projects(null, $typeMap[$type]);
+    return view('projects');
+})->where('type', 'kitchens|bathrooms|home-remodeling')
+  ->name('projects.type');
+
 // API endpoint for background image preloading
 Route::get('/api/project-images', function () {
     $images = \App\Models\ProjectImage::all()

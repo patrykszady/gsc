@@ -217,17 +217,21 @@ class GenerateSitemap extends Command
                 $imageSlug = $image->slug ?: $image->id; // Fallback to ID if no slug
                 
                 // Base photo page (canonical)
-                $sitemap->add(
-                    Url::create("{$baseUrl}/projects/{$project->slug}/photos/{$imageSlug}")
-                        ->setLastModificationDate($image->updated_at ?? $project->updated_at ?? now())
-                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                        ->setPriority(0.5)
-                        ->addImage(
-                            url: $image->getThumbnailUrl('large'),
-                            caption: $image->alt_text ?? '',
-                            title: $project->title . ' - Photo',
-                        )
-                );
+                $photoUrl = Url::create("{$baseUrl}/projects/{$project->slug}/photos/{$imageSlug}")
+                    ->setLastModificationDate($image->updated_at ?? $project->updated_at ?? now())
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(0.5);
+
+                $photoImageUrl = $image->getThumbnailUrl('large');
+                if ($photoImageUrl) {
+                    $photoUrl->addImage(
+                        url: $photoImageUrl,
+                        caption: $image->alt_text ?? '',
+                        title: $project->title . ' - Photo',
+                    );
+                }
+
+                $sitemap->add($photoUrl);
                 $urlCount++;
                 $photoPageCount++;
                 

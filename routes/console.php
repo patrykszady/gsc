@@ -14,6 +14,10 @@ Artisan::command('inspire', function () {
 // Schedule sitemap regeneration daily
 Schedule::command('sitemap:generate')->daily();
 
+// Google Business Profile: health check + daily media sync
+Schedule::command('google-business-profile:health')->daily();
+Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30');
+
 Artisan::command('gsc:classify-testimonials
     {--only-missing : Only update rows where project_type is null/empty}
     {--limit= : Limit number of testimonials processed}

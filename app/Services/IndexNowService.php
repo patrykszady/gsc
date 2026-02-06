@@ -63,6 +63,7 @@ class IndexNowService
                     Log::info('IndexNow: URLs submitted successfully', [
                         'count' => count($chunk),
                         'status' => $response->status(),
+                        'urls' => $chunk,
                     ]);
                 } else {
                     Log::warning('IndexNow: Failed to submit URLs', [

@@ -84,7 +84,22 @@
 
     {{-- Projects Section --}}
     @if($projects->isNotEmpty())
-        <livewire:projects-grid :projectType="$data['projectType']" :limit="3" :hideFilters="true" />
+        <livewire:projects-grid :projectType="$data['projectType']" :limit="3" :hideFilters="true" :showPagination="true" />
+        @php
+            $moreProjects = [
+                'kitchen' => ['label' => 'More Kitchen Projects', 'url' => '/projects/kitchens', 'variant' => 'secondary'],
+                'bathroom' => ['label' => 'More Bathroom Projects', 'url' => '/projects/bathrooms', 'variant' => 'secondary'],
+                'home-remodel' => ['label' => 'More Home Remodeling Projects', 'url' => '/projects/home-remodeling', 'variant' => 'secondary'],
+            ];
+            $moreProjectsLink = $moreProjects[$data['projectType']] ?? null;
+        @endphp
+        @if($moreProjectsLink)
+            <div class="relative z-10 -mt-4 text-center">
+                <x-buttons.cta href="{{ $moreProjectsLink['url'] }}" variant="{{ $moreProjectsLink['variant'] ?? 'primary' }}" size="lg" class="pointer-events-auto">
+                    {{ $moreProjectsLink['label'] }}
+                </x-buttons.cta>
+            </div>
+        @endif
     @endif
 
     {{-- Testimonials Section --}}
