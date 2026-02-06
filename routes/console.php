@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\TestimonialProjectTypeClassifier;
@@ -17,6 +19,41 @@ Schedule::command('sitemap:generate')->daily();
 // Google Business Profile: health check + daily media sync
 Schedule::command('google-business-profile:health')->daily();
 Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30');
+Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30');
+
+Artisan::command('gsc:cleanup-gbp-jpegs
+    {--age=24 : Delete GBP JPGs older than this many hours}
+', function () {
+    $ageHours = (int) $this->option('age');
+    if ($ageHours < 1) {
+        $this->error('Age must be at least 1 hour.');
+        return 1;
+    }
+
+    $cutoff = now()->subHours($ageHours);
+    $disk = Storage::disk('public');
+    $files = $disk->allFiles('projects');
+    $deleted = 0;
+
+    foreach ($files as $file) {
+        if (! Str::endsWith($file, '_gbp.jpg')) {
+            continue;
+        }
+
+        $lastModified = $disk->lastModified($file);
+        if ($lastModified === false) {
+            continue;
+        }
+
+        if ($cutoff->greaterThanOrEqualTo(\Illuminate\Support\Carbon::createFromTimestamp($lastModified))) {
+            $disk->delete($file);
+            $deleted++;
+        }
+    }
+
+    $this->info("Deleted {$deleted} GBP JPG files.");
+    return 0;
+})->purpose('Delete temporary GBP JPG uploads after a retention window');
 
 Artisan::command('gsc:classify-testimonials
     {--only-missing : Only update rows where project_type is null/empty}

@@ -6,7 +6,9 @@ use App\Models\ProjectImage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Intervention\Image\Laravel\Facades\Image;
 
 class GoogleBusinessProfileService
 {
@@ -324,7 +326,9 @@ class GoogleBusinessProfileService
         $productionUrl = config('services.google.business_profile.production_url')
             ?: config('app.url');
 
-        $relativeUrl = $image->getAnyUrl('large');
+        // GBP expects JPG; generate a full-size JPG copy for uploads.
+        $relativeUrl = $this->getGbpJpegUrl($image)
+            ?? $image->url;
         if (! $relativeUrl) {
             return null;
         }
@@ -338,6 +342,40 @@ class GoogleBusinessProfileService
         $storagePath = str_replace('/storage/', '', parse_url($relativeUrl, PHP_URL_PATH) ?: '');
 
         return rtrim($productionUrl, '/') . '/storage/' . ltrim($storagePath, '/');
+    }
+
+    /**
+     * Create or reuse a full-size JPG for GBP uploads.
+     */
+    protected function getGbpJpegUrl(ProjectImage $image): ?string
+    {
+        $disk = $image->disk ?: 'public';
+        $path = $image->path;
+
+        if (! $path || ! Storage::disk($disk)->exists($path)) {
+            return null;
+        }
+
+        $dir = pathinfo($path, PATHINFO_DIRNAME);
+        $nameWithoutExt = pathinfo($path, PATHINFO_FILENAME);
+        $jpgPath = trim($dir, '/') . '/' . $nameWithoutExt . '_gbp.jpg';
+
+        if (! Storage::disk($disk)->exists($jpgPath)) {
+            try {
+                $contents = Storage::disk($disk)->get($path);
+                $jpg = Image::read($contents)->toJpeg(90)->toString();
+                Storage::disk($disk)->put($jpgPath, $jpg);
+            } catch (\Exception $e) {
+                Log::warning('GBP: Failed to generate JPG for image', [
+                    'image_id' => $image->id,
+                    'path' => $path,
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+        }
+
+        return Storage::disk($disk)->url($jpgPath);
     }
 
     /**
