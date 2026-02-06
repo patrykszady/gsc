@@ -354,20 +354,9 @@ class GoogleBusinessProfileService
             return 'ADDITIONAL';
         }
 
-        // Cover image of the project → INTERIOR (most remodel work is interior)
-        if ($image->is_cover) {
-            return 'INTERIOR';
-        }
-
-        return match ($project->project_type) {
-            'kitchen' => 'INTERIOR',
-            'bathroom' => 'INTERIOR',
-            'basement' => 'INTERIOR',
-            'home-remodel' => 'INTERIOR',
-            'mudroom' => 'INTERIOR',
-            'exterior' => 'EXTERIOR',
-            default => 'ADDITIONAL',
-        };
+        // Some locations do not allow certain categories. Default to ADDITIONAL
+        // to avoid INVALID_ARGUMENT errors like "Photo tag 'interior' does not apply".
+        return 'ADDITIONAL';
     }
 
     protected function buildDescription(ProjectImage $image): string
