@@ -118,4 +118,7 @@
         secondaryText="View Our Work"
         :secondaryHref="route('projects.index')"
     />
+
+    {{-- FAQ Section (visible + schema for rich results — just above footer) --}}
+    <x-faq-section :faqs="$data['faqs'] ?? []" :heading="$data['title'] . ' FAQ'" />
 </div>

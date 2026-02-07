@@ -79,7 +79,10 @@ class SeoService
             $description = 'Expert kitchen remodeling & bathroom renovations in Chicagoland. Family-owned contractors with 40+ years experience. Arlington Heights, Palatine & more.';
         }
 
-        self::setTags($title, $description);
+        // Use a hero project image for home page OG sharing
+        $image = self::getCoverImageForType('kitchen');
+
+        self::setTags($title, $description, $image);
     }
 
     /**
@@ -126,7 +129,10 @@ class SeoService
             ? "5-star reviews from {$city} homeowners. See what your neighbors say about their kitchen remodeling & bathroom renovation experience with us."
             : '5-star rated kitchen & bathroom remodeling in Chicago suburbs. Read reviews from Arlington Heights, Palatine, Buffalo Grove & more homeowners.';
 
-        self::setTags($title, $description);
+        // Use a relevant project cover image for testimonials pages
+        $image = self::getCoverImageForType('kitchen');
+
+        self::setTags($title, $description, $image);
     }
 
     /**
@@ -154,7 +160,17 @@ class SeoService
         
         $description = Str::limit($testimonial->review_description, 155);
 
-        self::setTags($title, $description);
+        // Use a project cover image matching the review's service type
+        $projectType = match(strtolower($rawType)) {
+            'kitchen' => 'kitchen',
+            'bathroom' => 'bathroom',
+            'home-remodel', 'home' => 'home-remodel',
+            'basement' => 'basement',
+            default => 'kitchen',
+        };
+        $image = self::getCoverImageForType($projectType);
+
+        self::setTags($title, $description, $image);
     }
 
     /**
@@ -195,7 +211,8 @@ class SeoService
             ? "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call (847) 430-4439 or schedule online. Same-week consultations available!"
             : 'Get a free kitchen or bathroom remodeling estimate in Chicago suburbs. Call (847) 430-4439 or schedule online. Same-week consultations available!';
 
-        self::setTags($title, $description);
+        // Use the team photo for contact page — builds trust
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
     }
 
     /**
@@ -207,7 +224,10 @@ class SeoService
         $title = 'Service Areas - Chicago Suburbs';
         $description = 'Kitchen & bathroom remodeling in Arlington Heights, Palatine, Buffalo Grove, Barrington, Lake Zurich & 50+ Chicago suburbs. Local contractors, free estimates.';
 
-        self::setTags($title, $description);
+        // Use a project cover image for areas served
+        $image = self::getCoverImageForType('kitchen');
+
+        self::setTags($title, $description, $image);
     }
 
     /**

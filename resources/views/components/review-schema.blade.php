@@ -24,11 +24,6 @@ foreach ($items as $item) {
         ],
         'reviewBody' => $item->review_description,
         'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),
-        'itemReviewed' => [
-            '@type' => 'HomeAndConstructionBusiness',
-            'name' => 'GS Construction & Remodeling',
-            '@id' => 'https://gs.construction/#business',
-        ],
     ];
     
     // Add location if available

@@ -17,9 +17,13 @@ Artisan::command('inspire', function () {
 Schedule::command('sitemap:generate')->daily();
 
 // Google Business Profile: health check + daily media sync
-Schedule::command('google-business-profile:health')->daily();
-Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30');
-Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30');
+Schedule::command('google-business-profile:health')->daily()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled GBP sync failed'));
+Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
 
 Artisan::command('gsc:cleanup-gbp-jpegs
     {--age=24 : Delete GBP JPGs older than this many hours}

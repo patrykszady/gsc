@@ -5,6 +5,9 @@
         ['name' => $testimonial->reviewer_name],
     ]" />
 
+    {{-- Review Schema for rich results --}}
+    <x-review-schema :testimonial="$testimonial" />
+
     {{-- Breadcrumb --}}
     <div class="mx-auto max-w-3xl px-6 pt-8 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">

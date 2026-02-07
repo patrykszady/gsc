@@ -45,6 +45,13 @@ class ServicePage extends Component
                     ['step' => 4, 'title' => 'Enjoy', 'description' => 'We complete a final walkthrough and hand over your stunning new kitchen.'],
                 ],
                 'ctaHeading' => 'Ready to Transform Your Kitchen?',
+                'faqs' => [
+                    ['question' => 'How much does a kitchen remodel cost?', 'answer' => 'Every kitchen remodel is different — cost depends on the scope of work, materials you choose, and the size of your space. We provide free in-home estimates with a detailed breakdown tailored to your specific project and budget.'],
+                    ['question' => 'How long does a kitchen remodel take?', 'answer' => 'The timeline depends on the scope of your project — layout changes, custom cabinetry, and material lead times all play a role. We create a detailed schedule before work begins and keep you informed throughout.'],
+                    ['question' => 'Do you handle permits for kitchen remodeling?', 'answer' => 'Yes, GS Construction handles all necessary permits for kitchen remodeling projects. We are familiar with local building codes across the Chicagoland area and ensure your project is fully compliant.'],
+                    ['question' => 'Can I stay in my home during a kitchen remodel?', 'answer' => 'Absolutely! Most of our clients stay in their homes during kitchen remodels. We set up temporary kitchen areas and minimize disruption to your daily routine.'],
+                    ['question' => 'What is included in a full kitchen remodel?', 'answer' => 'A full kitchen remodel typically includes demolition, new cabinetry, countertops, flooring, backsplash, plumbing and electrical updates, lighting, and appliance installation. We customize every project to your needs and budget.'],
+                ],
             ],
             'bathroom-remodeling' => [
                 'title' => 'Bathroom Remodeling',
@@ -65,6 +72,13 @@ class ServicePage extends Component
                     ['step' => 4, 'title' => 'Enjoy', 'description' => 'Your new bathroom retreat is ready for years of relaxation.'],
                 ],
                 'ctaHeading' => 'Ready to Create Your Dream Bathroom?',
+                'faqs' => [
+                    ['question' => 'How much does a bathroom remodel cost?', 'answer' => 'Bathroom remodeling costs vary based on the size of your space, finishes, and scope of work. We offer free in-home estimates tailored to your vision and budget.'],
+                    ['question' => 'How long does a bathroom remodel take?', 'answer' => 'The timeline depends on the scope of your renovation — tile work, fixture changes, and any structural modifications all factor in. We provide a detailed schedule before starting any work.'],
+                    ['question' => 'Do you install walk-in showers?', 'answer' => 'Yes! Walk-in showers are one of our most popular requests. We install frameless glass enclosures, custom tile, rain shower heads, and accessible curbless designs.'],
+                    ['question' => 'Can you make my bathroom more accessible?', 'answer' => 'Absolutely. We specialize in accessibility modifications including grab bars, walk-in tubs, curbless showers, wider doorways, and comfort-height toilets for safe, comfortable living.'],
+                    ['question' => 'Do you handle plumbing during bathroom remodels?', 'answer' => 'Yes, our team handles all plumbing work as part of the remodel, including moving fixtures, installing new supply lines, and updating drain systems to meet current codes.'],
+                ],
             ],
             'home-remodeling' => [
                 'title' => 'Home Remodeling',
@@ -85,6 +99,13 @@ class ServicePage extends Component
                     ['step' => 4, 'title' => 'Enjoy', 'description' => 'Move into your beautifully transformed home.'],
                 ],
                 'ctaHeading' => 'Ready to Transform Your Home?',
+                'faqs' => [
+                    ['question' => 'What does whole home remodeling include?', 'answer' => 'Whole home remodeling can include kitchen and bathroom renovations, open floor plan conversions, room additions, basement finishing, and complete interior updates. We customize every project to your needs and budget.'],
+                    ['question' => 'How long does a whole home remodel take?', 'answer' => 'The timeline for a whole home remodel depends entirely on the scope — whether it includes structural changes, additions, or a full interior renovation. We create detailed project timelines and keep you updated throughout construction.'],
+                    ['question' => 'Do you handle room additions?', 'answer' => 'Yes, we handle room additions including sunrooms, master suites, family rooms, and second-story additions. We manage everything from architectural design through final construction.'],
+                    ['question' => 'Can you convert my home to an open floor plan?', 'answer' => 'Open floor plan conversions are one of our specialties! We safely remove walls, including load-bearing walls with proper engineering and permits, to create modern, flowing living spaces.'],
+                    ['question' => 'Do you work with architects and designers?', 'answer' => 'Yes, we collaborate with architects and interior designers, and also have in-house design capabilities. Whether you bring your own plans or need us to design from scratch, we ensure your vision becomes reality.'],
+                ],
             ],
             // 'basement-remodeling' => [
             //     'title' => 'Basement Remodeling',

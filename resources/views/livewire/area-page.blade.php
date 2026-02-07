@@ -417,8 +417,8 @@
                             'Backsplash and tile work',
                         ],
                         'faqs' => [
-                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Kitchen remodeling costs in {$area->city} typically range from \$25,000 to \$75,000+ depending on scope, materials, and finishes. We provide free in-home estimates with detailed breakdowns for your specific project."],
-                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "Most kitchen remodels in {$area->city} take 4-8 weeks depending on complexity. We work efficiently while maintaining quality, and keep you informed throughout the process."],
+                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Every kitchen remodel is different — cost depends on the scope of work, materials, and the size of your space. We provide free in-home estimates with a detailed breakdown tailored to your {$area->city} project."],
+                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "The timeline depends on the scope of your project — layout changes, custom cabinetry, and material lead times all play a role. We keep you informed throughout the process."],
                             ['question' => "Do you handle kitchen remodeling permits in {$area->city}?", 'answer' => "Yes, GS Construction handles all necessary permits for {$area->city} kitchen remodeling projects. We're familiar with local building codes and ensure your project is fully compliant."],
                             ['question' => "Can you remodel my kitchen while I live in my {$area->city} home?", 'answer' => "Absolutely! Most of our {$area->city} clients stay in their homes during kitchen remodels. We set up temporary kitchen areas and minimize disruption to your daily routine."],
                         ],
@@ -439,8 +439,8 @@
                             'Accessibility modifications',
                         ],
                         'faqs' => [
-                            ['question' => "How much does bathroom remodeling cost in {$area->city}?", 'answer' => "Bathroom remodeling in {$area->city} typically costs \$15,000 to \$45,000+ depending on size and finishes. Master bathrooms and custom tile work are on the higher end. We offer free estimates tailored to your vision."],
-                            ['question' => "How long does a bathroom remodel take?", 'answer' => "Most bathroom remodels in {$area->city} take 2-4 weeks. Larger master bath renovations may take 4-6 weeks. We provide a detailed timeline before starting work."],
+                            ['question' => "How much does bathroom remodeling cost in {$area->city}?", 'answer' => "Bathroom remodeling costs vary based on the size of your space, finishes, and scope of work. We offer free estimates tailored to your {$area->city} project and vision."],
+                            ['question' => "How long does a bathroom remodel take?", 'answer' => "The timeline depends on the scope of your renovation — tile work, fixture changes, and any structural modifications all factor in. We provide a detailed schedule before starting work."],
                             ['question' => "Do you install walk-in showers in {$area->city}?", 'answer' => "Yes! Walk-in showers are one of our most popular requests in {$area->city}. We install frameless glass, custom tile, and accessible designs for all needs."],
                             ['question' => "Can you make my bathroom more accessible?", 'answer' => "Absolutely. We specialize in accessibility modifications including grab bars, walk-in tubs, curbless showers, and wider doorways for {$area->city} homeowners."],
                         ],
@@ -462,7 +462,7 @@
                         ],
                         'faqs' => [
                             ['question' => "What does whole home remodeling include in {$area->city}?", 'answer' => "Whole home remodeling in {$area->city} can include kitchen and bathroom renovations, open floor plan conversions, room additions, basement finishing, and complete interior updates. We customize every project to your needs."],
-                            ['question' => "How long does a whole home remodel take?", 'answer' => "Complete home remodels in {$area->city} typically take 3-6 months depending on scope. We create detailed project timelines and keep you updated throughout construction."],
+                            ['question' => "How long does a whole home remodel take?", 'answer' => "The timeline for a whole home remodel depends entirely on the scope — whether it includes structural changes, additions, or a full interior renovation. We create detailed project timelines and keep you updated throughout."],
                             ['question' => "Do you handle room additions in {$area->city}?", 'answer' => "Yes, we handle room additions including sunrooms, master suites, and second-story additions for {$area->city} homes. We manage everything from design through construction."],
                             ['question' => "Can you convert my {$area->city} home to an open floor plan?", 'answer' => "Open floor plan conversions are one of our specialties! We safely remove walls (including load-bearing walls with proper engineering) to create the modern, open layout you want."],
                         ],
@@ -552,6 +552,11 @@
             {{-- Fallback to home --}}
             <livewire:about-section />
     @endswitch
+
+    {{-- FAQ Section (visible + schema — just above footer) --}}
+    @if(isset($config) && !empty($config['faqs']))
+        <x-faq-section :faqs="$config['faqs']" :heading="$config['label'] . ' FAQ in ' . $area->city" />
+    @endif
 
     {{-- Area Navigation --}}
     <section class="border-t border-zinc-200 bg-zinc-50 py-8 dark:border-zinc-700 dark:bg-zinc-800/50">
