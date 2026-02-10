@@ -25,6 +25,26 @@
     @fluxAppearance
 </head>
 <body class="flex min-h-screen items-center justify-center bg-zinc-100 font-sans antialiased dark:bg-zinc-900">
+   <script>
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('button') && e.target.closest('button').innerText.includes("Send message")) {
+      setTimeout(function () {
+        var textToTrack = "Thank you for your message! We'll get back to you soon.";
+        if (document.body.textContent.includes(textToTrack)) {
+            gtag('event', 'conversion', {'send_to': 'AW-17856827614/iZ53COiTr_YbEN6h5sJC'});
+        }
+      }, 3000);
+    }
+
+
+    if(e.target.closest('a[href^="tel:"]')){
+      gtag('event', 'conversion', {'send_to': 'AW-17856827614/kZ_tCOuTr_YbEN6h5sJC'});
+    }
+    if(e.target.closest('a[href^="mailto:"]')){
+      gtag('event', 'conversion', {'send_to': 'AW-17856827614/pop5CO6Tr_YbEN6h5sJC'});
+    }
+  });
+</script>
     <div class="w-full max-w-md">
         {{ $slot }}
     </div>

@@ -77,7 +77,26 @@
     <x-footer />
 
     @fluxScripts
+<script>
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('button') && e.target.closest('button').innerText.includes("Send message")) {
+      setTimeout(function () {
+        var textToTrack = "Thank you for your message! We'll get back to you soon.";
+        if (document.body.textContent.includes(textToTrack)) {
+            gtag('event', 'conversion', {'send_to': 'AW-17856827614/iZ53COiTr_YbEN6h5sJC'});
+        }
+      }, 3000);
+    }
 
+
+    if(e.target.closest('a[href^="tel:"]')){
+      gtag('event', 'conversion', {'send_to': 'AW-17856827614/kZ_tCOuTr_YbEN6h5sJC'});
+    }
+    if(e.target.closest('a[href^="mailto:"]')){
+      gtag('event', 'conversion', {'send_to': 'AW-17856827614/pop5CO6Tr_YbEN6h5sJC'});
+    }
+  });
+</script>
     {{-- Analytics event tracking (deferred to reduce TBT) --}}
     <script>
         // Defer analytics setup to after page is interactive
