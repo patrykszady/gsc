@@ -57,6 +57,27 @@ return [
         'clarity_id' => env('MICROSOFT_CLARITY_ID'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Meta (Instagram + Facebook) Social Publishing
+    |--------------------------------------------------------------------------
+    |
+    | Graph API credentials for automated posting to Instagram Business
+    | and Facebook Page. Both use the same Page Access Token.
+    |
+    | Setup: php artisan social:meta-auth
+    |
+    */
+    'meta' => [
+        'enabled' => env('META_SOCIAL_ENABLED', false),
+        'app_id' => env('META_APP_ID'),
+        'app_secret' => env('META_APP_SECRET'),
+        'page_access_token' => env('META_PAGE_ACCESS_TOKEN'),
+        'facebook_page_id' => env('META_FACEBOOK_PAGE_ID'),
+        'instagram_account_id' => env('META_INSTAGRAM_ACCOUNT_ID'),
+        'production_url' => env('META_PRODUCTION_URL', 'https://gs.construction'),
+    ],
+
     'mailtrap' => [
         'api_key' => env('MAILTRAP_API_KEY'),
         'inbox_id' => env('MAILTRAP_INBOX_ID'),

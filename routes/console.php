@@ -25,6 +25,17 @@ Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:
 Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Social Media: post 1 random image to Instagram + Facebook + GBP daily at 10:00 AM CT
+Schedule::command('social:post --platform=all --queue')->dailyAt('10:00')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled social media post failed'))
+    ->when(fn () => config('services.meta.enabled'));
+
+// Social Media: weekly health check
+Schedule::command('social:health')->weeklyOn(1, '09:00') // Monday 9 AM
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->when(fn () => config('services.meta.enabled'));
+
 Artisan::command('gsc:cleanup-gbp-jpegs
     {--age=24 : Delete GBP JPGs older than this many hours}
 ', function () {

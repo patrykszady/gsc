@@ -322,4 +322,118 @@ PROMPT;
 
         return !empty($result) ? $result : null;
     }
+
+    /* ------------------------------------------------------------------ */
+    /*  Social Media Content Generation                                    */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Generate an Instagram/Facebook caption and hashtags for a project image.
+     *
+     * Uses Gemini vision to analyse the actual image and produce:
+     *   - caption: engaging, on-brand social media caption with a CTA
+     *   - hashtags: 15-25 relevant hashtags as a single string
+     *
+     * @return array{caption: string, hashtags: string}|null
+     */
+    public function generateSocialMediaContent(ProjectImage $image, string $linkUrl): ?array
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+            return null;
+        }
+
+        $project = $image->project;
+        if (!$project) {
+            $this->lastError = 'Image has no associated project';
+            return null;
+        }
+
+        $imageData = $this->getImageData($image);
+        if (!$imageData) {
+            return null;
+        }
+
+        $projectContext = $this->buildProjectContext($project);
+
+        $prompt = <<<PROMPT
+You are a social media manager for GS Construction, a premium home remodeling company based in Chicago.
+Analyze this project photo and generate an engaging Instagram/Facebook post.
+
+Project Context:
+{$projectContext}
+
+Existing AI description of this image: {$image->caption}
+
+Generate a JSON object with these keys:
+1. "caption": An engaging social media caption (2-4 sentences). Requirements:
+   - Start with something eye-catching (emoji optional, but keep it professional)
+   - Describe what's shown in the photo with specific details (materials, colors, design choices)
+   - Mention the location ({$project->location}) naturally
+   - Include a call-to-action like "See the full project at {$linkUrl}" or "Link in bio"
+   - Sound premium but approachable — like a proud craftsman showing off great work
+   - Do NOT include hashtags in the caption
+
+2. "hashtags": A string of 15-25 relevant hashtags separated by spaces. Mix of:
+   - High-volume: #HomeRemodeling #InteriorDesign #HomeImprovement #Renovation
+   - Location: #ChicagoContractor #ChicagoRemodeling #{$this->locationToHashtag($project->location)}
+   - Project-specific: related to the room type, materials, style visible in the photo
+   - Industry: #GeneralContractor #BeforeAndAfter #HomeDesign #LuxuryHome
+   - Brand: #GSConstruction #GSCConstruction
+
+Rules:
+- Caption must be under 2000 characters
+- No markdown formatting in the caption
+- Hashtags should start with # and be separated by spaces
+- Return ONLY valid JSON, no markdown code blocks
+
+PROMPT;
+
+        $response = $this->callGemini($prompt, $imageData);
+
+        if ($response === null) {
+            return null;
+        }
+
+        return $this->parseSocialMediaResponse($response);
+    }
+
+    /**
+     * Parse the social media JSON response from Gemini.
+     */
+    protected function parseSocialMediaResponse(string $content): ?array
+    {
+        $content = preg_replace('/^```json\s*/i', '', $content);
+        $content = preg_replace('/^```\s*/i', '', $content);
+        $content = preg_replace('/\s*```$/i', '', $content);
+        $content = trim($content);
+
+        $decoded = json_decode($content, true);
+
+        if (!is_array($decoded) || empty($decoded['caption']) || empty($decoded['hashtags'])) {
+            $this->lastError = 'Failed to parse social media JSON: ' . $content;
+            return null;
+        }
+
+        return [
+            'caption' => mb_substr(trim($decoded['caption']), 0, 2000),
+            'hashtags' => trim($decoded['hashtags']),
+        ];
+    }
+
+    /**
+     * Convert a location string to a hashtag-friendly format.
+     * "Palatine, IL" → "Palatine"
+     */
+    protected function locationToHashtag(?string $location): string
+    {
+        if (!$location) {
+            return 'Chicago';
+        }
+
+        // Take the city part before any comma
+        $city = trim(explode(',', $location)[0]);
+        // Remove spaces and special chars
+        return preg_replace('/[^A-Za-z0-9]/', '', $city);
+    }
 }

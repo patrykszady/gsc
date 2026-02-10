@@ -38,6 +38,10 @@
             <flux:navlist.item icon="star" href="{{ route('admin.testimonials.index') }}" :current="request()->routeIs('admin.testimonials.*')">
                 Reviews
             </flux:navlist.item>
+
+            <flux:navlist.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
+                Social Media
+            </flux:navlist.item>
         </flux:navlist>
 
         <flux:spacer />

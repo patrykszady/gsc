@@ -212,4 +212,7 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');
     Route::get('/testimonials/create', TestimonialForm::class)->name('testimonials.create');
     Route::get('/testimonials/{testimonial}/edit', TestimonialForm::class)->name('testimonials.edit');
+
+    // Social Media
+    Route::get('/social-media', \App\Livewire\Admin\SocialMediaPosts::class)->name('social-media.index');
 });

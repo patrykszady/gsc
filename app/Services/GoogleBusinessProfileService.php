@@ -366,6 +366,111 @@ class GoogleBusinessProfileService
         return $data['locations'] ?? [];
     }
 
+    /* ------------------------------------------------------------------ */
+    /*  Local Posts ("Updates" on the GBP listing)                        */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Create a Local Post on the Google Business Profile listing.
+     *
+     * These appear as "Updates" on the listing and in Google Maps.
+     * Includes a photo, summary text, and a CTA button linking to the site.
+     *
+     * @return array{name: string, searchUrl: string|null}|null
+     */
+    public function createLocalPost(string $imageUrl, string $summary, string $ctaUrl, string $ctaType = 'LEARN_MORE'): ?array
+    {
+        if (! $this->isConfigured()) {
+            $this->lastError = ['message' => 'GBP not configured'];
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $payload = [
+            'languageCode' => 'en',
+            'summary' => mb_substr($summary, 0, 1500), // GBP limit
+            'callToAction' => [
+                'actionType' => $ctaType, // BOOK, ORDER, SHOP, LEARN_MORE, SIGN_UP, CALL
+                'url' => $ctaUrl,
+            ],
+            'media' => [
+                [
+                    'mediaFormat' => 'PHOTO',
+                    'sourceUrl' => $imageUrl,
+                ],
+            ],
+            'topicType' => 'STANDARD',
+        ];
+
+        $url = $this->locationBaseUrl() . '/localPosts';
+
+        $response = Http::withToken($accessToken)
+            ->timeout(60)
+            ->post($url, $payload);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'GBP local post failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to create local post', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return null;
+        }
+
+        $data = $response->json();
+        $this->lastError = null;
+
+        Log::info('GBP: Created local post', [
+            'name' => $data['name'] ?? null,
+            'search_url' => $data['searchUrl'] ?? null,
+        ]);
+
+        return [
+            'name' => $data['name'] ?? '',
+            'searchUrl' => $data['searchUrl'] ?? null,
+        ];
+    }
+
+    /**
+     * List local posts on the GBP listing.
+     */
+    public function listLocalPosts(int $pageSize = 10): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $url = $this->locationBaseUrl() . '/localPosts';
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->get($url, ['pageSize' => $pageSize]);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'List local posts failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            return null;
+        }
+
+        return $response->json('localPosts', []);
+    }
+
     /**
      * Get upload statistics for display.
      */
@@ -482,6 +587,14 @@ class GoogleBusinessProfileService
      * Build the media API base URL for the configured location.
      */
     protected function mediaBaseUrl(): string
+    {
+        return $this->locationBaseUrl();
+    }
+
+    /**
+     * Build the base URL for the configured location (used by media + local posts).
+     */
+    protected function locationBaseUrl(): string
     {
         $accountId = config('services.google.business_profile.account_id');
         $locationId = config('services.google.business_profile.location_id');
