@@ -99,6 +99,7 @@ return [
     'waits' => [
         'redis:default' => 60,
         'redis:ai-content' => 60,
+        'redis:media-sync' => 60,
     ],
 
     /*
@@ -200,7 +201,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'ai-content'],
+            'queue' => ['default', 'ai-content', 'media-sync'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
