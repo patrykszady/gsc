@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Mail\ContactFormAutoReply;
 use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
 use App\Models\ContactSubmission;
@@ -227,6 +228,11 @@ class ContactSection extends Component
             address: $this->address,
             userMessage: $this->message,
             availability: $this->availability,
+            area: $this->area?->city,
+        ));
+
+        Mail::to($this->email)->send(new ContactFormAutoReply(
+            name: $this->name,
         ));
 
         // Store submission in database (independent of GA/email)

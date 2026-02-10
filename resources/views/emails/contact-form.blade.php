@@ -8,6 +8,9 @@ You've received a new consultation request from your website.
 **Name:** {{ $name }}  
 **Email:** {{ $email }}  
 **Phone:** {{ $phone }}  
+@if($area)
+**Area:** {{ $area }}  
+@endif
 @if($address)
 **Project Address:** {{ $address }}
 @endif

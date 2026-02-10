@@ -3,14 +3,12 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ContactFormSubmission extends Mailable
+class ContactFormAutoReply extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -19,12 +17,6 @@ class ContactFormSubmission extends Mailable
      */
     public function __construct(
         public string $name,
-        public string $email,
-        public string $phone,
-        public string $address,
-        public string $userMessage,
-        public array $availability = [],
-        public ?string $area = null,
     ) {}
 
     /**
@@ -33,8 +25,7 @@ class ContactFormSubmission extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            replyTo: [new Address($this->email, $this->name)],
-            subject: 'New Consultation Request from ' . $this->name,
+            subject: 'Thanks for reaching out to GS Construction',
         );
     }
 
@@ -44,7 +35,7 @@ class ContactFormSubmission extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.contact-form',
+            markdown: 'emails.contact-form-auto-reply',
         );
     }
 
