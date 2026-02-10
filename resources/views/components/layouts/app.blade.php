@@ -17,6 +17,15 @@
 
     {{-- Hreflang for bilingual support --}}
     <x-hreflang />
+        <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17856827614"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'AW-17856827614');
+    </script>
 
     {{-- Favicons --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" media="(prefers-color-scheme: light)">
