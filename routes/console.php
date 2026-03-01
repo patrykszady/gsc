@@ -25,10 +25,33 @@ Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:
 Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
-// Social Media: post 1 random image to Instagram + Facebook + GBP daily at 10:00 AM CT
-Schedule::command('social:post --platform=all --queue')->dailyAt('10:00')
+// Instagram: 2 posts per day — morning + late afternoon (Central Time)
+// Random delay spreads posts naturally within each window
+Schedule::command('social:post --platform=instagram --queue --random-delay=150')
+    ->dailyAt('07:00')
+    ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled social media post failed'))
+    ->onFailure(fn () => logger()->error('Scheduled Instagram morning post failed'))
+    ->when(fn () => config('services.meta.enabled'));
+
+Schedule::command('social:post --platform=instagram --queue --random-delay=120')
+    ->dailyAt('15:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled Instagram afternoon post failed'))
+    ->when(fn () => config('services.meta.enabled'));
+
+// Facebook + Google Business Profile: 1 post daily at 10:00 AM CT
+Schedule::command('social:post --platform=facebook --queue')->dailyAt('10:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled Facebook post failed'))
+    ->when(fn () => config('services.meta.enabled'));
+
+Schedule::command('social:post --platform=google_business --queue')->dailyAt('10:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled GBP post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
 // Social Media: weekly health check

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\OAuthToken;
 use App\Models\ProjectImage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -13,9 +14,13 @@ use Intervention\Image\Laravel\Facades\Image;
 class GoogleBusinessProfileService
 {
     protected const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+    protected const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+    protected const USERINFO_ENDPOINT = 'https://www.googleapis.com/oauth2/v3/userinfo';
     protected const MEDIA_API_BASE = 'https://mybusiness.googleapis.com/v4';
     protected const ACCOUNT_API_BASE = 'https://mybusinessaccountmanagement.googleapis.com/v1';
     protected const INFO_API_BASE = 'https://mybusinessbusinessinformation.googleapis.com/v1';
+    protected const SCOPES = 'https://www.googleapis.com/auth/business.manage openid email';
+    public const PROVIDER = 'google_business_profile';
 
     protected ?array $lastError = null;
 
@@ -26,7 +31,7 @@ class GoogleBusinessProfileService
         return (bool) ($config['enabled'] ?? false)
             && ! empty($config['client_id'])
             && ! empty($config['client_secret'])
-            && ! empty($config['refresh_token'])
+            && $this->hasRefreshToken()
             && ! empty($config['account_id'])
             && ! empty($config['location_id']);
     }
@@ -37,7 +42,146 @@ class GoogleBusinessProfileService
 
         return ! empty($config['client_id'])
             && ! empty($config['client_secret'])
-            && ! empty($config['refresh_token']);
+            && $this->hasRefreshToken();
+    }
+
+    /**
+     * Check if a refresh token exists in DB or .env.
+     */
+    public function hasRefreshToken(): bool
+    {
+        return (bool) $this->getRefreshToken();
+    }
+
+    /**
+     * Get the refresh token from DB first, then .env fallback.
+     */
+    public function getRefreshToken(): ?string
+    {
+        $dbToken = OAuthToken::forProvider(self::PROVIDER);
+        if ($dbToken?->refresh_token) {
+            return $dbToken->refresh_token;
+        }
+
+        $envToken = config('services.google.business_profile.refresh_token');
+
+        return $envToken ?: null;
+    }
+
+    /**
+     * Get the DB token record (if any).
+     */
+    public function getStoredToken(): ?OAuthToken
+    {
+        return OAuthToken::forProvider(self::PROVIDER);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    |  Web-based OAuth flow
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Generate the Google OAuth consent URL for the admin to authorise.
+     */
+    public function getOAuthUrl(string $redirectUri): string
+    {
+        $params = http_build_query([
+            'client_id' => config('services.google.business_profile.client_id'),
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'scope' => self::SCOPES,
+            'access_type' => 'offline',
+            'prompt' => 'consent', // force new refresh token every time
+        ]);
+
+        return self::AUTH_ENDPOINT . '?' . $params;
+    }
+
+    /**
+     * Exchange an OAuth authorisation code for tokens and persist them.
+     *
+     * @return array{success: bool, error?: string}
+     */
+    public function exchangeCodeAndStore(string $code, string $redirectUri): array
+    {
+        $response = Http::asForm()->timeout(20)->post(self::TOKEN_ENDPOINT, [
+            'client_id' => config('services.google.business_profile.client_id'),
+            'client_secret' => config('services.google.business_profile.client_secret'),
+            'code' => $code,
+            'grant_type' => 'authorization_code',
+            'redirect_uri' => $redirectUri,
+        ]);
+
+        if (! $response->successful()) {
+            $error = $response->json();
+            $msg = $error['error_description'] ?? $response->body();
+            Log::error('GBP: OAuth code exchange failed', ['body' => $response->body()]);
+
+            return ['success' => false, 'error' => $msg];
+        }
+
+        $data = $response->json();
+        $refreshToken = $data['refresh_token'] ?? null;
+        $accessToken = $data['access_token'] ?? null;
+        $expiresIn = (int) ($data['expires_in'] ?? 3600);
+
+        if (! $refreshToken) {
+            return ['success' => false, 'error' => 'No refresh token returned. Try again with prompt=consent.'];
+        }
+
+        // Fetch the email of the authorising user
+        $email = null;
+        if ($accessToken) {
+            try {
+                $userInfo = Http::withToken($accessToken)->get(self::USERINFO_ENDPOINT)->json();
+                $email = $userInfo['email'] ?? null;
+            } catch (\Exception) {
+                // non-critical
+            }
+        }
+
+        OAuthToken::storeTokens(
+            provider: self::PROVIDER,
+            refreshToken: $refreshToken,
+            accessToken: $accessToken,
+            expiresIn: $expiresIn,
+            email: $email,
+            scopes: explode(' ', self::SCOPES),
+        );
+
+        // Clear any cooldown from previous invalid_grant errors
+        $this->clearInvalidGrantCooldown();
+
+        Log::info('GBP: OAuth tokens stored via web flow', ['email' => $email]);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Disconnect: remove stored tokens.
+     */
+    public function disconnect(): void
+    {
+        OAuthToken::where('provider', self::PROVIDER)->delete();
+        Cache::forget('google_business_profile_access_token');
+        $this->clearInvalidGrantCooldown();
+        Log::info('GBP: Disconnected (tokens removed)');
+    }
+
+    /**
+     * Clear invalid_grant cooldown caches.
+     */
+    protected function clearInvalidGrantCooldown(): void
+    {
+        $refreshToken = $this->getRefreshToken();
+        if ($refreshToken) {
+            $hash = sha1($refreshToken);
+            Cache::forget("google_business_profile_invalid_grant:{$hash}");
+            Cache::forget("google_business_profile_invalid_grant_logged:{$hash}");
+        }
+        Cache::forget('google_business_profile_access_token');
     }
 
     /**
@@ -610,23 +754,79 @@ class GoogleBusinessProfileService
             return $cached;
         }
 
+        // Check DB for a still-valid access token
+        $dbToken = OAuthToken::forProvider(self::PROVIDER);
+        if ($dbToken?->hasValidAccessToken()) {
+            Cache::put($cacheKey, $dbToken->access_token, $dbToken->access_token_expires_at);
+
+            return $dbToken->access_token;
+        }
+
+        $refreshToken = $this->getRefreshToken();
+        if (! $refreshToken) {
+            $this->lastError = [
+                'message' => 'No refresh token available (DB or .env)',
+                'reauthorization_required' => true,
+            ];
+
+            return null;
+        }
+
+        $refreshTokenHash = sha1($refreshToken);
+        $invalidGrantCooldownKey = "google_business_profile_invalid_grant:{$refreshTokenHash}";
+
+        if (Cache::get($invalidGrantCooldownKey)) {
+            $this->lastError = [
+                'message' => 'Token refresh blocked: re-authorization required',
+                'status' => 400,
+                'error' => 'invalid_grant',
+                'error_description' => 'Refresh token has expired or been revoked.',
+                'reauthorization_required' => true,
+            ];
+
+            return null;
+        }
+
         $response = Http::asForm()->timeout(20)->post(self::TOKEN_ENDPOINT, [
             'client_id' => config('services.google.business_profile.client_id'),
             'client_secret' => config('services.google.business_profile.client_secret'),
-            'refresh_token' => config('services.google.business_profile.refresh_token'),
+            'refresh_token' => $refreshToken,
             'grant_type' => 'refresh_token',
         ]);
 
         if (! $response->successful()) {
+            $errorPayload = $response->json() ?: [];
+            $errorCode = $errorPayload['error'] ?? null;
+            $errorDescription = $errorPayload['error_description'] ?? null;
+            $isInvalidGrant = $response->status() === 400 && $errorCode === 'invalid_grant';
+
             $this->lastError = [
                 'message' => 'Token refresh failed',
                 'status' => $response->status(),
                 'body' => $response->body(),
+                'error' => $errorCode,
+                'error_description' => $errorDescription,
+                'reauthorization_required' => $isInvalidGrant,
             ];
-            Log::warning('GBP: Failed to refresh access token', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+
+            if ($isInvalidGrant) {
+                Cache::forget($cacheKey);
+                Cache::put($invalidGrantCooldownKey, true, now()->addHours(6));
+
+                $invalidGrantLoggedKey = "google_business_profile_invalid_grant_logged:{$refreshTokenHash}";
+                if (Cache::add($invalidGrantLoggedKey, true, now()->addHours(6))) {
+                    Log::error('GBP: Refresh token invalid_grant (expired/revoked). Re-authenticate via Admin > GBP Settings.', [
+                        'status' => $response->status(),
+                        'error' => $errorCode,
+                        'error_description' => $errorDescription,
+                    ]);
+                }
+            } else {
+                Log::warning('GBP: Failed to refresh access token', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+            }
 
             return null;
         }
@@ -636,7 +836,31 @@ class GoogleBusinessProfileService
         $expiresIn = (int) ($data['expires_in'] ?? 3000);
 
         if ($token) {
+            Cache::forget($invalidGrantCooldownKey);
+            Cache::forget("google_business_profile_invalid_grant_logged:{$refreshTokenHash}");
             Cache::put($cacheKey, $token, now()->addSeconds(max($expiresIn - 120, 300)));
+
+            // Persist the new access token to DB so it survives cache clears
+            if ($dbToken) {
+                $dbToken->update([
+                    'access_token' => $token,
+                    'access_token_expires_at' => now()->addSeconds($expiresIn - 120),
+                ]);
+            }
+
+            // If Google returned a rotated refresh token, persist it
+            if (! empty($data['refresh_token']) && $data['refresh_token'] !== $refreshToken) {
+                $stored = $dbToken ?? OAuthToken::storeTokens(
+                    provider: self::PROVIDER,
+                    refreshToken: $data['refresh_token'],
+                    accessToken: $token,
+                    expiresIn: $expiresIn,
+                );
+                if ($dbToken) {
+                    $dbToken->update(['refresh_token' => $data['refresh_token']]);
+                }
+                Log::info('GBP: Refresh token rotated and persisted to DB.');
+            }
         }
 
         return $token;

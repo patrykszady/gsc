@@ -10,15 +10,16 @@
     {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17856827614"></script>
+    @if(config('services.google.ads_id'))
+    <!-- Google Ads (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google.ads_id') }}"></script>
     <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
-    gtag('config', 'AW-17856827614');
+    gtag('config', '{{ config('services.google.ads_id') }}');
     </script>
+    @endif
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @fluxAppearance
@@ -49,6 +50,10 @@
 
             <flux:navlist.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
                 Social Media
+            </flux:navlist.item>
+
+            <flux:navlist.item icon="building-storefront" href="{{ route('admin.gbp.index') }}" :current="request()->routeIs('admin.gbp.*')">
+                Google Business
             </flux:navlist.item>
         </flux:navlist>
 
@@ -84,26 +89,27 @@
     <flux:main>
         {{ $slot }}
     </flux:main>
+@if(config('services.google.ads_id'))
 <script>
   document.addEventListener('click', function(e) {
     if (e.target.closest('button') && e.target.closest('button').innerText.includes("Send message")) {
       setTimeout(function () {
         var textToTrack = "Thank you for your message! We'll get back to you soon.";
         if (document.body.textContent.includes(textToTrack)) {
-            gtag('event', 'conversion', {'send_to': 'AW-17856827614/iZ53COiTr_YbEN6h5sJC'});
+            gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.form') }}'});
         }
       }, 3000);
     }
 
-
     if(e.target.closest('a[href^="tel:"]')){
-      gtag('event', 'conversion', {'send_to': 'AW-17856827614/kZ_tCOuTr_YbEN6h5sJC'});
+      gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.phone') }}'});
     }
     if(e.target.closest('a[href^="mailto:"]')){
-      gtag('event', 'conversion', {'send_to': 'AW-17856827614/pop5CO6Tr_YbEN6h5sJC'});
+      gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.email') }}'});
     }
   });
 </script>
+@endif
     @fluxScripts
 </body>
 </html>

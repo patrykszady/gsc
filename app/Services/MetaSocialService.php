@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProjectImage;
+use App\Models\ShortLink;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -284,6 +285,18 @@ class MetaSocialService
         }
 
         return $productionUrl;
+    }
+
+    /**
+     * Generate a short link for a project image page URL.
+     * Returns a compact URL like https://gs.construction/s/Xk9m2P
+     */
+    public function getShortLinkUrl(ProjectImage $image): string
+    {
+        $fullUrl = $this->getProjectPageUrl($image);
+        $shortLink = ShortLink::shorten($fullUrl);
+
+        return $shortLink->short_url;
     }
 
     /* ------------------------------------------------------------------ */

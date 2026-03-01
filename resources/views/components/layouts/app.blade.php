@@ -17,15 +17,17 @@
 
     {{-- Hreflang for bilingual support --}}
     <x-hreflang />
-        <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17856827614"></script>
+
+    @if(config('services.google.ads_id'))
+    <!-- Google Ads (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google.ads_id') }}"></script>
     <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
-    gtag('config', 'AW-17856827614');
+    gtag('config', '{{ config('services.google.ads_id') }}');
     </script>
+    @endif
 
     {{-- Favicons --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" media="(prefers-color-scheme: light)">
@@ -77,26 +79,27 @@
     <x-footer />
 
     @fluxScripts
+@if(config('services.google.ads_id'))
 <script>
   document.addEventListener('click', function(e) {
     if (e.target.closest('button') && e.target.closest('button').innerText.includes("Send message")) {
       setTimeout(function () {
         var textToTrack = "Thank you for your message! We'll get back to you soon.";
         if (document.body.textContent.includes(textToTrack)) {
-            gtag('event', 'conversion', {'send_to': 'AW-17856827614/iZ53COiTr_YbEN6h5sJC'});
+            gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.form') }}'});
         }
       }, 3000);
     }
 
-
     if(e.target.closest('a[href^="tel:"]')){
-      gtag('event', 'conversion', {'send_to': 'AW-17856827614/kZ_tCOuTr_YbEN6h5sJC'});
+      gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.phone') }}'});
     }
     if(e.target.closest('a[href^="mailto:"]')){
-      gtag('event', 'conversion', {'send_to': 'AW-17856827614/pop5CO6Tr_YbEN6h5sJC'});
+      gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.email') }}'});
     }
   });
 </script>
+@endif
     {{-- Analytics event tracking (deferred to reduce TBT) --}}
     <script>
         // Defer analytics setup to after page is interactive
@@ -262,7 +265,7 @@
                     // Google Ads click-to-call conversion tracking
                     if (isPhone) {
                         gtag('event', 'conversion', {
-                            'send_to': 'AW-17856827614/aJ93CLr_heYbEN6h5sJC',
+                            'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.call') }}',
                             'value': 1.0,
                             'currency': 'USD'
                         });
@@ -298,8 +301,10 @@
                 }
             });
             
+            @if(config('services.google.ads_id'))
             // Google Ads conversion tracking
-            gtag('config', 'AW-17856827614');
+            gtag('config', '{{ config('services.google.ads_id') }}');
+            @endif
             @if(isset($domainSource) && $domainSource !== 'direct')
             gtag('event', 'domain_entry', {
                 'entry_domain': '{{ session('entry_domain', request()->getHost()) }}',
@@ -359,7 +364,7 @@
                         
                         // Google Ads form submission conversion tracking
                         gtag('event', 'conversion', {
-                            'send_to': 'AW-17856827614/RnBJCKCGk-YbEN6h5sJC',
+                            'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.lead') }}',
                             'value': 1.0,
                             'currency': 'USD'
                         });

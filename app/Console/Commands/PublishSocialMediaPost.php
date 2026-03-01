@@ -14,7 +14,8 @@ class PublishSocialMediaPost extends Command
         {--platform=all : Platform to post to (instagram, facebook, google_business, all)}
         {--image= : Specific ProjectImage ID to post (otherwise picks random unposted)}
         {--dry-run : Show what would be posted without actually posting}
-        {--queue : Dispatch as a queued job instead of running synchronously}';
+        {--queue : Dispatch as a queued job instead of running synchronously}
+        {--random-delay=0 : Max random delay in minutes before posting (for natural scheduling)}';
 
     protected $description = 'Publish a random unposted project image to Instagram, Facebook, and/or Google Business Profile with AI-generated content';
 
@@ -42,6 +43,7 @@ class PublishSocialMediaPost extends Command
         }
 
         $project = $image->project;
+        $shortLinkUrl = $service->getShortLinkUrl($image);
         $linkUrl = $service->getProjectPageUrl($image);
         $imageUrl = $service->getPublicImageUrl($image);
 
@@ -49,6 +51,7 @@ class PublishSocialMediaPost extends Command
         $this->line("  Project: {$project->title} ({$project->project_type})");
         $this->line("  Location: {$project->location}");
         $this->line("  Link: {$linkUrl}");
+        $this->line("  Short link: {$shortLinkUrl}");
         $this->line("  Image URL: {$imageUrl}");
         $this->line("  Platforms: " . implode(', ', $platforms));
 
@@ -74,8 +77,16 @@ class PublishSocialMediaPost extends Command
         }
 
         if ($this->option('queue')) {
-            PublishToSocialMediaJob::dispatch($image, $platforms)->onQueue('social-media');
-            $this->info('📤 Job dispatched to queue.');
+            $delay = $this->getRandomDelay();
+            $job = PublishToSocialMediaJob::dispatch($image, $platforms)->onQueue('social-media');
+
+            if ($delay > 0) {
+                $job->delay(now()->addMinutes($delay));
+                $this->info("📤 Job dispatched to queue with {$delay}-minute delay (posts ~" . now()->addMinutes($delay)->format('g:i A') . ').');
+            } else {
+                $this->info('📤 Job dispatched to queue.');
+            }
+
             return 0;
         }
 
@@ -151,5 +162,19 @@ class PublishSocialMediaPost extends Command
         }
 
         return $query->inRandomOrder()->first();
+    }
+
+    /**
+     * Calculate a random delay in minutes based on --random-delay option.
+     */
+    protected function getRandomDelay(): int
+    {
+        $maxDelay = (int) $this->option('random-delay');
+
+        if ($maxDelay <= 0) {
+            return 0;
+        }
+
+        return random_int(0, $maxDelay);
     }
 }

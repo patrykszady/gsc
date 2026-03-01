@@ -446,7 +446,7 @@
                                         wire:model.live="selectedDates" 
                                         min="{{ $minSelectableDate }}"
                                         max="{{ $maxSelectableDate }}"
-                                        :unavailable="$unavailableSundays"
+                                        :unavailable="$unavailableWeekendDates"
                                         fixed-weeks
                                     />
                                 </div>
@@ -513,6 +513,9 @@
                                 </div>
                             </template>
                         </div>
+                        <p class="px-4 pb-4 pt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                            Saturday morning appointments are limited. If you need a Saturday meeting, please mention it in your message. We typically schedule Saturday appointments about 4 weeks in advance.
+                        </p>
                     </div>
                     {{-- End Collapsible Consultation Options --}}
                 </div>

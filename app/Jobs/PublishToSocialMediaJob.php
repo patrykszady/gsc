@@ -38,6 +38,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         }
 
         $linkUrl = $metaService->getProjectPageUrl($image);
+        $shortLinkUrl = $metaService->getShortLinkUrl($image);
         $imageUrl = $metaService->getPublicImageUrl($image);
 
         if (! $imageUrl) {
@@ -45,8 +46,8 @@ class PublishToSocialMediaJob implements ShouldQueue
             return;
         }
 
-        // Generate AI caption + hashtags
-        $content = $aiService->generateSocialMediaContent($image, $linkUrl);
+        // Generate AI caption + hashtags (use short link in the prompt so AI sees it)
+        $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl);
 
         if (! $content) {
             Log::error('Social Media: AI content generation failed', [
@@ -57,7 +58,9 @@ class PublishToSocialMediaJob implements ShouldQueue
         }
 
         foreach ($this->platforms as $platform) {
-            $this->publishToPlatform($platform, $image, $metaService, $imageUrl, $content, $linkUrl);
+            // Use short links for Instagram; full URL for other platforms
+            $platformLinkUrl = ($platform === 'instagram') ? $shortLinkUrl : $linkUrl;
+            $this->publishToPlatform($platform, $image, $metaService, $imageUrl, $content, $platformLinkUrl);
         }
     }
 

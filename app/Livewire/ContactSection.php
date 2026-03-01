@@ -162,21 +162,21 @@ class ContactSection extends Component
         $this->availability = $result;
     }
 
-    protected function getUnavailableSundays(): string
+    protected function getUnavailableWeekendDates(): string
     {
-        // Get Sundays for the next 2 months
-        $sundays = [];
+        // Get Saturdays and Sundays for the next 2 months
+        $unavailableDates = [];
         $start = now()->addDay();
         $end = now()->addMonths(2);
 
         while ($start <= $end) {
-            if ($start->dayOfWeek === 0) { // Sunday
-                $sundays[] = $start->format('Y-m-d');
+            if (in_array($start->dayOfWeek, [0, 6], true)) { // Sunday or Saturday
+                $unavailableDates[] = $start->format('Y-m-d');
             }
             $start->addDay();
         }
 
-        return implode(',', $sundays);
+        return implode(',', $unavailableDates);
     }
 
     public function submit(): void
@@ -326,6 +326,11 @@ class ContactSection extends Component
             // Web design/dev spam
             'redesign your website', 'website redesign', 'new website',
             'mobile friendly', 'web development services',
+            // Estimator/takeoff outreach spam
+            'takeoff services', 'construction takeoffs', 'takeoffs',
+            'color-coded drawings or pdfs',
+            'share your plans or project links',
+            'competitive and economical quote',
             // Generic sales pitch patterns
             'would you like me to', 'interested in learning more',
             'free consultation', 'no obligation', 'risk free',
@@ -692,8 +697,8 @@ class ContactSection extends Component
     {
         $areasServed = AreaServed::orderBy('city')->pluck('city')->toArray();
 
-        // Get unavailable Sundays for calendar
-        $unavailableSundays = $this->getUnavailableSundays();
+        // Get unavailable weekend dates for calendar (Saturday + Sunday)
+        $unavailableWeekendDates = $this->getUnavailableWeekendDates();
 
         // Flux calendar expects a Y-m-d date string ("today" shorthand exists, but "tomorrow" does not)
         $minSelectableDate = now()->addDay()->format('Y-m-d');
@@ -704,7 +709,7 @@ class ContactSection extends Component
         
         return view('livewire.contact-section', [
             'areasServed' => $areasServed,
-            'unavailableSundays' => $unavailableSundays,
+            'unavailableWeekendDates' => $unavailableWeekendDates,
             'minSelectableDate' => $minSelectableDate,
             'times' => $times,
             'maxSelectableDate' => $maxSelectableDate,

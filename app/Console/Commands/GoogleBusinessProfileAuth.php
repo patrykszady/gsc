@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\OAuthToken;
+use App\Services\GoogleBusinessProfileService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -110,8 +112,21 @@ class GoogleBusinessProfileAuth extends Command
             return self::FAILURE;
         }
 
+        // Store tokens in the database (encrypted)
+        $accessToken = $data['access_token'] ?? null;
+        $expiresIn = (int) ($data['expires_in'] ?? 3600);
+
+        OAuthToken::storeTokens(
+            provider: GoogleBusinessProfileService::PROVIDER,
+            refreshToken: $refreshToken,
+            accessToken: $accessToken,
+            expiresIn: $expiresIn,
+        );
+
         $this->newLine();
-        $this->info('Success! Add this to your .env file:');
+        $this->info('Success! Tokens stored in the database (encrypted).');
+        $this->newLine();
+        $this->info('Optionally, you can also add this to your .env as a backup:');
         $this->newLine();
         $this->line("GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN=\"{$refreshToken}\"");
         $this->newLine();

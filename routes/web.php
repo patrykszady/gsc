@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\GbpSettings;
 use App\Livewire\Admin\Login;
 use App\Livewire\Admin\ProjectForm;
 use App\Livewire\Admin\ProjectList;
@@ -15,6 +16,7 @@ use App\Livewire\ProjectPage;
 use App\Livewire\ServicePage;
 use App\Livewire\ServicesPage;
 use App\Livewire\TestimonialPage;
+use App\Models\ShortLink;
 use App\Services\SeoService;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +33,14 @@ Route::get('/{key}.txt', function (string $key) {
     
     return response($indexNowKey, 200)->header('Content-Type', 'text/plain');
 })->where('key', '[a-z0-9\-]{8,128}');
+
+// Short links (used in Instagram captions, etc.)
+Route::get('/s/{code}', function (string $code) {
+    $link = ShortLink::where('code', $code)->firstOrFail();
+    $link->recordClick();
+
+    return redirect()->away($link->url, 301);
+})->where('code', '[A-Za-z0-9]{4,8}')->name('short-link');
 
 Route::get('/', function () {
     SeoService::home();
@@ -215,4 +225,25 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // Social Media
     Route::get('/social-media', \App\Livewire\Admin\SocialMediaPosts::class)->name('social-media.index');
+
+    // Google Business Profile
+    Route::get('/gbp', GbpSettings::class)->name('gbp.index');
+    Route::get('/gbp/callback', function (\Illuminate\Http\Request $request) {
+        $code = $request->query('code');
+        if (! $code) {
+            session()->flash('gbp-error', 'Authorization cancelled or failed — no code returned.');
+            return redirect()->route('admin.gbp.index');
+        }
+
+        $service = app(\App\Services\GoogleBusinessProfileService::class);
+        $result = $service->exchangeCodeAndStore($code, route('admin.gbp.callback'));
+
+        if ($result['success']) {
+            session()->flash('gbp-success', 'Google Business Profile connected successfully!');
+        } else {
+            session()->flash('gbp-error', 'OAuth failed: ' . ($result['error'] ?? 'Unknown error'));
+        }
+
+        return redirect()->route('admin.gbp.index');
+    })->name('gbp.callback');
 });
