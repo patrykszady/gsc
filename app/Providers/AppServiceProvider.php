@@ -12,6 +12,7 @@ use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Blaze\Blaze;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,5 +41,11 @@ class AppServiceProvider extends ServiceProvider
 
             return $user && in_array($user->email, $allowedEmails, true);
         });
+
+        // Optimize anonymous Blade components with Livewire Blaze
+        // (register general path first, then specific overrides — Blaze uses most-specific match)
+        Blaze::optimize()
+            ->in(resource_path('views/components'))
+            ->in(resource_path('views/components/layouts'), compile: false);
     }
 }

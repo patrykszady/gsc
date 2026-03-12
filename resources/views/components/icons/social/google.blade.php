@@ -1,3 +1,4 @@
+@blaze(fold: true)
 @props(['class' => ''])
 
 <svg {{ $attributes->merge(['class' => $class]) }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

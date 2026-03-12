@@ -25,6 +25,13 @@ Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:
 Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Google Business Profile: sync new reviews daily at 06:00 AM CT
+Schedule::command('google-business-profile:sync-reviews')->dailyAt('06:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled GBP review sync failed'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
+
 // Instagram: 2 posts per day — morning + late afternoon (Central Time)
 // Random delay spreads posts naturally within each window
 Schedule::command('social:post --platform=instagram --queue --random-delay=150')

@@ -41,10 +41,13 @@ class ProjectForm extends Component
     public bool $is_published = true;
 
     // File uploads
-    #[Validate(['uploads.*' => 'image|max:10240'])] // 10MB max per image
+    #[Validate(['uploads.*' => 'image|max:51200'])] // 50MB max per image
     public array $uploads = [];
 
-    // Track duplicate upload indices
+    // Accumulated uploads across multiple drops
+    public array $allUploads = [];
+
+    // Track duplicate upload indices (relative to $allUploads)
     public array $duplicateIndices = [];
 
     // Existing images
@@ -98,41 +101,49 @@ class ProjectForm extends Component
 
     public function updatedUploads(): void
     {
-        // Validate each file so oversize/invalid images show an error immediately.
+        // Validate each new file so oversize/invalid images show an error immediately.
         foreach (array_keys($this->uploads) as $index) {
             $this->validateOnly("uploads.{$index}");
         }
 
-        // Remove duplicates based on file content hash
-        $this->removeDuplicateUploads();
+        // Merge new uploads into the accumulated collection and detect duplicates
+        $this->mergeUploads();
     }
 
     /**
-     * Detect duplicate uploads based on original filename.
-     * Marks duplicates instead of removing them.
+     * Append new uploads to $allUploads, detect duplicates, and clear $uploads
+     * so the dropzone is immediately ready for more files.
      */
-    protected function removeDuplicateUploads(): void
+    protected function mergeUploads(): void
     {
-        $seenFilenames = [];
-        $this->duplicateIndices = [];
-
-        // Get original filenames of existing images for this project
         $existingFilenames = $this->getExistingImageFilenames();
 
-        foreach ($this->uploads as $index => $upload) {
+        // Collect filenames already queued
+        $seenFilenames = [];
+        foreach ($this->allUploads as $upload) {
+            try {
+                $seenFilenames[$upload->getClientOriginalName()] = true;
+            } catch (\Exception $e) {}
+        }
+
+        foreach ($this->uploads as $upload) {
             try {
                 $filename = $upload->getClientOriginalName();
-                
-                // Mark as duplicate if matches existing project image or already seen
+                $newIndex = count($this->allUploads);
+                $this->allUploads[] = $upload;
+
                 if (in_array($filename, $existingFilenames) || isset($seenFilenames[$filename])) {
-                    $this->duplicateIndices[] = $index;
-                } else {
-                    $seenFilenames[$filename] = true;
+                    $this->duplicateIndices[] = $newIndex;
                 }
+
+                $seenFilenames[$filename] = true;
             } catch (\Exception $e) {
-                // If we can't read info, don't mark as duplicate
+                $this->allUploads[] = $upload;
             }
         }
+
+        // Clear uploads so the dropzone accepts more files
+        $this->uploads = [];
     }
 
     /**
@@ -147,6 +158,34 @@ class ProjectForm extends Component
         return $this->project->images()
             ->pluck('original_filename')
             ->toArray();
+    }
+
+    public function removeQueuedUpload(int $index): void
+    {
+        if (!isset($this->allUploads[$index])) {
+            return;
+        }
+
+        unset($this->allUploads[$index]);
+        $this->allUploads = array_values($this->allUploads);
+        $this->rebuildDuplicateIndices();
+    }
+
+    protected function rebuildDuplicateIndices(): void
+    {
+        $existingFilenames = $this->getExistingImageFilenames();
+        $seenFilenames = [];
+        $this->duplicateIndices = [];
+
+        foreach ($this->allUploads as $index => $upload) {
+            try {
+                $filename = $upload->getClientOriginalName();
+                if (in_array($filename, $existingFilenames) || isset($seenFilenames[$filename])) {
+                    $this->duplicateIndices[] = $index;
+                }
+                $seenFilenames[$filename] = true;
+            } catch (\Exception $e) {}
+        }
     }
 
     public function removeExistingImage(int $imageId): void
@@ -281,11 +320,11 @@ class ProjectForm extends Component
         }
 
         // Upload new images (skip duplicates) - dispatch to queue for background processing
-        if (!empty($this->uploads)) {
+        if (!empty($this->allUploads)) {
             $sortOrder = $project->images()->max('sort_order') ?? 0;
             $isFirstImage = $project->images()->count() === 0;
 
-            foreach ($this->uploads as $index => $upload) {
+            foreach ($this->allUploads as $index => $upload) {
                 // Skip duplicates
                 if (in_array($index, $this->duplicateIndices)) {
                     continue;
@@ -308,7 +347,7 @@ class ProjectForm extends Component
                 );
             }
 
-            $this->uploads = [];
+            $this->allUploads = [];
             $this->duplicateIndices = [];
         }
 

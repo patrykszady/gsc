@@ -1,3 +1,4 @@
+@blaze(memo: true)
 @props(['testimonials' => collect(), 'testimonial' => null])
 
 @php

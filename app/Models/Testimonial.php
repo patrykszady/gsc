@@ -15,6 +15,8 @@ class Testimonial extends Model
         'review_date',
         'review_url',
         'review_image',
+        'google_review_id',
+        'star_rating',
     ];
 
     protected $appends = ['slug'];

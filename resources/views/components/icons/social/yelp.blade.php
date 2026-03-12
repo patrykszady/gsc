@@ -1,3 +1,4 @@
+@blaze(fold: true)
 @props(['class' => ''])
 
 {{-- Official Yelp "burst" logo from Simple Icons --}}

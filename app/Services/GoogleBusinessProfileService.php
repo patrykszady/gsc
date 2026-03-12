@@ -615,6 +615,85 @@ class GoogleBusinessProfileService
         return $response->json('localPosts', []);
     }
 
+    /* ------------------------------------------------------------------ */
+    /*  Reviews                                                            */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Fetch reviews for the configured GBP location.
+     *
+     * Uses the My Business Account Management API v4 endpoint.
+     *
+     * @return array{reviews: array, totalReviewCount: int, averageRating: float, nextPageToken: string|null}|null
+     */
+    public function fetchReviews(?string $pageToken = null, int $pageSize = 50): ?array
+    {
+        if (! $this->isConfigured()) {
+            $this->lastError = ['message' => 'GBP not configured'];
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $url = $this->locationBaseUrl() . '/reviews';
+        $params = ['pageSize' => $pageSize];
+        if ($pageToken) {
+            $params['pageToken'] = $pageToken;
+        }
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->get($url, $params);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Fetch reviews failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to fetch reviews', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        $data = $response->json();
+
+        return [
+            'reviews' => $data['reviews'] ?? [],
+            'totalReviewCount' => (int) ($data['totalReviewCount'] ?? 0),
+            'averageRating' => (float) ($data['averageRating'] ?? 0),
+            'nextPageToken' => $data['nextPageToken'] ?? null,
+        ];
+    }
+
+    /**
+     * Fetch ALL reviews (auto-paginating).
+     */
+    public function fetchAllReviews(): array
+    {
+        $all = [];
+        $pageToken = null;
+
+        do {
+            $result = $this->fetchReviews($pageToken);
+            if ($result === null) {
+                break;
+            }
+
+            $all = array_merge($all, $result['reviews']);
+            $pageToken = $result['nextPageToken'];
+        } while ($pageToken);
+
+        return $all;
+    }
+
     /**
      * Get upload statistics for display.
      */

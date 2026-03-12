@@ -1,3 +1,4 @@
+@blaze(memo: true)
 @props([
     'image' => null,           // ProjectImage model
     'src' => null,             // Direct URL (if no model)

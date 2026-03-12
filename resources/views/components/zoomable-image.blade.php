@@ -227,12 +227,23 @@
 >
     {{-- Image with zoom transform --}}
     <div class="relative select-none flex items-center justify-center overflow-hidden {{ $rounded }}" :class="isZoomed ? 'touch-none' : ''">
+        {{-- Blur placeholder (shows while main image loads) --}}
+        <img 
+            :src="current.thumbUrl || current.url || current.webpUrl"
+            :alt="''"
+            aria-hidden="true"
+            class="{{ $imageClass }} absolute inset-0 h-full w-full object-cover blur-xl scale-110 transition-opacity duration-500 select-none"
+            :class="imageLoaded ? 'opacity-0' : 'opacity-100'"
+            draggable="false"
+        >
+        {{-- Full-size image --}}
         <img 
             :src="current.url || current.webpUrl" 
             :alt="current.alt"
-            class="{{ $imageClass }} transition-transform duration-100 ease-out select-none"
-            :style="`transform: scale(${scale}) translate(${translateX / scale}px, ${translateY / scale}px); transform-origin: center center;`"
+            class="{{ $imageClass }} transition-all duration-100 ease-out select-none"
+            :style="`transform: scale(${scale}) translate(${translateX / scale}px, ${translateY / scale}px); transform-origin: center center; opacity: ${imageLoaded ? 1 : 0}; transition: opacity 0.5s ease, transform 0.1s ease-out;`"
             draggable="false"
+            @load="imageLoaded = true"
         >
         
         {{-- Zoom indicator --}}

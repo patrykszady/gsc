@@ -1,3 +1,4 @@
+@blaze(memo: true)
 @props(['faqs' => []])
 
 @if(count($faqs) > 0)

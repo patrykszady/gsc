@@ -1,3 +1,4 @@
+@blaze(memo: true)
 @props([
     'image' => null,
     'size' => 'medium',

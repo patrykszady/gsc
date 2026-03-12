@@ -64,14 +64,126 @@
                 <flux:card>
                     <flux:heading size="lg" class="mb-4">Images</flux:heading>
 
-                    {{-- Upload Zone with Progress --}}
-                    <flux:file-upload wire:model="uploads" multiple :disabled="$errors->has('uploads')">
-                        <flux:file-upload.dropzone 
-                            heading="Drop files here or click to browse" 
-                            text="PNG, JPG, WebP up to 10MB each"
-                            with-progress
-                        />
-                    </flux:file-upload>
+                    {{-- Upload Zone with batched uploads (2 at a time), always accepts drops --}}
+                    <div
+                        x-data="{
+                            queue: [],
+                            uploading: [],
+                            batchSize: 2,
+                            isUploading: false,
+                            dragOver: false,
+
+                            addFiles(fileList) {
+                                const files = Array.from(fileList);
+                                for (const file of files) {
+                                    if (!file.type.startsWith('image/')) continue;
+                                    const isDup = [...this.queue, ...this.uploading]
+                                        .some(p => p.name === file.name && p.size === file.size);
+                                    if (isDup) continue;
+                                    this.queue.push({
+                                        file,
+                                        name: file.name,
+                                        size: file.size,
+                                        url: URL.createObjectURL(file),
+                                        progress: 0,
+                                        status: 'queued',
+                                    });
+                                }
+                                this.processQueue();
+                            },
+
+                            processQueue() {
+                                if (this.isUploading || this.queue.length === 0) return;
+
+                                this.isUploading = true;
+                                const batch = this.queue.splice(0, this.batchSize);
+                                batch.forEach(item => { item.status = 'uploading'; });
+                                this.uploading.push(...batch);
+
+                                const files = batch.map(item => item.file);
+
+                                $wire.$uploadMultiple('uploads', files,
+                                    () => {
+                                        batch.forEach(item => {
+                                            item.status = 'done';
+                                            item.progress = 100;
+                                            if (item.url) URL.revokeObjectURL(item.url);
+                                        });
+                                        this.uploading = this.uploading.filter(i => i.status !== 'done');
+                                        this.isUploading = false;
+                                        queueMicrotask(() => this.processQueue());
+                                    },
+                                    () => {
+                                        batch.forEach(item => { item.status = 'error'; });
+                                        this.uploading = this.uploading.filter(i => i.status !== 'error');
+                                        this.isUploading = false;
+                                        queueMicrotask(() => this.processQueue());
+                                    },
+                                    (event) => {
+                                        const pct = event.detail?.progress ?? 0;
+                                        batch.forEach(item => { item.progress = pct; });
+                                    }
+                                );
+                            },
+
+                            get pendingPreviews() {
+                                return [...this.uploading, ...this.queue];
+                            },
+                        }"
+                    >
+                        {{-- Dropzone area (always interactive) --}}
+                        <div
+                            x-on:click="$refs.fileInput.click()"
+                            x-on:drop.prevent="dragOver = false; addFiles($event.dataTransfer.files)"
+                            x-on:dragover.prevent="dragOver = true"
+                            x-on:dragleave.prevent="dragOver = false"
+                            class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors"
+                            :class="dragOver ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/20' : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-600 dark:hover:border-zinc-500'"
+                        >
+                            <input
+                                type="file"
+                                x-ref="fileInput"
+                                multiple
+                                accept="image/*"
+                                class="hidden"
+                                x-on:change="addFiles($event.target.files); $event.target.value = ''"
+                            />
+                            <flux:icon.cloud-arrow-up class="size-10 text-zinc-400" />
+                            <p class="mt-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Drop files here or click to browse</p>
+                            <p class="mt-1 text-xs text-zinc-500">PNG, JPG, WebP up to 50MB each</p>
+                        </div>
+
+                        {{-- Pending uploads preview (uploading + queued) --}}
+                        <template x-if="pendingPreviews.length > 0">
+                            <div class="mt-4">
+                                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                    <template x-for="(preview, idx) in pendingPreviews" :key="preview.name + '-' + preview.size">
+                                        <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                            <img :src="preview.url" :alt="preview.name" class="size-full object-cover" :class="preview.status === 'uploading' ? 'opacity-60' : (preview.status === 'queued' ? 'opacity-40' : '')">
+                                            {{-- Per-image progress overlay (uploading) --}}
+                                            <div x-show="preview.status === 'uploading'" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-3 pb-3 pt-8">
+                                                <div class="mb-1.5 flex items-center justify-between">
+                                                    <p class="truncate text-xs font-medium text-white" x-text="preview.name"></p>
+                                                    <span class="ml-2 shrink-0 text-xs tabular-nums text-white/80" x-text="Math.round(preview.progress) + '%'"></span>
+                                                </div>
+                                                <div class="h-1 overflow-hidden rounded-full bg-white/20">
+                                                    <div class="h-full rounded-full bg-white transition-all duration-300 ease-out" :style="'width: ' + preview.progress + '%'"></div>
+                                                </div>
+                                            </div>
+                                            {{-- Queued overlay --}}
+                                            <div x-show="preview.status === 'queued'" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                                                <p class="truncate text-xs text-white/70" x-text="preview.name"></p>
+                                            </div>
+                                            {{-- Error overlay --}}
+                                            <div x-show="preview.status === 'error'" class="absolute inset-0 flex items-center justify-center bg-red-900/50">
+                                                <p class="text-xs font-medium text-white">Upload failed</p>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
 
                     {{-- Upload Errors --}}
                     @if($errors->has('uploads') || $errors->has('uploads.*'))
@@ -87,12 +199,12 @@
                         </div>
                     @endif
 
-                    {{-- Uploaded Files List --}}
-                    @if(count($uploads) > 0)
+                    {{-- Server-side uploads (accumulated across all drops) --}}
+                    @if(count($allUploads) > 0)
                         <div class="mt-4">
                             <h4 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">New Uploads</h4>
                             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                                @foreach($uploads as $index => $upload)
+                                @foreach($allUploads as $index => $upload)
                                     <div class="group relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 {{ in_array($index, $duplicateIndices) ? 'ring-2 ring-amber-500' : '' }}" title="{{ $upload->getClientOriginalName() }}">
                                         <img 
                                             src="{{ $upload->temporaryUrl() }}" 
@@ -110,7 +222,7 @@
                                         {{-- Remove button --}}
                                         <button 
                                             type="button"
-                                            wire:click="$removeUpload('uploads', '{{ $upload->getFilename() }}')"
+                                            wire:click="removeQueuedUpload({{ $index }})"
                                             class="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
                                         >
                                             <flux:icon.x-mark class="size-4" />

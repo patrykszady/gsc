@@ -1,3 +1,4 @@
+@blaze(fold: true)
 @props([
     'area' => null,
     'showSubtitle' => false,

@@ -119,14 +119,16 @@
             <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                 @foreach ($this->services as $service)
                     <div class="group relative overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition hover:shadow-xl dark:bg-zinc-800 dark:ring-zinc-700">
-                        <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ $service['gradient'] }}">
+                        <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ $service['gradient'] }}" x-data="{ loaded: false }">
                             <img 
                                 src="{{ $service['image'] }}" 
                                 alt="{{ $service['title'] }}"
                                 width="800"
                                 height="450"
                                 loading="lazy"
-                                class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                :class="loaded ? '' : 'blur-lg scale-105'"
+                                @load="loaded = true"
                             >
                         </div>
                         <div class="p-6 lg:p-8">
