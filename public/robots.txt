@@ -31,9 +31,22 @@ Allow: /
 # Default: Allow all other bots
 User-agent: *
 Allow: /
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /xmlrpc.php
+Disallow: /.env
+Disallow: /.git/
+Disallow: /vendor/
+Disallow: /node_modules/
+Disallow: /storage/
+Disallow: /admin/
 
 # Sitemap location
 Sitemap: https://gs.construction/sitemap.xml
+
+# LLM context files (AEO/GEO)
+# https://llmstxt.org/
+LLMs-Txt: https://gs.construction/llms.txt
 
 # ============================================
 # SPAM/SEO BOTS - BLOCKED
@@ -100,17 +113,3 @@ Disallow: /
 
 User-agent: MegaIndex.ru
 Disallow: /
-
-# Block common spam referrer bots
-User-agent: *
-Disallow: /wp-admin/
-Disallow: /wp-login.php
-Disallow: /xmlrpc.php
-Disallow: /.env
-Disallow: /.git/
-Disallow: /vendor/
-Disallow: /node_modules/
-Disallow: /storage/
-
-# Rate limiting hint (advisory, not enforced)
-Crawl-delay: 10

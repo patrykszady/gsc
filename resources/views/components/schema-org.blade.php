@@ -35,14 +35,14 @@ $localBusiness = [
     '@context' => 'https://schema.org',
     '@type' => 'HomeAndConstructionBusiness',
     '@id' => 'https://gs.construction/#business',
-    'name' => 'GS Construction & Remodeling',
-    'alternateName' => 'GS Construction',
+    'name' => 'GS Construction',
+    'alternateName' => 'GS Construction & Remodeling',
     'description' => 'Professional kitchen, bathroom, and home remodeling services. Family-owned business serving the Chicagoland area with over 40 years of combined experience.',
     'url' => 'https://gs.construction',
     'logo' => asset('images/logo.svg'),
     'image' => asset('images/greg-patryk.jpg'),
-    'telephone' => '+1-847-430-4439',
-    'email' => 'patryk@gs.construction',
+    'telephone' => '+1-224-735-4200',
+    'email' => 'crew@gs.construction',
     'foundingDate' => '2015',
     'priceRange' => '$$$$',
     'address' => [
@@ -154,14 +154,15 @@ $localBusiness = [
 $organization = [
     '@context' => 'https://schema.org',
     '@type' => 'Organization',
-    'name' => 'GS Construction & Remodeling',
+    'name' => 'GS Construction',
+    'alternateName' => 'GS Construction & Remodeling',
     'url' => 'https://gs.construction',
     'logo' => asset('images/logo.svg'),
     'contactPoint' => [
         '@type' => 'ContactPoint',
-        'telephone' => '+1-847-430-4439',
+        'telephone' => '+1-224-735-4200',
         'contactType' => 'customer service',
-        'email' => 'patryk@gs.construction',
+        'email' => 'crew@gs.construction',
         'areaServed' => 'US',
         'availableLanguage' => ['English', 'Polish'],
     ],
@@ -179,17 +180,30 @@ $organization = [
     ],
 ];
 
-// WebSite schema for sitelinks search
+// WebSite schema for sitelinks search + site name display
 $website = [
     '@context' => 'https://schema.org',
     '@type' => 'WebSite',
-    'name' => 'GS Construction & Remodeling',
+    'name' => 'GS Construction',
+    'alternateName' => ['GS Construction & Remodeling', 'GS Construction LLC'],
     'url' => 'https://gs.construction',
     'potentialAction' => [
         '@type' => 'SearchAction',
         'target' => 'https://gs.construction/projects?search={search_term_string}',
         'query-input' => 'required name=search_term_string',
     ],
+];
+
+// Speakable schema — tells voice assistants and AI which content to read aloud
+$speakable = [
+    '@context' => 'https://schema.org',
+    '@type' => 'WebPage',
+    'speakable' => [
+        '@type' => 'SpeakableSpecification',
+        'cssSelector' => ['h1', 'h2', '.speakable', '[role="main"] p:first-of-type'],
+    ],
+    'name' => 'GS Construction',
+    'url' => url()->current(),
 ];
 @endphp
 
@@ -206,4 +220,9 @@ $website = [
 {{-- WebSite Schema --}}
 <script type="application/ld+json">
 {!! json_encode($website, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
+</script>
+
+{{-- Speakable Schema (AEO) --}}
+<script type="application/ld+json">
+{!! json_encode($speakable, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>

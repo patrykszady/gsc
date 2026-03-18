@@ -73,7 +73,8 @@ class SeoService
         } elseif ($city) {
             // Keep under 52 chars - suffix adds ~18 chars
             $title = "Kitchen & Bathroom Remodeling in {$city}";
-            $description = "Top-rated kitchen remodeling & bathroom renovations in {$city}, IL. Family-owned contractors with 40+ years experience. Free estimates available!";
+            $reviewCount = self::getReviewCountLabel();
+            $description = "Top-rated kitchen & bathroom remodeling contractors in {$city}, IL. {$reviewCount} five-star reviews, 40+ years experience. Call (224) 735-4200 for a free estimate!";
         } else {
             $title = 'Kitchen & Bathroom Remodeling Contractors';
             $description = 'Expert kitchen remodeling & bathroom renovations in Chicagoland. Family-owned contractors with 40+ years experience. Arlington Heights, Palatine & more.';
@@ -95,13 +96,15 @@ class SeoService
         
         if ($typeLabel && $city) {
             $title = "{$typeLabel} Remodeling in {$city} - Our Work";
-            $description = "See our {$typeLabel} remodeling projects in {$city}, IL. Before & after photos showcasing quality kitchen & bathroom renovations by local contractors.";
+            $reviewCount = self::getReviewCountLabel();
+            $description = "View our {$typeLabel} remodeling projects in {$city}, IL. Before & after photos, {$reviewCount} five-star reviews. See why homeowners trust GS Construction!";
         } elseif ($typeLabel) {
             $title = "{$typeLabel} Remodeling Portfolio";
             $description = "Browse our {$typeLabel} remodeling before & after photos. See real kitchen, bathroom & home renovation projects in the Chicago suburbs.";
         } elseif ($city) {
             $title = "Remodeling Projects in {$city}, IL";
-            $description = "View kitchen, bathroom & home remodeling projects in {$city}. Real before & after photos from your neighbors. Get inspired for your renovation!";
+            $reviewCount = self::getReviewCountLabel();
+            $description = "View kitchen, bathroom & home remodeling projects in {$city}, IL. Real before & after photos, {$reviewCount} five-star reviews. Get inspired for your renovation!";
         } else {
             $title = 'Kitchen & Bathroom Remodeling Portfolio';
             $description = 'Browse our kitchen, bathroom & home remodeling projects in Chicagoland. Before & after photos from Arlington Heights, Palatine, Lake Zurich & more.';
@@ -125,9 +128,10 @@ class SeoService
             ? "Remodeling Reviews in {$city}, IL"
             : 'Kitchen & Bathroom Remodeling Reviews';
         
+        $reviewCount = self::getReviewCountLabel();
         $description = $city
-            ? "5-star reviews from {$city} homeowners. See what your neighbors say about their kitchen remodeling & bathroom renovation experience with us."
-            : '5-star rated kitchen & bathroom remodeling in Chicago suburbs. Read reviews from Arlington Heights, Palatine, Buffalo Grove & more homeowners.';
+            ? "Read {$reviewCount} five-star reviews from {$city} homeowners. Real kitchen & bathroom remodeling experiences. See why we're the top-rated contractors in {$city}, IL."
+            : "{$reviewCount} five-star rated kitchen & bathroom remodeling in Chicago suburbs. Read reviews from Arlington Heights, Palatine, Buffalo Grove & more homeowners.";
 
         // Use a relevant project cover image for testimonials pages
         $image = self::getCoverImageForType('kitchen');
@@ -185,9 +189,10 @@ class SeoService
             ? "Remodeling Contractors in {$city}"
             : 'About Us - Family-Owned Contractors';
         
+        $reviewCount = self::getReviewCountLabel();
         $description = $city
-            ? "Meet GS Construction - family-owned kitchen & bathroom remodeling contractors serving {$city}, IL. 40+ years combined experience. Licensed & insured."
-            : 'Meet Greg & Patryk - family-owned kitchen & bathroom remodeling contractors in Chicago. 40+ years combined experience. Licensed & insured.';
+            ? "Meet GS Construction — family-owned remodeling contractors serving {$city}, IL. {$reviewCount} five-star reviews, 40+ years experience. Licensed & insured."
+            : 'Meet Greg & Patryk — family-owned kitchen & bathroom remodeling contractors in Chicago. 40+ years combined experience. Licensed & insured.';
 
         self::setTags($title, $description);
         
@@ -208,8 +213,8 @@ class SeoService
             : 'Get a Free Remodeling Quote';
         
         $description = $city
-            ? "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call (847) 430-4439 or schedule online. Same-week consultations available!"
-            : 'Get a free kitchen or bathroom remodeling estimate in Chicago suburbs. Call (847) 430-4439 or schedule online. Same-week consultations available!';
+            ? "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call (224) 735-4200 or schedule online. Same-week consultations available!"
+            : 'Get a free kitchen or bathroom remodeling estimate in Chicago suburbs. Call (224) 735-4200 or schedule online. Same-week consultations available!';
 
         // Use the team photo for contact page — builds trust
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
@@ -243,8 +248,9 @@ class SeoService
             ? "Remodeling Services in {$city}, IL"
             : 'Kitchen, Bathroom & Home Remodeling Services';
         
+        $reviewCount = self::getReviewCountLabel();
         $description = $city
-            ? "Kitchen remodeling, bathroom renovations & home remodeling in {$city}, IL. Top-rated local contractors. Free in-home estimates. Call today!"
+            ? "Kitchen, bathroom & home remodeling contractors in {$city}, IL. {$reviewCount} five-star reviews. Licensed, insured, 40+ years experience. Call (224) 735-4200!"
             : 'Kitchen remodeling, bathroom renovations & home remodeling in Chicago suburbs. Top-rated local contractors serving Palatine, Arlington Heights & more.';
 
         // Get a kitchen image as the default for services overview
@@ -310,25 +316,25 @@ class SeoService
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
                 'title' => 'Kitchen Remodeling Contractors Near Chicago',
-                'description' => 'Expert kitchen remodeling in Chicago suburbs. Custom cabinets, granite countertops & complete kitchen renovations. Family-owned, 40+ years experience. Free estimates!',
-                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen remodeling near me', 'kitchen contractors chicago'],
+                'description' => 'Top-rated kitchen remodeling in Chicago suburbs — %s five-star reviews. Custom cabinets, granite countertops & complete renovations. Call (224) 735-4200!',
+                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen remodeling near me', 'kitchen contractors chicago', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
                 'title' => 'Bathroom Remodeling Contractors Near Chicago',
-                'description' => 'Expert bathroom remodeling in Chicago suburbs. Walk-in showers, tub-to-shower conversions & complete bathroom renovations. Family-owned, 40+ years experience. Free estimates!',
-                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom remodeling near me', 'bathroom contractors chicago'],
+                'description' => 'Top-rated bathroom remodeling in Chicago suburbs — %s five-star reviews. Walk-in showers, tub conversions & complete renovations. Call (224) 735-4200!',
+                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom remodeling near me', 'bathroom contractors chicago', 'bathroom remodelers'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
                 'title' => 'Home Remodeling Contractors Near Chicago',
-                'description' => 'Complete home remodeling in Chicago suburbs. Room additions, open floor plans & whole-home renovations. Family-owned, 40+ years experience. Free estimates!',
+                'description' => 'Top-rated home remodeling in Chicago suburbs — %s five-star reviews. Room additions, open floor plans & complete renovations. Call (224) 735-4200!',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'home remodeling near me', 'general contractors chicago'],
             ],
             'basement-remodeling' => [
                 'label' => 'Basement Remodeling',
                 'title' => 'Basement Finishing Contractors Near Chicago',
-                'description' => 'Expert basement finishing & remodeling in Chicago suburbs. Home theaters, guest suites & recreation rooms. Family-owned, 40+ years experience. Free estimates!',
+                'description' => 'Top-rated basement finishing & remodeling in Chicago suburbs — %s five-star reviews. Home theaters, guest suites & recreation rooms. Call (224) 735-4200!',
                 'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel', 'basement remodeling near me'],
             ],
         ];
@@ -336,7 +342,8 @@ class SeoService
         $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'title' => 'Remodeling Services', 'description' => 'Expert remodeling services.', 'keywords' => []];
         
         $title = $service['title'];
-        $description = $service['description'];
+        $reviewCount = self::getReviewCountLabel();
+        $description = sprintf($service['description'], $reviewCount);
 
         // Get a relevant cover image for this service type
         $projectType = match ($serviceType) {
@@ -367,23 +374,23 @@ class SeoService
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
                 'shortLabel' => 'Kitchen',
-                'titleTemplate' => 'Kitchen Remodeling in %s, IL',
-                'descriptionTemplate' => 'Looking for kitchen remodeling in %s? Custom cabinets, countertops & complete kitchen renovations. Local contractors, 40+ years experience. Free estimate!',
-                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors'],
+                'titleTemplate' => 'Kitchen Remodelers in %s, IL',
+                'descriptionTemplate' => 'Trusted kitchen remodeling contractors in %s, IL — %s five-star reviews. Custom cabinets, countertops & full renovations. Call (224) 735-4200 for a free estimate!',
+                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
                 'shortLabel' => 'Bathroom',
-                'titleTemplate' => 'Bathroom Remodeling in %s, IL',
-                'descriptionTemplate' => 'Looking for bathroom remodeling in %s? Walk-in showers, tub conversions & complete bathroom renovations. Local contractors, 40+ years experience. Free estimate!',
-                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors'],
+                'titleTemplate' => 'Bathroom Remodelers in %s, IL',
+                'descriptionTemplate' => 'Expert bathroom remodeling contractors in %s, IL — %s five-star reviews. Walk-in showers, tub conversions & complete renovations. Call (224) 735-4200 for a free estimate!',
+                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors', 'bathroom remodelers'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
                 'shortLabel' => 'Home',
-                'titleTemplate' => 'Home Remodeling in %s, IL',
-                'descriptionTemplate' => 'Looking for home remodeling in %s? Room additions, open floor plans & complete home renovations. Local contractors, 40+ years experience. Free estimate!',
-                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors'],
+                'titleTemplate' => 'Home Remodeling Contractors in %s, IL',
+                'descriptionTemplate' => 'Professional home remodeling contractors in %s, IL — %s five-star reviews. Room additions, open floor plans & complete renovations. Call (224) 735-4200 for a free estimate!',
+                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors', 'home remodelers'],
             ],
         ];
 
@@ -395,11 +402,12 @@ class SeoService
             'keywords' => [],
         ];
         
-        // Primary keyword targeting: "{Service} in {City}" e.g. "Kitchen Remodeling in Palatine, IL"
+        // Primary keyword targeting: "{Service} Remodelers in {City}, IL"
         $title = sprintf($service['titleTemplate'], $city);
         
-        // Enhanced description with city-specific targeting
-        $description = sprintf($service['descriptionTemplate'], $city);
+        // Enhanced description with review count, CTA and city targeting
+        $reviewCount = self::getReviewCountLabel();
+        $description = sprintf($service['descriptionTemplate'], $city, $reviewCount);
 
         // Get a relevant cover image for this service type
         $projectType = match ($serviceType) {
@@ -442,6 +450,16 @@ class SeoService
     }
 
     /**
+     * Get a marketing-friendly review count label (e.g., "50+").
+     */
+    protected static function getReviewCountLabel(): string
+    {
+        $count = cache()->remember('testimonial_count', 3600, fn () => \App\Models\Testimonial::count());
+        $rounded = (int) floor($count / 5) * 5;
+        return $rounded . '+';
+    }
+
+    /**
      * Helper to set common meta tags.
      */
     protected static function setTags(string $title, string $description, ?string $image = null): void
@@ -474,7 +492,7 @@ class SeoService
         $image = \App\Models\ProjectImage::query()
             ->where('is_cover', true)
             ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('project_type', $projectType))
-            ->inRandomOrder()
+            ->orderBy('id')
             ->first();
 
         return $image?->url;

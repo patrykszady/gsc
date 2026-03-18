@@ -101,8 +101,8 @@
                             Start Your Project
                         </x-buttons.cta>
                         <div class="mt-4 space-y-2 text-center text-sm text-zinc-600 dark:text-zinc-300">
-                            <a href="tel:8474304439" class="block hover:text-zinc-900 dark:hover:text-zinc-100">(847) 430-4439</a>
-                            <a href="mailto:patryk@gs.construction" class="block hover:text-zinc-900 dark:hover:text-zinc-100">patryk@gs.construction</a>
+                            <a href="tel:2247354200" class="block hover:text-zinc-900 dark:hover:text-zinc-100">(224) 735-4200</a>
+                            <a href="mailto:crew@gs.construction" class="block hover:text-zinc-900 dark:hover:text-zinc-100">crew@gs.construction</a>
                         </div>
                     </div>
                 </div>

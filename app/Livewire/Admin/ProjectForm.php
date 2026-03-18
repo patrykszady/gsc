@@ -5,6 +5,9 @@ namespace App\Livewire\Admin;
 use App\Jobs\ProcessProjectImage;
 use App\Models\Project;
 use App\Models\ProjectImage;
+use App\Models\ProjectBeforeAfter;
+use App\Models\ProjectTimelapse;
+use App\Models\ProjectTimelapseFrame;
 use App\Models\Tag;
 use App\Services\ImageService;
 use Illuminate\Support\Carbon;
@@ -58,6 +61,21 @@ class ProjectForm extends Component
     public ?int $bulkTagId = null;
     public string $tagSearch = '';
 
+    // Timelapse management
+    // Each entry: ['id' => ?int, 'title' => string, 'uploads' => [], 'allUploads' => [], 'existingFrames' => []]
+    public array $timelapses = [];
+    #[Validate(['timelapseUploads.*' => 'image|max:51200'])]
+    public array $timelapseUploads = [];
+    public ?int $activeTimelapseIndex = null;
+
+    // Before/After management
+    // Each entry: ['id' => ?int, 'title' => string, 'beforeUrl' => ?string, 'afterUrl' => ?string]
+    public array $beforeAfters = [];
+    // Separate upload arrays keyed by BA index so Livewire can serialize them
+    public array $baBeforeUploads = [];
+    public array $baAfterUploads = [];
+    public ?int $activeBaIndex = null;
+
     public function mount(?Project $project = null): void
     {
         if ($project && $project->exists) {
@@ -71,6 +89,8 @@ class ProjectForm extends Component
             $this->is_published = $project->is_published;
             
             $this->loadExistingImages();
+            $this->loadExistingTimelapses();
+            $this->loadExistingBeforeAfters();
         }
     }
 
@@ -97,6 +117,189 @@ class ProjectForm extends Component
             $existingIds = array_column($this->existingImages, 'id');
             $this->selectedImageIds = array_values(array_intersect($this->selectedImageIds, $existingIds));
         }
+    }
+
+    protected function loadExistingTimelapses(): void
+    {
+        if (!$this->project) return;
+
+        $this->timelapses = $this->project->timelapses()
+            ->with('frames')
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn($tl) => [
+                'id' => $tl->id,
+                'title' => $tl->title ?? '',
+                'display_mode' => $tl->display_mode ?? 'slider',
+                'allUploads' => [],
+                'existingFrames' => $tl->frames->map(fn($f) => [
+                    'id' => $f->id,
+                    'url' => $f->url,
+                    'original_filename' => $f->original_filename,
+                ])->toArray(),
+            ])
+            ->toArray();
+    }
+
+    // Before/After methods
+    protected function loadExistingBeforeAfters(): void
+    {
+        if (!$this->project) return;
+
+        $this->beforeAfters = $this->project->beforeAfters()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn($ba) => [
+                'id' => $ba->id,
+                'title' => $ba->title ?? '',
+                'beforeUrl' => $ba->before_url,
+                'afterUrl' => $ba->after_url,
+            ])
+            ->toArray();
+        $this->baBeforeUploads = [];
+        $this->baAfterUploads = [];
+    }
+
+    public function addBeforeAfter(): void
+    {
+        $this->beforeAfters[] = [
+            'id' => null,
+            'title' => '',
+            'beforeUrl' => null,
+            'afterUrl' => null,
+        ];
+    }
+
+    public function removeBeforeAfter(int $index): void
+    {
+        $ba = $this->beforeAfters[$index] ?? null;
+        if (!$ba) return;
+
+        if ($ba['id']) {
+            $model = ProjectBeforeAfter::find($ba['id']);
+            $model?->delete();
+        }
+
+        unset($this->beforeAfters[$index]);
+        $this->beforeAfters = array_values($this->beforeAfters);
+
+        // Re-key upload arrays to match
+        $newBefore = [];
+        $newAfter = [];
+        $i = 0;
+        foreach (array_keys($this->beforeAfters) as $newIdx) {
+            $oldIdx = $newIdx >= $index ? $newIdx + 1 : $newIdx;
+            if (isset($this->baBeforeUploads[$oldIdx])) $newBefore[$newIdx] = $this->baBeforeUploads[$oldIdx];
+            if (isset($this->baAfterUploads[$oldIdx])) $newAfter[$newIdx] = $this->baAfterUploads[$oldIdx];
+        }
+        $this->baBeforeUploads = $newBefore;
+        $this->baAfterUploads = $newAfter;
+    }
+
+    public function updatedBaBeforeUploads($value, $key): void
+    {
+        $this->validateOnly("baBeforeUploads.{$key}", [
+            "baBeforeUploads.{$key}" => 'image|max:51200',
+        ]);
+    }
+
+    public function updatedBaAfterUploads($value, $key): void
+    {
+        $this->validateOnly("baAfterUploads.{$key}", [
+            "baAfterUploads.{$key}" => 'image|max:51200',
+        ]);
+    }
+
+    public function addTimelapse(): void
+    {
+        $this->timelapses[] = [
+            'id' => null,
+            'title' => '',
+            'display_mode' => 'slider',
+            'allUploads' => [],
+            'existingFrames' => [],
+        ];
+    }
+
+    public function removeTimelapse(int $index): void
+    {
+        $timelapse = $this->timelapses[$index] ?? null;
+        if (!$timelapse) return;
+
+        // Delete from DB if it exists
+        if ($timelapse['id']) {
+            ProjectTimelapse::where('id', $timelapse['id'])
+                ->where('project_id', $this->project?->id)
+                ->delete();
+        }
+
+        unset($this->timelapses[$index]);
+        $this->timelapses = array_values($this->timelapses);
+    }
+
+    public function updatedTimelapseUploads(): void
+    {
+        foreach (array_keys($this->timelapseUploads) as $index) {
+            $this->validateOnly("timelapseUploads.{$index}");
+        }
+
+        if ($this->activeTimelapseIndex === null) return;
+
+        if (!isset($this->timelapses[$this->activeTimelapseIndex])) return;
+
+        foreach ($this->timelapseUploads as $upload) {
+            $this->timelapses[$this->activeTimelapseIndex]['allUploads'][] = $upload;
+        }
+
+        $this->timelapseUploads = [];
+    }
+
+    public function setActiveTimelapseIndex(int $index): void
+    {
+        $this->activeTimelapseIndex = $index;
+    }
+
+    public function removeQueuedTimelapseUpload(int $timelapseIndex, int $uploadIndex): void
+    {
+        if (!isset($this->timelapses[$timelapseIndex]['allUploads'][$uploadIndex])) return;
+
+        unset($this->timelapses[$timelapseIndex]['allUploads'][$uploadIndex]);
+        $this->timelapses[$timelapseIndex]['allUploads'] = array_values($this->timelapses[$timelapseIndex]['allUploads']);
+    }
+
+    public function removeTimelapseFrame(int $timelapseIndex, int $frameId): void
+    {
+        $timelapse = $this->timelapses[$timelapseIndex] ?? null;
+        if (!$timelapse || !$timelapse['id']) return;
+
+        $frame = ProjectTimelapseFrame::find($frameId);
+        if ($frame && $frame->project_timelapse_id === $timelapse['id']) {
+            $frame->delete();
+            // Refresh existing frames
+            $this->timelapses[$timelapseIndex]['existingFrames'] = array_values(
+                array_filter($this->timelapses[$timelapseIndex]['existingFrames'], fn($f) => $f['id'] !== $frameId)
+            );
+        }
+    }
+
+    public function reorderTimelapseFrames(int $timelapseIndex, array $orderedIds): void
+    {
+        $timelapse = $this->timelapses[$timelapseIndex] ?? null;
+        if (!$timelapse || !$timelapse['id']) return;
+
+        foreach ($orderedIds as $sort => $id) {
+            ProjectTimelapseFrame::where('id', $id)
+                ->where('project_timelapse_id', $timelapse['id'])
+                ->update(['sort_order' => $sort]);
+        }
+
+        // Re-sort existing frames in memory
+        $frameMap = collect($this->timelapses[$timelapseIndex]['existingFrames'])->keyBy('id');
+        $this->timelapses[$timelapseIndex]['existingFrames'] = collect($orderedIds)
+            ->map(fn($id) => $frameMap->get($id))
+            ->filter()
+            ->values()
+            ->toArray();
     }
 
     public function updatedUploads(): void
@@ -350,6 +553,138 @@ class ProjectForm extends Component
             $this->allUploads = [];
             $this->duplicateIndices = [];
         }
+
+        // Save timelapses
+        foreach ($this->timelapses as $tlIndex => $tlData) {
+            if ($tlData['id']) {
+                // Update existing timelapse
+                $timelapse = ProjectTimelapse::find($tlData['id']);
+                if ($timelapse) {
+                    $timelapse->update([
+                        'title' => $tlData['title'] ?: null,
+                        'display_mode' => $tlData['display_mode'] ?? 'slider',
+                        'sort_order' => $tlIndex,
+                    ]);
+                }
+            } else {
+                // Create new timelapse
+                $timelapse = ProjectTimelapse::create([
+                    'project_id' => $project->id,
+                    'title' => $tlData['title'] ?: null,
+                    'display_mode' => $tlData['display_mode'] ?? 'slider',
+                    'sort_order' => $tlIndex,
+                ]);
+                $this->timelapses[$tlIndex]['id'] = $timelapse->id;
+            }
+
+            // Upload new frames for this timelapse
+            if (!empty($tlData['allUploads'])) {
+                $sortOrder = $timelapse->frames()->max('sort_order') ?? 0;
+                $basePath = 'projects/' . $project->id . '/timelapse/' . $timelapse->id;
+
+                foreach ($tlData['allUploads'] as $upload) {
+                    $sortOrder++;
+                    $extension = $upload->getClientOriginalExtension();
+                    $filename = $sortOrder . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
+
+                    // Resize frame like project images (max 1920px wide, quality 80)
+                    $image = \Intervention\Image\Laravel\Facades\Image::read($upload);
+                    if ($image->width() > 1920) {
+                        $image->scale(width: 1920);
+                    }
+                    $encoded = match (strtolower($extension)) {
+                        'png' => $image->toPng()->toString(),
+                        'webp' => $image->toWebp(80)->toString(),
+                        default => $image->toJpeg(80)->toString(),
+                    };
+
+                    $path = $basePath . '/' . $filename;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $encoded);
+
+                    ProjectTimelapseFrame::create([
+                        'project_timelapse_id' => $timelapse->id,
+                        'filename' => $filename,
+                        'original_filename' => $upload->getClientOriginalName(),
+                        'path' => $path,
+                        'disk' => 'public',
+                        'sort_order' => $sortOrder,
+                    ]);
+                }
+
+                $this->timelapses[$tlIndex]['allUploads'] = [];
+            }
+        }
+
+        // Save before/afters
+        foreach ($this->beforeAfters as $baIndex => $baData) {
+            $basePath = 'projects/' . $project->id . '/before-after';
+            $beforeUpload = $this->baBeforeUploads[$baIndex] ?? null;
+            $afterUpload = $this->baAfterUploads[$baIndex] ?? null;
+
+            if ($baData['id']) {
+                $model = ProjectBeforeAfter::find($baData['id']);
+                if (!$model) continue;
+                $model->update(['title' => $baData['title'] ?: null, 'sort_order' => $baIndex]);
+            } else {
+                // Need both images for a new entry
+                if (!$beforeUpload || !$afterUpload) continue;
+                $model = ProjectBeforeAfter::create([
+                    'project_id' => $project->id,
+                    'title' => $baData['title'] ?: null,
+                    'before_path' => '',
+                    'after_path' => '',
+                    'sort_order' => $baIndex,
+                ]);
+                $this->beforeAfters[$baIndex]['id'] = $model->id;
+            }
+
+            // Process before image upload
+            if ($beforeUpload) {
+                $old = $model->before_path;
+                $filename = 'before_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $beforeUpload->getClientOriginalExtension();
+                $image = \Intervention\Image\Laravel\Facades\Image::read($beforeUpload);
+                if ($image->width() > 1920) {
+                    $image->scale(width: 1920);
+                }
+                $ext = strtolower($beforeUpload->getClientOriginalExtension());
+                $encoded = match ($ext) {
+                    'png' => $image->toPng()->toString(),
+                    'webp' => $image->toWebp(80)->toString(),
+                    default => $image->toJpeg(80)->toString(),
+                };
+                $path = $basePath . '/' . $filename;
+                \Illuminate\Support\Facades\Storage::disk('public')->put($path, $encoded);
+                if ($old && $old !== $path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+                }
+                $model->update(['before_path' => $path]);
+            }
+
+            // Process after image upload
+            if ($afterUpload) {
+                $old = $model->after_path;
+                $filename = 'after_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $afterUpload->getClientOriginalExtension();
+                $image = \Intervention\Image\Laravel\Facades\Image::read($afterUpload);
+                if ($image->width() > 1920) {
+                    $image->scale(width: 1920);
+                }
+                $ext = strtolower($afterUpload->getClientOriginalExtension());
+                $encoded = match ($ext) {
+                    'png' => $image->toPng()->toString(),
+                    'webp' => $image->toWebp(80)->toString(),
+                    default => $image->toJpeg(80)->toString(),
+                };
+                $path = $basePath . '/' . $filename;
+                \Illuminate\Support\Facades\Storage::disk('public')->put($path, $encoded);
+                if ($old && $old !== $path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+                }
+                $model->update(['after_path' => $path]);
+            }
+        }
+
+        $this->baBeforeUploads = [];
+        $this->baAfterUploads = [];
 
         $message = $this->project?->exists 
             ? 'Project updated successfully.' 

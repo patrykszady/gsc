@@ -28,6 +28,10 @@ class GenerateSitemap extends Command
         
         $this->info("Generating sitemap with base URL: {$baseUrl}");
 
+        // Prepare URL rewriting for images (Storage::url() uses APP_URL which may be localhost)
+        $appUrl = rtrim(config('app.url'), '/');
+        $needsImageRewrite = $appUrl !== $baseUrl;
+
         $sitemap = Sitemap::create();
         $urlCount = 0;
         $imageCount = 0;
@@ -45,6 +49,11 @@ class GenerateSitemap extends Command
             'log-viewer',
             'reviews',      // redirect to /testimonials
             'contact-us',   // redirect to /contact
+            'bathroom-remodeling', // redirect to /services/bathrooms
+            'kitchen-remodeling',  // redirect to /services/kitchens
+            'home-remodeling',     // redirect to /services/home-remodeling (root-level)
+            'services/kitchen-remodeling', // redirect to /services/kitchens
+            'services/bathroom-remodeling', // redirect to /services/bathrooms
             'flux/',        // internal flux assets
             'livewire/',    // internal livewire assets
             'livewire-',    // livewire asset routes (e.g. /livewire-xxxx/livewire.js)
@@ -57,6 +66,7 @@ class GenerateSitemap extends Command
         $excludeExact = [
             'areas',        // alias of /areas-served (noindex)
             'locations',    // alias of /areas-served (noindex)
+            's/{code}',     // short link redirects
         ];
 
         // Static pages from routes (non-parameterized GET routes)
@@ -91,6 +101,8 @@ class GenerateSitemap extends Command
             'projects' => 0.8,
             'contact' => 0.8,
             'about' => 0.7,
+            'areas-served' => 0.8,
+            'services' => 0.8,
             'services/kitchen-remodeling' => 0.9,
             'services/bathroom-remodeling' => 0.9,
             'services/home-remodeling' => 0.9,
@@ -131,6 +143,10 @@ class GenerateSitemap extends Command
         $areaServicePages = ['kitchens', 'bathrooms', 'home-remodeling'];
         $areaCount = 0;
 
+        // Get latest project updated_at for area lastmod dates
+        $latestProjectDate = Project::where('is_published', true)->max('updated_at');
+        $areaLastmod = $latestProjectDate ? \Carbon\Carbon::parse($latestProjectDate) : now();
+
         foreach ($areas as $area) {
             // Standard area pages
             foreach ($areaPages as $page) {
@@ -139,7 +155,7 @@ class GenerateSitemap extends Command
                 
                 $sitemap->add(
                     Url::create("{$baseUrl}/{$uri}")
-                        ->setLastModificationDate(now())
+                        ->setLastModificationDate($areaLastmod)
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority($priority)
                 );
@@ -153,7 +169,7 @@ class GenerateSitemap extends Command
                 
                 $sitemap->add(
                     Url::create("{$baseUrl}/{$uri}")
-                        ->setLastModificationDate(now())
+                        ->setLastModificationDate($areaLastmod)
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                         ->setPriority(0.8) // High priority for local service keywords
                 );
@@ -181,6 +197,24 @@ class GenerateSitemap extends Command
         }
         $this->line("  Added {$testimonialCount} testimonial pages");
 
+        // Add project type filter pages (e.g., /projects/kitchens)
+        $this->info("Adding project type filter pages to sitemap...");
+        $projectTypePages = [
+            'projects/kitchens' => 0.8,
+            'projects/bathrooms' => 0.8,
+            'projects/home-remodeling' => 0.8,
+        ];
+        foreach ($projectTypePages as $uri => $priority) {
+            $sitemap->add(
+                Url::create("{$baseUrl}/{$uri}")
+                    ->setLastModificationDate(now())
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
+                    ->setPriority($priority)
+            );
+            $urlCount++;
+        }
+        $this->line("  Added " . count($projectTypePages) . " project type filter pages");
+
         // Add individual project pages with images
         $this->info("Adding project pages to sitemap...");
         $projects = Project::where('is_published', true)->with('images')->get();
@@ -199,6 +233,9 @@ class GenerateSitemap extends Command
             foreach ($project->images as $image) {
                 $imageUrl = $image->getThumbnailUrl('large'); // Use large size for better quality
                 if ($imageUrl) {
+                    if ($needsImageRewrite) {
+                        $imageUrl = str_replace($appUrl, $baseUrl, $imageUrl);
+                    }
                     $url->addImage(
                         url: $imageUrl,
                         caption: $image->alt_text ?? '',
@@ -224,6 +261,9 @@ class GenerateSitemap extends Command
 
                 $photoImageUrl = $image->getThumbnailUrl('large');
                 if ($photoImageUrl) {
+                    if ($needsImageRewrite) {
+                        $photoImageUrl = str_replace($appUrl, $baseUrl, $photoImageUrl);
+                    }
                     $photoUrl->addImage(
                         url: $photoImageUrl,
                         caption: $image->alt_text ?? '',

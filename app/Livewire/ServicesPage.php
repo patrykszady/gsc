@@ -81,8 +81,21 @@ class ServicesPage extends Component
         ];
     }
 
+    protected function getFaqs(): array
+    {
+        return [
+            ['question' => 'What remodeling services does GS Construction offer?', 'answer' => 'We specialize in three core areas: kitchen remodeling, bathroom remodeling, and whole-home renovations. This includes cabinetry, countertops, tile work, flooring, plumbing, electrical, structural modifications, room additions, and more.'],
+            ['question' => 'Do you offer free consultations?', 'answer' => 'Yes! We provide free in-home consultations where we assess your space, discuss your vision, and provide a detailed, no-obligation estimate. Call us at (224) 735-4200 to schedule.'],
+            ['question' => 'What areas do you serve?', 'answer' => 'We serve over 89 cities across Chicagoland, including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, Barrington, and communities throughout the Northwest Suburbs, North Shore, and greater Chicago area.'],
+            ['question' => 'How experienced is your team?', 'answer' => 'GS Construction is a family-owned business with over 40 years of combined experience. Greg and Patryk bring expertise in all aspects of residential remodeling, backed by 53+ five-star Google reviews.'],
+            ['question' => 'Do you handle the entire project from start to finish?', 'answer' => 'Yes, we are a full-service remodeling company. From initial design and permits to construction and final inspection, we manage every aspect of your project so you have a single point of contact throughout.'],
+        ];
+    }
+
     public function render()
     {
-        return view('livewire.services-page');
+        return view('livewire.services-page', [
+            'faqs' => $this->getFaqs(),
+        ]);
     }
 }

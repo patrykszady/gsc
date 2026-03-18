@@ -142,6 +142,9 @@
         </div>
     </div>
 
+    {{-- FAQ Section --}}
+    <x-faq-section :faqs="$faqs" heading="Customer Reviews FAQ" />
+
     {{-- More Testimonials Section --}}
     <livewire:testimonials-section :show-header="false" />
 </div>

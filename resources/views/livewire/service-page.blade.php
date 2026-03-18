@@ -108,6 +108,36 @@
     {{-- Internal Links Section --}}
     <x-internal-links :projects="$projects" :current-service="$service" />
 
+    {{-- Service by City — hub-to-spoke internal linking for local SEO --}}
+    @php
+        $serviceSlugMap = [
+            'kitchen-remodeling' => 'kitchens',
+            'bathroom-remodeling' => 'bathrooms',
+            'home-remodeling' => 'home-remodeling',
+        ];
+        $serviceSlug = $serviceSlugMap[$service] ?? null;
+        $allAreas = $serviceSlug ? \App\Models\AreaServed::orderBy('city')->get() : collect();
+    @endphp
+    @if($allAreas->isNotEmpty())
+    <section class="bg-zinc-50 py-12 dark:bg-zinc-800/50">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white">
+                {{ $data['title'] }} by City
+            </h2>
+            <p class="mt-2 text-zinc-600 dark:text-zinc-400">
+                Find local {{ strtolower($data['title']) }} contractors in your Chicago suburb.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-2">
+                @foreach($allAreas as $areaItem)
+                <a href="{{ $areaItem->serviceUrl($serviceSlug) }}" wire:navigate class="rounded-lg bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm hover:bg-sky-50 hover:text-sky-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
+                    {{ $areaItem->city }}
+                </a>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
     {{-- CTA Section --}}
     <x-cta-section 
         variant="blue"

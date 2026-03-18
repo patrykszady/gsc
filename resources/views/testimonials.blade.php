@@ -26,6 +26,17 @@
 
     <livewire:testimonials-grid />
 
+    {{-- FAQ Section --}}
+    @php
+        $faqs = [
+            ['question' => 'Are your customer reviews real?', 'answer' => 'Yes, all reviews featured on our site are from verified customers. Most come directly from our Google Business Profile and can be independently verified there.'],
+            ['question' => 'How many reviews does GS Construction have?', 'answer' => 'We have over 53 five-star reviews on Google from homeowners across the Chicagoland area. Our consistent 5-star rating reflects our commitment to quality and customer satisfaction.'],
+            ['question' => 'Can I speak with a past client before hiring you?', 'answer' => 'Absolutely! We are happy to connect you with previous clients who can share their experience working with GS Construction. Just ask during your consultation.'],
+            ['question' => 'What areas do your reviewers come from?', 'answer' => 'Our clients come from across Chicagoland including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, and 80+ other communities in the Northwest Suburbs and North Shore.'],
+        ];
+    @endphp
+    <x-faq-section :faqs="$faqs" heading="Customer Reviews FAQ" />
+
     <livewire:map-section />
 
     <livewire:testimonials-section :show-header="false" />

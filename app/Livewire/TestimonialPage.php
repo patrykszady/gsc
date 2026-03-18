@@ -101,6 +101,16 @@ class TestimonialPage extends Component
         };
     }
 
+    protected function getFaqs(): array
+    {
+        return [
+            ['question' => 'Are your customer reviews real?', 'answer' => 'Yes, all reviews featured on our site are from verified customers. Most come directly from our Google Business Profile and can be independently verified there.'],
+            ['question' => 'How many reviews does GS Construction have?', 'answer' => 'We have over 53 five-star reviews on Google from homeowners across the Chicagoland area. Our consistent 5-star rating reflects our commitment to quality and customer satisfaction.'],
+            ['question' => 'How do I get started with my own project?', 'answer' => 'Contact us at (224) 735-4200 or through our website to schedule a free in-home consultation. We will discuss your vision and provide a detailed, no-obligation estimate.'],
+            ['question' => 'What types of projects do you handle?', 'answer' => 'We specialize in kitchen remodeling, bathroom remodeling, and whole-home renovations across the Chicagoland area. From small updates to complete transformations, we handle projects of every scope.'],
+        ];
+    }
+
     public function render()
     {
         return view('livewire.testimonial-page', [
@@ -108,6 +118,7 @@ class TestimonialPage extends Component
             'thumbnailUrl' => $this->getThumbnailUrl(),
             'thumbnailThumbUrl' => $this->getThumbnailThumbUrl(),
             'areaSlug' => $this->getAreaSlug(),
+            'faqs' => $this->getFaqs(),
         ]);
     }
 }

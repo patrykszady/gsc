@@ -825,6 +825,214 @@ class GoogleBusinessProfileService
         return self::MEDIA_API_BASE . "/accounts/{$accountId}/locations/{$locationId}";
     }
 
+    /**
+     * Build the Info API URL for the configured location.
+     */
+    protected function infoLocationUrl(): string
+    {
+        $locationId = config('services.google.business_profile.location_id');
+
+        return self::INFO_API_BASE . "/locations/{$locationId}";
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Location / Profile                                                 */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Fetch the current location details from the Business Information API.
+     */
+    public function getLocation(string $readMask = 'name,title,categories,serviceArea,websiteUri'): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->get($this->infoLocationUrl(), [
+                'readMask' => $readMask,
+            ]);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Get location failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to get location', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+
+        return $response->json();
+    }
+
+    /**
+     * Update the service area on the GBP listing.
+     *
+     * Google allows up to 20 service areas for service-area businesses.
+     *
+     * @param  array<string>  $cities  City names (e.g., ['Palatine, IL', 'Arlington Heights, IL'])
+     * @param  string  $businessType  CUSTOMER_AND_BUSINESS_LOCATION or CUSTOMER_LOCATION_ONLY
+     */
+    public function updateServiceArea(array $cities, string $businessType = 'CUSTOMER_AND_BUSINESS_LOCATION'): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $placeInfos = array_map(fn (string $city) => [
+            'placeName' => $city,
+        ], array_slice($cities, 0, 20));
+
+        $payload = [
+            'serviceArea' => [
+                'businessType' => $businessType,
+                'places' => [
+                    'placeInfos' => $placeInfos,
+                ],
+            ],
+        ];
+
+        $url = $this->infoLocationUrl() . '?updateMask=serviceArea';
+
+        $response = Http::withToken($accessToken)
+            ->timeout(60)
+            ->patch($url, $payload);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Update service area failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to update service area', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'cities_count' => count($cities),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        $data = $response->json();
+
+        Log::info('GBP: Updated service area', [
+            'cities_count' => count($placeInfos),
+            'business_type' => $businessType,
+        ]);
+
+        return $data;
+    }
+
+    /**
+     * Update the GBP listing categories.
+     *
+     * @param  string  $primaryCategoryId  e.g. 'gcid:remodeler'
+     * @param  array<string>  $additionalCategoryIds  e.g. ['gcid:kitchen_remodeler', 'gcid:bathroom_remodeler']
+     */
+    public function updateCategories(string $primaryCategoryId, array $additionalCategoryIds = []): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $payload = [
+            'categories' => [
+                'primaryCategory' => [
+                    'name' => "categories/{$primaryCategoryId}",
+                ],
+                'additionalCategories' => array_map(fn (string $id) => [
+                    'name' => "categories/{$id}",
+                ], $additionalCategoryIds),
+            ],
+        ];
+
+        $url = $this->infoLocationUrl() . '?updateMask=categories';
+
+        $response = Http::withToken($accessToken)
+            ->timeout(60)
+            ->patch($url, $payload);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Update categories failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to update categories', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        $data = $response->json();
+
+        Log::info('GBP: Updated categories', [
+            'primary' => $primaryCategoryId,
+            'additional' => $additionalCategoryIds,
+        ]);
+
+        return $data;
+    }
+
+    /**
+     * Search available GBP categories by keyword.
+     */
+    public function searchCategories(string $query, string $regionCode = 'US', string $languageCode = 'en'): ?array
+    {
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->get(self::INFO_API_BASE . '/categories', [
+                'regionCode' => $regionCode,
+                'languageCode' => $languageCode,
+                'filter' => "categoryName=\"{$query}\"",
+                'pageSize' => 20,
+            ]);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Search categories failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+
+            return null;
+        }
+
+        return $response->json('categories', []);
+    }
+
     protected function getAccessToken(): ?string
     {
         $cacheKey = 'google_business_profile_access_token';

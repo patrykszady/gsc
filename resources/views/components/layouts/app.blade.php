@@ -15,6 +15,10 @@
     <meta name="geo.region" content="US-IL">
     <meta name="geo.placename" content="Chicago">
 
+    {{-- AEO / GEO: AI & Answer Engine Optimization --}}
+    <link rel="alternate" type="text/plain" href="{{ url('/llms.txt') }}" title="LLM Context">
+    <meta name="ai-content-description" content="GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, 53+ five-star reviews. Serving 89+ cities in Chicagoland. (224) 735-4200.">
+
     {{-- Hreflang for bilingual support --}}
     <x-hreflang />
 
@@ -36,6 +40,9 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+    <meta name="application-name" content="GS Construction">
+    <meta name="theme-color" content="#1a1a1a">
 
     {{-- Preconnect to third-party origins for faster loading --}}
     {{-- Only preconnect to Google Analytics for US visitors (privacy/GDPR compliance) --}}

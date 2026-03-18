@@ -30,6 +30,18 @@
     {{-- Projects Grid --}}
     <livewire:projects-grid />
 
+    {{-- FAQ Section --}}
+    @php
+        $faqs = [
+            ['question' => 'What types of remodeling projects do you do?', 'answer' => 'GS Construction specializes in kitchen remodeling, bathroom remodeling, and whole-home renovations. We handle everything from single-room updates to complete home transformations across the Chicagoland area.'],
+            ['question' => 'How do I get a free estimate for my project?', 'answer' => 'Contact us by phone at (224) 735-4200 or through our website to schedule a free in-home consultation. We will assess your space, discuss your vision, and provide a detailed, no-obligation estimate.'],
+            ['question' => 'How long does a typical remodeling project take?', 'answer' => 'Timelines vary depending on scope — a bathroom remodel may take 2–6 weeks, a kitchen remodel 4–10 weeks, and larger whole-home renovations several months. We provide a detailed schedule before work begins.'],
+            ['question' => 'Do you handle permits and inspections?', 'answer' => 'Yes, GS Construction handles all required permits and coordinates inspections for every project. We are familiar with building codes across Chicagoland and ensure full compliance.'],
+            ['question' => 'Are you licensed and insured?', 'answer' => 'Yes, GS Construction is fully licensed and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
+        ];
+    @endphp
+    <x-faq-section :faqs="$faqs" heading="Remodeling Projects FAQ" />
+
     {{-- CTA Section --}}
     <div class="relative isolate z-0 bg-white px-6 py-12 sm:py-16 lg:px-8 dark:bg-zinc-900">
         <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-20 blur-3xl">

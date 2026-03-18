@@ -89,6 +89,16 @@ class Project extends Model
         return $this->hasMany(ProjectImage::class)->orderBy('sort_order');
     }
 
+    public function timelapses(): HasMany
+    {
+        return $this->hasMany(ProjectTimelapse::class)->orderBy('sort_order');
+    }
+
+    public function beforeAfters(): HasMany
+    {
+        return $this->hasMany(ProjectBeforeAfter::class)->orderBy('sort_order');
+    }
+
     public function coverImage()
     {
         return $this->hasOne(ProjectImage::class)->where('is_cover', true);

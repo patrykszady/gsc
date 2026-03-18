@@ -16,8 +16,8 @@
 
                 {{-- Contact Info --}}
                 <p class="text-sm/6 text-balance text-gray-700 dark:text-gray-300">
-                    <a href="tel:8474304439" class="hover:text-sky-600 dark:hover:text-sky-400">(847) 430-4439</a><br>
-                    <a href="mailto:patryk@gs.construction" class="hover:text-sky-600 dark:hover:text-sky-400">patryk@gs.construction</a>
+                    <a href="tel:2247354200" class="hover:text-sky-600 dark:hover:text-sky-400">(224) 735-4200</a><br>
+                    <a href="mailto:crew@gs.construction" class="hover:text-sky-600 dark:hover:text-sky-400">crew@gs.construction</a>
                 </p>
 
                 {{-- Social Icons --}}

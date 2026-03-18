@@ -167,6 +167,9 @@
         </div>
     </section>
 
+    {{-- FAQ Section --}}
+    <x-faq-section :faqs="$faqs" heading="Our Services FAQ" />
+
     {{-- CTA Section --}}
     <x-cta-section 
         variant="blue"

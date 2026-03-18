@@ -526,6 +526,24 @@
             {{-- Map Section --}}
             <livewire:map-section />
 
+            {{-- Other Services in This City (cross-service internal linking) --}}
+            <section class="bg-zinc-50 py-12 dark:bg-zinc-800/50">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
+                        More Remodeling Services in {{ $area->city }}
+                    </h2>
+                    <div class="flex flex-wrap gap-3">
+                        @foreach(['kitchens' => 'Kitchen Remodeling', 'bathrooms' => 'Bathroom Remodeling', 'home-remodeling' => 'Home Remodeling'] as $slug => $label)
+                            @if($config['urlSlug'] !== $slug)
+                            <a href="{{ $area->serviceUrl($slug) }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
+                                {{ $area->city }} {{ $label }}
+                            </a>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+
             {{-- Nearby Areas Section for Internal Linking --}}
             @if($nearbyAreas->count() > 0)
             <section class="bg-white py-12 dark:bg-zinc-900">

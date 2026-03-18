@@ -316,6 +316,317 @@
                         <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </flux:card>
+
+                {{-- Timelapses --}}
+                <flux:card>
+                    <div class="mb-4 flex items-center justify-between">
+                        <flux:heading size="lg">Timelapses</flux:heading>
+                        <flux:button type="button" size="sm" variant="primary" icon="plus" wire:click="addTimelapse">
+                            Add Timelapse
+                        </flux:button>
+                    </div>
+
+                    @if(count($timelapses) === 0)
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">No timelapses yet. Add one to create a before/during/after slider on the project page.</p>
+                    @endif
+
+                    <div class="space-y-6">
+                        @foreach($timelapses as $tlIndex => $tl)
+                            <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4" wire:key="timelapse-{{ $tlIndex }}">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <flux:input
+                                        wire:model="timelapses.{{ $tlIndex }}.title"
+                                        placeholder="Timelapse title (optional)"
+                                        size="sm"
+                                        class="flex-1"
+                                    />
+                                    <flux:select wire:model="timelapses.{{ $tlIndex }}.display_mode" size="sm" class="w-40">
+                                        <option value="slider">Slider</option>
+                                        <option value="accordion">Accordion</option>
+                                    </flux:select>
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="danger"
+                                        icon="trash"
+                                        wire:click="removeTimelapse({{ $tlIndex }})"
+                                        wire:confirm="Delete this timelapse and all its frames?"
+                                    />
+                                </div>
+
+                                {{-- Upload Zone --}}
+                                <div
+                                    x-data="{
+                                        queue: [],
+                                        uploading: [],
+                                        batchSize: 2,
+                                        isUploading: false,
+                                        dragOver: false,
+                                        tlIndex: {{ $tlIndex }},
+
+                                        addFiles(fileList) {
+                                            const files = Array.from(fileList).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                                            for (const file of files) {
+                                                if (!file.type.startsWith('image/')) continue;
+                                                const isDup = [...this.queue, ...this.uploading]
+                                                    .some(p => p.name === file.name && p.size === file.size);
+                                                if (isDup) continue;
+                                                this.queue.push({
+                                                    file,
+                                                    name: file.name,
+                                                    size: file.size,
+                                                    url: URL.createObjectURL(file),
+                                                    progress: 0,
+                                                    status: 'queued',
+                                                });
+                                            }
+                                            this.processQueue();
+                                        },
+
+                                        processQueue() {
+                                            if (this.isUploading || this.queue.length === 0) return;
+
+                                            this.isUploading = true;
+                                            const batch = this.queue.splice(0, this.batchSize);
+                                            batch.forEach(item => { item.status = 'uploading'; });
+                                            this.uploading.push(...batch);
+
+                                            const files = batch.map(item => item.file);
+
+                                            $wire.call('setActiveTimelapseIndex', this.tlIndex).then(() => {
+                                                $wire.$uploadMultiple('timelapseUploads', files,
+                                                    () => {
+                                                        batch.forEach(item => {
+                                                            item.status = 'done';
+                                                            item.progress = 100;
+                                                            if (item.url) URL.revokeObjectURL(item.url);
+                                                        });
+                                                        this.uploading = this.uploading.filter(i => i.status !== 'done');
+                                                        this.isUploading = false;
+                                                        queueMicrotask(() => this.processQueue());
+                                                    },
+                                                    () => {
+                                                        batch.forEach(item => { item.status = 'error'; });
+                                                        this.uploading = this.uploading.filter(i => i.status !== 'error');
+                                                        this.isUploading = false;
+                                                        queueMicrotask(() => this.processQueue());
+                                                    },
+                                                    (event) => {
+                                                        const pct = event.detail?.progress ?? 0;
+                                                        batch.forEach(item => { item.progress = pct; });
+                                                    }
+                                                );
+                                            });
+                                        },
+
+                                        get pendingPreviews() {
+                                            return [...this.uploading, ...this.queue];
+                                        },
+                                    }"
+                                >
+                                    <div
+                                        x-on:click="$refs.timelapseInput{{ $tlIndex }}.click()"
+                                        x-on:drop.prevent="dragOver = false; addFiles($event.dataTransfer.files)"
+                                        x-on:dragover.prevent="dragOver = true"
+                                        x-on:dragleave.prevent="dragOver = false"
+                                        class="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-4 text-center transition-colors"
+                                        :class="dragOver ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/20' : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-600 dark:hover:border-zinc-500'"
+                                    >
+                                        <input
+                                            type="file"
+                                            x-ref="timelapseInput{{ $tlIndex }}"
+                                            multiple
+                                            accept="image/*"
+                                            class="hidden"
+                                            x-on:change="addFiles($event.target.files); $event.target.value = ''"
+                                        />
+                                        <flux:icon.film class="size-6 text-zinc-400" />
+                                        <p class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Drop frames or click to browse</p>
+                                        <p class="mt-0.5 text-xs text-zinc-500">Files sorted by name automatically</p>
+                                    </div>
+
+                                    {{-- Pending uploads --}}
+                                    <template x-if="pendingPreviews.length > 0">
+                                        <div class="mt-3">
+                                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                                <template x-for="(preview, idx) in pendingPreviews" :key="preview.name + '-' + preview.size">
+                                                    <div class="group relative aspect-square overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+                                                        <img :src="preview.url" :alt="preview.name" class="size-full object-cover" :class="preview.status === 'uploading' ? 'opacity-60' : (preview.status === 'queued' ? 'opacity-40' : '')">
+                                                        <div x-show="preview.status === 'uploading'" class="absolute inset-x-0 bottom-0 bg-black/60 p-0.5">
+                                                            <div class="h-0.5 overflow-hidden rounded-full bg-white/20">
+                                                                <div class="h-full rounded-full bg-white transition-all" :style="'width: ' + preview.progress + '%'"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                {{-- New uploads (server-side) --}}
+                                @if(count($tl['allUploads'] ?? []) > 0)
+                                    <div class="mt-3">
+                                        <h4 class="mb-1 text-xs font-medium text-zinc-500">New Frames</h4>
+                                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                            @foreach($tl['allUploads'] as $uIdx => $upload)
+                                                <div class="group relative aspect-square overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800" title="{{ $upload->getClientOriginalName() }}">
+                                                    <img src="{{ $upload->temporaryUrl() }}" alt="{{ $upload->getClientOriginalName() }}" class="size-full object-cover">
+                                                    <button
+                                                        type="button"
+                                                        wire:click="removeQueuedTimelapseUpload({{ $tlIndex }}, {{ $uIdx }})"
+                                                        class="absolute right-0.5 top-0.5 rounded-full bg-red-500 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                                    >
+                                                        <flux:icon.x-mark class="size-3" />
+                                                    </button>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Existing frames --}}
+                                @if(count($tl['existingFrames'] ?? []) > 0)
+                                    <div class="mt-3"
+                                        x-data="{
+                                            dragging: null,
+                                            dragOverIdx: null,
+                                            reorder(fromIdx, toIdx) {
+                                                const frames = @js(array_column($tl['existingFrames'], 'id'));
+                                                const [moved] = frames.splice(fromIdx, 1);
+                                                frames.splice(toIdx, 0, moved);
+                                                $wire.reorderTimelapseFrames({{ $tlIndex }}, frames);
+                                            }
+                                        }"
+                                    >
+                                        <h4 class="mb-1 text-xs font-medium text-zinc-500">
+                                            Frames ({{ count($tl['existingFrames']) }})
+                                        </h4>
+                                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                            @foreach($tl['existingFrames'] as $fIdx => $frame)
+                                                <div
+                                                    class="group relative aspect-square overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800 cursor-grab"
+                                                    draggable="true"
+                                                    x-on:dragstart="dragging = {{ $fIdx }}"
+                                                    x-on:dragend="dragging = null; dragOverIdx = null"
+                                                    x-on:dragover.prevent="dragOverIdx = {{ $fIdx }}"
+                                                    x-on:drop.prevent="if (dragging !== null && dragging !== {{ $fIdx }}) reorder(dragging, {{ $fIdx }}); dragging = null; dragOverIdx = null"
+                                                    :class="dragOverIdx === {{ $fIdx }} ? 'ring-2 ring-sky-400' : ''"
+                                                >
+                                                    <img src="{{ $frame['url'] }}" alt="Frame {{ $fIdx + 1 }}" class="size-full object-cover">
+                                                    <button
+                                                        type="button"
+                                                        wire:click="removeTimelapseFrame({{ $tlIndex }}, {{ $frame['id'] }})"
+                                                        wire:confirm="Delete this frame?"
+                                                        class="absolute right-0.5 top-0.5 rounded-full bg-red-500 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                                    >
+                                                        <flux:icon.x-mark class="size-3" />
+                                                    </button>
+                                                    <div class="absolute left-0.5 top-0.5">
+                                                        <span class="inline-flex size-4 items-center justify-center rounded-full bg-black/60 text-[9px] font-medium text-white">{{ $fIdx + 1 }}</span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+
+                    @error('timelapseUploads.*')
+                        <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </flux:card>
+
+                {{-- Before / After Comparisons --}}
+                <flux:card>
+                    <div class="mb-4 flex items-center justify-between">
+                        <flux:heading size="lg">Before &amp; After</flux:heading>
+                        <flux:button type="button" size="sm" variant="primary" icon="plus" wire:click="addBeforeAfter">
+                            Add Comparison
+                        </flux:button>
+                    </div>
+
+                    @if(count($beforeAfters) === 0)
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400">No before/after comparisons yet. Add one to show a draggable image comparison slider on the project page.</p>
+                    @endif
+
+                    <div class="space-y-6">
+                        @foreach($beforeAfters as $baIndex => $ba)
+                            <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4" wire:key="ba-{{ $baIndex }}">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <flux:input
+                                        wire:model="beforeAfters.{{ $baIndex }}.title"
+                                        placeholder="Comparison title (optional)"
+                                        size="sm"
+                                        class="flex-1"
+                                    />
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="danger"
+                                        icon="trash"
+                                        wire:click="removeBeforeAfter({{ $baIndex }})"
+                                        wire:confirm="Delete this before/after comparison?"
+                                    />
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    {{-- Before Image --}}
+                                    <div>
+                                        <h4 class="mb-1 text-xs font-medium text-zinc-500">Before</h4>
+                                        @if(isset($baBeforeUploads[$baIndex]) && $baBeforeUploads[$baIndex])
+                                            <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                                <img src="{{ $baBeforeUploads[$baIndex]->temporaryUrl() }}" alt="Before (new)" class="size-full object-cover">
+                                                <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">New</span>
+                                            </div>
+                                        @elseif($ba['beforeUrl'])
+                                            <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                                <img src="{{ $ba['beforeUrl'] }}" alt="Before" class="size-full object-cover">
+                                            </div>
+                                        @else
+                                            <div class="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600">
+                                                <span class="text-xs text-zinc-400">No image</span>
+                                            </div>
+                                        @endif
+                                        <label class="mt-2 block">
+                                            <flux:button type="button" size="sm" variant="ghost" icon="arrow-up-tray" class="w-full" x-on:click="$el.closest('label').querySelector('input').click()">
+                                                {{ ($ba['beforeUrl'] || isset($baBeforeUploads[$baIndex])) ? 'Replace' : 'Upload' }}
+                                            </flux:button>
+                                            <input type="file" accept="image/*" class="hidden" wire:model="baBeforeUploads.{{ $baIndex }}" />
+                                        </label>
+                                    </div>
+
+                                    {{-- After Image --}}
+                                    <div>
+                                        <h4 class="mb-1 text-xs font-medium text-zinc-500">After</h4>
+                                        @if(isset($baAfterUploads[$baIndex]) && $baAfterUploads[$baIndex])
+                                            <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                                <img src="{{ $baAfterUploads[$baIndex]->temporaryUrl() }}" alt="After (new)" class="size-full object-cover">
+                                                <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">New</span>
+                                            </div>
+                                        @elseif($ba['afterUrl'])
+                                            <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                                                <img src="{{ $ba['afterUrl'] }}" alt="After" class="size-full object-cover">
+                                            </div>
+                                        @else
+                                            <div class="flex aspect-video items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600">
+                                                <span class="text-xs text-zinc-400">No image</span>
+                                            </div>
+                                        @endif
+                                        <label class="mt-2 block">
+                                            <flux:button type="button" size="sm" variant="ghost" icon="arrow-up-tray" class="w-full" x-on:click="$el.closest('label').querySelector('input').click()">
+                                                {{ ($ba['afterUrl'] || isset($baAfterUploads[$baIndex])) ? 'Replace' : 'Upload' }}
+                                            </flux:button>
+                                            <input type="file" accept="image/*" class="hidden" wire:model="baAfterUploads.{{ $baIndex }}" />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </flux:card>
             </div>
 
             {{-- Sidebar --}}

@@ -95,6 +95,358 @@
             </div>
         </div>
 
+        {{-- Project Timelapses --}}
+        @foreach($project->timelapses as $timelapse)
+            @if($timelapse->frames->isNotEmpty())
+                @php
+                    $frames = $timelapse->frames->sortBy('sort_order')->map(fn($f) => $f->url)->values()->all();
+                    $frameCount = max(count($frames), 1);
+                    $middleTick = (int) ceil($frameCount / 2);
+                    $timelapseTitle = $timelapse->title ?: 'Project Timelapse';
+                @endphp
+                <div class="mb-8">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{{ $timelapseTitle }}</h2>
+
+                    @if($timelapse->display_mode === 'slider' || $timelapse->display_mode === 'accordion')
+                        {{-- Accordion / Reveal View --}}
+                        <section
+                            x-data="{ active: null }"
+                            class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+                        >
+                            <div class="relative h-[375px] sm:h-[450px] lg:h-[525px] flex">
+                                @foreach($frames as $fIdx => $frameUrl)
+                                    <div
+                                        class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-all duration-500 ease-in-out cursor-pointer"
+                                        :class="active === {{ $fIdx }} ? 'flex-[8]' : (active === null ? 'flex-1' : 'flex-[0.3]')"
+                                        @mouseenter="active = {{ $fIdx }}"
+                                        @mouseleave="active = null"
+                                    >
+                                        <img
+                                            src="{{ $frameUrl }}"
+                                            alt="{{ $project->title }} — frame {{ $fIdx + 1 }}"
+                                            class="absolute inset-0 h-full w-full object-cover"
+                                            style="object-position: {{ count($frames) > 1 ? round($fIdx / (count($frames) - 1) * 100, 2) : 50 }}% center"
+                                            loading="eager"
+                                        />
+                                        <div class="absolute inset-0 transition-colors duration-300"
+                                            :class="active === {{ $fIdx }} ? 'bg-black/10' : 'bg-black/30'"
+                                        ></div>
+
+                                        {{-- Frame label --}}
+                                        <div class="absolute inset-x-0 bottom-0 z-10 p-3 text-center">
+                                            <span
+                                                class="inline-block rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm transition-opacity duration-300"
+                                                :class="active !== null && active !== {{ $fIdx }} ? 'opacity-0' : 'opacity-100'"
+                                            >
+                                                @if($fIdx === 0)
+                                                    Before
+                                                @elseif($fIdx === count($frames) - 1)
+                                                    After
+                                                @else
+                                                    {{ $fIdx + 1 }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
+                    @if($timelapse->display_mode === 'slider' || $timelapse->display_mode === 'accordion')
+                        {{-- Slider View (default) --}}
+                        <section
+                            x-data="{
+                                frames: @js($frames),
+                                position: 1,
+                                timer: null,
+                                started: false,
+                                inView: false,
+                                hovering: false,
+                                dragging: false,
+                                intervalMs: 650,
+                                allLoaded: false,
+                                loadedCount: 0,
+                                firstFrameLoaded: false,
+                                init() {
+                                    const firstFrame = this.$refs.firstFrame;
+                                    if (firstFrame?.complete && firstFrame?.naturalWidth > 0) {
+                                        this.firstFrameLoaded = true;
+                                    }
+                                },
+                                src() {
+                                    if (!this.frames.length) return null;
+                                    return this.frames[this.position - 1] ?? this.frames[0] ?? null;
+                                },
+                                tick() {
+                                    if (!this.frames.length) return;
+                                    this.position = (this.position % this.frames.length) + 1;
+                                },
+                                start() {
+                                    if (!this.inView || this.hovering || this.dragging || this.timer || this.frames.length < 2 || !this.allLoaded) return;
+                                    this.timer = setInterval(() => this.tick(), this.intervalMs);
+                                },
+                                stop() {
+                                    if (!this.timer) return;
+                                    clearInterval(this.timer);
+                                    this.timer = null;
+                                },
+                                preloadAll() {
+                                    if (this.allLoaded) return;
+                                    const total = this.frames.length;
+                                    if (total === 0) { this.allLoaded = true; return; }
+                                    this.frames.forEach(src => {
+                                        const img = new Image();
+                                        img.onload = img.onerror = () => {
+                                            this.loadedCount++;
+                                            if (this.loadedCount >= total) {
+                                                this.allLoaded = true;
+                                                if (this.inView && this.started) this.start();
+                                            }
+                                        };
+                                        img.src = src;
+                                    });
+                                },
+                                play() {
+                                    this.inView = true;
+                                    this.started = true;
+                                    this.preloadAll();
+                                    if (this.allLoaded) { this.stop(); this.start(); }
+                                },
+                                pause() { this.inView = false; this.stop(); },
+                                beginHover() { this.hovering = true; this.stop(); },
+                                endHover() { this.hovering = false; this.start(); },
+                                beginDrag() { this.dragging = true; this.stop(); },
+                                endDrag() { this.dragging = false; this.start(); },
+                            }"
+                            @mouseenter="beginHover()"
+                            @mouseleave="endHover()"
+                            @pointerup.window="endDrag()"
+                            @pointercancel.window="endDrag()"
+                            x-intersect:enter.full="play()"
+                            x-intersect:leave.full="pause()"
+                            class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+                        >
+                            <div class="relative h-[375px] sm:h-[450px] lg:h-[525px]">
+                                <img
+                                    x-ref="firstFrame"
+                                    x-show="frames.length && position === 1"
+                                    src="{{ $frames[0] ?? '' }}"
+                                    alt="{{ $project->title }} timelapse"
+                                    @load="if (!firstFrameLoaded) { firstFrameLoaded = true; }"
+                                    :class="firstFrameLoaded ? 'opacity-100' : 'opacity-0'"
+                                    class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
+                                />
+                                <img
+                                    x-show="frames.length && position !== 1"
+                                    :src="src()"
+                                    alt="{{ $project->title }} timelapse"
+                                    class="absolute inset-0 h-full w-full object-cover"
+                                />
+
+                                <div class="absolute inset-0 bg-black/20"></div>
+
+                                <div class="absolute inset-x-0 bottom-6 z-10">
+                                    <div class="mx-auto w-full max-w-md px-6">
+                                        <div
+                                            class="rounded-xl p-4 text-white backdrop-blur-sm shadow-lg ring-2 ring-white/50 **:text-white **:fill-white **:stroke-white"
+                                            @focusin="beginHover()"
+                                            @focusout="endHover()"
+                                            @pointerdown.capture="beginDrag()"
+                                        >
+                                            <flux:slider min="1" max="{{ $frameCount }}" x-model.number="position">
+                                                @for ($i = 1; $i <= $frameCount; $i++)
+                                                    <flux:slider.tick value="{{ $i }}" class="!text-white drop-shadow-sm font-medium">
+                                                        @if ($i === 1)
+                                                            Before
+                                                        @elseif ($i === $middleTick)
+                                                            Construction
+                                                        @elseif ($i === $frameCount)
+                                                            After
+                                                        @else
+                                                            <span class="sr-only">Frame {{ $i }}</span>
+                                                        @endif
+                                                    </flux:slider.tick>
+                                                @endfor
+                                            </flux:slider>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    @endif
+
+                    {{-- Before / After comparison using first & last frames --}}
+                    @if(count($frames) >= 2)
+                        @php $firstFrame = $frames[0]; $lastFrame = $frames[count($frames) - 1]; @endphp
+                        <section
+                            x-data="{
+                                position: 50,
+                                dragging: false,
+                                updatePosition(clientX) {
+                                    const rect = this.$refs.tlBaContainer.getBoundingClientRect();
+                                    const x = clientX - rect.left;
+                                    this.position = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                                },
+                                onPointerDown(e) { this.dragging = true; this.updatePosition(e.clientX); e.preventDefault(); },
+                                onPointerMove(e) { if (!this.dragging) return; this.updatePosition(e.clientX); },
+                                onPointerUp() { this.dragging = false; },
+                            }"
+                            @pointerup.window="onPointerUp()"
+                            @pointermove.window="onPointerMove($event)"
+                            class="relative mt-4 select-none"
+                        >
+                            <div
+                                x-ref="tlBaContainer"
+                                @pointerdown="onPointerDown($event)"
+                                class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize"
+                            >
+                                {{-- After Image (last frame, full width background) --}}
+                                <img src="{{ $lastFrame }}" alt="{{ $timelapseTitle }} — After" class="block w-full" />
+
+                                {{-- Before Image (first frame, clipped overlay) --}}
+                                <div class="absolute inset-0 overflow-hidden" :style="'clip-path: inset(0 ' + (100 - position) + '% 0 0)'">
+                                    <img src="{{ $firstFrame }}" alt="{{ $timelapseTitle }} — Before" class="block w-full" />
+                                </div>
+
+                                {{-- Divider Line --}}
+                                <div class="absolute inset-y-0 z-10 flex items-center" :style="'left: ' + position + '%'">
+                                    <div class="relative -ml-px h-full w-0.5 bg-white shadow-md">
+                                        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex size-10 items-center justify-center rounded-full bg-white shadow-lg ring-2 ring-white/80">
+                                            <svg class="size-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="15 18 9 12 15 6"></polyline>
+                                            </svg>
+                                            <svg class="size-5 -ml-1 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="9 18 15 12 9 6"></polyline>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Labels --}}
+                                <div class="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-between px-4">
+                                    <span class="rounded-full bg-black/60 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm" x-show="position > 10" x-transition>Before</span>
+                                    <span class="rounded-full bg-black/60 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm" x-show="position < 90" x-transition>After</span>
+                                </div>
+                            </div>
+                        </section>
+                    @endif
+                </div>
+            @endif
+        @endforeach
+
+        {{-- Before / After Comparisons --}}
+        @foreach($project->beforeAfters as $ba)
+            <div class="mb-8">
+                @if($ba->title)
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{{ $ba->title }}</h2>
+                @else
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Before &amp; After</h2>
+                @endif
+
+                <section
+                    x-data="{
+                        position: 50,
+                        dragging: false,
+                        containerWidth: 0,
+                        beforeLoaded: false,
+                        afterLoaded: false,
+
+                        get ready() { return this.beforeLoaded && this.afterLoaded; },
+
+                        updatePosition(clientX) {
+                            const rect = this.$refs.container.getBoundingClientRect();
+                            const x = clientX - rect.left;
+                            this.position = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                        },
+
+                        onPointerDown(e) {
+                            this.dragging = true;
+                            this.updatePosition(e.clientX);
+                            e.preventDefault();
+                        },
+
+                        onPointerMove(e) {
+                            if (!this.dragging) return;
+                            this.updatePosition(e.clientX);
+                        },
+
+                        onPointerUp() {
+                            this.dragging = false;
+                        },
+                    }"
+                    @pointerup.window="onPointerUp()"
+                    @pointermove.window="onPointerMove($event)"
+                    class="relative select-none"
+                >
+                    <div
+                        x-ref="container"
+                        @pointerdown="onPointerDown($event)"
+                        class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize"
+                        :class="ready ? '' : 'animate-pulse'"
+                    >
+                        {{-- After Image (background, full width) --}}
+                        <img
+                            x-ref="afterImg"
+                            src="{{ $ba->after_url }}"
+                            alt="{{ $ba->title ? $ba->title . ' — After' : 'After' }}"
+                            x-init="if ($refs.afterImg.complete && $refs.afterImg.naturalWidth) afterLoaded = true"
+                            @load="afterLoaded = true"
+                            class="block w-full"
+                            :class="afterLoaded ? 'opacity-100' : 'opacity-0'"
+                        />
+
+                        {{-- Before Image (clipped overlay) --}}
+                        <div
+                            class="absolute inset-0 overflow-hidden"
+                            :style="'clip-path: inset(0 ' + (100 - position) + '% 0 0)'"
+                        >
+                            <img
+                                x-ref="beforeImg"
+                                src="{{ $ba->before_url }}"
+                                alt="{{ $ba->title ? $ba->title . ' — Before' : 'Before' }}"
+                                x-init="if ($refs.beforeImg.complete && $refs.beforeImg.naturalWidth) beforeLoaded = true"
+                                @load="beforeLoaded = true"
+                                class="block w-full"
+                            />
+                        </div>
+
+                        {{-- Divider Line --}}
+                        <div
+                            class="absolute inset-y-0 z-10 flex items-center"
+                            :style="'left: ' + position + '%'"
+                        >
+                            <div class="relative -ml-px h-full w-0.5 bg-white shadow-md">
+                                {{-- Handle --}}
+                                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex size-10 items-center justify-center rounded-full bg-white shadow-lg ring-2 ring-white/80">
+                                    <svg class="size-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="15 18 9 12 15 6"></polyline>
+                                    </svg>
+                                    <svg class="size-5 -ml-1 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Labels --}}
+                        <div class="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-between px-4">
+                            <span
+                                class="rounded-full bg-black/60 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm"
+                                x-show="position > 10"
+                                x-transition
+                            >Before</span>
+                            <span
+                                class="rounded-full bg-black/60 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm"
+                                x-show="position < 90"
+                                x-transition
+                            >After</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        @endforeach
+
         {{-- Image Gallery with Lightbox --}}
         @php $images = $project->images->filter(); @endphp
         @if($images->isNotEmpty())
@@ -261,6 +613,9 @@
             </div>
         </div>
     @endif
+
+    {{-- FAQ Section --}}
+    <x-faq-section :faqs="$faqs" :heading="$projectTypeLabel . ' FAQ'" />
 
     {{-- CTA Section --}}
     <x-cta-section 

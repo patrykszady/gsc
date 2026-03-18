@@ -63,7 +63,7 @@ $schema = [
         '@type' => 'HomeAndConstructionBusiness',
         '@id' => 'https://gs.construction/#business',
         'name' => 'GS Construction & Remodeling',
-        'telephone' => '+1-847-430-4439',
+        'telephone' => '+1-224-735-4200',
         'url' => 'https://gs.construction',
     ],
     'areaServed' => $areaServed,

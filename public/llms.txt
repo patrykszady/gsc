@@ -1,0 +1,38 @@
+# GS Construction & Remodeling
+
+> Kitchen remodeling, bathroom renovations, and home remodeling in the Chicago suburbs. Family-owned with 40+ years combined experience. Serving 89+ cities in Chicagoland.
+
+## About
+
+GS Construction & Remodeling is a family-owned home remodeling business based in Arlington Heights, Illinois. Founded in 2015 by Gregory and Patryk, the company specializes in kitchen remodeling, bathroom renovations, and whole-home remodels across the Chicago suburbs. Languages: English and Polish.
+
+- Phone: (224) 735-4200
+- Email: crew@gs.construction
+- Location: Arlington Heights, IL
+- Hours: Mon–Sat 8AM–6PM
+- Rating: 5 stars from 53+ reviews
+
+## Services
+
+- [Kitchen Remodeling](https://gs.construction/services/kitchens): Complete kitchen renovations including cabinets, countertops, flooring, lighting, and appliance installation.
+- [Bathroom Remodeling](https://gs.construction/services/bathrooms): Full bathroom renovation including tile work, vanities, showers, bathtubs, and fixtures.
+- [Home Remodeling](https://gs.construction/services/home-remodeling): Comprehensive whole-home renovations and transformations.
+- Basement Remodeling: Basement finishing and renovation to transform unused space.
+- Home Additions: Room additions and home expansion services.
+
+## Key Pages
+
+- [Homepage](https://gs.construction/)
+- [All Projects](https://gs.construction/projects)
+- [Kitchen Projects](https://gs.construction/projects/kitchens)
+- [Bathroom Projects](https://gs.construction/projects/bathrooms)
+- [Home Remodeling Projects](https://gs.construction/projects/home-remodeling)
+- [Testimonials](https://gs.construction/testimonials)
+- [About Us](https://gs.construction/about)
+- [Contact](https://gs.construction/contact)
+- [Areas Served](https://gs.construction/areas-served)
+- [Full LLM Context](https://gs.construction/llms-full.txt)
+
+## Service Area
+
+89+ cities across Chicagoland including: Arlington Heights, Barrington, Buffalo Grove, Chicago, Deerfield, Des Plaines, Evanston, Glenview, Highland Park, Hoffman Estates, Lake Forest, Lake Zurich, Libertyville, Mount Prospect, Northbrook, Palatine, Park Ridge, Schaumburg, Skokie, Vernon Hills, Wheeling, Wilmette, Winnetka, and more.
