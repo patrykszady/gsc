@@ -899,7 +899,7 @@ class GoogleBusinessProfileService
 
         $placeInfos = array_map(fn (string $city) => [
             'placeName' => $city,
-        ], array_slice($cities, 0, 20));
+        ], $cities);
 
         $payload = [
             'serviceArea' => [
@@ -910,7 +910,21 @@ class GoogleBusinessProfileService
             ],
         ];
 
-        $url = $this->infoLocationUrl() . '?updateMask=serviceArea';
+        $updateMask = 'serviceArea';
+
+        // For CUSTOMER_AND_BUSINESS_LOCATION, the API requires storefrontAddress
+        // in the same patch request. Fetch the current address and include it.
+        if ($businessType === 'CUSTOMER_AND_BUSINESS_LOCATION') {
+            $location = $this->getLocation('storefrontAddress');
+            $address = $location['storefrontAddress'] ?? null;
+
+            if ($address) {
+                $payload['storefrontAddress'] = $address;
+                $updateMask = 'serviceArea,storefrontAddress';
+            }
+        }
+
+        $url = $this->infoLocationUrl() . '?updateMask=' . $updateMask;
 
         $response = Http::withToken($accessToken)
             ->timeout(60)

@@ -15,33 +15,33 @@ class UpdateGbpProfile extends Command
         {--all : Update both service areas and categories}
         {--dry-run : Show what would be sent without making API calls}';
 
-    protected $description = 'Update GBP profile: service areas (top 20 cities) and business categories.';
+    protected $description = 'Update GBP profile: service areas and business categories.';
 
     /**
-     * Top 20 cities by GSC impressions / strategic priority.
-     * GBP allows a maximum of 20 service areas.
+     * If the API rejects all areas (max 20), fall back to the 20 closest
+     * cities to Prospect Heights by distance.
      */
-    protected const TOP_CITIES = [
-        'Palatine',
-        'Arlington Heights',
-        'Lake Bluff',
-        'South Barrington',
-        'Barrington',
-        'Wilmette',
+    protected const FALLBACK_CITIES = [
         'Prospect Heights',
-        'Rosemont',
-        'Kenilworth',
-        'Glencoe',
-        'Lake Barrington',
-        'Green Oaks',
-        'Lincolnwood',
+        'Mount Prospect',
+        'Arlington Heights',
+        'Wheeling',
         'Buffalo Grove',
-        'Lake Zurich',
-        'Mundelein',
-        'Vernon Hills',
-        'Libertyville',
-        'Schaumburg',
-        'Highland Park',
+        'Rolling Meadows',
+        'Palatine',
+        'Des Plaines',
+        'Riverwoods',
+        'Northbrook',
+        'Elk Grove Village',
+        'Long Grove',
+        'Deerfield',
+        'Lincolnshire',
+        'Park Ridge',
+        'Kildeer',
+        'Rosemont',
+        'Glenview',
+        'Hoffman Estates',
+        'Inverness',
     ];
 
     /**
@@ -150,9 +150,12 @@ class UpdateGbpProfile extends Command
 
     protected function updateServiceAreas(GoogleBusinessProfileService $service, bool $dryRun): int
     {
-        $cities = collect(self::TOP_CITIES)
+        // Use all areas served from the database
+        $allCities = AreaServed::orderBy('city')->pluck('city')
             ->map(fn (string $city) => "{$city}, IL, USA")
             ->toArray();
+
+        $cities = $allCities;
 
         $this->info('Service areas to set (' . count($cities) . '):');
         foreach ($cities as $i => $city) {
@@ -169,6 +172,22 @@ class UpdateGbpProfile extends Command
 
         $result = $service->updateServiceArea($cities);
 
+        // If all cities failed (likely 20-area limit), retry with fallback list
+        if (! $result && count($cities) > 20) {
+            $this->warn('Failed with all ' . count($cities) . ' cities. Retrying with 20 closest to Prospect Heights...');
+
+            $cities = collect(self::FALLBACK_CITIES)
+                ->map(fn (string $city) => "{$city}, IL, USA")
+                ->toArray();
+
+            $this->info('Fallback service areas (' . count($cities) . '):');
+            foreach ($cities as $i => $city) {
+                $this->line('  ' . ($i + 1) . '. ' . $city);
+            }
+
+            $result = $service->updateServiceArea($cities);
+        }
+
         if (! $result) {
             $error = $service->getLastError();
             $this->error('Failed to update service areas: ' . ($error['message'] ?? 'Unknown error'));
@@ -179,7 +198,7 @@ class UpdateGbpProfile extends Command
             return self::FAILURE;
         }
 
-        $this->info('Service areas updated successfully.');
+        $this->info('Service areas updated successfully (' . count($cities) . ' cities).');
 
         return self::SUCCESS;
     }
