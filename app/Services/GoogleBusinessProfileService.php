@@ -884,9 +884,9 @@ class GoogleBusinessProfileService
      * Google allows up to 20 service areas for service-area businesses.
      *
      * @param  array<string>  $cities  City names (e.g., ['Palatine, IL', 'Arlington Heights, IL'])
-     * @param  string  $businessType  CUSTOMER_AND_BUSINESS_LOCATION or CUSTOMER_LOCATION_ONLY
+     * @param  string|null  $businessType  CUSTOMER_AND_BUSINESS_LOCATION or CUSTOMER_LOCATION_ONLY (null = auto-detect from current profile)
      */
-    public function updateServiceArea(array $cities, string $businessType = 'CUSTOMER_AND_BUSINESS_LOCATION'): ?array
+    public function updateServiceArea(array $cities, ?string $businessType = null): ?array
     {
         if (! $this->isConfigured()) {
             return null;
@@ -895,6 +895,12 @@ class GoogleBusinessProfileService
         $accessToken = $this->getAccessToken();
         if (! $accessToken) {
             return null;
+        }
+
+        // Auto-detect business type from current profile if not specified
+        if (! $businessType) {
+            $current = $this->getLocation('serviceArea');
+            $businessType = $current['serviceArea']['businessType'] ?? 'CUSTOMER_LOCATION_ONLY';
         }
 
         $placeInfos = array_map(fn (string $city) => [
