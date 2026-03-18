@@ -180,7 +180,7 @@ class UpdateGbpProfile extends Command
             return self::SUCCESS;
         }
 
-        $this->info('Updating GBP service areas (will try multiple API strategies)...');
+        $this->info('Resolving Google Place IDs and updating GBP service areas...');
 
         $result = $service->updateServiceArea($cities);
 

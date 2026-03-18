@@ -882,8 +882,9 @@ class GoogleBusinessProfileService
      * Update the service area on the GBP listing.
      *
      * Google allows up to 20 service areas for service-area businesses.
+     * Each PlaceInfo requires both placeName and placeId (resolved via Geocoding API).
      *
-     * @param  array<string>  $cities  City names (e.g., ['Palatine, IL', 'Arlington Heights, IL'])
+     * @param  array<string>  $cities  City names (e.g., ['Palatine, IL, USA', 'Arlington Heights, IL, USA'])
      * @param  string|null  $businessType  CUSTOMER_AND_BUSINESS_LOCATION or CUSTOMER_LOCATION_ONLY (null = auto-detect from current profile)
      */
     public function updateServiceArea(array $cities, ?string $businessType = null): ?array
@@ -897,122 +898,133 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        // Fetch current profile for auto-detection
-        $current = $this->getLocation('serviceArea,storefrontAddress');
+        // Fetch current profile for auto-detection of business type
+        $current = $this->getLocation('serviceArea');
 
         if (! $businessType) {
             $businessType = $current['serviceArea']['businessType'] ?? 'CUSTOMER_LOCATION_ONLY';
         }
 
-        $placeInfos = array_map(fn (string $city) => [
-            'placeName' => $city,
-        ], $cities);
+        // Resolve each city to a place ID via the Geocoding API.
+        // The GBP API requires both placeName and placeId for each PlaceInfo.
+        $placeInfos = [];
+        $failed = [];
 
-        $address = $current['storefrontAddress'] ?? null;
-
-        // Build different payload strategies — the GBP Business Information API
-        // has inconsistent requirements depending on profile state.
-        $strategies = [];
-
-        if ($address) {
-            // Strategy 1: Include existing storefrontAddress with businessType
-            $strategies[] = [
-                'label' => 'with_address_and_type',
-                'mask' => 'serviceArea,storefrontAddress',
-                'payload' => [
-                    'serviceArea' => [
-                        'businessType' => $businessType,
-                        'places' => ['placeInfos' => $placeInfos],
-                    ],
-                    'storefrontAddress' => $address,
-                ],
-            ];
-        }
-
-        // Strategy 2: Just places, no businessType, no storefrontAddress
-        $strategies[] = [
-            'label' => 'places_only',
-            'mask' => 'serviceArea',
-            'payload' => [
-                'serviceArea' => [
-                    'places' => ['placeInfos' => $placeInfos],
-                ],
-            ],
-        ];
-
-        // Strategy 3: With businessType, serviceArea mask only
-        $strategies[] = [
-            'label' => 'with_type_no_address',
-            'mask' => 'serviceArea',
-            'payload' => [
-                'serviceArea' => [
-                    'businessType' => $businessType,
-                    'places' => ['placeInfos' => $placeInfos],
-                ],
-            ],
-        ];
-
-        // Strategy 4: Explicit empty storefrontAddress object
-        $strategies[] = [
-            'label' => 'explicit_empty_address',
-            'mask' => 'serviceArea,storefrontAddress',
-            'payload' => [
-                'serviceArea' => [
-                    'businessType' => $businessType,
-                    'places' => ['placeInfos' => $placeInfos],
-                ],
-                'storefrontAddress' => (object) [],
-            ],
-        ];
-
-        $baseUrl = $this->infoLocationUrl();
-
-        foreach ($strategies as $strategy) {
-            $url = $baseUrl . '?updateMask=' . $strategy['mask'];
-
-            Log::debug('GBP: Service area update attempt', [
-                'strategy' => $strategy['label'],
-                'url' => $url,
-                'business_type' => $businessType,
-                'cities_count' => count($cities),
-            ]);
-
-            $response = Http::withToken($accessToken)
-                ->timeout(60)
-                ->patch($url, $strategy['payload']);
-
-            if ($response->successful()) {
-                $this->lastError = null;
-                $data = $response->json();
-
-                Log::info('GBP: Updated service area', [
-                    'strategy' => $strategy['label'],
-                    'cities_count' => count($placeInfos),
-                    'business_type' => $businessType,
-                ]);
-
-                return $data;
+        foreach ($cities as $city) {
+            $placeId = $this->resolveGeocodePlaceId($city);
+            if ($placeId) {
+                $placeInfos[] = [
+                    'placeName' => $city,
+                    'placeId' => $placeId,
+                ];
+            } else {
+                $failed[] = $city;
             }
+        }
 
-            Log::warning('GBP: Service area strategy failed', [
-                'strategy' => $strategy['label'],
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'cities_count' => count($cities),
+        if ($failed) {
+            Log::warning('GBP: Could not resolve place IDs for some cities', [
+                'failed' => $failed,
+                'resolved' => count($placeInfos),
             ]);
         }
 
-        // All strategies failed — store the last error
-        $this->lastError = [
-            'message' => 'Update service area failed (all strategies)',
-            'status' => $response->status(),
-            'body' => $response->body(),
+        if (empty($placeInfos)) {
+            $this->lastError = [
+                'message' => 'Could not resolve any city to a Google Place ID',
+                'status' => 0,
+                'body' => json_encode(['failed_cities' => $failed]),
+            ];
+
+            return null;
+        }
+
+        $payload = [
+            'serviceArea' => [
+                'businessType' => $businessType,
+                'places' => [
+                    'placeInfos' => $placeInfos,
+                ],
+            ],
         ];
-        Log::warning('GBP: All service area update strategies failed', [
-            'cities_count' => count($cities),
+
+        $url = $this->infoLocationUrl() . '?updateMask=serviceArea';
+
+        Log::debug('GBP: Service area update request', [
+            'url' => $url,
+            'business_type' => $businessType,
+            'cities_count' => count($placeInfos),
+            'sample_place' => $placeInfos[0] ?? null,
         ]);
 
-        return null;
+        $response = Http::withToken($accessToken)
+            ->timeout(60)
+            ->patch($url, $payload);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Update service area failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to update service area', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'cities_count' => count($placeInfos),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        $data = $response->json();
+
+        Log::info('GBP: Updated service area', [
+            'cities_count' => count($placeInfos),
+            'business_type' => $businessType,
+        ]);
+
+        return $data;
+    }
+
+    /**
+     * Resolve a city/place name to a Google Place ID using the Geocoding API.
+     *
+     * Returns a place ID of type "locality" or "administrative_area_level_3"
+     * (i.e. a region/city), or null if not found.
+     */
+    protected function resolveGeocodePlaceId(string $address): ?string
+    {
+        $apiKey = config('services.google.places_api_key');
+        if (! $apiKey) {
+            Log::warning('GBP: Google Places API key not configured');
+
+            return null;
+        }
+
+        $response = Http::timeout(10)
+            ->get('https://maps.googleapis.com/maps/api/geocode/json', [
+                'address' => $address,
+                'key' => $apiKey,
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $data = $response->json();
+        $results = $data['results'] ?? [];
+
+        // Find the first result that is a locality or similar region type
+        foreach ($results as $result) {
+            $types = $result['types'] ?? [];
+            if (array_intersect($types, ['locality', 'administrative_area_level_3', 'sublocality', 'postal_town'])) {
+                return $result['place_id'] ?? null;
+            }
+        }
+
+        // Fall back to first result if it has a place_id
+        return $results[0]['place_id'] ?? null;
     }
 
     /**
