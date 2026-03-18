@@ -897,9 +897,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        // Fetch current profile — need both businessType and storefrontAddress.
-        // The GBP API always requires storefrontAddress in the update mask
-        // alongside serviceArea, even for CUSTOMER_LOCATION_ONLY businesses.
+        // Fetch current profile for auto-detection
         $current = $this->getLocation('serviceArea,storefrontAddress');
 
         if (! $businessType) {
@@ -910,60 +908,111 @@ class GoogleBusinessProfileService
             'placeName' => $city,
         ], $cities);
 
-        $payload = [
-            'serviceArea' => [
-                'businessType' => $businessType,
-                'places' => [
-                    'placeInfos' => $placeInfos,
+        $address = $current['storefrontAddress'] ?? null;
+
+        // Build different payload strategies — the GBP Business Information API
+        // has inconsistent requirements depending on profile state.
+        $strategies = [];
+
+        if ($address) {
+            // Strategy 1: Include existing storefrontAddress with businessType
+            $strategies[] = [
+                'label' => 'with_address_and_type',
+                'mask' => 'serviceArea,storefrontAddress',
+                'payload' => [
+                    'serviceArea' => [
+                        'businessType' => $businessType,
+                        'places' => ['placeInfos' => $placeInfos],
+                    ],
+                    'storefrontAddress' => $address,
+                ],
+            ];
+        }
+
+        // Strategy 2: Just places, no businessType, no storefrontAddress
+        $strategies[] = [
+            'label' => 'places_only',
+            'mask' => 'serviceArea',
+            'payload' => [
+                'serviceArea' => [
+                    'places' => ['placeInfos' => $placeInfos],
                 ],
             ],
         ];
 
-        // Always include storefrontAddress in the patch — API requires it
-        // when updating serviceArea regardless of business type.
-        $address = $current['storefrontAddress'] ?? null;
-        if ($address) {
-            $payload['storefrontAddress'] = $address;
-        }
+        // Strategy 3: With businessType, serviceArea mask only
+        $strategies[] = [
+            'label' => 'with_type_no_address',
+            'mask' => 'serviceArea',
+            'payload' => [
+                'serviceArea' => [
+                    'businessType' => $businessType,
+                    'places' => ['placeInfos' => $placeInfos],
+                ],
+            ],
+        ];
 
-        $url = $this->infoLocationUrl() . '?updateMask=serviceArea,storefrontAddress';
+        // Strategy 4: Explicit empty storefrontAddress object
+        $strategies[] = [
+            'label' => 'explicit_empty_address',
+            'mask' => 'serviceArea,storefrontAddress',
+            'payload' => [
+                'serviceArea' => [
+                    'businessType' => $businessType,
+                    'places' => ['placeInfos' => $placeInfos],
+                ],
+                'storefrontAddress' => (object) [],
+            ],
+        ];
 
-        Log::debug('GBP: Service area update request', [
-            'url' => $url,
-            'business_type' => $businessType,
-            'has_storefront_address' => isset($payload['storefrontAddress']),
-            'cities_count' => count($cities),
-        ]);
+        $baseUrl = $this->infoLocationUrl();
 
-        $response = Http::withToken($accessToken)
-            ->timeout(60)
-            ->patch($url, $payload);
+        foreach ($strategies as $strategy) {
+            $url = $baseUrl . '?updateMask=' . $strategy['mask'];
 
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Update service area failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::warning('GBP: Failed to update service area', [
+            Log::debug('GBP: Service area update attempt', [
+                'strategy' => $strategy['label'],
+                'url' => $url,
+                'business_type' => $businessType,
+                'cities_count' => count($cities),
+            ]);
+
+            $response = Http::withToken($accessToken)
+                ->timeout(60)
+                ->patch($url, $strategy['payload']);
+
+            if ($response->successful()) {
+                $this->lastError = null;
+                $data = $response->json();
+
+                Log::info('GBP: Updated service area', [
+                    'strategy' => $strategy['label'],
+                    'cities_count' => count($placeInfos),
+                    'business_type' => $businessType,
+                ]);
+
+                return $data;
+            }
+
+            Log::warning('GBP: Service area strategy failed', [
+                'strategy' => $strategy['label'],
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'cities_count' => count($cities),
-                'payload_keys' => array_keys($payload),
             ]);
-
-            return null;
         }
 
-        $this->lastError = null;
-        $data = $response->json();
-
-        Log::info('GBP: Updated service area', [
-            'cities_count' => count($placeInfos),
-            'business_type' => $businessType,
+        // All strategies failed — store the last error
+        $this->lastError = [
+            'message' => 'Update service area failed (all strategies)',
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ];
+        Log::warning('GBP: All service area update strategies failed', [
+            'cities_count' => count($cities),
         ]);
 
-        return $data;
+        return null;
     }
 
     /**
