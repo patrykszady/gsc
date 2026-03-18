@@ -897,9 +897,12 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        // Auto-detect business type from current profile if not specified
+        // Fetch current profile — need both businessType and storefrontAddress.
+        // The GBP API always requires storefrontAddress in the update mask
+        // alongside serviceArea, even for CUSTOMER_LOCATION_ONLY businesses.
+        $current = $this->getLocation('serviceArea,storefrontAddress');
+
         if (! $businessType) {
-            $current = $this->getLocation('serviceArea');
             $businessType = $current['serviceArea']['businessType'] ?? 'CUSTOMER_LOCATION_ONLY';
         }
 
@@ -916,21 +919,21 @@ class GoogleBusinessProfileService
             ],
         ];
 
-        $updateMask = 'serviceArea';
-
-        // For CUSTOMER_AND_BUSINESS_LOCATION, the API requires storefrontAddress
-        // in the same patch request. Fetch the current address and include it.
-        if ($businessType === 'CUSTOMER_AND_BUSINESS_LOCATION') {
-            $location = $this->getLocation('storefrontAddress');
-            $address = $location['storefrontAddress'] ?? null;
-
-            if ($address) {
-                $payload['storefrontAddress'] = $address;
-                $updateMask = 'serviceArea,storefrontAddress';
-            }
+        // Always include storefrontAddress in the patch — API requires it
+        // when updating serviceArea regardless of business type.
+        $address = $current['storefrontAddress'] ?? null;
+        if ($address) {
+            $payload['storefrontAddress'] = $address;
         }
 
-        $url = $this->infoLocationUrl() . '?updateMask=' . $updateMask;
+        $url = $this->infoLocationUrl() . '?updateMask=serviceArea,storefrontAddress';
+
+        Log::debug('GBP: Service area update request', [
+            'url' => $url,
+            'business_type' => $businessType,
+            'has_storefront_address' => isset($payload['storefrontAddress']),
+            'cities_count' => count($cities),
+        ]);
 
         $response = Http::withToken($accessToken)
             ->timeout(60)
@@ -946,6 +949,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'cities_count' => count($cities),
+                'payload_keys' => array_keys($payload),
             ]);
 
             return null;

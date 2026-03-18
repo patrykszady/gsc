@@ -102,7 +102,7 @@ class UpdateGbpProfile extends Command
     {
         $this->info('Fetching current location details...');
 
-        $location = $service->getLocation('name,title,categories,serviceArea,websiteUri');
+        $location = $service->getLocation('name,title,categories,serviceArea,storefrontAddress,websiteUri');
 
         if (! $location) {
             $error = $service->getLastError();
@@ -116,6 +116,18 @@ class UpdateGbpProfile extends Command
 
         $this->info('Location: ' . ($location['title'] ?? 'N/A'));
         $this->info('Website: ' . ($location['websiteUri'] ?? 'N/A'));
+
+        // Storefront Address
+        $address = $location['storefrontAddress'] ?? null;
+        if ($address) {
+            $lines = array_filter([
+                implode(', ', array_filter($address['addressLines'] ?? [])),
+                trim(($address['locality'] ?? '') . ', ' . ($address['administrativeArea'] ?? '') . ' ' . ($address['postalCode'] ?? '')),
+            ]);
+            $this->info('Storefront Address: ' . implode(', ', $lines));
+        } else {
+            $this->info('Storefront Address: (none)');
+        }
 
         // Categories
         $categories = $location['categories'] ?? [];
