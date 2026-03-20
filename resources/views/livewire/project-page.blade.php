@@ -1,4 +1,4 @@
-<div class="bg-white dark:bg-zinc-900">
+<div class="bg-white dark:bg-zinc-900 overflow-x-hidden">
     {{-- Project Schema with ImageObject data --}}
     <x-project-schema :project="$project" />
 
@@ -155,7 +155,7 @@
 
                     @if($timelapse->display_mode === 'slider' || $timelapse->display_mode === 'accordion')
                         {{-- Slider View (default) --}}
-                        <section class="mt-8"
+                        <section
                             x-data="{
                                 frames: @js($frames),
                                 position: 1,
@@ -225,7 +225,7 @@
                             @pointercancel.window="endDrag()"
                             x-intersect:enter.full="play()"
                             x-intersect:leave.full="pause()"
-                            class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
+                            class="relative mt-8 w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
                         >
                             <div class="relative h-[375px] sm:h-[450px] lg:h-[525px]">
                                 <img
