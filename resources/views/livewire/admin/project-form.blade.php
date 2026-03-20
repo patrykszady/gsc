@@ -464,6 +464,33 @@
                                     </template>
                                 </div>
 
+                                {{-- Pick from Gallery --}}
+                                @if(count($existingImages) > 0)
+                                    <div x-data="{ showGalleryPicker: false }" class="mt-3">
+                                        <flux:button type="button" size="sm" variant="ghost" icon="photo" x-on:click="showGalleryPicker = !showGalleryPicker">
+                                            Pick from Gallery
+                                            @if(count($tl['selectedGalleryImageIds'] ?? []) > 0)
+                                                <flux:badge size="sm" color="sky" class="ml-1">{{ count($tl['selectedGalleryImageIds']) }}</flux:badge>
+                                            @endif
+                                        </flux:button>
+                                        <div x-show="showGalleryPicker" x-collapse x-cloak class="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                            @foreach($existingImages as $image)
+                                                <div
+                                                    class="group relative aspect-square cursor-pointer overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 {{ in_array($image['id'], $tl['selectedGalleryImageIds'] ?? []) ? 'ring-2 ring-sky-500' : '' }}"
+                                                    wire:click="toggleTimelapseGalleryImage({{ $tlIndex }}, {{ $image['id'] }})"
+                                                >
+                                                    <img src="{{ $image['url'] }}" alt="" class="size-full object-cover">
+                                                    <div class="absolute left-2 top-2 z-10">
+                                                        <span class="inline-flex items-center justify-center rounded-full bg-black/60 p-1">
+                                                            <input type="checkbox" class="size-4 accent-sky-500 pointer-events-none" {{ in_array($image['id'], $tl['selectedGalleryImageIds'] ?? []) ? 'checked' : '' }}>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
                                 {{-- New uploads (server-side) --}}
                                 @if(count($tl['allUploads'] ?? []) > 0)
                                     <div class="mt-3">
@@ -572,6 +599,11 @@
                                     />
                                 </div>
 
+                                @php
+                                    $galleryImageMap = collect($existingImages)->keyBy('id');
+                                @endphp
+
+                                {{-- Before / After previews + uploads --}}
                                 <div class="grid grid-cols-2 gap-4">
                                     {{-- Before Image --}}
                                     <div>
@@ -580,6 +612,18 @@
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                 <img src="{{ $baBeforeUploads[$baIndex]->temporaryUrl() }}" alt="Before (new)" class="size-full object-cover">
                                                 <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">New</span>
+                                            </div>
+                                        @elseif($ba['beforeGalleryImageId'] && isset($galleryImageMap[$ba['beforeGalleryImageId']]))
+                                            <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-sky-500 dark:bg-zinc-800">
+                                                <img src="{{ $galleryImageMap[$ba['beforeGalleryImageId']]['url'] }}" alt="Before (from gallery)" class="size-full object-cover">
+                                                <span class="absolute left-1 top-1 rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-medium text-white">Gallery</span>
+                                                <button
+                                                    type="button"
+                                                    wire:click="setBeforeAfterGalleryImage({{ $baIndex }}, 'before', {{ $ba['beforeGalleryImageId'] }})"
+                                                    class="absolute right-1 top-1 rounded-full bg-red-500 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                                >
+                                                    <flux:icon.x-mark class="size-3" />
+                                                </button>
                                             </div>
                                         @elseif($ba['beforeUrl'])
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
@@ -592,7 +636,7 @@
                                         @endif
                                         <label class="mt-2 block">
                                             <flux:button type="button" size="sm" variant="ghost" icon="arrow-up-tray" class="w-full" x-on:click="$el.closest('label').querySelector('input').click()">
-                                                {{ ($ba['beforeUrl'] || isset($baBeforeUploads[$baIndex])) ? 'Replace' : 'Upload' }}
+                                                Upload
                                             </flux:button>
                                             <input type="file" accept="image/*" class="hidden" wire:model="baBeforeUploads.{{ $baIndex }}" />
                                         </label>
@@ -606,6 +650,18 @@
                                                 <img src="{{ $baAfterUploads[$baIndex]->temporaryUrl() }}" alt="After (new)" class="size-full object-cover">
                                                 <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">New</span>
                                             </div>
+                                        @elseif($ba['afterGalleryImageId'] && isset($galleryImageMap[$ba['afterGalleryImageId']]))
+                                            <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-sky-500 dark:bg-zinc-800">
+                                                <img src="{{ $galleryImageMap[$ba['afterGalleryImageId']]['url'] }}" alt="After (from gallery)" class="size-full object-cover">
+                                                <span class="absolute left-1 top-1 rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-medium text-white">Gallery</span>
+                                                <button
+                                                    type="button"
+                                                    wire:click="setBeforeAfterGalleryImage({{ $baIndex }}, 'after', {{ $ba['afterGalleryImageId'] }})"
+                                                    class="absolute right-1 top-1 rounded-full bg-red-500 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                                >
+                                                    <flux:icon.x-mark class="size-3" />
+                                                </button>
+                                            </div>
                                         @elseif($ba['afterUrl'])
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                 <img src="{{ $ba['afterUrl'] }}" alt="After" class="size-full object-cover">
@@ -617,12 +673,53 @@
                                         @endif
                                         <label class="mt-2 block">
                                             <flux:button type="button" size="sm" variant="ghost" icon="arrow-up-tray" class="w-full" x-on:click="$el.closest('label').querySelector('input').click()">
-                                                {{ ($ba['afterUrl'] || isset($baAfterUploads[$baIndex])) ? 'Replace' : 'Upload' }}
+                                                Upload
                                             </flux:button>
                                             <input type="file" accept="image/*" class="hidden" wire:model="baAfterUploads.{{ $baIndex }}" />
                                         </label>
                                     </div>
                                 </div>
+
+                                {{-- Pick from Gallery (full-width) --}}
+                                @if(count($existingImages) > 0)
+                                    <div x-data="{ showGalleryPicker: false, slot: 'before' }" class="mt-3">
+                                        <div class="flex items-center gap-2">
+                                            <flux:button type="button" size="sm" variant="ghost" icon="photo" x-on:click="showGalleryPicker = !showGalleryPicker">
+                                                Pick from Gallery
+                                            </flux:button>
+                                            <template x-if="showGalleryPicker">
+                                                <div class="flex items-center gap-1 rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700">
+                                                    <button type="button" class="rounded-md px-2.5 py-1 text-xs font-medium transition" :class="slot === 'before' ? 'bg-zinc-800 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'" x-on:click="slot = 'before'">Before</button>
+                                                    <button type="button" class="rounded-md px-2.5 py-1 text-xs font-medium transition" :class="slot === 'after' ? 'bg-zinc-800 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'" x-on:click="slot = 'after'">After</button>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <div x-show="showGalleryPicker" x-collapse x-cloak class="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                                            @foreach($existingImages as $image)
+                                                @php
+                                                    $isSelectedBefore = ($ba['beforeGalleryImageId'] ?? null) === $image['id'];
+                                                    $isSelectedAfter = ($ba['afterGalleryImageId'] ?? null) === $image['id'];
+                                                @endphp
+                                                <div
+                                                    class="group relative aspect-square cursor-pointer overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 {{ $isSelectedBefore || $isSelectedAfter ? 'ring-2 ring-sky-500' : '' }}"
+                                                    x-on:click="$wire.setBeforeAfterGalleryImage({{ $baIndex }}, slot, {{ $image['id'] }})"
+                                                >
+                                                    <img src="{{ $image['url'] }}" alt="" class="size-full object-cover">
+                                                    <div class="absolute left-2 top-2 z-10">
+                                                        <span class="inline-flex items-center justify-center rounded-full bg-black/60 p-1">
+                                                            <input type="checkbox" class="size-4 accent-sky-500 pointer-events-none" {{ $isSelectedBefore || $isSelectedAfter ? 'checked' : '' }}>
+                                                        </span>
+                                                    </div>
+                                                    @if($isSelectedBefore)
+                                                        <div class="absolute bottom-1.5 right-1.5"><flux:badge size="sm" color="sky">Before</flux:badge></div>
+                                                    @elseif($isSelectedAfter)
+                                                        <div class="absolute bottom-1.5 right-1.5"><flux:badge size="sm" color="sky">After</flux:badge></div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>

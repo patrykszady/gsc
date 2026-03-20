@@ -32,8 +32,8 @@ class AreaPage extends Component
         if ($this->page === 'service' && $this->service) {
             // Map URL slugs to internal service types
             $serviceMap = [
-                'kitchens' => 'kitchen-remodeling',
-                'bathrooms' => 'bathroom-remodeling',
+                'kitchen-remodeling' => 'kitchen-remodeling',
+                'bathroom-remodeling' => 'bathroom-remodeling',
                 'home-remodeling' => 'home-remodeling',
             ];
             $serviceType = $serviceMap[$this->service] ?? abort(404);

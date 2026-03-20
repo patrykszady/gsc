@@ -39,7 +39,7 @@ class AreaServed extends Model
 
     /**
      * Get URL for a specific service page within this area.
-     * e.g., /areas-served/arlington-heights/services/kitchens
+     * e.g., /areas-served/arlington-heights/services/kitchen-remodeling
      */
     public function serviceUrl(string $service): string
     {

@@ -115,8 +115,8 @@ Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
 Route::redirect('/contact-us', '/contact', 301);
 
 // Legacy root-level service URLs → new /services/* pattern
-Route::redirect('/bathroom-remodeling', '/services/bathrooms', 301);
-Route::redirect('/kitchen-remodeling', '/services/kitchens', 301);
+Route::redirect('/bathroom-remodeling', '/services/bathroom-remodeling', 301);
+Route::redirect('/kitchen-remodeling', '/services/kitchen-remodeling', 301);
 Route::redirect('/home-remodeling', '/services/home-remodeling', 301);
 
 // /areas alias (same content as /areas-served, noindex + canonical handled in component)
@@ -129,7 +129,7 @@ Route::get('/areas/{area}/{page}', AreaPage::class)
     ->name('areas.alias.page');
 Route::get('/areas/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
-    ->where('service', 'kitchens|bathrooms|home-remodeling')
+    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling')
     ->name('areas.alias.service');
 
 // Locations alias (keep canonical on /areas-served)
@@ -142,7 +142,7 @@ Route::get('/locations/{area}/{page}', AreaPage::class)
     ->name('locations.page');
 Route::get('/locations/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
-    ->where('service', 'kitchens|bathrooms|home-remodeling')
+    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling')
     ->name('locations.service');
 
 // Areas Served (canonical)
@@ -154,45 +154,45 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
     ->where('page', 'contact|testimonials|projects|about|services')
     ->name('areas.page');
 
-// Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchens)
+// Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchen-remodeling)
 Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
-    ->where('service', 'kitchens|bathrooms|home-remodeling')
+    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling')
     ->name('areas.service');
 
-// Redirects from old area-service URLs to new pattern
+// 301 redirects from old short slugs to keyword-rich canonical URLs
+Route::get('/areas-served/{area}/services/kitchens', function (string $area) {
+    return redirect("/areas-served/{$area}/services/kitchen-remodeling", 301);
+});
+Route::get('/areas-served/{area}/services/bathrooms', function (string $area) {
+    return redirect("/areas-served/{$area}/services/bathroom-remodeling", 301);
+});
+
+// Redirects from old area-level service URLs
 Route::get('/areas-served/{area}/kitchen-remodeling', function (string $area) {
-    return redirect("/areas-served/{$area}/services/kitchens", 301);
+    return redirect("/areas-served/{$area}/services/kitchen-remodeling", 301);
 });
 Route::get('/areas-served/{area}/bathroom-remodeling', function (string $area) {
-    return redirect("/areas-served/{$area}/services/bathrooms", 301);
+    return redirect("/areas-served/{$area}/services/bathroom-remodeling", 301);
 });
 Route::get('/areas-served/{area}/home-remodeling', function (string $area) {
     return redirect("/areas-served/{$area}/services/home-remodeling", 301);
 });
 
-// Redirects from long service names under /services/ path
-Route::get('/areas-served/{area}/services/kitchen-remodeling', function (string $area) {
-    return redirect("/areas-served/{$area}/services/kitchens", 301);
-});
-Route::get('/areas-served/{area}/services/bathroom-remodeling', function (string $area) {
-    return redirect("/areas-served/{$area}/services/bathrooms", 301);
-});
-
-// Service landing pages (short URLs)
-Route::get('/services/kitchens', ServicePage::class)
+// Service landing pages (canonical keyword-rich URLs)
+Route::get('/services/kitchen-remodeling', ServicePage::class)
     ->defaults('service', 'kitchen-remodeling')
     ->name('services.kitchen');
-Route::get('/services/bathrooms', ServicePage::class)
+Route::get('/services/bathroom-remodeling', ServicePage::class)
     ->defaults('service', 'bathroom-remodeling')
     ->name('services.bathroom');
 Route::get('/services/home-remodeling', ServicePage::class)
     ->defaults('service', 'home-remodeling')
     ->name('services.home');
 
-// Redirects from old service URLs
-Route::redirect('/services/kitchen-remodeling', '/services/kitchens', 301);
-Route::redirect('/services/bathroom-remodeling', '/services/bathrooms', 301);
+// 301 redirects from old short service URLs
+Route::redirect('/services/kitchens', '/services/kitchen-remodeling', 301);
+Route::redirect('/services/bathrooms', '/services/bathroom-remodeling', 301);
 
 // Admin auth
 Route::get('/admin/login', Login::class)->name('admin.login')->middleware('guest');

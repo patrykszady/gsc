@@ -49,11 +49,11 @@ class GenerateSitemap extends Command
             'log-viewer',
             'reviews',      // redirect to /testimonials
             'contact-us',   // redirect to /contact
-            'bathroom-remodeling', // redirect to /services/bathrooms
-            'kitchen-remodeling',  // redirect to /services/kitchens
-            'home-remodeling',     // redirect to /services/home-remodeling (root-level)
-            'services/kitchen-remodeling', // redirect to /services/kitchens
-            'services/bathroom-remodeling', // redirect to /services/bathrooms
+            'bathroom-remodeling', // root-level redirect to /services/bathroom-remodeling
+            'kitchen-remodeling',  // root-level redirect to /services/kitchen-remodeling
+            'home-remodeling',     // root-level redirect to /services/home-remodeling
+            'services/kitchens',   // old slug redirect to /services/kitchen-remodeling
+            'services/bathrooms',  // old slug redirect to /services/bathroom-remodeling
             'flux/',        // internal flux assets
             'livewire/',    // internal livewire assets
             'livewire-',    // livewire asset routes (e.g. /livewire-xxxx/livewire.js)
@@ -140,7 +140,7 @@ class GenerateSitemap extends Command
         $this->info("Adding area-served pages to sitemap...");
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
-        $areaServicePages = ['kitchens', 'bathrooms', 'home-remodeling'];
+        $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
         $areaCount = 0;
 
         // Get latest project updated_at for area lastmod dates

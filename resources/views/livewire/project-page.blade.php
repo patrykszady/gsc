@@ -155,7 +155,7 @@
 
                     @if($timelapse->display_mode === 'slider' || $timelapse->display_mode === 'accordion')
                         {{-- Slider View (default) --}}
-                        <section
+                        <section class="mt-8"
                             x-data="{
                                 frames: @js($frames),
                                 position: 1,
@@ -288,25 +288,35 @@
                                     const x = clientX - rect.left;
                                     this.position = Math.max(0, Math.min(100, (x / rect.width) * 100));
                                 },
-                                onPointerDown(e) { this.dragging = true; this.updatePosition(e.clientX); e.preventDefault(); },
+                                onPointerDown(e) {
+                                    this.dragging = true;
+                                    this.$refs.tlBaContainer.setPointerCapture(e.pointerId);
+                                    this.updatePosition(e.clientX);
+                                    e.preventDefault();
+                                },
                                 onPointerMove(e) { if (!this.dragging) return; this.updatePosition(e.clientX); },
-                                onPointerUp() { this.dragging = false; },
+                                onPointerUp(e) {
+                                    if (!this.dragging) return;
+                                    this.dragging = false;
+                                    this.$refs.tlBaContainer.releasePointerCapture(e.pointerId);
+                                },
                             }"
-                            @pointerup.window="onPointerUp()"
-                            @pointermove.window="onPointerMove($event)"
-                            class="relative mt-4 select-none"
+                            class="relative mt-8 select-none"
                         >
                             <div
                                 x-ref="tlBaContainer"
                                 @pointerdown="onPointerDown($event)"
-                                class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize"
+                                @pointermove="onPointerMove($event)"
+                                @pointerup="onPointerUp($event)"
+                                @pointercancel="onPointerUp($event)"
+                                class="relative h-[375px] w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize sm:h-[450px] lg:h-[525px]" style="touch-action: none;"
                             >
                                 {{-- After Image (last frame, full width background) --}}
-                                <img src="{{ $lastFrame }}" alt="{{ $timelapseTitle }} — After" class="block w-full" />
+                                <img src="{{ $lastFrame }}" alt="{{ $timelapseTitle }} — After" class="absolute inset-0 h-full w-full object-cover" />
 
                                 {{-- Before Image (first frame, clipped overlay) --}}
                                 <div class="absolute inset-0 overflow-hidden" :style="'clip-path: inset(0 ' + (100 - position) + '% 0 0)'">
-                                    <img src="{{ $firstFrame }}" alt="{{ $timelapseTitle }} — Before" class="block w-full" />
+                                    <img src="{{ $firstFrame }}" alt="{{ $timelapseTitle }} — Before" class="absolute inset-0 h-full w-full object-cover" />
                                 </div>
 
                                 {{-- Divider Line --}}
@@ -362,6 +372,7 @@
 
                         onPointerDown(e) {
                             this.dragging = true;
+                            this.$refs.container.setPointerCapture(e.pointerId);
                             this.updatePosition(e.clientX);
                             e.preventDefault();
                         },
@@ -371,18 +382,21 @@
                             this.updatePosition(e.clientX);
                         },
 
-                        onPointerUp() {
+                        onPointerUp(e) {
+                            if (!this.dragging) return;
                             this.dragging = false;
+                            this.$refs.container.releasePointerCapture(e.pointerId);
                         },
                     }"
-                    @pointerup.window="onPointerUp()"
-                    @pointermove.window="onPointerMove($event)"
                     class="relative select-none"
                 >
                     <div
                         x-ref="container"
                         @pointerdown="onPointerDown($event)"
-                        class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize"
+                        @pointermove="onPointerMove($event)"
+                        @pointerup="onPointerUp($event)"
+                        @pointercancel="onPointerUp($event)"
+                        class="relative h-[375px] w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize sm:h-[450px] lg:h-[525px]" style="touch-action: none;"
                         :class="ready ? '' : 'animate-pulse'"
                     >
                         {{-- After Image (background, full width) --}}
@@ -392,7 +406,7 @@
                             alt="{{ $ba->title ? $ba->title . ' — After' : 'After' }}"
                             x-init="if ($refs.afterImg.complete && $refs.afterImg.naturalWidth) afterLoaded = true"
                             @load="afterLoaded = true"
-                            class="block w-full"
+                            class="absolute inset-0 h-full w-full object-cover"
                             :class="afterLoaded ? 'opacity-100' : 'opacity-0'"
                         />
 
@@ -407,7 +421,7 @@
                                 alt="{{ $ba->title ? $ba->title . ' — Before' : 'Before' }}"
                                 x-init="if ($refs.beforeImg.complete && $refs.beforeImg.naturalWidth) beforeLoaded = true"
                                 @load="beforeLoaded = true"
-                                class="block w-full"
+                                class="absolute inset-0 h-full w-full object-cover"
                             />
                         </div>
 

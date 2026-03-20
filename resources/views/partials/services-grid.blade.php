@@ -4,7 +4,7 @@
     $services = [
         [
             'slug' => 'kitchen-remodeling',
-            'urlSlug' => 'kitchens',
+            'urlSlug' => 'kitchen-remodeling',
             'title' => 'Kitchen Remodeling',
             'projectType' => 'kitchen',
             'description' => 'Transform your kitchen into the heart of your home. From custom cabinetry and premium countertops to complete renovations – we create beautiful, functional spaces where families gather and memories are made.',
@@ -17,7 +17,7 @@
         ],
         [
             'slug' => 'bathroom-remodeling',
-            'urlSlug' => 'bathrooms',
+            'urlSlug' => 'bathroom-remodeling',
             'title' => 'Bathroom Remodeling',
             'projectType' => 'bathroom',
             'description' => 'Create your personal spa retreat with expert bathroom renovations. From luxurious walk-in showers and soaking tubs to modern vanities and tile work – we design bathrooms that combine comfort with style.',

@@ -11,6 +11,7 @@
     {!! \Artesaos\SEOTools\Facades\TwitterCard::generate() !!}
 
     {{-- Additional SEO --}}
+    <meta name="application-name" content="GS Construction">
     <meta name="author" content="GS Construction">
     <meta name="geo.region" content="US-IL">
     <meta name="geo.placename" content="Chicago">

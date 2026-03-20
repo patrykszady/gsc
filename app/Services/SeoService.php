@@ -364,7 +364,7 @@ class SeoService
 
     /**
      * Set SEO tags for an area-specific service page.
-     * Example: /areas-served/palatine/services/bathrooms
+     * Example: /areas-served/palatine/services/bathroom-remodeling
      */
     public static function areaService(AreaServed $area, string $serviceType): void
     {
@@ -374,14 +374,14 @@ class SeoService
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
                 'shortLabel' => 'Kitchen',
-                'titleTemplate' => 'Kitchen Remodelers in %s, IL',
+                'titleTemplate' => 'Kitchen Remodeling in %s, IL',
                 'descriptionTemplate' => 'Trusted kitchen remodeling contractors in %s, IL — %s five-star reviews. Custom cabinets, countertops & full renovations. Call (224) 735-4200 for a free estimate!',
                 'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
                 'shortLabel' => 'Bathroom',
-                'titleTemplate' => 'Bathroom Remodelers in %s, IL',
+                'titleTemplate' => 'Bathroom Remodeling in %s, IL',
                 'descriptionTemplate' => 'Expert bathroom remodeling contractors in %s, IL — %s five-star reviews. Walk-in showers, tub conversions & complete renovations. Call (224) 735-4200 for a free estimate!',
                 'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors', 'bathroom remodelers'],
             ],
@@ -402,7 +402,7 @@ class SeoService
             'keywords' => [],
         ];
         
-        // Primary keyword targeting: "{Service} Remodelers in {City}, IL"
+        // Primary keyword targeting: "{Service} Remodeling in {City}, IL"
         $title = sprintf($service['titleTemplate'], $city);
         
         // Enhanced description with review count, CTA and city targeting
@@ -470,6 +470,7 @@ class SeoService
         OpenGraph::setTitle($title);
         OpenGraph::setDescription($description);
         OpenGraph::setUrl(url()->current());
+        OpenGraph::setSiteName('GS Construction');
         OpenGraph::addProperty('locale', 'en_US');
         
         // Set OG image for social sharing (iMessage, Facebook, etc.)

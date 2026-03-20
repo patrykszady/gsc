@@ -137,6 +137,7 @@ class ProjectForm extends Component
                     'url' => $f->url,
                     'original_filename' => $f->original_filename,
                 ])->toArray(),
+                'selectedGalleryImageIds' => [],
             ])
             ->toArray();
     }
@@ -154,6 +155,8 @@ class ProjectForm extends Component
                 'title' => $ba->title ?? '',
                 'beforeUrl' => $ba->before_url,
                 'afterUrl' => $ba->after_url,
+                'beforeGalleryImageId' => null,
+                'afterGalleryImageId' => null,
             ])
             ->toArray();
         $this->baBeforeUploads = [];
@@ -167,6 +170,8 @@ class ProjectForm extends Component
             'title' => '',
             'beforeUrl' => null,
             'afterUrl' => null,
+            'beforeGalleryImageId' => null,
+            'afterGalleryImageId' => null,
         ];
     }
 
@@ -218,6 +223,7 @@ class ProjectForm extends Component
             'display_mode' => 'slider',
             'allUploads' => [],
             'existingFrames' => [],
+            'selectedGalleryImageIds' => [],
         ];
     }
 
@@ -257,6 +263,33 @@ class ProjectForm extends Component
     public function setActiveTimelapseIndex(int $index): void
     {
         $this->activeTimelapseIndex = $index;
+    }
+
+    public function toggleTimelapseGalleryImage(int $timelapseIndex, int $imageId): void
+    {
+        if (!isset($this->timelapses[$timelapseIndex])) return;
+
+        $selected = $this->timelapses[$timelapseIndex]['selectedGalleryImageIds'];
+        $key = array_search($imageId, $selected, true);
+
+        if ($key === false) {
+            $selected[] = $imageId;
+        } else {
+            unset($selected[$key]);
+            $selected = array_values($selected);
+        }
+
+        $this->timelapses[$timelapseIndex]['selectedGalleryImageIds'] = $selected;
+    }
+
+    public function setBeforeAfterGalleryImage(int $baIndex, string $slot, int $imageId): void
+    {
+        if (!isset($this->beforeAfters[$baIndex])) return;
+        if (!in_array($slot, ['before', 'after'], true)) return;
+
+        $key = $slot . 'GalleryImageId';
+        $current = $this->beforeAfters[$baIndex][$key] ?? null;
+        $this->beforeAfters[$baIndex][$key] = ($current === $imageId) ? null : $imageId;
     }
 
     public function removeQueuedTimelapseUpload(int $timelapseIndex, int $uploadIndex): void
@@ -613,6 +646,36 @@ class ProjectForm extends Component
 
                 $this->timelapses[$tlIndex]['allUploads'] = [];
             }
+
+            // Add gallery images as timelapse frames (copy files to timelapse storage)
+            if (!empty($tlData['selectedGalleryImageIds'])) {
+                $sortOrder = $timelapse->frames()->max('sort_order') ?? 0;
+                $basePath = 'projects/' . $project->id . '/timelapse/' . $timelapse->id;
+
+                foreach ($tlData['selectedGalleryImageIds'] as $imgId) {
+                    $galleryImage = ProjectImage::find($imgId);
+                    if (!$galleryImage || $galleryImage->project_id !== $project->id) continue;
+
+                    $sortOrder++;
+                    $extension = pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg';
+                    $filename = $sortOrder . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
+                    $path = $basePath . '/' . $filename;
+
+                    $sourceContent = \Illuminate\Support\Facades\Storage::disk($galleryImage->disk)->get($galleryImage->path);
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
+
+                    ProjectTimelapseFrame::create([
+                        'project_timelapse_id' => $timelapse->id,
+                        'filename' => $filename,
+                        'original_filename' => $galleryImage->original_filename,
+                        'path' => $path,
+                        'disk' => 'public',
+                        'sort_order' => $sortOrder,
+                    ]);
+                }
+
+                $this->timelapses[$tlIndex]['selectedGalleryImageIds'] = [];
+            }
         }
 
         // Save before/afters
@@ -620,25 +683,30 @@ class ProjectForm extends Component
             $basePath = 'projects/' . $project->id . '/before-after';
             $beforeUpload = $this->baBeforeUploads[$baIndex] ?? null;
             $afterUpload = $this->baAfterUploads[$baIndex] ?? null;
+            $beforeGalleryId = $baData['beforeGalleryImageId'] ?? null;
+            $afterGalleryId = $baData['afterGalleryImageId'] ?? null;
 
             if ($baData['id']) {
                 $model = ProjectBeforeAfter::find($baData['id']);
                 if (!$model) continue;
                 $model->update(['title' => $baData['title'] ?: null, 'sort_order' => $baIndex]);
             } else {
-                // Need both images for a new entry
-                if (!$beforeUpload || !$afterUpload) continue;
+                // Need both images for a new entry (upload or gallery pick)
+                $hasBefore = $beforeUpload || $beforeGalleryId;
+                $hasAfter = $afterUpload || $afterGalleryId;
+                if (!$hasBefore || !$hasAfter) continue;
                 $model = ProjectBeforeAfter::create([
                     'project_id' => $project->id,
                     'title' => $baData['title'] ?: null,
                     'before_path' => '',
                     'after_path' => '',
+                    'disk' => 'public',
                     'sort_order' => $baIndex,
                 ]);
                 $this->beforeAfters[$baIndex]['id'] = $model->id;
             }
 
-            // Process before image upload
+            // Process before image: upload takes priority over gallery pick
             if ($beforeUpload) {
                 $old = $model->before_path;
                 $filename = 'before_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $beforeUpload->getClientOriginalExtension();
@@ -658,9 +726,23 @@ class ProjectForm extends Component
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
                 }
                 $model->update(['before_path' => $path]);
+            } elseif ($beforeGalleryId) {
+                $galleryImage = ProjectImage::find($beforeGalleryId);
+                if ($galleryImage && $galleryImage->project_id === $project->id) {
+                    $old = $model->before_path;
+                    $extension = pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg';
+                    $filename = 'before_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
+                    $path = $basePath . '/' . $filename;
+                    $sourceContent = \Illuminate\Support\Facades\Storage::disk($galleryImage->disk)->get($galleryImage->path);
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
+                    if ($old && $old !== $path) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+                    }
+                    $model->update(['before_path' => $path]);
+                }
             }
 
-            // Process after image upload
+            // Process after image: upload takes priority over gallery pick
             if ($afterUpload) {
                 $old = $model->after_path;
                 $filename = 'after_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $afterUpload->getClientOriginalExtension();
@@ -680,6 +762,20 @@ class ProjectForm extends Component
                     \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
                 }
                 $model->update(['after_path' => $path]);
+            } elseif ($afterGalleryId) {
+                $galleryImage = ProjectImage::find($afterGalleryId);
+                if ($galleryImage && $galleryImage->project_id === $project->id) {
+                    $old = $model->after_path;
+                    $extension = pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg';
+                    $filename = 'after_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
+                    $path = $basePath . '/' . $filename;
+                    $sourceContent = \Illuminate\Support\Facades\Storage::disk($galleryImage->disk)->get($galleryImage->path);
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
+                    if ($old && $old !== $path) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
+                    }
+                    $model->update(['after_path' => $path]);
+                }
             }
         }
 

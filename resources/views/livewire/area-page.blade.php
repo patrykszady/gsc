@@ -8,8 +8,8 @@
         
         if ($page === 'service' && $service) {
             $serviceNames = [
-                'kitchens' => 'Kitchen Remodeling',
-                'bathrooms' => 'Bathroom Remodeling',
+                'kitchen-remodeling' => 'Kitchen Remodeling',
+                'bathroom-remodeling' => 'Bathroom Remodeling',
                 'home-remodeling' => 'Home Remodeling',
             ];
             $breadcrumbItems[] = ['name' => 'Services', 'url' => $area->pageUrl('services')];
@@ -62,7 +62,7 @@
                             <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                         </svg>
                         @php
-                            $serviceLabels = ['kitchens' => 'Kitchens', 'bathrooms' => 'Bathrooms', 'home-remodeling' => 'Home Remodeling'];
+                            $serviceLabels = ['kitchen-remodeling' => 'Kitchens', 'bathroom-remodeling' => 'Bathrooms', 'home-remodeling' => 'Home Remodeling'];
                         @endphp
                         <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $serviceLabels[$service] ?? ucfirst($service) }}</span>
                     </li>
@@ -392,10 +392,10 @@
         @case('service')
             {{-- Area-Specific Service Page (e.g., Palatine Bathroom Remodeling) --}}
             @php
-                // Map new URL slugs to internal service keys
+                // Map URL slugs to internal service keys
                 $serviceKey = match($service ?? $page) {
-                    'kitchens' => 'kitchen-remodeling',
-                    'bathrooms' => 'bathroom-remodeling',
+                    'kitchen-remodeling' => 'kitchen-remodeling',
+                    'bathroom-remodeling' => 'bathroom-remodeling',
                     'home-remodeling' => 'home-remodeling',
                     default => $page,
                 };
@@ -404,7 +404,7 @@
                     'kitchen-remodeling' => [
                         'label' => 'Kitchen Remodeling',
                         'projectType' => 'kitchen',
-                        'urlSlug' => 'kitchens',
+                        'urlSlug' => 'kitchen-remodeling',
                         'heading' => $area->city . ' Kitchen Remodeling',
                         'subheading' => 'Transform your kitchen with custom cabinets, countertops, and modern designs',
                         'description' => "Looking for professional kitchen remodeling in {$area->city}? GS Construction specializes in complete kitchen renovations, from cabinet installation to countertop upgrades. Our family-owned business has served {$area->city} homeowners for years with quality craftsmanship.",
@@ -417,16 +417,18 @@
                             'Backsplash and tile work',
                         ],
                         'faqs' => [
-                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Every kitchen remodel is different — cost depends on the scope of work, materials, and the size of your space. We provide free in-home estimates with a detailed breakdown tailored to your {$area->city} project."],
-                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "The timeline depends on the scope of your project — layout changes, custom cabinetry, and material lead times all play a role. We keep you informed throughout the process."],
-                            ['question' => "Do you handle kitchen remodeling permits in {$area->city}?", 'answer' => "Yes, GS Construction handles all necessary permits for {$area->city} kitchen remodeling projects. We're familiar with local building codes and ensure your project is fully compliant."],
-                            ['question' => "Can you remodel my kitchen while I live in my {$area->city} home?", 'answer' => "Absolutely! Most of our {$area->city} clients stay in their homes during kitchen remodels. We set up temporary kitchen areas and minimize disruption to your daily routine."],
+                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Kitchen remodeling costs in {$area->city} typically range from \$25,000 to \$75,000+ depending on the scope, materials, and size of your kitchen. A minor refresh with cosmetic updates runs less, while a full gut renovation with custom cabinets and premium countertops costs more. We provide free in-home estimates with a detailed, no-surprise breakdown."],
+                            ['question' => "What is a reasonable budget for a kitchen remodel?", 'answer' => "A good rule of thumb is to budget 5–15% of your home's value for a kitchen remodel. For most {$area->city} homes, that translates to \$30,000–\$80,000. We work with a range of budgets and help you prioritize upgrades that deliver the most impact for your investment."],
+                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "Most kitchen remodels in {$area->city} take 4–8 weeks from demolition to completion. Simple cosmetic updates can be faster, while projects involving layout changes, custom cabinetry, or structural work may take 10–12 weeks. We provide a detailed timeline before starting and keep you updated throughout."],
+                            ['question' => "Do you handle kitchen remodeling permits in {$area->city}?", 'answer' => "Yes, GS Construction handles all necessary permits for {$area->city} kitchen remodeling projects. Electrical, plumbing, and structural work typically require permits — we're familiar with local building codes and manage the entire permitting process for you."],
+                            ['question' => "Can you remodel my kitchen while I live in my {$area->city} home?", 'answer' => "Absolutely. Most of our {$area->city} clients stay in their homes during kitchen remodels. We set up a temporary kitchen area with your microwave, coffee maker, and a prep surface, and we clean up the work area daily to minimize disruption."],
+                            ['question' => "What does a full kitchen remodel include?", 'answer' => "A full kitchen remodel with GS Construction typically includes demolition of existing finishes, new cabinetry, countertop installation (quartz, granite, or marble), backsplash tile, flooring, lighting fixtures, plumbing fixtures, electrical updates, and painting. We can also handle layout changes, island additions, and appliance relocation."],
                         ],
                     ],
                     'bathroom-remodeling' => [
                         'label' => 'Bathroom Remodeling',
                         'projectType' => 'bathroom',
-                        'urlSlug' => 'bathrooms',
+                        'urlSlug' => 'bathroom-remodeling',
                         'heading' => $area->city . ' Bathroom Remodeling',
                         'subheading' => 'Create your dream bathroom with custom showers, vanities, and tile work',
                         'description' => "Need bathroom remodeling in {$area->city}? GS Construction delivers stunning bathroom renovations, from walk-in showers to complete master bath transformations. We've helped countless {$area->city} families create beautiful, functional bathrooms.",
@@ -514,6 +516,26 @@
                 :service-short-title="$config['label']" 
             />
 
+            {{-- Long-Form Content Sections (SEO depth) --}}
+            @if(!empty($config['contentSections']))
+            <section class="bg-white py-16 sm:py-20 dark:bg-zinc-900">
+                <div class="mx-auto max-w-7xl px-6 lg:px-8">
+                    <div class="mx-auto max-w-3xl">
+                        @foreach($config['contentSections'] as $section)
+                        <div class="{{ !$loop->first ? 'mt-12' : '' }}">
+                            <h2 class="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-white">
+                                {{ $section['heading'] }}
+                            </h2>
+                            <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
+                                {{ $section['body'] }}
+                            </p>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+            @endif
+
             {{-- Timelapse Section --}}
             <livewire:timelapse-section />
 
@@ -533,7 +555,7 @@
                         More Remodeling Services in {{ $area->city }}
                     </h2>
                     <div class="flex flex-wrap gap-3">
-                        @foreach(['kitchens' => 'Kitchen Remodeling', 'bathrooms' => 'Bathroom Remodeling', 'home-remodeling' => 'Home Remodeling'] as $slug => $label)
+                        @foreach(['kitchen-remodeling' => 'Kitchen Remodeling', 'bathroom-remodeling' => 'Bathroom Remodeling', 'home-remodeling' => 'Home Remodeling'] as $slug => $label)
                             @if($config['urlSlug'] !== $slug)
                             <a href="{{ $area->serviceUrl($slug) }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
                                 {{ $area->city }} {{ $label }}
@@ -586,10 +608,10 @@
                 <a href="{{ $area->url }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'home' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Home
                 </a>
-                <a href="{{ $area->serviceUrl('kitchens') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'kitchens' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                <a href="{{ $area->serviceUrl('kitchen-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'kitchen-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Kitchen
                 </a>
-                <a href="{{ $area->serviceUrl('bathrooms') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'bathrooms' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                <a href="{{ $area->serviceUrl('bathroom-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'bathroom-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Bathroom
                 </a>
                 <a href="{{ $area->serviceUrl('home-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'home-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">

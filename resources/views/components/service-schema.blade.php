@@ -47,9 +47,9 @@ $serviceSlug = match($serviceKey) {
 
 $serviceData = $serviceTypes[$serviceSlug] ?? $serviceTypes['kitchen-remodeling'];
 
-// Build URL - use area page URL if area provided
+// Build URL - use area service URL if area provided
 $serviceUrl = $area 
-    ? $area->pageUrl($serviceSlug)
+    ? $area->serviceUrl($serviceSlug)
     : url("/services/{$serviceSlug}");
 
 $schema = [

@@ -39,8 +39,19 @@ $localBusiness = [
     'alternateName' => 'GS Construction & Remodeling',
     'description' => 'Professional kitchen, bathroom, and home remodeling services. Family-owned business serving the Chicagoland area with over 40 years of combined experience.',
     'url' => 'https://gs.construction',
-    'logo' => asset('images/logo.svg'),
-    'image' => asset('images/greg-patryk.jpg'),
+    'logo' => [
+        '@type' => 'ImageObject',
+        'url' => asset('images/logo.svg'),
+        'contentUrl' => asset('images/logo.svg'),
+    ],
+    'image' => [
+        '@type' => 'ImageObject',
+        'url' => asset('images/greg-patryk.jpg'),
+        'contentUrl' => asset('images/greg-patryk.jpg'),
+        'width' => 1200,
+        'height' => 800,
+        'caption' => 'GS Construction — Kitchen & Bathroom Remodeling in Chicago Suburbs',
+    ],
     'telephone' => '+1-224-735-4200',
     'email' => 'crew@gs.construction',
     'foundingDate' => '2015',
@@ -181,11 +192,12 @@ $organization = [
 ];
 
 // WebSite schema for sitelinks search + site name display
+// Note: alternateName must NOT include LLC or other legal variants — Google uses it for site name
 $website = [
     '@context' => 'https://schema.org',
     '@type' => 'WebSite',
     'name' => 'GS Construction',
-    'alternateName' => ['GS Construction & Remodeling', 'GS Construction LLC'],
+    'alternateName' => 'GS Construction & Remodeling',
     'url' => 'https://gs.construction',
     'potentialAction' => [
         '@type' => 'SearchAction',

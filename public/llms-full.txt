@@ -30,7 +30,7 @@ The company specializes in transforming homes through kitchen remodeling, bathro
 ## Services
 
 ### Kitchen Remodeling
-**URL**: https://gs.construction/services/kitchens
+**URL**: https://gs.construction/services/kitchen-remodeling
 
 Complete kitchen renovation services including:
 - Custom and semi-custom cabinet installation
@@ -46,7 +46,7 @@ Complete kitchen renovation services including:
 **Completed Kitchen Projects**: 10+ published projects across Palatine, Barrington, Hoffman Estates, Inverness, and Arlington Heights.
 
 ### Bathroom Remodeling
-**URL**: https://gs.construction/services/bathrooms
+**URL**: https://gs.construction/services/bathroom-remodeling
 
 Full bathroom renovation services including:
 - Walk-in shower construction
@@ -209,8 +209,8 @@ A: No. All work is performed by our in-house team. This ensures consistent quali
 | Bathroom Projects | https://gs.construction/projects/bathrooms |
 | Home Remodeling Projects | https://gs.construction/projects/home-remodeling |
 | All Projects | https://gs.construction/projects |
-| Kitchen Remodeling Service | https://gs.construction/services/kitchens |
-| Bathroom Remodeling Service | https://gs.construction/services/bathrooms |
+| Kitchen Remodeling Service | https://gs.construction/services/kitchen-remodeling |
+| Bathroom Remodeling Service | https://gs.construction/services/bathroom-remodeling |
 | Home Remodeling Service | https://gs.construction/services/home-remodeling |
 | All Services | https://gs.construction/services |
 | Testimonials | https://gs.construction/testimonials |

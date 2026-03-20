@@ -32,8 +32,8 @@ class Navbar extends Component
 
         // Map service-specific hrefs to area-specific service pages
         $areaServiceMap = [
-            '/services/kitchen-remodeling' => 'kitchens',
-            '/services/bathroom-remodeling' => 'bathrooms',
+            '/services/kitchen-remodeling' => 'kitchen-remodeling',
+            '/services/bathroom-remodeling' => 'bathroom-remodeling',
             '/services/home-remodeling' => 'home-remodeling',
         ];
 

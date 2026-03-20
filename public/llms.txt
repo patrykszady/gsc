@@ -14,8 +14,8 @@ GS Construction & Remodeling is a family-owned home remodeling business based in
 
 ## Services
 
-- [Kitchen Remodeling](https://gs.construction/services/kitchens): Complete kitchen renovations including cabinets, countertops, flooring, lighting, and appliance installation.
-- [Bathroom Remodeling](https://gs.construction/services/bathrooms): Full bathroom renovation including tile work, vanities, showers, bathtubs, and fixtures.
+- [Kitchen Remodeling](https://gs.construction/services/kitchen-remodeling): Complete kitchen renovations including cabinets, countertops, flooring, lighting, and appliance installation.
+- [Bathroom Remodeling](https://gs.construction/services/bathroom-remodeling): Full bathroom renovation including tile work, vanities, showers, bathtubs, and fixtures.
 - [Home Remodeling](https://gs.construction/services/home-remodeling): Comprehensive whole-home renovations and transformations.
 - Basement Remodeling: Basement finishing and renovation to transform unused space.
 - Home Additions: Room additions and home expansion services.
