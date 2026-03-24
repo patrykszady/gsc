@@ -65,19 +65,11 @@
                     <div class="flex items-start gap-4">
                         {{-- Avatar/Image --}}
                         <div class="flex-shrink-0">
-                            @if($testimonial->review_image)
-                                <img 
-                                    src="{{ $testimonial->review_image }}" 
-                                    alt="{{ $testimonial->reviewer_name }}"
-                                    class="size-12 rounded-full object-cover"
-                                >
-                            @else
                                 <div class="flex size-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900">
                                     <span class="text-lg font-semibold text-sky-600 dark:text-sky-400">
                                         {{ strtoupper(substr($testimonial->reviewer_name, 0, 1)) }}
                                     </span>
                                 </div>
-                            @endif
                         </div>
 
                         {{-- Content --}}
@@ -106,16 +98,16 @@
 
                                 {{-- Actions --}}
                                 <div class="flex items-center gap-2">
-                                    @if($testimonial->review_url)
+                                    @foreach($testimonial->reviewUrls as $reviewUrl)
                                         <flux:button 
                                             variant="ghost" 
                                             size="sm" 
                                             icon="arrow-top-right-on-square"
-                                            href="{{ $testimonial->review_url }}"
+                                            href="{{ $reviewUrl->url }}"
                                             target="_blank"
-                                            title="View original review"
+                                            title="{{ ucfirst($reviewUrl->platform) }} review"
                                         />
-                                    @endif
+                                    @endforeach
                                     <flux:dropdown>
                                         <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" />
                                         <flux:menu>

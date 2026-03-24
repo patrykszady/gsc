@@ -24,50 +24,49 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @fluxAppearance
 </head>
-<body class="min-h-screen bg-zinc-50 font-sans antialiased dark:bg-zinc-900">
-    <flux:sidebar sticky stashable class="border-r border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+<body class="min-h-screen lg:h-screen lg:overflow-hidden bg-zinc-50 font-sans antialiased dark:bg-zinc-900">
+    <flux:sidebar sticky collapsible class="border-r border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
         <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
-        <flux:brand href="{{ route('admin.dashboard') }}" logo="{{ asset('images/logo.svg') }}" name="GS Construction" class="px-2 dark:hidden" />
-        <flux:brand href="{{ route('admin.dashboard') }}" logo="{{ asset('images/logo-dark.svg') }}" name="GS Construction" class="hidden px-2 dark:flex" />
+        <flux:sidebar.brand href="{{ route('admin.dashboard') }}" logo="{{ asset('images/logo.svg') }}" logo:dark="{{ asset('images/logo-dark.svg') }}" name="GS Construction" />
 
-        <flux:navlist variant="outline">
-            <flux:navlist.item icon="home" href="{{ route('admin.dashboard') }}" :current="request()->routeIs('admin.dashboard')">
+        <flux:sidebar.nav>
+            <flux:sidebar.item icon="home" href="{{ route('admin.dashboard') }}" :current="request()->routeIs('admin.dashboard')">
                 Dashboard
-            </flux:navlist.item>
-            
-            <flux:navlist.item icon="folder" href="{{ route('admin.projects.index') }}" :current="request()->routeIs('admin.projects.*')">
+            </flux:sidebar.item>
+
+            <flux:sidebar.item icon="folder" href="{{ route('admin.projects.index') }}" :current="request()->routeIs('admin.projects.*')">
                 Projects
-            </flux:navlist.item>
-            
-            <flux:navlist.item icon="tag" href="{{ route('admin.tags.index') }}" :current="request()->routeIs('admin.tags.*')">
+            </flux:sidebar.item>
+
+            <flux:sidebar.item icon="tag" href="{{ route('admin.tags.index') }}" :current="request()->routeIs('admin.tags.*')">
                 Tags
-            </flux:navlist.item>
+            </flux:sidebar.item>
 
-            <flux:navlist.item icon="star" href="{{ route('admin.testimonials.index') }}" :current="request()->routeIs('admin.testimonials.*')">
+            <flux:sidebar.item icon="star" href="{{ route('admin.testimonials.index') }}" :current="request()->routeIs('admin.testimonials.*')">
                 Reviews
-            </flux:navlist.item>
+            </flux:sidebar.item>
 
-            <flux:navlist.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
+            <flux:sidebar.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
                 Social Media
-            </flux:navlist.item>
+            </flux:sidebar.item>
 
-            <flux:navlist.item icon="building-storefront" href="{{ route('admin.gbp.index') }}" :current="request()->routeIs('admin.gbp.*')">
+            <flux:sidebar.item icon="building-storefront" href="{{ route('admin.gbp.index') }}" :current="request()->routeIs('admin.gbp.*')">
                 Google Business
-            </flux:navlist.item>
-        </flux:navlist>
+            </flux:sidebar.item>
+        </flux:sidebar.nav>
 
-        <flux:spacer />
+        <flux:sidebar.spacer />
 
-        <flux:navlist variant="outline">
-            <flux:navlist.item icon="arrow-left-start-on-rectangle" href="{{ route('home') }}">
+        <flux:sidebar.nav>
+            <flux:sidebar.item icon="arrow-left-start-on-rectangle" href="{{ route('home') }}">
                 Back to Site
-            </flux:navlist.item>
-        </flux:navlist>
+            </flux:sidebar.item>
+        </flux:sidebar.nav>
 
         {{-- User menu --}}
         <flux:dropdown position="top" align="start" class="max-lg:hidden">
-            <flux:profile avatar="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()?->name ?? 'Admin') }}&background=0ea5e9&color=fff" name="{{ auth()->user()?->name ?? 'Admin' }}" />
+            <flux:sidebar.profile avatar="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()?->name ?? 'Admin') }}&background=0ea5e9&color=fff" name="{{ auth()->user()?->name ?? 'Admin' }}" />
 
             <flux:menu>
                 <form method="POST" action="{{ route('admin.logout') }}">
@@ -86,7 +85,7 @@
     </flux:header>
 
     {{-- Main content --}}
-    <flux:main>
+    <flux:main class="lg:overflow-y-auto lg:min-h-0">
         {{ $slot }}
     </flux:main>
 @if(config('services.google.ads_id'))

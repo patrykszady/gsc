@@ -56,26 +56,33 @@
                             <flux:input wire:model="review_date" type="date" />
                             <flux:error name="review_date" />
                         </flux:field>
-
-                        <flux:field>
-                            <flux:label>Review URL</flux:label>
-                            <flux:input wire:model="review_url" placeholder="https://..." />
-                            <flux:error name="review_url" />
-                        </flux:field>
                     </div>
 
-                    <flux:field class="mt-4">
-                        <flux:label>Reviewer Image URL</flux:label>
-                        <flux:input wire:model="review_image" placeholder="https://..." />
-                        <flux:error name="review_image" />
-                    </flux:field>
+                    <div class="mt-4 space-y-3">
+                        <flux:label>Review URLs</flux:label>
+                        @foreach($review_urls as $i => $entry)
+                            <div class="flex items-start gap-2">
+                                <div class="w-36">
+                                    <flux:select wire:model="review_urls.{{ $i }}.platform">
+                                        <flux:select.option value="">Platform</flux:select.option>
+                                        <flux:select.option value="google">Google</flux:select.option>
+                                        <flux:select.option value="yelp">Yelp</flux:select.option>
+                                        <flux:select.option value="facebook">Facebook</flux:select.option>
+                                        <flux:select.option value="other">Other</flux:select.option>
+                                    </flux:select>
+                                </div>
+                                <div class="flex-1">
+                                    <flux:input wire:model="review_urls.{{ $i }}.url" placeholder="https://..." />
+                                </div>
+                                @if(count($review_urls) > 1)
+                                    <flux:button variant="ghost" size="sm" icon="x-mark" wire:click="removeUrl({{ $i }})" />
+                                @endif
+                            </div>
+                        @endforeach
+                        <flux:button variant="ghost" size="sm" icon="plus" wire:click="addUrl">Add URL</flux:button>
+                    </div>
 
-                    @if($review_image)
-                        <div class="mt-4 flex items-center gap-4">
-                            <img src="{{ $review_image }}" alt="Preview" class="size-16 rounded-full object-cover" />
-                            <span class="text-sm text-zinc-500 dark:text-zinc-400">Preview</span>
-                        </div>
-                    @endif
+
                 </flux:card>
             </div>
 

@@ -57,6 +57,7 @@ return [
             'refresh_token' => env('GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN'),
             'account_id' => env('GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID'),
             'location_id' => env('GOOGLE_BUSINESS_PROFILE_LOCATION_ID'),
+            'place_id' => env('GOOGLE_BUSINESS_PROFILE_PLACE_ID'),
             'production_url' => env('GOOGLE_BUSINESS_PROFILE_PRODUCTION_URL', 'https://gs.construction'),
         ],
     ],

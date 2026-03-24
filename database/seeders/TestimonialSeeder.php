@@ -61,7 +61,6 @@ class TestimonialSeeder extends Seeder
 
                 $reviewLocation = trim((string) ($data['Project Location'] ?? ''));
                 $reviewUrl = trim((string) ($data['Review URL'] ?? ''));
-                $reviewImage = trim((string) ($data['Review Image'] ?? ''));
                 $reviewDateRaw = trim((string) ($data['Review Date'] ?? ''));
 
                 $reviewDate = null;
@@ -87,7 +86,6 @@ class TestimonialSeeder extends Seeder
                     'review_description' => $reviewDescription,
                     'review_date' => $reviewDate,
                     'review_url' => $reviewUrl !== '' ? $reviewUrl : null,
-                    'review_image' => $reviewImage !== '' ? $reviewImage : null,
                 ];
 
                 $existing = null;

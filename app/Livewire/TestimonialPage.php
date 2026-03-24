@@ -16,7 +16,7 @@ class TestimonialPage extends Component
 
     public function mount(Testimonial $testimonial): void
     {
-        $this->testimonial = $testimonial;
+        $this->testimonial = $testimonial->loadMissing('reviewUrls');
 
         SeoService::testimonial($testimonial);
     }

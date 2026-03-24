@@ -30,11 +30,7 @@ class TestimonialForm extends Component
     #[Validate('nullable|date')]
     public ?string $review_date = null;
 
-    #[Validate('nullable|url')]
-    public ?string $review_url = null;
-
-    #[Validate('nullable|url')]
-    public ?string $review_image = null;
+    public array $review_urls = [['platform' => '', 'url' => '']];
 
     public function mount(?Testimonial $testimonial = null): void
     {
@@ -45,18 +41,40 @@ class TestimonialForm extends Component
             $this->project_type = $testimonial->project_type ?? '';
             $this->review_description = $testimonial->review_description;
             $this->review_date = $testimonial->review_date?->format('Y-m-d');
-            $this->review_url = $testimonial->review_url;
-            $this->review_image = $testimonial->review_image;
+
+            $urls = $testimonial->reviewUrls->map(fn ($u) => ['platform' => $u->platform, 'url' => $u->url])->toArray();
+            $this->review_urls = count($urls) ? $urls : [['platform' => '', 'url' => '']];
+        }
+    }
+
+    public function addUrl(): void
+    {
+        $this->review_urls[] = ['platform' => '', 'url' => ''];
+    }
+
+    public function removeUrl(int $index): void
+    {
+        unset($this->review_urls[$index]);
+        $this->review_urls = array_values($this->review_urls);
+
+        if (empty($this->review_urls)) {
+            $this->review_urls = [['platform' => '', 'url' => '']];
         }
     }
 
     public function save(): void
     {
         $this->review_date = $this->review_date ?: null;
-        $this->review_url = $this->review_url ?: null;
-        $this->review_image = $this->review_image ?: null;
 
-        $this->validate();
+        $this->validate([
+            'reviewer_name' => 'required|min:2',
+            'review_description' => 'required|min:10',
+            'project_location' => 'nullable|string',
+            'project_type' => 'nullable|string',
+            'review_date' => 'nullable|date',
+            'review_urls.*.platform' => 'nullable|string|max:50',
+            'review_urls.*.url' => 'nullable|url',
+        ]);
 
         $data = [
             'reviewer_name' => $this->reviewer_name,
@@ -64,14 +82,23 @@ class TestimonialForm extends Component
             'project_type' => $this->project_type ?: null,
             'review_description' => $this->review_description,
             'review_date' => $this->review_date ? Carbon::parse($this->review_date) : null,
-            'review_url' => $this->review_url,
-            'review_image' => $this->review_image,
         ];
 
         if ($this->testimonial?->exists) {
             $this->testimonial->update($data);
         } else {
             $this->testimonial = Testimonial::create($data);
+        }
+
+        // Sync review URLs
+        $this->testimonial->reviewUrls()->delete();
+        foreach ($this->review_urls as $entry) {
+            if (! empty($entry['url']) && ! empty($entry['platform'])) {
+                $this->testimonial->reviewUrls()->create([
+                    'platform' => $entry['platform'],
+                    'url' => $entry['url'],
+                ]);
+            }
         }
 
         session()->flash('success', $this->testimonial->wasRecentlyCreated ? 'Review created successfully.' : 'Review updated successfully.');

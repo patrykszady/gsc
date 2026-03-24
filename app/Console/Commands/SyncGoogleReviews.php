@@ -62,26 +62,25 @@ class SyncGoogleReviews extends Command
                 continue;
             }
 
-            // Skip reviews we already have
+            // Skip reviews we already have (by google_review_id)
             if (Testimonial::where('google_review_id', $reviewId)->exists()) {
                 $skipped++;
                 continue;
             }
 
             $comment = $review['comment'] ?? '';
-            $reviewerName = $review['reviewer']['displayName'] ?? 'Google Reviewer';
-            $profilePhoto = $review['reviewer']['profilePhotoUrl'] ?? null;
+            $displayName = $review['reviewer']['displayName'] ?? 'Google Reviewer';
+            $reviewerName = $this->formatReviewerName($displayName);
             $starRating = self::STAR_RATINGS[$review['starRating'] ?? ''] ?? null;
             $reviewDate = isset($review['createTime'])
                 ? Carbon::parse($review['createTime'])->toDateString()
                 : null;
 
-            // Build the Google Maps review URL
-            $reviewUrl = $review['reviewReply']['comment'] ?? null;
-            // Use the review name to build a link to Google
-            $accountId = config('services.google.business_profile.account_id');
-            $locationId = config('services.google.business_profile.location_id');
-            $reviewUrl = "https://search.google.com/local/reviews?placeid={$locationId}";
+            // Skip if a testimonial with the same name and date already exists
+            if ($reviewDate && Testimonial::where('reviewer_name', $reviewerName)->where('review_date', $reviewDate)->exists()) {
+                $skipped++;
+                continue;
+            }
 
             if ($this->option('dry-run')) {
                 $this->line("[DRY RUN] Would create: {$reviewerName} — {$starRating}★ — " . mb_substr($comment, 0, 60) . '...');
@@ -93,8 +92,6 @@ class SyncGoogleReviews extends Command
                 'reviewer_name' => $reviewerName,
                 'review_description' => $comment ?: 'Left a ' . ($starRating ?? 5) . '-star review.',
                 'review_date' => $reviewDate,
-                'review_url' => $reviewUrl,
-                'review_image' => $profilePhoto,
                 'google_review_id' => $reviewId,
                 'star_rating' => $starRating,
             ]);
@@ -107,6 +104,23 @@ class SyncGoogleReviews extends Command
         $this->info("Done. Created: {$created}, Skipped (already exists): {$skipped}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Format the display name to "First L." (first name + last initial).
+     */
+    protected function formatReviewerName(string $displayName): string
+    {
+        $parts = preg_split('/\s+/', trim($displayName));
+
+        if (count($parts) < 2) {
+            return $displayName;
+        }
+
+        $firstName = $parts[0];
+        $lastInitial = mb_strtoupper(mb_substr(end($parts), 0, 1));
+
+        return "{$firstName} {$lastInitial}.";
     }
 
     /**

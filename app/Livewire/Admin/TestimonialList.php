@@ -63,7 +63,7 @@ class TestimonialList extends Component
             ->values();
 
         return view('livewire.admin.testimonial-list', [
-            'testimonials' => $query->orderByDesc('review_date')->orderByDesc('created_at')->paginate(12),
+            'testimonials' => $query->with('reviewUrls')->orderByDesc('review_date')->orderByDesc('created_at')->paginate(12),
             'projectTypes' => $projectTypes,
         ]);
     }

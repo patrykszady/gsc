@@ -710,6 +710,61 @@ class GoogleBusinessProfileService
         ];
     }
 
+    /**
+     * Fetch reviews from the Google Places API (New) which includes googleMapsUri per review.
+     * Returns up to 5 "most relevant" reviews — an API limitation.
+     *
+     * @return array<array{authorName: string, rating: int, text: string, publishTime: string, googleMapsUri: string}>|null
+     */
+    public function fetchPlaceReviews(): ?array
+    {
+        $placeId = config('services.google.business_profile.place_id');
+        $apiKey = config('services.google.places_api_key');
+
+        if (! $placeId || ! $apiKey) {
+            $this->lastError = ['message' => 'GOOGLE_BUSINESS_PROFILE_PLACE_ID or GOOGLE_PLACES_API_KEY not set'];
+
+            return null;
+        }
+
+        $response = Http::timeout(30)
+            ->withHeaders([
+                'X-Goog-Api-Key' => $apiKey,
+                'X-Goog-FieldMask' => 'reviews.rating,reviews.text,reviews.originalText,reviews.authorAttribution,reviews.publishTime,reviews.googleMapsUri',
+            ])
+            ->get("https://places.googleapis.com/v1/places/{$placeId}");
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Places API request failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to fetch place reviews', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        $data = $response->json();
+        $reviews = [];
+
+        foreach ($data['reviews'] ?? [] as $review) {
+            $reviews[] = [
+                'authorName' => $review['authorAttribution']['displayName'] ?? '',
+                'rating' => (int) ($review['rating'] ?? 0),
+                'text' => $review['text']['text'] ?? $review['originalText']['text'] ?? '',
+                'publishTime' => $review['publishTime'] ?? '',
+                'googleMapsUri' => $review['googleMapsUri'] ?? '',
+            ];
+        }
+
+        return $reviews;
+    }
+
     public function getLastError(): ?array
     {
         return $this->lastError;
@@ -876,6 +931,17 @@ class GoogleBusinessProfileService
         $this->lastError = null;
 
         return $response->json();
+    }
+
+    /**
+     * Fetch the Place ID for the configured GBP location via the Business Information API.
+     * The metadata.placeId field is the official Place ID (ChIJ...) for use with the Places API.
+     */
+    public function fetchPlaceId(): ?string
+    {
+        $data = $this->getLocation('metadata');
+
+        return $data['metadata']['placeId'] ?? null;
     }
 
     /**

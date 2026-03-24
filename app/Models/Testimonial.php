@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Testimonial extends Model
@@ -13,8 +14,6 @@ class Testimonial extends Model
         'project_type',
         'review_description',
         'review_date',
-        'review_url',
-        'review_image',
         'google_review_id',
         'star_rating',
     ];
@@ -56,5 +55,10 @@ class Testimonial extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    public function reviewUrls(): HasMany
+    {
+        return $this->hasMany(ReviewUrl::class);
     }
 }
