@@ -82,6 +82,27 @@ class SyncGoogleReviews extends Command
                 continue;
             }
 
+            // Skip if a testimonial with matching review text already exists (cross-platform dupes)
+            if (mb_strlen($comment) > 20) {
+                $snippet = mb_substr($comment, 0, 50);
+                $existing = Testimonial::whereRaw(
+                    'LEFT(review_description, 50) = ?',
+                    [mb_substr($snippet, 0, 50)]
+                )->first();
+
+                if ($existing) {
+                    // Assign google_review_id to the existing entry if it doesn't have one
+                    if (! $existing->google_review_id) {
+                        $existing->update(['google_review_id' => $reviewId]);
+                    }
+                    if (! $existing->star_rating && $starRating) {
+                        $existing->update(['star_rating' => $starRating]);
+                    }
+                    $skipped++;
+                    continue;
+                }
+            }
+
             if ($this->option('dry-run')) {
                 $this->line("[DRY RUN] Would create: {$reviewerName} — {$starRating}★ — " . mb_substr($comment, 0, 60) . '...');
                 $created++;
