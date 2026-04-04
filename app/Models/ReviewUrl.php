@@ -11,6 +11,7 @@ class ReviewUrl extends Model
         'testimonial_id',
         'platform',
         'url',
+        'external_id',
     ];
 
     public function testimonial(): BelongsTo

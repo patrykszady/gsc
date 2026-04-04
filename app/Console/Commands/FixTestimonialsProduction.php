@@ -165,19 +165,22 @@ class FixTestimonialsProduction extends Command
         foreach ($dup->reviewUrls as $url) {
             if (! in_array($url->platform, $existingPlatforms, true)) {
                 if (! $dryRun) {
-                    $keep->reviewUrls()->create(['platform' => $url->platform, 'url' => $url->url]);
+                    $keep->reviewUrls()->create([
+                        'platform' => $url->platform,
+                        'url' => $url->url,
+                        'external_id' => $url->external_id,
+                    ]);
                 }
                 $existingPlatforms[] = $url->platform;
                 $transferred++;
             }
         }
 
-        // Copy google_review_id if the kept record doesn't have one
-        if (! $keep->google_review_id && $dup->google_review_id && ! $dryRun) {
-            try {
-                $keep->update(['google_review_id' => $dup->google_review_id]);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
-                // Already taken
+        if (! $dryRun) {
+            $keepGoogleUrl = $keep->reviewUrls()->where('platform', 'google')->first();
+            $dupGoogleUrl = $dup->reviewUrls()->where('platform', 'google')->first();
+            if ($keepGoogleUrl && $dupGoogleUrl && ! $keepGoogleUrl->external_id && $dupGoogleUrl->external_id) {
+                $keepGoogleUrl->update(['external_id' => $dupGoogleUrl->external_id]);
             }
         }
 

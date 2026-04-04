@@ -23,7 +23,7 @@ $reviews = $featuredTestimonials->map(function ($item) {
         ],
         'author' => [
             '@type' => 'Person',
-            'name' => $item->reviewer_name,
+            'name' => $item->display_name,
         ],
         'reviewBody' => $item->review_description,
         'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),

@@ -142,4 +142,8 @@ return [
         ],
     ],
 
+    'anticaptcha' => [
+        'api_key' => env('ANTICAPTCHA_API_KEY'),
+    ],
+
 ];

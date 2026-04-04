@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Models\Project;
+use App\Models\ProjectTimelapse;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -17,11 +18,13 @@ class ProjectsGrid extends Component
     #[Url]
     public string $type = '';
 
-    public int $perPage = 9;
+    public int $perPage = 6;
 
     public bool $hideFilters = false;
 
     public bool $showPagination = true;
+
+    public ?int $randomTimelapseId = null;
 
     public function mount(?string $projectType = null, ?int $limit = null, bool $hideFilters = false, bool $showPagination = true): void
     {
@@ -33,6 +36,13 @@ class ProjectsGrid extends Component
         }
         $this->hideFilters = $hideFilters;
         $this->showPagination = $showPagination;
+
+        if (! $this->hideFilters) {
+            $this->randomTimelapseId = ProjectTimelapse::query()
+                ->whereHas('frames')
+                ->inRandomOrder()
+                ->value('id');
+        }
     }
 
     public function setPerPage(int $count): void

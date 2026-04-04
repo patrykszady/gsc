@@ -12,9 +12,10 @@ class MatchGoogleReviews extends Command
 {
     protected $signature = 'google-business-profile:match-reviews
         {--dry-run : Show what would be changed without writing to DB}
-        {--clean-urls : Remove generic Google review URLs after matching}';
+        {--clean-urls : Remove generic Google review URLs after matching}
+        {--normalize-google-urls : Rewrite non-data Google review URLs to stable place reviews URL}';
 
-    protected $description = 'Match Google Business Profile reviews with existing testimonials and assign google_review_id.';
+    protected $description = 'Match Google Business Profile reviews with existing testimonials and store Google IDs in review_urls.';
 
     protected const STAR_RATINGS = [
         'ONE' => 1,
@@ -54,7 +55,7 @@ class MatchGoogleReviews extends Command
         $this->newLine();
 
         // Load all testimonials
-        $testimonials = Testimonial::all();
+        $testimonials = Testimonial::with('reviewUrls')->get();
         $matched = 0;
         $alreadyMatched = 0;
         $unmatched = [];
@@ -66,15 +67,16 @@ class MatchGoogleReviews extends Command
             }
 
             $displayName = $review['reviewer']['displayName'] ?? 'Google Reviewer';
-            $formattedName = $this->formatReviewerName($displayName);
             $starRating = self::STAR_RATINGS[$review['starRating'] ?? ''] ?? null;
             $reviewDate = isset($review['createTime'])
                 ? Carbon::parse($review['createTime'])->toDateString()
                 : null;
             $comment = $review['comment'] ?? '';
 
-            // Check if already matched by google_review_id
-            $existing = $testimonials->firstWhere('google_review_id', $reviewId);
+            // Check if already matched by review_urls.external_id
+            $existing = $testimonials->first(function ($t) use ($reviewId) {
+                return $t->reviewUrls->contains(fn ($u) => $u->platform === 'google' && $u->external_id === $reviewId);
+            });
             if ($existing) {
                 $alreadyMatched++;
 
@@ -82,18 +84,17 @@ class MatchGoogleReviews extends Command
             }
 
             // Try to match by name + date
-            $match = $this->findMatch($testimonials, $formattedName, $displayName, $reviewDate, $comment);
+            $match = $this->findMatch($testimonials, $displayName, $reviewDate, $comment);
 
             if ($match) {
                 $this->line("{$prefix}Match: Google \"{$displayName}\" ({$reviewDate}) → DB #{$match->id} \"{$match->reviewer_name}\" ({$match->review_date?->format('Y-m-d')})");
                 if (! $dryRun) {
-                    $match->update(['google_review_id' => $reviewId]);
+                    $this->upsertGoogleReviewReference($match, $reviewId);
                 }
                 $matched++;
             } else {
                 $unmatched[] = [
                     'name' => $displayName,
-                    'formatted' => $formattedName,
                     'date' => $reviewDate,
                     'stars' => $starRating,
                     'comment' => mb_substr($comment, 0, 60),
@@ -117,6 +118,39 @@ class MatchGoogleReviews extends Command
                     $url->delete();
                 }
                 $urlsCleaned++;
+            }
+        }
+
+        // Normalize any non-data Google URLs to the stable place reviews URL.
+        $urlsNormalized = 0;
+        if ($this->option('normalize-google-urls')) {
+            $this->newLine();
+            $this->info('Normalizing non-data Google review URLs...');
+
+            $placeId = (string) config('services.google.business_profile.place_id', '');
+            if ($placeId === '') {
+                $this->warn('Skipping URL normalization: GOOGLE_BUSINESS_PROFILE_PLACE_ID is not configured.');
+            } else {
+                $fallbackUrl = 'https://search.google.com/local/reviews?placeid='.$placeId;
+                $googleUrls = ReviewUrl::where('platform', 'google')->get();
+
+                foreach ($googleUrls as $url) {
+                    $current = (string) $url->url;
+                    if ($current === '') {
+                        continue;
+                    }
+
+                    // Keep canonical deep links and already-normalized URLs.
+                    if (str_contains($current, '/maps/reviews/data=') || $current === $fallbackUrl) {
+                        continue;
+                    }
+
+                    $this->line("{$prefix}Normalize: #{$url->id} (testimonial #{$url->testimonial_id}) → {$fallbackUrl}");
+                    if (! $dryRun) {
+                        $url->update(['url' => $fallbackUrl]);
+                    }
+                    $urlsNormalized++;
+                }
             }
         }
 
@@ -148,7 +182,7 @@ class MatchGoogleReviews extends Command
         } else {
             $this->info(count($placeReviews) . ' review(s) fetched from Places API (max 5).');
 
-            // Reload testimonials to include any newly matched google_review_ids
+            // Reload testimonials to include any newly matched Google references
             $testimonials = Testimonial::with('reviewUrls')->get();
 
             foreach ($placeReviews as $placeReview) {
@@ -172,12 +206,9 @@ class MatchGoogleReviews extends Command
 
                 $this->line("{$prefix}Link: #{$match->id} \"{$match->reviewer_name}\" → {$placeReview['googleMapsUri']}");
                 if (! $dryRun) {
-                    // Remove any existing generic Google URL for this testimonial
-                    $match->reviewUrls()->where('platform', 'google')->delete();
-                    $match->reviewUrls()->create([
-                        'platform' => 'google',
-                        'url' => $placeReview['googleMapsUri'],
-                    ]);
+                    $existingGoogle = $match->reviewUrls()->where('platform', 'google')->first();
+                    $reviewId = $existingGoogle?->external_id;
+                    $this->upsertGoogleReviewReference($match, $reviewId ?: $this->extractReviewId($placeReview['name'] ?? '') ?: '', $placeReview['googleMapsUri']);
                 }
                 $urlsLinked++;
             }
@@ -186,11 +217,14 @@ class MatchGoogleReviews extends Command
         // Summary
         $this->newLine();
         $this->info("{$prefix}Summary:");
-        $this->line("  Already matched (has google_review_id): {$alreadyMatched}");
+        $this->line("  Already matched (has google external_id): {$alreadyMatched}");
         $this->line("  Newly matched: {$matched}");
         $this->line("  Unmatched Google reviews: " . count($unmatched));
         if ($urlsCleaned) {
             $this->line("  Generic URLs removed: {$urlsCleaned}");
+        }
+        if ($urlsNormalized) {
+            $this->line("  Non-data URLs normalized: {$urlsNormalized}");
         }
         $this->line("  Review URLs linked (Places API): {$urlsLinked}");
 
@@ -198,15 +232,17 @@ class MatchGoogleReviews extends Command
             $this->newLine();
             $this->warn('Unmatched Google reviews (no DB testimonial found):');
             foreach ($unmatched as $u) {
-                $this->line("  {$u['name']} ({$u['formatted']}) — {$u['date']} — {$u['stars']}★ — \"{$u['comment']}...\"");
+                $this->line("  {$u['name']} — {$u['date']} — {$u['stars']}★ — \"{$u['comment']}...\"");
             }
         }
 
-        // Show testimonials still without google_review_id
-        $stillMissing = Testimonial::whereNull('google_review_id')->count();
+        // Show testimonials still without Google external ID
+        $stillMissing = Testimonial::whereDoesntHave('reviewUrls', function ($q) {
+            $q->where('platform', 'google')->whereNotNull('external_id');
+        })->count();
         if ($stillMissing) {
             $this->newLine();
-            $this->warn("{$stillMissing} testimonial(s) still without google_review_id (may be manually added reviews).");
+            $this->warn("{$stillMissing} testimonial(s) still without Google external_id (may be manually added reviews).");
         }
 
         return self::SUCCESS;
@@ -215,14 +251,16 @@ class MatchGoogleReviews extends Command
     /**
      * Try to match a Google review to an existing testimonial.
      */
-    protected function findMatch($testimonials, string $formattedName, string $displayName, ?string $reviewDate, string $comment)
+    protected function findMatch($testimonials, string $displayName, ?string $reviewDate, string $comment)
     {
-        $unmatched = $testimonials->whereNull('google_review_id');
+        $unmatched = $testimonials->filter(function ($t) {
+            return ! $t->reviewUrls->contains(fn ($u) => $u->platform === 'google' && ! empty($u->external_id));
+        });
 
-        // 1. Exact formatted name + date
+        // 1. Exact name + date
         if ($reviewDate) {
-            $match = $unmatched->first(function ($t) use ($formattedName, $reviewDate) {
-                return mb_strtolower($t->reviewer_name) === mb_strtolower($formattedName)
+            $match = $unmatched->first(function ($t) use ($displayName, $reviewDate) {
+                return mb_strtolower($t->reviewer_name) === mb_strtolower($displayName)
                     && $t->review_date?->toDateString() === $reviewDate;
             });
             if ($match) {
@@ -230,19 +268,19 @@ class MatchGoogleReviews extends Command
             }
         }
 
-        // 2. Exact formatted name (no date check)
-        $nameMatches = $unmatched->filter(fn ($t) => mb_strtolower($t->reviewer_name) === mb_strtolower($formattedName));
+        // 2. Exact name (no date check)
+        $nameMatches = $unmatched->filter(fn ($t) => mb_strtolower($t->reviewer_name) === mb_strtolower($displayName));
         if ($nameMatches->count() === 1) {
             return $nameMatches->first();
         }
 
-        // 3. First name match (for "John D." matching "John D." with different casing etc.)
-        $firstNameMatches = $unmatched->filter(function ($t) use ($formattedName) {
+        // 3. First name + last initial match (handles full name vs "First L" in DB)
+        $firstNameMatches = $unmatched->filter(function ($t) use ($displayName) {
             $dbFirst = mb_strtolower(explode(' ', $t->reviewer_name)[0] ?? '');
-            $apiFirst = mb_strtolower(explode(' ', $formattedName)[0] ?? '');
+            $apiFirst = mb_strtolower(explode(' ', $displayName)[0] ?? '');
 
             return $dbFirst === $apiFirst
-                && mb_strtolower(mb_substr($t->reviewer_name, -2)) === mb_strtolower(mb_substr($formattedName, -2));
+                && mb_strtolower(mb_substr($t->reviewer_name, -2)) === mb_strtolower(mb_substr($displayName, -2));
         });
         if ($firstNameMatches->count() === 1) {
             return $firstNameMatches->first();
@@ -266,16 +304,15 @@ class MatchGoogleReviews extends Command
     protected function matchPlaceReviewToTestimonial($testimonials, array $placeReview)
     {
         $authorName = $placeReview['authorName'] ?? '';
-        $formattedName = $this->formatReviewerName($authorName);
         $text = $placeReview['text'] ?? '';
         $publishDate = ! empty($placeReview['publishTime'])
             ? Carbon::parse($placeReview['publishTime'])->toDateString()
             : null;
 
-        // 1. Match by formatted name + date
+        // 1. Match by name + date
         if ($publishDate) {
-            $match = $testimonials->first(function ($t) use ($formattedName, $publishDate) {
-                return mb_strtolower($t->reviewer_name) === mb_strtolower($formattedName)
+            $match = $testimonials->first(function ($t) use ($authorName, $publishDate) {
+                return mb_strtolower($t->reviewer_name) === mb_strtolower($authorName)
                     && $t->review_date?->toDateString() === $publishDate;
             });
             if ($match) {
@@ -283,8 +320,8 @@ class MatchGoogleReviews extends Command
             }
         }
 
-        // 2. Match by formatted name (unique)
-        $nameMatches = $testimonials->filter(fn ($t) => mb_strtolower($t->reviewer_name) === mb_strtolower($formattedName));
+        // 2. Match by name (unique)
+        $nameMatches = $testimonials->filter(fn ($t) => mb_strtolower($t->reviewer_name) === mb_strtolower($authorName));
         if ($nameMatches->count() === 1) {
             return $nameMatches->first();
         }
@@ -301,20 +338,6 @@ class MatchGoogleReviews extends Command
         return null;
     }
 
-    protected function formatReviewerName(string $displayName): string
-    {
-        $parts = preg_split('/\s+/', trim($displayName));
-
-        if (count($parts) < 2) {
-            return $displayName;
-        }
-
-        $firstName = $parts[0];
-        $lastInitial = mb_strtoupper(mb_substr(end($parts), 0, 1));
-
-        return "{$firstName} {$lastInitial}.";
-    }
-
     protected function extractReviewId(string $resourceName): ?string
     {
         if (! $resourceName) {
@@ -324,5 +347,37 @@ class MatchGoogleReviews extends Command
         $parts = explode('/', $resourceName);
 
         return end($parts) ?: null;
+    }
+
+    protected function upsertGoogleReviewReference(Testimonial $testimonial, string $reviewId, ?string $googleMapsUri = null): void
+    {
+        $url = $googleMapsUri ?: $this->buildFallbackGoogleUrl($reviewId);
+
+        $row = $testimonial->reviewUrls()->where('platform', 'google')->first();
+        if (! $row) {
+            $testimonial->reviewUrls()->create([
+                'platform' => 'google',
+                'url' => $url,
+                'external_id' => $reviewId !== '' ? $reviewId : null,
+            ]);
+
+            return;
+        }
+
+        $row->update([
+            'url' => $googleMapsUri ?: $row->url ?: $url,
+            'external_id' => $reviewId !== '' ? $reviewId : $row->external_id,
+        ]);
+    }
+
+    protected function buildFallbackGoogleUrl(string $reviewId): string
+    {
+        $placeId = (string) config('services.google.business_profile.place_id', '');
+
+        if ($placeId !== '') {
+            return 'https://search.google.com/local/reviews?placeid='.$placeId;
+        }
+
+        return 'https://www.google.com/maps/reviews?reviewid='.$reviewId;
     }
 }

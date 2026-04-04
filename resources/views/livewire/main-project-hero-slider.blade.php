@@ -1,6 +1,7 @@
 @php
     $citySuffix = $area ? ' in ' . $area->city : '';
     $isServiceMode = $mode === 'service';
+    $isImagesOnly = $mode === 'images-only';
     // First slide image for preloading
     $firstSlide = $renderedSlides[0] ?? null;
     // Responsive sizes: use smaller images on smaller screens
@@ -110,6 +111,9 @@
         next() {
             this.currentSlide = (this.currentSlide + 1) % this.slides.length;
         },
+        prev() {
+            this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
+        },
         handleVisibility(isVisible) {
             this.isVisible = isVisible;
             if (isVisible && this.isTabVisible && !this.isHovered) {
@@ -131,7 +135,9 @@
     }"
     x-intersect:enter.threshold.40="handleVisibility(true)"
     x-intersect:leave.threshold.40="handleVisibility(false)"
-    class="relative w-full overflow-hidden"
+    @keydown.left.window="if (isVisible) { prev(); stopAutoplay(); startAutoplay(); }"
+    @keydown.right.window="if (isVisible) { next(); stopAutoplay(); startAutoplay(); }"
+    class="relative w-full overflow-hidden rounded-2xl"
 >
     {{-- Slides --}}
     <div class="relative {{ $heightClasses ?? 'h-[500px] sm:h-[600px] lg:h-[700px]' }}">
@@ -236,6 +242,17 @@
             </div>
         </template>
 
+        {{-- Project title overlay --}}
+        <template x-for="(slide, index) in slides" :key="'title-' + index">
+            <div x-show="currentSlide === index && slide.projectUrl" x-transition.opacity.duration.200ms class="absolute top-4 left-4 z-10">
+                <a :href="slide.projectUrl" class="inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/70">
+                    <span x-text="slide.projectTitle"></span>
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </template>
+
+        @if(!$isImagesOnly)
         @if($isServiceMode)
         {{-- Service Page Content (per-slide) --}}
         <template x-for="(slide, index) in slides" :key="'content-' + index">
@@ -353,7 +370,24 @@
             </div>
         </template>
         @endif
+        @endif {{-- !isImagesOnly --}}
     </div>
+
+    {{-- Left/Right Arrow Buttons --}}
+    <button
+        @click="prev(); stopAutoplay(); startAutoplay();"
+        class="absolute left-3 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 focus:outline-none"
+        aria-label="Previous slide"
+    >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <button
+        @click="next(); stopAutoplay(); startAutoplay();"
+        class="absolute right-3 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 focus:outline-none"
+        aria-label="Next slide"
+    >
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </button>
 
     {{-- Dot Indicators (display only) --}}
     <div class="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 gap-2">

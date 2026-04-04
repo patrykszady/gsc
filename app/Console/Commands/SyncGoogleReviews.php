@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\ReviewUrl;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
 use Illuminate\Console\Command;
@@ -62,38 +63,37 @@ class SyncGoogleReviews extends Command
                 continue;
             }
 
-            // Skip reviews we already have (by google_review_id)
-            if (Testimonial::where('google_review_id', $reviewId)->exists()) {
+            // Skip reviews we already have (by review_urls.external_id)
+            if (ReviewUrl::where('platform', 'google')->where('external_id', $reviewId)->exists()) {
                 $skipped++;
                 continue;
             }
 
             $comment = $review['comment'] ?? '';
             $displayName = $review['reviewer']['displayName'] ?? 'Google Reviewer';
-            $reviewerName = $this->formatReviewerName($displayName);
             $starRating = self::STAR_RATINGS[$review['starRating'] ?? ''] ?? null;
             $reviewDate = isset($review['createTime'])
                 ? Carbon::parse($review['createTime'])->toDateString()
                 : null;
 
             // Skip if a testimonial with the same name and date already exists
-            if ($reviewDate && Testimonial::where('reviewer_name', $reviewerName)->where('review_date', $reviewDate)->exists()) {
+            if ($reviewDate && Testimonial::where('reviewer_name', $displayName)->where('review_date', $reviewDate)->exists()) {
                 $skipped++;
                 continue;
             }
 
             // Skip if a testimonial with matching review text already exists (cross-platform dupes)
+            // Normalize to ASCII so mojibake-encoded entries still match clean Google text.
             if (mb_strlen($comment) > 20) {
-                $snippet = mb_substr($comment, 0, 50);
-                $existing = Testimonial::whereRaw(
-                    'LEFT(review_description, 50) = ?',
-                    [mb_substr($snippet, 0, 50)]
-                )->first();
+                $normalized = $this->normalizeForComparison($comment, 80);
+                $existing = Testimonial::all()->first(function ($t) use ($normalized) {
+                    return $this->normalizeForComparison($t->review_description, 80) === $normalized;
+                });
 
                 if ($existing) {
-                    // Assign google_review_id to the existing entry if it doesn't have one
-                    if (! $existing->google_review_id) {
-                        $existing->update(['google_review_id' => $reviewId]);
+                    // Store Google identity on review_urls.
+                    if (! $this->option('dry-run')) {
+                        $this->upsertGoogleReviewReference($existing, $reviewId);
                     }
                     if (! $existing->star_rating && $starRating) {
                         $existing->update(['star_rating' => $starRating]);
@@ -104,44 +104,28 @@ class SyncGoogleReviews extends Command
             }
 
             if ($this->option('dry-run')) {
-                $this->line("[DRY RUN] Would create: {$reviewerName} — {$starRating}★ — " . mb_substr($comment, 0, 60) . '...');
+                $this->line("[DRY RUN] Would create: {$displayName} — {$starRating}★ — " . mb_substr($comment, 0, 60) . '...');
                 $created++;
                 continue;
             }
 
-            Testimonial::create([
-                'reviewer_name' => $reviewerName,
+            $testimonial = Testimonial::create([
+                'reviewer_name' => $displayName,
                 'review_description' => $comment ?: 'Left a ' . ($starRating ?? 5) . '-star review.',
                 'review_date' => $reviewDate,
-                'google_review_id' => $reviewId,
                 'star_rating' => $starRating,
             ]);
 
+            $this->upsertGoogleReviewReference($testimonial, $reviewId);
+
             $created++;
-            $this->line("Created: {$reviewerName} — {$starRating}★");
+            $this->line("Created: {$displayName} — {$starRating}★");
         }
 
         $this->newLine();
         $this->info("Done. Created: {$created}, Skipped (already exists): {$skipped}");
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Format the display name to "First L." (first name + last initial).
-     */
-    protected function formatReviewerName(string $displayName): string
-    {
-        $parts = preg_split('/\s+/', trim($displayName));
-
-        if (count($parts) < 2) {
-            return $displayName;
-        }
-
-        $firstName = $parts[0];
-        $lastInitial = mb_strtoupper(mb_substr(end($parts), 0, 1));
-
-        return "{$firstName} {$lastInitial}.";
     }
 
     /**
@@ -157,5 +141,54 @@ class SyncGoogleReviews extends Command
         $parts = explode('/', $resourceName);
 
         return end($parts) ?: null;
+    }
+
+    /**
+     * Normalize text for duplicate comparison by stripping non-ASCII,
+     * collapsing whitespace, and truncating to a fixed length.
+     * This ensures mojibake-encoded text still matches clean Google text.
+     */
+    protected function normalizeForComparison(string $text, int $length = 80): string
+    {
+        // Transliterate to ASCII (handles curly quotes, em dashes, etc.)
+        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
+        // Strip anything that's not alphanumeric or space
+        $text = preg_replace('/[^a-zA-Z0-9 ]/', '', $text);
+        // Collapse whitespace and lowercase
+        $text = mb_strtolower(preg_replace('/\s+/', ' ', trim($text)));
+
+        return mb_substr($text, 0, $length);
+    }
+
+    protected function upsertGoogleReviewReference(Testimonial $testimonial, string $reviewId, ?string $googleMapsUri = null): void
+    {
+        $url = $googleMapsUri ?: $this->buildFallbackGoogleUrl($reviewId);
+
+        $reviewUrl = $testimonial->reviewUrls()->where('platform', 'google')->first();
+        if (! $reviewUrl) {
+            $testimonial->reviewUrls()->create([
+                'platform' => 'google',
+                'url' => $url,
+                'external_id' => $reviewId,
+            ]);
+
+            return;
+        }
+
+        $reviewUrl->update([
+            'url' => $googleMapsUri ?: $reviewUrl->url ?: $url,
+            'external_id' => $reviewId,
+        ]);
+    }
+
+    protected function buildFallbackGoogleUrl(string $reviewId): string
+    {
+        $placeId = (string) config('services.google.business_profile.place_id', '');
+
+        if ($placeId !== '') {
+            return 'https://search.google.com/local/reviews?placeid='.$placeId;
+        }
+
+        return 'https://www.google.com/maps/reviews?reviewid='.$reviewId;
     }
 }

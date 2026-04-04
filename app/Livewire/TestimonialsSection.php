@@ -162,7 +162,7 @@ class TestimonialsSection extends Component
         return [
             'id' => $testimonial->id,
             'slug' => $testimonial->slug,
-            'name' => $testimonial->reviewer_name,
+            'name' => $testimonial->display_name,
             'location' => $testimonial->project_location,
             'area_slug' => AreaServed::where('city', $cityName)->value('slug'),
             'project_type' => $testimonial->project_type,

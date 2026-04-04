@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Project;
 use App\Models\Testimonial;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Layout;
@@ -30,7 +31,45 @@ class TestimonialForm extends Component
     #[Validate('nullable|date')]
     public ?string $review_date = null;
 
+    public array $project_ids = [];
+
     public array $review_urls = [['platform' => '', 'url' => '']];
+
+    private function inferPlatformFromUrl(?string $url): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! is_string($host) || $host === '') {
+            return null;
+        }
+
+        $host = strtolower(preg_replace('/^www\./', '', $host));
+
+        if (str_contains($host, 'google.') || $host === 'g.page') {
+            return 'google';
+        }
+
+        if (str_contains($host, 'yelp.')) {
+            return 'yelp';
+        }
+
+        if (str_contains($host, 'facebook.') || $host === 'fb.com') {
+            return 'facebook';
+        }
+
+        if (str_contains($host, 'houzz.')) {
+            return 'houzz';
+        }
+
+        if (str_contains($host, 'angi.') || str_contains($host, 'angieslist.')) {
+            return 'angi';
+        }
+
+        return 'other';
+    }
 
     public function mount(?Testimonial $testimonial = null): void
     {
@@ -41,6 +80,7 @@ class TestimonialForm extends Component
             $this->project_type = $testimonial->project_type ?? '';
             $this->review_description = $testimonial->review_description;
             $this->review_date = $testimonial->review_date?->format('Y-m-d');
+            $this->project_ids = $testimonial->projects->pluck('id')->map(fn ($id) => (string) $id)->toArray();
 
             $urls = $testimonial->reviewUrls->map(fn ($u) => ['platform' => $u->platform, 'url' => $u->url])->toArray();
             $this->review_urls = count($urls) ? $urls : [['platform' => '', 'url' => '']];
@@ -62,6 +102,39 @@ class TestimonialForm extends Component
         }
     }
 
+    public function updatedReviewUrls($value, $key): void
+    {
+        if (! str_ends_with($key, '.url') || ! is_string($value)) {
+            return;
+        }
+
+        $parsed = parse_url($value);
+        if (empty($parsed['query'])) {
+            return;
+        }
+
+        parse_str($parsed['query'], $params);
+        $cleaned = array_filter($params, fn ($k) => ! str_starts_with($k, 'utm_'), ARRAY_FILTER_USE_KEY);
+
+        $clean = $parsed['scheme'] . '://' . $parsed['host'] . ($parsed['path'] ?? '');
+        if ($cleaned) {
+            $clean .= '?' . http_build_query($cleaned);
+        }
+
+        // e.g. key = "0.url" → index 0
+        $index = (int) explode('.', $key)[0];
+        $this->review_urls[$index]['url'] = $clean;
+    }
+
+    public function updatedProjectIds(): void
+    {
+        $lastId = end($this->project_ids);
+        if ($lastId && $project = Project::find($lastId)) {
+            $this->project_location = $project->location ?? $this->project_location;
+            $this->project_type = $project->project_type ?? $this->project_type;
+        }
+    }
+
     public function save(): void
     {
         $this->review_date = $this->review_date ?: null;
@@ -74,6 +147,8 @@ class TestimonialForm extends Component
             'review_date' => 'nullable|date',
             'review_urls.*.platform' => 'nullable|string|max:50',
             'review_urls.*.url' => 'nullable|url',
+            'project_ids' => 'nullable|array',
+            'project_ids.*' => 'exists:projects,id',
         ]);
 
         $data = [
@@ -90,13 +165,25 @@ class TestimonialForm extends Component
             $this->testimonial = Testimonial::create($data);
         }
 
+        // Sync linked projects
+        $this->testimonial->projects()->sync(array_filter($this->project_ids));
+
         // Sync review URLs
         $this->testimonial->reviewUrls()->delete();
         foreach ($this->review_urls as $entry) {
-            if (! empty($entry['url']) && ! empty($entry['platform'])) {
+            $url = trim((string) ($entry['url'] ?? ''));
+            $manualPlatform = trim((string) ($entry['platform'] ?? ''));
+
+            if ($url === '') {
+                continue;
+            }
+
+            $platform = $this->inferPlatformFromUrl($url) ?? $manualPlatform;
+
+            if ($platform !== '') {
                 $this->testimonial->reviewUrls()->create([
-                    'platform' => $entry['platform'],
-                    'url' => $entry['url'],
+                    'platform' => $platform,
+                    'url' => $url,
                 ]);
             }
         }
@@ -106,8 +193,27 @@ class TestimonialForm extends Component
         $this->redirect(route('admin.testimonials.index'), navigate: true);
     }
 
+    public function getDisplayPreview(): string
+    {
+        $name = trim($this->reviewer_name);
+
+        if (! $name) {
+            return 'First L';
+        }
+
+        $parts = preg_split('/\s+/', $name);
+
+        if (count($parts) < 2) {
+            return $name;
+        }
+
+        return $parts[0] . ' ' . mb_strtoupper(mb_substr(end($parts), 0, 1));
+    }
+
     public function render()
     {
-        return view('livewire.admin.testimonial-form');
+        return view('livewire.admin.testimonial-form', [
+            'projects' => Project::with('coverImage')->orderByDesc('completed_at')->get(),
+        ]);
     }
 }

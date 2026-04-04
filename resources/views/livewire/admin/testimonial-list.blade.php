@@ -26,6 +26,16 @@
                 </flux:select>
             </div>
             @endif
+            @if($platforms->isNotEmpty())
+            <div class="w-48">
+                <flux:select wire:model.live="platform">
+                    <flux:select.option value="">All Platforms</flux:select.option>
+                    @foreach($platforms as $platformItem)
+                        <flux:select.option value="{{ $platformItem }}">{{ ucfirst($platformItem) }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
+            @endif
         </div>
     </flux:card>
 
@@ -43,13 +53,13 @@
                 <flux:icon.star class="mx-auto size-12 text-zinc-300 dark:text-zinc-600" />
                 <h3 class="mt-4 text-lg font-medium text-zinc-900 dark:text-white">No reviews found</h3>
                 <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                    @if($search || $type)
+                    @if($search || $type || $platform)
                         Try adjusting your filters
                     @else
                         Get started by adding a new review
                     @endif
                 </p>
-                @if(!$search && !$type)
+                @if(!$search && !$type && !$platform)
                     <div class="mt-6">
                         <flux:button href="{{ route('admin.testimonials.create') }}" icon="plus">
                             New Review
@@ -99,14 +109,14 @@
                                 {{-- Actions --}}
                                 <div class="flex items-center gap-2">
                                     @foreach($testimonial->reviewUrls as $reviewUrl)
-                                        <flux:button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            icon="arrow-top-right-on-square"
-                                            href="{{ $reviewUrl->url }}"
-                                            target="_blank"
-                                            title="{{ ucfirst($reviewUrl->platform) }} review"
-                                        />
+                                        <a href="{{ $reviewUrl->url }}" target="_blank" title="{{ ucfirst($reviewUrl->platform) }} review" class="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-zinc-100">
+                                            @if(in_array($reviewUrl->platform, ['google', 'yelp', 'facebook', 'angi', 'houzz']))
+                                                <img src="{{ asset('images/socials/' . $reviewUrl->platform . '.svg') }}" alt="{{ ucfirst($reviewUrl->platform) }}" class="size-4">
+                                            @else
+                                                <flux:icon.arrow-top-right-on-square class="size-4" />
+                                            @endif
+                                            <span>{{ ucfirst($reviewUrl->platform) }}</span>
+                                        </a>
                                     @endforeach
                                     <flux:dropdown>
                                         <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" />

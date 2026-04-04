@@ -90,7 +90,7 @@ class ProjectPage extends Component
                 ['question' => 'How do I get started with a remodeling project?', 'answer' => 'Contact us for a free in-home consultation. We will discuss your vision, assess your space, and provide a detailed estimate — no obligation.'],
                 ['question' => 'How long does a typical remodeling project take?', 'answer' => 'Timelines depend on the scope of work. Smaller projects may take a few weeks, while larger renovations can span several months. We provide a detailed schedule before work begins.'],
                 ['question' => 'Do you handle permits and inspections?', 'answer' => 'Yes, GS Construction handles all required permits and coordinates inspections. We are familiar with building codes across Chicagoland and ensure full compliance.'],
-                ['question' => 'Are you licensed and insured?', 'answer' => 'Yes, GS Construction is fully licensed and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
+                ['question' => 'Are you licensed, bonded, and insured?', 'answer' => 'Yes, GS Construction is fully licensed, bonded, and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
             ],
         };
 

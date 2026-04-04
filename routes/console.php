@@ -32,12 +32,32 @@ Schedule::command('google-business-profile:sync-reviews')->dailyAt('06:00')
     ->onFailure(fn () => logger()->error('Scheduled GBP review sync failed'))
     ->when(fn () => config('services.google.business_profile.enabled'));
 
-// Google Business Profile: match reviews with deep links after sync
-Schedule::command('google-business-profile:match-reviews')->dailyAt('06:15')
+// Google Business Profile: harvest deep links daily until all matched reviews have data URLs.
+Schedule::command('google-business-profile:match-reviews --normalize-google-urls')->dailyAt('06:15')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP review match failed'))
-    ->when(fn () => config('services.google.business_profile.enabled'));
+    ->when(function () {
+        if (! config('services.google.business_profile.enabled')) {
+            return false;
+        }
+
+        return \App\Models\ReviewUrl::query()
+            ->where('platform', 'google')
+            ->whereNotNull('external_id')
+            ->where('external_id', '!=', '')
+            ->where(function ($q) {
+                $q->whereNull('url')
+                    ->orWhere('url', 'not like', '%/maps/reviews/data=%');
+            })
+            ->exists();
+    });
+
+// Houzz: check for new reviews weekly (create-only; skip existing)
+Schedule::command('testimonials:sync-houzz-reviews --browser-scrape --only-new')->weeklyOn(1, '06:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled Houzz review sync failed'));
 
 // Instagram: 2 posts per day — morning + late afternoon (Central Time)
 // Random delay spreads posts naturally within each window

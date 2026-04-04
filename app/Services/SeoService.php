@@ -144,7 +144,7 @@ class SeoService
      */
     public static function testimonial(Testimonial $testimonial): void
     {
-        $name = $testimonial->reviewer_name;
+        $name = $testimonial->display_name;
         $location = $testimonial->project_location;
         $rawType = $testimonial->project_type ?? 'home';
         

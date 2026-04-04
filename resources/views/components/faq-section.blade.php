@@ -1,3 +1,4 @@
+@blaze
 @props(['faqs' => [], 'heading' => 'Frequently Asked Questions'])
 
 @if(count($faqs) > 0)

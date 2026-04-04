@@ -61,15 +61,19 @@
             ],
         ];
     @endphp
-    <livewire:main-project-hero-slider 
-        :slides="$homeSlides"
-    />
+    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <livewire:main-project-hero-slider 
+            :slides="$homeSlides"
+        />
+    </div>
 
     {{-- About Section (lazy loaded - below fold) --}}
     <livewire:about-section lazy />
 
     {{-- Timelapse Section (lazy loaded - below fold) --}}
-    <livewire:timelapse-section lazy />
+    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <livewire:timelapse-section lazy />
+    </div>
 
     {{-- Testimonials Section (lazy loaded - below fold) --}}
     <livewire:testimonials-section lazy />
@@ -89,7 +93,7 @@
         ['question' => 'How long does a bathroom remodel take?', 'answer' => 'The timeline for a bathroom remodel depends on the scope of work, material lead times, and any structural changes involved. We provide a detailed schedule before starting and keep you updated throughout the process.'],
         ['question' => 'Do you offer free remodeling estimates?', 'answer' => 'Yes! GS Construction offers free in-home consultations and estimates for all kitchen, bathroom, and home remodeling projects. We visit your home, discuss your vision and budget, and provide a detailed written estimate — no obligation, no pressure.'],
         ['question' => 'What areas do you serve near Chicago?', 'answer' => 'We serve 50+ communities in the Chicago suburbs including Arlington Heights, Palatine, Barrington, Buffalo Grove, Lake Zurich, Schaumburg, Hoffman Estates, Mount Prospect, and many more. Visit our Areas Served page for the full list.'],
-        ['question' => 'Are you licensed and insured?', 'answer' => 'Yes, GS Construction is fully licensed and insured. We are a family-owned business with over 40 years of combined experience in residential remodeling. We handle all necessary permits and ensure every project meets local building codes.'],
+        ['question' => 'Are you licensed, bonded, and insured?', 'answer' => 'Yes, GS Construction is fully licensed, bonded, and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
         ['question' => 'Can I stay in my home during a remodel?', 'answer' => 'Absolutely! Most of our clients stay in their homes during kitchen and bathroom remodels. We set up dust barriers, protect your floors, and minimize disruption to your daily routine. For larger whole-home projects, we discuss logistics during the planning phase.'],
     ]" heading="Remodeling FAQ" />
 

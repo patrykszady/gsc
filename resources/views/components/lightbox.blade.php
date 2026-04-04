@@ -1,3 +1,4 @@
+@blaze
 @props([
     'images' => [],  // Array of image data: id, url, webpUrl, originalUrl, alt, caption, pageUrl
     'initialIndex' => 0,

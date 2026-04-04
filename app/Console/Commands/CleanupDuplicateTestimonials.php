@@ -56,19 +56,57 @@ class CleanupDuplicateTestimonials extends Command
             $this->line("{$prefix}Merge: T#{$gbpId} [{$gbp->reviewer_name}] → T#{$manualId} [{$manual->reviewer_name}]");
 
             if (! $dryRun) {
-                $transferGid = ! $manual->google_review_id && $gbp->google_review_id;
+                $manualGoogleUrl = $manual->reviewUrls->firstWhere('platform', 'google');
+                $gbpGoogleUrl = $gbp->reviewUrls->firstWhere('platform', 'google');
+                $transferGid = (! $manualGoogleUrl?->external_id) && ($gbpGoogleUrl?->external_id);
                 $transferRating = ! $manual->star_rating && $gbp->star_rating;
 
-                $gid = $gbp->google_review_id;
+                $gid = $gbpGoogleUrl?->external_id;
                 $rating = $gbp->star_rating;
+                $gbpName = $gbp->reviewer_name;
 
-                // Delete GBP entry first (to avoid unique constraint on google_review_id)
-                $gbp->reviewUrls()->delete();
+                // Transfer GBP review URLs to the manual entry
+                // For each platform, prefer the deep-link URL over the generic one
+                $manualUrlsByPlatform = $manual->reviewUrls->keyBy('platform');
+
+                foreach ($gbp->reviewUrls as $gbpUrl) {
+                    $existing = $manualUrlsByPlatform->get($gbpUrl->platform);
+
+                    if (! $existing) {
+                        // No conflict — move the URL over
+                        $gbpUrl->update(['testimonial_id' => $manual->id]);
+                    } elseif (str_contains($gbpUrl->url, 'google.com/maps/reviews') && str_contains($existing->url, 'search.google.com/local/reviews')) {
+                        // GBP has deep-link, manual has generic — replace with deep-link
+                        $existing->update([
+                            'url' => $gbpUrl->url,
+                            'external_id' => $existing->external_id ?: $gbpUrl->external_id,
+                        ]);
+                        $manualUrlsByPlatform->put($gbpUrl->platform, $existing->fresh());
+                        $gbpUrl->delete();
+                    } elseif ($gbpUrl->platform === 'google' && ! $existing->external_id && $gbpUrl->external_id) {
+                        // Preserve Google external_id if the kept URL is missing it.
+                        $existing->update(['external_id' => $gbpUrl->external_id]);
+                        $manualUrlsByPlatform->put($gbpUrl->platform, $existing->fresh());
+                        $gbpUrl->delete();
+                    } else {
+                        // Manual already has a good URL for this platform — discard GBP's
+                        $gbpUrl->delete();
+                    }
+                }
+
+                // Delete GBP entry after URL transfer.
                 $gbp->delete();
 
                 // Then transfer fields to the manual entry
-                if ($transferGid) {
-                    $manual->google_review_id = $gid;
+                // Use the GBP full name if it's longer (more complete) than the manual name
+                if (mb_strlen($gbpName) > mb_strlen($manual->reviewer_name)) {
+                    $manual->reviewer_name = $gbpName;
+                }
+                if ($transferGid && $gid) {
+                    $manualGoogleUrl = $manual->reviewUrls()->where('platform', 'google')->first();
+                    if ($manualGoogleUrl && ! $manualGoogleUrl->external_id) {
+                        $manualGoogleUrl->update(['external_id' => $gid]);
+                    }
                 }
                 if ($transferRating) {
                     $manual->star_rating = $rating;
@@ -101,17 +139,64 @@ class CleanupDuplicateTestimonials extends Command
 
         $this->info("{$prefix}Removed: {$genericCount} generic URL(s).");
 
+        // ── Phase 3: Fix mojibake-encoded text ──
+        $this->newLine();
+        $this->info($prefix . 'Phase 3: Fixing mojibake-encoded text...');
+        $encodingFixed = 0;
+
+        // Common mojibake sequences from UTF-8 being read as Windows-1252
+        $mojibakeMap = [
+            'â€œ' => "\u{201C}",  // left double quote "
+            'â€\x9D' => "\u{201D}",  // right double quote "
+            "â€\u{9D}" => "\u{201D}",  // right double quote (alt)
+            'â€™' => "\u{2019}",  // right single quote '
+            'â€˜' => "\u{2018}",  // left single quote '
+            'â€"' => "\u{2013}",  // en dash –
+            'â€"' => "\u{2014}",  // em dash —
+            "\xc2\x9d" => '',      // stray U+009D control char (right quote remnant)
+        ];
+
+        $fields = ['reviewer_name', 'review_description'];
+
+        foreach ($fields as $field) {
+            $badRows = Testimonial::where($field, 'like', '%â€%')
+                ->orWhereRaw("CAST({$field} AS BINARY) LIKE ?", ['%' . "\xc2\x9d" . '%'])
+                ->get();
+            foreach ($badRows as $testimonial) {
+                $original = $testimonial->$field;
+                $fixed = str_replace(array_keys($mojibakeMap), array_values($mojibakeMap), $original);
+
+                // If str_replace didn't fully fix it, try mb_convert_encoding
+                if (str_contains($fixed, 'â€') || str_contains($fixed, 'Ã')) {
+                    $fixed = mb_convert_encoding($original, 'UTF-8', 'Windows-1252');
+                }
+
+                if ($fixed !== $original) {
+                    $label = $field === 'reviewer_name' ? $original : 'review body';
+                    $this->line("{$prefix}  T#{$testimonial->id} [{$field}]: {$label}");
+                    if (! $dryRun) {
+                        $testimonial->$field = $fixed;
+                        $testimonial->save();
+                    }
+                    $encodingFixed++;
+                }
+            }
+        }
+
+        $this->info("{$prefix}Fixed: {$encodingFixed} mojibake field(s).");
+
         // ── Summary ──
         $this->newLine();
         $this->info("{$prefix}Summary:");
         $this->line("  Duplicates merged: {$merged}");
         $this->line("  Generic URLs removed: {$genericCount}");
+        $this->line("  Mojibake names fixed: {$encodingFixed}");
 
         $remaining = Testimonial::count();
-        $withGid = Testimonial::whereNotNull('google_review_id')->count();
+        $withGid = ReviewUrl::where('platform', 'google')->whereNotNull('external_id')->where('external_id', '!=', '')->count();
         $deepLinks = ReviewUrl::where('url', 'like', '%google.com/maps/reviews%')->count();
         $this->line("  Total testimonials: {$remaining}");
-        $this->line("  With google_review_id: {$withGid}");
+        $this->line("  With Google external_id: {$withGid}");
         $this->line("  With deep link URL: {$deepLinks}");
 
         return self::SUCCESS;

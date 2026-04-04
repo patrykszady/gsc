@@ -24,10 +24,7 @@
         </nav>
     </div>
 
-    {{-- Timelapse Section --}}
-    <livewire:timelapse-section />
-
-    {{-- Projects Grid --}}
+    {{-- Projects Grid (includes timelapse + filters) --}}
     <livewire:projects-grid />
 
     {{-- FAQ Section --}}
@@ -37,7 +34,7 @@
             ['question' => 'How do I get a free estimate for my project?', 'answer' => 'Contact us by phone at (224) 735-4200 or through our website to schedule a free in-home consultation. We will assess your space, discuss your vision, and provide a detailed, no-obligation estimate.'],
             ['question' => 'How long does a typical remodeling project take?', 'answer' => 'Timelines vary depending on scope — a bathroom remodel may take 2–6 weeks, a kitchen remodel 4–10 weeks, and larger whole-home renovations several months. We provide a detailed schedule before work begins.'],
             ['question' => 'Do you handle permits and inspections?', 'answer' => 'Yes, GS Construction handles all required permits and coordinates inspections for every project. We are familiar with building codes across Chicagoland and ensure full compliance.'],
-            ['question' => 'Are you licensed and insured?', 'answer' => 'Yes, GS Construction is fully licensed and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
+            ['question' => 'Are you licensed, bonded, and insured?', 'answer' => 'Yes, GS Construction is fully licensed, bonded, and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
         ];
     @endphp
     <x-faq-section :faqs="$faqs" heading="Remodeling Projects FAQ" />

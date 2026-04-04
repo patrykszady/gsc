@@ -2,7 +2,7 @@
     {{-- Breadcrumb Schema --}}
     <x-breadcrumb-schema :items="[
         ['name' => 'Testimonials', 'url' => route('testimonials.index')],
-        ['name' => $testimonial->reviewer_name],
+        ['name' => $testimonial->display_name],
     ]" />
 
     {{-- Review Schema for rich results --}}
@@ -25,7 +25,7 @@
                     <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $testimonial->reviewer_name }}</span>
+                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $testimonial->display_name }}</span>
                 </li>
             </ol>
         </nav>
@@ -48,7 +48,7 @@
 
         <article class="relative">
             {{-- H1 for SEO --}}
-            <h1 class="sr-only">{{ $testimonial->reviewer_name }}'s {{ ucfirst($testimonial->project_type ?? 'Home') }} Remodeling Review in {{ $testimonial->project_location }}</h1>
+            <h1 class="sr-only">{{ $testimonial->display_name }}'s {{ ucfirst($testimonial->project_type ?? 'Home') }} Remodeling Review in {{ $testimonial->project_location }}</h1>
 
             {{-- Quote decoration --}}
             <svg viewBox="0 0 162 128" fill="none" aria-hidden="true" class="absolute -top-4 -left-8 -z-10 h-24 stroke-gray-200 dark:stroke-gray-700">
@@ -81,7 +81,7 @@
                 >
                     <img
                         src="{{ $imageUrl }}"
-                        alt="{{ $testimonial->reviewer_name }}"
+                        alt="{{ $testimonial->display_name }}"
                         width="64"
                         height="64"
                         loading="lazy"
@@ -91,7 +91,7 @@
                     />
                 </div>
                 <div>
-                    <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ $testimonial->reviewer_name }}</div>
+                    <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ $testimonial->display_name }}</div>
                     <div class="mt-1 text-base text-gray-600 dark:text-gray-400">
                         @if($areaSlug)
                             <a href="/areas/{{ $areaSlug }}" wire:navigate class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial->project_location }}</a>

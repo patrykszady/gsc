@@ -36,7 +36,7 @@ class TestimonialPage extends Component
             }
         }
 
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->testimonial->reviewer_name) . '&background=0ea5e9&color=fff&size=256';
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->testimonial->display_name) . '&background=0ea5e9&color=fff&size=256';
     }
 
     protected function getThumbnailUrl(): ?string

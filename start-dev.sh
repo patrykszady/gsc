@@ -6,6 +6,9 @@ cd "$(dirname "$0")"
 LOG_DIR="storage/logs/dev"
 mkdir -p "$LOG_DIR"
 
+CLOUDFLARED_CONFIG="${CLOUDFLARED_CONFIG:-$HOME/.cloudflared/config-gsc.yml}"
+CLOUDFLARED_LOG="${CLOUDFLARED_LOG:-$LOG_DIR/cloudflared-gsc.log}"
+
 echo "🚀 Starting GSC dev environment..."
 
 # Clear Laravel caches to re-read .env
@@ -53,3 +56,27 @@ fi
 
 echo ""
 echo "🎉 GSC running: http://127.0.0.1:8003"
+
+# Start Cloudflare tunnel for public dev URL if config exists.
+if command -v cloudflared >/dev/null 2>&1 && [ -f "$CLOUDFLARED_CONFIG" ]; then
+  if pgrep -f "cloudflared tunnel --config $CLOUDFLARED_CONFIG run" >/dev/null 2>&1; then
+    TUNNEL_PID=$(pgrep -f "cloudflared tunnel --config $CLOUDFLARED_CONFIG run" | head -n 1)
+    echo "✅ Cloudflare tunnel already running (pid: $TUNNEL_PID)"
+  else
+    echo "🔄 Starting Cloudflare tunnel (config: $CLOUDFLARED_CONFIG)..."
+    nohup cloudflared tunnel --config "$CLOUDFLARED_CONFIG" run >"$CLOUDFLARED_LOG" 2>&1 &
+    TUNNEL_PID=$!
+    sleep 0.7
+    if ps -p "$TUNNEL_PID" >/dev/null 2>&1; then
+      echo "✅ Cloudflare tunnel started (pid: $TUNNEL_PID) → logs: $CLOUDFLARED_LOG"
+    else
+      echo "❌ Cloudflare tunnel failed → check logs: $CLOUDFLARED_LOG"
+    fi
+  fi
+elif [ ! -f "$CLOUDFLARED_CONFIG" ]; then
+  echo "⚠️  Skipping Cloudflare tunnel: config not found at $CLOUDFLARED_CONFIG"
+else
+  echo "⚠️  Skipping Cloudflare tunnel: cloudflared CLI not found"
+fi
+
+echo "🌐 Public dev URL: https://dev.gs.construction"

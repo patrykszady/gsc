@@ -1,3 +1,4 @@
+@blaze
 @props([
     'heading' => 'Ready to Transform Your Home?',
     'description' => 'Let\'s discuss your project. Schedule a free consultation and see why Chicagoland homeowners trust GS Construction.',

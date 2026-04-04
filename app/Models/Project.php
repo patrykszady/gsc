@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -102,6 +103,11 @@ class Project extends Model
     public function coverImage()
     {
         return $this->hasOne(ProjectImage::class)->where('is_cover', true);
+    }
+
+    public function testimonials(): BelongsToMany
+    {
+        return $this->belongsToMany(Testimonial::class)->withTimestamps();
     }
 
     public function scopePublished($query)

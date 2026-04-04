@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Testimonial;
+use App\Models\ReviewUrl;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -21,12 +22,20 @@ class TestimonialList extends Component
     #[Url]
     public string $type = '';
 
+    #[Url]
+    public string $platform = '';
+
     public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
     public function updatingType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPlatform(): void
     {
         $this->resetPage();
     }
@@ -54,6 +63,18 @@ class TestimonialList extends Component
             $query->where('project_type', $this->type);
         }
 
+        if ($this->platform) {
+            if ($this->platform === 'google') {
+                $query->whereHas('reviewUrls', function ($urlQuery) {
+                    $urlQuery->where('platform', 'google');
+                });
+            } else {
+                $query->whereHas('reviewUrls', function ($q) {
+                    $q->where('platform', $this->platform);
+                });
+            }
+        }
+
         // Get unique project types for filter
         $projectTypes = Testimonial::whereNotNull('project_type')
             ->distinct()
@@ -62,9 +83,18 @@ class TestimonialList extends Component
             ->sort()
             ->values();
 
+        // Get unique review URL platforms for filter
+        $platforms = ReviewUrl::query()
+            ->distinct()
+            ->pluck('platform')
+            ->filter()
+            ->sort()
+            ->values();
+
         return view('livewire.admin.testimonial-list', [
             'testimonials' => $query->with('reviewUrls')->orderByDesc('review_date')->orderByDesc('created_at')->paginate(12),
             'projectTypes' => $projectTypes,
+            'platforms' => $platforms,
         ]);
     }
 }

@@ -7,21 +7,22 @@
         inView: false,
         hovering: false,
         dragging: false,
-        intervalMs: 650,
+        intervalMs: 1200,
         allLoaded: false,
         loadedCount: 0,
         firstFrameLoaded: false,
-        firstFrameWasCached: false,
-        firstFrameThumbLoaded: false,
         showBlur: false,
         init() {
-            // Check if first frame is already loaded (browser cached) - same as team-photo-slider
-            const firstFrame = this.$refs.firstFrame;
-            if (firstFrame?.complete && firstFrame?.naturalWidth > 0) {
-                this.firstFrameLoaded = true;
-                this.firstFrameWasCached = true;
-            } else {
-                this.showBlur = true;
+            // Check if first frame is already cached
+            if (this.frames.length) {
+                const img = new Image();
+                img.src = this.frames[0];
+                if (img.complete && img.naturalWidth > 0) {
+                    this.firstFrameLoaded = true;
+                } else {
+                    this.showBlur = true;
+                    img.onload = () => { this.firstFrameLoaded = true; };
+                }
             }
         },
         src() {
@@ -107,40 +108,39 @@
     @pointercancel.window="endDrag()"
     x-intersect:enter.full="play()"
     x-intersect:leave.full="pause()"
-    class="relative w-full overflow-hidden bg-white dark:bg-slate-950"
+    class="relative w-full overflow-hidden rounded-2xl bg-white dark:bg-slate-950"
 >
     <div class="relative h-[375px] sm:h-[450px] lg:h-[525px]">
-        {{-- Blur placeholder for first frame (only shown when full image is loading) --}}
+        {{-- Blur placeholder while first frame loads --}}
         <img
             x-cloak
             x-show="showBlur && !firstFrameLoaded"
             src="{{ $frames[0] ?? '' }}"
             alt=""
             aria-hidden="true"
-            @load="firstFrameThumbLoaded = true"
-            :class="firstFrameThumbLoaded ? 'opacity-100' : 'opacity-0'"
-            class="absolute inset-0 h-full w-full object-cover blur-xl scale-110"
+            class="absolute inset-0 h-full w-full object-cover blur-xl scale-110 transition-opacity duration-300"
         />
-        {{-- First frame with static src for cache detection --}}
+        {{-- Timelapse frame --}}
         <img
-            x-ref="firstFrame"
-            x-show="frames.length && position === 1"
-            src="{{ $frames[0] ?? '' }}"
-            alt="Project timelapse"
-            @load="if (!firstFrameLoaded) { firstFrameLoaded = true; }"
-            :class="firstFrameWasCached ? 'opacity-100' : (firstFrameLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
-            class="absolute inset-0 h-full w-full object-cover"
-        />
-        {{-- Other frames with dynamic src --}}
-        <img
-            x-show="frames.length && position !== 1"
+            x-ref="frame"
+            x-show="frames.length"
             :src="src()"
             alt="Project timelapse"
-            class="absolute inset-0 h-full w-full object-cover"
+            class="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
         />
 
         {{-- Subtle overlay to match hero style --}}
         <div class="absolute inset-0 bg-black/20"></div>
+
+        {{-- Project title --}}
+        @if($timelapse?->project)
+        <div class="absolute top-4 left-4 z-10">
+            <a href="{{ route('projects.show', $timelapse->project) }}" wire:navigate class="inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/70">
+                {{ $timelapse->project->title }}
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </a>
+        </div>
+        @endif
 
         {{-- Speed control --}}
         <div class="absolute inset-x-0 bottom-6 z-10">
@@ -153,21 +153,24 @@
                     @focusout="endHover()"
                     @pointerdown.capture="beginDrag()"
                 >
-                    <flux:slider min="1" max="{{ $frameCount }}" x-model.number="position">
-                        @for ($i = 1; $i <= $frameCount; $i++)
-                            <flux:slider.tick value="{{ $i }}" class="!text-white drop-shadow-sm font-medium">
-                                @if ($i === 1)
-                                    Before
-                                @elseif ($i === $middleTick)
-                                    Construction
-                                @elseif ($i === $frameCount)
-                                    After
-                                @else
-                                    <span class="sr-only">Frame {{ $i }}</span>
-                                @endif
-                            </flux:slider.tick>
-                        @endfor
-                    </flux:slider>
+                    <div class="relative">
+                        <flux:slider min="1" max="{{ $frameCount }}" x-model.number="position">
+                            @for ($i = 1; $i <= $frameCount; $i++)
+                                <flux:slider.tick value="{{ $i }}" class="!text-white drop-shadow-sm font-medium">
+                                    @if ($i === 1)
+                                        Before
+                                    @elseif ($i === $frameCount)
+                                        After
+                                    @else
+                                        <span class="sr-only">Frame {{ $i }}</span>
+                                    @endif
+                                </flux:slider.tick>
+                            @endfor
+                        </flux:slider>
+                        <div class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
+                            <span class="text-sm font-medium text-white drop-shadow-sm">Construction</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

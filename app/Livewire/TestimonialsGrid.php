@@ -106,7 +106,7 @@ class TestimonialsGrid extends Component
         }
 
         // Fallback to ui-avatars if no project image.
-        $imageUrl ??= 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->reviewer_name) . '&background=0ea5e9&color=fff&size=128';
+        $imageUrl ??= 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->display_name) . '&background=0ea5e9&color=fff&size=128';
 
         // Extract city name (strip ", IL" or similar state suffix)
         $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $testimonial->project_location);
@@ -114,7 +114,7 @@ class TestimonialsGrid extends Component
         return [
             'id' => $testimonial->id,
             'slug' => $testimonial->slug,
-            'name' => $testimonial->reviewer_name,
+            'name' => $testimonial->display_name,
             'location' => $testimonial->project_location,
             'area_slug' => AreaServed::where('city', $cityName)->value('slug'),
             'project_type' => $testimonial->project_type,

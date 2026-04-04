@@ -48,17 +48,16 @@ class RemoveDuplicateTestimonials extends Command
                 $totalRemoved++;
             }
 
-            // Normalize the kept record's name to "First L." format
-            $normalized = $this->formatReviewerName($keep->reviewer_name);
-            if ($normalized !== $keep->reviewer_name && ! $this->option('dry-run')) {
-                $keep->update(['reviewer_name' => $normalized]);
-                $this->line("  Renamed \"{$keep->reviewer_name}\" → \"{$normalized}\"");
-            }
+
         }
 
-        // Also check for duplicate google_review_id (regardless of name)
-        $googleGroups = $testimonials->filter(fn ($t) => $t->google_review_id)
-            ->groupBy('google_review_id')
+        // Also check for duplicate Google external_id (regardless of name)
+        $googleGroups = $testimonials->filter(function (Testimonial $t) {
+            $googleExternalId = $t->reviewUrls->firstWhere('platform', 'google')?->external_id;
+
+            return filled($googleExternalId);
+        })
+            ->groupBy(fn (Testimonial $t) => $t->reviewUrls->firstWhere('platform', 'google')?->external_id)
             ->filter(fn ($group) => $group->count() > 1);
 
         foreach ($googleGroups as $group) {
@@ -74,13 +73,14 @@ class RemoveDuplicateTestimonials extends Command
 
                 $urlsMerged = $this->mergeReviewUrls($keep, $dup);
                 $totalMerged += $urlsMerged;
+                $googleExternalId = $dup->reviewUrls->firstWhere('platform', 'google')?->external_id;
 
                 if ($this->option('dry-run')) {
-                    $this->line("[DRY RUN] Would merge #{$dup->id} (dup google_review_id: {$dup->google_review_id}, {$urlsMerged} URL(s))");
+                    $this->line("[DRY RUN] Would merge #{$dup->id} (dup Google external_id: {$googleExternalId}, {$urlsMerged} URL(s))");
                 } else {
                     $dup->reviewUrls()->delete();
                     $dup->delete();
-                    $this->line("Merged #{$dup->id} (dup google_review_id: {$dup->google_review_id}, {$urlsMerged} URL(s) transferred)");
+                    $this->line("Merged #{$dup->id} (dup Google external_id: {$googleExternalId}, {$urlsMerged} URL(s) transferred)");
                 }
                 $totalRemoved++;
             }
@@ -108,6 +108,7 @@ class RemoveDuplicateTestimonials extends Command
                     $keep->reviewUrls()->create([
                         'platform' => $url->platform,
                         'url' => $url->url,
+                        'external_id' => $url->external_id,
                     ]);
                 }
                 $existingPlatforms[] = $url->platform;
@@ -137,26 +138,4 @@ class RemoveDuplicateTestimonials extends Command
         return "{$firstName} {$lastInitial}.";
     }
 
-    /**
-     * Format the display name to "First L." (first name + last initial).
-     */
-    protected function formatReviewerName(string $displayName): string
-    {
-        $parts = preg_split('/\s+/', trim($displayName));
-
-        if (count($parts) < 2) {
-            return $displayName;
-        }
-
-        // Already in "First L." format
-        $lastPart = end($parts);
-        if (mb_strlen($lastPart) <= 2 && str_ends_with($lastPart, '.')) {
-            return $displayName;
-        }
-
-        $firstName = $parts[0];
-        $lastInitial = mb_strtoupper(mb_substr($lastPart, 0, 1));
-
-        return "{$firstName} {$lastInitial}.";
-    }
 }

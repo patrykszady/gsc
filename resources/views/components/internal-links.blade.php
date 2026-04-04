@@ -1,3 +1,4 @@
+@blaze
 @props([
     'projects' => collect(),
     'testimonials' => collect(),

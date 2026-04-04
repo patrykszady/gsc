@@ -135,6 +135,7 @@ class FixEncodingAndMergeDuplicates extends Command
                                 $keep->reviewUrls()->create([
                                     'platform' => $url->platform,
                                     'url' => $url->url,
+                                    'external_id' => $url->external_id,
                                 ]);
                             }
                             $existingPlatforms[] = $url->platform;
@@ -142,15 +143,13 @@ class FixEncodingAndMergeDuplicates extends Command
                         }
                     }
 
-                    // Copy google_review_id if the kept record doesn't have one
-                    if (! $keep->google_review_id && $dup->google_review_id && ! $this->option('dry-run')) {
-                        $keep->refresh();
-                        if (! $keep->google_review_id) {
-                            try {
-                                $keep->update(['google_review_id' => $dup->google_review_id]);
-                            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-                                // Another record already has this google_review_id — skip
-                            }
+                    // Preserve Google external_id on the kept record when available.
+                    if (! $this->option('dry-run')) {
+                        $keepGoogleUrl = $keep->reviewUrls()->where('platform', 'google')->first();
+                        $dupGoogleUrl = $dup->reviewUrls()->where('platform', 'google')->first();
+
+                        if ($keepGoogleUrl && $dupGoogleUrl && ! $keepGoogleUrl->external_id && $dupGoogleUrl->external_id) {
+                            $keepGoogleUrl->update(['external_id' => $dupGoogleUrl->external_id]);
                         }
                     }
 

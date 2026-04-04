@@ -23,6 +23,7 @@ class MainProjectHeroSlider extends Component
     public int $slideCount = 3; // Number of slides for filtered mode
     public ?string $heightClasses = null;
     public int $autoplayInterval = 5000; // Autoplay interval in ms
+    public bool $imagesOnly = false;
 
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
@@ -31,7 +32,7 @@ class MainProjectHeroSlider extends Component
             ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
             ->when($excludeImageId, fn ($q) => $q->where('id', '!=', $excludeImageId));
 
-        return $query->inRandomOrder()->first();
+        return $query->with('project')->inRandomOrder()->first();
     }
 
     protected function randomCoverUrlForType(string $projectType, ?int $excludeImageId = null): ?string
@@ -89,16 +90,19 @@ class MainProjectHeroSlider extends Component
         // For mobile LCP: use hero (1200px) as default instead of large (2400px)
         // This is better for mobile where viewport is typically under 640px
         $defaultUrl = $heroUrl ?? $largeUrl;
+
+        $project = $image->project;
         
         return [
-            'url' => $defaultUrl, // Changed from $largeUrl - hero is better default for mobile
-            'large' => $largeUrl, // Keep large available for desktop
+            'url' => $defaultUrl,
+            'large' => $largeUrl,
             'hero' => $heroUrl,
             'medium' => $mediumUrl,
             'small' => $smallUrl,
             'thumb' => $thumbUrl,
             'alt' => $image->seo_alt_text,
-            // Srcset for responsive images - includes all breakpoints
+            'projectTitle' => $project?->title,
+            'projectUrl' => $project ? route('projects.show', $project) : null,
             'srcset' => implode(', ', array_filter([
                 $smallUrl ? "{$smallUrl} 300w" : null,
                 $mediumUrl ? "{$mediumUrl} 600w" : null,
@@ -216,13 +220,15 @@ class MainProjectHeroSlider extends Component
             $slide['thumb'] = $imageData['thumb'];
             $slide['srcset'] = $imageData['srcset'] ?? '';
             $slide['imageAlt'] = $imageData['alt'];
+            $slide['projectTitle'] = $imageData['projectTitle'] ?? null;
+            $slide['projectUrl'] = $imageData['projectUrl'] ?? null;
             return $slide;
         })->toArray();
 
         return view('livewire.main-project-hero-slider', [
             'renderedSlides' => $renderedSlides,
             'area' => $this->area,
-            'mode' => 'home',
+            'mode' => $this->imagesOnly ? 'images-only' : 'home',
             'heading' => null,
             'subheading' => null,
             'label' => null,

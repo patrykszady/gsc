@@ -1,18 +1,5 @@
 <div 
     class="relative isolate bg-white py-10 sm:py-16 dark:bg-zinc-900"
-    x-data="{ 
-        isMobile: window.innerWidth < 640,
-        hideFilters: @js($hideFilters),
-        init() {
-            // Only auto-adjust perPage on the main projects page (not on service pages)
-            if (this.hideFilters) return;
-            if (this.isMobile && $wire.perPage !== 3) {
-                $wire.setPerPage(3);
-            } else if (!this.isMobile && $wire.perPage !== 9) {
-                $wire.setPerPage(9);
-            }
-        }
-    }"
 >
     {{-- Gradient blur background --}}
     <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-30 blur-3xl">
@@ -65,6 +52,21 @@
                 @endif
             </p>
         </div>
+
+        {{-- Hero Image Slider (main projects page only) --}}
+        @if(!$hideFilters)
+            <div class="mt-10 overflow-hidden rounded-2xl">
+                <livewire:main-project-hero-slider
+                    :slides="[
+                        ['projectType' => 'kitchen', 'alt' => 'Kitchen remodeling'],
+                        ['projectType' => 'bathroom', 'alt' => 'Bathroom remodeling'],
+                        ['projectType' => 'home-remodel', 'alt' => 'Home remodeling'],
+                    ]"
+                    height-classes="h-[375px] sm:h-[450px] lg:h-[525px]"
+                    :images-only="true"
+                />
+            </div>
+        @endif
 
         {{-- Filter buttons --}}
         @if($projectTypes->count() > 1 && !$hideFilters)
@@ -167,6 +169,13 @@
             </div>
             @endforelse
         </div>
+
+        {{-- Timelapse Section (main projects page only) --}}
+        @if(!$hideFilters)
+            <div class="mt-10">
+                <livewire:timelapse-section :timelapse-id="$randomTimelapseId" :key="'projects-timelapse-'.($randomTimelapseId ?? 'fallback')" />
+            </div>
+        @endif
 
         {{-- Pagination --}}
         @if($projects->hasPages() && $showPagination)

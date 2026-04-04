@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -14,11 +15,10 @@ class Testimonial extends Model
         'project_type',
         'review_description',
         'review_date',
-        'google_review_id',
         'star_rating',
     ];
 
-    protected $appends = ['slug'];
+    protected $appends = ['slug', 'display_name'];
 
     protected function casts(): array
     {
@@ -60,5 +60,36 @@ class Testimonial extends Model
     public function reviewUrls(): HasMany
     {
         return $this->hasMany(ReviewUrl::class);
+    }
+
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class)->withTimestamps();
+    }
+
+    /**
+     * Public display name: "First L" (last name initial only).
+     * Handles "First & First Last" → "First & First L".
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        $name = $this->reviewer_name;
+        $parts = preg_split('/\s+/', trim($name));
+
+        if (count($parts) < 2) {
+            return $name;
+        }
+
+        $lastPart = end($parts);
+
+        // Already a single letter (already formatted)
+        if (mb_strlen($lastPart) === 1) {
+            return $name;
+        }
+
+        $initial = mb_strtoupper(mb_substr($lastPart, 0, 1));
+        array_pop($parts);
+
+        return implode(' ', $parts) . ' ' . $initial;
     }
 }

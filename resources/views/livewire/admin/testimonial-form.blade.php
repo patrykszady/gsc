@@ -1,7 +1,7 @@
 <div>
     <div class="mb-6 flex items-center justify-between">
         <div class="flex items-center gap-4">
-            <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="arrow-left" />
+            <flux:button href="{{ route('admin.testimonials.index') }}" variant="ghost" icon="arrow-left" />
             <flux:heading size="xl">{{ $testimonial?->exists ? 'Edit Review' : 'New Review' }}</flux:heading>
         </div>
     </div>
@@ -20,9 +20,31 @@
 
                     <div class="space-y-4">
                         <flux:field>
-                            <flux:label>Reviewer Name</flux:label>
-                            <flux:input wire:model="reviewer_name" placeholder="e.g., Jane D." />
+                            <flux:label>Full Name</flux:label>
+                            <flux:input wire:model.live.debounce.500ms="reviewer_name" placeholder="e.g., Jane Doe" />
+                            <flux:description>Public pages will show "{{ $this->getDisplayPreview() }}" only.</flux:description>
                             <flux:error name="reviewer_name" />
+                        </flux:field>
+
+                        <flux:field>
+                            <flux:label>Linked Projects</flux:label>
+                            <flux:select wire:model.live="project_ids" variant="listbox" size="lg" multiple placeholder="Select projects...">
+                                @foreach($projects as $project)
+                                    <flux:select.option value="{{ $project->id }}">
+                                        <div class="flex items-center gap-3">
+                                            @if($project->coverImage)
+                                                <img src="{{ $project->coverImage->getAnyUrl('small') ?? $project->coverImage->getAnyUrl('medium') ?? $project->coverImage->url }}" alt="{{ $project->title }}" class="size-12 rounded object-cover">
+                                            @else
+                                                <div class="flex size-12 items-center justify-center rounded bg-zinc-100 dark:bg-zinc-800">
+                                                    <flux:icon.photo class="size-6 text-zinc-400" />
+                                                </div>
+                                            @endif
+                                            <span>{{ $project->title }}</span>
+                                        </div>
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+                            <flux:description>Link this review to one or more project galleries.</flux:description>
                         </flux:field>
 
                         <div class="grid gap-4 sm:grid-cols-2">
@@ -62,17 +84,43 @@
                         <flux:label>Review URLs</flux:label>
                         @foreach($review_urls as $i => $entry)
                             <div class="flex items-start gap-2">
-                                <div class="w-36">
-                                    <flux:select wire:model="review_urls.{{ $i }}.platform">
+                                <div class="w-48">
+                                    <flux:select wire:model="review_urls.{{ $i }}.platform" variant="listbox">
                                         <flux:select.option value="">Platform</flux:select.option>
-                                        <flux:select.option value="google">Google</flux:select.option>
-                                        <flux:select.option value="yelp">Yelp</flux:select.option>
-                                        <flux:select.option value="facebook">Facebook</flux:select.option>
-                                        <flux:select.option value="other">Other</flux:select.option>
+                                        <flux:select.option value="google">
+                                            <div class="flex items-center gap-2">
+                                                <img src="{{ asset('images/socials/google.svg') }}" alt="" class="size-4"> Google
+                                            </div>
+                                        </flux:select.option>
+                                        <flux:select.option value="angi">
+                                            <div class="flex items-center gap-2">
+                                                <img src="{{ asset('images/socials/angi.svg') }}" alt="" class="size-4"> Angi
+                                            </div>
+                                        </flux:select.option>
+                                        <flux:select.option value="yelp">
+                                            <div class="flex items-center gap-2">
+                                                <img src="{{ asset('images/socials/yelp.svg') }}" alt="" class="size-4"> Yelp
+                                            </div>
+                                        </flux:select.option>
+                                        <flux:select.option value="houzz">
+                                            <div class="flex items-center gap-2">
+                                                <img src="{{ asset('images/socials/houzz.svg') }}" alt="" class="size-4"> Houzz
+                                            </div>
+                                        </flux:select.option>
+                                        <flux:select.option value="facebook">
+                                            <div class="flex items-center gap-2">
+                                                <img src="{{ asset('images/socials/facebook.svg') }}" alt="" class="size-4"> Facebook
+                                            </div>
+                                        </flux:select.option>
+                                        <flux:select.option value="other">
+                                            <div class="flex items-center gap-2">
+                                                <flux:icon.link class="size-4" /> Other
+                                            </div>
+                                        </flux:select.option>
                                     </flux:select>
                                 </div>
                                 <div class="flex-1">
-                                    <flux:input wire:model="review_urls.{{ $i }}.url" placeholder="https://..." />
+                                    <flux:input wire:model.blur="review_urls.{{ $i }}.url" placeholder="https://..." />
                                 </div>
                                 @if(count($review_urls) > 1)
                                     <flux:button variant="ghost" size="sm" icon="x-mark" wire:click="removeUrl({{ $i }})" />

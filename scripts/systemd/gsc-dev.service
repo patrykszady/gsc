@@ -1,0 +1,17 @@
+[Unit]
+Description=GSC Dev Stack (Laravel, Vite, Cloudflared)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/patryk/web/gsc
+ExecStart=/home/patryk/web/gsc/start-dev.sh
+# Stop actions are optional; they only terminate matching local dev processes.
+ExecStop=/usr/bin/pkill -f "artisan serve --host=127.0.0.1 --port=8003"
+ExecStop=/usr/bin/pkill -f "npm run dev"
+ExecStop=/usr/bin/pkill -f "cloudflared tunnel --config /home/patryk/.cloudflared/config-gsc.yml run"
+
+[Install]
+WantedBy=default.target
