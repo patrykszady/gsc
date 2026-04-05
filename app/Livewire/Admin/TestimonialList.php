@@ -66,7 +66,9 @@ class TestimonialList extends Component
         if ($this->platform) {
             if ($this->platform === 'google') {
                 $query->whereHas('reviewUrls', function ($urlQuery) {
-                    $urlQuery->where('platform', 'google');
+                    $urlQuery->where('platform', 'google')
+                        ->whereNotNull('external_id')
+                        ->where('external_id', '!=', '');
                 });
             } else {
                 $query->whereHas('reviewUrls', function ($q) {
