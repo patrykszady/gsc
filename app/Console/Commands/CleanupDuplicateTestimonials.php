@@ -121,9 +121,13 @@ class CleanupDuplicateTestimonials extends Command
 
         // ── Phase 2: Remove generic Google URLs ──
         $this->newLine();
-        $this->info($prefix . 'Phase 2: Removing generic Google review URLs...');
+        $this->info($prefix . 'Phase 2: Removing generic Google review URLs (without external_id)...');
 
-        $genericUrls = ReviewUrl::where('url', 'like', '%search.google.com/local/reviews%')->get();
+        $genericUrls = ReviewUrl::where('platform', 'google')
+            ->where(function ($q) {
+                $q->whereNull('external_id')->orWhere('external_id', '');
+            })
+            ->get();
         $genericCount = $genericUrls->count();
 
         if ($genericCount > 0) {
@@ -133,7 +137,11 @@ class CleanupDuplicateTestimonials extends Command
             }
 
             if (! $dryRun) {
-                ReviewUrl::where('url', 'like', '%search.google.com/local/reviews%')->delete();
+                ReviewUrl::where('platform', 'google')
+                    ->where(function ($q) {
+                        $q->whereNull('external_id')->orWhere('external_id', '');
+                    })
+                    ->delete();
             }
         }
 
