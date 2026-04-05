@@ -5,7 +5,6 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Throwable;
 
 return new class extends Migration
 {
@@ -36,7 +35,7 @@ return new class extends Migration
                 // The FK may already be dropped on partially-applied environments.
                 try {
                     $table->dropForeign(['project_id']);
-                } catch (Throwable) {
+                } catch (\Throwable) {
                 }
 
                 $table->dropColumn('project_id');
