@@ -76,10 +76,22 @@ class SyncGoogleReviews extends Command
                 ? Carbon::parse($review['createTime'])->toDateString()
                 : null;
 
-            // Skip if a testimonial with the same name and date already exists
-            if ($reviewDate && Testimonial::where('reviewer_name', $displayName)->where('review_date', $reviewDate)->exists()) {
-                $skipped++;
-                continue;
+            // If a testimonial with the same name+date already exists, attach Google identity to it.
+            if ($reviewDate) {
+                $sameNameDate = Testimonial::where('reviewer_name', $displayName)
+                    ->where('review_date', $reviewDate)
+                    ->first();
+
+                if ($sameNameDate) {
+                    if (! $this->option('dry-run')) {
+                        $this->upsertGoogleReviewReference($sameNameDate, $reviewId);
+                        if (! $sameNameDate->star_rating && $starRating) {
+                            $sameNameDate->update(['star_rating' => $starRating]);
+                        }
+                    }
+                    $skipped++;
+                    continue;
+                }
             }
 
             // Skip if a testimonial with matching review text already exists (cross-platform dupes)
