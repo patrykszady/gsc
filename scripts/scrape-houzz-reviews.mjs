@@ -130,12 +130,14 @@ async function scrapeProfileReviews(page) {
       root = reviewsHeading.closest('section, div, article') || document.body;
     }
 
+    const profileSelector = 'a[href*="/user/"], a[href*="/pro/"], a[href*="/professionals/"]';
+
     const isReviewNode = (el) => {
       const txt = clean(el.textContent);
       return txt.includes('Average rating:')
         && txt.length > 120
         && txt.length < 10000
-        && !!el.querySelector('a[href*="/user/"]');
+        && !!el.querySelector(profileSelector);
     };
 
     const reviewNodes = Array.from(root.querySelectorAll('div, li, article, section'))
@@ -155,7 +157,7 @@ async function scrapeProfileReviews(page) {
       const block = clean(blockRaw);
       if (!block.includes('Average rating:')) continue;
 
-      const userLinks = Array.from(node.querySelectorAll('a[href*="/user/"]'));
+      const userLinks = Array.from(node.querySelectorAll(profileSelector));
       const userLink = userLinks.length ? userLinks[userLinks.length - 1] : null;
       const reviewerName = clean(userLink?.textContent || '');
       if (!reviewerName) continue;
