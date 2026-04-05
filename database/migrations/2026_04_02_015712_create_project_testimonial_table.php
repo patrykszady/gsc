@@ -5,32 +5,43 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('project_testimonial', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('project_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('testimonial_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
+        if (! Schema::hasTable('project_testimonial')) {
+            Schema::create('project_testimonial', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('project_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('testimonial_id')->constrained()->cascadeOnDelete();
+                $table->timestamps();
 
-            $table->unique(['project_id', 'testimonial_id']);
-        });
+                $table->unique(['project_id', 'testimonial_id']);
+            });
+        }
 
-        // Migrate existing project_id data to pivot table
-        DB::statement('
-            INSERT INTO project_testimonial (project_id, testimonial_id, created_at, updated_at)
-            SELECT project_id, id, NOW(), NOW()
-            FROM testimonials
-            WHERE project_id IS NOT NULL
-        ');
+        if (Schema::hasColumn('testimonials', 'project_id')) {
+            // Migrate existing project_id data to pivot table.
+            // INSERT IGNORE keeps this safe if the migration partially ran before and is retried.
+            DB::statement('
+                INSERT IGNORE INTO project_testimonial (project_id, testimonial_id, created_at, updated_at)
+                SELECT project_id, id, NOW(), NOW()
+                FROM testimonials
+                WHERE project_id IS NOT NULL
+            ');
 
-        Schema::table('testimonials', function (Blueprint $table) {
-            $table->dropForeign(['project_id']);
-            $table->dropColumn('project_id');
-        });
+            Schema::table('testimonials', function (Blueprint $table) {
+                // The FK may already be dropped on partially-applied environments.
+                try {
+                    $table->dropForeign(['project_id']);
+                } catch (Throwable) {
+                }
+
+                $table->dropColumn('project_id');
+            });
+        }
 
         // Fix mojibake-encoded reviewer names (double-encoded UTF-8 curly quotes)
         $mojibake = DB::table('testimonials')
@@ -49,8 +60,10 @@ return new class extends Migration
             }
         }
 
-        // Run testimonial cleanup (merge duplicates, remove generic URLs, fix mojibake in all fields)
-        Artisan::call('testimonials:cleanup-duplicates');
+        // Run cleanup only after review_urls.external_id exists (added in a later migration).
+        if (Schema::hasTable('review_urls') && Schema::hasColumn('review_urls', 'external_id')) {
+            Artisan::call('testimonials:cleanup-duplicates');
+        }
     }
 
     public function down(): void
