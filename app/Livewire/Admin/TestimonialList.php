@@ -25,6 +25,9 @@ class TestimonialList extends Component
     #[Url]
     public string $platform = '';
 
+    #[Url]
+    public string $star_rating = '';
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -36,6 +39,11 @@ class TestimonialList extends Component
     }
 
     public function updatingPlatform(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStarRating(): void
     {
         $this->resetPage();
     }
@@ -75,6 +83,10 @@ class TestimonialList extends Component
                     $q->where('platform', $this->platform);
                 });
             }
+        }
+
+        if ($this->star_rating !== '') {
+            $query->where('star_rating', (int) $this->star_rating);
         }
 
         // Get unique project types for filter

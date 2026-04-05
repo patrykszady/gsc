@@ -36,6 +36,14 @@
                 </flux:select>
             </div>
             @endif
+            <div class="w-40">
+                <flux:select wire:model.live="star_rating">
+                    <flux:select.option value="">All Ratings</flux:select.option>
+                    @for($i = 5; $i >= 1; $i--)
+                        <flux:select.option value="{{ $i }}">{{ $i }} {{ str_repeat('★', $i) }}</flux:select.option>
+                    @endfor
+                </flux:select>
+            </div>
         </div>
     </flux:card>
 
