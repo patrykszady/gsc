@@ -51,6 +51,7 @@ class TestimonialsSection extends Component
         $recentCutoff = now()->subYears(6)->startOfDay();
 
         $initialReviews = Testimonial::query()
+            ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
@@ -61,6 +62,7 @@ class TestimonialsSection extends Component
         // Fallback to any 10 random testimonials if no recent ones with this project type
         if ($initialReviews->isEmpty()) {
             $initialReviews = Testimonial::query()
+                ->visible()
                 ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
                 ->inRandomOrder()
                 ->take(10)
@@ -70,6 +72,7 @@ class TestimonialsSection extends Component
         // Final fallback to any testimonials if none match project type
         if ($initialReviews->isEmpty()) {
             $initialReviews = Testimonial::query()
+                ->visible()
                 ->inRandomOrder()
                 ->take(10)
                 ->get();
@@ -101,6 +104,7 @@ class TestimonialsSection extends Component
         $recentCutoff = now()->subYears(6)->startOfDay();
         
         $testimonial = Testimonial::query()
+            ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))

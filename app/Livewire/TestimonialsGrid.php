@@ -26,6 +26,7 @@ class TestimonialsGrid extends Component
         $recentCutoff = now()->subYears(6)->startOfDay();
         
         $recentTestimonials = Testimonial::query()
+            ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->inRandomOrder()
@@ -36,6 +37,7 @@ class TestimonialsGrid extends Component
         
         // Then random older ones
         $olderTestimonials = Testimonial::query()
+            ->visible()
             ->whereNotIn('id', $recentIds)
             ->inRandomOrder()
             ->get();

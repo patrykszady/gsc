@@ -137,9 +137,12 @@
             <div class="space-y-6">
                 <flux:card>
                     <flux:heading size="lg" class="mb-4">Publish</flux:heading>
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                        Reviews are immediately visible on the testimonials page.
-                    </p>
+
+                    <div class="space-y-4">
+                        <flux:field>
+                            <flux:switch wire:model="is_hidden" label="Hide from public" description="Hidden reviews won't appear on the website." />
+                        </flux:field>
+                    </div>
 
                     <div class="mt-6 flex gap-2">
                         <flux:button type="submit" variant="primary" class="flex-1">

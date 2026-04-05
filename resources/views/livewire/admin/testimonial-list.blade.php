@@ -90,6 +90,20 @@
                                         {{ $testimonial->reviewer_name }}
                                     </h3>
                                     <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                        @if($testimonial->is_hidden)
+                                            <flux:badge size="sm" color="red">Hidden</flux:badge>
+                                        @endif
+                                        @if($testimonial->star_rating)
+                                            <span class="inline-flex items-center gap-0.5 text-amber-500">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    @if($i <= $testimonial->star_rating)
+                                                        <flux:icon.star variant="solid" class="size-3.5" />
+                                                    @else
+                                                        <flux:icon.star class="size-3.5 text-zinc-300 dark:text-zinc-600" />
+                                                    @endif
+                                                @endfor
+                                            </span>
+                                        @endif
                                         @if($testimonial->project_location)
                                             <span>{{ $testimonial->project_location }}</span>
                                         @endif

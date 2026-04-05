@@ -127,7 +127,7 @@ class IndexNowSubmit extends Command
 
         // Testimonials
         if (class_exists(Testimonial::class)) {
-            $testimonials = Testimonial::all();
+            $testimonials = Testimonial::visible()->get();
             foreach ($testimonials as $testimonial) {
                 $urls[] = route('testimonials.show', $testimonial);
             }

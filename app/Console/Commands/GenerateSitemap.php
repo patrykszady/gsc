@@ -182,7 +182,7 @@ class GenerateSitemap extends Command
 
         // Add individual testimonial pages
         $this->info("Adding testimonial pages to sitemap...");
-        $testimonials = Testimonial::orderBy('review_date', 'desc')->get();
+        $testimonials = Testimonial::visible()->orderBy('review_date', 'desc')->get();
         $testimonialCount = 0;
 
         foreach ($testimonials as $testimonial) {

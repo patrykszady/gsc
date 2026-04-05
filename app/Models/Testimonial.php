@@ -16,6 +16,7 @@ class Testimonial extends Model
         'review_description',
         'review_date',
         'star_rating',
+        'is_hidden',
     ];
 
     protected $appends = ['slug', 'display_name'];
@@ -24,6 +25,7 @@ class Testimonial extends Model
     {
         return [
             'review_date' => 'date',
+            'is_hidden' => 'boolean',
         ];
     }
 
@@ -65,6 +67,11 @@ class Testimonial extends Model
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class)->withTimestamps();
+    }
+
+    public function scopeVisible($query)
+    {
+        return $query->where('is_hidden', false);
     }
 
     /**
