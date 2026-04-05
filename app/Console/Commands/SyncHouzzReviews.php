@@ -399,6 +399,16 @@ class SyncHouzzReviews extends Command
             $reviewDate = $this->parseHouzzProjectDate(trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5)));
         }
 
+        // Prefer the review post date (from <time> element) over project date.
+        if (preg_match('#<time[^>]+datetime=["\']([^"\']+)["\']#i', $html, $m)) {
+            try {
+                $postDate = Carbon::parse(trim($m[1]))->startOfDay();
+                $reviewDate = $postDate;
+            } catch (\Throwable) {
+                // keep project date as fallback
+            }
+        }
+
         if (! $reviewer || ! $description) {
             return null;
         }

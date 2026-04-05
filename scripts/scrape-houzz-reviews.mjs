@@ -111,7 +111,7 @@ async function scrapeProfileReviews(page) {
     };
 
     const parseDate = (text) => {
-      const m = text.match(/\b([A-Z][a-z]+ \d{1,2}, \d{4})\b/);
+      const m = text.match(/([A-Z][a-z]+ \d{1,2}, \d{4})/);
       return m ? m[1] : null;
     };
 
