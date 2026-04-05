@@ -5,9 +5,12 @@ namespace App\Console\Commands;
 use App\Models\Testimonial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ImportTestimonialsSnapshot extends Command
 {
+    private ?bool $hasReviewUrlExternalIdColumn = null;
+
     protected $signature = 'testimonials:import-snapshot
         {--path=database/data/testimonials_snapshot.json : Snapshot input path relative to project root}
         {--dry-run : Show what would change without writing to DB}';
@@ -36,6 +39,10 @@ class ImportTestimonialsSnapshot extends Command
         }
 
         $items = $decoded['testimonials'];
+        if (! $this->supportsReviewUrlExternalId()) {
+            $this->warn($prefix . 'review_urls.external_id column is missing; matching/upserts will use platform + URL only.');
+        }
+
         $stats = [
             'created' => 0,
             'updated' => 0,
@@ -157,6 +164,8 @@ class ImportTestimonialsSnapshot extends Command
      */
     private function findExisting(array $payload, array $reviewUrls): ?Testimonial
     {
+        $canUseExternalId = $this->supportsReviewUrlExternalId();
+
         foreach ($reviewUrls as $u) {
             $platform = strtolower(trim((string) ($u['platform'] ?? '')));
             $externalId = trim((string) ($u['external_id'] ?? ''));
@@ -166,7 +175,7 @@ class ImportTestimonialsSnapshot extends Command
                 continue;
             }
 
-            if ($externalId !== '') {
+            if ($canUseExternalId && $externalId !== '') {
                 $match = Testimonial::query()
                     ->whereHas('reviewUrls', function ($q) use ($platform, $externalId) {
                         $q->where('platform', $platform)->where('external_id', $externalId);
@@ -212,6 +221,7 @@ class ImportTestimonialsSnapshot extends Command
     private function upsertUrls(Testimonial $testimonial, array $urls, bool $dryRun): array
     {
         $stats = ['created' => 0, 'updated' => 0];
+        $canUseExternalId = $this->supportsReviewUrlExternalId();
 
         foreach ($urls as $u) {
             $platform = strtolower(trim((string) ($u['platform'] ?? '')));
@@ -226,23 +236,29 @@ class ImportTestimonialsSnapshot extends Command
 
             if (! $existing) {
                 if (! $dryRun) {
-                    $testimonial->reviewUrls()->create([
+                    $insert = [
                         'platform' => $platform,
                         'url' => $this->normalizeUrl($url),
-                        'external_id' => $externalId !== '' ? $externalId : null,
-                    ]);
+                    ];
+
+                    if ($canUseExternalId) {
+                        $insert['external_id'] = $externalId !== '' ? $externalId : null;
+                    }
+
+                    $testimonial->reviewUrls()->create($insert);
                 }
                 $stats['created']++;
                 continue;
             }
 
-            $next = [
-                'url' => $this->normalizeUrl($url),
-                'external_id' => $externalId !== '' ? $externalId : $existing->external_id,
-            ];
+            $next = ['url' => $this->normalizeUrl($url)];
+            $changed = (string) $existing->url !== (string) $next['url'];
 
-            $changed = (string) $existing->url !== (string) $next['url']
-                || (string) ($existing->external_id ?? '') !== (string) ($next['external_id'] ?? '');
+            if ($canUseExternalId) {
+                $next['external_id'] = $externalId !== '' ? $externalId : $existing->external_id;
+                $changed = $changed
+                    || (string) ($existing->external_id ?? '') !== (string) ($next['external_id'] ?? '');
+            }
 
             if ($changed) {
                 if (! $dryRun) {
@@ -282,5 +298,16 @@ class ImportTestimonialsSnapshot extends Command
         $query = isset($parts['query']) ? '?'.$parts['query'] : '';
 
         return $scheme.'://'.$host.$path.$query;
+    }
+
+    private function supportsReviewUrlExternalId(): bool
+    {
+        if ($this->hasReviewUrlExternalIdColumn !== null) {
+            return $this->hasReviewUrlExternalIdColumn;
+        }
+
+        $this->hasReviewUrlExternalIdColumn = Schema::hasColumn('review_urls', 'external_id');
+
+        return $this->hasReviewUrlExternalIdColumn;
     }
 }

@@ -35,7 +35,7 @@ return new class extends Migration
         // Fix mojibake-encoded reviewer names (double-encoded UTF-8 curly quotes)
         $mojibake = DB::table('testimonials')
             ->where('reviewer_name', 'LIKE', '%â€%')
-            ->orWhere('reviewer_name', 'LIKE', BINARY '%' . "\xc2\x9d" . '%')
+            ->orWhereRaw('BINARY `reviewer_name` LIKE ?', ['%'."\xc2\x9d".'%'])
             ->get(['id', 'reviewer_name']);
 
         foreach ($mojibake as $row) {
