@@ -24,6 +24,22 @@ function parseArgs(argv) {
 
 async function autoExpandReviews(page, maxScrolls) {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const scrollReviewContainers = async () => {
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+
+      const nodes = Array.from(document.querySelectorAll('div, section, article'));
+      for (const node of nodes) {
+        const style = window.getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden') continue;
+        if (!/(auto|scroll)/.test(style.overflowY || '')) continue;
+        if (node.scrollHeight <= node.clientHeight + 20) continue;
+
+        node.scrollTop = node.scrollHeight;
+      }
+    });
+  };
+
   const clickByPattern = async (pattern) => {
     return await page.evaluate((patternSource) => {
       const re = new RegExp(patternSource, 'i');
@@ -53,17 +69,17 @@ async function autoExpandReviews(page, maxScrolls) {
     }, pattern.source);
   };
 
-  // Try hard to open the full review list first (e.g. "Load All 55 Reviews").
+  // Try hard to open the full review list first (e.g. "Show all 55 reviews").
   for (let i = 0; i < 12; i++) {
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    const clicked = await clickByPattern(/load\s*(all|more|next)(?:\s*\d+)?\s*reviews?/i);
+    await scrollReviewContainers();
+    const clicked = await clickByPattern(/(?:show|load)\s*(?:all|more|next)?\s*\d*\s*reviews?/i);
     await sleep(clicked > 0 ? 2000 : 900);
     if (clicked === 0 && i > 3) break;
   }
 
   // Expand each review body by clicking all "Read More" triggers.
   for (let i = 0; i < maxScrolls; i++) {
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await scrollReviewContainers();
     const clicked = await clickByPattern(/read\s*more/i);
     await sleep(clicked > 0 ? 1200 : 700);
     if (clicked === 0 && i > 3) break;
