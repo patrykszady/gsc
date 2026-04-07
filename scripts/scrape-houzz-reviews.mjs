@@ -189,6 +189,7 @@ async function scrapeProfileReviews(page) {
       reviewText = reviewText.replace(/^.*?Average rating:[^\n]*?stars\s*/is, '');
       reviewText = reviewText.replace(/\n?\s*Helpful.*$/is, '');
       reviewText = reviewText.replace(/\n?\s*Read More.*$/is, '');
+      reviewText = reviewText.replace(/\n?\s*Read Less.*$/is, '');
       reviewText = preserveParagraphs(reviewText);
 
       // Drop obvious page chrome contamination.

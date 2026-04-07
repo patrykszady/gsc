@@ -104,8 +104,9 @@ class SyncHouzzReviews extends Command
             }
             $seenPayloadKeys[$payloadKey] = true;
 
-            $profileUrlValue = $payload['url']
-                ?? ($payload['reviewer_profile_url'] ?: null);
+            // Use the direct review URL for storage; fall back to profile URL only for matching.
+            $reviewUrlValue = $payload['url'] ?: null;
+            $profileUrlValue = $reviewUrlValue ?? ($payload['reviewer_profile_url'] ?: null);
             $matchedByUrl = null;
 
             if ($profileUrlValue) {
@@ -122,7 +123,7 @@ class SyncHouzzReviews extends Command
                     $stats['skipped_existing']++;
                     continue;
                 }
-                $stats['updated'] += $this->upsertIntoExisting($matchedByUrl, $payload, $profileUrlValue, $dryRun);
+                $stats['updated'] += $this->upsertIntoExisting($matchedByUrl, $payload, $reviewUrlValue, $dryRun);
                 continue;
             }
 
@@ -136,7 +137,7 @@ class SyncHouzzReviews extends Command
                     $stats['skipped_existing']++;
                     continue;
                 }
-                $stats['updated'] += $this->upsertIntoExisting($matchedByContent, $payload, $profileUrlValue, $dryRun);
+                $stats['updated'] += $this->upsertIntoExisting($matchedByContent, $payload, $reviewUrlValue, $dryRun);
                 continue;
             }
 
@@ -153,7 +154,7 @@ class SyncHouzzReviews extends Command
                     $stats['skipped_existing']++;
                     continue;
                 }
-                $stats['updated'] += $this->upsertIntoExisting($matchedByNameDate, $payload, $profileUrlValue, $dryRun);
+                $stats['updated'] += $this->upsertIntoExisting($matchedByNameDate, $payload, $reviewUrlValue, $dryRun);
                 continue;
             }
 
@@ -171,10 +172,10 @@ class SyncHouzzReviews extends Command
                 'star_rating' => $payload['star_rating'],
             ]);
 
-            if ($profileUrlValue) {
+            if ($reviewUrlValue) {
                 $testimonial->reviewUrls()->create([
                     'platform' => 'houzz',
-                    'url' => $profileUrlValue,
+                    'url' => $reviewUrlValue,
                 ]);
             }
 
@@ -501,9 +502,18 @@ class SyncHouzzReviews extends Command
                 ]);
                 $changed++;
             } elseif (! $this->isSameHouzzReviewUrl($existingHouzz->url, $reviewUrl)) {
+                // Upgrade profile URL to proper viewReview URL.
                 $existingHouzz->update(['url' => $reviewUrl]);
                 $changed++;
             }
+        }
+
+        // Strip trailing "Read Less" from existing review descriptions.
+        $currentDesc = (string) $testimonial->review_description;
+        $cleanedDesc = preg_replace('/\s*Read Less\s*$/i', '', $currentDesc);
+        if ($cleanedDesc !== $currentDesc) {
+            $testimonial->update(['review_description' => $cleanedDesc]);
+            $changed++;
         }
 
         if ($changed > 0) {
@@ -705,6 +715,7 @@ class SyncHouzzReviews extends Command
     {
         $name = trim((string) ($profilePayload['reviewer_name'] ?? ''));
         $description = trim((string) ($profilePayload['review_description'] ?? ''));
+        $description = preg_replace('/\s*Read Less\s*$/i', '', $description);
         if ($name === '' || $description === '') {
             return null;
         }
