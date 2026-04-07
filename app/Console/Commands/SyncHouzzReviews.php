@@ -21,6 +21,7 @@ class SyncHouzzReviews extends Command
         {--profile-html= : Local path to saved Houzz profile HTML (used when direct fetch is blocked)}
         {--seed-review-url=* : One or more explicit Houzz review URLs to include}
         {--seed-from-db : Include existing houzz URLs from review_urls table as seeds}
+        {--proxy= : Residential proxy URL for Puppeteer (e.g. http://user:pass@host:port)}
         {--only-new : Only create new reviews; skip updating already matched reviews}
         {--dry-run : Show what would change without writing to DB}';
 
@@ -36,6 +37,7 @@ class SyncHouzzReviews extends Command
         $profileHtmlPath = (string) $this->option('profile-html');
         $seedUrls = array_values(array_filter((array) $this->option('seed-review-url')));
         $seedFromDb = (bool) $this->option('seed-from-db');
+        $proxy = (string) ($this->option('proxy') ?: config('services.scraper.proxy', ''));
         $onlyNew = (bool) $this->option('only-new');
 
         $browserJsonPath = (string) $this->option('browser-json');
@@ -47,7 +49,7 @@ class SyncHouzzReviews extends Command
             $this->info('Loaded '.count($profileReviews).' profile review card(s) from '.$source.'.');
         } elseif ($browserScrape) {
             $this->info('Scraping Houzz profile review list with Puppeteer...');
-            $profileReviews = $this->scrapeProfileReviewsWithBrowser($profileUrl, $browserTimeoutMs, $browserHeaded);
+            $profileReviews = $this->scrapeProfileReviewsWithBrowser($profileUrl, $browserTimeoutMs, $browserHeaded, $proxy);
             $this->info('Scraped '.count($profileReviews).' profile review card(s).');
         }
 
@@ -507,7 +509,7 @@ class SyncHouzzReviews extends Command
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function scrapeProfileReviewsWithBrowser(string $profileUrl, int $timeoutMs, bool $headed = false): array
+    private function scrapeProfileReviewsWithBrowser(string $profileUrl, int $timeoutMs, bool $headed = false, string $proxy = ''): array
     {
         $scriptPath = base_path('scripts/scrape-houzz-reviews.mjs');
         if (! is_file($scriptPath)) {
@@ -516,11 +518,12 @@ class SyncHouzzReviews extends Command
         }
 
         $cmd = sprintf(
-            'node %s --url=%s --timeout-ms=%d %s 2>&1',
+            'node %s --url=%s --timeout-ms=%d %s %s 2>&1',
             escapeshellarg($scriptPath),
             escapeshellarg($profileUrl),
             $timeoutMs,
             $headed ? '--headed' : '',
+            $proxy !== '' ? '--proxy='.escapeshellarg($proxy) : '',
         );
 
         $output = shell_exec($cmd);

@@ -10,12 +10,14 @@ function parseArgs(argv) {
     timeoutMs: 120000,
     maxScrolls: 40,
     headless: true,
+    proxy: null,
   };
 
   for (const arg of argv.slice(2)) {
     if (arg.startsWith('--url=')) args.url = arg.slice('--url='.length);
     if (arg.startsWith('--timeout-ms=')) args.timeoutMs = Number(arg.slice('--timeout-ms='.length)) || args.timeoutMs;
     if (arg.startsWith('--max-scrolls=')) args.maxScrolls = Number(arg.slice('--max-scrolls='.length)) || args.maxScrolls;
+    if (arg.startsWith('--proxy=')) args.proxy = arg.slice('--proxy='.length);
     if (arg === '--headed') args.headless = false;
   }
 
@@ -217,13 +219,19 @@ async function main() {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const args = parseArgs(process.argv);
 
-  const browser = await puppeteer.launch({
-    headless: args.headless,
-    args: [
+  const launchArgs = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-    ],
+  ];
+
+  if (args.proxy) {
+    launchArgs.push(`--proxy-server=${args.proxy}`);
+  }
+
+  const browser = await puppeteer.launch({
+    headless: args.headless,
+    args: launchArgs,
   });
 
   try {

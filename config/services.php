@@ -146,4 +146,8 @@ return [
         'api_key' => env('ANTICAPTCHA_API_KEY'),
     ],
 
+    'scraper' => [
+        'proxy' => env('SCRAPER_PROXY_URL'),
+    ],
+
 ];
