@@ -48,9 +48,9 @@ class TestimonialList extends Component
         $this->resetPage();
     }
 
-    public function delete(Testimonial $testimonial): void
+    public function delete(int $id): void
     {
-        $testimonial->delete();
+        Testimonial::findOrFail($id)->delete();
 
         session()->flash('success', 'Review deleted successfully.');
     }

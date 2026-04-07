@@ -154,7 +154,6 @@
                                                 icon="trash" 
                                                 variant="danger"
                                                 wire:click="delete({{ $testimonial->id }})"
-                                                wire:confirm="Are you sure you want to delete this review?"
                                             >
                                                 Delete
                                             </flux:menu.item>
