@@ -17,7 +17,7 @@ class SyncHouzzReviews extends Command
         {--browser-scrape : Use Puppeteer profile scraper to extract all review cards}
         {--browser-headed : Run Puppeteer in headed mode (useful for logged-in/manual flows)}
         {--browser-timeout-ms=120000 : Timeout for browser scraping in milliseconds}
-        {--browser-json= : Path to pre-scraped Puppeteer JSON file (from scrape-houzz-reviews.mjs)}
+        {--browser-json= : Path to Puppeteer JSON file, or "-" for stdin}
         {--profile-html= : Local path to saved Houzz profile HTML (used when direct fetch is blocked)}
         {--seed-review-url=* : One or more explicit Houzz review URLs to include}
         {--seed-from-db : Include existing houzz URLs from review_urls table as seeds}
@@ -43,7 +43,8 @@ class SyncHouzzReviews extends Command
         $profileReviews = [];
         if ($browserJsonPath !== '') {
             $profileReviews = $this->loadBrowserJson($browserJsonPath);
-            $this->info('Loaded '.count($profileReviews).' profile review card(s) from JSON file.');
+            $source = $browserJsonPath === '-' ? 'stdin' : 'JSON file';
+            $this->info('Loaded '.count($profileReviews).' profile review card(s) from '.$source.'.');
         } elseif ($browserScrape) {
             $this->info('Scraping Houzz profile review list with Puppeteer...');
             $profileReviews = $this->scrapeProfileReviewsWithBrowser($profileUrl, $browserTimeoutMs, $browserHeaded);
@@ -542,22 +543,27 @@ class SyncHouzzReviews extends Command
      */
     private function loadBrowserJson(string $path): array
     {
-        if (! is_file($path)) {
-            $this->warn('Browser JSON file not found: '.$path);
+        if ($path === '-') {
+            $contents = file_get_contents('php://stdin');
+        } else {
+            if (! is_file($path)) {
+                $this->warn('Browser JSON file not found: '.$path);
 
-            return [];
+                return [];
+            }
+
+            $contents = file_get_contents($path);
         }
 
-        $contents = file_get_contents($path);
         if (! is_string($contents) || trim($contents) === '') {
-            $this->warn('Browser JSON file is empty.');
+            $this->warn('Browser JSON input is empty.');
 
             return [];
         }
 
         $decoded = json_decode($contents, true);
         if (! is_array($decoded) || ! isset($decoded['reviews']) || ! is_array($decoded['reviews'])) {
-            $this->warn('Failed to parse browser JSON file.');
+            $this->warn('Failed to parse browser JSON input.');
 
             return [];
         }
