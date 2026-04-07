@@ -518,7 +518,7 @@ class SyncHouzzReviews extends Command
         }
 
         $cmd = sprintf(
-            'node %s --url=%s --timeout-ms=%d %s %s 2>&1',
+            'node %s --url=%s --timeout-ms=%d %s %s',
             escapeshellarg($scriptPath),
             escapeshellarg($profileUrl),
             $timeoutMs,
@@ -526,7 +526,31 @@ class SyncHouzzReviews extends Command
             $proxy !== '' ? '--proxy='.escapeshellarg($proxy) : '',
         );
 
-        $output = shell_exec($cmd);
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+
+        $process = proc_open($cmd, $descriptors, $pipes);
+        if (! is_resource($process)) {
+            $this->warn('Failed to start Puppeteer scraper process.');
+            return [];
+        }
+
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+
+        if ($stderr !== '' && $stderr !== false) {
+            foreach (explode("\n", trim($stderr)) as $line) {
+                $this->line('  <comment>[scraper]</comment> '.$line);
+            }
+        }
+
         if (! is_string($output) || trim($output) === '') {
             $this->warn('Puppeteer scraper returned no output.');
             return [];
