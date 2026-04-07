@@ -104,15 +104,24 @@ class SyncHouzzReviews extends Command
             }
             $seenPayloadKeys[$payloadKey] = true;
 
-            // Use the direct review URL for storage; fall back to profile URL only for matching.
+            // Use the direct review URL for storage; match against both viewReview and profile URLs.
             $reviewUrlValue = $payload['url'] ?: null;
-            $profileUrlValue = $reviewUrlValue ?? ($payload['reviewer_profile_url'] ?: null);
+            $urlsToMatch = array_filter([$reviewUrlValue, $payload['reviewer_profile_url'] ?? null]);
             $matchedByUrl = null;
 
-            if ($profileUrlValue) {
-                $matchedByUrl = $existing->first(function (Testimonial $t) use ($profileUrlValue) {
-                    return $t->reviewUrls->contains(function ($url) use ($profileUrlValue) {
-                        return $url->platform === 'houzz' && $this->isSameHouzzReviewUrl($url->url, $profileUrlValue);
+            if (! empty($urlsToMatch)) {
+                $matchedByUrl = $existing->first(function (Testimonial $t) use ($urlsToMatch) {
+                    return $t->reviewUrls->contains(function ($url) use ($urlsToMatch) {
+                        if ($url->platform !== 'houzz') {
+                            return false;
+                        }
+                        foreach ($urlsToMatch as $candidate) {
+                            if ($this->isSameHouzzReviewUrl($url->url, $candidate)) {
+                                return true;
+                            }
+                        }
+
+                        return false;
                     });
                 });
             }
