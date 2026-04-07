@@ -53,8 +53,13 @@ class SyncHouzzReviews extends Command
             $this->info('Scraped '.count($profileReviews).' profile review card(s).');
         }
 
-        $this->info('Collecting Houzz review URLs...');
-        $reviewUrls = $this->collectReviewUrls($profileUrl, $profileHtmlPath, $seedUrls, $seedFromDb);
+        // When browser JSON is provided, skip expensive HTTP-based URL collection
+        // — the scraper already resolved viewReview URLs.
+        $reviewUrls = [];
+        if ($browserJsonPath === '') {
+            $this->info('Collecting Houzz review URLs...');
+            $reviewUrls = $this->collectReviewUrls($profileUrl, $profileHtmlPath, $seedUrls, $seedFromDb);
+        }
 
         if (empty($reviewUrls) && empty($profileReviews)) {
             $this->warn('No Houzz reviews were discovered from URL seeds or profile scrape.');
@@ -87,7 +92,9 @@ class SyncHouzzReviews extends Command
                 continue;
             }
 
-            if (! $payload['url'] && ! empty($payload['reviewer_profile_url'])) {
+            if (! $payload['url'] && ! empty($payload['reviewer_profile_url']) && $browserJsonPath === '') {
+                // Only attempt HTTP-based resolution when not using browser JSON
+                // — the scraper already resolves viewReview URLs via Puppeteer.
                 $resolved = $this->resolveReviewUrlFromReviewerProfile(
                     $payload['reviewer_profile_url'],
                     $payload['review_description'],

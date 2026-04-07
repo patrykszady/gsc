@@ -224,6 +224,85 @@ async function scrapeProfileReviews(page) {
   });
 }
 
+/**
+ * Fallback: parse reviews from raw HTML when DOM scraping fails.
+ * Houzz server-renders review cards with user profile links and "Average rating:" text.
+ */
+function parseReviewsFromHtml(html) {
+  const reviews = [];
+  const seen = new Set();
+
+  // Match review blocks: each starts with a user profile link and contains "Average rating:"
+  // We split on user profile links and process each chunk.
+  const chunks = html.split(/(?=<a[^>]+href=["'][^"']*\/(?:user|pro|professionals)\/)/i);
+
+  for (const chunk of chunks) {
+    if (!chunk.includes('Average rating:') || !chunk.includes('out of 5 stars')) continue;
+    if (chunk.length > 15000) continue; // skip large page-level chunks
+
+    // Extract reviewer profile URL
+    const profileMatch = chunk.match(/<a[^>]+href=["']([^"']*\/(?:user|pro|professionals)\/[^"']+)["']/i);
+    if (!profileMatch) continue;
+    let reviewerProfileUrl = profileMatch[1];
+    if (reviewerProfileUrl.startsWith('/')) reviewerProfileUrl = `https://www.houzz.com${reviewerProfileUrl}`;
+
+    // Extract reviewer name
+    const nameMatch = chunk.match(/<a[^>]+href=["'][^"']*\/(?:user|pro|professionals)\/[^"']+["'][^>]*>([^<]+)<\/a>/i);
+    const reviewerName = nameMatch ? nameMatch[1].replace(/\s+/g, ' ').trim() : null;
+    if (!reviewerName || reviewerName.length < 2) continue;
+
+    // Extract star rating
+    const ratingMatch = chunk.match(/Average rating:\s*([0-5](?:\.\d)?)\s*out of 5 stars/i);
+    const starRating = ratingMatch ? Math.round(Number(ratingMatch[1])) : null;
+
+    // Extract review date (earliest)
+    const dateRe = /([A-Z][a-z]+ \d{1,2}, \d{4})/g;
+    let earliest = null;
+    let dateMatch;
+    while ((dateMatch = dateRe.exec(chunk)) !== null) {
+      const d = new Date(dateMatch[1]);
+      if (!earliest || d < earliest.date) earliest = { raw: dateMatch[1], date: d };
+    }
+
+    // Extract review text: text after "stars" marker, before "Helpful" or end
+    let reviewText = chunk.replace(/^[\s\S]*?out of 5 stars\s*/i, '');
+    // Remove HTML tags
+    reviewText = reviewText.replace(/<[^>]+>/g, ' ');
+    // Trim after "Helpful" marker
+    reviewText = reviewText.replace(/\s*Helpful[\s\S]*$/i, '');
+    reviewText = reviewText.replace(/\s*Read More[\s\S]*$/i, '');
+    reviewText = reviewText.replace(/\s*Read Less[\s\S]*$/i, '');
+    // Decode HTML entities
+    reviewText = reviewText.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/g, "'");
+    reviewText = reviewText.replace(/\s+/g, ' ').trim();
+
+    if (!reviewText || reviewText.length < 20) continue;
+
+    // Extract viewReview URL if present
+    let reviewUrl = null;
+    const viewReviewMatch = chunk.match(/href=["']([^"']*\/viewReview\/\d+\/[^"']+)["']/i);
+    if (viewReviewMatch) {
+      reviewUrl = viewReviewMatch[1];
+      if (reviewUrl.startsWith('/')) reviewUrl = `https://www.houzz.com${reviewUrl}`;
+    }
+
+    const key = `${reviewerName.toLowerCase()}|${(earliest?.raw || '').toLowerCase()}|${reviewText.slice(0, 100).toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    reviews.push({
+      reviewer_name: reviewerName,
+      reviewer_profile_url: reviewerProfileUrl,
+      review_description: reviewText,
+      review_date_raw: earliest?.raw || null,
+      star_rating: starRating,
+      url: reviewUrl,
+    });
+  }
+
+  return reviews;
+}
+
 async function main() {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const args = parseArgs(process.argv);
@@ -232,6 +311,8 @@ async function main() {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=IsolateOrigins,site-per-process',
   ];
 
   let proxyConfig = null;
@@ -250,7 +331,7 @@ async function main() {
     }
   }
 
-  const maxAttempts = proxyConfig ? 5 : 1;
+  const maxAttempts = proxyConfig ? 8 : 1;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const launchArgs = [...baseLaunchArgs];
@@ -270,7 +351,7 @@ async function main() {
     }
 
     const browser = await puppeteer.launch({
-      headless: args.headless,
+      headless: args.headless ? 'new' : false,
       args: launchArgs,
     });
 
@@ -282,30 +363,51 @@ async function main() {
       }
 
       await page.setViewport({ width: 1440, height: 2200 });
-      await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
       await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
 
       const reviewsUrl = args.url.includes('#reviews') ? args.url : `${args.url}#reviews`;
       await page.goto(reviewsUrl, { waitUntil: 'networkidle2', timeout: args.timeoutMs });
-      await sleep(2500);
+      await sleep(3000 + Math.random() * 2000);
 
       await autoExpandReviews(page, args.maxScrolls);
 
-      const reviews = await scrapeProfileReviews(page);
+      let reviews = await scrapeProfileReviews(page);
+
+      // If DOM scraping found nothing, try parsing the raw HTML source as fallback.
+      if (reviews.length === 0) {
+        const html = await page.content();
+        reviews = parseReviewsFromHtml(html);
+        if (reviews.length > 0) {
+          console.error(`[fallback] Parsed ${reviews.length} review(s) from raw HTML`);
+        } else {
+          // Dump the page HTML for debugging.
+          const fs = await import('fs');
+          const dumpPath = '/tmp/houzz-debug-' + Date.now() + '.html';
+          fs.writeFileSync(dumpPath, html);
+          const screenshotPath = dumpPath.replace('.html', '.png');
+          await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
+          console.error(`[debug] 0 reviews found. Page HTML dumped to ${dumpPath} (${html.length} bytes)`);
+        }
+      }
 
       // Resolve missing viewReview URLs by visiting each reviewer's activity/reviews page.
       const unresolvedReviews = reviews.filter((r) => !r.url && r.reviewer_profile_url);
       if (unresolvedReviews.length > 0) {
         console.error(`[resolve] Resolving ${unresolvedReviews.length} missing viewReview URL(s)...`);
+        const resolvePage = await browser.newPage();
+        if (proxyAuth) await resolvePage.authenticate(proxyAuth);
+        await resolvePage.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
+
         for (const review of unresolvedReviews) {
           try {
             const slug = review.reviewer_profile_url.match(/\/user\/([^/?#]+)/i)?.[1];
             if (!slug) continue;
             const activityUrl = `https://www.houzz.com/activities/user/${slug}/reviews`;
             console.error(`[resolve] ${review.reviewer_name} -> ${activityUrl}`);
-            await page.goto(activityUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-            await sleep(1500);
-            const viewReviewUrl = await page.evaluate(() => {
+            await resolvePage.goto(activityUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+            await sleep(1000 + Math.random() * 1000);
+            const viewReviewUrl = await resolvePage.evaluate(() => {
               const links = Array.from(document.querySelectorAll('a[href*="/viewReview/"]'));
               const gsLink = links.find((a) => {
                 const href = (a.getAttribute('href') || '').toLowerCase();
@@ -325,13 +427,15 @@ async function main() {
             console.error(`[resolve] Failed for ${review.reviewer_name}: ${err.message}`);
           }
         }
+
+        await resolvePage.close();
       }
 
       // If proxy returned 0 reviews, the IP was likely blocked — retry.
       if (reviews.length === 0 && proxyConfig && attempt < maxAttempts) {
         console.error(`[proxy] Attempt ${attempt} returned 0 reviews, retrying...`);
         await browser.close();
-        await sleep(2000);
+        await sleep(3000 + Math.random() * 5000);
         continue;
       }
 
@@ -348,7 +452,7 @@ async function main() {
 
       if (proxyConfig && attempt < maxAttempts) {
         console.error(`[proxy] Attempt ${attempt} failed: ${err.message}, retrying...`);
-        await sleep(2000);
+        await sleep(3000 + Math.random() * 5000);
         continue;
       }
 
