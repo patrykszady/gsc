@@ -95,7 +95,8 @@ class SyncHouzzReviews extends Command
             }
             $seenPayloadKeys[$payloadKey] = true;
 
-            $profileUrlValue = $payload['url'];
+            $profileUrlValue = $payload['url']
+                ?? ($payload['reviewer_profile_url'] ?: null);
             $matchedByUrl = null;
 
             if ($profileUrlValue) {
