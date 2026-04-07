@@ -293,6 +293,40 @@ async function main() {
 
       const reviews = await scrapeProfileReviews(page);
 
+      // Resolve missing viewReview URLs by visiting each reviewer's activity/reviews page.
+      const unresolvedReviews = reviews.filter((r) => !r.url && r.reviewer_profile_url);
+      if (unresolvedReviews.length > 0) {
+        console.error(`[resolve] Resolving ${unresolvedReviews.length} missing viewReview URL(s)...`);
+        for (const review of unresolvedReviews) {
+          try {
+            const slug = review.reviewer_profile_url.match(/\/user\/([^/?#]+)/i)?.[1];
+            if (!slug) continue;
+            const activityUrl = `https://www.houzz.com/activities/user/${slug}/reviews`;
+            console.error(`[resolve] ${review.reviewer_name} -> ${activityUrl}`);
+            await page.goto(activityUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+            await sleep(1500);
+            const viewReviewUrl = await page.evaluate(() => {
+              const links = Array.from(document.querySelectorAll('a[href*="/viewReview/"]'));
+              const gsLink = links.find((a) => {
+                const href = (a.getAttribute('href') || '').toLowerCase();
+                return href.includes('gs-construction');
+              });
+              if (!gsLink) return null;
+              const href = gsLink.getAttribute('href') || '';
+              if (href.startsWith('http')) return href;
+              if (href.startsWith('/')) return `https://www.houzz.com${href}`;
+              return null;
+            });
+            if (viewReviewUrl) {
+              review.url = viewReviewUrl;
+              console.error(`[resolve] Found: ${viewReviewUrl}`);
+            }
+          } catch (err) {
+            console.error(`[resolve] Failed for ${review.reviewer_name}: ${err.message}`);
+          }
+        }
+      }
+
       // If proxy returned 0 reviews, the IP was likely blocked — retry.
       if (reviews.length === 0 && proxyConfig && attempt < maxAttempts) {
         console.error(`[proxy] Attempt ${attempt} returned 0 reviews, retrying...`);
