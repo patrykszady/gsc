@@ -31,6 +31,9 @@ class TestimonialForm extends Component
     #[Validate('nullable|date')]
     public ?string $review_date = null;
 
+    #[Validate('nullable|integer|min:1|max:5')]
+    public ?int $star_rating = null;
+
     public bool $is_hidden = false;
 
     public array $project_ids = [];
@@ -82,6 +85,7 @@ class TestimonialForm extends Component
             $this->project_type = $testimonial->project_type ?? '';
             $this->review_description = $testimonial->review_description;
             $this->review_date = $testimonial->review_date?->format('Y-m-d');
+            $this->star_rating = $testimonial->star_rating;
             $this->is_hidden = (bool) $testimonial->is_hidden;
             $this->project_ids = $testimonial->projects->pluck('id')->map(fn ($id) => (string) $id)->toArray();
 
@@ -148,6 +152,7 @@ class TestimonialForm extends Component
             'project_location' => 'nullable|string',
             'project_type' => 'nullable|string',
             'review_date' => 'nullable|date',
+            'star_rating' => 'nullable|integer|min:1|max:5',
             'review_urls.*.platform' => 'nullable|string|max:50',
             'review_urls.*.url' => 'nullable|url',
             'project_ids' => 'nullable|array',
@@ -160,6 +165,7 @@ class TestimonialForm extends Component
             'project_type' => $this->project_type ?: null,
             'review_description' => $this->review_description,
             'review_date' => $this->review_date ? Carbon::parse($this->review_date) : null,
+            'star_rating' => $this->star_rating,
             'is_hidden' => $this->is_hidden,
         ];
 

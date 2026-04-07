@@ -78,6 +78,16 @@
                             <flux:input wire:model="review_date" type="date" />
                             <flux:error name="review_date" />
                         </flux:field>
+
+                        <flux:field>
+                            <flux:label>Star Rating</flux:label>
+                            <flux:select wire:model="star_rating" variant="listbox" placeholder="No rating">
+                                @for($s = 5; $s >= 1; $s--)
+                                    <flux:select.option value="{{ $s }}">{{ $s }} {{ str_repeat('★', $s) }}</flux:select.option>
+                                @endfor
+                            </flux:select>
+                            <flux:error name="star_rating" />
+                        </flux:field>
                     </div>
 
                     <div class="mt-4 space-y-3">
