@@ -219,42 +219,98 @@ async function main() {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const args = parseArgs(process.argv);
 
-  const launchArgs = [
+  const baseLaunchArgs = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
   ];
 
+  let proxyConfig = null;
+
   if (args.proxy) {
-    launchArgs.push(`--proxy-server=${args.proxy}`);
+    try {
+      const proxyUrl = new URL(args.proxy);
+      proxyConfig = {
+        host: `${proxyUrl.hostname}:${proxyUrl.port || 8080}`,
+        username: decodeURIComponent(proxyUrl.username),
+        password: decodeURIComponent(proxyUrl.password || ''),
+      };
+    } catch {
+      // If not a URL, treat as host:port directly
+      baseLaunchArgs.push(`--proxy-server=${args.proxy}`);
+    }
   }
 
-  const browser = await puppeteer.launch({
-    headless: args.headless,
-    args: launchArgs,
-  });
+  const maxAttempts = proxyConfig ? 5 : 1;
 
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 2200 });
-    await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const launchArgs = [...baseLaunchArgs];
+    let proxyAuth = null;
 
-    const reviewsUrl = args.url.includes('#reviews') ? args.url : `${args.url}#reviews`;
-    await page.goto(reviewsUrl, { waitUntil: 'networkidle2', timeout: args.timeoutMs });
-    await sleep(2500);
+    if (proxyConfig) {
+      launchArgs.push(`--proxy-server=${proxyConfig.host}`);
 
-    await autoExpandReviews(page, args.maxScrolls);
+      // Append a random session ID so each attempt gets a different residential IP.
+      const sessionId = Math.random().toString(36).slice(2, 10);
+      const username = `${proxyConfig.username}-session-${sessionId}`;
+      proxyAuth = { username, password: proxyConfig.password };
 
-    const reviews = await scrapeProfileReviews(page);
+      if (attempt > 1) {
+        console.error(`[proxy] Attempt ${attempt}/${maxAttempts} with session ${sessionId}`);
+      }
+    }
 
-    process.stdout.write(JSON.stringify({
-      source_url: args.url,
-      count: reviews.length,
-      reviews,
-    }));
-  } finally {
-    await browser.close();
+    const browser = await puppeteer.launch({
+      headless: args.headless,
+      args: launchArgs,
+    });
+
+    try {
+      const page = await browser.newPage();
+
+      if (proxyAuth) {
+        await page.authenticate(proxyAuth);
+      }
+
+      await page.setViewport({ width: 1440, height: 2200 });
+      await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+
+      const reviewsUrl = args.url.includes('#reviews') ? args.url : `${args.url}#reviews`;
+      await page.goto(reviewsUrl, { waitUntil: 'networkidle2', timeout: args.timeoutMs });
+      await sleep(2500);
+
+      await autoExpandReviews(page, args.maxScrolls);
+
+      const reviews = await scrapeProfileReviews(page);
+
+      // If proxy returned 0 reviews, the IP was likely blocked — retry.
+      if (reviews.length === 0 && proxyConfig && attempt < maxAttempts) {
+        console.error(`[proxy] Attempt ${attempt} returned 0 reviews, retrying...`);
+        await browser.close();
+        await sleep(2000);
+        continue;
+      }
+
+      process.stdout.write(JSON.stringify({
+        source_url: args.url,
+        count: reviews.length,
+        reviews,
+      }));
+
+      await browser.close();
+      return;
+    } catch (err) {
+      await browser.close();
+
+      if (proxyConfig && attempt < maxAttempts) {
+        console.error(`[proxy] Attempt ${attempt} failed: ${err.message}, retrying...`);
+        await sleep(2000);
+        continue;
+      }
+
+      throw err;
+    }
   }
 }
 
