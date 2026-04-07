@@ -410,12 +410,19 @@ class SyncHouzzReviews extends Command
         }
 
         // Prefer the review post date (from <time> element) over project date.
-        if (preg_match('#<time[^>]+datetime=["\']([^"\']+)["\']#i', $html, $m)) {
-            try {
-                $postDate = Carbon::parse(trim($m[1]))->startOfDay();
-                $reviewDate = $postDate;
-            } catch (\Throwable) {
-                // keep project date as fallback
+        // When a review was updated, Houzz shows both: "Sep 2, 2018 · last modified: Oct 17, 2018".
+        // Pick the earliest <time> datetime — that's the original review date.
+        if (preg_match_all('#<time[^>]+datetime=["\']([^"\']+)["\']#i', $html, $matches)) {
+            $dates = [];
+            foreach ($matches[1] as $dt) {
+                try {
+                    $dates[] = Carbon::parse(trim($dt))->startOfDay();
+                } catch (\Throwable) {
+                }
+            }
+            if ($dates) {
+                sort($dates);
+                $reviewDate = $dates[0];
             }
         }
 
