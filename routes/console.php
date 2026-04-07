@@ -59,6 +59,12 @@ Schedule::command('testimonials:sync-houzz-reviews --browser-scrape --only-new')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Houzz review sync failed'));
 
+// Yelp: check for new reviews weekly (create-only; skip existing)
+Schedule::command('testimonials:sync-yelp-reviews --browser-scrape --only-new')->weeklyOn(1, '07:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'));
+
 // Instagram: 2 posts per day — morning + late afternoon (Central Time)
 // Random delay spreads posts naturally within each window
 Schedule::command('social:post --platform=instagram --queue --random-delay=150')

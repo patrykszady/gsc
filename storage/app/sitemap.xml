@@ -2,43 +2,43 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
     <url>
     <loc>https://dev.gs.construction/</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/testimonials</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/about</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/contact</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/projects</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/services</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/areas-served</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
@@ -4856,13 +4856,13 @@
             </url>
     <url>
     <loc>https://dev.gs.construction/testimonials/palatine-il-bathroom-review-88</loc>
-    <lastmod>2026-03-16T18:39:24+00:00</lastmod>
+    <lastmod>2026-04-07T06:03:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/testimonials/arlington-heights-il-kitchen-review-87</loc>
-    <lastmod>2026-04-05T00:01:09+00:00</lastmod>
+    <lastmod>2026-04-07T06:02:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -4874,7 +4874,7 @@
             </url>
     <url>
     <loc>https://dev.gs.construction/testimonials/palatine-il-bathroom-review-85</loc>
-    <lastmod>2026-04-07T03:03:48+00:00</lastmod>
+    <lastmod>2026-04-07T06:00:27+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -4903,14 +4903,20 @@
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://dev.gs.construction/testimonials/chicago-home-review-106</loc>
-    <lastmod>2026-04-07T03:05:31+00:00</lastmod>
+    <loc>https://dev.gs.construction/testimonials/palatine-il-bathroom-review-106</loc>
+    <lastmod>2026-04-07T06:01:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/testimonials/chicago-home-review-92</loc>
-    <lastmod>2026-03-13T11:00:05+00:00</lastmod>
+    <lastmod>2026-04-07T06:03:44+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
+    <loc>https://dev.gs.construction/testimonials/chicago-home-review-113</loc>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -4927,14 +4933,14 @@
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://dev.gs.construction/testimonials/chicago-home-review-108</loc>
-    <lastmod>2026-04-07T03:08:05+00:00</lastmod>
+    <loc>https://dev.gs.construction/testimonials/chicago-home-review-94</loc>
+    <lastmod>2026-03-13T11:00:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://dev.gs.construction/testimonials/chicago-home-review-94</loc>
-    <lastmod>2026-03-13T11:00:06+00:00</lastmod>
+    <loc>https://dev.gs.construction/testimonials/chicago-home-review-108</loc>
+    <lastmod>2026-04-07T03:08:05+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -4976,7 +4982,7 @@
             </url>
     <url>
     <loc>https://dev.gs.construction/testimonials/mount-prospect-il-bathroom-review-44</loc>
-    <lastmod>2026-04-07T03:12:50+00:00</lastmod>
+    <lastmod>2026-04-07T06:04:31+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -4987,20 +4993,14 @@
     <priority>0.6</priority>
             </url>
     <url>
+    <loc>https://dev.gs.construction/testimonials/arlington-heights-il-kitchen-review-43</loc>
+    <lastmod>2026-04-07T06:04:02+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
     <loc>https://dev.gs.construction/testimonials/inverness-il-kitchen-review-34</loc>
     <lastmod>2026-04-05T00:01:03+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-            </url>
-    <url>
-    <loc>https://dev.gs.construction/testimonials/arlington-heights-il-kitchen-review-43</loc>
-    <lastmod>2026-04-05T00:06:50+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-            </url>
-    <url>
-    <loc>https://dev.gs.construction/testimonials/chicago-home-review-110</loc>
-    <lastmod>2026-04-07T03:15:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -5011,8 +5011,20 @@
     <priority>0.6</priority>
             </url>
     <url>
+    <loc>https://dev.gs.construction/testimonials/chicago-home-review-110</loc>
+    <lastmod>2026-04-07T03:15:25+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
     <loc>https://dev.gs.construction/testimonials/palatine-il-kitchen-review-41</loc>
     <lastmod>2026-04-05T00:06:49+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
+    <loc>https://dev.gs.construction/testimonials/chicago-home-review-114</loc>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -5067,12 +5079,6 @@
     <url>
     <loc>https://dev.gs.construction/testimonials/arlingotn-heights-il-kitchen-review-33</loc>
     <lastmod>2026-04-05T00:06:44+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-            </url>
-    <url>
-    <loc>https://dev.gs.construction/testimonials/chicago-home-review-112</loc>
-    <lastmod>2026-04-07T03:23:35+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -5233,6 +5239,12 @@
     <priority>0.6</priority>
             </url>
     <url>
+    <loc>https://dev.gs.construction/testimonials/chicago-home-review-115</loc>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
     <loc>https://dev.gs.construction/testimonials/wheeling-il-bathroom-review-4</loc>
     <lastmod>2026-04-07T03:45:59+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -5258,19 +5270,19 @@
             </url>
     <url>
     <loc>https://dev.gs.construction/projects/kitchens</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/projects/bathrooms</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://dev.gs.construction/projects/home-remodeling</loc>
-    <lastmod>2026-04-07T05:59:01+00:00</lastmod>
+    <lastmod>2026-04-07T21:38:57+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
