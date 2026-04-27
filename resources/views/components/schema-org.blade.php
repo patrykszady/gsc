@@ -55,6 +55,25 @@ $localBusiness = [
     'telephone' => '+1-224-735-4200',
     'email' => 'crew@gs.construction',
     'foundingDate' => '2015',
+    'foundingLocation' => [
+        '@type' => 'Place',
+        'name' => 'Arlington Heights, IL',
+        'address' => [
+            '@type' => 'PostalAddress',
+            'addressLocality' => 'Arlington Heights',
+            'addressRegion' => 'IL',
+            'addressCountry' => 'US',
+        ],
+    ],
+    'numberOfEmployees' => [
+        '@type' => 'QuantitativeValue',
+        'minValue' => 5,
+        'maxValue' => 15,
+    ],
+    'knowsLanguage' => ['English', 'Polish'],
+    'slogan' => 'Quality remodeling, family-owned since 2015.',
+    'paymentAccepted' => 'Cash, Check, Credit Card, ACH Transfer',
+    'currenciesAccepted' => 'USD',
     'priceRange' => '$$$$',
     'address' => [
         '@type' => 'PostalAddress',

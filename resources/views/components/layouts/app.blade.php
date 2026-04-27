@@ -79,6 +79,9 @@
 
     {{-- Comprehensive Schema.org Structured Data --}}
     <x-schema-org />
+
+    {{-- Founder Person schema (E-E-A-T) --}}
+    <x-person-schema />
 </head>
 <body class="min-h-screen bg-white font-sans text-zinc-900 antialiased dark:bg-slate-950 dark:text-zinc-100">
     {{-- Navbar --}}

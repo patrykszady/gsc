@@ -82,7 +82,16 @@ if ($project->images->isNotEmpty()) {
             'contentUrl'  => $img->url,
             'name'        => $img->seo_alt_text,
             'description' => $img->caption ?? $img->seo_alt_text,
+            'caption'     => $img->caption ?? $img->seo_alt_text,
+            'width'       => $img->width ?? 1200,
+            'height'      => $img->height ?? 800,
             'position'    => $i + 1,
+            'representativeOfPage' => (bool) ($img->is_cover ?? false),
+            'creditText'  => 'GS Construction',
+            'creator'     => ['@id' => 'https://gs.construction/#organization'],
+            'copyrightNotice' => '© ' . now()->year . ' GS Construction',
+            'license'     => 'https://gs.construction/',
+            'acquireLicensePage' => url('/contact'),
         ];
         if ($contentLocation) {
             $obj['contentLocation'] = $contentLocation;

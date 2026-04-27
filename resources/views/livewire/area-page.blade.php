@@ -27,6 +27,9 @@
     @endphp
     <x-breadcrumb-schema :items="$breadcrumbItems" />
 
+    {{-- Per-area LocalBusiness schema (with geo, hours, postalCodes, hasMap) --}}
+    <x-area-local-business-schema :area="$area" />
+
     {{-- Visual Breadcrumb Navigation --}}
     <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
@@ -107,24 +110,58 @@
                 ];
             @endphp
             
-            <livewire:main-project-hero-slider 
-                :slides="$homeSlides"
-                :area="$area"
-                heading="{{ $area->city }} Kitchen & Bathroom Remodeling"
-                subheading="Professional remodeling services for {{ $area->city }} homeowners"
-                secondary-cta-text="Schedule Free Consult"
-                :secondary-cta-url="$area->pageUrl('contact')"
-            />
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <livewire:main-project-hero-slider 
+                    :slides="$homeSlides"
+                    :area="$area"
+                    heading="{{ $area->city }} Kitchen & Bathroom Remodeling"
+                    subheading="Professional remodeling services for {{ $area->city }} homeowners"
+                    secondary-cta-text="Schedule Free Consult"
+                    :secondary-cta-url="$area->pageUrl('contact')"
+                />
+            </div>
 
             <x-city-reviews-badge :area="$area" />
 
             <livewire:about-section :area="$area" />
 
-            <livewire:timelapse-section />
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <livewire:timelapse-section />
+            </div>
 
             <livewire:testimonials-section :area="$area" />
             
             <livewire:map-section />
+
+            {{-- Nearby Areas — internal linking + local SEO signal --}}
+            @php
+                $nearbyHomeAreas = $area->nearestCities(8);
+                if ($nearbyHomeAreas->isEmpty()) {
+                    $nearbyHomeAreas = \App\Models\AreaServed::where('id', '!=', $area->id)
+                        ->inRandomOrder()->take(6)->get();
+                }
+            @endphp
+            @if($nearbyHomeAreas->count() > 0)
+            <section class="bg-white py-12 dark:bg-zinc-900">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
+                        Remodeling Near {{ $area->city }}, IL
+                    </h2>
+                    <p class="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+                        We also serve these nearby Chicago suburbs. Click any city for local remodeling info, projects, and reviews.
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        @foreach($nearbyHomeAreas as $nearbyArea)
+                            <a href="{{ $nearbyArea->url }}" wire:navigate
+                               class="inline-flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                               title="Remodeling contractors in {{ $nearbyArea->city }}, IL">
+                                <span>{{ $nearbyArea->city }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+            @endif
 
             <livewire:contact-section :area="$area" />
             @break
@@ -491,30 +528,32 @@
             <x-service-schema :service="$config" :area="$area" />
             
             {{-- Hero with projects slider --}}
-            <livewire:main-project-hero-slider 
-                :project-type="$config['projectType']"
-                :slides="[
-                    [
-                        'heading' => $config['heading'],
-                        'subheading' => $config['subheading'],
-                        'type' => $config['projectType'],
-                    ],
-                    [
-                        'heading' => $config['heading'],
-                        'subheading' => $config['subheading'],
-                        'type' => $config['projectType'],
-                    ],
-                    [
-                        'heading' => $config['heading'],
-                        'subheading' => $config['subheading'],
-                        'type' => $config['projectType'],
-                    ],
-                ]"
-                primary-cta-text="Get Free Quote"
-                :primary-cta-url="$area->pageUrl('contact')"
-                secondary-cta-text="View {{ $config['label'] }} Projects"
-                :secondary-cta-url="$area->pageUrl('projects')"
-            />
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <livewire:main-project-hero-slider 
+                    :project-type="$config['projectType']"
+                    :slides="[
+                        [
+                            'heading' => $config['heading'],
+                            'subheading' => $config['subheading'],
+                            'type' => $config['projectType'],
+                        ],
+                        [
+                            'heading' => $config['heading'],
+                            'subheading' => $config['subheading'],
+                            'type' => $config['projectType'],
+                        ],
+                        [
+                            'heading' => $config['heading'],
+                            'subheading' => $config['subheading'],
+                            'type' => $config['projectType'],
+                        ],
+                    ]"
+                    primary-cta-text="Get Free Quote"
+                    :primary-cta-url="$area->pageUrl('contact')"
+                    secondary-cta-text="View {{ $config['label'] }} Projects"
+                    :secondary-cta-url="$area->pageUrl('projects')"
+                />
+            </div>
 
             {{-- About Section with service-specific keywords --}}
             <livewire:about-section 
@@ -545,7 +584,9 @@
             @endif
 
             {{-- Timelapse Section --}}
-            <livewire:timelapse-section />
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <livewire:timelapse-section />
+            </div>
 
             {{-- Projects for this service type --}}
             <livewire:projects-grid :area="$area" :type="$config['projectType']" />

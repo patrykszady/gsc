@@ -468,23 +468,53 @@ class SeoService
     {
         SEOMeta::setTitle($title);
         SEOMeta::setDescription($description);
-        
+
+        // Canonical: strip noisy params (utm_*, gclid, fbclid, pagination) so
+        // each indexable URL maps to one clean canonical regardless of source.
+        $canonical = self::buildCleanCanonical();
+        SEOMeta::setCanonical($canonical);
+
         OpenGraph::setTitle($title);
         OpenGraph::setDescription($description);
-        OpenGraph::setUrl(url()->current());
+        OpenGraph::setUrl($canonical);
         OpenGraph::setSiteName('GS Construction');
         OpenGraph::addProperty('locale', 'en_US');
-        
+        OpenGraph::addProperty('type', 'website');
+
         // Set OG image for social sharing (iMessage, Facebook, etc.)
         $ogImage = $image ?? asset('images/greg-patryk.jpg');
-        OpenGraph::addImage($ogImage, ['width' => 1200, 'height' => 630]);
-        
+        OpenGraph::addImage($ogImage, [
+            'width' => 1200,
+            'height' => 630,
+            'alt' => $title,
+            'type' => str_ends_with(strtolower($ogImage), '.png') ? 'image/png' : 'image/jpeg',
+        ]);
+
         TwitterCard::setTitle($title);
         TwitterCard::setDescription($description);
         TwitterCard::setImage($ogImage);
-        
+        TwitterCard::setType('summary_large_image');
+
         // Apply domain-specific SEO enhancements (keywords, canonical)
         self::applyDomainEnhancements();
+    }
+
+    /**
+     * Build a canonical URL stripped of tracking params + pagination noise.
+     */
+    protected static function buildCleanCanonical(): string
+    {
+        $url = url()->current();
+        $query = request()->query();
+        if (empty($query)) {
+            return $url;
+        }
+        $strip = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+                  'gclid', 'fbclid', 'msclkid', 'mc_cid', 'mc_eid', '_ga', 'ref', 'page'];
+        foreach ($strip as $key) {
+            unset($query[$key]);
+        }
+        return empty($query) ? $url : $url . '?' . http_build_query($query);
     }
 
     /**

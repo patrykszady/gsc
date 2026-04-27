@@ -16,24 +16,94 @@ class TestimonialPage extends Component
 
     public function mount(Testimonial $testimonial): void
     {
-        $this->testimonial = $testimonial->loadMissing('reviewUrls');
+        $this->testimonial = $testimonial->loadMissing('reviewUrls', 'projects');
 
         SeoService::testimonial($testimonial);
     }
 
-    protected function getImageUrl(): string
+    /**
+     * Pick the hero image: a cover image from a linked project if available,
+     * otherwise a random image from any published project of the same type.
+     */
+    protected function heroImage(): ?ProjectImage
     {
-        $projectType = $this->normalizeProjectType($this->testimonial->project_type);
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached ?: null;
+        }
 
+        $linkedProjectIds = $this->testimonial->projects->pluck('id');
+
+        if ($linkedProjectIds->isNotEmpty()) {
+            $cached = ProjectImage::query()
+                ->whereIn('project_id', $linkedProjectIds)
+                ->where('is_cover', true)
+                ->first()
+                ?: ProjectImage::query()
+                    ->whereIn('project_id', $linkedProjectIds)
+                    ->inRandomOrder()
+                    ->first();
+
+            if ($cached) {
+                return $cached;
+            }
+        }
+
+        $projectType = $this->normalizeProjectType($this->testimonial->project_type);
         if ($projectType) {
-            $image = ProjectImage::query()
+            $cached = ProjectImage::query()
                 ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
                 ->inRandomOrder()
                 ->first();
+        }
 
-            if ($image) {
-                return $image->getThumbnailUrl('medium');
+        return $cached ?: null;
+    }
+
+    /**
+     * Pick the small avatar image: prefer a different image from a linked project
+     * (so it doesn't visually duplicate the hero); otherwise a random of-type image.
+     */
+    protected function avatarImage(): ?ProjectImage
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached ?: null;
+        }
+
+        $linkedProjectIds = $this->testimonial->projects->pluck('id');
+        $heroId = $this->heroImage()?->id;
+
+        if ($linkedProjectIds->isNotEmpty()) {
+            $cached = ProjectImage::query()
+                ->whereIn('project_id', $linkedProjectIds)
+                ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId))
+                ->inRandomOrder()
+                ->first()
+                ?: $this->heroImage();
+
+            if ($cached) {
+                return $cached;
             }
+        }
+
+        $projectType = $this->normalizeProjectType($this->testimonial->project_type);
+        if ($projectType) {
+            $cached = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId))
+                ->inRandomOrder()
+                ->first();
+        }
+
+        return $cached ?: null;
+    }
+
+    protected function getImageUrl(): string
+    {
+        $image = $this->avatarImage();
+        if ($image) {
+            return $image->getThumbnailUrl('medium');
         }
 
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->testimonial->display_name) . '&background=0ea5e9&color=fff&size=256';
@@ -41,44 +111,35 @@ class TestimonialPage extends Component
 
     protected function getThumbnailUrl(): ?string
     {
-        $projectType = $this->normalizeProjectType($this->testimonial->project_type);
-
-        if ($projectType) {
-            $image = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                ->inRandomOrder()
-                ->first();
-
-            if ($image) {
-                return $image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url;
-            }
-        }
-
-        return null;
+        $image = $this->heroImage();
+        return $image
+            ? ($image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url)
+            : null;
     }
 
     protected function getThumbnailThumbUrl(): ?string
     {
-        $projectType = $this->normalizeProjectType($this->testimonial->project_type);
-
-        if ($projectType) {
-            $image = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                ->inRandomOrder()
-                ->first();
-
-            if ($image) {
-                return $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
-            }
-        }
-
-        return null;
+        $image = $this->heroImage();
+        return $image
+            ? ($image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb'))
+            : null;
     }
 
     protected function getAreaSlug(): ?string
     {
         $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $this->testimonial->project_location);
         return AreaServed::where('city', $cityName)->value('slug');
+    }
+
+    protected function getReviewText(): string
+    {
+        $text = trim((string) $this->testimonial->review_description);
+
+        // Remove pasted source URLs that can make the review block look noisy.
+        $text = preg_replace('/https?:\/\/\S+/i', '', $text) ?? $text;
+        $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+
+        return trim($text);
     }
 
     protected function normalizeProjectType(?string $testimonialProjectType): ?string
@@ -103,11 +164,26 @@ class TestimonialPage extends Component
 
     protected function getFaqs(): array
     {
+        $projectType = ucfirst($this->testimonial->project_type ?? 'home remodel');
+        $location = $this->testimonial->project_location ?: 'the Chicagoland area';
+
         return [
-            ['question' => 'Are your customer reviews real?', 'answer' => 'Yes, all reviews featured on our site are from verified customers. Most come directly from our Google Business Profile and can be independently verified there.'],
-            ['question' => 'How many reviews does GS Construction have?', 'answer' => 'We have over 53 five-star reviews on Google from homeowners across the Chicagoland area. Our consistent 5-star rating reflects our commitment to quality and customer satisfaction.'],
-            ['question' => 'How do I get started with my own project?', 'answer' => 'Contact us at (224) 735-4200 or through our website to schedule a free in-home consultation. We will discuss your vision and provide a detailed, no-obligation estimate.'],
-            ['question' => 'What types of projects do you handle?', 'answer' => 'We specialize in kitchen remodeling, bathroom remodeling, and whole-home renovations across the Chicagoland area. From small updates to complete transformations, we handle projects of every scope.'],
+            [
+                'question' => "Is this {$projectType} review from {$location} a real customer review?",
+                'answer' => 'Yes. This review is from a real GS Construction customer and is published from a verified review source.',
+            ],
+            [
+                'question' => 'Can I see photos from this homeowner project?',
+                'answer' => 'Yes. The images shown on this page are pulled from the linked project so you can see visuals from the same homeowner project as the review.',
+            ],
+            [
+                'question' => 'Can I read the original review on Google or Yelp?',
+                'answer' => 'Yes. If a source link is available, use the platform button under the reviewer details to open the original review.',
+            ],
+            [
+                'question' => 'How can I get a quote for a similar remodel?',
+                'answer' => 'Call (224) 735-4200 or contact us through the website to schedule a free in-home consultation and receive a detailed estimate.',
+            ],
         ];
     }
 
@@ -117,6 +193,7 @@ class TestimonialPage extends Component
             'imageUrl' => $this->getImageUrl(),
             'thumbnailUrl' => $this->getThumbnailUrl(),
             'thumbnailThumbUrl' => $this->getThumbnailThumbUrl(),
+            'reviewText' => $this->getReviewText(),
             'areaSlug' => $this->getAreaSlug(),
             'faqs' => $this->getFaqs(),
         ]);

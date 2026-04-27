@@ -2,6 +2,9 @@
     {{-- Project Schema with ImageObject data --}}
     <x-project-schema :project="$project" />
 
+    {{-- VideoObject schema for any timelapses on this project --}}
+    <x-video-object-schema :project="$project" />
+
     {{-- Breadcrumb Schema --}}
     @php
         $breadcrumbItems = [
@@ -831,6 +834,15 @@
                 </div>
             </div>
         </div>
+    @endif
+
+    {{-- Matching Customer Reviews --}}
+    @if($matchingTestimonials->isNotEmpty())
+        <livewire:testimonials-section
+            :project-id="$project->id"
+            :show-header="false"
+            :key="'project-reviews-'.$project->id"
+        />
     @endif
 
     {{-- CTA Section --}}

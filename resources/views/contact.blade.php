@@ -56,11 +56,13 @@
 
             shuffle($homeSlides);
         @endphp
-        <livewire:main-project-hero-slider 
-            :slides="$homeSlides"
-            height-classes="h-[360px] sm:h-[380px] lg:h-[420px]"
-            :autoplay-interval="8000"
-        />
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <livewire:main-project-hero-slider 
+                :slides="$homeSlides"
+                height-classes="h-[360px] sm:h-[380px] lg:h-[420px]"
+                :autoplay-interval="8000"
+            />
+        </div>
 
         {{-- Contact Section --}}
         <div id="contact-form" class="scroll-mt-24">

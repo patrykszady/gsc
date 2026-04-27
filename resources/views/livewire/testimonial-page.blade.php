@@ -9,7 +9,7 @@
     <x-review-schema :testimonial="$testimonial" />
 
     {{-- Breadcrumb --}}
-    <div class="mx-auto max-w-3xl px-6 pt-8 lg:px-8">
+    <div class="mx-auto max-w-5xl px-6 pt-8 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
             <ol class="flex items-center space-x-2 text-sm">
                 <li>
@@ -32,10 +32,10 @@
     </div>
 
     {{-- Main Content --}}
-    <div class="mx-auto max-w-3xl px-6 py-12 lg:px-8 lg:py-16">
+    <div class="mx-auto max-w-5xl px-6 py-10 lg:px-8 lg:py-14">
         {{-- Project Thumbnail --}}
         @if($thumbnailUrl)
-            <div class="mb-8 overflow-hidden rounded-2xl">
+            <div class="mb-10 overflow-hidden rounded-2xl shadow-sm ring-1 ring-zinc-900/5">
                 <x-lqip-image 
                     :src="$thumbnailUrl" 
                     :thumb="$thumbnailThumbUrl ?? $thumbnailUrl"
@@ -63,8 +63,8 @@
             </div>
 
             {{-- Review text --}}
-            <blockquote class="text-xl leading-8 text-gray-900 sm:text-2xl sm:leading-9 dark:text-white">
-                <p>"{{ $testimonial->review_description }}"</p>
+            <blockquote class="text-lg leading-8 text-zinc-700 sm:text-xl sm:leading-9 dark:text-zinc-200">
+                <p>{{ $reviewText }}</p>
             </blockquote>
 
             {{-- Reviewer info --}}
@@ -142,11 +142,12 @@
                 Back to all testimonials
             </a>
         </div>
+
     </div>
 
-    {{-- FAQ Section --}}
-    <x-faq-section :faqs="$faqs" heading="Customer Reviews FAQ" />
-
     {{-- More Testimonials Section --}}
-    <livewire:testimonials-section :show-header="false" />
+    <livewire:testimonials-section :show-header="false" max-width-class="max-w-5xl" />
+
+    {{-- FAQ Section --}}
+    <x-faq-section :faqs="$faqs" heading="FAQ About This Review" sectionClasses="bg-sky-50 pt-0 pb-12 sm:pb-16 dark:bg-zinc-900" contentMaxWidth="max-w-5xl" />
 </div>

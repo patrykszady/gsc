@@ -17,6 +17,10 @@ class TestimonialsSection extends Component
 
     public ?string $projectType = null;
 
+    public ?int $projectId = null;
+
+    public string $maxWidthClass = 'max-w-7xl';
+
     public array $current = [];
 
     public array $shownIds = [];
@@ -47,6 +51,23 @@ class TestimonialsSection extends Component
 
     public function mount(): void
     {
+        // Project-scoped: only show reviews explicitly linked to this project via pivot
+        if ($this->projectId) {
+            $project = \App\Models\Project::find($this->projectId);
+            $linked = $project ? $project->testimonials()->visible()->latest('review_date')->get() : collect();
+
+            foreach ($linked as $testimonial) {
+                $this->history[] = $this->formatTestimonial($testimonial);
+                $this->shownIds[] = $testimonial->id;
+            }
+
+            if (!empty($this->history)) {
+                $this->current = $this->history[0];
+                $this->historyIndex = 0;
+            }
+            return;
+        }
+
         // Load 10 random reviews from the last 6 years as initial pool
         $recentCutoff = now()->subYears(6)->startOfDay();
 
@@ -93,6 +114,14 @@ class TestimonialsSection extends Component
 
     public function nextTestimonial(): void
     {
+        // Project-scoped: cycle through linked reviews only, no new queries
+        if ($this->projectId) {
+            if (empty($this->history)) return;
+            $this->historyIndex = ($this->historyIndex + 1) % count($this->history);
+            $this->current = $this->history[$this->historyIndex];
+            return;
+        }
+
         // If we're not at the end of history, move forward
         if ($this->historyIndex < count($this->history) - 1) {
             $this->historyIndex++;
@@ -145,7 +174,24 @@ class TestimonialsSection extends Component
         $projectType = $this->normalizeProjectType($testimonial->project_type);
 
         $imageUrl = null;
-        if ($projectType) {
+
+        // Project-scoped: prefer an image from the linked project itself.
+        if ($this->projectId) {
+            $cacheKey = "testimonial.project-image.{$testimonial->id}.project-{$this->projectId}.v1";
+            $imageUrl = Cache::remember($cacheKey, now()->addMinutes(30), function () {
+                $image = ProjectImage::query()
+                    ->where('project_id', $this->projectId)
+                    ->where('is_cover', true)
+                    ->first()
+                    ?: ProjectImage::query()
+                        ->where('project_id', $this->projectId)
+                        ->inRandomOrder()
+                        ->first();
+                return $image?->getThumbnailUrl('medium');
+            });
+        }
+
+        if (!$imageUrl && $projectType) {
             $cacheKey = "testimonial.project-image.{$testimonial->id}.{$projectType}.v3";
 
             $imageUrl = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($projectType) {

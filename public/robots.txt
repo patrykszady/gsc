@@ -44,13 +44,13 @@ Disallow: /admin/
 # Sitemap location
 Sitemap: https://gs.construction/sitemap.xml
 
-# LLM context files (AEO/GEO)
+# LLM context files (AEO/GEO) — informational only.
+# Note: Googlebot does not understand non-standard fields like "LLMs-Txt:"
+# or "AI-Feed:" and will flag them as syntax errors. Keep them as comments.
 # https://llmstxt.org/
-LLMs-Txt: https://gs.construction/llms.txt
-LLMs-Full-Txt: https://gs.construction/llms-full.txt
-
-# AI structured feed (machine-readable, refreshed every 15 min)
-AI-Feed: https://gs.construction/ai-feed.json
+# llms.txt:      https://gs.construction/llms.txt
+# llms-full.txt: https://gs.construction/llms-full.txt
+# ai-feed.json:  https://gs.construction/ai-feed.json
 
 # ============================================
 # SPAM/SEO BOTS - BLOCKED
@@ -105,6 +105,46 @@ Disallow: /
 # ClaudeBot - Powers Claude AI (ALLOW)  
 # GPTBot/ChatGPT-User - Powers ChatGPT (ALLOW)
 # Google-Extended - Powers Gemini/Bard (ALLOW)
+
+# ============================================
+# CONTENT-SIGNAL (Cloudflare proposal)
+# ============================================
+# Scoped to crawlers that primarily train models on scraped content.
+# Googlebot ignores Content-Signal, so we MUST NOT put it under
+# "User-agent: *" (that triggers a "Rule ignored by Googlebot" warning).
+# Search indexing remains allowed; AI model training is opted out.
+
+User-agent: CCBot
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: Google-Extended
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: GPTBot
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: ClaudeBot
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: anthropic-ai
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: PerplexityBot
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: Applebot-Extended
+Content-Signal: search=yes, ai-train=no
+Allow: /
+
+User-agent: Amazonbot
+Content-Signal: search=yes, ai-train=no
+Allow: /
 
 User-agent: omgili
 Disallow: /

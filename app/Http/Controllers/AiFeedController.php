@@ -68,7 +68,26 @@ class AiFeedController extends Controller
                 ->values()
                 ->all();
 
-            $areas = AreaServed::orderBy('city')->pluck('city')->all();
+            $areas = AreaServed::orderBy('city')->get();
+            $serviceSlugs = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
+
+            // Service-area matrix: per-city URLs + zip codes (used by AI Overviews
+            // to answer "kitchen remodeling in <city>" with citations).
+            $serviceAreaMatrix = $areas->map(function (AreaServed $a) use ($serviceSlugs) {
+                $row = [
+                    'city'      => $a->city,
+                    'state'     => 'IL',
+                    'url'       => $a->url,
+                    'latitude'  => $a->latitude,
+                    'longitude' => $a->longitude,
+                    'zipcodes'  => $a->postalCodes(),
+                    'services'  => [],
+                ];
+                foreach ($serviceSlugs as $slug) {
+                    $row['services'][$slug] = $a->serviceUrl($slug);
+                }
+                return $row;
+            })->values()->all();
 
             return [
                 '$schema'      => 'https://gs.construction/ai-feed.schema.json',
@@ -102,9 +121,17 @@ class AiFeedController extends Controller
                     ]),
                 ],
                 'services'     => $services,
-                'service_area' => $areas,
+                'service_area' => $areas->pluck('city')->all(),
+                'service_area_matrix' => $serviceAreaMatrix,
                 'projects'     => $projects,
                 'reviews'      => $reviews,
+                'credentials' => [
+                    'licensed' => true,
+                    'insured'  => true,
+                    'bonded'   => true,
+                    'response_time_sla' => 'Within 1 business day',
+                    'consultation' => 'Free in-home estimate',
+                ],
                 'links' => [
                     'sitemap'    => url('/sitemap.xml'),
                     'llms_txt'   => url('/llms.txt'),

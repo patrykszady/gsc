@@ -80,6 +80,24 @@ class ProjectPage extends Component
         return AreaServed::where('city', $city)->first();
     }
 
+    protected function getProjectCity(): ?string
+    {
+        if (!$this->project->location) {
+            return null;
+        }
+
+        $city = preg_replace('/,?\s*(IL|Illinois)$/i', '', $this->project->location);
+        return trim($city) ?: null;
+    }
+
+    /**
+     * Reviews explicitly linked to this project via the project_testimonial pivot.
+     */
+    protected function getMatchingTestimonials()
+    {
+        return $this->project->testimonials()->visible()->get();
+    }
+
     protected function getFaqs(): array
     {
         $type = $this->project->project_type;
@@ -120,6 +138,7 @@ class ProjectPage extends Component
             'projectTypeLabel' => $this->getProjectTypeLabel(),
             'relatedProjects' => $this->getRelatedProjects(),
             'locationArea' => $this->getLocationArea(),
+            'matchingTestimonials' => $this->getMatchingTestimonials(),
             'faqs' => $this->getFaqs(),
         ]);
     }

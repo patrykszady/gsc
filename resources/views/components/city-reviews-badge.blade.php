@@ -57,10 +57,9 @@
 
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <div class="mt-4 flex flex-wrap items-center justify-center gap-3 rounded-xl bg-sky-50 px-4 py-3 text-center dark:bg-sky-950/30">
-        <div class="flex items-center gap-1 text-amber-500" aria-hidden="true">
-            @for ($i = 0; $i < 5; $i++)
-                <svg class="h-5 w-5 fill-current" viewBox="0 0 20 20"><path d="M9.05.927C9.349.011 10.651.011 10.95.927l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.539 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.074 8.1c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69L9.05.927z"/></svg>
-            @endfor
+        <div aria-hidden="true" class="shrink-0">
+            <img src="{{ asset('images/5-stars.svg') }}" alt="" width="140" height="20" class="h-5 w-auto dark:hidden" />
+            <img src="{{ asset('images/5-stars-dark.svg') }}" alt="" width="140" height="20" class="hidden h-5 w-auto dark:block" />
         </div>
         <p class="text-sm font-medium text-sky-900 dark:text-sky-200">
             <span class="font-bold">{{ $data['avg'] }}/5</span>

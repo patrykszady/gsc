@@ -90,6 +90,73 @@ class AreaServed extends Model
     }
 
     /**
+     * Return the unique postal/ZIP codes served in this area, derived from
+     * project locations matched against public/project-zipcodes.csv.
+     * Cached for 24h. Used for LocalBusiness `serviceArea` schema.
+     *
+     * @return array<int, string>
+     */
+    public function postalCodes(): array
+    {
+        return cache()->remember("area:{$this->id}:zipcodes", 86400, function (): array {
+            $csv = public_path('project-zipcodes.csv');
+            if (! is_file($csv)) {
+                return [];
+            }
+
+            // Build project_id => zip map from the CSV (id column = project id).
+            $handle = fopen($csv, 'r');
+            if ($handle === false) {
+                return [];
+            }
+            $header = fgetcsv($handle);
+            if (! $header) {
+                fclose($handle);
+                return [];
+            }
+            $cols = array_map(fn ($c) => strtolower(trim((string) $c)), $header);
+            $idIdx = array_search('id', $cols, true);
+            $zipIdx = array_search('zip_code', $cols, true);
+            if ($idIdx === false || $zipIdx === false) {
+                fclose($handle);
+                return [];
+            }
+            $projectZips = [];
+            while (($row = fgetcsv($handle)) !== false) {
+                $pid = (int) ($row[$idIdx] ?? 0);
+                $zip = preg_replace('/\D/', '', (string) ($row[$zipIdx] ?? ''));
+                if ($pid > 0 && $zip !== '') {
+                    $projectZips[$pid] = $zip;
+                }
+            }
+            fclose($handle);
+
+            if (empty($projectZips)) {
+                return [];
+            }
+
+            // Find project IDs whose location matches this city.
+            $projectIds = Project::query()
+                ->where(function ($q) {
+                    $q->where('location', $this->city)
+                      ->orWhere('location', 'LIKE', $this->city . ',%')
+                      ->orWhere('location', 'LIKE', $this->city . ' %');
+                })
+                ->pluck('id')
+                ->all();
+
+            $zips = [];
+            foreach ($projectIds as $pid) {
+                if (isset($projectZips[$pid])) {
+                    $zips[$projectZips[$pid]] = true;
+                }
+            }
+            ksort($zips);
+            return array_keys($zips);
+        });
+    }
+
+    /**
      * Per-record SEO data fed to ralphjsmit/laravel-seo.
      */
     public function getDynamicSEOData(): SEOData
