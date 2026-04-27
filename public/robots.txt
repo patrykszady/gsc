@@ -47,6 +47,10 @@ Sitemap: https://gs.construction/sitemap.xml
 # LLM context files (AEO/GEO)
 # https://llmstxt.org/
 LLMs-Txt: https://gs.construction/llms.txt
+LLMs-Full-Txt: https://gs.construction/llms-full.txt
+
+# AI structured feed (machine-readable, refreshed every 15 min)
+AI-Feed: https://gs.construction/ai-feed.json
 
 # ============================================
 # SPAM/SEO BOTS - BLOCKED

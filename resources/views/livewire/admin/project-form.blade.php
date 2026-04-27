@@ -540,7 +540,14 @@
                                                     x-on:drop.prevent="if (dragging !== null && dragging !== {{ $fIdx }}) reorder(dragging, {{ $fIdx }}); dragging = null; dragOverIdx = null"
                                                     :class="dragOverIdx === {{ $fIdx }} ? 'ring-2 ring-sky-400' : ''"
                                                 >
-                                                    <img src="{{ $frame['url'] }}" alt="Frame {{ $fIdx + 1 }}" class="size-full object-cover">
+                                                    <button
+                                                        type="button"
+                                                        class="block size-full cursor-zoom-in"
+                                                        x-on:click="$dispatch('open-frame-editor', { tlIndex: {{ $tlIndex }}, frameId: {{ $frame['id'] }}, url: @js($frame['url']) })"
+                                                        title="Click to edit (blur personal info)"
+                                                    >
+                                                        <img src="{{ $frame['url'] }}" alt="Frame {{ $fIdx + 1 }}" class="size-full object-cover pointer-events-none">
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         wire:click="removeTimelapseFrame({{ $tlIndex }}, {{ $frame['id'] }})"

@@ -4,6 +4,19 @@
 >
     {{-- Note: LCP preload is handled by the hero slider component itself --}}
 
+    {{-- Voice / AI: 'About this business' speakable summary (visible to humans, --}}
+    {{-- emphasized for voice assistants, AI Overviews, and ChatGPT browse). --}}
+    <section class="speakable mx-auto max-w-7xl px-6 pt-6 lg:px-8" aria-label="About GS Construction">
+        <p class="sr-only" data-speakable="business-summary">
+            GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor
+            based in Arlington Heights, Illinois, founded in 2015 by Gregory and Patryk.
+            We serve more than 89 cities across the Chicago suburbs, hold a 5-star rating
+            across {{ \App\Models\Testimonial::count() }} verified customer reviews on Google, Houzz, Yelp, and Angi,
+            and offer free in-home estimates. Call (224) 735-4200 or email crew@gs.construction.
+            We work in English and Polish. Hours: Monday through Saturday, 8 AM to 6 PM Central.
+        </p>
+    </section>
+
     {{-- Main Project Hero Slider --}}
     @php
         $kitchenVariations = [

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiFeedController;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\GbpSettings;
 use App\Livewire\Admin\Login;
@@ -46,6 +47,9 @@ Route::get('/', function () {
     SeoService::home();
     return view('home');
 })->name('home');
+
+// AI / GEO: structured feed for ChatGPT, Perplexity, Google AI Overviews, Claude.
+Route::get('/ai-feed.json', AiFeedController::class)->name('ai-feed');
 
 Route::get('/testimonials', function () {
     SeoService::testimonials();

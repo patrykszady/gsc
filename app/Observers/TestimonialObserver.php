@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\SubmitUrlsToIndexNow;
 use App\Models\Testimonial;
 use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
@@ -54,9 +55,9 @@ class TestimonialObserver
                 route('testimonials.index'),
             ];
 
-            $this->indexNow->submitBatch($urls);
+            SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
-            Log::warning('IndexNow: Failed to submit testimonial URL', [
+            Log::warning('IndexNow: Failed to queue testimonial URL submission', [
                 'testimonial_id' => $testimonial->id,
                 'error' => $e->getMessage(),
             ]);

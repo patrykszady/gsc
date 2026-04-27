@@ -335,6 +335,54 @@ class ProjectForm extends Component
             ->toArray();
     }
 
+    /**
+     * Replace a timelapse frame's image bytes with an edited version sent from
+     * the in-browser editor (e.g. after applying blur boxes to redact PII).
+     * The data URL is decoded, re-encoded with Intervention, and overwrites the
+     * existing storage path so URLs remain stable.
+     */
+    public function updateTimelapseFrame(int $timelapseIndex, int $frameId, string $dataUrl): void
+    {
+        $timelapse = $this->timelapses[$timelapseIndex] ?? null;
+        if (!$timelapse || !$timelapse['id']) return;
+
+        $frame = ProjectTimelapseFrame::find($frameId);
+        if (!$frame || $frame->project_timelapse_id !== $timelapse['id']) return;
+
+        if (!preg_match('#^data:image/(png|jpeg|jpg|webp);base64,(.+)$#i', $dataUrl, $m)) {
+            return;
+        }
+        $binary = base64_decode($m[2], true);
+        if ($binary === false || strlen($binary) < 32) return;
+
+        $extension = strtolower(pathinfo($frame->path, PATHINFO_EXTENSION) ?: 'jpg');
+        $image = \Intervention\Image\Laravel\Facades\Image::read($binary);
+        if ($image->width() > 1920) {
+            $image->scale(width: 1920);
+        }
+        $encoded = match ($extension) {
+            'png'  => $image->toPng()->toString(),
+            'webp' => $image->toWebp(85)->toString(),
+            default => $image->toJpeg(85)->toString(),
+        };
+
+        \Illuminate\Support\Facades\Storage::disk($frame->disk)->put($frame->path, $encoded);
+        $frame->touch();
+
+        // Refresh thumbnail URL with cache-busting query so the UI reflects the edit.
+        $bust = '?v=' . time();
+        $this->timelapses[$timelapseIndex]['existingFrames'] = collect($this->timelapses[$timelapseIndex]['existingFrames'])
+            ->map(function ($f) use ($frameId, $frame, $bust) {
+                if ($f['id'] === $frameId) {
+                    $f['url'] = $frame->url . $bust;
+                }
+                return $f;
+            })
+            ->toArray();
+
+        $this->dispatch('frame-updated', frameId: $frameId);
+    }
+
     public function updatedUploads(): void
     {
         // Validate each new file so oversize/invalid images show an error immediately.

@@ -6,9 +6,27 @@
 
 @php
 $city = $area?->city;
-$areaServed = $city 
-    ? ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL', 'addressCountry' => 'US']
-    : ['@type' => 'State', 'name' => 'Illinois', 'addressCountry' => 'US'];
+
+if ($area && $area->latitude && $area->longitude) {
+    // GeoCircle is the strongest "we serve here" signal Google understands.
+    // Includes a 5-mile radius around the city centroid plus the city/region/country.
+    $areaServed = [
+        '@type' => 'GeoCircle',
+        'name'  => "{$city}, IL service area",
+        'geoMidpoint' => [
+            '@type' => 'GeoCoordinates',
+            'latitude'  => (float) $area->latitude,
+            'longitude' => (float) $area->longitude,
+            'addressCountry' => 'US',
+        ],
+        'geoRadius' => '8047', // ~5 miles in meters
+        'description' => "Service coverage centered on {$city}, Illinois.",
+    ];
+} else {
+    $areaServed = $city
+        ? ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL', 'addressCountry' => 'US']
+        : ['@type' => 'State', 'name' => 'Illinois', 'addressCountry' => 'US'];
+}
 
 $serviceTypes = [
     'kitchen-remodeling' => [
@@ -70,11 +88,19 @@ $schema = [
     'url' => $serviceUrl,
 ];
 
-// Note: aggregateRating is NOT valid on Service type for Google rich results.
-// Valid parent types are: Book, Course, Event, Game, HowTo, LocalBusiness, Movie,
-// Organization, Product, Recipe, SoftwareApplication, etc.
-// The LocalBusiness schema in schema-org.blade.php already includes aggregateRating
-// and reviews, which is the correct place for them.
+// City-anchored Offer with free-estimate price signal — strengthens local intent matching.
+if ($city) {
+    $schema['offers'] = [
+        '@type' => 'Offer',
+        'name'  => "Free in-home {$serviceData['name']} estimate in {$city}, IL",
+        'price' => '0',
+        'priceCurrency' => 'USD',
+        'availability'  => 'https://schema.org/InStock',
+        'areaServed'    => $areaServed,
+        'url'           => $serviceUrl,
+        'seller'        => ['@id' => 'https://gs.construction/#business'],
+    ];
+}
 @endphp
 
 <script type="application/ld+json">

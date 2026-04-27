@@ -24,6 +24,7 @@ class MainProjectHeroSlider extends Component
     public ?string $heightClasses = null;
     public int $autoplayInterval = 5000; // Autoplay interval in ms
     public bool $imagesOnly = false;
+    public array $customSlides = [];
 
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
@@ -147,6 +148,23 @@ class MainProjectHeroSlider extends Component
 
     public function render()
     {
+        // Explicitly provided slides (used by individual project pages).
+        if (!empty($this->customSlides)) {
+            return view('livewire.main-project-hero-slider', [
+                'renderedSlides' => $this->customSlides,
+                'area' => $this->area,
+                'mode' => 'images-only',
+                'heading' => null,
+                'subheading' => null,
+                'label' => null,
+                'primaryCtaText' => null,
+                'primaryCtaUrl' => null,
+                'secondaryCtaText' => null,
+                'secondaryCtaUrl' => null,
+                'projectType' => null,
+            ]);
+        }
+
         // When filtering to a specific project type (service pages)
         if ($this->projectType && $this->projectType !== 'mixed') {
             $images = $this->getFilteredSlideImages($this->projectType, $this->slideCount);

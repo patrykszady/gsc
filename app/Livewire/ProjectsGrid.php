@@ -20,22 +20,31 @@ class ProjectsGrid extends Component
 
     public int $perPage = 6;
 
+    public int $desktopPerPage = 6;
+
+    public ?int $mobilePerPage = null;
+
     public bool $hideFilters = false;
 
     public bool $showPagination = true;
 
+    public bool $responsivePerPage = false;
+
     public ?int $randomTimelapseId = null;
 
-    public function mount(?string $projectType = null, ?int $limit = null, bool $hideFilters = false, bool $showPagination = true): void
+    public function mount(?string $projectType = null, ?int $limit = null, bool $hideFilters = false, bool $showPagination = true, ?int $mobilePerPage = null): void
     {
         if ($projectType) {
             $this->type = $projectType;
         }
         if ($limit) {
             $this->perPage = $limit;
+            $this->desktopPerPage = $limit;
         }
         $this->hideFilters = $hideFilters;
         $this->showPagination = $showPagination;
+        $this->mobilePerPage = $mobilePerPage;
+        $this->responsivePerPage = ! $hideFilters && ! $limit && $mobilePerPage !== null;
 
         if (! $this->hideFilters) {
             $this->randomTimelapseId = ProjectTimelapse::query()

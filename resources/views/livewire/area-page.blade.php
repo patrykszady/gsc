@@ -116,6 +116,8 @@
                 :secondary-cta-url="$area->pageUrl('contact')"
             />
 
+            <x-city-reviews-badge :area="$area" />
+
             <livewire:about-section :area="$area" />
 
             <livewire:timelapse-section />
@@ -190,6 +192,8 @@
                     Read what {{ $area->city }} homeowners say about working with GS Construction.
                 </p>
             </div>
+
+            <x-city-reviews-badge :area="$area" />
 
             <livewire:testimonials-grid :area="$area" :show-header="false" />
 
@@ -472,11 +476,15 @@
                 ];
                 $config = $serviceConfig[$serviceKey];
                 
-                // Get nearby areas for internal linking (exclude current area)
-                $nearbyAreas = \App\Models\AreaServed::where('id', '!=', $area->id)
-                    ->inRandomOrder()
-                    ->take(6)
-                    ->get();
+                // Get geographically nearest areas for internal linking (Haversine, cached 24h).
+                // Falls back to random if coordinates aren't set yet.
+                $nearbyAreas = $area->nearestCities(8);
+                if ($nearbyAreas->isEmpty()) {
+                    $nearbyAreas = \App\Models\AreaServed::where('id', '!=', $area->id)
+                        ->inRandomOrder()
+                        ->take(6)
+                        ->get();
+                }
             @endphp
             
             {{-- Service Schema for rich results --}}
@@ -570,13 +578,23 @@
             @if($nearbyAreas->count() > 0)
             <section class="bg-white py-12 dark:bg-zinc-900">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
                         {{ $config['label'] }} in Nearby Areas
                     </h2>
+                    <p class="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+                        We also serve these communities near {{ $area->city }}, IL. Click for {{ strtolower($config['label']) }} info specific to each city.
+                    </p>
                     <div class="flex flex-wrap gap-3">
                         @foreach($nearbyAreas as $nearbyArea)
-                        <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate class="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
-                            {{ $nearbyArea->city }} {{ $config['label'] }}
+                        <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate
+                           class="inline-flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                           title="{{ $config['label'] }} services in {{ $nearbyArea->city }}, IL">
+                            <span>{{ $nearbyArea->city }} {{ $config['label'] }}</span>
+                            @if(isset($nearbyArea->distance_miles))
+                                <span class="rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-900/70 dark:text-zinc-400">
+                                    {{ number_format($nearbyArea->distance_miles, 1) }} mi
+                                </span>
+                            @endif
                         </a>
                         @endforeach
                     </div>

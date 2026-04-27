@@ -12,12 +12,19 @@
 
     {{-- Additional SEO --}}
     <meta name="application-name" content="GS Construction">
+    <meta name="apple-mobile-web-app-title" content="GS Construction">
     <meta name="author" content="GS Construction">
+    <meta name="publisher" content="GS Construction">
+    <meta name="copyright" content="GS Construction">
     <meta name="geo.region" content="US-IL">
     <meta name="geo.placename" content="Chicago">
+    <meta name="geo.position" content="42.0884;-87.9806">
+    <meta name="ICBM" content="42.0884, -87.9806">
 
     {{-- AEO / GEO: AI & Answer Engine Optimization --}}
     <link rel="alternate" type="text/plain" href="{{ url('/llms.txt') }}" title="LLM Context">
+    <link rel="alternate" type="text/plain" href="{{ url('/llms-full.txt') }}" title="LLM Context (Full)">
+    <link rel="alternate" type="application/json" href="{{ url('/ai-feed.json') }}" title="AI Feed">
     <meta name="ai-content-description" content="GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, 53+ five-star reviews. Serving 89+ cities in Chicagoland. (224) 735-4200.">
 
     {{-- Hreflang for bilingual support --}}
@@ -42,7 +49,6 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="manifest" href="{{ asset('site.webmanifest') }}">
-    <meta name="application-name" content="GS Construction">
     <meta name="theme-color" content="#1a1a1a">
 
     {{-- Preconnect to third-party origins for faster loading --}}

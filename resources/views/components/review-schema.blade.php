@@ -11,11 +11,13 @@ $items = $testimonial ? collect([$testimonial]) : $testimonials;
 $reviews = [];
 
 foreach ($items as $item) {
+    $rating = $item->star_rating ?: 5;
+
     $review = [
         '@type' => 'Review',
         'reviewRating' => [
             '@type' => 'Rating',
-            'ratingValue' => '5',
+            'ratingValue' => (string) $rating,
             'bestRating' => '5',
             'worstRating' => '1',
         ],
@@ -25,7 +27,26 @@ foreach ($items as $item) {
         ],
         'reviewBody' => $item->review_description,
         'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),
+        'itemReviewed' => ['@id' => 'https://gs.construction/#business'],
     ];
+
+    // Cite the originating platform when available so AI engines can verify the source.
+    if ($item->relationLoaded('reviewUrls') && $item->reviewUrls->isNotEmpty()) {
+        $first = $item->reviewUrls->first();
+        $platformLabel = match (strtolower($first->platform)) {
+            'google' => 'Google Reviews',
+            'houzz'  => 'Houzz',
+            'yelp'   => 'Yelp',
+            'angi'   => 'Angi',
+            'facebook' => 'Facebook',
+            default  => ucfirst($first->platform),
+        };
+        $review['url'] = $first->url;
+        $review['publisher'] = [
+            '@type' => 'Organization',
+            'name'  => $platformLabel,
+        ];
+    }
     
     // Add location if available
     if ($item->project_location) {

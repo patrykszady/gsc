@@ -44,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             CacheStaticAssets::class,
             CaptureUtmParameters::class,
             SecurityHeaders::class,
+            \Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

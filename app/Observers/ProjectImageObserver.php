@@ -216,7 +216,7 @@ class ProjectImageObserver
                 route('projects.index'),
             ];
 
-            $this->indexNow->submitBatch($urls);
+            \App\Jobs\SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
             Log::warning('IndexNow: Failed to submit project image URL', [
                 'image_id' => $image->id,

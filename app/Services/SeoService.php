@@ -76,8 +76,10 @@ class SeoService
             $reviewCount = self::getReviewCountLabel();
             $description = "Top-rated kitchen & bathroom remodeling contractors in {$city}, IL. {$reviewCount} five-star reviews, 40+ years experience. Call (224) 735-4200 for a free estimate!";
         } else {
-            $title = 'Kitchen & Bathroom Remodeling Contractors';
-            $description = 'Expert kitchen remodeling & bathroom renovations in Chicagoland. Family-owned contractors with 40+ years experience. Arlington Heights, Palatine & more.';
+            // Lead with brand on the homepage so Google adopts "GS Construction"
+            // as the site name (https://developers.google.com/search/docs/appearance/site-names)
+            $title = 'GS Construction — Kitchen & Bathroom Remodeling, Chicagoland';
+            $description = 'GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs. 40+ years experience, 5-star rated, free estimates.';
         }
 
         // Use a hero project image for home page OG sharing

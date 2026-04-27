@@ -44,7 +44,7 @@ class AreaServedObserver
                 $urls[] = route('areas.page', ['area' => $area, 'page' => $page]);
             }
 
-            $this->indexNow->submitBatch($urls);
+            \App\Jobs\SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
             Log::warning('IndexNow: Failed to submit area URL', [
                 'area_id' => $area->id,

@@ -150,6 +150,12 @@ return [
         'api_key' => env('TWOCAPTCHA_API_KEY'),
     ],
 
+    'serpapi' => [
+        'api_key' => env('SERPAPI_API_KEY', env('SERPAPI_KEY')),
+        'yelp_place_id' => env('SERPAPI_YELP_PLACE_ID'),
+        'google_data_id' => env('SERPAPI_GOOGLE_DATA_ID'),
+    ],
+
     'scraper' => [
         'proxy' => env('SCRAPER_PROXY_URL'),
     ],

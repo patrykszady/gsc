@@ -165,10 +165,26 @@ $localBusiness = [
 $organization = [
     '@context' => 'https://schema.org',
     '@type' => 'Organization',
+    '@id' => 'https://gs.construction/#organization',
     'name' => 'GS Construction',
     'alternateName' => 'GS Construction & Remodeling',
     'url' => 'https://gs.construction',
-    'logo' => asset('images/logo.svg'),
+    'logo' => [
+        '@type' => 'ImageObject',
+        '@id' => 'https://gs.construction/#logo',
+        'url' => asset('images/logo.svg'),
+        'contentUrl' => asset('images/logo.svg'),
+        'caption' => 'GS Construction',
+    ],
+    'image' => ['@id' => 'https://gs.construction/#logo'],
+    'sameAs' => array_filter([
+        config('socials.facebook.url'),
+        config('socials.instagram.url'),
+        config('socials.google.url'),
+        config('socials.houzz.url'),
+        config('socials.yelp.url'),
+        config('socials.angi.url'),
+    ]),
     'contactPoint' => [
         '@type' => 'ContactPoint',
         'telephone' => '+1-224-735-4200',
@@ -196,12 +212,18 @@ $organization = [
 $website = [
     '@context' => 'https://schema.org',
     '@type' => 'WebSite',
+    '@id' => 'https://gs.construction/#website',
     'name' => 'GS Construction',
-    'alternateName' => 'GS Construction & Remodeling',
-    'url' => 'https://gs.construction',
+    'alternateName' => ['GS Construction', 'GS Construction & Remodeling', 'GS Construction LLC'],
+    'url' => 'https://gs.construction/',
+    'publisher' => ['@id' => 'https://gs.construction/#organization'],
+    'inLanguage' => 'en-US',
     'potentialAction' => [
         '@type' => 'SearchAction',
-        'target' => 'https://gs.construction/projects?search={search_term_string}',
+        'target' => [
+            '@type' => 'EntryPoint',
+            'urlTemplate' => 'https://gs.construction/projects?search={search_term_string}',
+        ],
         'query-input' => 'required name=search_term_string',
     ],
 ];
@@ -212,10 +234,13 @@ $speakable = [
     '@type' => 'WebPage',
     'speakable' => [
         '@type' => 'SpeakableSpecification',
-        'cssSelector' => ['h1', 'h2', '.speakable', '[role="main"] p:first-of-type'],
+        'cssSelector' => ['h1', 'h2', '.speakable', '[data-speakable]', '[role="main"] p:first-of-type'],
+        'xpath' => ['/html/head/title'],
     ],
     'name' => 'GS Construction',
     'url' => url()->current(),
+    'isPartOf' => ['@id' => 'https://gs.construction/#website'],
+    'about' => ['@id' => 'https://gs.construction/#business'],
 ];
 @endphp
 
@@ -229,10 +254,13 @@ $speakable = [
 {!! json_encode($organization, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
 
-{{-- WebSite Schema --}}
+{{-- WebSite Schema (homepage-only, per Google site-names guidance:
+     https://developers.google.com/search/docs/appearance/site-names) --}}
+@if(request()->path() === '/')
 <script type="application/ld+json">
 {!! json_encode($website, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
 </script>
+@endif
 
 {{-- Speakable Schema (AEO) --}}
 <script type="application/ld+json">

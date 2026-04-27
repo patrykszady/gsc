@@ -16,6 +16,10 @@ Artisan::command('inspire', function () {
 // Schedule sitemap regeneration daily
 Schedule::command('sitemap:generate')->daily();
 
+// Weekly health check of social/sameAs URLs
+Schedule::command('socials:check --quiet-on-success')->weekly()
+    ->appendOutputTo(storage_path('logs/socials-check.log'));
+
 // Google Business Profile: health check + daily media sync
 Schedule::command('google-business-profile:health')->daily()
     ->appendOutputTo(storage_path('logs/schedule.log'));
@@ -60,10 +64,17 @@ Schedule::command('testimonials:sync-houzz-reviews --browser-scrape --only-new')
     ->onFailure(fn () => logger()->error('Scheduled Houzz review sync failed'));
 
 // Yelp: check for new reviews weekly (create-only; skip existing)
-Schedule::command('testimonials:sync-yelp-reviews --browser-scrape --only-new')->weeklyOn(1, '07:00')
+Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'));
+
+// Google: probe daily via free Places API; only call SerpApi when review count changes.
+Schedule::command('testimonials:sync-google-reviews-serpapi --only-new')
+    ->dailyAt('07:15')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled Google (SerpApi) review sync failed'));
 
 // Instagram: 2 posts per day — morning + late afternoon (Central Time)
 // Random delay spreads posts naturally within each window

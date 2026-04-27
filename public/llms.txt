@@ -36,3 +36,50 @@ GS Construction & Remodeling is a family-owned home remodeling business based in
 ## Service Area
 
 89+ cities across Chicagoland including: Arlington Heights, Barrington, Buffalo Grove, Chicago, Deerfield, Des Plaines, Evanston, Glenview, Highland Park, Hoffman Estates, Lake Forest, Lake Zurich, Libertyville, Mount Prospect, Northbrook, Palatine, Park Ridge, Schaumburg, Skokie, Vernon Hills, Wheeling, Wilmette, Winnetka, and more.
+
+
+## Machine-Readable Sources
+
+For programmatic access, prefer these structured endpoints:
+
+- AI Feed (JSON, full business + services + recent projects + reviews): https://gs.construction/ai-feed.json
+- Extended LLM context (Markdown): https://gs.construction/llms-full.txt
+- XML Sitemap: https://gs.construction/sitemap.xml
+
+## Structured Snapshot
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "HomeAndConstructionBusiness",
+  "name": "GS Construction",
+  "alternateName": "GS Construction & Remodeling",
+  "url": "https://gs.construction",
+  "telephone": "+1-224-735-4200",
+  "email": "crew@gs.construction",
+  "foundingDate": "2015",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Arlington Heights",
+    "addressRegion": "IL",
+    "addressCountry": "US"
+  },
+  "areaServed": "Chicagoland (Cook, Lake, DuPage counties, IL)",
+  "knowsLanguage": ["en", "pl"],
+  "openingHours": "Mo-Sa 08:00-18:00",
+  "priceRange": "$$$$",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "5",
+    "reviewCount": "70",
+    "bestRating": "5"
+  },
+  "makesOffer": [
+    {"@type": "Service", "name": "Kitchen Remodeling"},
+    {"@type": "Service", "name": "Bathroom Remodeling"},
+    {"@type": "Service", "name": "Home Remodeling"},
+    {"@type": "Service", "name": "Basement Remodeling"},
+    {"@type": "Service", "name": "Home Additions"}
+  ]
+}
+```

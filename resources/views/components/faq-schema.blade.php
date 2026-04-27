@@ -19,6 +19,13 @@ foreach ($faqs as $faq) {
 $schema = [
     '@context' => 'https://schema.org',
     '@type' => 'FAQPage',
+    'inLanguage' => 'en-US',
+    'isPartOf' => ['@id' => 'https://gs.construction/#website'],
+    'about' => ['@id' => 'https://gs.construction/#business'],
+    'speakable' => [
+        '@type' => 'SpeakableSpecification',
+        'cssSelector' => ['dt', 'dd'],
+    ],
     'mainEntity' => $faqItems,
 ];
 @endphp

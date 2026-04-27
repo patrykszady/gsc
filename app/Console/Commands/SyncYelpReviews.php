@@ -5,50 +5,50 @@ namespace App\Console\Commands;
 use App\Models\Testimonial;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class SyncYelpReviews extends Command
 {
     protected $signature = 'testimonials:sync-yelp-reviews
         {--url= : Yelp business page URL (defaults to config)}
-        {--browser-scrape : Use Puppeteer to scrape reviews (required)}
-        {--browser-headed : Run Puppeteer in headed mode}
-        {--browser-timeout-ms=120000 : Timeout for browser scraping in milliseconds}
-        {--max-pages=10 : Maximum number of review pages to scrape}
-        {--proxy= : Residential proxy URL (e.g. http://user:pass@host:port)}
+        {--place-id= : Yelp place_id for SerpApi Yelp Reviews API}
+        {--max-pages=10 : Maximum number of SerpApi pages to fetch}
+        {--per-page=49 : Reviews per page (max 49)}
         {--only-new : Only create new reviews; skip updating already matched reviews}
         {--dry-run : Show what would change without writing to DB}';
 
-    protected $description = 'Scrape Yelp reviews via Puppeteer + 2captcha DataDome solver, match existing testimonials, and create/update records.';
-
-    private string $proxy = '';
+    protected $description = 'Sync Yelp reviews via SerpApi Yelp Reviews API, match existing testimonials, and create/update records.';
 
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $browserScrape = (bool) $this->option('browser-scrape');
-        $browserHeaded = (bool) $this->option('browser-headed');
-        $browserTimeoutMs = max(10000, (int) $this->option('browser-timeout-ms'));
         $maxPages = max(1, (int) $this->option('max-pages'));
-        $this->proxy = (string) ($this->option('proxy') ?: '');
+        $perPage = max(1, min(49, (int) $this->option('per-page')));
         $onlyNew = (bool) $this->option('only-new');
         $pageUrl = (string) ($this->option('url') ?: config('socials.yelp.url', 'https://www.yelp.com/biz/gs-construction-chicago-2'));
+        $apiKey = (string) config('services.serpapi.api_key', '');
 
-        if (! $browserScrape) {
-            $this->error('Yelp requires --browser-scrape (DataDome protection).');
-
-            return self::FAILURE;
-        }
-
-        $twocaptchaKey = (string) config('services.twocaptcha.api_key', '');
-        if ($twocaptchaKey === '') {
-            $this->error('TWOCAPTCHA_API_KEY is not set. Required for DataDome solving.');
+        if ($apiKey === '') {
+            $this->error('SERPAPI_API_KEY (or SERPAPI_KEY) is not set.');
 
             return self::FAILURE;
         }
 
-        $this->info('Scraping Yelp reviews with Puppeteer + DataDome solver...');
-        $reviews = $this->scrapeWithBrowser($pageUrl, $browserTimeoutMs, $maxPages, $browserHeaded);
-        $this->info('Scraped '.count($reviews).' review(s).');
+        $placeId = trim((string) ($this->option('place-id') ?: config('services.serpapi.yelp_place_id', '')));
+        if ($placeId === '') {
+            $this->line('Resolving Yelp place_id from business URL...');
+            $placeId = $this->resolvePlaceIdFromBusinessUrl($pageUrl, $apiKey) ?? '';
+        }
+
+        if ($placeId === '') {
+            $this->error('Could not resolve Yelp place_id. Provide --place-id or set SERPAPI_YELP_PLACE_ID.');
+
+            return self::FAILURE;
+        }
+
+        $this->info('Fetching Yelp reviews from SerpApi...');
+        $reviews = $this->fetchWithSerpApi($placeId, $apiKey, $maxPages, $perPage, $pageUrl);
+        $this->info('Fetched '.count($reviews).' review(s).');
 
         if (empty($reviews)) {
             $this->warn('No Yelp reviews were discovered.');
@@ -117,12 +117,15 @@ class SyncYelpReviews extends Command
                 continue;
             }
 
-            // Match by name + date
+            // Match by name + date (exact, then fuzzy by initials)
             $matchedByNameDate = $existing->first(function (Testimonial $t) use ($payload) {
-                $sameName = mb_strtolower(trim($t->reviewer_name)) === mb_strtolower(trim($payload['reviewer_name']));
                 $sameDate = ($t->review_date?->toDateString() ?? null) === ($payload['review_date']?->toDateString() ?? null);
+                if (! $sameDate || ! $payload['review_date']) {
+                    return false;
+                }
+                $sameName = mb_strtolower(trim($t->reviewer_name)) === mb_strtolower(trim($payload['reviewer_name']));
 
-                return $sameName && $sameDate;
+                return $sameName || $this->nameInitialsMatch($t->reviewer_name, $payload['reviewer_name']);
             });
 
             if ($matchedByNameDate) {
@@ -179,104 +182,164 @@ class SyncYelpReviews extends Command
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function scrapeWithBrowser(string $pageUrl, int $timeoutMs, int $maxPages, bool $headed = false): array
+    private function fetchWithSerpApi(string $placeId, string $apiKey, int $maxPages, int $perPage, string $businessUrl): array
     {
-        $scriptPath = base_path('scripts/scrape-yelp-reviews.mjs');
-        if (! is_file($scriptPath)) {
-            $this->warn('Browser scraper script missing: '.$scriptPath);
+        $all = [];
+        $seenKeys = [];
 
-            return [];
-        }
+        for ($page = 0; $page < $maxPages; $page++) {
+            $start = $page * $perPage;
 
-        $twocaptchaKey = (string) config('services.twocaptcha.api_key', '');
+            $response = Http::timeout(30)
+                ->acceptJson()
+                ->get('https://serpapi.com/search.json', [
+                    'engine' => 'yelp_reviews',
+                    'place_id' => $placeId,
+                    'start' => $start,
+                    'num' => $perPage,
+                    'api_key' => $apiKey,
+                    'sortby' => 'date_desc',
+                ]);
 
-        $cmd = sprintf(
-            'node %s --url=%s --timeout-ms=%d --max-pages=%d --twocaptcha-key=%s %s %s',
-            escapeshellarg($scriptPath),
-            escapeshellarg($pageUrl),
-            $timeoutMs,
-            $maxPages,
-            escapeshellarg($twocaptchaKey),
-            $headed ? '--headed' : '',
-            $this->proxy !== '' ? '--proxy='.escapeshellarg($this->proxy) : '',
-        );
-
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = proc_open($cmd, $descriptors, $pipes);
-        if (! is_resource($process)) {
-            $this->warn('Failed to start Puppeteer scraper process.');
-
-            return [];
-        }
-
-        fclose($pipes[0]);
-
-        // Read stdout and stderr concurrently to prevent pipe buffer deadlock.
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
-        $output = '';
-        $stderr = '';
-        $open = [$pipes[1], $pipes[2]];
-
-        while ($open) {
-            $read = $open;
-            $write = null;
-            $except = null;
-
-            if (stream_select($read, $write, $except, 1) === false) {
+            if (! $response->successful()) {
+                $this->warn('SerpApi request failed (HTTP '.$response->status().') on page '.($page + 1).'.');
                 break;
             }
 
-            foreach ($read as $pipe) {
-                $chunk = fread($pipe, 65536);
-                if ($chunk === false || $chunk === '') {
-                    if (feof($pipe)) {
-                        $key = array_search($pipe, $open, true);
-                        if ($key !== false) {
-                            unset($open[$key]);
-                        }
-                    }
+            $json = $response->json();
+            if (! is_array($json)) {
+                $this->warn('Unexpected SerpApi response payload on page '.($page + 1).'.');
+                break;
+            }
 
+            if (! empty($json['error']) && is_string($json['error'])) {
+                $this->warn('SerpApi error: '.$json['error']);
+                break;
+            }
+
+            $reviews = $json['reviews'] ?? [];
+            if (! is_array($reviews) || empty($reviews)) {
+                break;
+            }
+
+            foreach ($reviews as $review) {
+                if (! is_array($review)) {
                     continue;
                 }
-                if ($pipe === $pipes[1]) {
-                    $output .= $chunk;
-                } else {
-                    $stderr .= $chunk;
+
+                $name = trim((string) data_get($review, 'user.name', ''));
+                $description = trim((string) data_get($review, 'comment.text', ''));
+                $dateRaw = trim((string) data_get($review, 'date', ''));
+                $rating = data_get($review, 'rating');
+                $rating = is_numeric($rating) ? (int) $rating : null;
+                $reviewUrl = $this->extractReviewUrl($review, $businessUrl);
+
+                if ($name === '' || $description === '') {
+                    continue;
                 }
+
+                $fingerprint = mb_strtolower($name).'|'.$dateRaw.'|'.$this->normalizeForComparison($description, 200);
+                if (isset($seenKeys[$fingerprint])) {
+                    continue;
+                }
+                $seenKeys[$fingerprint] = true;
+
+                $all[] = [
+                    'reviewer_name' => $name,
+                    'review_description' => $description,
+                    'review_date_raw' => $dateRaw,
+                    'star_rating' => $rating,
+                    'url' => $reviewUrl,
+                ];
+            }
+
+            if (count($reviews) < $perPage) {
+                break;
             }
         }
 
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
+        return $all;
+    }
 
-        if ($stderr !== '' && $stderr !== false) {
-            foreach (explode("\n", trim($stderr)) as $line) {
-                $this->line('  <comment>[scraper]</comment> '.$line);
+    private function extractReviewUrl(array $review, string $businessUrl): ?string
+    {
+        $candidate = data_get($review, 'link');
+        if (is_string($candidate) && str_contains($candidate, 'yelp.com')) {
+            return $candidate;
+        }
+
+        $reviewId = data_get($review, 'review_id');
+        if (is_string($reviewId) && $reviewId !== '') {
+            return rtrim($businessUrl, '/').'?hrid='.urlencode($reviewId);
+        }
+
+        return null;
+    }
+
+    private function resolvePlaceIdFromBusinessUrl(string $businessUrl, string $apiKey): ?string
+    {
+        $path = (string) parse_url($businessUrl, PHP_URL_PATH);
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+        $slug = $segments[1] ?? null;
+
+        if (! $slug) {
+            return null;
+        }
+
+        $query = preg_replace('/-\d+$/', '', $slug) ?? $slug;
+        $query = str_replace('-', ' ', $query);
+
+        $response = Http::timeout(30)
+            ->acceptJson()
+            ->get('https://serpapi.com/search.json', [
+                'engine' => 'yelp_search',
+                'find_desc' => $query,
+                'api_key' => $apiKey,
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            return null;
+        }
+
+        $results = $json['organic_results'] ?? [];
+        if (! is_array($results)) {
+            return null;
+        }
+
+        $targetPath = '/'.trim((string) parse_url($businessUrl, PHP_URL_PATH), '/');
+
+        foreach ($results as $result) {
+            if (! is_array($result)) {
+                continue;
+            }
+
+            $resultLink = data_get($result, 'link');
+            if (! is_string($resultLink) || $resultLink === '') {
+                continue;
+            }
+
+            $resultPath = '/'.trim((string) parse_url($resultLink, PHP_URL_PATH), '/');
+            if ($resultPath !== $targetPath) {
+                continue;
+            }
+
+            $placeIds = data_get($result, 'place_ids', []);
+            if (is_array($placeIds) && ! empty($placeIds) && is_string($placeIds[0])) {
+                return $placeIds[0];
+            }
+
+            $singlePlaceId = data_get($result, 'place_id');
+            if (is_string($singlePlaceId) && $singlePlaceId !== '') {
+                return $singlePlaceId;
             }
         }
 
-        if (! is_string($output) || trim($output) === '') {
-            $this->warn('Puppeteer scraper returned no output.');
-
-            return [];
-        }
-
-        $decoded = json_decode($output, true);
-        if (! is_array($decoded) || ! isset($decoded['reviews']) || ! is_array($decoded['reviews'])) {
-            $this->warn('Failed to parse Puppeteer scraper JSON output.');
-
-            return [];
-        }
-
-        return $decoded['reviews'];
+        return null;
     }
 
     /**
@@ -332,21 +395,20 @@ class SyncYelpReviews extends Command
 
         $update = [];
 
-        if (! $testimonial->review_date && $payload['review_date']) {
+        if ($payload['review_date'] && (! $testimonial->review_date || ! $testimonial->review_date->isSameDay($payload['review_date']))) {
             $update['review_date'] = $payload['review_date'];
         }
 
-        if (! $testimonial->star_rating && $payload['star_rating']) {
+        if ($payload['star_rating'] && $testimonial->star_rating !== $payload['star_rating']) {
             $update['star_rating'] = $payload['star_rating'];
         }
 
         $existingDescription = (string) $testimonial->review_description;
         $incomingDescription = (string) $payload['review_description'];
 
-        if ($this->normalizeForComparison($existingDescription) !== $this->normalizeForComparison($incomingDescription)) {
-            if (mb_strlen($incomingDescription) > mb_strlen($existingDescription) + 25) {
-                $update['review_description'] = $incomingDescription;
-            }
+        // SerpApi is the source of truth for review content.
+        if (trim($incomingDescription) !== '' && trim($existingDescription) !== trim($incomingDescription)) {
+            $update['review_description'] = $incomingDescription;
         }
 
         if (! empty($update)) {
@@ -394,6 +456,38 @@ class SyncYelpReviews extends Command
         }
 
         return $a === $b;
+    }
+
+    /**
+     * Match names like "Bea B." to "Barbara Brunka" by comparing first-letter initials
+     * of the first and last tokens. Date equality is enforced by the caller.
+     */
+    private function nameInitialsMatch(string $a, string $b): bool
+    {
+        $tokens = function (string $s): array {
+            $s = preg_replace('/[^a-zA-Z\s]/', ' ', $s) ?? $s;
+            $parts = preg_split('/\s+/', trim(mb_strtolower($s))) ?: [];
+
+            return array_values(array_filter($parts, fn ($p) => $p !== ''));
+        };
+
+        $aTokens = $tokens($a);
+        $bTokens = $tokens($b);
+
+        if (count($aTokens) < 2 || count($bTokens) < 2) {
+            return false;
+        }
+
+        $aFirst = $aTokens[0][0] ?? '';
+        $aLast = $aTokens[count($aTokens) - 1][0] ?? '';
+        $bFirst = $bTokens[0][0] ?? '';
+        $bLast = $bTokens[count($bTokens) - 1][0] ?? '';
+
+        if ($aFirst === '' || $aLast === '' || $bFirst === '' || $bLast === '') {
+            return false;
+        }
+
+        return $aFirst === $bFirst && $aLast === $bLast;
     }
 
     private function payloadKey(string $name, string $description, ?Carbon $date): string

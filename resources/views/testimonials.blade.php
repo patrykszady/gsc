@@ -26,6 +26,9 @@
 
     <livewire:testimonials-grid />
 
+    {{-- Rich citation block: ItemList of recent reviews + per-platform sources --}}
+    <x-review-citations />
+
     {{-- FAQ Section --}}
     @php
         $faqs = [

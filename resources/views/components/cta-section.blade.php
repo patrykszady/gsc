@@ -12,7 +12,7 @@
 @php
     $isBlue = $variant === 'blue';
     $containerClasses = $isBlue 
-        ? 'bg-sky-600 py-16 sm:py-24' 
+        ? 'bg-sky-600 py-10 sm:py-12' 
         : 'relative isolate px-6 py-12 mt-8 sm:mt-12 lg:px-8';
     $headingClasses = $isBlue
         ? 'font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl'

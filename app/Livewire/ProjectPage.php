@@ -41,13 +41,30 @@ class ProjectPage extends Component
 
     protected function getRelatedProjects()
     {
-        return Project::query()
+        $sameType = Project::query()
             ->published()
             ->where('id', '!=', $this->project->id)
             ->where('project_type', $this->project->project_type)
             ->with('images')
             ->take(3)
             ->get();
+
+        if ($sameType->count() >= 3) {
+            return $sameType;
+        }
+
+        // Backfill with other recent projects so we always show 3
+        $excludeIds = $sameType->pluck('id')->push($this->project->id)->all();
+
+        $backfill = Project::query()
+            ->published()
+            ->whereNotIn('id', $excludeIds)
+            ->with('images')
+            ->latest()
+            ->take(3 - $sameType->count())
+            ->get();
+
+        return $sameType->concat($backfill);
     }
 
     protected function getLocationArea(): ?AreaServed

@@ -1,5 +1,9 @@
 <div 
     class="relative isolate bg-white py-10 sm:py-16 dark:bg-zinc-900"
+    @if($responsivePerPage)
+        x-data="{ isMobile: window.innerWidth < 640, resizeTimer: null, syncPerPage() { const nextPerPage = this.isMobile ? {{ $mobilePerPage }} : {{ $desktopPerPage }}; if ($wire.perPage !== nextPerPage) { $wire.setPerPage(nextPerPage); } } }"
+        x-init="syncPerPage(); window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { const nextIsMobile = window.innerWidth < 640; if (nextIsMobile !== isMobile) { isMobile = nextIsMobile; syncPerPage(); } }, 120); })"
+    @endif
 >
     {{-- Gradient blur background --}}
     <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-30 blur-3xl">
@@ -91,7 +95,7 @@
         {{-- Projects Grid --}}
         <div class="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
             @forelse($projects as $project)
-            <a href="{{ route('projects.show', $project) }}" wire:navigate class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+            <a href="{{ route('projects.show', $project) }}" wire:navigate class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10{{ $responsivePerPage && $loop->index >= ($mobilePerPage ?? 999) ? ' hidden sm:flex' : '' }}">
                 {{-- Project Image --}}
                 <div class="relative aspect-[4/3] overflow-hidden">
                     @if($project->images->first())
@@ -136,25 +140,17 @@
                     </h3>
 
                     @if($project->location)
-                    <p class="mt-1 flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-                        </svg>
-                        {{ $project->location }}
-                    </p>
+                    <span class="sr-only">Project location: {{ $project->location }}</span>
                     @endif
 
-                    @if($project->description)
+                    @if($project->description && $hideFilters)
                     <p class="mt-3 line-clamp-2 flex-1 text-sm text-zinc-600 dark:text-zinc-400">
                         {{ $project->description }}
                     </p>
                     @endif
 
                     @if($project->completed_at)
-                    <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-500">
-                        Completed {{ $project->completed_at->format('F Y') }}
-                    </p>
+                    <span class="sr-only">Project completed {{ $project->completed_at->format('F Y') }}</span>
                     @endif
 
                     {{-- View Project Link --}}
@@ -170,18 +166,67 @@
             @endforelse
         </div>
 
+        {{-- Pagination --}}
+        @if($projects->hasPages() && $showPagination)
+        @php
+            $startPage = max(1, $projects->currentPage() - 2);
+            $endPage = min($projects->lastPage(), $projects->currentPage() + 2);
+        @endphp
+        <div class="mt-10 flex items-center justify-between gap-3 sm:justify-end">
+            <flux:button
+                type="button"
+                size="sm"
+                variant="ghost"
+                wire:click="previousPage"
+                :disabled="$projects->onFirstPage()"
+            >
+                &larr;
+            </flux:button>
+
+            <div class="hidden items-center gap-2 sm:flex">
+                @if ($startPage > 1)
+                    <flux:button type="button" size="sm" variant="ghost" wire:click="gotoPage(1)">1</flux:button>
+                    @if ($startPage > 2)
+                        <span class="px-2 text-sm text-zinc-400 dark:text-zinc-500">...</span>
+                    @endif
+                @endif
+
+                @foreach (range($startPage, $endPage) as $page)
+                    <flux:button
+                        type="button"
+                        size="sm"
+                        variant="{{ $page === $projects->currentPage() ? 'primary' : 'ghost' }}"
+                        wire:click="gotoPage({{ $page }})"
+                    >
+                        {{ $page }}
+                    </flux:button>
+                @endforeach
+
+                @if ($endPage < $projects->lastPage())
+                    @if ($endPage < $projects->lastPage() - 1)
+                        <span class="px-2 text-sm text-zinc-400 dark:text-zinc-500">...</span>
+                    @endif
+                    <flux:button type="button" size="sm" variant="ghost" wire:click="gotoPage({{ $projects->lastPage() }})">{{ $projects->lastPage() }}</flux:button>
+                @endif
+            </div>
+
+            <flux:button
+                type="button"
+                size="sm"
+                variant="ghost"
+                wire:click="nextPage"
+                :disabled="! $projects->hasMorePages()"
+            >
+                &rarr;
+            </flux:button>
+        </div>
+        @endif
+
         {{-- Timelapse Section (main projects page only) --}}
         @if(!$hideFilters)
             <div class="mt-10">
                 <livewire:timelapse-section :timelapse-id="$randomTimelapseId" :key="'projects-timelapse-'.($randomTimelapseId ?? 'fallback')" />
             </div>
-        @endif
-
-        {{-- Pagination --}}
-        @if($projects->hasPages() && $showPagination)
-        <div class="mt-10">
-            {{ $projects->links(data: ['scrollTo' => '#projects-grid']) }}
-        </div>
         @endif
     </div>
 </div>
