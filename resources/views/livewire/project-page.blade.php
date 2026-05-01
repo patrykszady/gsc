@@ -228,7 +228,7 @@
                             <div class="relative h-[375px] sm:h-[450px] lg:h-[525px] flex">
                                 @foreach($frames as $fIdx => $frameUrl)
                                     <div
-                                        class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-all duration-500 ease-in-out cursor-pointer"
+                                        class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-[transform,opacity] duration-500 ease-in-out cursor-pointer will-change-transform"
                                         :class="active === {{ $fIdx }} ? 'flex-[8]' : (active === null ? 'flex-1' : 'flex-[0.3]')"
                                         @mouseenter="active = {{ $fIdx }}"
                                         @mouseleave="active = null"
@@ -450,205 +450,7 @@
         @endforeach
 
         {{-- Image Gallery with Lightbox --}}
-        @php $perPage = 6; $totalPages = max(1, (int) ceil($images->count() / $perPage)); $imagePages = $images->chunk($perPage); @endphp
-        @if($images->isNotEmpty())
-            <div x-data="{
-                page: 0,
-                totalPages: {{ $totalPages }},
-                changing: false,
-                setPage(nextPage) {
-                    if (nextPage < 0 || nextPage >= this.totalPages || nextPage === this.page) return;
-                    this.changing = true;
-                    setTimeout(() => {
-                        this.page = nextPage;
-                        requestAnimationFrame(() => {
-                            this.changing = false;
-                        });
-                    }, 70);
-                },
-            }" x-cloak>
-            {{-- Gallery header with link to full photos --}}
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-                    Project Photos
-                    <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $images->count() }})</span>
-                </h2>
-                @php
-                    $firstImage = $images->first();
-                    $firstImageKey = $firstImage?->id;
-                @endphp
-                @if($firstImageKey)
-                    <a href="{{ route('projects.image', ['project' => $project, 'image' => $firstImageKey]) }}" 
-                       wire:navigate
-                       class="inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
-                        View full-size gallery
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                        </svg>
-                    </a>
-                @endif
-            </div>
-            <div x-data="{ 
-                lightbox: false, 
-                currentIndex: 0,
-                images: {{ Js::from($images->map(function ($img) use ($project) {
-                    $imageKey = $img->id;
-
-                    return [
-                        'id' => $img->id,
-                        'url' => $img->getThumbnailUrl('large'),
-                        'webpUrl' => $img->getWebpThumbnailUrl('large'),
-                        'originalUrl' => $img->url,
-                        'alt' => $img->alt_text ?: $img->seo_alt_text,
-                        'caption' => $img->caption,
-                        'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
-                    ];
-                })) }},
-                open(index) { 
-                    this.currentIndex = index; 
-                    this.lightbox = true; 
-                    document.body.style.overflow = 'hidden';
-                },
-                close() { 
-                    this.lightbox = false; 
-                    document.body.style.overflow = '';
-                },
-                next() { this.currentIndex = (this.currentIndex + 1) % this.images.length; },
-                prev() { this.currentIndex = (this.currentIndex - 1 + this.images.length) % this.images.length; },
-                get current() { return this.images[this.currentIndex]; }
-            }"
-            @keydown.escape.window="close()"
-            @keydown.arrow-right.window="if(lightbox) next()"
-            @keydown.arrow-left.window="if(lightbox) prev()">
-                
-                {{-- Gallery Grid --}}
-                <div @class([
-                    'min-h-[18rem] sm:min-h-[30rem] lg:min-h-[38rem]' => $totalPages > 1,
-                ])>
-                    @foreach($imagePages as $pageIndex => $pageImages)
-                        <div
-                            x-show="page === {{ $pageIndex }}"
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0 translate-y-1"
-                            x-transition:enter-end="opacity-100 translate-y-0"
-                            x-transition:leave="transition ease-in duration-120"
-                            x-transition:leave-start="opacity-100 translate-y-0"
-                            x-transition:leave-end="opacity-0 -translate-y-1"
-                            class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                            role="tabpanel"
-                        >
-                            @foreach($pageImages as $imageIndex => $image)
-                                @php $globalIndex = ($pageIndex * $perPage) + $imageIndex; @endphp
-                                <div
-                                    x-data="{
-                                        showCaption: false,
-                                        lastInputWasTouch: false
-                                    }"
-                                    class="relative"
-                                >
-                                    <div
-                                        @touchstart="lastInputWasTouch = true"
-                                        @mouseenter="if (!lastInputWasTouch) showCaption = true"
-                                        @mouseleave="showCaption = false; lastInputWasTouch = false"
-                                        @click="
-                                            if (lastInputWasTouch) {
-                                                if (showCaption) {
-                                                    open({{ $globalIndex }});
-                                                    showCaption = false;
-                                                } else {
-                                                    showCaption = true;
-                                                }
-                                            } else {
-                                                open({{ $globalIndex }});
-                                            }
-                                        "
-                                        @click.outside="showCaption = false; lastInputWasTouch = false"
-                                        class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer"
-                                    >
-                                        <x-lqip-image
-                                            :image="$image"
-                                            size="large"
-                                            aspectRatio="4/3"
-                                            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                        />
-
-                                        {{-- Caption overlay --}}
-                                        <div
-                                            x-show="showCaption"
-                                            x-transition:enter="transition ease-out duration-200"
-                                            x-transition:enter-start="opacity-0"
-                                            x-transition:enter-end="opacity-100"
-                                            x-transition:leave="transition ease-in duration-150"
-                                            x-transition:leave-start="opacity-100"
-                                            x-transition:leave-end="opacity-0"
-                                            class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4"
-                                        >
-                                            {{-- Caption text --}}
-                                            @if($image->caption)
-                                                <p class="text-sm text-white leading-relaxed line-clamp-3">{{ $image->caption }}</p>
-                                            @endif
-
-                                            {{-- Centered zoom icon (outline only) --}}
-                                            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <svg class="h-10 w-10 text-white drop-shadow-lg" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
-                                                </svg>
-                                            </div>
-                                        </div>
-
-                                        {{-- Featured badge --}}
-                                        @if($image->is_cover)
-                                            <span class="absolute top-3 left-3 inline-flex items-center rounded-full bg-sky-500 px-2.5 py-0.5 text-xs font-medium text-white shadow-sm z-10">
-                                                Featured
-                                            </span>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endforeach
-                </div>
-
-                {{-- Pager --}}
-                @if($totalPages > 1)
-                    <nav aria-label="Project photos pagination" class="mt-6 flex items-center justify-center gap-2">
-                        <button
-                            type="button"
-                            @click.prevent="setPage(page - 1)"
-                            :disabled="page === 0"
-                            class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                            Prev
-                        </button>
-                        <template x-for="i in totalPages" :key="i">
-                            <button
-                                type="button"
-                                @click.prevent="setPage(i - 1)"
-                                :class="page === (i - 1)
-                                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                                    : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-700 dark:hover:bg-zinc-800'"
-                                class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-lg border px-2.5 text-sm font-medium transition"
-                                x-text="i"
-                            ></button>
-                        </template>
-                        <button
-                            type="button"
-                            @click.prevent="setPage(page + 1)"
-                            :disabled="page === totalPages - 1"
-                            class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
-                            Next
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </button>
-                    </nav>
-                @endif
-
-                {{-- Lightbox Component --}}
-                <x-lightbox />
-            </div>
-            </div>
-        @endif
+        <livewire:project-photos-gallery :project="$project" :key="'project-photos-'.$project->id" />
 
         {{-- Project Timelapses (below Project Photos) --}}
         @if($visibleTimelapses->isNotEmpty())
@@ -713,7 +515,7 @@
                                 <div class="relative h-[375px] sm:h-[450px] lg:h-[525px] flex">
                                     @foreach($frames as $fIdx => $frameUrl)
                                         <div
-                                            class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-all duration-500 ease-in-out cursor-pointer"
+                                            class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-[transform,opacity] duration-500 ease-in-out cursor-pointer will-change-transform"
                                             :class="active === {{ $fIdx }} ? 'flex-[8]' : (active === null ? 'flex-1' : 'flex-[0.3]')"
                                             @mouseenter="active = {{ $fIdx }}"
                                             @mouseleave="active = null"
@@ -861,5 +663,5 @@
     </div>
 
     {{-- FAQ Section --}}
-    <x-faq-section :faqs="$faqs" :heading="$projectTypeLabel . ' FAQ'" sectionClasses="bg-white pt-1 pb-12 sm:pt-2 sm:pb-16 dark:bg-zinc-900" />
+    <x-faq-section :faqs="$faqs" :heading="$projectTypeLabel . ' FAQ'" sectionClasses="bg-white pt-1 pb-6 sm:pt-2 sm:pb-8 dark:bg-zinc-900" />
 </div>

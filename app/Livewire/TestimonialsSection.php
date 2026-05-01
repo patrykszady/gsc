@@ -21,6 +21,8 @@ class TestimonialsSection extends Component
 
     public string $maxWidthClass = 'max-w-7xl';
 
+    public string $sectionClasses = 'relative isolate overflow-hidden bg-white py-12 sm:py-16 dark:bg-zinc-900';
+
     public array $current = [];
 
     public array $shownIds = [];
@@ -75,6 +77,7 @@ class TestimonialsSection extends Component
             ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
+            ->with('projects:id')
             ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
             ->inRandomOrder()
             ->take(10)
@@ -84,6 +87,7 @@ class TestimonialsSection extends Component
         if ($initialReviews->isEmpty()) {
             $initialReviews = Testimonial::query()
                 ->visible()
+                ->with('projects:id')
                 ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
                 ->inRandomOrder()
                 ->take(10)
@@ -94,6 +98,7 @@ class TestimonialsSection extends Component
         if ($initialReviews->isEmpty()) {
             $initialReviews = Testimonial::query()
                 ->visible()
+                ->with('projects:id')
                 ->inRandomOrder()
                 ->take(10)
                 ->get();
@@ -136,6 +141,7 @@ class TestimonialsSection extends Component
             ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
+            ->with('projects:id')
             ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
             ->whereNotIn('id', $this->shownIds)
             ->inRandomOrder()
@@ -173,7 +179,7 @@ class TestimonialsSection extends Component
     {
         $projectType = $this->normalizeProjectType($testimonial->project_type);
 
-        $imageUrl = null;
+        $imageUrl = $this->linkedProjectImageUrl($testimonial);
 
         // Project-scoped: prefer an image from the linked project itself.
         if ($this->projectId) {
@@ -205,6 +211,8 @@ class TestimonialsSection extends Component
                 return $image?->getThumbnailUrl('medium');
             });
         }
+
+        $imageUrl ??= $this->fallbackProjectImageUrl();
 
         // Extract city name (strip ", IL" or similar state suffix)
         $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $testimonial->project_location);
@@ -240,6 +248,42 @@ class TestimonialsSection extends Component
             'exteriors', 'exterior' => 'exterior',
             default => null,
         };
+    }
+
+    protected function fallbackProjectImageUrl(): string
+    {
+        return Cache::remember('testimonials.fallback-project-image.medium.v1', now()->addMinutes(30), function () {
+            $image = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published())
+                ->inRandomOrder()
+                ->first();
+
+            return $image?->getThumbnailUrl('medium') ?: asset('images/greg-patryk-thumb.jpg');
+        });
+    }
+
+    protected function linkedProjectImageUrl(Testimonial $testimonial): ?string
+    {
+        $linkedProjectIds = collect([$testimonial->project_id])
+            ->filter()
+            ->merge($testimonial->projects->pluck('id'))
+            ->unique()
+            ->values();
+
+        if ($linkedProjectIds->isEmpty()) {
+            return null;
+        }
+
+        $image = ProjectImage::query()
+            ->whereIn('project_id', $linkedProjectIds)
+            ->where('is_cover', true)
+            ->first()
+            ?: ProjectImage::query()
+                ->whereIn('project_id', $linkedProjectIds)
+                ->inRandomOrder()
+                ->first();
+
+        return $image?->getThumbnailUrl('medium');
     }
 
     public function render()

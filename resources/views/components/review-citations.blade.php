@@ -73,7 +73,7 @@ $itemList = [
 </script>
 
 {{-- Visible citation summary block (helps AI Overviews quote with attribution) --}}
-<section class="bg-white py-10 dark:bg-zinc-900" aria-label="Review sources">
+<section class="bg-white pt-2 pb-4 sm:pt-3 sm:pb-6 dark:bg-zinc-900" aria-label="Review sources">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="rounded-2xl bg-zinc-50 p-6 ring-1 ring-zinc-200 sm:p-8 dark:bg-zinc-800/50 dark:ring-zinc-700">
             <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -84,10 +84,10 @@ $itemList = [
                 Every review on this page is a real customer review you can verify directly at the source:
             </p>
             <ul class="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                <li><a href="{{ config('socials.google.url') }}" rel="noopener external" class="text-sky-700 hover:underline dark:text-sky-400">Google Reviews →</a></li>
-                <li><a href="{{ config('socials.houzz.url') }}" rel="noopener external" class="text-sky-700 hover:underline dark:text-sky-400">Houzz →</a></li>
-                <li><a href="{{ config('socials.yelp.url') }}" rel="noopener external" class="text-sky-700 hover:underline dark:text-sky-400">Yelp →</a></li>
-                <li><a href="{{ config('socials.angi.url') }}" rel="noopener external" class="text-sky-700 hover:underline dark:text-sky-400">Angi →</a></li>
+                <li><a href="{{ config('socials.google.url') }}" target="_blank" rel="noopener noreferrer external" class="text-sky-700 hover:underline dark:text-sky-400">Google Reviews →</a></li>
+                <li><a href="{{ config('socials.houzz.url') }}" target="_blank" rel="noopener noreferrer external" class="text-sky-700 hover:underline dark:text-sky-400">Houzz →</a></li>
+                <li><a href="{{ config('socials.yelp.url') }}" target="_blank" rel="noopener noreferrer external" class="text-sky-700 hover:underline dark:text-sky-400">Yelp →</a></li>
+                <li><a href="{{ config('socials.angi.url') }}" target="_blank" rel="noopener noreferrer external" class="text-sky-700 hover:underline dark:text-sky-400">Angi →</a></li>
             </ul>
         </div>
     </div>

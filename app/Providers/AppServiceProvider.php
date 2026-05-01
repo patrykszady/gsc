@@ -10,7 +10,9 @@ use App\Observers\AreaServedObserver;
 use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
@@ -30,6 +32,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('gemini-ai-content', function (): array {
+            $rpmLimit = max(1, (int) env('GOOGLE_GEMINI_RPM_LIMIT', 10));
+
+            return [Limit::perMinute($rpmLimit)->by('gemini-global')];
+        });
+
         if (app()->environment('production') && str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }

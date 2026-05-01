@@ -72,6 +72,14 @@
                 <div 
                     x-data="{
                         loaded: window.imageCache?.has('{{ $imageUrl }}') ?? false,
+                        init() {
+                            this.$nextTick(() => {
+                                const img = this.$refs.avatarImg;
+                                if (img?.complete && img?.naturalWidth > 0) {
+                                    this.onLoad();
+                                }
+                            });
+                        },
                         onLoad() {
                             this.loaded = true;
                             window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}');
@@ -80,6 +88,7 @@
                     class="relative size-16 overflow-hidden rounded-full bg-gray-50 dark:bg-gray-700"
                 >
                     <img
+                        x-ref="avatarImg"
                         src="{{ $imageUrl }}"
                         alt="{{ $testimonial->display_name }}"
                         width="64"
@@ -131,7 +140,7 @@
         </article>
 
         {{-- Back link --}}
-        <div class="relative z-10 mt-12 border-t border-gray-200 pt-8 dark:border-gray-700">
+        <div class="relative z-10 mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
             <a 
                 href="/testimonials"
                 class="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
@@ -146,8 +155,8 @@
     </div>
 
     {{-- More Testimonials Section --}}
-    <livewire:testimonials-section :show-header="false" max-width-class="max-w-5xl" />
+    <livewire:testimonials-section :show-header="false" max-width-class="max-w-5xl" section-classes="relative isolate overflow-hidden bg-white pt-0 pb-4 sm:pb-6 dark:bg-zinc-900" />
 
     {{-- FAQ Section --}}
-    <x-faq-section :faqs="$faqs" heading="FAQ About This Review" sectionClasses="bg-sky-50 pt-0 pb-12 sm:pb-16 dark:bg-zinc-900" contentMaxWidth="max-w-5xl" />
+    <x-faq-section :faqs="$faqs" heading="FAQ About This Review" sectionClasses="bg-white pt-0 pb-4 sm:pb-6 dark:bg-zinc-900" content-max-width="max-w-[60rem]" />
 </div>

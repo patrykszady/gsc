@@ -243,15 +243,7 @@
             </div>
         </template>
 
-        {{-- Subtle overlay for better foreground visibility (sliding phase only) --}}
-        <div 
-            x-cloak
-            x-show="!introPhase"
-            x-transition:enter="transition-opacity duration-500"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            class="absolute inset-0 z-20 bg-gradient-to-t from-black/20 via-transparent to-black/10"
-        ></div>
+
 
         {{-- Foreground: Greg & Patryk no-background (always loads, visible in sliding phase) --}}
         <div class="absolute inset-x-0 bottom-0 z-30 flex justify-center" wire:ignore>

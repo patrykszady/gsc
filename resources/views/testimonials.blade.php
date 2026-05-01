@@ -38,7 +38,7 @@
             ['question' => 'What areas do your reviewers come from?', 'answer' => 'Our clients come from across Chicagoland including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, and 80+ other communities in the Northwest Suburbs and North Shore.'],
         ];
     @endphp
-    <x-faq-section :faqs="$faqs" heading="Customer Reviews FAQ" />
+    <x-faq-section :faqs="$faqs" heading="Customer Reviews FAQ" sectionClasses="bg-white pt-2 pb-6 sm:pt-3 sm:pb-8 dark:bg-zinc-900" />
 
     <livewire:map-section />
 

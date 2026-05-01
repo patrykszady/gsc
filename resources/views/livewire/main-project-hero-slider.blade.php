@@ -188,8 +188,7 @@
                 :class="firstSlideWasCached ? 'opacity-100' : (isLoaded(0) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                 @load="loadedImages.includes(0) || loadedImages.push(0)"
             />
-            {{-- Overlay --}}
-            <div class="absolute inset-0 bg-black/20"></div>
+
         </div>
         @endif
 
@@ -237,8 +236,7 @@
                     :class="window.imageCache?.has(slide.image) ? 'opacity-100' : (isLoaded(index) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                     @load="loadedImages.includes(index) || loadedImages.push(index)"
                 />
-                {{-- Overlay --}}
-                <div class="absolute inset-0 bg-black/20"></div>
+
             </div>
         </template>
 

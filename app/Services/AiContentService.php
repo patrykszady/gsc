@@ -232,7 +232,7 @@ PROMPT;
      */
     protected function getImageData(ProjectImage $image): ?array
     {
-        $disk = config('app.images_disk', 'public');
+        $disk = $image->disk ?: 'public';
         $filePath = $image->path;
         
         // Try thumbnail first, fall back to original

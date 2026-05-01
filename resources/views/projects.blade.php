@@ -55,6 +55,6 @@
     <x-faq-section
         :faqs="$faqs"
         heading="Remodeling Projects FAQ"
-        sectionClasses="bg-white pt-1 pb-16 sm:pt-2 sm:pb-24 dark:bg-zinc-900"
+        sectionClasses="bg-white pt-1 pb-6 sm:pt-2 sm:pb-8 dark:bg-zinc-900"
     />
 </x-layouts.app>

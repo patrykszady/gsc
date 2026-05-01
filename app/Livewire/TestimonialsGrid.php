@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 
 class TestimonialsGrid extends Component
@@ -29,6 +30,7 @@ class TestimonialsGrid extends Component
             ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
+            ->with('projects:id')
             ->inRandomOrder()
             ->take(10)
             ->get();
@@ -39,17 +41,23 @@ class TestimonialsGrid extends Component
         $olderTestimonials = Testimonial::query()
             ->visible()
             ->whereNotIn('id', $recentIds)
+            ->with('projects:id')
             ->inRandomOrder()
             ->get();
         
         // Combine: recent first, then older
         $allTestimonials = $recentTestimonials->concat($olderTestimonials);
         
+        $usedImageIds = [];
+
         $testimonials = $allTestimonials
-            ->map(fn ($t) => $this->formatTestimonial($t));
+            ->map(fn ($t) => $this->formatTestimonial($t, $usedImageIds))
+            ->values();
 
         // Pick a random featured testimonial from recent ones (biased toward longer descriptions).
-        $recentFormatted = $recentTestimonials->map(fn ($t) => $this->formatTestimonial($t));
+        $recentFormatted = $testimonials
+            ->whereIn('id', $recentIds)
+            ->values();
 
         $featuredPoolSource = $recentFormatted;
         if ($this->area) {
@@ -93,22 +101,48 @@ class TestimonialsGrid extends Component
         ]);
     }
 
-    protected function formatTestimonial(Testimonial $testimonial): array
+    protected function formatTestimonial(Testimonial $testimonial, array &$usedImageIds): array
     {
         $projectType = $this->normalizeProjectType($testimonial->project_type);
 
-        $imageUrl = null;
-        if ($projectType) {
-            $image = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                ->inRandomOrder()
-                ->first();
+        $image = $this->linkedProjectImage($testimonial, $usedImageIds);
 
-            $imageUrl = $image?->getThumbnailUrl('medium');
+        if ($projectType) {
+            $image ??= ProjectImage::query()
+                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                    ->whereNotIn('id', $usedImageIds)
+                    ->inRandomOrder()
+                    ->first();
+
+            if (! $image) {
+                $image = ProjectImage::query()
+                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                    ->inRandomOrder()
+                    ->first();
+            }
         }
 
-        // Fallback to ui-avatars if no project image.
-        $imageUrl ??= 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->display_name) . '&background=0ea5e9&color=fff&size=128';
+        if (! $image) {
+            $image = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published())
+                ->whereNotIn('id', $usedImageIds)
+                ->inRandomOrder()
+                ->first();
+        }
+
+        if (! $image) {
+            $image = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published())
+                ->inRandomOrder()
+                ->first();
+        }
+
+        if ($image) {
+            $usedImageIds[] = $image->id;
+        }
+
+        // Always prefer a real project image over generated initials avatars.
+        $imageUrl = $image?->getThumbnailUrl('medium') ?: $this->fallbackProjectImageUrl();
 
         // Extract city name (strip ", IL" or similar state suffix)
         $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $testimonial->project_location);
@@ -144,5 +178,57 @@ class TestimonialsGrid extends Component
             'exteriors', 'exterior' => 'exterior',
             default => null,
         };
+    }
+
+    protected function fallbackProjectImageUrl(): string
+    {
+        return Cache::remember('testimonials.fallback-project-image.medium.v1', now()->addMinutes(30), function () {
+            $image = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published())
+                ->inRandomOrder()
+                ->first();
+
+            return $image?->getThumbnailUrl('medium') ?: asset('images/greg-patryk-thumb.jpg');
+        });
+    }
+
+    protected function linkedProjectImage(Testimonial $testimonial, array &$usedImageIds): ?ProjectImage
+    {
+        $linkedProjectIds = collect([$testimonial->project_id])
+            ->filter()
+            ->merge($testimonial->projects->pluck('id'))
+            ->unique()
+            ->values();
+
+        if ($linkedProjectIds->isEmpty()) {
+            return null;
+        }
+
+        $image = ProjectImage::query()
+            ->whereIn('project_id', $linkedProjectIds)
+            ->where('is_cover', true)
+            ->whereNotIn('id', $usedImageIds)
+            ->inRandomOrder()
+            ->first();
+
+        $image ??= ProjectImage::query()
+            ->whereIn('project_id', $linkedProjectIds)
+            ->whereNotIn('id', $usedImageIds)
+            ->inRandomOrder()
+            ->first();
+
+        // If linked pool is too small to stay unique, still prefer linked images.
+        $image ??= ProjectImage::query()
+            ->whereIn('project_id', $linkedProjectIds)
+            ->where('is_cover', true)
+            ->inRandomOrder()
+            ->first();
+
+        $image ??= ProjectImage::query()
+            ->whereIn('project_id', $linkedProjectIds)
+            ->inRandomOrder()
+            ->first();
+
+        return $image;
     }
 }

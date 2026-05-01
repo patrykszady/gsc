@@ -2,7 +2,7 @@
 @props([
     'faqs' => [],
     'heading' => 'Frequently Asked Questions',
-    'sectionClasses' => 'bg-white py-12 sm:py-16 dark:bg-zinc-900',
+    'sectionClasses' => 'bg-white pt-8 pb-6 sm:pt-10 sm:pb-8 dark:bg-zinc-900',
     'collapsed' => true,
     'contentMaxWidth' => 'max-w-none',
 ])
@@ -13,7 +13,7 @@
 
 {{-- Visible FAQ section --}}
 <section class="{{ $sectionClasses }}">
-    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mx-auto {{ $contentMaxWidth }}">
             @if($collapsed)
             <x-faq-card x-data="{ open: false }" class="overflow-visible">

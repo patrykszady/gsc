@@ -77,22 +77,11 @@
      @keydown.right.window="$wire.nextTestimonial()"
 >
     @php
-        $imageUrl = $current['image'] ?? null;
-        if (!$imageUrl) {
-            $name = $current['name'] ?? 'R';
-            $imageUrl = 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=0ea5e9&color=fff&size=576&font-size=0.4&bold=true';
-        }
+        $imageUrl = $current['image'] ?? asset('images/greg-patryk-thumb.jpg');
         $hasMultiple = count($history ?? []) > 1;
     @endphp
 
-    <section class="relative isolate overflow-hidden py-12 sm:py-16">
-        {{-- Background gradient blobs --}}
-        <div aria-hidden="true" class="absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-30 blur-3xl">
-            <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[max(50%,38rem)] aspect-1313/771 w-328.25 bg-linear-to-tr from-sky-300 to-sky-600"></div>
-        </div>
-        <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 flex transform-gpu overflow-hidden pt-32 opacity-25 blur-3xl sm:pt-40 xl:justify-end">
-            <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="-ml-88 aspect-1313/771 w-328.25 flex-none origin-top-right rotate-30 bg-linear-to-tr from-sky-300 to-sky-600 xl:mr-[calc(50%-12rem)] xl:ml-0"></div>
-        </div>
+    <section class="{{ $sectionClasses }}">
 
         <div class="mx-auto {{ $maxWidthClass }} px-4 sm:px-6 lg:px-8">
             {{-- Section Header --}}

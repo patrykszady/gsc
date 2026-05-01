@@ -14,8 +14,8 @@ class CacheStaticAssets
     protected array $cacheDurations = [
         'image' => 31536000,  // 1 year for images
         'font' => 31536000,   // 1 year for fonts
-        'css' => 604800,      // 1 week for CSS
-        'js' => 604800,       // 1 week for JS
+        'css' => 31536000,    // 1 year for CSS (Vite outputs hashed/immutable filenames)
+        'js' => 31536000,     // 1 year for JS  (Vite outputs hashed/immutable filenames)
     ];
 
     /**

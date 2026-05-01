@@ -129,8 +129,7 @@
             class="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
         />
 
-        {{-- Subtle overlay to match hero style --}}
-        <div class="absolute inset-0 bg-black/20"></div>
+
 
         {{-- Project title --}}
         @if($timelapse?->project)

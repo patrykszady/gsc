@@ -9,7 +9,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\RateLimitedWithRedis;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
@@ -28,6 +30,14 @@ class GenerateAiContentJob implements ShouldQueue
         public bool $overwrite = false,
         public bool $regenerateSitemap = true,
     ) {}
+
+    /**
+     * Apply global Gemini rate limiting across all workers.
+     */
+    public function middleware(): array
+    {
+        return [new RateLimitedWithRedis('gemini-ai-content')];
+    }
 
     /**
      * Execute the job.
@@ -59,11 +69,12 @@ class GenerateAiContentJob implements ShouldQueue
         }
 
         // Check if image file exists before trying to process
-        $disk = config('app.images_disk', 'public');
+        $disk = $image->disk ?: 'public';
         if (!\Illuminate\Support\Facades\Storage::disk($disk)->exists($image->path)) {
             Log::warning('GenerateAiContentJob: Image file not found, skipping', [
                 'image_id' => $image->id,
                 'path' => $image->path,
+                'disk' => $disk,
             ]);
             $skipContent = true;
             // Still allow slug generation below even if file is missing
@@ -145,6 +156,18 @@ class GenerateAiContentJob implements ShouldQueue
             'project_id' => $project->id,
             'image_count' => $totalImages,
         ]);
+
+        // Prevent duplicate dispatch storms when multiple image jobs finish together.
+        $lockKey = "ai-content:project-description-dispatch:{$project->id}";
+        $acquired = Cache::add($lockKey, true, now()->addMinutes(10));
+
+        if (!$acquired) {
+            Log::debug('GenerateAiContentJob: Project description dispatch already queued', [
+                'project_id' => $project->id,
+            ]);
+
+            return;
+        }
 
         // Always overwrite — image AI content may have improved since last description
         static::dispatch($project, overwrite: true, regenerateSitemap: true)

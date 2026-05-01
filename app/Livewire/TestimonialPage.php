@@ -57,6 +57,14 @@ class TestimonialPage extends Component
                 ->first();
         }
 
+        // Final fallback: any random image from any published project.
+        if (! $cached) {
+            $cached = ProjectImage::query()
+                ->whereHas('project', fn ($q) => $q->published())
+                ->inRandomOrder()
+                ->first();
+        }
+
         return $cached ?: null;
     }
 
@@ -103,17 +111,36 @@ class TestimonialPage extends Component
     {
         $image = $this->avatarImage();
         if ($image) {
-            return $image->getThumbnailUrl('medium');
+            return $this->resolveImageUrl($image, 'medium');
         }
 
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->testimonial->display_name) . '&background=0ea5e9&color=fff&size=256';
+        return $this->fallbackProjectImageUrl();
+    }
+
+    protected function fallbackProjectImageUrl(): string
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $fallbackImage = ProjectImage::query()
+            ->whereHas('project', fn ($q) => $q->published())
+            ->inRandomOrder()
+            ->first();
+
+        $cached = $fallbackImage
+            ? $this->resolveImageUrl($fallbackImage, 'medium')
+            : asset('images/greg-patryk-thumb.jpg');
+
+        return $cached;
     }
 
     protected function getThumbnailUrl(): ?string
     {
         $image = $this->heroImage();
         return $image
-            ? ($image->getWebpThumbnailUrl('large') ?? $image->getThumbnailUrl('large') ?? $image->url)
+            ? $this->resolveImageUrl($image, 'large')
             : null;
     }
 
@@ -121,8 +148,17 @@ class TestimonialPage extends Component
     {
         $image = $this->heroImage();
         return $image
-            ? ($image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb'))
+            ? $this->resolveImageUrl($image, 'thumb')
             : null;
+    }
+
+    protected function resolveImageUrl(ProjectImage $image, string $preferredSize = 'medium'): ?string
+    {
+        return $image->getWebpThumbnailUrl($preferredSize)
+            ?? $image->getThumbnailUrl($preferredSize)
+            ?? $image->getWebpThumbnailUrl('large')
+            ?? $image->getThumbnailUrl('large')
+            ?? $image->url;
     }
 
     protected function getAreaSlug(): ?string
@@ -154,6 +190,7 @@ class TestimonialPage extends Component
             'kitchens', 'kitchen' => 'kitchen',
             'bathrooms', 'bathroom' => 'bathroom',
             'basements', 'basement' => 'basement',
+            'home', 'homes' => 'home-remodel',
             'home-remodel', 'home-remodels', 'home remodel', 'home remodels', 'whole-home', 'whole home' => 'home-remodel',
             'additions', 'addition' => 'addition',
             'mudroom', 'mudrooms', 'laundry', 'laundry room', 'laundry rooms', 'mudroom/laundry', 'mudroom / laundry' => 'mudroom',
