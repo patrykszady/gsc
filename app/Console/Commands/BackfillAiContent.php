@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\GenerateAiContentJob;
+use App\Jobs\UploadProjectImageToGooglePlaces;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\AiContentService;
@@ -183,6 +184,24 @@ class BackfillAiContent extends Command
             if (!empty($updateData)) {
                 $image->updateQuietly($updateData);
                 $updated++;
+
+                // updateQuietly bypasses observers, so explicitly refresh GBP media
+                // when image text fields that build GBP descriptions are changed.
+                if (
+                    config('services.google.business_profile.enabled')
+                    && $image->project
+                    && $image->project->is_published
+                    && $image->google_places_uploaded_at
+                    && (
+                        array_key_exists('caption', $updateData)
+                        || array_key_exists('seo_alt_text', $updateData)
+                        || array_key_exists('alt_text', $updateData)
+                    )
+                ) {
+                    UploadProjectImageToGooglePlaces::dispatch($image->id, true)
+                        ->onQueue('media-sync')
+                        ->delay(now()->addSeconds(10));
+                }
 
                 if ($this->output->isVeryVerbose()) {
                     $this->newLine();

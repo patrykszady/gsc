@@ -76,6 +76,18 @@ class ProjectImageObserver
         if ($image->wasChanged(['seo_alt_text', 'caption']) && config('services.google.gemini_api_key')) {
             $this->queueProjectDescriptionRegeneration($image);
         }
+
+        // Keep GBP media description in sync when image text metadata changes.
+        if (
+            config('services.google.business_profile.enabled')
+            && $image->project
+            && $image->project->is_published
+            && $image->wasChanged(['caption', 'seo_alt_text', 'alt_text'])
+        ) {
+            UploadProjectImageToGooglePlaces::dispatch($image->id, forceRefresh: true)
+                ->onQueue('media-sync')
+                ->delay(now()->addSeconds(10));
+        }
     }
 
     /**

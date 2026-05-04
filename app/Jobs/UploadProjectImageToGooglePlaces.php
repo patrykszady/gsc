@@ -19,7 +19,8 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
     public int $timeout = 120;
 
     public function __construct(
-        public int $imageId
+        public int $imageId,
+        public bool $forceRefresh = false,
     ) {}
 
     public function handle(GoogleBusinessProfileService $service): void
@@ -36,12 +37,18 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
             return;
         }
 
-        if ($image->google_places_uploaded_at) {
+        if ($image->google_places_uploaded_at && ! $this->forceRefresh) {
             return;
         }
 
         if (! $service->isConfigured()) {
             return;
+        }
+
+        $previousMediaName = $image->google_places_media_name;
+
+        if ($this->forceRefresh && $previousMediaName) {
+            $service->deleteMedia($previousMediaName);
         }
 
         $mediaName = $service->uploadProjectImage($image);
@@ -50,6 +57,13 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
             $image->update([
                 'google_places_media_name' => $mediaName,
                 'google_places_uploaded_at' => now(),
+            ]);
+
+            Log::info('GBP: Project image synced', [
+                'image_id' => $image->id,
+                'force_refresh' => $this->forceRefresh,
+                'previous_media_name' => $previousMediaName,
+                'new_media_name' => $mediaName,
             ]);
         }
     }
