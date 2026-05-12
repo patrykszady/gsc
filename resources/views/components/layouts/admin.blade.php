@@ -51,8 +51,8 @@
                 Social Media
             </flux:sidebar.item>
 
-            <flux:sidebar.item icon="building-storefront" href="{{ route('admin.gbp.index') }}" :current="request()->routeIs('admin.gbp.*')">
-                Google Business
+            <flux:sidebar.item icon="building-storefront" href="{{ route('admin.platforms.index') }}" :current="request()->routeIs('admin.platforms.*')">
+                Platforms
             </flux:sidebar.item>
         </flux:sidebar.nav>
 

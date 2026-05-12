@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\DeleteGooglePlacesMedia;
 use App\Jobs\GenerateAiContentJob;
 use App\Jobs\UploadProjectImageToGooglePlaces;
+use App\Jobs\UploadProjectImageToYelp;
 use App\Models\ProjectImage;
 use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
@@ -45,6 +46,18 @@ class ProjectImageObserver
             UploadProjectImageToGooglePlaces::dispatch($image->id)
                 ->onQueue('media-sync')
                 ->delay(now()->addSeconds(10));
+        }
+
+        // Upload new images to Yelp Portfolio Project if configured.
+        if (
+            app(\App\Services\YelpBusinessService::class)->isConfigured()
+            && $image->project
+            && $image->project->is_published
+            && ! empty($image->project->yelp_portfolio_url)
+        ) {
+            UploadProjectImageToYelp::dispatch($image->id)
+                ->onQueue('media-sync')
+                ->delay(now()->addSeconds(20));
         }
     }
 
@@ -88,6 +101,10 @@ class ProjectImageObserver
                 ->onQueue('media-sync')
                 ->delay(now()->addSeconds(10));
         }
+
+        // Yelp Portfolio: only upload once per image. Re-upload not supported via
+        // this scripted flow (would create duplicate photos on Yelp). Manual delete
+        // + force re-sync via `php artisan yelp:sync-portfolio-media --force` if needed.
     }
 
     /**

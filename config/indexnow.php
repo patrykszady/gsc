@@ -30,6 +30,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | IndexNow Host Override
+    |--------------------------------------------------------------------------
+    |
+    | The verified production host for IndexNow (e.g. "gs.construction"). When
+    | unset, falls back to APP_URL's host. Override is required when APP_URL
+    | points to a local dev URL (127.0.0.1) but you still want to submit
+    | production URLs.
+    |
+    */
+    'host' => env('INDEXNOW_HOST'),
+
+    /*
+    |--------------------------------------------------------------------------
     | IndexNow Endpoint
     |--------------------------------------------------------------------------
     |

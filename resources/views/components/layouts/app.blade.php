@@ -10,6 +10,10 @@
     {!! \Artesaos\SEOTools\Facades\OpenGraph::generate() !!}
     {!! \Artesaos\SEOTools\Facades\TwitterCard::generate() !!}
 
+    {{-- hreflang: explicit US-English signal (single-language site, prevents Google guessing) --}}
+    <link rel="alternate" hreflang="en-us" href="{{ url()->current() }}" />
+    <link rel="alternate" hreflang="x-default" href="{{ url()->current() }}" />
+
     {{-- Additional SEO --}}
     <meta name="application-name" content="GS Construction">
     <meta name="apple-mobile-web-app-title" content="GS Construction">

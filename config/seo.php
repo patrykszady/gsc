@@ -110,4 +110,76 @@ return [
          */
         '@username' => null,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rank tracker (SerpApi)
+    |--------------------------------------------------------------------------
+    |
+    | Used by `seo:track-rankings` to monitor where GS Construction appears
+    | on Google + Google Maps for the queries that matter most. Snapshots are
+    | persisted in `seo_rank_snapshots` so we can chart movement over time.
+    |
+    | Patterns are matched (case-insensitive) against listing titles / domain
+    | hosts to identify "us" — covers GBP name variants and the website host.
+    */
+    'rank_tracker' => [
+        'identity_patterns' => [
+            'gs construction',
+            "greg's bathroom",
+            'greg & son',
+            'gs.construction',
+        ],
+
+        // Google web SERPs — uses SerpApi engine=google with `location` string.
+        'web_queries' => [
+            // Arlington Heights (HQ)
+            ['q' => 'kitchen remodeling Arlington Heights IL',  'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
+            ['q' => 'bathroom remodeling Arlington Heights IL', 'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
+            ['q' => 'general contractor Arlington Heights IL',  'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
+            ['q' => 'home remodeling Arlington Heights IL',     'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
+
+            // Surrounding suburbs (priority growth markets)
+            ['q' => 'kitchen remodeling Palatine IL',           'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
+            ['q' => 'bathroom remodeling Palatine IL',          'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
+            ['q' => 'kitchen remodeling Mount Prospect IL',     'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
+            ['q' => 'bathroom remodeling Mount Prospect IL',    'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
+            ['q' => 'general contractor Mount Prospect IL',     'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
+            ['q' => 'kitchen remodeling Schaumburg IL',         'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
+            ['q' => 'bathroom remodeling Schaumburg IL',        'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
+            ['q' => 'kitchen remodeling Buffalo Grove IL',      'location' => 'Buffalo Grove, Illinois, United States',      'city_slug' => 'buffalo-grove'],
+            ['q' => 'bathroom remodeling Buffalo Grove IL',     'location' => 'Buffalo Grove, Illinois, United States',      'city_slug' => 'buffalo-grove'],
+            ['q' => 'kitchen remodeling Barrington IL',         'location' => 'Barrington, Illinois, United States',         'city_slug' => 'barrington'],
+            ['q' => 'bathroom remodeling Barrington IL',        'location' => 'Barrington, Illinois, United States',         'city_slug' => 'barrington'],
+
+            // Chicago (long-shot but tracks brand)
+            ['q' => 'kitchen remodeling Chicago IL',            'location' => 'Chicago, Illinois, United States',            'city_slug' => 'chicago'],
+            ['q' => 'bathroom remodeling Chicago IL',           'location' => 'Chicago, Illinois, United States',            'city_slug' => 'chicago'],
+        ],
+
+        // Google Maps — uses SerpApi engine=google_maps with `ll` lat/lng.
+        // ll format: @<lat>,<lng>,<zoom>z
+        'maps_queries' => [
+            ['q' => 'kitchen remodeling',         'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'bathroom remodeling',        'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'general contractor',         'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'home remodeling',            'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'kitchen remodeler',          'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'bathroom remodeler',         'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+        ],
+
+        // How many top listings to keep per snapshot.
+        'store_top_n' => 10,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Search Console
+    |--------------------------------------------------------------------------
+    */
+    'search_console' => [
+        // Site URL as registered in Search Console. Use sc-domain:gs.construction
+        // for the Domain property, or https://gs.construction/ for URL-prefix.
+        'site_url' => env('GSC_SEARCH_CONSOLE_SITE_URL', 'sc-domain:gs.construction'),
+    ],
 ];

@@ -2,6 +2,9 @@
     {{-- Project Schema with ImageObject data --}}
     <x-project-schema :project="$project" />
 
+    {{-- HowTo schema: Google's "process" rich result for the remodeling workflow --}}
+    <x-project-howto-schema :project="$project" />
+
     {{-- VideoObject schema for any timelapses on this project --}}
     <x-video-object-schema :project="$project" />
 

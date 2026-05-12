@@ -15,7 +15,10 @@ class IndexNowService
     public function __construct()
     {
         $this->key = config('indexnow.key') ?? '';
-        $this->host = parse_url(config('app.url'), PHP_URL_HOST) ?? '';
+        // Allow an explicit override so local dev (APP_URL=127.0.0.1) still submits the production host.
+        $this->host = (string) (config('indexnow.host')
+            ?: parse_url((string) config('app.url'), PHP_URL_HOST)
+            ?: '');
         $this->endpoint = config('indexnow.endpoint', 'https://api.indexnow.org/indexnow');
         $this->enabled = config('indexnow.enabled', false);
     }
@@ -55,7 +58,7 @@ class IndexNowService
                     ->post($this->endpoint, [
                         'host' => $this->host,
                         'key' => $this->key,
-                        'keyLocation' => url("/{$this->key}.txt"),
+                        'keyLocation' => "https://{$this->host}/{$this->key}.txt",
                         'urlList' => array_values($chunk),
                     ]);
 

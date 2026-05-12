@@ -115,35 +115,35 @@ Disallow: /
 # Search indexing remains allowed; AI model training is opted out.
 
 User-agent: CCBot
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: Google-Extended
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: GPTBot
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: ClaudeBot
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: anthropic-ai
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: PerplexityBot
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: Applebot-Extended
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: Amazonbot
-Content-Signal: search=yes, ai-train=no
+# Content-Signal: search=yes, ai-train=no
 Allow: /
 
 User-agent: omgili

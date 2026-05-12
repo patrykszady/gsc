@@ -25,3 +25,9 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 public/sitemap.xml
+
+# Lighthouse reports (may contain API keys captured from page HTML)
+.lighthouseci/
+storage/lighthouse-reports/
+# Chrome profiles spawned by lhci on Windows-side temp paths
+C:\\Users\\*

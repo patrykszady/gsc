@@ -4,20 +4,20 @@
             {{-- Column 1: Logo, Company Name, Contact, Social Icons --}}
             <div class="space-y-6">
                 {{-- GS Logo (same as navbar) --}}
-                <a href="/" wire:navigate.hover>
-                    <img src="{{ asset('images/logo.svg') }}" alt="GS Construction" width="80" height="80" class="size-20 dark:hidden" />
-                    <img src="{{ asset('images/logo-dark.svg') }}" alt="GS Construction" width="80" height="80" class="hidden size-20 dark:block" />
+                <a href="/" wire:navigate.hover aria-label="GS Construction homepage">
+                    <img src="{{ asset('images/logo.svg') }}" alt="" width="80" height="80" class="size-20 dark:hidden" />
+                    <img src="{{ asset('images/logo-dark.svg') }}" alt="" width="80" height="80" class="hidden size-20 dark:block" />
                 </a>
 
                 {{-- Company Name --}}
                 <p class="text-sm font-bold tracking-wide text-gray-800 uppercase dark:text-white">
-                    <a href="/" wire:navigate.hover class="hover:text-sky-600 dark:hover:text-sky-400">GS Construction</a>
+                    <a href="/" wire:navigate.hover class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">GS Construction</a>
                 </p>
 
                 {{-- Contact Info --}}
                 <p class="text-sm/6 text-balance text-gray-700 dark:text-gray-300">
-                    <a href="tel:2247354200" class="hover:text-sky-600 dark:hover:text-sky-400">(224) 735-4200</a><br>
-                    <a href="mailto:crew@gs.construction" class="hover:text-sky-600 dark:hover:text-sky-400">crew@gs.construction</a>
+                    <a href="tel:2247354200" class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">(224) 735-4200</a><br>
+                    <a href="mailto:crew@gs.construction" class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">crew@gs.construction</a>
                 </p>
 
                 {{-- Social Icons --}}

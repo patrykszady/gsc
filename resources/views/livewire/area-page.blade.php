@@ -30,6 +30,9 @@
     {{-- Per-area LocalBusiness schema (with geo, hours, postalCodes, hasMap) --}}
     <x-area-local-business-schema :area="$area" />
 
+    {{-- ImageGallery schema: surfaces this city's project photos in Google Images / Photos carousel --}}
+    <x-area-image-gallery-schema :area="$area" />
+
     {{-- Visual Breadcrumb Navigation --}}
     <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">
@@ -122,6 +125,49 @@
             </div>
 
             <x-city-reviews-badge :area="$area" />
+
+            {{-- Unique per-city content (renders only when populated in DB).
+                 Provides genuine differentiation between area pages — critical to
+                 avoid Google's "duplicate content / thin local lander" penalty. --}}
+            @if($area->hasUniqueContent() || filled($area->landmarks) || filled($area->permit_notes))
+            <section class="bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} remodeling">
+                <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+                        Remodeling in {{ $area->city }}, IL
+                    </h2>
+
+                    @if(filled($area->intro))
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
+                            {{ $area->intro }}
+                        </p>
+                    @endif
+
+                    @if(filled($area->local_intro))
+                        <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
+                            {!! nl2br(e($area->local_intro)) !!}
+                        </div>
+                    @endif
+
+                    @if(filled($area->landmarks))
+                        <div class="mt-6">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                Neighborhoods &amp; landmarks we serve in {{ $area->city }}
+                            </h3>
+                            <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->landmarks }}</p>
+                        </div>
+                    @endif
+
+                    @if(filled($area->permit_notes))
+                        <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
+                                {{ $area->city }} permits &amp; building codes
+                            </h3>
+                            <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->permit_notes }}</p>
+                        </div>
+                    @endif
+                </div>
+            </section>
+            @endif
 
             <livewire:about-section :area="$area" />
 

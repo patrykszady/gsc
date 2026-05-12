@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\AiFeedController;
 use App\Livewire\Admin\Dashboard;
-use App\Livewire\Admin\GbpSettings;
+use App\Livewire\Admin\PlatformsSettings;
 use App\Livewire\Admin\Login;
 use App\Livewire\Admin\ProjectForm;
 use App\Livewire\Admin\ProjectList;
@@ -230,24 +230,24 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Social Media
     Route::get('/social-media', \App\Livewire\Admin\SocialMediaPosts::class)->name('social-media.index');
 
-    // Google Business Profile
-    Route::get('/gbp', GbpSettings::class)->name('gbp.index');
-    Route::get('/gbp/callback', function (\Illuminate\Http\Request $request) {
+    // Platforms (Google Business Profile, Yelp, etc.)
+    Route::get('/platforms', PlatformsSettings::class)->name('platforms.index');
+    Route::get('/platforms/gbp/callback', function (\Illuminate\Http\Request $request) {
         $code = $request->query('code');
         if (! $code) {
-            session()->flash('gbp-error', 'Authorization cancelled or failed — no code returned.');
-            return redirect()->route('admin.gbp.index');
+            session()->flash('platforms-error', 'Authorization cancelled or failed — no code returned.');
+            return redirect()->route('admin.platforms.index');
         }
 
         $service = app(\App\Services\GoogleBusinessProfileService::class);
-        $result = $service->exchangeCodeAndStore($code, route('admin.gbp.callback'));
+        $result = $service->exchangeCodeAndStore($code, route('admin.platforms.gbp-callback'));
 
         if ($result['success']) {
-            session()->flash('gbp-success', 'Google Business Profile connected successfully!');
+            session()->flash('platforms-success', 'Google Business Profile connected successfully!');
         } else {
-            session()->flash('gbp-error', 'OAuth failed: ' . ($result['error'] ?? 'Unknown error'));
+            session()->flash('platforms-error', 'OAuth failed: ' . ($result['error'] ?? 'Unknown error'));
         }
 
-        return redirect()->route('admin.gbp.index');
-    })->name('gbp.callback');
+        return redirect()->route('admin.platforms.index');
+    })->name('platforms.gbp-callback');
 });

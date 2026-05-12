@@ -25,6 +25,7 @@ class Project extends Model
         'is_featured',
         'is_published',
         'sort_order',
+        'yelp_portfolio_url',
     ];
 
     protected $casts = [

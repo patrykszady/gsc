@@ -160,4 +160,27 @@ return [
         'proxy' => env('SCRAPER_PROXY_URL'),
     ],
 
+    'yelp' => [
+        'business' => [
+            'enabled' => true,
+            'email' => env('YELP_BIZ_EMAIL'),
+            'password' => env('YELP_BIZ_PASSWORD'),
+            // Persistent Chromium profile dir so login/cookies survive between runs.
+            'user_data_dir' => env('YELP_USER_DATA_DIR', storage_path('app/yelp-puppeteer')),
+            // Path to node binary (override if not on PATH).
+            'node_binary' => env('YELP_NODE_BINARY', 'node'),
+            // Run Chromium headed for first-time login / debugging.
+            'headed' => env('YELP_BIZ_HEADED', false),
+            'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 180000),
+            'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
+        ],
+    ],
+
+    'cloudflare' => [
+        // Zone ID: Cloudflare dashboard → <zone> overview → right-hand panel → Zone ID
+        'zone_id'   => env('CLOUDFLARE_ZONE_ID'),
+        // API Token: must have "Cache Purge" permission scoped to this zone
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+    ],
+
 ];

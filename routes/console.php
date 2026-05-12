@@ -76,6 +76,41 @@ Schedule::command('testimonials:sync-google-reviews-serpapi --only-new')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Google (SerpApi) review sync failed'));
 
+// SEO: weekly rank snapshot (Google + Google Maps) for tracked queries.
+Schedule::command('seo:track-rankings --engine=both')
+    ->weeklyOn(1, '08:00') // Mondays 08:00 CT
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-rankings.log'))
+    ->onFailure(fn () => logger()->error('Scheduled SEO rank tracker failed'));
+
+// SEO: weekly title-CTR audit — flag pages with high impressions but low CTR.
+Schedule::command('seo:title-audit --days=28 --min-impr=20 --max-ctr=2.0')
+    ->weeklyOn(1, '08:15')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-title-audit.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:title-audit failed'));
+
+// SEO: weekly internal-link audit — orphans + weakly linked pages.
+Schedule::command('seo:internal-link-audit --min=3')
+    ->weeklyOn(1, '08:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-internal-links.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:internal-link-audit failed'));
+
+// SEO: weekly image audit — missing alt text, weak alts, bad filenames.
+Schedule::command('seo:image-audit --missing')
+    ->weeklyOn(1, '08:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-image-audit.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:image-audit failed'));
+
+// SEO: weekly content-depth audit — find AreaServed pages without unique per-city content.
+Schedule::command('seo:content-depth-audit --missing')
+    ->weeklyOn(1, '09:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-content-depth.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:content-depth-audit failed'));
+
 // Instagram: 2 posts per day — morning + late afternoon (Central Time)
 // Random delay spreads posts naturally within each window
 Schedule::command('social:post --platform=instagram --queue --random-delay=150')

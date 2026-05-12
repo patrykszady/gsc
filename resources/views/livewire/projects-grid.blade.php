@@ -77,14 +77,14 @@
         <div id="projects-grid" class="mt-8 flex flex-wrap justify-center gap-2">
             <button
                 wire:click="clearFilter"
-                class="rounded-full px-4 py-2 text-sm font-medium transition {{ !$type ? 'bg-sky-500 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}"
+                class="rounded-full px-4 py-2 text-sm font-medium transition {{ !$type ? 'bg-sky-700 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}"
             >
                 All
             </button>
             @foreach($projectTypes as $projectType)
             <button
                 wire:click="filterByType('{{ $projectType }}')"
-                class="rounded-full px-4 py-2 text-sm font-medium transition {{ $type === $projectType ? 'bg-sky-500 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}"
+                class="rounded-full px-4 py-2 text-sm font-medium transition {{ $type === $projectType ? 'bg-sky-700 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}"
             >
                 {{ ucfirst($projectType) }}
             </button>

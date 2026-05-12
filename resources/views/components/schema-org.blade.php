@@ -233,7 +233,7 @@ $website = [
     '@type' => 'WebSite',
     '@id' => 'https://gs.construction/#website',
     'name' => 'GS Construction',
-    'alternateName' => ['GS Construction', 'GS Construction & Remodeling', 'GS Construction LLC'],
+    'alternateName' => ['GS Construction', 'GS Construction & Remodeling'],
     'url' => 'https://gs.construction/',
     'publisher' => ['@id' => 'https://gs.construction/#organization'],
     'inLanguage' => 'en-US',

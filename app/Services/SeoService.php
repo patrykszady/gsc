@@ -71,10 +71,12 @@ class SeoService
             $title = $domainConfig['title_prefix'];
             $description = $domainConfig['description'];
         } elseif ($city) {
-            // Keep under 52 chars - suffix adds ~18 chars
-            $title = "Kitchen & Bathroom Remodeling in {$city}";
+            // City landing page. Lead with city name (matches "{city} kitchen remodel" queries word-for-word)
+            // and add a star + review-count proof element to lift CTR. Keep under ~58 chars before " | GS Construction".
             $reviewCount = self::getReviewCountLabel();
-            $description = "Top-rated kitchen & bathroom remodeling contractors in {$city}, IL. {$reviewCount} five-star reviews, 40+ years experience. Call (224) 735-4200 for a free estimate!";
+            $reviewNum = self::getReviewCountNumeric();
+            $title = "{$city} Kitchen & Bath Remodeling — " . ($reviewNum ? "{$reviewNum}★ Reviews" : 'Local Pros');
+            $description = "{$city}, IL homeowners' choice for kitchen, bathroom & full home remodels. {$reviewCount} 5-star reviews, licensed & insured, free in-home estimate. Call (224) 735-4200.";
         } else {
             // Lead with brand on the homepage so Google adopts "GS Construction"
             // as the site name (https://developers.google.com/search/docs/appearance/site-names)
@@ -247,12 +249,12 @@ class SeoService
         // Keep titles under 70 chars (with " | GS Construction" suffix = 18 chars)
         // Max page title: ~52 chars for longest city names (17 chars)
         $title = $city
-            ? "Remodeling Services in {$city}, IL"
+            ? "{$city} Remodeling Services — Kitchen, Bath & Whole-Home"
             : 'Kitchen, Bathroom & Home Remodeling Services';
         
         $reviewCount = self::getReviewCountLabel();
         $description = $city
-            ? "Kitchen, bathroom & home remodeling contractors in {$city}, IL. {$reviewCount} five-star reviews. Licensed, insured, 40+ years experience. Call (224) 735-4200!"
+            ? "Kitchen, bathroom & whole-home remodeling in {$city}, IL. {$reviewCount} 5-star reviews, 40+ yrs experience, licensed & insured. Free in-home estimate — call (224) 735-4200."
             : 'Kitchen remodeling, bathroom renovations & home remodeling in Chicago suburbs. Top-rated local contractors serving Palatine, Arlington Heights & more.';
 
         // Get a kitchen image as the default for services overview
@@ -314,29 +316,32 @@ class SeoService
     public static function service(string $serviceType): void
     {
         
+        $reviewNum = self::getReviewCountNumeric();
+        $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated';
+
         $services = [
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
-                'title' => 'Kitchen Remodeling Contractors Near Chicago',
-                'description' => 'Top-rated kitchen remodeling in Chicago suburbs — %s five-star reviews. Custom cabinets, granite countertops & complete renovations. Call (224) 735-4200!',
+                'title' => "Chicago Suburbs Kitchen Remodeling — {$reviewBadge} & 40 Yrs",
+                'description' => 'Custom kitchen remodeling in Chicago\'s NW suburbs: cabinets, quartz & granite countertops, IKEA installs, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen remodeling near me', 'kitchen contractors chicago', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
-                'title' => 'Bathroom Remodeling Contractors Near Chicago',
-                'description' => 'Top-rated bathroom remodeling in Chicago suburbs — %s five-star reviews. Walk-in showers, tub conversions & complete renovations. Call (224) 735-4200!',
+                'title' => "Chicago Suburbs Bathroom Remodeling — {$reviewBadge} & 40 Yrs",
+                'description' => 'Bathroom remodeling in Chicago\'s NW suburbs: walk-in showers, tub-to-shower conversions, tile & vanities, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom remodeling near me', 'bathroom contractors chicago', 'bathroom remodelers'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
-                'title' => 'Home Remodeling Contractors Near Chicago',
-                'description' => 'Top-rated home remodeling in Chicago suburbs — %s five-star reviews. Room additions, open floor plans & complete renovations. Call (224) 735-4200!',
+                'title' => "Chicago Suburbs Whole-Home Remodeling — {$reviewBadge} & 40 Yrs",
+                'description' => 'Whole-home remodeling in Chicago\'s NW suburbs: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'home remodeling near me', 'general contractors chicago'],
             ],
             'basement-remodeling' => [
                 'label' => 'Basement Remodeling',
-                'title' => 'Basement Finishing Contractors Near Chicago',
-                'description' => 'Top-rated basement finishing & remodeling in Chicago suburbs — %s five-star reviews. Home theaters, guest suites & recreation rooms. Call (224) 735-4200!',
+                'title' => "Chicago Suburbs Basement Finishing — {$reviewBadge} & 40 Yrs",
+                'description' => 'Basement finishing & remodeling in Chicago\'s NW suburbs: home theaters, guest suites, rec rooms, wet bars. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel', 'basement remodeling near me'],
             ],
         ];
@@ -376,25 +381,28 @@ class SeoService
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
                 'shortLabel' => 'Kitchen',
-                'titleTemplate' => 'Kitchen Remodeling in %s, IL',
-                'descriptionTemplate' => 'Trusted kitchen remodeling contractors in %s, IL — %s five-star reviews. Custom cabinets, countertops & full renovations. Call (224) 735-4200 for a free estimate!',
+                'titleTemplate' => '%s Kitchen Remodeling — %s',
+                'descriptionTemplate' => '%s, IL kitchen remodeling: custom cabinets, quartz & granite countertops, IKEA installs, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
                 'shortLabel' => 'Bathroom',
-                'titleTemplate' => 'Bathroom Remodeling in %s, IL',
-                'descriptionTemplate' => 'Expert bathroom remodeling contractors in %s, IL — %s five-star reviews. Walk-in showers, tub conversions & complete renovations. Call (224) 735-4200 for a free estimate!',
+                'titleTemplate' => '%s Bathroom Remodeling — %s',
+                'descriptionTemplate' => '%s, IL bathroom remodeling: walk-in showers, tub-to-shower conversions, tile & vanities, full renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors', 'bathroom remodelers'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
                 'shortLabel' => 'Home',
-                'titleTemplate' => 'Home Remodeling Contractors in %s, IL',
-                'descriptionTemplate' => 'Professional home remodeling contractors in %s, IL — %s five-star reviews. Room additions, open floor plans & complete renovations. Call (224) 735-4200 for a free estimate!',
+                'titleTemplate' => '%s Whole-Home Remodeling — %s',
+                'descriptionTemplate' => '%s, IL whole-home remodeling: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors', 'home remodelers'],
             ],
         ];
+
+        $reviewNum = self::getReviewCountNumeric();
+        $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated Local';
 
         $service = $services[$serviceType] ?? [
             'label' => 'Remodeling',
@@ -404,9 +412,9 @@ class SeoService
             'keywords' => [],
         ];
         
-        // Primary keyword targeting: "{Service} Remodeling in {City}, IL"
-        $title = sprintf($service['titleTemplate'], $city);
-        
+        // Primary keyword targeting: "{City} {Service} Remodeling — {N★ Reviews}"
+        $title = sprintf($service['titleTemplate'], $city, $reviewBadge);
+
         // Enhanced description with review count, CTA and city targeting
         $reviewCount = self::getReviewCountLabel();
         $description = sprintf($service['descriptionTemplate'], $city, $reviewCount);
@@ -459,6 +467,14 @@ class SeoService
         $count = cache()->remember('testimonial_count', 3600, fn () => \App\Models\Testimonial::count());
         $rounded = (int) floor($count / 5) * 5;
         return $rounded . '+';
+    }
+
+    /**
+     * Get the raw review count (for tight title slots where "70+" is too long).
+     */
+    protected static function getReviewCountNumeric(): int
+    {
+        return (int) cache()->remember('testimonial_count', 3600, fn () => \App\Models\Testimonial::count());
     }
 
     /**

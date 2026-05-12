@@ -6,9 +6,9 @@
     <nav aria-label="Global" class="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-8">
         {{-- Logo + Brand Name --}}
         <div class="flex items-center gap-x-4">
-            <a href="{{ $homeUrl }}" wire:navigate.hover class="flex items-center gap-x-3">
-                <img src="{{ asset('images/logo.svg') }}" alt="GS Construction" width="64" height="64" class="size-16 dark:hidden" />
-                <img src="{{ asset('images/logo-dark.svg') }}" alt="GS Construction" width="64" height="64" class="hidden size-16 dark:block" />
+            <a href="{{ $homeUrl }}" wire:navigate.hover class="flex items-center gap-x-3" aria-label="GS Construction homepage">
+                <img src="{{ asset('images/logo.svg') }}" alt="" width="64" height="64" class="size-16 dark:hidden" />
+                <img src="{{ asset('images/logo-dark.svg') }}" alt="" width="64" height="64" class="hidden size-16 dark:block" />
                 <span class="font-heading text-xl font-bold tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
             </a>
         </div>
@@ -77,9 +77,9 @@
             class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 dark:bg-slate-950 dark:ring-white/10"
         >
             <div class="flex items-center justify-between">
-                <a href="{{ $homeUrl }}" wire:navigate class="flex items-center gap-x-3">
-                    <img src="{{ asset('images/logo.svg') }}" alt="GS Construction" width="48" height="48" class="size-12 dark:hidden" />
-                    <img src="{{ asset('images/logo-dark.svg') }}" alt="GS Construction" width="48" height="48" class="hidden size-12 dark:block" />
+                <a href="{{ $homeUrl }}" wire:navigate class="flex items-center gap-x-3" aria-label="GS Construction homepage">
+                    <img src="{{ asset('images/logo.svg') }}" alt="" width="48" height="48" class="size-12 dark:hidden" />
+                    <img src="{{ asset('images/logo-dark.svg') }}" alt="" width="48" height="48" class="hidden size-12 dark:block" />
                     <span id="mobile-menu-title" class="font-heading text-lg font-semibold uppercase tracking-wide text-zinc-800 dark:text-zinc-100">GS CONSTRUCTION</span>
                 </a>
                 <button type="button" @click="mobileMenuOpen = false" class="-m-2.5 min-h-[44px] min-w-[44px] rounded-md p-2.5 text-gray-700 dark:text-zinc-200">

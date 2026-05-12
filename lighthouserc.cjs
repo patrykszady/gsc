@@ -10,7 +10,7 @@
  *   npx lhci autorun
  */
 
-export default {
+module.exports = {
   ci: {
     collect: {
       // URLs to audit
@@ -25,7 +25,11 @@ export default {
       ],
       // Number of runs per URL (more = more accurate, but slower)
       numberOfRuns: 1,
+      // Force the WSL-side Chrome (otherwise lhci may pick up Chrome from
+      // /mnt/c/... which fails with ECONNREFUSED in WSL).
+      chromePath: '/usr/bin/google-chrome-stable',
       settings: {
+        chromePath: '/usr/bin/google-chrome-stable',
         // Use desktop settings by default (change to 'mobile' for mobile)
         preset: 'desktop',
         // Throttling settings
@@ -49,7 +53,7 @@ export default {
       // Save reports locally (not to Lighthouse CI server)
       target: 'filesystem',
       outputDir: './storage/lighthouse-reports',
-      reportFilenamePattern: '%%PATHNAME%%-%%DATETIME%%.html',
+      reportFilenamePattern: '%%PATHNAME%%-%%DATETIME%%.%%EXTENSION%%',
     },
   },
 };

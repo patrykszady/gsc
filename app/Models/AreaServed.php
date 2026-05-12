@@ -17,7 +17,20 @@ class AreaServed extends Model
         'slug',
         'latitude',
         'longitude',
+        'intro',
+        'local_intro',
+        'landmarks',
+        'permit_notes',
     ];
+
+    /**
+     * Returns true when this area has at least the short intro filled in.
+     * Used by content-depth audit + view to decide whether to render unique blocks.
+     */
+    public function hasUniqueContent(): bool
+    {
+        return filled($this->intro) || filled($this->local_intro);
+    }
 
     protected $casts = [
         'latitude'  => 'float',

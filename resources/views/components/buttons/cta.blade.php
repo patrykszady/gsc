@@ -15,7 +15,7 @@
     ];
     
     $variants = [
-        'primary' => 'uppercase bg-sky-500 text-white shadow-lg hover:bg-sky-600',
+        'primary' => 'uppercase bg-sky-600 text-white shadow-lg hover:bg-sky-700',
         'secondary' => $onDark 
             ? 'capitalize border border-transparent text-white hover:border-white'
             : 'capitalize border border-transparent text-zinc-700 hover:border-zinc-400 dark:text-white dark:hover:border-white',
