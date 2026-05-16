@@ -180,6 +180,29 @@ class GenerateSitemap extends Command
         $totalPageTypes = count($areaPages) + count($areaServicePages);
         $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × {$totalPageTypes} page types)");
 
+        // Add ZIP-code service-area landing pages
+        $this->info("Adding ZIP-code service-area pages to sitemap...");
+        $zipMap = app(\App\Services\ZipCodeService::class)->getZipMap();
+        $sitemap->add(
+            Url::create("{$baseUrl}/service-area")
+                ->setLastModificationDate(now())
+                ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
+                ->setPriority(0.6)
+        );
+        $urlCount++;
+        $zipCount = 0;
+        foreach ($zipMap as $zip => $info) {
+            $sitemap->add(
+                Url::create("{$baseUrl}/service-area/{$zip}")
+                    ->setLastModificationDate($areaLastmod)
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(0.65)
+            );
+            $urlCount++;
+            $zipCount++;
+        }
+        $this->line("  Added {$zipCount} ZIP service-area pages");
+
         // Add individual testimonial pages
         $this->info("Adding testimonial pages to sitemap...");
         $testimonials = Testimonial::visible()->orderBy('review_date', 'desc')->get();

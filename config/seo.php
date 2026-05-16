@@ -131,6 +131,22 @@ return [
             'gs.construction',
         ],
 
+        // Local competitors we track in the same SERP snapshot so we can chart
+        // share-of-voice over time. Matched (case-insensitive) against listing
+        // title or domain host. Update as the landscape shifts.
+        'competitor_patterns' => [
+            'airoom'                  => ['airoom'],
+            'normandy_remodeling'     => ['normandy remodeling', 'normandyremodeling'],
+            'lifestyle_renovations'   => ['lifestyle renovations', 'lifestylerenovations'],
+            'jw_construction'         => ['jw construction'],
+            'siena_construction'      => ['siena construction'],
+            'sebring_design'          => ['sebring design', 'sebringdesignbuild'],
+            're_bath'                 => ['re-bath', 'rebath'],
+            'kitchen_master'          => ['kitchen master'],
+            'remodeling_concepts'     => ['remodeling concepts'],
+            'chicagoland_remodeling'  => ['chicagoland remodeling'],
+        ],
+
         // Google web SERPs — uses SerpApi engine=google with `location` string.
         'web_queries' => [
             // Arlington Heights (HQ)
@@ -181,5 +197,21 @@ return [
         // Site URL as registered in Search Console. Use sc-domain:gs.construction
         // for the Domain property, or https://gs.construction/ for URL-prefix.
         'site_url' => env('GSC_SEARCH_CONSOLE_SITE_URL', 'sc-domain:gs.construction'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | PageSpeed Insights URLs (seo:psi-sync)
+    |--------------------------------------------------------------------------
+    | URLs to snapshot weekly with the free PSI API. Override with --urls=.
+    */
+    'psi_urls' => [
+        env('APP_URL', 'https://gs.construction') . '/',
+        env('APP_URL', 'https://gs.construction') . '/about',
+        env('APP_URL', 'https://gs.construction') . '/projects',
+        env('APP_URL', 'https://gs.construction') . '/services/kitchen-remodeling',
+        env('APP_URL', 'https://gs.construction') . '/services/bathroom-remodeling',
+        env('APP_URL', 'https://gs.construction') . '/areas-served/lake-zurich',
+        env('APP_URL', 'https://gs.construction') . '/contact',
     ],
 ];

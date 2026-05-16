@@ -71,10 +71,23 @@ $localBusiness = [
         'maxValue' => 15,
     ],
     'knowsLanguage' => ['English', 'Polish'],
+    'founder' => [
+        ['@id' => 'https://gs.construction/#person-gregory'],
+        ['@id' => 'https://gs.construction/#person-patryk'],
+    ],
+    'employee' => [
+        ['@id' => 'https://gs.construction/#person-gregory'],
+        ['@id' => 'https://gs.construction/#person-patryk'],
+    ],
     'slogan' => 'Quality remodeling, family-owned since 2015.',
     'paymentAccepted' => 'Cash, Check, Credit Card, ACH Transfer',
     'currenciesAccepted' => 'USD',
-    'priceRange' => '$$$$',
+    // $$$ = mid-to-high range; $$$$ overstates and hurts AI Overview accuracy.
+    'priceRange' => '$$$',
+    'award' => array_values(array_filter([
+        '40+ years combined remodeling experience',
+        '5-star rated on Google, Yelp, and Houzz',
+    ])),
     'address' => [
         '@type' => 'PostalAddress',
         'addressLocality' => 'Arlington Heights',
@@ -213,16 +226,12 @@ $organization = [
         'availableLanguage' => ['English', 'Polish'],
     ],
     'founder' => [
-        [
-            '@type' => 'Person',
-            'name' => 'Gregory',
-            'jobTitle' => 'Founder',
-        ],
-        [
-            '@type' => 'Person',
-            'name' => 'Patryk',
-            'jobTitle' => 'Co-Founder',
-        ],
+        ['@id' => 'https://gs.construction/#person-gregory'],
+        ['@id' => 'https://gs.construction/#person-patryk'],
+    ],
+    'employee' => [
+        ['@id' => 'https://gs.construction/#person-gregory'],
+        ['@id' => 'https://gs.construction/#person-patryk'],
     ],
 ];
 

@@ -43,6 +43,7 @@ GS Construction & Remodeling is a family-owned home remodeling business based in
 For programmatic access, prefer these structured endpoints:
 
 - AI Feed (JSON, full business + services + recent projects + reviews): https://gs.construction/ai-feed.json
+- Curated Q&A for AI engines (JSON, FAQPage schema): https://gs.construction/geo/answers.json
 - Extended LLM context (Markdown): https://gs.construction/llms-full.txt
 - XML Sitemap: https://gs.construction/sitemap.xml
 

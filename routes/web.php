@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AiFeedController;
+use App\Http\Controllers\GeoAnswersController;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\PlatformsSettings;
 use App\Livewire\Admin\Login;
@@ -14,9 +15,11 @@ use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
 use App\Livewire\ProjectImagePage;
 use App\Livewire\ProjectPage;
+use App\Livewire\ServiceAreaIndex;
 use App\Livewire\ServicePage;
 use App\Livewire\ServicesPage;
 use App\Livewire\TestimonialPage;
+use App\Livewire\ZipCodePage;
 use App\Models\ShortLink;
 use App\Services\SeoService;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +53,7 @@ Route::get('/', function () {
 
 // AI / GEO: structured feed for ChatGPT, Perplexity, Google AI Overviews, Claude.
 Route::get('/ai-feed.json', AiFeedController::class)->name('ai-feed');
+Route::get('/geo/answers.json', GeoAnswersController::class)->name('geo.answers');
 
 Route::get('/testimonials', function () {
     SeoService::testimonials();
@@ -171,6 +175,12 @@ Route::get('/areas-served/{area}/services/kitchens', function (string $area) {
 Route::get('/areas-served/{area}/services/bathrooms', function (string $area) {
     return redirect("/areas-served/{$area}/services/bathroom-remodeling", 301);
 });
+
+// ZIP-code service-area landing pages (drives long-tail local search)
+Route::get('/service-area', ServiceAreaIndex::class)->name('service-area.index');
+Route::get('/service-area/{zip}', ZipCodePage::class)
+    ->where('zip', '\d{5}')
+    ->name('service-area.show');
 
 // Redirects from old area-level service URLs
 Route::get('/areas-served/{area}/kitchen-remodeling', function (string $area) {

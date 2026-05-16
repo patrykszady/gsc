@@ -60,6 +60,30 @@ return [
             'place_id' => env('GOOGLE_BUSINESS_PROFILE_PLACE_ID'),
             'production_url' => env('GOOGLE_BUSINESS_PROFILE_PRODUCTION_URL', 'https://gs.construction'),
         ],
+        // Google Search Console API (free, official). Separate OAuth client
+        // because the scope differs (webmasters.readonly). Reuses the same
+        // Google Cloud project credentials if you wish (set the same client_id/secret).
+        'search_console' => [
+            'enabled' => env('GOOGLE_SEARCH_CONSOLE_ENABLED', false),
+            'client_id' => env('GOOGLE_SEARCH_CONSOLE_CLIENT_ID', env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID')),
+            'client_secret' => env('GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET', env('GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET')),
+            'refresh_token' => env('GOOGLE_SEARCH_CONSOLE_REFRESH_TOKEN'),
+            // Defaults to the existing seo.search_console.site_url (likely
+            // `sc-domain:gs.construction`) to avoid configuring the same value twice.
+            'site_url' => env('GOOGLE_SEARCH_CONSOLE_SITE_URL',
+                env('GSC_SEARCH_CONSOLE_SITE_URL', 'sc-domain:gs.construction')),
+        ],
+        // PageSpeed Insights API (free, 25k req/day; API key recommended).
+        'pagespeed' => [
+            'api_key' => env('GOOGLE_PAGESPEED_API_KEY'),
+            'strategies' => ['mobile', 'desktop'],
+        ],
+    ],
+
+    // Bing Webmaster Tools API (free, simple API-key auth).
+    'bing' => [
+        'webmaster_api_key' => env('BING_WEBMASTER_API_KEY'),
+        'site_url' => env('BING_WEBMASTER_SITE_URL', env('APP_URL', 'https://gs.construction')),
     ],
 
     'microsoft' => [

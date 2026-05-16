@@ -7,9 +7,9 @@ $people = [
     [
         '@context' => 'https://schema.org',
         '@type' => 'Person',
-        '@id' => 'https://gs.construction/#person-greg',
-        'name' => 'Greg',
-        'givenName' => 'Greg',
+        '@id' => 'https://gs.construction/#person-gregory',
+        'name' => 'Gregory',
+        'givenName' => 'Gregory',
         'jobTitle' => 'Founder & Master Remodeling Contractor',
         'description' => 'Co-founder of GS Construction with 40+ years of combined experience in kitchen, bathroom, and whole-home remodeling in the Chicago suburbs.',
         'image' => [

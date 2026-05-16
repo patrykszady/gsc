@@ -32,6 +32,10 @@ class TrackRankings extends Command
         $show = (bool) $this->option('show');
 
         $patterns = array_map('strtolower', (array) config('seo.rank_tracker.identity_patterns', []));
+        $competitors = array_map(
+            fn ($pats) => array_map('strtolower', (array) $pats),
+            (array) config('seo.rank_tracker.competitor_patterns', [])
+        );
         $topN = (int) config('seo.rank_tracker.store_top_n', 10);
 
         $totals = ['google' => 0, 'google_maps' => 0, 'found' => 0, 'not_found' => 0, 'errors' => 0];
@@ -39,7 +43,7 @@ class TrackRankings extends Command
         if (in_array($engine, ['both', 'google'], true)) {
             foreach ((array) config('seo.rank_tracker.web_queries', []) as $cfg) {
                 if ($filter !== '' && stripos($cfg['q'], $filter) === false) continue;
-                $this->runOne('google', $cfg, $apiKey, $patterns, $topN, $dryRun, $show, $totals);
+                $this->runOne('google', $cfg, $apiKey, $patterns, $competitors, $topN, $dryRun, $show, $totals);
                 usleep(800_000);
             }
         }
@@ -47,7 +51,7 @@ class TrackRankings extends Command
         if (in_array($engine, ['both', 'google_maps'], true)) {
             foreach ((array) config('seo.rank_tracker.maps_queries', []) as $cfg) {
                 if ($filter !== '' && stripos($cfg['q'], $filter) === false) continue;
-                $this->runOne('google_maps', $cfg, $apiKey, $patterns, $topN, $dryRun, $show, $totals);
+                $this->runOne('google_maps', $cfg, $apiKey, $patterns, $competitors, $topN, $dryRun, $show, $totals);
                 usleep(800_000);
             }
         }
@@ -64,9 +68,10 @@ class TrackRankings extends Command
 
     /**
      * @param array<int,string> $patterns
+     * @param array<string,array<int,string>> $competitors
      * @param array<string,int> $totals
      */
-    protected function runOne(string $engine, array $cfg, string $apiKey, array $patterns, int $topN, bool $dryRun, bool $show, array &$totals): void
+    protected function runOne(string $engine, array $cfg, string $apiKey, array $patterns, array $competitors, int $topN, bool $dryRun, bool $show, array &$totals): void
     {
         $query = (string) $cfg['q'];
         $location = $engine === 'google' ? (string) ($cfg['location'] ?? '') : (string) ($cfg['ll'] ?? '');
@@ -125,6 +130,7 @@ class TrackRankings extends Command
         $meta = [
             'search_id' => $json['search_metadata']['id'] ?? null,
             'ads_count' => is_array($json['ads'] ?? null) ? count($json['ads']) : 0,
+            'competitors' => $this->findCompetitors($results, $competitors, $engine),
         ];
 
         $previous = SeoRankSnapshot::query()
@@ -256,5 +262,43 @@ class TrackRankings extends Command
             }
         }
         return [null, null];
+    }
+
+    /**
+     * Find best (lowest numeric) position for each tracked competitor in this SERP.
+     *
+     * @param array<int,array<string,mixed>> $results
+     * @param array<string,array<int,string>> $competitors
+     * @return array<string,array{position:int|null,title:?string}>
+     */
+    protected function findCompetitors(array $results, array $competitors, string $engine): array
+    {
+        $out = [];
+        foreach ($competitors as $key => $patterns) {
+            $best = null;
+            $title = null;
+            foreach ($results as $r) {
+                $hay = strtolower(($r['title'] ?? '') . ' ' . ($r['host'] ?? ''));
+                foreach ($patterns as $p) {
+                    if ($p === '' || ! str_contains($hay, $p)) {
+                        continue;
+                    }
+                    $pos = $r['position'] ?? null;
+                    if (is_string($pos) && str_starts_with($pos, 'L')) {
+                        $pos = (int) substr($pos, 1);
+                    }
+                    if (! is_numeric($pos)) {
+                        continue;
+                    }
+                    $posInt = (int) $pos;
+                    if ($best === null || $posInt < $best) {
+                        $best = $posInt;
+                        $title = $r['title'] ?? null;
+                    }
+                }
+            }
+            $out[$key] = ['position' => $best, 'title' => $title];
+        }
+        return $out;
     }
 }

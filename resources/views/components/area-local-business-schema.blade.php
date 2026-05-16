@@ -61,7 +61,24 @@
         'url' => url('/areas-served/' . $slug),
         'telephone' => '+1-224-735-4200',
         'email' => 'crew@gs.construction',
-        'priceRange' => '$$$$',
+        'priceRange' => '$$$',
+        'paymentAccepted' => 'Cash, Check, Credit Card, ACH Transfer',
+        'currenciesAccepted' => 'USD',
+        'slogan' => 'Quality remodeling, family-owned since 2015.',
+        'knowsLanguage' => ['English', 'Polish'],
+        'numberOfEmployees' => [
+            '@type' => 'QuantitativeValue',
+            'minValue' => 5,
+            'maxValue' => 15,
+        ],
+        'sameAs' => array_values(array_filter([
+            config('socials.facebook.url'),
+            config('socials.instagram.url'),
+            config('socials.google.url'),
+            config('socials.houzz.url'),
+            config('socials.yelp.url'),
+            config('socials.angi.url'),
+        ])),
         'image' => asset('images/greg-patryk.jpg'),
         'logo' => asset('images/logo.svg'),
         'address' => $address,
@@ -78,6 +95,45 @@
             "Home Remodeling in {$city}",
             'Basement Finishing',
             'Custom Cabinetry',
+        ],
+        'hasOfferCatalog' => [
+            '@type' => 'OfferCatalog',
+            'name' => "Remodeling Services in {$city}, IL",
+            'itemListElement' => [
+                [
+                    '@type' => 'Offer',
+                    'url' => url('/areas-served/' . $slug . '/services/kitchen-remodeling'),
+                    'itemOffered' => [
+                        '@type' => 'Service',
+                        'name' => "Kitchen Remodeling in {$city}",
+                        'serviceType' => 'Kitchen Remodeling',
+                        'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
+                        'provider' => ['@id' => $entityId],
+                    ],
+                ],
+                [
+                    '@type' => 'Offer',
+                    'url' => url('/areas-served/' . $slug . '/services/bathroom-remodeling'),
+                    'itemOffered' => [
+                        '@type' => 'Service',
+                        'name' => "Bathroom Remodeling in {$city}",
+                        'serviceType' => 'Bathroom Remodeling',
+                        'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
+                        'provider' => ['@id' => $entityId],
+                    ],
+                ],
+                [
+                    '@type' => 'Offer',
+                    'url' => url('/areas-served/' . $slug . '/services/home-remodeling'),
+                    'itemOffered' => [
+                        '@type' => 'Service',
+                        'name' => "Home Remodeling in {$city}",
+                        'serviceType' => 'Home Remodeling',
+                        'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
+                        'provider' => ['@id' => $entityId],
+                    ],
+                ],
+            ],
         ],
     ];
 

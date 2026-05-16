@@ -179,6 +179,12 @@
             
             <livewire:map-section />
 
+            {{-- City-centered Google Map iframe (lazy-loaded) — local SEO + UX --}}
+            <x-area-google-map
+                :query="$area->city . ', IL'"
+                :heading="'Find us near ' . $area->city . ', IL'"
+                :title="'Map of ' . $area->city . ', IL service area'" />
+
             {{-- Nearby Areas — internal linking + local SEO signal --}}
             @php
                 $nearbyHomeAreas = $area->nearestCities(8);

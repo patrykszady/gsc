@@ -114,6 +114,59 @@ Schedule::command('seo:content-depth-audit --missing')
     ->appendOutputTo(storage_path('logs/seo-content-depth.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:content-depth-audit failed'));
 
+// SEO: weekly JSON-LD ImageObject audit — flag pages missing contentUrl on schema images.
+Schedule::command('seo:image-schema-audit --only-errors')
+    ->weeklyOn(1, '09:15')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-image-schema.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:image-schema-audit failed'));
+
+// SEO: weekly submission of persistent 404 URLs to IndexNow (re-crawl + deindex).
+Schedule::command('seo:404-indexnow --min-hits=3')
+    ->weeklyOn(2, '09:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-404-indexnow.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:404-indexnow failed'));
+
+// SEO: daily Google Search Console sync (free, official API).
+// GSC data lags ~2 days, so we always pull the last 7-day window and upsert.
+Schedule::command('seo:gsc-sync --days=7')
+    ->dailyAt('05:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-sync.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:gsc-sync failed'))
+    ->when(fn () => config('services.google.search_console.enabled'));
+
+// GBP: daily Performance API sync (impressions/calls/website clicks/direction requests).
+Schedule::command('gbp:metrics-sync --days=14')
+    ->dailyAt('05:15')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
+    ->onFailure(fn () => logger()->error('Scheduled gbp:metrics-sync failed'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
+
+// GBP: weekly Performance API search-keyword sync (monthly granularity from Google).
+Schedule::command('gbp:metrics-sync --days=3 --with-keywords')
+    ->weeklyOn(1, '05:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
+
+// SEO: weekly PageSpeed Insights snapshot for key pages (mobile + desktop).
+Schedule::command('seo:psi-sync')
+    ->weeklyOn(3, '04:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-psi-sync.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:psi-sync failed'));
+
+// SEO: daily Bing Webmaster Tools sync (query stats).
+Schedule::command('seo:bing-sync')
+    ->dailyAt('05:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-bing-sync.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
+    ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
+
 // Instagram: 2 posts per day — morning + late afternoon (Central Time)
 // Random delay spreads posts naturally within each window
 Schedule::command('social:post --platform=instagram --queue --random-delay=150')

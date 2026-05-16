@@ -285,6 +285,95 @@ PROMPT;
         return implode("\n", $parts);
     }
 
+    /**
+     * Generate per-city SEO content (intro, local_intro, landmarks, permit_notes)
+     * for an AreaServed row. Returns an associative array on success, or null on error.
+     *
+     * The prompt is grounded: it tells Gemini to use only well-known facts about the
+     * Chicago suburb and to keep tone honest. Always review output before saving.
+     *
+     * @return array{intro:string,local_intro:string,landmarks:string,permit_notes:string}|null
+     */
+    public function generateAreaContent(\App\Models\AreaServed $area): ?array
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+            return null;
+        }
+
+        $city = $area->city;
+
+        $prompt = <<<PROMPT
+You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom, and
+whole-home remodeling contractor based in Arlington Heights, Illinois. We serve homeowners
+across the Chicago suburbs. Founded 2015 by Gregory and Patryk (father & son), 40+ years
+combined experience, 5-star rated, English & Polish spoken.
+
+Write unique, factual, local SEO content for our service-area page targeting the city of
+**{$city}, Illinois** (Chicago suburb). The goal is to differentiate this page from our
+other 88 city pages so Google does not treat it as a duplicate template.
+
+Return ONLY a valid JSON object with EXACTLY these four string keys:
+
+- "intro": 2–3 sentences (180–280 characters). A natural opening for the page that mentions
+  the city by name, references the township or surrounding area, and positions GS Construction
+  as a local remodeling contractor for {$city} homeowners. No marketing fluff, no "welcome to".
+
+- "local_intro": 3–5 sentences (450–650 characters). Why we're a great fit for THIS city
+  specifically. Mention common housing characteristics (e.g. brick bungalows, mid-century ranches,
+  newer construction, historic homes — whichever is actually typical for {$city}). Reference
+  that we work on kitchens, bathrooms, basements, and whole-home remodels. If you know typical
+  home age, lot patterns, or notable subdivisions, mention them. Do NOT invent fake project names.
+
+- "landmarks": A single comma-separated list (no sentences) of 5–8 well-known, real landmarks,
+  neighborhoods, school districts, parks, or major streets in {$city}. Use only items you are
+  confident exist. Examples format: "Arlington Park, Lake Arlington, District 25 schools,
+  Northwest Highway, Recreation Park".
+
+- "permit_notes": 2 sentences (180–260 characters). Generic-but-true statement that structural,
+  electrical, and plumbing work in {$city} requires permits from the local building department,
+  and that GS Construction handles permit applications and inspection scheduling for the
+  homeowner. Mention the township/village if you know it; otherwise say "{$city} Village
+  building department" or "{$city} building department".
+
+Hard rules:
+- Use plain text only. No markdown, no emoji, no quotes around the JSON values.
+- Do NOT invent specific permit codes, fees, or ordinance numbers.
+- Do NOT mention competitors.
+- Do NOT use the phrases "nestled in", "premier", "your trusted", "look no further".
+- Each city's content MUST differ in concrete facts (landmarks, home styles), not just synonyms.
+- Return ONLY the JSON object. No code fences, no preamble.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 900);
+        if ($raw === null) {
+            return null;
+        }
+
+        // Strip code fences if any.
+        $raw = preg_replace('/^```json\s*/i', '', $raw);
+        $raw = preg_replace('/^```\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/i', '', $raw);
+        $decoded = json_decode(trim($raw), true);
+
+        if (! is_array($decoded)) {
+            $this->lastError = 'Failed to parse area-content JSON: ' . $raw;
+            return null;
+        }
+
+        $required = ['intro', 'local_intro', 'landmarks', 'permit_notes'];
+        $out = [];
+        foreach ($required as $key) {
+            if (empty($decoded[$key]) || ! is_string($decoded[$key])) {
+                $this->lastError = "Missing '{$key}' in area-content response: " . $raw;
+                return null;
+            }
+            $out[$key] = trim($decoded[$key]);
+        }
+
+        return $out;
+    }
+
     protected function parseJsonResponse(string $content): ?array
     {
         // Remove markdown code blocks if present

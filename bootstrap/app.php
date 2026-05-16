@@ -5,6 +5,7 @@ use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\DetectCountry;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\Track404Responses;
 use App\Http\Middleware\TrackDomainSource;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -46,7 +47,15 @@ return Application::configure(basePath: dirname(__DIR__))
             SecurityHeaders::class,
             \Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders::class,
         ]);
+
+        // Global terminating middleware: track 404 responses (must be global,
+        // since unmatched routes throw NotFoundHttpException before reaching
+        // any route group middleware).
+        $middleware->append(Track404Responses::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // 404 tracking is handled by App\Http\Middleware\Track404Responses
+        // (terminating middleware on web group). Laravel filters
+        // NotFoundHttpException out of report callbacks, so reporter-based
+        // tracking does not fire.
     })->create();

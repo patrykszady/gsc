@@ -1184,6 +1184,17 @@ class GoogleBusinessProfileService
         return $response->json('categories', []);
     }
 
+    /**
+     * Public accessor for the cached/refreshed GBP access token. Used by
+     * sibling services (e.g. GoogleBusinessProfilePerformanceService) so
+     * they can call other endpoints under the same business.manage scope
+     * without duplicating OAuth logic.
+     */
+    public function getAuthorizedToken(): ?string
+    {
+        return $this->getAccessToken();
+    }
+
     protected function getAccessToken(): ?string
     {
         $cacheKey = 'google_business_profile_access_token';
@@ -1191,7 +1202,6 @@ class GoogleBusinessProfileService
         if ($cached) {
             return $cached;
         }
-
         // Check DB for a still-valid access token
         $dbToken = OAuthToken::forProvider(self::PROVIDER);
         if ($dbToken?->hasValidAccessToken()) {
