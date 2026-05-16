@@ -76,6 +76,25 @@ class GenerateAiContentJob implements ShouldQueue
                 'path' => $image->path,
                 'disk' => $disk,
             ]);
+
+            // Self-heal stale records so they stop being retried forever.
+            $fallbackData = [];
+            if ($this->overwrite || empty($image->alt_text)) {
+                $fallbackData['alt_text'] = $image->alt_text ?: $image->seo_alt_text;
+            }
+            if ($this->overwrite || empty($rawSeoAltText)) {
+                $fallbackData['seo_alt_text'] = $image->seo_alt_text;
+            }
+            if ($this->overwrite || empty($image->caption)) {
+                $projectTitle = $image->project?->title ?: 'Project';
+                $fallbackData['caption'] = $image->caption ?: "{$projectTitle} photo by GS Construction.";
+            }
+
+            if (!empty($fallbackData)) {
+                $image->updateQuietly($fallbackData);
+                $shouldRegenerateSitemap = true;
+            }
+
             $skipContent = true;
             // Still allow slug generation below even if file is missing
         }
@@ -84,9 +103,25 @@ class GenerateAiContentJob implements ShouldQueue
             $content = $service->generateImageContent($image);
 
             if ($content === null) {
+                $error = $service->getLastError();
+
+                if ($this->shouldRetryAiError($error)) {
+                    $delay = $this->nextRetryDelaySeconds();
+
+                    Log::warning('GenerateAiContentJob: Transient image AI error, releasing job for retry', [
+                        'image_id' => $image->id,
+                        'attempt' => $this->attempts(),
+                        'retry_in_seconds' => $delay,
+                        'error' => $error,
+                    ]);
+
+                    $this->release($delay);
+                    return;
+                }
+
                 Log::warning('GenerateAiContentJob: Failed to generate image content', [
                     'image_id' => $image->id,
-                    'error' => $service->getLastError(),
+                    'error' => $error,
                 ]);
             } else {
                 $updateData = [];
@@ -208,9 +243,25 @@ class GenerateAiContentJob implements ShouldQueue
         $description = $service->generateProjectDescription($project);
 
         if ($description === null) {
+            $error = $service->getLastError();
+
+            if ($this->shouldRetryAiError($error)) {
+                $delay = $this->nextRetryDelaySeconds();
+
+                Log::warning('GenerateAiContentJob: Transient project AI error, releasing job for retry', [
+                    'project_id' => $project->id,
+                    'attempt' => $this->attempts(),
+                    'retry_in_seconds' => $delay,
+                    'error' => $error,
+                ]);
+
+                $this->release($delay);
+                return;
+            }
+
             Log::warning('GenerateAiContentJob: Failed to generate project description', [
                 'project_id' => $project->id,
-                'error' => $service->getLastError(),
+                'error' => $error,
             ]);
             return;
         }
@@ -231,5 +282,31 @@ class GenerateAiContentJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    protected function shouldRetryAiError(?string $error): bool
+    {
+        if (!is_string($error) || trim($error) === '') {
+            return false;
+        }
+
+        if (str_starts_with($error, 'Connection error:')) {
+            return true;
+        }
+
+        if (preg_match('/^API error (408|409|425|429|5\\d\\d):/i', $error) === 1) {
+            return true;
+        }
+
+        return str_contains($error, 'Resource exhausted');
+    }
+
+    protected function nextRetryDelaySeconds(): int
+    {
+        $schedule = [60, 120, 300, 600, 900];
+        $attempt = max(1, $this->attempts());
+        $index = min($attempt - 1, count($schedule) - 1);
+
+        return $schedule[$index] + random_int(5, 25);
     }
 }

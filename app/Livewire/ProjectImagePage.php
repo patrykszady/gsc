@@ -123,11 +123,17 @@ class ProjectImagePage extends Component
                . ($location ? "Located in {$location}. " : '')
                . "Professional remodeling by GS Construction.";
 
-        $imageUrl = $this->image->getThumbnailUrl('large');
+        $imageUrl = $this->image->getAnyUrl('large');
         $googleUrl = null;
         if ($this->image->google_places_media_name) {
             $googleUrl = app(GoogleBusinessProfileService::class)
                 ->getMediaUrlCached($this->image->google_places_media_name);
+        }
+
+        if (!is_string($imageUrl) || trim($imageUrl) === '') {
+            $imageUrl = is_string($googleUrl) && trim($googleUrl) !== ''
+                ? $googleUrl
+                : asset('images/greg-patryk.jpg');
         }
         
         // Canonical always points to the base URL (no area)

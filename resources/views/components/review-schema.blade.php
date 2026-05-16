@@ -27,7 +27,11 @@ foreach ($items as $item) {
         ],
         'reviewBody' => $item->review_description,
         'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),
-        'itemReviewed' => ['@id' => 'https://gs.construction/#business'],
+        'itemReviewed' => [
+            '@type' => 'LocalBusiness',
+            '@id' => 'https://gs.construction/#business',
+            'name' => 'GS Construction',
+        ],
     ];
 
     // Cite the originating platform when available so AI engines can verify the source.
@@ -84,10 +88,14 @@ foreach ($items as $item) {
     $reviews[] = $review;
 }
 
-// For single review, output directly; for multiple, use @graph
-$schema = count($reviews) === 1 
-    ? array_merge(['@context' => 'https://schema.org'], $reviews[0])
-    : ['@context' => 'https://schema.org', '@graph' => $reviews];
+$schema = [
+    '@context' => 'https://schema.org',
+    '@type' => 'LocalBusiness',
+    '@id' => 'https://gs.construction/#business',
+    'name' => 'GS Construction',
+    'url' => 'https://gs.construction',
+    'review' => $reviews,
+];
 @endphp
 
 <script type="application/ld+json">

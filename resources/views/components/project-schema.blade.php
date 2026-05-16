@@ -4,6 +4,8 @@
 @if($project)
 @php
 $coverImage = $project->images->where('is_cover', true)->first() ?? $project->images->first();
+$coverImageUrl = $coverImage?->getAnyUrl('large');
+$coverThumbUrl = $coverImage?->getAnyUrl('medium');
 
 $schema = [
     '@context' => 'https://schema.org',
@@ -39,9 +41,11 @@ if ($project->location) {
 }
 
 // Add images
-if ($coverImage) {
-    $schema['image'] = $coverImage->url;
-    $schema['thumbnailUrl'] = $coverImage->getThumbnailUrl('medium');
+if (is_string($coverImageUrl) && trim($coverImageUrl) !== '') {
+    $schema['image'] = $coverImageUrl;
+    if (is_string($coverThumbUrl) && trim($coverThumbUrl) !== '') {
+        $schema['thumbnailUrl'] = $coverThumbUrl;
+    }
 }
 
 // Add all project images as associated media with proper alt text
@@ -75,11 +79,16 @@ if ($project->images->isNotEmpty()) {
         }
     }
 
-    $schema['associatedMedia'] = $project->images->map(function ($img, $i) use ($contentLocation) {
+    $associatedMedia = $project->images->map(function ($img, $i) use ($contentLocation) {
+        $imageUrl = $img->getAnyUrl('large');
+        if (!is_string($imageUrl) || trim($imageUrl) === '') {
+            return null;
+        }
+
         $obj = [
             '@type'       => 'ImageObject',
-            'url'         => $img->url,
-            'contentUrl'  => $img->url,
+            'url'         => $imageUrl,
+            'contentUrl'  => $imageUrl,
             'name'        => $img->seo_alt_text,
             'description' => $img->caption ?? $img->seo_alt_text,
             'caption'     => $img->caption ?? $img->seo_alt_text,
@@ -97,7 +106,11 @@ if ($project->images->isNotEmpty()) {
             $obj['contentLocation'] = $contentLocation;
         }
         return $obj;
-    })->toArray();
+    })->filter()->values()->toArray();
+
+    if (!empty($associatedMedia)) {
+        $schema['associatedMedia'] = $associatedMedia;
+    }
 }
 
 // Filter null values from keywords
@@ -128,7 +141,7 @@ $article = [
         'url'   => 'https://gs.construction',
     ],
     'publisher'       => ['@id' => 'https://gs.construction/#organization'],
-    'image'           => $coverImage ? [$coverImage->url] : [asset('images/greg-patryk.jpg')],
+    'image'           => (is_string($coverImageUrl) && trim($coverImageUrl) !== '') ? [$coverImageUrl] : [asset('images/greg-patryk.jpg')],
     'keywords'        => $schema['keywords'],
 ];
 @endphp

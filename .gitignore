@@ -31,3 +31,5 @@ public/sitemap.xml
 storage/lighthouse-reports/
 # Chrome profiles spawned by lhci on Windows-side temp paths
 C:\\Users\\*
+/C:\\Users\\patry\\AppData\\Local\\lighthouse.*/
+/C:\\Users\\*\\AppData\\Local\\lighthouse.*/

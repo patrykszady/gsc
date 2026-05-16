@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\AiContentService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
 
 class BackfillAiContent extends Command
 {
@@ -151,6 +152,41 @@ class BackfillAiContent extends Command
                     ->onQueue('ai-content')
                     ->delay(now()->addSeconds($queued * 5));
                 $queued++;
+                continue;
+            }
+
+            // Skip stale DB records that no longer have files on disk.
+            $disk = $image->disk ?: 'public';
+            if (!Storage::disk($disk)->exists($image->path)) {
+                $updateData = [];
+                $rawSeoAltText = $image->getRawOriginal('seo_alt_text');
+
+                if ($overwrite || empty($image->alt_text)) {
+                    $updateData['alt_text'] = $image->alt_text ?: $image->seo_alt_text;
+                }
+                if ($overwrite || empty($rawSeoAltText)) {
+                    $updateData['seo_alt_text'] = $image->seo_alt_text;
+                }
+                if ($overwrite || empty($image->caption)) {
+                    $projectTitle = $image->project?->title ?: 'Project';
+                    $updateData['caption'] = $image->caption ?: "{$projectTitle} photo by GS Construction.";
+                }
+
+                if (!empty($updateData)) {
+                    $image->updateQuietly($updateData);
+                    $updated++;
+                }
+
+                if (empty($image->slug)) {
+                    $image->slug = $image->generateSlug();
+                    $image->saveQuietly();
+                }
+
+                if ($this->output->isVerbose()) {
+                    $this->newLine();
+                    $this->line("    Skipped missing file for Image #{$image->id} ({$disk}: {$image->path})");
+                }
+
                 continue;
             }
 

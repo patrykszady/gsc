@@ -53,21 +53,21 @@
             class="pointer-events-none relative z-20 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8"
         >
             <div class="text-center">
-                {{-- /areas-served variant --}}
-                <div @class(['hidden' => $currentRoute !== 'areas-served'])>
-                    <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">Areas We Serve</h1>
-                    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional kitchen remodels, bathroom renovations, and home remodeling services.</p>
-                </div>
-                {{-- /areas variant --}}
-                <div @class(['hidden' => $currentRoute !== 'areas'])>
-                    <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">Areas We Service</h1>
-                    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Providing expert kitchen remodels, bathroom renovations, and home remodeling services across Chicagoland, Northwest Suburbs, and the North Shore.</p>
-                </div>
-                {{-- /locations variant --}}
-                <div @class(['hidden' => $currentRoute !== 'locations'])>
-                    <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">Locations We Serve</h1>
-                    <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional kitchen remodels, bathroom renovations, and home remodeling services.</p>
-                </div>
+                @php
+                    $heroHeading = match ($currentRoute) {
+                        'areas' => 'Areas We Service',
+                        'locations' => 'Locations We Serve',
+                        default => 'Areas We Serve',
+                    };
+
+                    $heroDescription = match ($currentRoute) {
+                        'areas' => 'Providing expert kitchen remodels, bathroom renovations, and home remodeling services across Chicagoland, Northwest Suburbs, and the North Shore.',
+                        default => 'Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional kitchen remodels, bathroom renovations, and home remodeling services.',
+                    };
+                @endphp
+
+                <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">{{ $heroHeading }}</h1>
+                <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">{{ $heroDescription }}</p>
             </div>
         </div>
     </section>

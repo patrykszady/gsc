@@ -17,7 +17,7 @@
         ->orderByDesc('is_cover')
         ->orderBy('sort_order')
         ->limit((int) $limit)
-        ->get(['id','project_id','path','alt_text','seo_alt_text','caption','width','height','is_cover']);
+        ->get(['id','project_id','path','disk','thumbnails','webp_path','alt_text','seo_alt_text','caption','width','height','is_cover']);
 
     if ($images->isEmpty()) return;
 
@@ -41,6 +41,34 @@
     ];
     if ($geo) $contentLocation['geo'] = $geo;
 
+    $galleryImages = $images->map(function ($img, $i) use ($contentLocation) {
+        $imageUrl = $img->getAnyUrl('large');
+        if (! is_string($imageUrl) || trim($imageUrl) === '') {
+            return null;
+        }
+
+        return [
+            '@type'           => 'ImageObject',
+            'url'             => $imageUrl,
+            'contentUrl'      => $imageUrl,
+            'name'            => $img->seo_alt_text ?: $img->alt_text,
+            'description'     => $img->caption ?: ($img->seo_alt_text ?: $img->alt_text),
+            'caption'         => $img->caption ?: ($img->seo_alt_text ?: $img->alt_text),
+            'width'           => $img->width ?? 1200,
+            'height'          => $img->height ?? 800,
+            'position'        => $i + 1,
+            'representativeOfPage' => (bool) ($img->is_cover ?? false),
+            'creditText'      => 'GS Construction',
+            'creator'         => ['@id' => 'https://gs.construction/#organization'],
+            'copyrightNotice' => '© '.now()->year.' GS Construction',
+            'license'         => 'https://gs.construction/',
+            'acquireLicensePage' => url('/contact'),
+            'contentLocation' => $contentLocation,
+        ];
+    })->filter()->values()->all();
+
+    if (empty($galleryImages)) return;
+
     $gallery = [
         '@context'    => 'https://schema.org',
         '@type'       => 'ImageGallery',
@@ -51,27 +79,8 @@
         'inLanguage'  => 'en-US',
         'isPartOf'    => ['@id' => 'https://gs.construction/#website'],
         'about'       => ['@id' => url('/areas-served/'.$area->slug).'#localbusiness'],
-        'numberOfItems' => $images->count(),
-        'image'       => $images->map(function ($img, $i) use ($contentLocation) {
-            return [
-                '@type'           => 'ImageObject',
-                'url'             => $img->url,
-                'contentUrl'      => $img->url,
-                'name'            => $img->seo_alt_text ?: $img->alt_text,
-                'description'     => $img->caption ?: ($img->seo_alt_text ?: $img->alt_text),
-                'caption'         => $img->caption ?: ($img->seo_alt_text ?: $img->alt_text),
-                'width'           => $img->width ?? 1200,
-                'height'          => $img->height ?? 800,
-                'position'        => $i + 1,
-                'representativeOfPage' => (bool) ($img->is_cover ?? false),
-                'creditText'      => 'GS Construction',
-                'creator'         => ['@id' => 'https://gs.construction/#organization'],
-                'copyrightNotice' => '© '.now()->year.' GS Construction',
-                'license'         => 'https://gs.construction/',
-                'acquireLicensePage' => url('/contact'),
-                'contentLocation' => $contentLocation,
-            ];
-        })->values()->all(),
+        'numberOfItems' => count($galleryImages),
+        'image'       => $galleryImages,
     ];
 @endphp
 

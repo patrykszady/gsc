@@ -6,6 +6,8 @@
         lightbox: false,
         currentIndex: 0,
         images: {{ Js::from($allImages->map(function ($img) use ($project) {
+            $imageKey = $img->slug ?: $img->id;
+
             return [
                 'id' => $img->id,
                 'url' => $img->getThumbnailUrl('large'),
@@ -13,7 +15,7 @@
                 'originalUrl' => $img->url,
                 'alt' => $img->alt_text ?: $img->seo_alt_text,
                 'caption' => $img->caption,
-                'pageUrl' => route('projects.image', ['project' => $project, 'image' => $img->id]),
+                'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
             ];
         })) }},
         open(index) {
@@ -42,7 +44,10 @@
                 Project Photos
                 <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $allImages->count() }})</span>
             </h2>
-            @php $firstImageKey = $allImages->first()?->id; @endphp
+            @php
+                $firstImage = $allImages->first();
+                $firstImageKey = $firstImage?->slug ?: $firstImage?->id;
+            @endphp
             @if($firstImageKey)
                 <a href="{{ route('projects.image', ['project' => $project, 'image' => $firstImageKey]) }}"
                    wire:navigate

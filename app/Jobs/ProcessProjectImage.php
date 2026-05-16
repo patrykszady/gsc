@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 class ProcessProjectImage implements ShouldQueue
 {
@@ -35,15 +36,23 @@ class ProcessProjectImage implements ShouldQueue
             return;
         }
 
-        // tempPath is the full filesystem path from TemporaryUploadedFile->getRealPath()
-        if (!file_exists($this->tempPath)) {
-            \Log::warning('ProcessProjectImage: Temp file not found', ['path' => $this->tempPath]);
-            return;
+        // Support both absolute paths (legacy jobs) and local-disk relative paths.
+        $resolvedTempPath = $this->tempPath;
+        $isLocalDiskPath = false;
+
+        if (!file_exists($resolvedTempPath)) {
+            if (Storage::disk('local')->exists($this->tempPath)) {
+                $resolvedTempPath = Storage::disk('local')->path($this->tempPath);
+                $isLocalDiskPath = true;
+            } else {
+                \Log::warning('ProcessProjectImage: Temp file not found', ['path' => $this->tempPath]);
+                return;
+            }
         }
 
         // Create an UploadedFile from the temp path
         $file = new \Illuminate\Http\UploadedFile(
-            $this->tempPath,
+            $resolvedTempPath,
             $this->originalFilename,
             $this->mimeType,
             null,
@@ -55,7 +64,11 @@ class ProcessProjectImage implements ShouldQueue
             'is_cover' => $this->isCover,
         ]);
 
-        // Clean up the temp file
-        @unlink($this->tempPath);
+        // Clean up temp artifact
+        if ($isLocalDiskPath && Storage::disk('local')->exists($this->tempPath)) {
+            Storage::disk('local')->delete($this->tempPath);
+        } else {
+            @unlink($resolvedTempPath);
+        }
     }
 }

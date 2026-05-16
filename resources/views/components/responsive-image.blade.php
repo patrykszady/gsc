@@ -13,7 +13,9 @@
 @php
     $fallbackUrl = $image->getThumbnailUrl($size);
     $webpUrl = $image->getWebpThumbnailUrl($size);
-    $altText = $alt ?? $image->seo_alt_text;
+    $altText = $alt
+        ?? $image->seo_alt_text
+        ?? ($image->project ? ucfirst(str_replace('-', ' ', $image->project->project_type)) . ' remodeling by GS Construction' : 'GS Construction remodeling project image');
     $loading = $eager ? 'eager' : 'lazy';
     $fetchpriority = $eager ? 'high' : 'low';
 @endphp

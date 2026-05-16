@@ -11,6 +11,8 @@ use App\Models\ProjectTimelapseFrame;
 use App\Models\Tag;
 use App\Services\ImageService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -616,9 +618,18 @@ class ProjectForm extends Component
                 
                 $sortOrder++;
                 
-                // Get the full filesystem path to the temp file
-                // getRealPath() returns the absolute path from TemporaryUploadedFile
-                $tempPath = $upload->getRealPath();
+                // Persist upload to durable local storage before queuing.
+                // Livewire temp files can be removed before the worker picks up the job.
+                $extension = $upload->getClientOriginalExtension() ?: 'jpg';
+                $tempPath = $upload->storeAs(
+                    'project-uploads-queue',
+                    Str::uuid() . '.' . $extension,
+                    'local'
+                );
+
+                if (!$tempPath) {
+                    continue;
+                }
                 
                 // Dispatch job to process image in background
                 ProcessProjectImage::dispatch(

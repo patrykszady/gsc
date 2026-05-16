@@ -34,16 +34,11 @@ $itemList = [
             '@type'    => 'ListItem',
             'position' => $i + 1,
             'item'     => array_filter([
-                '@type'         => 'Review',
+                '@type'         => 'CreativeWork',
                 'name'          => trim($t->display_name . ' — ' . ($t->project_type ? ucfirst($t->project_type) . ' remodel' : 'Remodeling') . ' review'),
-                'reviewBody'    => $t->review_description,
+                'description'   => $t->review_description,
                 'datePublished' => ($t->review_date ?? $t->created_at)->toIso8601String(),
                 'url'           => $first?->url,
-                'reviewRating'  => [
-                    '@type' => 'Rating',
-                    'ratingValue' => (string) ($t->star_rating ?: 5),
-                    'bestRating'  => '5',
-                ],
                 'author' => [
                     '@type' => 'Person',
                     'name'  => $t->display_name,
@@ -52,7 +47,6 @@ $itemList = [
                     '@type' => 'Organization',
                     'name'  => $publisher,
                 ] : null,
-                'itemReviewed' => ['@id' => 'https://gs.construction/#business'],
                 'locationCreated' => $t->project_location ? [
                     '@type' => 'Place',
                     'address' => [

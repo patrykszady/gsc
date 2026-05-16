@@ -35,6 +35,7 @@ class ProjectPhotosGallery extends Component
     {
         // Sort: featured first, then shuffled (stable per request)
         $allImages = $this->project->images
+            ->filter(fn($image) => filled($image->slug) || filled($image->id))
             ->sortByDesc('is_cover')
             ->groupBy('is_cover')
             ->flatMap(fn($group, $key) => $key ? $group : $group->shuffle())

@@ -67,14 +67,17 @@ Schedule::command('testimonials:sync-houzz-reviews --browser-scrape --only-new')
 Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'));
+    ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'))
+    ->when(fn () => filled(config('services.serpapi.api_key')));
 
 // Google: probe daily via free Places API; only call SerpApi when review count changes.
 Schedule::command('testimonials:sync-google-reviews-serpapi --only-new')
     ->dailyAt('07:15')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Google (SerpApi) review sync failed'));
+    ->onFailure(fn () => logger()->error('Scheduled Google (SerpApi) review sync failed'))
+    ->when(fn () => filled(config('services.serpapi.api_key')))
+    ->when(fn () => filled(config('services.serpapi.google_data_id')) || filled(config('services.google.business_profile.place_id')));
 
 // SEO: weekly rank snapshot (Google + Google Maps) for tracked queries.
 Schedule::command('seo:track-rankings --engine=both')

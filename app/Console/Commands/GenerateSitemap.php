@@ -231,8 +231,8 @@ class GenerateSitemap extends Command
             
             // Add project images to sitemap for Google Image Search
             foreach ($project->images as $image) {
-                $imageUrl = $image->getThumbnailUrl('large'); // Use large size for better quality
-                if ($imageUrl) {
+                $imageUrl = $image->getAnyUrl('large'); // Prefer WebP/thumbnail/main in that order
+                if (is_string($imageUrl) && trim($imageUrl) !== '') {
                     if ($needsImageRewrite) {
                         $imageUrl = str_replace($appUrl, $baseUrl, $imageUrl);
                     }
@@ -259,8 +259,8 @@ class GenerateSitemap extends Command
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority(0.5);
 
-                $photoImageUrl = $image->getThumbnailUrl('large');
-                if ($photoImageUrl) {
+                $photoImageUrl = $image->getAnyUrl('large');
+                if (is_string($photoImageUrl) && trim($photoImageUrl) !== '') {
                     if ($needsImageRewrite) {
                         $photoImageUrl = str_replace($appUrl, $baseUrl, $photoImageUrl);
                     }
