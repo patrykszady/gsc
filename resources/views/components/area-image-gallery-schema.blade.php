@@ -17,7 +17,7 @@
         ->orderByDesc('is_cover')
         ->orderBy('sort_order')
         ->limit((int) $limit)
-        ->get(['id','project_id','path','disk','thumbnails','webp_path','alt_text','seo_alt_text','caption','width','height','is_cover']);
+        ->get(['id','project_id','path','disk','thumbnails','alt_text','seo_alt_text','caption','width','height','is_cover']);
 
     if ($images->isEmpty()) return;
 

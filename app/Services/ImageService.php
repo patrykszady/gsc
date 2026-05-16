@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Laravel\Facades\Image;
@@ -60,7 +61,7 @@ class ImageService
         $thumbnails = $this->generateThumbnails($file, $basePath, $filename);
 
         // Create database record
-        $projectImage = ProjectImage::create([
+        $attributes = [
             'project_id' => $project->id,
             'filename' => $filename,
             'original_filename' => $originalFilename,
@@ -75,8 +76,13 @@ class ImageService
             'is_cover' => $options['is_cover'] ?? false,
             'sort_order' => $options['sort_order'] ?? 0,
             'thumbnails' => $thumbnails,
-            'webp_path' => $webpPath,
-        ]);
+        ];
+
+        if (Schema::hasColumn('project_images', 'webp_path')) {
+            $attributes['webp_path'] = $webpPath;
+        }
+
+        $projectImage = ProjectImage::create($attributes);
 
         return $projectImage;
     }
