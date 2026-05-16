@@ -30,7 +30,9 @@ class SeoImageSchemaAudit extends Command
             return self::FAILURE;
         }
 
-        $urls = collect((new Crawler($sitemapResponse->body()))->filter('loc')->each(fn ($n) => trim($n->text())))
+        $urls = collect((new Crawler($sitemapResponse->body()))
+            ->filterXPath('//*[local-name()="loc"]')
+            ->each(fn ($n) => trim($n->text())))
             ->filter(fn ($u) => Str::startsWith($u, $base))
             ->unique()
             ->take((int) $this->option('limit'))
