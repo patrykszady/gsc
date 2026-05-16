@@ -22,54 +22,57 @@
                     mapCenter: @js($mapCenter),
                     mapModuleLoaded: false,
                     isInteractive: false,
-                    async init() {
+                    async loadMap() {
                         if (this.mapModuleLoaded) return;
                         this.mapModuleLoaded = true;
                         const { createProjectZipMap } = await window.loadProjectZipMap();
                         Object.assign(this, createProjectZipMap(this.zipCounts, this.maxCount, this.mapCenter));
                         await this.initMap();
+                        // Kick tile rendering on multiple frames — the clip-path container
+                        // can confuse Google Maps' visibility detection.
+                        if (this.map) {
+                            const kick = () => {
+                                google.maps.event.trigger(this.map, 'resize');
+                                this.map.setCenter(this.mapCenter);
+                            };
+                            requestAnimationFrame(kick);
+                            setTimeout(kick, 300);
+                            setTimeout(kick, 1000);
+                        }
                     },
                     activateMap() {
                         this.isInteractive = true;
-                        this.$dispatch('map-interaction', { active: true });
                         if (this.map) {
                             this.map.setOptions({
                                 zoomControl: true,
                                 gestureHandling: 'greedy',
-                                draggable: true,
-                                scrollwheel: true,
-                                disableDoubleClickZoom: false,
                             });
                         }
                     },
                     deactivateMap() {
                         this.isInteractive = false;
-                        this.$dispatch('map-interaction', { active: false });
                         if (this.map) {
                             this.map.setOptions({
                                 zoomControl: false,
-                                gestureHandling: 'none',
-                                draggable: false,
-                                scrollwheel: false,
-                                disableDoubleClickZoom: true,
+                                gestureHandling: 'cooperative',
                             });
                         }
                     }
                 }"
-                x-intersect:enter.once="init()"
+                x-intersect.margin.500px:enter.once="loadMap()"
                 class="absolute inset-0"
                 wire:ignore
             >
                 {{-- Fixed map container --}}
-                <div 
+                <div
                     class="fixed inset-0 h-screen w-full"
                     @mouseleave="deactivateMap()"
                 >
                     <div class="size-full" x-ref="map"></div>
                 </div>
-                
+
                 {{-- Click to interact overlay (inside clipped area so it scrolls correctly) --}}
-                <div 
+                <div
                     x-show="!isInteractive"
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100"

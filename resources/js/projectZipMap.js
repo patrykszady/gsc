@@ -9,7 +9,9 @@ export function createProjectZipMap(zipCounts, maxCount, mapCenter) {
             if (this.initialized) return;
             this.initialized = true;
 
-            await this.waitForGoogleMaps();
+            // Await the pre-warm promise set up in <head> — by the time Alpine
+            // calls init(), the API is usually already downloaded.
+            await (window.__mapsPrewarm || this.waitForGoogleMaps());
             if (!window.google?.maps?.importLibrary) return;
 
             const { Map } = await google.maps.importLibrary('maps');
@@ -23,10 +25,10 @@ export function createProjectZipMap(zipCounts, maxCount, mapCenter) {
                 streetViewControl: false,
                 fullscreenControl: false,
                 zoomControl: false,
-                gestureHandling: 'none',
-                draggable: false,
-                scrollwheel: false,
-                disableDoubleClickZoom: true,
+                gestureHandling: 'cooperative',
+                draggable: true,
+                scrollwheel: true,
+                disableDoubleClickZoom: false,
                 minZoom: 9,
                 maxZoom: 15,
                 styles: [
@@ -119,11 +121,13 @@ export function createProjectZipMap(zipCounts, maxCount, mapCenter) {
             }
         },
         waitForGoogleMaps() {
+            // If already loaded (e.g. after wire:navigate), resolve immediately
+            if (window.google?.maps?.importLibrary) return Promise.resolve();
             return new Promise((resolve) => {
                 let attempts = 0;
                 const timer = setInterval(() => {
                     attempts += 1;
-                    if (window.google?.maps?.importLibrary || attempts > 20) {
+                    if (window.google?.maps?.importLibrary || attempts > 40) {
                         clearInterval(timer);
                         resolve();
                     }

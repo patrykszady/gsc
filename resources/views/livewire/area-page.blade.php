@@ -130,41 +130,142 @@
                  Provides genuine differentiation between area pages — critical to
                  avoid Google's "duplicate content / thin local lander" penalty. --}}
             @if($area->hasUniqueContent() || filled($area->landmarks) || filled($area->permit_notes))
-            <section class="bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} remodeling">
-                <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
-                        Remodeling in {{ $area->city }}, IL
-                    </h2>
+            @php
+                // Random project image slider for the city section (left column).
+                // Mirror layout of the about-section (text/right) — image lives on the LEFT here.
+                $citySliderImages = \App\Models\ProjectImage::query()
+                    ->whereHas('project')
+                    ->select('project_images.*')
+                    ->join(
+                        \DB::raw('(SELECT MIN(id) as min_id FROM project_images GROUP BY project_id ORDER BY RAND() LIMIT 6) as unique_projects_city'),
+                        'project_images.id', '=', 'unique_projects_city.min_id'
+                    )
+                    ->inRandomOrder()
+                    ->get();
+            @endphp
+            <section class="overflow-hidden bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} remodeling">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-start">
 
-                    @if(filled($area->intro))
-                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
-                            {{ $area->intro }}
-                        </p>
-                    @endif
+                        {{-- LEFT: project image slider --}}
+                        <div class="lg:mt-2">
+                            @if($citySliderImages->count() > 0)
+                                <div
+                                    x-data="{
+                                        current: 0,
+                                        total: {{ $citySliderImages->count() }},
+                                        timer: null,
+                                        prev() { this.current = (this.current - 1 + this.total) % this.total; },
+                                        next() { this.current = (this.current + 1) % this.total; },
+                                        start() { this.timer = setInterval(() => this.next(), 3000); },
+                                        stop()  { if (this.timer) clearInterval(this.timer); this.timer = null; },
+                                    }"
+                                    x-init="start()"
+                                    @mouseenter="stop()"
+                                    @mouseleave="start()"
+                                    class="relative overflow-hidden rounded-2xl shadow-lg ring-1 ring-zinc-900/10 dark:ring-white/10"
+                                >
+                                    <div class="relative aspect-[4/3] w-full bg-zinc-100 dark:bg-zinc-800">
+                                        @foreach($citySliderImages as $idx => $img)
+                                            <div
+                                                x-show="current === {{ $idx }}"
+                                                x-transition:enter="transition ease-out duration-700"
+                                                x-transition:enter-start="opacity-0"
+                                                x-transition:enter-end="opacity-100"
+                                                x-transition:leave="transition ease-in duration-700"
+                                                x-transition:leave-start="opacity-100"
+                                                x-transition:leave-end="opacity-0"
+                                                class="absolute inset-0"
+                                            >
+                                                <x-lqip-image
+                                                    :image="$img"
+                                                    size="large"
+                                                    aspectRatio="4/3"
+                                                    rounded="2xl"
+                                                    :alt="($img->seo_alt_text ?? $img->alt_text) ?: 'Remodeling project near ' . $area->city . ', IL'"
+                                                    class="h-full w-full object-cover" />
+                                            </div>
+                                        @endforeach
+                                    </div>
 
-                    @if(filled($area->local_intro))
-                        <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
-                            {!! nl2br(e($area->local_intro)) !!}
+                                    @if($citySliderImages->count() > 1)
+                                        <button
+                                            type="button"
+                                            @click="prev()"
+                                            class="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/85 p-2 text-zinc-900 shadow-sm transition hover:bg-white dark:bg-zinc-900/80 dark:text-white dark:hover:bg-zinc-900"
+                                            aria-label="Previous slide"
+                                        >
+                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M12.78 15.78a.75.75 0 01-1.06 0l-5.25-5.25a.75.75 0 010-1.06l5.25-5.25a.75.75 0 111.06 1.06L8.06 10l4.72 4.72a.75.75 0 010 1.06z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            @click="next()"
+                                            class="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/85 p-2 text-zinc-900 shadow-sm transition hover:bg-white dark:bg-zinc-900/80 dark:text-white dark:hover:bg-zinc-900"
+                                            aria-label="Next slide"
+                                        >
+                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M7.22 4.22a.75.75 0 011.06 0l5.25 5.25a.75.75 0 010 1.06l-5.25 5.25a.75.75 0 11-1.06-1.06L11.94 10 7.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    @endif
+
+                                    {{-- Dots --}}
+                                    @if($citySliderImages->count() > 1)
+                                        <div class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+                                            @foreach($citySliderImages as $idx => $_img)
+                                                <button
+                                                    type="button"
+                                                    @click="current = {{ $idx }}"
+                                                    :class="current === {{ $idx }} ? 'bg-white' : 'bg-white/50 hover:bg-white/80'"
+                                                    class="h-2 w-2 rounded-full transition"
+                                                    aria-label="Show slide {{ $idx + 1 }}"></button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
-                    @endif
 
-                    @if(filled($area->landmarks))
-                        <div class="mt-6">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                Neighborhoods &amp; landmarks we serve in {{ $area->city }}
-                            </h3>
-                            <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->landmarks }}</p>
-                        </div>
-                    @endif
+                        {{-- RIGHT: city copy --}}
+                        <div class="lg:pl-4">
+                            <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+                                Remodeling in {{ $area->city }}, IL
+                            </h2>
 
-                    @if(filled($area->permit_notes))
-                        <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-                            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
-                                {{ $area->city }} permits &amp; building codes
-                            </h3>
-                            <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->permit_notes }}</p>
+                            @if(filled($area->intro))
+                                <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
+                                    {{ $area->intro }}
+                                </p>
+                            @endif
+
+                            @if(filled($area->local_intro))
+                                <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
+                                    {!! nl2br(e($area->local_intro)) !!}
+                                </div>
+                            @endif
+
+                            @if(filled($area->landmarks))
+                                <div class="mt-6">
+                                    <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                        Neighborhoods &amp; landmarks we serve in {{ $area->city }}
+                                    </h3>
+                                    <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->landmarks }}</p>
+                                </div>
+                            @endif
+
+                            @if(filled($area->permit_notes))
+                                <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                                    <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
+                                        {{ $area->city }} permits &amp; building codes
+                                    </h3>
+                                    <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->permit_notes }}</p>
+                                </div>
+                            @endif
                         </div>
-                    @endif
+                    </div>
                 </div>
             </section>
             @endif
@@ -178,12 +279,6 @@
             <livewire:testimonials-section :area="$area" />
             
             <livewire:map-section />
-
-            {{-- City-centered Google Map iframe (lazy-loaded) — local SEO + UX --}}
-            <x-area-google-map
-                :query="$area->city . ', IL'"
-                :heading="'Find us near ' . $area->city . ', IL'"
-                :title="'Map of ' . $area->city . ', IL service area'" />
 
             {{-- Nearby Areas — internal linking + local SEO signal --}}
             @php
@@ -293,7 +388,9 @@
 
         @case('projects')
             {{-- Area Projects Page --}}
-            <livewire:timelapse-section />
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <livewire:timelapse-section />
+            </div>
 
             <livewire:projects-grid :area="$area" />
 
@@ -435,6 +532,7 @@
                 <livewire:about-section variant="team" />
 
                 <x-cta-section 
+                    variant="blue"
                     heading="Ready to Transform Your {{ $area->city }} Home?"
                     description="Let's discuss your project. Schedule a free consultation and see why {{ $area->city }} homeowners trust GS Construction."
                     primaryText="Schedule Free Consultation"
@@ -466,14 +564,16 @@
                     ],
                 ];
             @endphp
-            <livewire:main-project-hero-slider 
-                project-type="mixed"
-                :slides="$serviceSlides"
-                primary-cta-text="Get a Free Quote"
-                :primary-cta-url="$area->pageUrl('contact')"
-                secondary-cta-text="View Our Work"
-                :secondary-cta-url="$area->pageUrl('projects')"
-            />
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <livewire:main-project-hero-slider 
+                    project-type="mixed"
+                    :slides="$serviceSlides"
+                    primary-cta-text="Get a Free Quote"
+                    :primary-cta-url="$area->pageUrl('contact')"
+                    secondary-cta-text="View Our Work"
+                    :secondary-cta-url="$area->pageUrl('projects')"
+                />
+            </div>
 
             {{-- Services Grid --}}
             @include('partials.services-grid', ['area' => $area])
@@ -707,6 +807,11 @@
     {{-- FAQ Section (visible + schema — just above footer) --}}
     @if(isset($config) && !empty($config['faqs']))
         <x-faq-section :faqs="$config['faqs']" :heading="$config['label'] . ' FAQ in ' . $area->city" />
+    @endif
+
+    {{-- About page: show map above the "Explore {City}" navigation footer. --}}
+    @if($page === 'about')
+        <livewire:map-section />
     @endif
 
     {{-- Area Navigation --}}
