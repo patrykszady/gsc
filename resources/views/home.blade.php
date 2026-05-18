@@ -100,14 +100,11 @@
     {{-- Contact Section (lazy loaded - below fold) --}}
     <livewire:contact-section lazy />
 
-    {{-- FAQ Section — targets top search queries (just above footer) --}}
-    <x-faq-section :faqs="[
-        ['question' => 'How much does kitchen remodeling cost in the Chicago suburbs?', 'answer' => 'Every kitchen remodel is different — cost depends on the scope of work, materials you choose, and the size of your space. We provide free in-home estimates with a detailed breakdown tailored to your specific project and budget.'],
-        ['question' => 'How long does a bathroom remodel take?', 'answer' => 'The timeline for a bathroom remodel depends on the scope of work, material lead times, and any structural changes involved. We provide a detailed schedule before starting and keep you updated throughout the process.'],
-        ['question' => 'Do you offer free remodeling estimates?', 'answer' => 'Yes! GS Construction offers free in-home consultations and estimates for all kitchen, bathroom, and home remodeling projects. We visit your home, discuss your vision and budget, and provide a detailed written estimate — no obligation, no pressure.'],
-        ['question' => 'What areas do you serve near Chicago?', 'answer' => 'We serve 50+ communities in the Chicago suburbs including Arlington Heights, Palatine, Barrington, Buffalo Grove, Lake Zurich, Schaumburg, Hoffman Estates, Mount Prospect, and many more. Visit our Areas Served page for the full list.'],
-        ['question' => 'Are you licensed, bonded, and insured?', 'answer' => 'Yes, GS Construction is fully licensed, bonded, and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],
-        ['question' => 'Can I stay in my home during a remodel?', 'answer' => 'Absolutely! Most of our clients stay in their homes during kitchen and bathroom remodels. We set up dust barriers, protect your floors, and minimize disruption to your daily routine. For larger whole-home projects, we discuss logistics during the planning phase.'],
-    ]" heading="Remodeling FAQ" />
+    {{-- FAQ Section — dynamically loaded from config/faq.php (targets top search queries) --}}
+    <x-faq-section 
+        :faqs="collect(config('faq.faqs', []))->take(config('faq.display.homepage_limit', 5))->toArray()" 
+        heading="Frequently Asked Questions"
+        collapsed
+    />
 
 </x-layouts.app>

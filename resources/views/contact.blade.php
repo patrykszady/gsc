@@ -75,6 +75,13 @@
         {{-- Testimonials Section --}}
         <livewire:testimonials-section />
 
+        {{-- FAQ Section --}}
+        <x-faq-section 
+            :faqs="collect(config('faq.faqs', []))->slice(0, 8)->toArray()" 
+            heading="Common Questions About GS Construction"
+            collapsed
+        />
+
         {{-- Services Section --}}
         @include('partials.services-grid')
     </main>

@@ -136,6 +136,13 @@ Schedule::command('gbp:unresponded-reviews --max-age=24 --notify')
     ->appendOutputTo(storage_path('logs/gbp-unresponded-reviews.log'))
     ->when(fn () => config('services.google.business_profile.enabled'));
 
+// FAQ: weekly generation for website + AI model training.
+Schedule::command('faq:generate --ai')
+    ->weeklyOn(2, '08:00') // Tuesdays 08:00 CT
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/faq-generate.log'))
+    ->onFailure(fn () => logger()->error('Scheduled faq:generate failed'));
+
 // SEO: weekly submission of persistent 404 URLs to IndexNow (re-crawl + deindex).
 Schedule::command('seo:404-indexnow --min-hits=3')
     ->weeklyOn(2, '09:30')
