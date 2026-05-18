@@ -43,6 +43,34 @@ class SyncGbpPerformance extends Command
         $series = $svc->fetchDailyMetrics($locationId, $start, $end);
         if ($series === null) {
             $this->error('Daily metric fetch failed.');
+            if ($svc->lastError) {
+                if (! empty($svc->lastError['status'])) {
+                    $this->line("  HTTP {$svc->lastError['status']}");
+                }
+                if (! empty($svc->lastError['message'])) {
+                    $this->line('  ' . $svc->lastError['message']);
+                }
+                if (! empty($svc->lastError['hint'])) {
+                    $this->warn('  → ' . $svc->lastError['hint']);
+                }
+                if (! empty($svc->lastError['body'])) {
+                    $this->line('  body: ' . str_replace("\n", ' ', $svc->lastError['body']));
+                }
+            } else {
+                // Fall back to the underlying OAuth service's lastError so
+                // operators still see "reauthorization_required" / etc.
+                $gbpErr = app(\App\Services\GoogleBusinessProfileService::class)->lastError ?? null;
+                if (is_array($gbpErr)) {
+                    foreach (['message', 'error', 'error_description'] as $k) {
+                        if (! empty($gbpErr[$k])) {
+                            $this->line("  {$k}: {$gbpErr[$k]}");
+                        }
+                    }
+                    if (! empty($gbpErr['reauthorization_required'])) {
+                        $this->warn('  → Re-authorize Google Business Profile at /admin/platforms.');
+                    }
+                }
+            }
             return self::FAILURE;
         }
 

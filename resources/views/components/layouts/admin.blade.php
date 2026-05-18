@@ -54,6 +54,10 @@
             <flux:sidebar.item icon="building-storefront" href="{{ route('admin.platforms.index') }}" :current="request()->routeIs('admin.platforms.*')">
                 Platforms
             </flux:sidebar.item>
+
+            <flux:sidebar.item icon="chart-bar" href="{{ route('admin.seo-reports.index') }}" :current="request()->routeIs('admin.seo-reports.*')">
+                SEO Reports
+            </flux:sidebar.item>
         </flux:sidebar.nav>
 
         <flux:sidebar.spacer />

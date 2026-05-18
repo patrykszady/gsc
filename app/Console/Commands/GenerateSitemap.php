@@ -67,6 +67,13 @@ class GenerateSitemap extends Command
             'areas',        // alias of /areas-served (noindex)
             'locations',    // alias of /areas-served (noindex)
             's/{code}',     // short link redirects
+            // GEO admin dashboard (auth-gated; redirects to /admin/login for crawlers)
+            'geo',
+            'geo/feed',
+            'geo/llms',
+            'geo/models',
+            'geo/schema',
+            'geo/settings',
         ];
 
         // Static pages from routes (non-parameterized GET routes)
@@ -134,6 +141,26 @@ class GenerateSitemap extends Command
             );
             $urlCount++;
             $this->line("  Added static: /{$uri}");
+        }
+
+        // Add competitor comparison pages
+        $competitors = (array) config('competitors.competitors', []);
+        if ((bool) config('competitors.enabled', true) && ! empty($competitors)) {
+            $this->info('Adding competitor comparison pages to sitemap...');
+            foreach ($competitors as $competitor) {
+                $slug = (string) ($competitor['slug'] ?? '');
+                if ($slug === '') {
+                    continue;
+                }
+                $sitemap->add(
+                    Url::create("{$baseUrl}/compare/{$slug}")
+                        ->setLastModificationDate(now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.6)
+                );
+                $urlCount++;
+                $this->line("  Added compare: /compare/{$slug}");
+            }
         }
 
         // Add area-served pages

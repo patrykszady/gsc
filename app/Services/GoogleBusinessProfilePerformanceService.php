@@ -37,9 +37,48 @@ class GoogleBusinessProfilePerformanceService
 
     public function __construct(protected GoogleBusinessProfileService $gbp) {}
 
+    /**
+     * Last error from a failed API call — surfaces actionable detail
+     * (HTTP status, body excerpt, remediation hint) to console callers.
+     *
+     * @var array{status?:int, body?:string, message?:string, hint?:string}|null
+     */
+    public ?array $lastError = null;
+
     public function isConfigured(): bool
     {
         return $this->gbp->isConfigured();
+    }
+
+    /**
+     * Evict the cached access token so the next getAuthorizedToken() call
+     * is forced through the refresh path. Used to recover from stale 401s.
+     */
+    protected function forceTokenRefresh(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('google_business_profile_access_token');
+    }
+
+    /**
+     * Capture an error response in $lastError with a remediation hint.
+     */
+    protected function captureError(\Illuminate\Http\Client\Response $resp, string $context): void
+    {
+        $status = $resp->status();
+        $body = mb_substr((string) $resp->body(), 0, 600);
+        $hint = match (true) {
+            $status === 401 => 'OAuth token rejected. Re-authorize Google Business Profile at /admin/platforms (refresh token may be revoked).',
+            $status === 403 => 'Permission denied. Verify the OAuth account has Owner/Manager access to this GBP location.',
+            $status === 404 => 'Location not found. Verify GOOGLE_BUSINESS_PROFILE_LOCATION_ID matches a location the OAuth account owns.',
+            $status === 429 => 'Rate limit exceeded. Wait and retry.',
+            default => null,
+        };
+        $this->lastError = array_filter([
+            'status' => $status,
+            'body' => $body,
+            'message' => $context,
+            'hint' => $hint,
+        ]);
     }
 
     /**
@@ -66,8 +105,10 @@ class GoogleBusinessProfilePerformanceService
         \DateTimeInterface $end,
         array $metrics = self::DAILY_METRICS,
     ): ?array {
+        $this->lastError = null;
         $token = $this->gbp->getAuthorizedToken();
         if (! $token) {
+            $this->lastError = ['message' => 'No OAuth token available. Authorize at /admin/platforms.'];
             return null;
         }
 
@@ -86,7 +127,17 @@ class GoogleBusinessProfilePerformanceService
         $query = collect($metrics)->map(fn ($m) => 'dailyMetrics=' . urlencode($m))->implode('&');
         $query .= '&' . http_build_query(array_filter($params, fn ($k) => $k !== 'dailyMetrics', ARRAY_FILTER_USE_KEY));
 
-        $resp = Http::withToken($token)->timeout(45)->get($url . '?' . $query);
+        $fullUrl = $url . '?' . $query;
+        $resp = Http::withToken($token)->timeout(45)->get($fullUrl);
+
+        // Cached access token may be stale; force-refresh + retry once on 401.
+        if ($resp->status() === 401) {
+            $this->forceTokenRefresh();
+            $token = $this->gbp->getAuthorizedToken();
+            if ($token) {
+                $resp = Http::withToken($token)->timeout(45)->get($fullUrl);
+            }
+        }
 
         if (! $resp->successful()) {
             if ($this->isServiceDisabled($resp)) {
@@ -99,6 +150,7 @@ class GoogleBusinessProfilePerformanceService
                 'status' => $resp->status(),
                 'body' => $resp->body(),
             ]);
+            $this->captureError($resp, 'Daily metrics fetch failed');
             return null;
         }
 
@@ -161,6 +213,7 @@ class GoogleBusinessProfilePerformanceService
                     'status' => $resp->status(),
                     'body' => $resp->body(),
                 ]);
+                $this->captureError($resp, 'Keywords fetch failed');
                 return null;
             }
             foreach ($resp->json('searchKeywordsCounts', []) as $kw) {

@@ -2,117 +2,117 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
     <url>
     <loc>https://gs.construction/llms.txt</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/llms-full.txt</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/ai-sitemap.xml</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/ai-product-feed.json</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-            </url>
-    <url>
-    <loc>https://gs.construction/geo</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-            </url>
-    <url>
-    <loc>https://gs.construction/geo/models</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-            </url>
-    <url>
-    <loc>https://gs.construction/geo/schema</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-            </url>
-    <url>
-    <loc>https://gs.construction/geo/llms</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-            </url>
-    <url>
-    <loc>https://gs.construction/geo/feed</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-            </url>
-    <url>
-    <loc>https://gs.construction/geo/settings</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
             </url>
     <url>
     <loc>https://gs.construction/ai-feed.json</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/geo/answers.json</loc>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/testimonials</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/about</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
     <loc>https://gs.construction/contact</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/services</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/areas-served</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/service-area</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/compare</loc>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/compare/kitchen-village</loc>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/compare/4ever-remodeling</loc>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/compare/airoom</loc>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/compare/normandy-remodeling</loc>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
             </url>
     <url>
     <loc>https://gs.construction/areas-served/arlington-heights</loc>
@@ -5438,19 +5438,19 @@
             </url>
     <url>
     <loc>https://gs.construction/projects/kitchens</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/bathrooms</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/home-remodeling</loc>
-    <lastmod>2026-05-16T05:00:25+00:00</lastmod>
+    <lastmod>2026-05-18T04:40:43+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
@@ -5492,7 +5492,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/modern-kitchen-remodel-palatine-white-palatine-il</loc>
-    <lastmod>2026-02-06T17:08:33+00:00</lastmod>
+    <lastmod>2026-05-18T02:57:59+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5503,7 +5503,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/modern-kitchen-remodel-palatine-gray-palatine-il</loc>
-    <lastmod>2026-02-06T17:08:35+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:02+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5514,7 +5514,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/palatine-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:08:37+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5525,7 +5525,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/modern-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:08:39+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:09+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5536,7 +5536,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/palatine-kitchen-remodel-custom-white-palatine-il</loc>
-    <lastmod>2026-02-06T17:08:41+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5547,7 +5547,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/palatine-kitchen-remodel-custom-backsplash-palatine-il</loc>
-    <lastmod>2026-02-06T17:08:43+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5579,7 +5579,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-mudroom-laundry/photos/inverness-mudroom-laundry-room-white-inverness-il</loc>
-    <lastmod>2026-02-06T17:08:45+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5590,7 +5590,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-mudroom-laundry/photos/inverness-mudroom-laundry-room-remodel-inverness-il</loc>
-    <lastmod>2026-02-06T17:08:47+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:27+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5601,7 +5601,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-mudroom-laundry/photos/custom-mudroom-built-storage-baskets-inverness-il</loc>
-    <lastmod>2026-02-06T17:08:49+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:37+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5658,7 +5658,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-kitchen-remodel-white-cabinets-inverness-il</loc>
-    <lastmod>2026-02-06T17:08:51+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:45+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5669,7 +5669,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-kitchen-remodel-white-shaker-inverness-il</loc>
-    <lastmod>2026-02-06T17:08:53+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:40+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5680,7 +5680,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-kitchen-remodel-white-shaker-inverness-il-1</loc>
-    <lastmod>2026-02-06T17:08:55+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5691,7 +5691,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-kitchen-remodel-white-cabinets-inverness-il-1</loc>
-    <lastmod>2026-02-06T17:08:57+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:01+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5702,7 +5702,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-kitchen-island-dark-wood-inverness-il</loc>
-    <lastmod>2026-02-06T17:08:59+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:53+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5713,7 +5713,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-home-remodel-white-cabinets-inverness-il</loc>
-    <lastmod>2026-02-06T17:09:01+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:10+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5724,7 +5724,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-fireplace-remodel-stone-surround-inverness-il</loc>
-    <lastmod>2026-02-06T17:09:03+00:00</lastmod>
+    <lastmod>2026-05-18T02:58:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5735,7 +5735,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/inverness-home-remodel/photos/inverness-home-remodel-custom-white-inverness-il</loc>
-    <lastmod>2026-02-06T17:09:05+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5777,7 +5777,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-remodel/photos/palatine-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:07+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:21+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5788,7 +5788,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-remodel/photos/bright-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:09+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5799,7 +5799,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-remodel/photos/bright-kitchen-remodel-palatine-white-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:12+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:17+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5810,7 +5810,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-remodel/photos/bright-kitchen-remodel-white-cabinets-palatine-il-1</loc>
-    <lastmod>2026-02-06T17:09:14+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:13+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5821,7 +5821,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-remodel/photos/palatine-kitchen-remodel-white-cabinets-palatine-il-1</loc>
-    <lastmod>2026-02-06T17:09:16+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5883,7 +5883,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/arlington-heights-kitchen-remodel-white-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:09:19+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5894,7 +5894,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/arlington-heights-kitchen-remodel-island-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:09:22+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:37+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5905,7 +5905,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/arlington-heights-kitchen-remodel-white-arlington-heights-il-1</loc>
-    <lastmod>2026-02-06T17:09:24+00:00</lastmod>
+    <lastmod>2026-05-18T02:54:28+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5916,7 +5916,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/bright-open-kitchen-remodel-white-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:09:26+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5927,7 +5927,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/arlington-heights-kitchen-remodel-island-arlington-heights-il-1</loc>
-    <lastmod>2026-02-06T17:09:28+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5938,7 +5938,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/bright-kitchen-remodel-white-cabinets-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:09:30+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:49+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5949,7 +5949,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/arlington-heights-kitchen-remodel-wood-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:09:33+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5960,7 +5960,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/arlington-heights-kitchen-remodel-white-arlington-heights-il-2</loc>
-    <lastmod>2026-02-06T17:09:36+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -5971,7 +5971,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/first-floor-remodel/photos/pantry-organization-white-shelves-cabinets-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:09:38+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:52+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6008,7 +6008,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-kitchen/photos/modern-palatine-kitchen-remodel-black-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:40+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:01+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6019,7 +6019,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-kitchen/photos/modern-kitchen-remodel-palatine-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:42+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6030,7 +6030,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-kitchen/photos/modern-palatine-kitchen-remodel-large-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:44+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:21+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6041,7 +6041,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-kitchen/photos/modern-palatine-kitchen-remodel-island-palatine-il</loc>
-    <lastmod>2026-02-06T17:09:46+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:11+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6078,7 +6078,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel/photos/bright-modern-kitchen-remodel-white-arlington-heights</loc>
-    <lastmod>2026-02-06T17:09:48+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6089,7 +6089,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel/photos/kitchen-remodel-gray-island-white-arlington-heights</loc>
-    <lastmod>2026-02-06T17:09:51+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:31+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6100,7 +6100,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel/photos/kitchen-remodel-white-cabinets-marble-arlington-heights</loc>
-    <lastmod>2026-02-06T17:09:53+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6111,7 +6111,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel/photos/bathroom-remodel-glass-shower-white-arlington-heights</loc>
-    <lastmod>2026-02-06T17:09:56+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6153,7 +6153,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/hoffman-estates-kitchen-remodel/photos/hoffman-estates-kitchen-remodel-white-hoffman-estates-il</loc>
-    <lastmod>2026-02-06T17:09:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:33+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6164,7 +6164,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/hoffman-estates-kitchen-remodel/photos/hoffman-estates-kitchen-remodel-white-hoffman-estates-il-1</loc>
-    <lastmod>2026-02-06T17:10:00+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6175,7 +6175,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/hoffman-estates-kitchen-remodel/photos/hoffman-estates-kitchen-remodel-grey-hoffman-estates-il</loc>
-    <lastmod>2026-02-06T17:10:01+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:36+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6186,7 +6186,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/hoffman-estates-kitchen-remodel/photos/spice-rack-penzeys-spices-remodeled-hoffman-estates-il</loc>
-    <lastmod>2026-02-06T17:10:04+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:49+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6197,7 +6197,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/hoffman-estates-kitchen-remodel/photos/hoffman-estates-kitchen-remodel-baking-hoffman-estates-il</loc>
-    <lastmod>2026-02-06T17:10:06+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:52+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6224,7 +6224,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/chicago-bathroom-remodel/photos/chicago-bathroom-remodel-double-vanity-chicago-il</loc>
-    <lastmod>2026-02-06T17:10:08+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6235,7 +6235,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/chicago-bathroom-remodel/photos/chicago-bathroom-remodel-glass-shower-chicago-il</loc>
-    <lastmod>2026-02-06T17:10:10+00:00</lastmod>
+    <lastmod>2026-05-18T03:00:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6267,7 +6267,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/western-springs-primary-bathroom-remodel/photos/western-springs-bathroom-remodel-white-western-springs-il</loc>
-    <lastmod>2026-02-06T17:10:12+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6278,7 +6278,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/western-springs-primary-bathroom-remodel/photos/western-springs-bathroom-remodel-double-western-springs-il</loc>
-    <lastmod>2026-02-06T17:10:14+00:00</lastmod>
+    <lastmod>2026-05-18T02:55:13+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6289,7 +6289,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/western-springs-primary-bathroom-remodel/photos/western-springs-bathroom-remodel-gray-western-springs-il</loc>
-    <lastmod>2026-02-06T17:10:16+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6341,7 +6341,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-bathroom-remodel-palatine-dark-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:18+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:22+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6352,7 +6352,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-bathroom-remodel-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:20+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:15+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6363,7 +6363,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-bathroom-sink-white-quartz-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:22+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:17+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6374,7 +6374,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-bathroom-vanity-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:23+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6385,7 +6385,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-palatine-primary-bathroom-remodel-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:25+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6396,7 +6396,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-bathroom-remodel-palatine-freestanding-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:27+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6407,7 +6407,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/modern-palatine-primary-bathroom/photos/modern-primary-bathroom-vanity-marble-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:30+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:35+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6454,7 +6454,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-hall-bath-remodel/photos/bathroom-remodel-palatine-white-tub-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:32+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6465,7 +6465,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-hall-bath-remodel/photos/modern-bathroom-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:34+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6476,7 +6476,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-hall-bath-remodel/photos/bright-hall-bathroom-remodel-palatine-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:36+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6487,7 +6487,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-hall-bath-remodel/photos/hall-bath-remodel-white-shaker-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:38+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6498,7 +6498,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-hall-bath-remodel/photos/modern-bathroom-remodel-white-shaker-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:39+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6509,7 +6509,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-hall-bath-remodel/photos/bathroom-remodel-white-shaker-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:41+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6581,7 +6581,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/palatine-kitchen-remodel-gray-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:43+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6592,7 +6592,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/remodeled-kitchen-white-cabinets-dark-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:45+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:10+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6603,7 +6603,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/bright-kitchen-remodel-palatine-white-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:48+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:15+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6614,7 +6614,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/remodeled-dining-room-palatine-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:51+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:17+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6625,7 +6625,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/dining-room-remodel-wood-table-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:53+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:20+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6636,7 +6636,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/palatine-home-remodel-dining-room-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:55+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:21+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6647,7 +6647,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/remodeled-kitchen-white-upper-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:10:58+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:18+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6658,7 +6658,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/palatine-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-06T17:11:00+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6669,7 +6669,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/dining-room-remodel-palatine-wood-palatine-il</loc>
-    <lastmod>2026-02-06T17:11:02+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6680,7 +6680,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/palatine-dining-room-remodel-wood-palatine-il</loc>
-    <lastmod>2026-02-06T17:11:04+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6691,7 +6691,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-home-remodel/photos/dining-room-remodel-hardwood-floors-palatine-il</loc>
-    <lastmod>2026-02-06T17:11:07+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6758,7 +6758,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-built-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:09+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:36+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6769,7 +6769,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/custom-gray-kitchen-pantry-open-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:12+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:56+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6780,7 +6780,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-custom-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:14+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:01+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6791,7 +6791,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-renovation-custom-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:51+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6802,7 +6802,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-marble-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:19+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6813,7 +6813,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-gray-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:21+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6824,7 +6824,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-custom-arlington-heights-il-1</loc>
-    <lastmod>2026-02-06T17:11:24+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:35+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6835,7 +6835,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-custom-arlington-heights-il-2</loc>
-    <lastmod>2026-02-06T17:11:26+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:21+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6846,7 +6846,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/kitchen-remodeling-arlington-heights-by-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:28+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:17+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6857,7 +6857,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/historic-kitchen-renovation/photos/arlington-heights-kitchen-remodel-dark-arlington-heights-il</loc>
-    <lastmod>2026-02-06T17:11:31+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:11+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6949,7 +6949,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/custom-walk-closet-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-06T17:36:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6960,7 +6960,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/custom-walk-closet-dark-wood-palatine-il-1</loc>
-    <lastmod>2026-02-06T17:36:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6971,7 +6971,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/walk-closet-custom-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-06T17:36:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:31+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6982,7 +6982,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/custom-closet-organized-shelving-drawers-palatine-il</loc>
-    <lastmod>2026-02-06T17:36:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:39+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -6993,7 +6993,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/luxury-bathroom-remodel-custom-vanity-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:49+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:45+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7004,7 +7004,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/palatine-bathroom-remodel-custom-cabinets-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:49+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:46+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7015,7 +7015,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/custom-bathroom-niche-marble-tile-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:52+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:51+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7026,7 +7026,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/bathroom-remodel-white-custom-cabinets-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:51+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7037,7 +7037,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/elegant-primary-bathroom-remodel-freestanding-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:53+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:52+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7048,7 +7048,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/luxury-primary-bath-remodel-custom-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:52+00:00</lastmod>
+    <lastmod>2026-05-18T03:03:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7059,7 +7059,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/luxurious-primary-bath-remodel-custom-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:53+00:00</lastmod>
+    <lastmod>2026-05-18T02:56:46+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7070,7 +7070,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/luxurious-primary-bathroom-remodel-freestanding-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:55+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:01+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7081,7 +7081,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/bathroom-remodeling-palatine-by-gs-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:54+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7092,7 +7092,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/luxurious-bathroom-remodel-palatine-custom-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:57+00:00</lastmod>
+    <lastmod>2026-05-18T02:56:51+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7103,7 +7103,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/primary-bath-transformation/photos/elegant-bathroom-vanity-granite-countertop-palatine-il</loc>
-    <lastmod>2026-02-10T02:55:59+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7165,7 +7165,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/kitchen-remodel-dark-wood-cabinets-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:01+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:15+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7176,7 +7176,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/new-kitchen-features-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:04+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:09+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7187,7 +7187,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/palatine-kitchen-remodel-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:06+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:18+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7198,7 +7198,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/palatine-kitchen-remodel-dark-wood-palatine-il-1</loc>
-    <lastmod>2026-02-10T02:56:12+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:34+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7209,7 +7209,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/kitchen-remodel-dark-wood-cabinets-palatine-il-1</loc>
-    <lastmod>2026-02-10T02:56:02+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7220,7 +7220,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/palatine-kitchen-remodel-dark-wood-palatine-il-2</loc>
-    <lastmod>2026-02-10T02:56:08+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:23+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7231,7 +7231,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/beautiful-kitchen-remodel-palatine-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:13+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7242,7 +7242,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/kitchen-remodel-palatine-dark-wood-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:09+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:28+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7253,7 +7253,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-removation/photos/beautiful-kitchen-remodel-palatine-dark-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:24+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7310,7 +7310,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/remodeled-bathroom-granite-countertop-white-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:56:32+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7321,7 +7321,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/lake-zurich-kitchen-remodel-white-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:56:14+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7332,7 +7332,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/remodeled-kitchen-white-cabinets-granite-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:56:33+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:42+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7343,7 +7343,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/lake-zurich-kitchen-remodel-white-lake-zurich-il-1</loc>
-    <lastmod>2026-02-10T02:56:20+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:46+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7354,7 +7354,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/lake-zurich-kitchen-remodel-gray-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:58:11+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:39+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7365,7 +7365,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/remodeled-kitchen-white-upper-cabinets-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:56:23+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:51+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7376,7 +7376,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/kitchen-remodel-white-cabinets-granite-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:56:36+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:39+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7387,7 +7387,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/ranch-home-remodel/photos/kitchen-cabinet-pull-out-drawers-holding-lake-zurich-il</loc>
-    <lastmod>2026-02-10T02:56:28+00:00</lastmod>
+    <lastmod>2026-05-18T02:57:28+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7439,7 +7439,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/modern-bathroom-renovation-double-vanity-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:15+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7450,7 +7450,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/chicago-bathroom-remodel-double-vanity-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:19+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7461,7 +7461,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/modern-bathroom-remodel-chicago-gray-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:22+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7472,7 +7472,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/modern-bathroom-shower-marble-tile-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:43+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:02+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7483,7 +7483,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/modern-bathroom-renovation-walk-shower-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:25+00:00</lastmod>
+    <lastmod>2026-05-18T02:57:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7494,7 +7494,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/chicago-bathroom-remodel-marble-look-tile-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:58+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7505,7 +7505,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/bathroom-renovation/photos/chicago-bathroom-remodel-freestanding-tub-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:34+00:00</lastmod>
+    <lastmod>2026-05-18T03:04:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7552,7 +7552,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel/photos/inverness-kitchen-remodel-dark-wood-inverness-il</loc>
-    <lastmod>2026-02-10T02:56:39+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7563,7 +7563,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel/photos/custom-wine-cellar-wood-herringbone-inverness-il</loc>
-    <lastmod>2026-02-10T02:56:30+00:00</lastmod>
+    <lastmod>2026-05-18T02:57:46+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7574,7 +7574,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel/photos/custom-wine-cellar-inverness-herringbone-inverness-il</loc>
-    <lastmod>2026-02-10T02:56:31+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:17+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7585,7 +7585,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel/photos/inverness-kitchen-remodel-cream-cabinets-inverness-il</loc>
-    <lastmod>2026-02-10T02:56:41+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:09+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7596,7 +7596,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel/photos/inverness-kitchen-remodel-custom-cabinets-inverness-il</loc>
-    <lastmod>2026-02-10T02:56:49+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7607,7 +7607,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel/photos/inverness-kitchen-remodel-custom-cabinets-inverness-il-1</loc>
-    <lastmod>2026-02-10T02:56:47+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:10+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7674,7 +7674,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/modern-condo-renovation-open-concept-living-chicago-il</loc>
-    <lastmod>2026-02-10T02:57:06+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7685,7 +7685,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/open-concept-living-room-kitchen-chicago-il</loc>
-    <lastmod>2026-02-10T02:57:02+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:20+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7696,7 +7696,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/chicago-condo-renovation-living-room-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:44+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7707,7 +7707,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/modern-chicago-condo-renovation-kitchen-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:55+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:15+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7718,7 +7718,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/bright-chicago-condo-dining-area-chicago-il</loc>
-    <lastmod>2026-02-10T02:57:00+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7729,7 +7729,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/chicago-dining-room-remodel-wood-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:52+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:21+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7740,7 +7740,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/modern-kitchen-wood-cabinets-gray-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:54+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7751,7 +7751,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/modern-condo-kitchen-dining-area-chicago-il</loc>
-    <lastmod>2026-02-10T02:57:04+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:18+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7762,7 +7762,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/modern-laundry-room-lg-washerdryer-chicago-il</loc>
-    <lastmod>2026-02-10T02:58:26+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:40+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7773,7 +7773,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/condo-renovation/photos/chicago-condo-renovation-modern-fireplace-chicago-il</loc>
-    <lastmod>2026-02-10T02:56:56+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7820,7 +7820,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation/photos/bright-kitchen-remodel-barrington-white-barrington-il</loc>
-    <lastmod>2026-02-10T02:57:19+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:27+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7831,7 +7831,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation/photos/barrington-kitchen-remodel-white-cabinets-barrington-il</loc>
-    <lastmod>2026-02-10T02:57:10+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7842,7 +7842,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation/photos/kitchen-remodel-barrington-custom-white-barrington-il</loc>
-    <lastmod>2026-02-10T02:57:13+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:35+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7853,7 +7853,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation/photos/kitchen-remodel-double-hung-window-bronze-barrington-il</loc>
-    <lastmod>2026-02-10T02:57:15+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:01+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7864,7 +7864,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation/photos/gray-kitchen-island-microwave-drawers-barrington-il</loc>
-    <lastmod>2026-02-10T02:57:23+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7875,7 +7875,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation/photos/barrington-kitchen-remodel-farmhouse-sink-barrington-il</loc>
-    <lastmod>2026-02-10T02:57:08+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:45+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7932,7 +7932,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/bright-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-10T02:56:58+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:37+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7943,7 +7943,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/palatine-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-02-10T02:58:14+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7954,7 +7954,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/elegant-palatine-kitchen-remodel-white-palatine-il</loc>
-    <lastmod>2026-02-10T02:57:17+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7965,7 +7965,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/kitchen-cabinet-spice-storage-dark-palatine-il</loc>
-    <lastmod>2026-02-10T02:57:25+00:00</lastmod>
+    <lastmod>2026-05-18T02:59:22+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7976,7 +7976,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/gray-kitchen-island-white-marble-palatine-il</loc>
-    <lastmod>2026-02-10T02:57:22+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7987,7 +7987,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/modern-kitchen-remodel-gray-island-palatine-il</loc>
-    <lastmod>2026-02-10T02:57:30+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -7998,7 +7998,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/palatine-kitchen-remodel-white-cabinets-palatine-il-1</loc>
-    <lastmod>2026-02-10T02:57:28+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8009,7 +8009,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-remodel-2/photos/open-kitchen-pantry-pull-out-shelves-palatine-il</loc>
-    <lastmod>2026-02-10T02:57:14+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8061,7 +8061,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/bright-kitchen-remodel-hoffman-estates-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:58:08+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8072,7 +8072,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/bright-kitchen-remodel-white-cabinets-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:57:40+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8083,7 +8083,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/modern-kitchen-remodel-white-cabinets-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:57:47+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:56+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8094,7 +8094,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/living-room-fireplace-white-mantel-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:57:38+00:00</lastmod>
+    <lastmod>2026-05-18T03:05:59+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8105,7 +8105,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/custom-white-kitchen-cabinetry-wine-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:57:54+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8116,7 +8116,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/bright-open-kitchen-remodel-granite-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:57:35+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:11+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8127,7 +8127,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/kitchen-renovation-2/photos/bright-renovated-kitchen-white-cabinets-hoffman-estates-il</loc>
-    <lastmod>2026-02-10T02:58:30+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:16+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8179,7 +8179,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/remodeled-kitchen-living-room-long-long-grove-il</loc>
-    <lastmod>2026-02-10T02:58:46+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:19+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8190,7 +8190,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/open-kitchen-drawer-dish-organization-long-grove-il</loc>
-    <lastmod>2026-02-10T02:58:03+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:33+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8201,7 +8201,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/open-kitchen-drawer-custom-wood-long-grove-il</loc>
-    <lastmod>2026-02-10T02:57:58+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8212,7 +8212,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/bright-kitchen-remodel-white-cabinets-long-grove-il</loc>
-    <lastmod>2026-02-10T02:58:34+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:23+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8223,7 +8223,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/remodeled-kitchen-island-granite-countertops-long-grove-il</loc>
-    <lastmod>2026-02-10T02:57:50+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:28+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8234,7 +8234,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/bright-kitchen-remodel-long-grove-long-grove-il</loc>
-    <lastmod>2026-02-10T02:58:25+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:27+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8245,7 +8245,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/home-remodel/photos/long-grove-kitchen-remodel-large-long-grove-il</loc>
-    <lastmod>2026-02-10T02:57:55+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:24+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8387,7 +8387,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/cozy-living-room-brick-fireplace-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:31+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8398,7 +8398,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/kitchen-remodel-wood-cabinets-tile-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8409,7 +8409,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/195</loc>
-    <lastmod>2026-03-13T02:30:07+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8420,7 +8420,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/kitchen-remodel-wood-cabinets-white-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:34+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8431,7 +8431,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/kitchen-remodel-wood-cabinets-white-arlington-heights-1</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8442,7 +8442,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/cozy-living-room-custom-console-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8453,7 +8453,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/living-room-chaise-lounge-custom-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:51+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8464,7 +8464,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/living-room-interior-comfortable-couch-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8475,7 +8475,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/living-room-interior-swivel-chair-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8486,7 +8486,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/home-nook-custom-window-seat-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8497,7 +8497,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/cozy-reading-nook-red-velvet-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:45+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8508,7 +8508,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/bathroom-remodel-blue-wainscoting-floral-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8519,7 +8519,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/modern-bathroom-remodel-marble-tile-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:02+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8530,7 +8530,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/199</loc>
-    <lastmod>2026-03-13T02:30:09+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:49+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8541,7 +8541,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/elegant-bedroom-plush-throw-blanket-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8552,7 +8552,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/bedroom-custom-bed-wood-trim-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:16+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8563,7 +8563,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/188</loc>
-    <lastmod>2026-03-13T02:30:11+00:00</lastmod>
+    <lastmod>2026-05-18T03:06:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8574,7 +8574,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/189</loc>
-    <lastmod>2026-03-13T02:30:13+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8585,7 +8585,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/bathroom-remodel-double-vanity-marble-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8596,7 +8596,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/bathroom-remodel-marble-countertop-wood-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8607,7 +8607,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/bathroom-remodel-glass-shower-robe-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:09+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8618,7 +8618,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/coffee-station-espresso-machine-kettle-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:13+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8629,7 +8629,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/kitchen-remodel-custom-cabinetry-shelves-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:10+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8640,7 +8640,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/living-room-brick-fireplace-custom-arlington-heights</loc>
-    <lastmod>2026-03-12T15:53:57+00:00</lastmod>
+    <lastmod>2026-05-18T03:01:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8651,7 +8651,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/arlington-heights-home-remodel-2/photos/194</loc>
-    <lastmod>2026-03-13T02:30:15+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:21+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8678,7 +8678,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-transformation/photos/barrington-kitchen-remodel-white-cabinets-barrington-il</loc>
-    <lastmod>2026-03-21T23:20:46+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:11+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8689,7 +8689,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/barrington-kitchen-transformation/photos/barrington-kitchen-remodel-blue-lower-barrington-il</loc>
-    <lastmod>2026-03-21T23:20:50+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8791,7 +8791,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il</loc>
-    <lastmod>2026-05-04T01:06:33+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8802,7 +8802,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-1</loc>
-    <lastmod>2026-05-04T01:06:35+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:18+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8813,7 +8813,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-2</loc>
-    <lastmod>2026-05-04T01:07:02+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8824,7 +8824,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-4</loc>
-    <lastmod>2026-05-04T01:07:00+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8835,7 +8835,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-3</loc>
-    <lastmod>2026-05-04T01:06:59+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:19+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8846,7 +8846,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-5</loc>
-    <lastmod>2026-05-04T01:07:05+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:23+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8857,7 +8857,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-12</loc>
-    <lastmod>2026-05-04T01:06:49+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:36+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8868,7 +8868,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-7</loc>
-    <lastmod>2026-05-04T01:07:08+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:28+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8879,7 +8879,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-6</loc>
-    <lastmod>2026-05-04T01:07:03+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8890,7 +8890,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-8</loc>
-    <lastmod>2026-05-04T01:07:06+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:43+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8901,7 +8901,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-13</loc>
-    <lastmod>2026-05-04T01:06:51+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:38+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8912,7 +8912,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-9</loc>
-    <lastmod>2026-05-04T01:07:06+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8923,7 +8923,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-11</loc>
-    <lastmod>2026-05-04T01:06:40+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:45+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8934,7 +8934,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-14</loc>
-    <lastmod>2026-05-04T01:06:52+00:00</lastmod>
+    <lastmod>2026-05-18T03:02:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8945,7 +8945,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-10</loc>
-    <lastmod>2026-05-04T01:06:37+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:52+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8956,7 +8956,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-16</loc>
-    <lastmod>2026-05-04T01:06:54+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8967,7 +8967,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/prospect-heights-home-remodel/photos/home-remodel-remodeling-prospect-heights-prospect-heights-il-15</loc>
-    <lastmod>2026-05-04T01:06:58+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>
@@ -8984,79 +8984,79 @@
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-walnut-cabinets</loc>
-    <lastmod>2026-05-04T01:32:28+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-walnut-cabinets-1</loc>
-    <lastmod>2026-05-04T01:32:30+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:05+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-wood-cabinets</loc>
-    <lastmod>2026-05-04T01:32:31+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-walnut-cabinets-2</loc>
-    <lastmod>2026-05-04T01:32:31+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:02+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-mount-prospect-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:32:34+00:00</lastmod>
+    <lastmod>2026-05-18T03:07:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-walnut-cabinets-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:32:36+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:22+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-wet-bar-wood-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:32:34+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-wood-cabinets-marble-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:32:38+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:07+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/double-sink-vanity-mount-prospect-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:32:37+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:09+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-shower-remodel-elongated-hexagon-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:33:39+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:17+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-bathroom-remodel-gray-wave-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:33:35+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:13+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-bathroom-double-vanity-wood-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:32:39+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:23+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/modern-grand-room-remodel/photos/modern-kitchen-remodel-wood-cabinets-mount-prospect-il</loc>
-    <lastmod>2026-05-04T01:33:37+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:14+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
@@ -9068,25 +9068,25 @@
             </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-kitchen/photos/white-kitchen-remodel-shaker-cabinets-palatine-il</loc>
-    <lastmod>2026-05-04T01:49:06+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:19+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-kitchen/photos/bright-kitchen-remodel-white-cabinets-palatine-il</loc>
-    <lastmod>2026-05-04T01:49:07+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:20+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-kitchen/photos/palatine-kitchen-remodel-white-shaker-palatine-il</loc>
-    <lastmod>2026-05-04T01:49:09+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/historic-palatine-kitchen/photos/white-kitchen-door-window-black-palatine-il</loc>
-    <lastmod>2026-05-04T01:49:09+00:00</lastmod>
+    <lastmod>2026-05-18T03:08:10+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>

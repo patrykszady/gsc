@@ -13,6 +13,8 @@ use App\Livewire\Admin\TestimonialForm;
 use App\Livewire\Admin\TestimonialList;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
+use App\Livewire\CompareCompetitorPage;
+use App\Livewire\CompareIndexPage;
 use App\Livewire\ProjectImagePage;
 use App\Livewire\ProjectPage;
 use App\Livewire\ServiceAreaIndex;
@@ -208,6 +210,12 @@ Route::get('/services/home-remodeling', ServicePage::class)
 Route::redirect('/services/kitchens', '/services/kitchen-remodeling', 301);
 Route::redirect('/services/bathrooms', '/services/bathroom-remodeling', 301);
 
+// Comparison / "alternative to" landing pages
+Route::get('/compare', CompareIndexPage::class)->name('compare.index');
+Route::get('/compare/{competitor}', CompareCompetitorPage::class)
+    ->where('competitor', '[a-z0-9\-]+')
+    ->name('compare.show');
+
 // Admin auth
 Route::get('/admin/login', Login::class)->name('admin.login')->middleware('guest');
 Route::post('/admin/logout', function () {
@@ -242,6 +250,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
 
     // Platforms (Google Business Profile, Yelp, etc.)
     Route::get('/platforms', PlatformsSettings::class)->name('platforms.index');
+
+    // SEO weekly reports dashboard
+    Route::get('/seo-reports/{report?}', \App\Livewire\Admin\SeoReports::class)->name('seo-reports.index');
     Route::get('/platforms/gbp/callback', function (\Illuminate\Http\Request $request) {
         $code = $request->query('code');
         if (! $code) {

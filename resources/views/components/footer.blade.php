@@ -70,6 +70,9 @@
                             <li>
                                 <a href="/service-area" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Service Area by ZIP</a>
                             </li>
+                            <li>
+                                <a href="/compare" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Compare Contractors</a>
+                            </li>
                         </ul>
                     </div>
 

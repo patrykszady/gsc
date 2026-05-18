@@ -78,11 +78,9 @@ $schema = [
     'serviceType' => $serviceData['serviceType'],
     'category' => $serviceData['category'],
     'provider' => [
-        '@type' => 'HomeAndConstructionBusiness',
+        // Bare JSON-LD reference — the full HomeAndConstructionBusiness node is
+        // emitted once globally by <x-schema-org /> in the app layout.
         '@id' => 'https://gs.construction/#business',
-        'name' => 'GS Construction & Remodeling',
-        'telephone' => '+1-224-735-4200',
-        'url' => 'https://gs.construction',
     ],
     'areaServed' => $areaServed,
     'url' => $serviceUrl,

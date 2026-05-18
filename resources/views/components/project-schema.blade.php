@@ -13,9 +13,8 @@ $schema = [
     'name' => $project->title,
     'description' => $project->description ?? "A {$project->project_type} remodeling project by GS Construction",
     'creator' => [
-        '@type' => 'HomeAndConstructionBusiness',
+        // Bare reference — full business node lives in <x-schema-org />.
         '@id' => 'https://gs.construction/#business',
-        'name' => 'GS Construction & Remodeling',
     ],
     'dateCreated' => $project->completed_at?->toIso8601String() ?? $project->created_at->toIso8601String(),
     'genre' => ucfirst(str_replace('-', ' ', $project->project_type)) . ' Remodeling',

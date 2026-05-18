@@ -8,6 +8,9 @@
     {{-- Service Schema --}}
     <x-service-schema :service="$data" />
 
+    {{-- HowTo Schema (process steps as a HowTo rich result) --}}
+    <x-service-howto-schema :service="$data" :service-slug="$service" />
+
     {{-- Hero Section --}}
     <livewire:main-project-hero-slider 
         :project-type="$data['projectType']"

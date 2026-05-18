@@ -93,6 +93,97 @@ Schedule::command('seo:title-audit --days=28 --min-impr=20 --max-ctr=2.0')
     ->appendOutputTo(storage_path('logs/seo-title-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:title-audit failed'));
 
+// SEO: weekly content strategy backlog from GSC opportunity data.
+Schedule::command('seo:content-strategy --days=28 --limit=30 --markdown')
+    ->dailyAt('08:20')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-content-strategy.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:content-strategy failed'));
+
+// SEO: daily competitor SERP gap report (signals only, no copied content).
+Schedule::command('seo:competitor-gap --top=5 --markdown')
+    ->dailyAt('08:25')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-competitor-gap.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:competitor-gap failed'));
+
+// SEO: daily competitor-brand & comparison-intent query tracker (GSC-based).
+Schedule::command('seo:competitor-brand-track --days=28 --markdown')
+    ->dailyAt('08:28')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-competitor-brand.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:competitor-brand-track failed'));
+
+// SEO: weekly GSC week-over-week regression monitor (runs after Mon sync).
+Schedule::command('seo:gsc-monitor --window=7 --markdown')
+    ->weeklyOn(2, '09:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-monitor.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:gsc-monitor failed'));
+
+// SEO: weekly competitor rank-gap (where configured competitors outrank us).
+Schedule::command('seo:competitor-rank-gap --max-queries=16 --markdown')
+    ->weeklyOn(3, '08:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-competitor-rank-gap.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:competitor-rank-gap failed'));
+
+// SEO: weekly competitor schema-coverage diff (rich-result type comparison).
+Schedule::command('seo:competitor-schema-gap --markdown')
+    ->weeklyOn(3, '08:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-competitor-schema-gap.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:competitor-schema-gap failed'));
+
+// SEO: weekly self-audit of JSON-LD schema coverage and validity.
+Schedule::command('seo:schema-audit --limit=120 --markdown')
+    ->weeklyOn(4, '08:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-schema-audit.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:schema-audit failed'));
+
+// SEO: weekly content-decay scan (clicks/position regressions, 28-day windows).
+Schedule::command('seo:content-decay --window=28 --markdown')
+    ->weeklyOn(4, '08:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-content-decay.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:content-decay failed'));
+
+// SEO: weekly rank-band content-gap clusters (queries ranking 8-20).
+Schedule::command('seo:content-gap --markdown')
+    ->weeklyOn(4, '09:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-content-gap.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:content-gap failed'));
+
+// SEO: weekly internal-link opportunity finder (unlinked anchor mentions).
+Schedule::command('seo:internal-link-suggest --markdown')
+    ->weeklyOn(5, '08:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-internal-link-suggest.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:internal-link-suggest failed'));
+
+// SEO: weekly Core Web Vitals per-template regression check.
+Schedule::command('seo:cwv-template --markdown')
+    ->weeklyOn(5, '08:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-cwv-template.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:cwv-template failed'));
+
+// SEO: weekly GBP / local-SEO NAP + service parity audit.
+Schedule::command('seo:gbp-parity --markdown')
+    ->weeklyOn(5, '09:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gbp-parity.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:gbp-parity failed'));
+
+// SEO: weekly backlink / mention monitor (referring-host snapshot via SerpApi).
+Schedule::command('seo:backlinks-monitor --markdown')
+    ->weeklyOn(5, '09:15')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-backlinks-monitor.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:backlinks-monitor failed'));
+
 // SEO: weekly internal-link audit — orphans + weakly linked pages.
 Schedule::command('seo:internal-link-audit --min=3')
     ->weeklyOn(1, '08:30')
@@ -106,6 +197,13 @@ Schedule::command('seo:image-audit --missing')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-image-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:image-audit failed'));
+
+// SEO: weekly on-page quick-wins crawler (titles, descriptions, canonicals, schema, TTFB).
+Schedule::command('seo:audit-quickwins --limit=40 --markdown')
+    ->weeklyOn(1, '08:50')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-audit-quickwins.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:audit-quickwins failed'));
 
 // SEO: weekly content-depth audit — find AreaServed pages without unique per-city content.
 Schedule::command('seo:content-depth-audit --missing')

@@ -478,6 +478,49 @@ class SeoService
     }
 
     /**
+     * Set SEO tags for the /compare hub.
+     */
+    public static function compareIndex(): void
+    {
+        $title = 'Compare Chicago Remodeling Contractors';
+        $description = 'Compare GS Construction to other Chicago-area kitchen, bathroom, and home remodeling contractors. Factual side-by-side on service area, communication, reviews and more.';
+
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
+
+        SEOMeta::addKeyword([
+            'compare remodeling contractors chicago',
+            'best chicago remodeling contractor',
+            'remodeling contractor alternatives',
+            'kitchen remodeling alternatives chicago',
+        ]);
+    }
+
+    /**
+     * Set SEO tags for a per-competitor comparison page.
+     *
+     * Uses "alternative to" framing in the title to avoid trademark issues and
+     * to align with how users search ("alternative to {brand}", "{brand} vs ...").
+     *
+     * @param array<string, mixed> $competitor
+     */
+    public static function compareCompetitor(array $competitor): void
+    {
+        $name = (string) ($competitor['name'] ?? 'Competitor');
+
+        $title = "Alternative to {$name} - GS Construction";
+        $description = "Comparing GS Construction with {$name}? See a factual side-by-side on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
+
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
+
+        SEOMeta::addKeyword([
+            "alternative to {$name}",
+            "{$name} vs",
+            "{$name} reviews",
+            'compare chicago remodeling contractors',
+        ]);
+    }
+
+    /**
      * Helper to set common meta tags.
      */
     protected static function setTags(string $title, string $description, ?string $image = null): void

@@ -15,6 +15,19 @@ return [
     'site_name' => 'GS Construction',
 
     /**
+     * Canonical business phone (E.164 or human-readable). Used by seo:gbp-parity
+     * to verify NAP consistency across landing pages.
+     */
+    'phone' => env('BUSINESS_PHONE', '+1-224-735-4200'),
+
+    /**
+     * Address fragment that must appear on every key landing page (substring match,
+     * case-insensitive). GS Construction is a service-area business with no
+     * storefront, so we check for the brand service-area phrase rather than a street.
+     */
+    'address' => env('BUSINESS_ADDRESS_FRAGMENT', 'Chicagoland'),
+
+    /**
      * Use this setting to specify the path to the sitemap of your website. This exact path will outputted, so
      * you can use both a hardcoded url and a relative path. We recommend the latter.
      *
