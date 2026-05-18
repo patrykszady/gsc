@@ -43,6 +43,21 @@ class GoogleBusinessProfilePerformanceService
     }
 
     /**
+     * Detect Google's "API not enabled in this GCP project" 403 response so
+     * scheduled callers can treat it as "nothing to sync" instead of a hard
+     * failure (which spams the scheduler error channel every run).
+     */
+    protected function isServiceDisabled(\Illuminate\Http\Client\Response $resp): bool
+    {
+        if ($resp->status() !== 403) {
+            return false;
+        }
+        $reason = (string) ($resp->json('error.details.0.reason') ?? '');
+        $status = (string) ($resp->json('error.status') ?? '');
+        return $reason === 'SERVICE_DISABLED' || $status === 'PERMISSION_DENIED';
+    }
+
+    /**
      * Returns array<string,array<string,int>>: [date_iso => [metric => value]].
      */
     public function fetchDailyMetrics(
@@ -74,6 +89,12 @@ class GoogleBusinessProfilePerformanceService
         $resp = Http::withToken($token)->timeout(45)->get($url . '?' . $query);
 
         if (! $resp->successful()) {
+            if ($this->isServiceDisabled($resp)) {
+                Log::warning('GBP Performance: API disabled in GCP project, skipping daily metrics sync', [
+                    'activation_url' => (string) ($resp->json('error.details.0.metadata.activationUrl') ?? ''),
+                ]);
+                return [];
+            }
             Log::warning('GBP Performance: daily metrics fetch failed', [
                 'status' => $resp->status(),
                 'body' => $resp->body(),
@@ -130,6 +151,12 @@ class GoogleBusinessProfilePerformanceService
             $u = $url . '?' . $params . ($pageToken ? '&pageToken=' . urlencode($pageToken) : '');
             $resp = Http::withToken($token)->timeout(45)->get($u);
             if (! $resp->successful()) {
+                if ($this->isServiceDisabled($resp)) {
+                    Log::warning('GBP Performance: API disabled in GCP project, skipping keywords sync', [
+                        'activation_url' => (string) ($resp->json('error.details.0.metadata.activationUrl') ?? ''),
+                    ]);
+                    return [];
+                }
                 Log::warning('GBP Performance: keywords fetch failed', [
                     'status' => $resp->status(),
                     'body' => $resp->body(),
