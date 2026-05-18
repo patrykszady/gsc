@@ -30,7 +30,7 @@
         <ul class="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
             @foreach($competitors as $competitor)
                 <li>
-                    <a href="{{ route('compare.show', ['competitor' => $competitor['slug']]) }}"
+                    <a href="{{ route('compare.show', ['slug' => $competitor['slug']]) }}"
                        wire:navigate
                        class="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
                         <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternative to</p>
