@@ -20,14 +20,14 @@ class CompareCompetitorPage extends Component
     /** @var array<int, array<string, string>> */
     public array $criteria = [];
 
-    public function mount(string $competitor): void
+    public function mount(string $slug): void
     {
         if (! (bool) config('competitors.enabled', true)) {
             abort(404);
         }
 
-        $this->slug = $competitor;
-        $this->competitor = $this->findCompetitor($competitor) ?? abort(404);
+        $this->slug = $slug;
+        $this->competitor = $this->findCompetitor($slug) ?? abort(404);
         $this->criteria = $this->buildCriteria($this->competitor);
 
         SeoService::compareCompetitor($this->competitor);

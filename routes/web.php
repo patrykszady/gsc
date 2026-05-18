@@ -212,8 +212,8 @@ Route::redirect('/services/bathrooms', '/services/bathroom-remodeling', 301);
 
 // Comparison / "alternative to" landing pages
 Route::get('/compare', CompareIndexPage::class)->name('compare.index');
-Route::get('/compare/{competitor}', CompareCompetitorPage::class)
-    ->where('competitor', '[a-z0-9\-]+')
+Route::get('/compare/{slug}', CompareCompetitorPage::class)
+    ->where('slug', '[a-z0-9\-]+')
     ->name('compare.show');
 
 // Admin auth

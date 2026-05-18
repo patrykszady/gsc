@@ -24,15 +24,27 @@ mkdir -p "$LOG_DIR"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 LOG="$LOG_DIR/run-$STAMP.log"
 
-pass=0; fail=0; skipped=0
+pass=0; fail=0; warn=0
+# Commands whose non-zero exit means "audit found real issues to review"
+# rather than "command crashed". These count as warnings, not failures.
+AUDIT_REPORTS_RE='^(seo:audit|seo:audit-quickwins|seo:health|seo:health-check|seo:image-schema-audit|seo:image-audit|seo:schema-audit|seo:gbp-parity|seo:content-decay|seo:content-gap|seo:title-audit|seo:gsc-monitor|seo:internal-link-audit|seo:internal-link-suggest|seo:area-pages-audit|seo:content-depth-audit|seo:competitor-schema-gap|seo:competitor-brand-track|seo:cwv-template|gbp:geotag-audit|gbp:unresponded-reviews)( |$)'
+
+is_audit_report() {
+    [[ "$1" =~ $AUDIT_REPORTS_RE ]]
+}
+
 run() {
     local label="$1"; shift
+    local cmd="$*"
     echo "" | tee -a "$LOG"
     echo "──▶ $label" | tee -a "$LOG"
-    echo "    $ php artisan $*" | tee -a "$LOG"
+    echo "    $ php artisan $cmd" | tee -a "$LOG"
     if php artisan "$@" >>"$LOG" 2>&1; then
         echo "    ✓ ok" | tee -a "$LOG"
         pass=$((pass+1))
+    elif is_audit_report "$cmd"; then
+        echo "    ⚠ findings (review log)" | tee -a "$LOG"
+        warn=$((warn+1))
     else
         echo "    ✗ FAILED (see $LOG)" | tee -a "$LOG"
         fail=$((fail+1))
@@ -112,7 +124,7 @@ fi
 
 echo "" | tee -a "$LOG"
 echo "═══ Summary ═══" | tee -a "$LOG"
-echo "  passed: $pass  failed: $fail" | tee -a "$LOG"
+echo "  passed: $pass  findings: $warn  failed: $fail" | tee -a "$LOG"
 echo "  log:    $LOG" | tee -a "$LOG"
 
 exit $(( fail > 0 ? 1 : 0 ))

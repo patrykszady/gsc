@@ -81,9 +81,21 @@ class SeoHealthCheck extends Command
         }
         $body = $resp->body();
         if (preg_match_all('#<loc>([^<]+)</loc>#i', $body, $m)) {
-            return array_slice(array_map('trim', $m[1]), 0, $limit);
+            $urls = array_map('trim', $m[1]);
+            // Skip non-HTML endpoints (LLM feeds, JSON-LD, sitemaps, robots, etc.)
+            $urls = array_values(array_filter($urls, fn ($u) => $this->looksLikeHtml($u)));
+            return array_slice($urls, 0, $limit);
         }
         return [];
+    }
+
+    protected function looksLikeHtml(string $url): bool
+    {
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        if ($path === '' || $path === '/') return true;
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $skip = ['json', 'xml', 'txt', 'csv', 'rss', 'atom', 'pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'ico', 'css', 'js', 'map', 'webmanifest'];
+        return ! in_array($ext, $skip, true);
     }
 
     /**
