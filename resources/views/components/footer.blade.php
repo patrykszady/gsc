@@ -31,6 +31,18 @@
                         </flux:tooltip>
                     @endforeach
                 </div>
+
+                {{-- Crawlable review-source links for local SEO citations. --}}
+                <div>
+                    <p class="text-xs font-semibold tracking-wide text-gray-700 uppercase dark:text-gray-300">Review Profiles</p>
+                    <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                        <a href="{{ config('socials.houzz.url') }}" target="_blank" rel="noopener noreferrer external" class="hover:text-sky-600 dark:hover:text-sky-400">Houzz</a>
+                        <span class="mx-1 text-gray-400">•</span>
+                        <a href="{{ config('socials.angi.url') }}" target="_blank" rel="noopener noreferrer external" class="hover:text-sky-600 dark:hover:text-sky-400">Angi</a>
+                        <span class="mx-1 text-gray-400">•</span>
+                        <a href="{{ config('socials.google.url') }}" target="_blank" rel="noopener noreferrer external" class="hover:text-sky-600 dark:hover:text-sky-400">Google</a>
+                    </p>
+                </div>
             </div>
 
             {{-- Columns 2-4: Links --}}

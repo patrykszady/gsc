@@ -7,7 +7,7 @@ return [
         'icon' => 'images/socials/instagram.svg',
     ],
     'google' => [
-        'url' => 'https://www.google.com/search?q=GS+Construction+chciago',
+        'url' => 'https://www.google.com/search?q=GS+Construction+chicago',
         'label' => 'Google',
         'icon' => 'images/socials/google.svg',
     ],
@@ -22,7 +22,7 @@ return [
         'icon' => 'images/socials/yelp.svg',
     ],
     'houzz' => [
-        'url' => 'https://www.houzz.com/pro/gs-construction/gs-construction',
+        'url' => 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575',
         'label' => 'Houzz',
         'icon' => 'images/socials/houzz.svg',
     ],
