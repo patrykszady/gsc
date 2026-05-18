@@ -5,19 +5,25 @@ namespace App\Observers;
 use App\Jobs\GenerateAiContentJob;
 use App\Jobs\SubmitUrlsToIndexNow;
 use App\Jobs\UploadProjectImageToGooglePlaces;
+use App\Models\AreaServed;
 use App\Models\Project;
+use App\Services\OpenStreetMapGeocoder;
 use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProjectObserver
 {
     public function __construct(
-        protected IndexNowService $indexNow
+        protected IndexNowService $indexNow,
+        protected OpenStreetMapGeocoder $geocoder,
     ) {}
 
     public function created(Project $project): void
     {
+        $this->syncAreaCoordinatesFromProjectLocation($project);
+
         $this->regenerateSitemap();
         $this->submitToIndexNow($project);
 
@@ -27,6 +33,10 @@ class ProjectObserver
 
     public function updated(Project $project): void
     {
+        if ($project->wasChanged('location')) {
+            $this->syncAreaCoordinatesFromProjectLocation($project);
+        }
+
         $this->regenerateSitemap();
         $this->submitToIndexNow($project);
 
@@ -116,5 +126,56 @@ class ProjectObserver
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    protected function syncAreaCoordinatesFromProjectLocation(Project $project): void
+    {
+        if (! config('services.google.business_profile.auto_geocode_on_project_save', true)) {
+            return;
+        }
+
+        $city = $this->normalizeCity((string) ($project->location ?? ''));
+        if ($city === '') {
+            return;
+        }
+
+        $slug = Str::slug($city);
+        $area = AreaServed::query()
+            ->where('city', $city)
+            ->orWhere('slug', $slug)
+            ->first();
+
+        if (! $area) {
+            $area = AreaServed::create([
+                'city' => $city,
+                'slug' => $slug,
+            ]);
+        }
+
+        if ($area->latitude !== null && $area->longitude !== null) {
+            return;
+        }
+
+        $state = (string) config('services.google.business_profile.geocode_state', 'IL');
+        $country = (string) config('services.google.business_profile.geocode_country', 'USA');
+        [$lat, $lng] = $this->geocoder->geocodeCity($city, $state, $country);
+        if ($lat === null || $lng === null) {
+            Log::warning('[GBP] Failed to geocode project city via OpenStreetMap.', [
+                'project_id' => $project->id,
+                'city' => $city,
+            ]);
+            return;
+        }
+
+        $area->forceFill([
+            'latitude' => $lat,
+            'longitude' => $lng,
+        ])->save();
+    }
+
+    protected function normalizeCity(string $location): string
+    {
+        $parts = preg_split('/[,.]/', $location) ?: [];
+        return trim((string) ($parts[0] ?? ''));
     }
 }

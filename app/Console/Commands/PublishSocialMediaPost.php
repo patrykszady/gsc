@@ -34,12 +34,17 @@ class PublishSocialMediaPost extends Command
             $platforms = ['instagram', 'facebook', 'google_business'];
         }
 
-        // Pick or find the image
+        // Pick or find the image (with recycling fallback)
         $image = $this->resolveImage($platforms);
+        $recycled = $image && $this->wasRecycled;
 
         if (! $image) {
-            $this->info('🎉 All images have been posted! No unposted images remaining.');
-            return 0;
+            $this->warn('No images available for posting (none published or none with alt_text).');
+            return 1;
+        }
+
+        if ($recycled) {
+            $this->line('♻️  All images already posted — recycling least-recently-posted image.');
         }
 
         $project = $image->project;
@@ -139,21 +144,25 @@ class PublishSocialMediaPost extends Command
         return $platforms;
     }
 
+    /** True when resolveImage() returned a recycled image (already posted before). */
+    protected bool $wasRecycled = false;
+
     protected function resolveImage(array $platforms): ?ProjectImage
     {
+        $this->wasRecycled = false;
         $imageId = $this->option('image');
 
         if ($imageId) {
             return ProjectImage::find($imageId);
         }
 
-        // Pick random image that hasn't been posted to ANY of the requested platforms
-        // Prioritize images unposted to ALL platforms
-        $query = ProjectImage::query()
+        $baseQuery = fn () => ProjectImage::query()
             ->whereHas('project', fn ($q) => $q->where('is_published', true))
             ->whereNotNull('alt_text')
             ->where('alt_text', '!=', '');
 
+        // 1) Prefer images never posted to ANY requested platform.
+        $query = $baseQuery();
         foreach ($platforms as $platform) {
             $query->whereDoesntHave('socialMediaPosts', function ($q) use ($platform) {
                 $q->where('platform', $platform)
@@ -161,7 +170,39 @@ class PublishSocialMediaPost extends Command
             });
         }
 
-        return $query->inRandomOrder()->first();
+        if ($image = $query->inRandomOrder()->first()) {
+            return $image;
+        }
+
+        // 2) Recycle: pick the image whose last post on these platforms is OLDEST
+        //    (or never posted there). Skip images with a pending post to avoid races.
+        $this->wasRecycled = true;
+
+        $recycleQuery = $baseQuery();
+        foreach ($platforms as $platform) {
+            $recycleQuery->whereDoesntHave('socialMediaPosts', function ($q) use ($platform) {
+                $q->where('platform', $platform)->where('status', 'pending');
+            });
+        }
+
+        // Order by the max published_at across requested platforms (oldest first).
+        // NULL (never posted on this platform) sorts oldest, which is what we want.
+        $platformList = collect($platforms)->map(fn ($p) => "'" . addslashes($p) . "'")->implode(',');
+        $recycleQuery->leftJoinSub(
+            \App\Models\SocialMediaPost::query()
+                ->selectRaw('project_image_id, MAX(published_at) as last_published_at')
+                ->whereIn('platform', $platforms)
+                ->where('status', 'published')
+                ->groupBy('project_image_id'),
+            'last_posts',
+            'last_posts.project_image_id',
+            'project_images.id'
+        )
+            ->orderByRaw('last_posts.last_published_at IS NULL DESC')
+            ->orderBy('last_posts.last_published_at', 'asc')
+            ->select('project_images.*');
+
+        return $recycleQuery->first();
     }
 
     /**

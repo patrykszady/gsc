@@ -121,6 +121,21 @@ Schedule::command('seo:image-schema-audit --only-errors')
     ->appendOutputTo(storage_path('logs/seo-image-schema.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:image-schema-audit failed'));
 
+// SEO: weekly unified health dashboard — score 0-100 across five pillars.
+// Runs after the other audits so its freshness metrics reflect the latest logs.
+Schedule::command('seo:health')
+    ->weeklyOn(1, '09:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-health.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:health failed'));
+
+// GBP: daily check for reviews >24h old without an owner reply (with email alert).
+Schedule::command('gbp:unresponded-reviews --max-age=24 --notify')
+    ->dailyAt('09:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/gbp-unresponded-reviews.log'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
+
 // SEO: weekly submission of persistent 404 URLs to IndexNow (re-crawl + deindex).
 Schedule::command('seo:404-indexnow --min-hits=3')
     ->weeklyOn(2, '09:30')
@@ -190,11 +205,13 @@ Schedule::command('social:post --platform=facebook --queue')->dailyAt('10:00')
     ->onFailure(fn () => logger()->error('Scheduled Facebook post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
-Schedule::command('social:post --platform=google_business --queue')->dailyAt('10:00')
+// Google Business Profile: 1 weekly post (image + Gemini-generated caption) on Mondays at 10:00 AM CT.
+// Picks a random project image not yet posted to GBP, generates SEO caption via Gemini, and creates a Local Post.
+Schedule::command('social:post --platform=google_business --queue')->weeklyOn(1, '10:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled GBP post failed'))
-    ->when(fn () => config('services.meta.enabled'));
+    ->onFailure(fn () => logger()->error('Scheduled GBP weekly post failed'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
 
 // Social Media: weekly health check
 Schedule::command('social:health')->weeklyOn(1, '09:00') // Monday 9 AM

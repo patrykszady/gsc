@@ -59,6 +59,15 @@ return [
             'location_id' => env('GOOGLE_BUSINESS_PROFILE_LOCATION_ID'),
             'place_id' => env('GOOGLE_BUSINESS_PROFILE_PLACE_ID'),
             'production_url' => env('GOOGLE_BUSINESS_PROFILE_PRODUCTION_URL', 'https://gs.construction'),
+            // Inject EXIF GPS into uploaded GBP photos. Coordinates come from
+            // the project's matching AreaServed row; photos without a matching
+            // area are uploaded without GPS rather than using a global fallback.
+            'geotag_photos' => env('GBP_GEOTAG_PHOTOS', true),
+            // Automatically geocode project cities via OpenStreetMap Nominatim
+            // when projects are created or their location is changed.
+            'auto_geocode_on_project_save' => env('GBP_AUTO_GEOCODE_ON_PROJECT_SAVE', true),
+            'geocode_state' => env('GBP_GEOCODE_STATE', 'IL'),
+            'geocode_country' => env('GBP_GEOCODE_COUNTRY', 'USA'),
         ],
         // Google Search Console API (free, official). Separate OAuth client
         // because the scope differs (webmasters.readonly). Reuses the same

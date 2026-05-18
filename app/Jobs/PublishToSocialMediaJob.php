@@ -85,14 +85,22 @@ class PublishToSocialMediaJob implements ShouldQueue
         array $content,
         string $linkUrl,
     ): void {
-        // Check if already posted to this platform
+        // Block only if there's a pending post (race protection) or a published
+        // post within the last 30 days (anti-spam). Older published posts are
+        // eligible for recycling so weekly GBP posts keep flowing.
         $exists = SocialMediaPost::where('project_image_id', $image->id)
             ->where('platform', $platform)
-            ->whereIn('status', ['published', 'pending'])
+            ->where(function ($q) {
+                $q->where('status', 'pending')
+                    ->orWhere(function ($q2) {
+                        $q2->where('status', 'published')
+                            ->where('published_at', '>=', now()->subDays(30));
+                    });
+            })
             ->exists();
 
         if ($exists) {
-            Log::info("Social Media: Already posted to {$platform}", ['image_id' => $image->id]);
+            Log::info("Social Media: Skipping {$platform} (recent or pending post exists)", ['image_id' => $image->id]);
             return;
         }
 

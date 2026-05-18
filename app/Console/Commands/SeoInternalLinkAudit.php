@@ -26,7 +26,8 @@ class SeoInternalLinkAudit extends Command
         {--min=3 : Minimum inbound internal links before a page is flagged "weak"}
         {--limit=300 : Max URLs to crawl from sitemap}
         {--json : Output JSON}
-        {--orphans-only : Only show orphans (0 inbound)}';
+        {--orphans-only : Only show orphans (0 inbound)}
+        {--include-feeds : Include AI/feed endpoints (llms.txt, /geo/*, /ai-*, sitemap, etc.) in the audit}';
 
     protected $description = 'Crawl sitemap and report orphan / weakly-linked internal pages.';
 
@@ -44,8 +45,9 @@ class SeoInternalLinkAudit extends Command
             return self::FAILURE;
         }
 
-        $urls = collect((new Crawler($resp->body()))->filter('loc')->each(fn ($n) => trim($n->text())))
+        $urls = collect($this->extractLocs($resp->body()))
             ->filter(fn ($u) => Str::startsWith($u, $base))
+            ->reject(fn ($u) => ! $this->option('include-feeds') && $this->isAiOrFeedUrl($u))
             ->unique()
             ->take((int) $this->option('limit'))
             ->values();
@@ -132,6 +134,74 @@ class SeoInternalLinkAudit extends Command
         $url = strtok($url, '#');
         $url = strtok($url, '?');
         return rtrim($url, '/');
+    }
+
+    /**
+     * AI/feed endpoints are intentionally in the sitemap for crawlers but never
+     * linked from regular pages — they should not be reported as orphans.
+     */
+    private function isAiOrFeedUrl(string $url): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?? '';
+        return (bool) preg_match('#^/(llms|geo|ai-|sitemap|feed)#i', $path)
+            || str_ends_with($path, '.txt')
+            || str_ends_with($path, '.json')
+            || str_ends_with($path, '.xml');
+    }
+
+    /**
+     * Extract <loc> values from sitemap XML, handling default namespaces
+     * (the standard sitemap schema uses xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+     * which makes Symfony DomCrawler's filter('loc') return zero matches).
+     * Also follows sitemap-index files recursively.
+     *
+     * @return string[]
+     */
+    private function extractLocs(string $body, int $depth = 0): array
+    {
+        if ($depth > 3) {
+            return [];
+        }
+
+        $prev = libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($body);
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+
+        if ($xml === false) {
+            return [];
+        }
+
+        $locs = [];
+
+        // Sitemap index → recurse into each child sitemap.
+        if ($xml->getName() === 'sitemapindex') {
+            foreach ($xml->sitemap as $entry) {
+                $childUrl = trim((string) $entry->loc);
+                if ($childUrl === '') {
+                    continue;
+                }
+                try {
+                    $child = Http::timeout(15)->get($childUrl);
+                    if ($child->ok()) {
+                        $locs = array_merge($locs, $this->extractLocs($child->body(), $depth + 1));
+                    }
+                } catch (\Throwable) {
+                    // skip
+                }
+            }
+            return $locs;
+        }
+
+        // Standard urlset.
+        foreach ($xml->url as $u) {
+            $loc = trim((string) $u->loc);
+            if ($loc !== '') {
+                $locs[] = $loc;
+            }
+        }
+
+        return $locs;
     }
 
     private function resolve(string $href, string $base, string $appBase): ?string

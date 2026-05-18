@@ -11,6 +11,7 @@ class SyncGoogleBusinessProfileMedia extends Command
 {
     protected $signature = 'google-business-profile:sync
         {--upload : Upload all un-synced images to GBP}
+        {--force : Re-upload all published images, even already synced ones}
         {--status : Show sync status overview}
         {--list : List media currently on GBP}
         {--delete-orphans : Delete GBP media items that no longer exist locally}
@@ -179,13 +180,17 @@ class SyncGoogleBusinessProfileMedia extends Command
     {
         $dryRun = $this->option('dry-run');
         $useQueue = $this->option('queue');
+        $force = (bool) $this->option('force');
         $limit = $this->option('limit') ? (int) $this->option('limit') : null;
         $projectId = $this->option('project-id') ? (int) $this->option('project-id') : null;
 
         $query = ProjectImage::query()
             ->with('project')
-            ->whereNull('google_places_uploaded_at')
             ->whereHas('project', fn ($q) => $q->where('is_published', true));
+
+        if (! $force) {
+            $query->whereNull('google_places_uploaded_at');
+        }
 
         if ($projectId) {
             $query->where('project_id', $projectId);
@@ -200,7 +205,11 @@ class SyncGoogleBusinessProfileMedia extends Command
         $images = $query->get();
 
         if ($images->isEmpty()) {
-            $this->info('All published project images are already uploaded to GBP.');
+            if ($force) {
+                $this->info('No published project images found to force re-upload.');
+            } else {
+                $this->info('All published project images are already uploaded to GBP.');
+            }
 
             return self::SUCCESS;
         }
@@ -209,7 +218,8 @@ class SyncGoogleBusinessProfileMedia extends Command
 
         if ($dryRun) {
             foreach ($images as $img) {
-                $this->line("  Would upload: [{$img->project->title}] {$img->alt_text}");
+                $mode = $force ? 'Would re-upload' : 'Would upload';
+                $this->line("  {$mode}: [{$img->project->title}] {$img->alt_text}");
             }
 
             return self::SUCCESS;
@@ -217,12 +227,13 @@ class SyncGoogleBusinessProfileMedia extends Command
 
         if ($useQueue) {
             foreach ($images as $img) {
-                UploadProjectImageToGooglePlaces::dispatch($img->id)
+                UploadProjectImageToGooglePlaces::dispatch($img->id, $force)
                     ->onQueue('media-sync')
                     ->delay(now()->addSeconds(2 * $images->search(fn ($i) => $i->id === $img->id)));
             }
 
-            $this->info("Queued {$images->count()} upload jobs on the 'media-sync' queue.");
+            $kind = $force ? 'refresh' : 'upload';
+            $this->info("Queued {$images->count()} {$kind} jobs on the 'media-sync' queue.");
             $this->line('Run `php artisan queue:work --queue=media-sync` to process.');
 
             return self::SUCCESS;
@@ -234,6 +245,11 @@ class SyncGoogleBusinessProfileMedia extends Command
         $failed = 0;
 
         foreach ($images as $image) {
+            $previousMediaName = $image->google_places_media_name;
+            if ($force && $previousMediaName) {
+                $service->deleteMedia($previousMediaName);
+            }
+
             $mediaName = $service->uploadProjectImage($image);
 
             if ($mediaName) {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AreaServed;
 use App\Models\OAuthToken;
 use App\Models\ProjectImage;
 use Illuminate\Support\Facades\Cache;
@@ -813,11 +814,33 @@ class GoogleBusinessProfileService
         $dir = pathinfo($path, PATHINFO_DIRNAME);
         $nameWithoutExt = pathinfo($path, PATHINFO_FILENAME);
         $jpgPath = trim($dir, '/') . '/' . $nameWithoutExt . '_gbp.jpg';
+        $geotagEnabled = (bool) config('services.google.business_profile.geotag_photos', true);
+        [$lat, $lng] = $geotagEnabled
+            ? $this->resolveImageCoordinates($image)
+            : [null, null];
+        $hasCoords = $lat !== null && $lng !== null;
 
-        if (! Storage::disk($disk)->exists($jpgPath)) {
+        $needsRegen = ! Storage::disk($disk)->exists($jpgPath);
+
+        // Regenerate legacy derivatives that pre-date EXIF GPS injection,
+        // but only if we actually have coordinates to write (otherwise the
+        // file would be regenerated forever to no effect).
+        if (! $needsRegen && $hasCoords) {
+            $existing = Storage::disk($disk)->get($jpgPath);
+            if (! app(JpegGeoTagger::class)->hasGps($existing)) {
+                $needsRegen = true;
+            }
+        }
+
+        if ($needsRegen) {
             try {
                 $contents = Storage::disk($disk)->get($path);
                 $jpg = Image::read($contents)->toJpeg(90)->toString();
+
+                if ($hasCoords) {
+                    $jpg = app(JpegGeoTagger::class)->withGps($jpg, $lat, $lng);
+                }
+
                 Storage::disk($disk)->put($jpgPath, $jpg);
             } catch (\Exception $e) {
                 Log::warning('GBP: Failed to generate JPG for image', [
@@ -830,6 +853,50 @@ class GoogleBusinessProfileService
         }
 
         return Storage::disk($disk)->url($jpgPath);
+    }
+
+    /**
+     * Resolve the AreaServed coordinates for the project's location.
+     * Returns [null, null] when there is no match — caller should then skip
+     * GPS injection rather than fabricate coordinates.
+     *
+     * @return array{0: ?float, 1: ?float}
+     */
+    protected function resolveImageCoordinates(ProjectImage $image): array
+    {
+        $location = $image->project?->location;
+        if (! $location) {
+            return [null, null];
+        }
+
+        $city = $this->normalizeCity($location);
+        $slug = Str::slug($city);
+        $area = AreaServed::query()
+            ->where(function ($q) use ($city, $slug) {
+                $q->where('city', $city)
+                  ->orWhere('slug', $slug);
+            })
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->first();
+
+        if (! $area) {
+            return [null, null];
+        }
+
+        return [(float) $area->latitude, (float) $area->longitude];
+    }
+
+    /**
+     * Strip state/country suffix and common typos from a free-form
+     * "City, IL" / "City. IL" / "City, Illinois, USA" string.
+     */
+    public function normalizeCity(string $location): string
+    {
+        // Handle both "," and "." used as separators (real data has both).
+        $parts = preg_split('/[,.]/', $location) ?: [$location];
+        $city = trim((string) ($parts[0] ?? ''));
+        return $city !== '' ? $city : trim($location);
     }
 
     /**
@@ -1182,6 +1249,117 @@ class GoogleBusinessProfileService
         }
 
         return $response->json('categories', []);
+    }
+
+    /**
+     * Reply to (or update the owner reply on) a single Google review.
+     *
+     * @param  string  $reviewName  Full resource name e.g. accounts/{a}/locations/{l}/reviews/{id}
+     */
+    public function replyToReview(string $reviewName, string $comment): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $url = self::MEDIA_API_BASE . "/{$reviewName}/reply";
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->put($url, ['comment' => $comment]);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Review reply failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to reply to review', [
+                'review' => $reviewName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        Log::info('GBP: Replied to review', ['review' => $reviewName]);
+
+        return $response->json();
+    }
+
+    /**
+     * Replace the GBP location's service items (custom services that show up
+     * on the listing under "Services"). Pass the full list — Google replaces,
+     * not merges.
+     *
+     * @param  array<int, array{name: string, description?: string, price_cents?: int, currency?: string}>  $items
+     */
+    public function updateServiceItems(array $items): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+
+        $serviceItems = [];
+        foreach ($items as $item) {
+            $node = [
+                'freeFormServiceItem' => [
+                    'category' => 'gcid:remodeler',
+                    'label' => [
+                        'displayName' => $item['name'],
+                        'languageCode' => 'en',
+                    ],
+                ],
+            ];
+            if (! empty($item['description'])) {
+                $node['freeFormServiceItem']['label']['description'] = $item['description'];
+            }
+            if (isset($item['price_cents'])) {
+                $node['price'] = [
+                    'currencyCode' => $item['currency'] ?? 'USD',
+                    'units' => (string) intdiv((int) $item['price_cents'], 100),
+                    'nanos' => (((int) $item['price_cents']) % 100) * 10_000_000,
+                ];
+            }
+            $serviceItems[] = $node;
+        }
+
+        $url = $this->infoLocationUrl() . '?updateMask=serviceItems';
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->patch($url, ['serviceItems' => $serviceItems]);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Update service items failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to update service items', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        Log::info('GBP: Updated service items', ['count' => count($serviceItems)]);
+
+        return $response->json();
     }
 
     /**
