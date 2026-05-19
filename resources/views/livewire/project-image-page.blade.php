@@ -4,11 +4,6 @@
     $allImages = $project->images()->orderBy('sort_order')->get();
     $imagesData = $allImages->map(function ($img) use ($project, $gbpService) {
         $imageKey = $img->slug ?: $img->id;
-                        <img
-                            :src="thumb.url"
-                            alt="Project gallery thumbnail"
-                            :alt="`Photo ${idx + 1}`"
-                            class="size-16 rounded-lg object-cover transition-all"
 
         return [
             'id' => $img->id,
