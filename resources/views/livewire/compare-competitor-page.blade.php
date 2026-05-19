@@ -35,10 +35,12 @@
                 <a href="/contact" wire:navigate class="rounded-md bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-500">
                     Get a free estimate from GS Construction
                 </a>
+                @if($competitor['slug'] !== 'kitchen-village')
                 <a href="{{ $competitor['website'] }}" target="_blank" rel="noopener noreferrer nofollow"
                    class="rounded-md border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900">
                     Visit {{ $competitor['name'] }}'s website
                 </a>
+                @endif
             </div>
         </header>
 

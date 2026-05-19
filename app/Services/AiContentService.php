@@ -374,6 +374,73 @@ PROMPT;
         return $out;
     }
 
+    /**
+     * Generate unique ZIP landing content for /service-area/{zip} pages.
+     *
+     * @return array{intro:string,local_context:string,landmarks:string,permit_notes:string}|null
+     */
+    public function generateZipContent(string $zip, string $city, ?string $areaSlug = null): ?array
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+            return null;
+        }
+
+        $areaHint = $areaSlug ? "Area slug hint: {$areaSlug}" : 'Area slug hint: unknown';
+
+        $prompt = <<<PROMPT
+You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom,
+and whole-home remodeling contractor serving Chicago suburbs.
+
+Create unique content for this ZIP landing page:
+- City: {$city}, Illinois
+- ZIP: {$zip}
+- {$areaHint}
+
+Return ONLY valid JSON with EXACTLY these string keys:
+- "intro": 2-3 sentences, 180-280 chars, include city and ZIP naturally.
+- "local_context": 3-5 sentences, 420-700 chars, describe housing patterns,
+  neighborhood feel, and why remodeling demand exists in this ZIP.
+- "landmarks": comma-separated list of 4-8 real nearby landmarks, schools,
+  parks, or major roads relevant to this ZIP/city area.
+- "permit_notes": 2 sentences, 170-280 chars. State permits are required for
+  electrical/plumbing/structural work and GS Construction handles paperwork.
+
+Rules:
+- Factual and conservative. Do not invent fake project names.
+- No markdown, no code fences, no emojis.
+- Do not mention competitors.
+- Keep each ZIP's content distinct from others.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 900);
+        if ($raw === null) {
+            return null;
+        }
+
+        $raw = preg_replace('/^```json\s*/i', '', $raw);
+        $raw = preg_replace('/^```\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/i', '', $raw);
+        $decoded = json_decode(trim($raw), true);
+
+        if (! is_array($decoded)) {
+            $this->lastError = 'Failed to parse zip-content JSON: ' . $raw;
+            return null;
+        }
+
+        $required = ['intro', 'local_context', 'landmarks', 'permit_notes'];
+        $out = [];
+        foreach ($required as $key) {
+            if (empty($decoded[$key]) || ! is_string($decoded[$key])) {
+                $this->lastError = "Missing '{$key}' in zip-content response: " . $raw;
+                return null;
+            }
+            $out[$key] = trim($decoded[$key]);
+        }
+
+        return $out;
+    }
+
     protected function parseJsonResponse(string $content): ?array
     {
         // Remove markdown code blocks if present

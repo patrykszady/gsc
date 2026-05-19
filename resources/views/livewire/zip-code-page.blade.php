@@ -63,22 +63,28 @@
 
     {{-- Hero --}}
     <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p class="text-sm font-semibold uppercase tracking-wide text-amber-600">Service area</p>
+        <p class="text-sm font-semibold uppercase tracking-wide text-sky-600">Service area</p>
         <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
             Home Remodeling in {{ $city }}, IL &mdash; ZIP {{ $zip }}
         </h1>
         <p class="mt-4 max-w-3xl text-lg text-gray-600 dark:text-gray-300">
-            GS Construction is a family-owned, licensed remodeling contractor serving the
-            <strong>{{ $zip }}</strong> ZIP code in <strong>{{ $city }}, Illinois</strong>.
-            Free in-home estimates for kitchen, bathroom, and whole-home renovations.
+            @if ($zipIntro)
+                {{ $zipIntro }}
+            @else
+                GS Construction is a family-owned, licensed remodeling contractor serving the
+                <strong>{{ $zip }}</strong> ZIP code in <strong>{{ $city }}, Illinois</strong>.
+                Free in-home estimates for kitchen, bathroom, and whole-home renovations.
+            @endif
             @if ($projectCount > 0)
-                We've completed <strong>{{ $projectCount }}</strong> projects in this ZIP.
+                We've completed <strong>{{ $projectCount }}</strong> projects in and around this ZIP.
+            @else
+                We serve in and around the <strong>{{ $zip }}</strong> ZIP code area.
             @endif
         </p>
 
         <div class="mt-6 flex flex-wrap gap-3">
             <a href="/contact" wire:navigate
-                class="inline-flex items-center rounded-md bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-700">
+                class="inline-flex items-center rounded-md bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
                 Request free estimate
             </a>
             <a href="tel:+12247354200"
@@ -114,7 +120,7 @@
                         : url('/services/' . $svc['slug']);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                    class="block rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-amber-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                    class="block rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
                     <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $svc['label'] }}</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Free estimates &middot; Licensed &middot; Insured</p>
                 </a>
@@ -138,7 +144,7 @@
                                 loading="lazy" class="aspect-4/3 w-full object-cover" />
                         @endif
                         <div class="p-4">
-                            <p class="text-base font-semibold text-gray-900 group-hover:text-amber-700 dark:text-white">
+                            <p class="text-base font-semibold text-gray-900 group-hover:text-sky-700 dark:text-white">
                                 {{ $project->title }}
                             </p>
                             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ $project->location }}</p>
@@ -154,21 +160,27 @@
         <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
             <div class="rounded-lg bg-gray-50 p-6 dark:bg-gray-800">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">About ZIP {{ $zip }} in {{ $city }}, IL</h2>
-                @if ($area->local_intro)
+                @if ($zipLocalContext)
+                    <p class="mt-3 text-gray-700 dark:text-gray-300">{{ $zipLocalContext }}</p>
+                @elseif ($area->local_intro)
                     <p class="mt-3 text-gray-700 dark:text-gray-300">{{ $area->local_intro }}</p>
                 @elseif ($area->intro)
                     <p class="mt-3 text-gray-700 dark:text-gray-300">{{ $area->intro }}</p>
                 @endif
-                @if ($area->permit_notes)
+
+                @if ($zipLandmarks)
+                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-400"><strong>Local landmarks:</strong> {{ $zipLandmarks }}</p>
+                @endif
+
+                @if ($zipPermitNotes)
+                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-400"><strong>Permit notes:</strong> {{ $zipPermitNotes }}</p>
+                @elseif ($area->permit_notes)
                     <p class="mt-3 text-sm text-gray-600 dark:text-gray-400"><strong>Permit notes:</strong> {{ $area->permit_notes }}</p>
                 @endif
             </div>
         </section>
     @endif
 
-    {{-- City + ZIP Google Map iframe --}}
-    <x-area-google-map
-        :query="$city . ', IL ' . $zip"
-        :heading="'Map of ' . $city . ', IL ' . $zip"
-        :title="'Map of ' . $city . ', IL ZIP ' . $zip" />
+    {{-- Shared custom project ZIP map used across the site --}}
+    <livewire:map-section />
 </div>

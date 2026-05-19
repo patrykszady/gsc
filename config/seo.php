@@ -252,10 +252,8 @@ return [
     */
     'sitemap_generation' => [
         'include_area_service_pages' => env('SITEMAP_INCLUDE_AREA_SERVICE_PAGES', true),
-        // Default false for now: ZIP pages are the most likely source of
-        // "Crawled - currently not indexed" due to thin/templated copy.
-        // Re-enable after ZIP copy has been enriched.
-        'include_zip_pages' => env('SITEMAP_INCLUDE_ZIP_PAGES', false),
+        // ZIP pages can be toggled off with env when needed, but default is on.
+        'include_zip_pages' => env('SITEMAP_INCLUDE_ZIP_PAGES', true),
     ],
 
     /*

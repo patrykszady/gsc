@@ -4,10 +4,12 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Models\Project;
+use App\Models\Testimonial;
 use App\Services\ZipCodeService;
 use Artesaos\SEOTools\Facades\JsonLd;
 use Artesaos\SEOTools\Facades\OpenGraph;
 use Artesaos\SEOTools\Facades\SEOMeta;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -25,6 +27,14 @@ class ZipCodePage extends Component
 
     public int $projectCount = 0;
 
+    public ?string $zipIntro = null;
+
+    public ?string $zipLocalContext = null;
+
+    public ?string $zipLandmarks = null;
+
+    public ?string $zipPermitNotes = null;
+
     public function mount(string $zip, ZipCodeService $zips): void
     {
         $zip = preg_replace('/\D/', '', $zip);
@@ -39,23 +49,58 @@ class ZipCodePage extends Component
 
         $this->zip = (string) $zip;
         $this->city = $info['city'];
-        $this->projectCount = $info['count'];
         $this->area = $info['area_slug']
             ? AreaServed::where('slug', $info['area_slug'])->first()
             : null;
 
+        // Get all area slugs within 10 miles
+        $nearbyAreaSlugs = $zips->getNearbyAreaSlugs($this->zip, 10.0);
+        $nearbyAreas = AreaServed::whereIn('slug', $nearbyAreaSlugs)->get();
+        $nearbyCityKeys = $nearbyAreas->map(fn($a) => mb_strtolower(trim($a->city)))->unique()->values()->all();
+
+        // Aggregate project IDs from all nearby areas
+        $allProjectIds = collect();
+        foreach ($nearbyCityKeys as $cityKey) {
+            $cityProjects = Project::query()
+                ->where('is_published', true)
+                ->whereRaw('LOWER(TRIM(SUBSTRING_INDEX(location, ",", 1))) = ?', [$cityKey])
+                ->pluck('id');
+            $allProjectIds = $allProjectIds->merge($cityProjects);
+        }
+        $allProjectIds = $allProjectIds->unique()->values();
+
+        // Count projects + testimonials from nearby areas
+        $projectCount = $allProjectIds->count();
+        $testimonialCount = Testimonial::query()
+            ->where('is_hidden', false)
+            ->where(function ($q) use ($nearbyCityKeys) {
+                foreach ($nearbyCityKeys as $cityKey) {
+                    $q->orWhereRaw('LOWER(TRIM(SUBSTRING_INDEX(project_location, ",", 1))) = ?', [$cityKey]);
+                }
+            })
+            ->count();
+        $this->projectCount = $projectCount + $testimonialCount;
         $this->projects = Project::query()
-            ->whereIn('id', $info['project_ids'])
+            ->whereIn('id', $allProjectIds)
             ->where('is_published', true)
             ->with('images')
             ->orderByDesc('updated_at')
             ->limit(12)
             ->get();
 
+        $zipContent = $this->loadZipContent($this->zip);
+        if ($zipContent) {
+            $this->zipIntro = $zipContent['intro'] ?? null;
+            $this->zipLocalContext = $zipContent['local_context'] ?? null;
+            $this->zipLandmarks = $zipContent['landmarks'] ?? null;
+            $this->zipPermitNotes = $zipContent['permit_notes'] ?? null;
+        }
+
         $title = "Home Remodeling near {$this->city}, IL {$this->zip} | GS Construction";
-        $description = "Kitchen, bathroom and whole-home remodeling serving {$this->city}, IL ZIP code {$this->zip}. "
-            . "Free in-home estimates from a family-owned, licensed contractor. "
-            . ($this->projectCount > 0 ? "{$this->projectCount} completed projects nearby." : '');
+        $description = $this->zipIntro
+            ?: ("Kitchen, bathroom and whole-home remodeling serving {$this->city}, IL ZIP code {$this->zip}. "
+                . "Free in-home estimates from a family-owned, licensed contractor. "
+                . ($this->projectCount > 0 ? "{$this->projectCount} completed projects nearby." : ''));
 
         SEOMeta::setTitle($title);
         SEOMeta::setDescription($description);
@@ -80,5 +125,24 @@ class ZipCodePage extends Component
     public function render()
     {
         return view('livewire.zip-code-page');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function loadZipContent(string $zip): ?array
+    {
+        $path = 'seo/zip-content.json';
+        if (! Storage::disk('local')->exists($path)) {
+            return null;
+        }
+
+        $decoded = json_decode((string) Storage::disk('local')->get($path), true);
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        $zipData = $decoded[$zip] ?? null;
+        return is_array($zipData) ? $zipData : null;
     }
 }

@@ -66,7 +66,7 @@
             from
             <span class="font-bold">{{ $data['count'] }}</span>
             verified {{ \Illuminate\Support\Str::plural('review', $data['count']) }} from
-            {{ $cityName }} homeowners
+            {{ $cityName }} and surrounding homeowners
         </p>
         <a href="{{ $area->pageUrl('testimonials') }}"
            wire:navigate
