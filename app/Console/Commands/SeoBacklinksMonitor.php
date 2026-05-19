@@ -74,6 +74,16 @@ class SeoBacklinksMonitor extends Command
         $new = array_values(array_diff($current, $previous));
         $lost = array_values(array_diff($previous, $current));
 
+        $hqPatterns = (array) config('seo.backlinks.high_quality_host_patterns', []);
+        $highQualityHosts = array_values(array_filter($current, function (string $host) use ($hqPatterns) {
+            foreach ($hqPatterns as $p) {
+                if (@preg_match('/' . $p . '/i', $host)) {
+                    return true;
+                }
+            }
+            return false;
+        }));
+
         $this->newLine();
         $this->line('<fg=cyan>--- New referring hosts (' . count($new) . ') ---</>');
         foreach (array_slice($new, 0, 15) as $h) {
@@ -83,6 +93,16 @@ class SeoBacklinksMonitor extends Command
         $this->line('<fg=cyan>--- Lost referring hosts (' . count($lost) . ') ---</>');
         foreach (array_slice($lost, 0, 15) as $h) $this->line('  - ' . $h);
 
+        $this->newLine();
+        $this->line('<fg=cyan>--- High-quality referring hosts (' . count($highQualityHosts) . ') ---</>');
+        if (empty($highQualityHosts)) {
+            $this->warn('  none detected — this matches Bing "lack of high-quality inbound links" warnings.');
+        } else {
+            foreach (array_slice($highQualityHosts, 0, 20) as $h) {
+                $this->line('  * ' . $h);
+            }
+        }
+
         // Persist new snapshot.
         $disk->put($snapPath, json_encode([
             'updated_at' => now()->toIso8601String(),
@@ -91,7 +111,7 @@ class SeoBacklinksMonitor extends Command
         ], JSON_PRETTY_PRINT));
 
         if ($this->option('markdown')) {
-            $this->saveMarkdown($current, $new, $lost, $samples);
+            $this->saveMarkdown($current, $new, $lost, $samples, $highQualityHosts);
         }
         if (! empty($lost)) {
             logger()->warning('seo:backlinks-monitor lost hosts', ['lost' => $lost]);
@@ -135,12 +155,14 @@ class SeoBacklinksMonitor extends Command
      * @param array<int, string> $new
      * @param array<int, string> $lost
      * @param array<string, string> $samples
+     * @param array<int, string> $highQualityHosts
      */
-    protected function saveMarkdown(array $current, array $new, array $lost, array $samples): void
+    protected function saveMarkdown(array $current, array $new, array $lost, array $samples, array $highQualityHosts): void
     {
         $md = "# Backlink / mention monitor\n\n";
         $md .= 'Run: ' . now()->toIso8601String() . "\n\n";
         $md .= '**Referring hosts this run:** ' . count($current) . "\n\n";
+        $md .= '**High-quality referring hosts:** ' . count($highQualityHosts) . "\n\n";
 
         $md .= '## New (' . count($new) . ")\n\n";
         if (empty($new)) {
@@ -154,6 +176,9 @@ class SeoBacklinksMonitor extends Command
 
         $md .= "\n## All current referring hosts\n\n";
         $md .= empty($current) ? "_None._\n" : ('- ' . implode("\n- ", $current) . "\n");
+
+        $md .= "\n## High-quality referring hosts\n\n";
+        $md .= empty($highQualityHosts) ? "_None detected. This can trigger Bing authority warnings._\n" : ('- ' . implode("\n- ", $highQualityHosts) . "\n");
 
         Storage::disk('local')->put('reports/backlinks-monitor.md', $md);
         $this->info('Saved: storage/app/reports/backlinks-monitor.md');

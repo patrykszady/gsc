@@ -214,6 +214,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Backlink quality monitor
+    |--------------------------------------------------------------------------
+    |
+    | Domain patterns considered "high-quality" referring hosts for a quick
+    | authority signal in seo:backlinks-monitor. These are regex snippets
+    | evaluated case-insensitively against referring hosts.
+    */
+    'backlinks' => [
+        'high_quality_host_patterns' => [
+            '\\.gov$',
+            '\\.edu$',
+            'wikipedia\\.org$',
+            'bbb\\.org$',
+            'houzz\\.com$',
+            'architecturaldigest\\.com$',
+            'forbes\\.com$',
+            'nytimes\\.com$',
+            'chicagotribune\\.com$',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Sitemap Generation Controls
     |--------------------------------------------------------------------------
     |

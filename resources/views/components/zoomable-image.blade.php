@@ -230,6 +230,7 @@
         {{-- Blur placeholder (shows while main image loads) --}}
         <img 
             :src="current.thumbUrl || current.url || current.webpUrl"
+            alt=""
             :alt="''"
             aria-hidden="true"
             class="{{ $imageClass }} absolute inset-0 h-full w-full object-cover blur-xl scale-110 transition-opacity duration-500 select-none"
@@ -239,6 +240,7 @@
         {{-- Full-size image --}}
         <img 
             :src="current.url || current.webpUrl" 
+            alt="GS Construction remodeling project image"
             :alt="current.alt || 'GS Construction remodeling project image'"
             class="{{ $imageClass }} transition-all duration-100 ease-out select-none"
             :style="`transform: scale(${scale}) translate(${translateX / scale}px, ${translateY / scale}px); transform-origin: center center; opacity: ${imageLoaded ? 1 : 0}; transition: opacity 0.5s ease, transform 0.1s ease-out;`"

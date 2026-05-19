@@ -6,6 +6,10 @@
     $firstSlide = $renderedSlides[0] ?? null;
     // Responsive sizes: use smaller images on smaller screens
     $heroSizes = '(max-width: 640px) 480px, (max-width: 1024px) 960px, 1600px';
+    // Ensure each page has one semantic H1 even when visible headings are slide-driven.
+    $srOnlyHeading = $isServiceMode
+        ? ($firstSlide['heading'] ?? null)
+        : ($firstSlide['title'] ?? $firstSlide['heading'] ?? null);
 @endphp
 
 {{-- Preload the LCP image (first slide) for faster rendering with responsive srcset --}}
@@ -139,6 +143,10 @@
     @keydown.right.window="if (isVisible) { next(); stopAutoplay(); startAutoplay(); }"
     class="relative w-full overflow-hidden rounded-2xl"
 >
+    @if(!$isImagesOnly && filled($srOnlyHeading))
+    <h1 class="sr-only">{{ $srOnlyHeading }}{{ $citySuffix }}</h1>
+    @endif
+
     {{-- Slides --}}
     <div class="relative {{ $heightClasses ?? 'h-[500px] sm:h-[600px] lg:h-[700px]' }}">
         {{-- Skeleton/shimmer background (shows immediately before anything loads) --}}
@@ -226,6 +234,7 @@
                     :src="slide.image"
                     :srcset="slide.srcset || ''"
                     sizes="{{ $heroSizes }}"
+                    alt="GS Construction remodeling project"
                     :alt="slide.imageAlt || slide.heading || slide.alt"
                     width="1600"
                     height="900"
@@ -275,10 +284,10 @@
                             {{ $label }}
                         </span>
                         @endif
-                        <h1 
+                        <h2 
                             class="mt-3 font-heading text-4xl font-bold text-white drop-shadow-lg sm:text-5xl lg:text-6xl"
                             x-text="slide.heading"
-                        ></h1>
+                        ></h2>
                         <p 
                             x-show="slide.subheading"
                             x-text="slide.subheading"
@@ -318,10 +327,10 @@
                     @mouseenter="isHovered = true; stopAutoplay()"
                     @mouseleave="isHovered = false; startAutoplay()"
                 >
-                    <h1
+                    <h2
                         class="font-heading text-4xl font-bold text-white drop-shadow-lg sm:text-5xl lg:text-6xl"
                         x-html="slide.title.replace('\n', '<br>')"
-                    ></h1>
+                    ></h2>
                     <p 
                         x-show="areaCity" 
                         x-text="'in ' + areaCity"
