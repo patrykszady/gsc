@@ -6,31 +6,105 @@
 # ============================================
 # Google, Bing, and other legitimate search engines
 # are welcome to crawl our entire site.
+#
+# NOTE: Each search-engine group below also disallows internal/admin
+# paths (Horizon, Livewire, Telescope, admin, login, etc.). These
+# return 403/302 to crawlers and were generating Search Console
+# "Blocked due to access forbidden (403)" errors.
 
 User-agent: Googlebot
 Allow: /
+Disallow: /horizon
+Disallow: /horizon/
+Disallow: /telescope
+Disallow: /telescope/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /logout
+Disallow: /register
+Disallow: /password/
+Disallow: /livewire/
+Disallow: /_debugbar/
+Disallow: /api/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /xmlrpc.php
 
 User-agent: Googlebot-Image
 Allow: /
+Disallow: /horizon
+Disallow: /telescope
+Disallow: /admin
+Disallow: /livewire/
 
 User-agent: Googlebot-News
 Allow: /
+Disallow: /horizon
+Disallow: /telescope
+Disallow: /admin
+Disallow: /livewire/
 
 User-agent: Googlebot-Video
 Allow: /
+Disallow: /horizon
+Disallow: /telescope
+Disallow: /admin
+Disallow: /livewire/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /horizon
+Disallow: /horizon/
+Disallow: /telescope
+Disallow: /telescope/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /logout
+Disallow: /register
+Disallow: /password/
+Disallow: /livewire/
+Disallow: /_debugbar/
+Disallow: /api/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /xmlrpc.php
 
 User-agent: Slurp
 Allow: /
+Disallow: /horizon
+Disallow: /telescope
+Disallow: /admin
+Disallow: /login
+Disallow: /livewire/
+Disallow: /api/
 
 User-agent: DuckDuckBot
 Allow: /
+Disallow: /horizon
+Disallow: /telescope
+Disallow: /admin
+Disallow: /login
+Disallow: /livewire/
+Disallow: /api/
 
 # Default: Allow all other bots
 User-agent: *
 Allow: /
+Disallow: /horizon
+Disallow: /horizon/
+Disallow: /telescope
+Disallow: /telescope/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /logout
+Disallow: /register
+Disallow: /password/
+Disallow: /livewire/
+Disallow: /_debugbar/
+Disallow: /api/
 Disallow: /wp-admin/
 Disallow: /wp-login.php
 Disallow: /xmlrpc.php
@@ -39,7 +113,6 @@ Disallow: /.git/
 Disallow: /vendor/
 Disallow: /node_modules/
 Disallow: /storage/
-Disallow: /admin/
 
 # Sitemap location
 Sitemap: https://gs.construction/sitemap.xml

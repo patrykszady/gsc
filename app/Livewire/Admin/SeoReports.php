@@ -77,6 +77,11 @@ class SeoReports extends Component
             'command' => 'seo:health-check --markdown',
             'description' => 'Composite 0–100 score per URL across title, meta, H1, alt, links, schema, canonical, word count.',
         ],
+        'clarity-health' => [
+            'label' => 'Clarity health',
+            'command' => 'seo:clarity-health --markdown',
+            'description' => 'Clarity API/config status, last sync freshness, and latest behavioral metrics snapshot.',
+        ],
     ];
 
     public function mount(?string $report = null): void

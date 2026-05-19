@@ -51,6 +51,53 @@ run() {
     fi
 }
 
+run_shell() {
+    local label="$1"; shift
+    local cmd="$*"
+    echo "" | tee -a "$LOG"
+    echo "──▶ $label" | tee -a "$LOG"
+    echo "    $ $cmd" | tee -a "$LOG"
+    if eval "$cmd" >>"$LOG" 2>&1; then
+        echo "    ✓ ok" | tee -a "$LOG"
+        pass=$((pass+1))
+    else
+        echo "    ✗ FAILED (see $LOG)" | tee -a "$LOG"
+        fail=$((fail+1))
+    fi
+}
+
+verify_sitemap() {
+    local sitemap="public/sitemap.xml"
+
+    [[ -f "$sitemap" ]] || {
+        echo "sitemap.xml missing"
+        return 1
+    }
+
+    local first_url
+    first_url="$(grep -oP '(?<=<loc>)[^<]+' "$sitemap" | head -1)"
+
+    [[ -n "$first_url" ]] || {
+        echo "sitemap.xml has no <loc> entries"
+        return 1
+    }
+
+    # Homepage canonical is slashless: https://gs.construction
+    if [[ "$first_url" =~ /$ ]]; then
+        echo "first sitemap URL has trailing slash: $first_url"
+        return 1
+    fi
+
+    local non_html_count
+    non_html_count="$(grep -oP '(?<=<loc>)[^<]+' "$sitemap" | grep -Ec '\\.(txt|json|xml|webmanifest|ico)$' || true)"
+    if [[ "$non_html_count" -gt 0 ]]; then
+        echo "sitemap contains non-HTML URLs: $non_html_count"
+        return 1
+    fi
+
+    return 0
+}
+
 echo "Post-deploy run – mode=$MODE – log=$LOG"
 
 # ── Tier 1: AUDITS ────────────────────────────────────────────────────────
@@ -85,6 +132,7 @@ if [[ "$MODE" == "default" || "$MODE" == "audits" || "$MODE" == "all" ]]; then
     run "SEO content strategy"         seo:content-strategy
     run "SEO title audit"              seo:title-audit
     run "SEO GSC monitor"              seo:gsc-monitor
+    run "SEO Clarity health"           seo:clarity-health --markdown
     run "SEO GSC top"                  seo:gsc-top
     run "SEO show rankings"            seo:show-rankings
     run "SEO CWV by template"          seo:cwv-template
@@ -97,8 +145,13 @@ if [[ "$MODE" == "default" || "$MODE" == "syncs" || "$MODE" == "all" ]]; then
     echo "" | tee -a "$LOG"
     echo "═══ Tier 2: Syncs (pull external → DB) ═══" | tee -a "$LOG"
 
+    # Always regenerate sitemap after deploy and fail fast on malformed output.
+    run "Sitemap generate"             sitemap:generate
+    run_shell "Sitemap validate"       verify_sitemap
+
     run "GSC sync"                     seo:gsc-sync
     run "Bing sync"                    seo:bing-sync
+    run "Clarity sync"                 seo:clarity-sync --days=3
     run "GBP metrics sync"             gbp:metrics-sync
     run "GBP sync-reviews"             google-business-profile:sync-reviews
     run "GBP match-reviews"            google-business-profile:match-reviews --normalize-google-urls

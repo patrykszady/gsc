@@ -60,6 +60,14 @@ class GenerateSitemap extends Command
             '.map',         // sourcemaps
             'up',           // health check
             'sanctum',      // sanctum routes
+            // Non-HTML resources — must not appear in sitemap (Google indexes HTML pages,
+            // not JSON/TXT/XML feeds; their inclusion previously caused canonical mismatches
+            // and contributed to GSC sitemap reporting 'indexed=0').
+            '.txt',
+            '.json',
+            '.xml',
+            '.webmanifest',
+            '.ico',
         ];
         
         // Exact URIs to exclude (redirects and noindex aliases)
@@ -129,12 +137,17 @@ class GenerateSitemap extends Command
         ];
 
         foreach ($staticRoutes as $route) {
-            $uri = $route->uri() === '/' ? '' : $route->uri();
+            $isHome = $route->uri() === '/';
+            $uri = $isHome ? '' : $route->uri();
             $priority = $priorities[$route->uri()] ?? 0.5;
             $changeFreq = $changeFrequencies[$route->uri()] ?? Url::CHANGE_FREQUENCY_MONTHLY;
 
+            // Homepage canonical is rendered without trailing slash; sitemap entry must match
+            // exactly or Google flags the sitemap URL as not-indexed (canonical mismatch).
+            $fullUrl = $isHome ? $baseUrl : "{$baseUrl}/{$uri}";
+
             $sitemap->add(
-                Url::create("{$baseUrl}/{$uri}")
+                Url::create($fullUrl)
                     ->setLastModificationDate(now())
                     ->setChangeFrequency($changeFreq)
                     ->setPriority($priority)
@@ -168,6 +181,7 @@ class GenerateSitemap extends Command
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
         $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
+        $includeAreaServicePages = (bool) config('seo.sitemap_generation.include_area_service_pages', true);
         $areaCount = 0;
 
         // Get latest project updated_at for area lastmod dates
@@ -191,21 +205,26 @@ class GenerateSitemap extends Command
             }
             
             // Area-specific service pages (high priority for local SEO)
-            foreach ($areaServicePages as $servicePage) {
-                $uri = "areas-served/{$area->slug}/services/{$servicePage}";
-                
-                $sitemap->add(
-                    Url::create("{$baseUrl}/{$uri}")
-                        ->setLastModificationDate($areaLastmod)
-                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
-                        ->setPriority(0.8) // High priority for local service keywords
-                );
-                $urlCount++;
-                $areaCount++;
+            if ($includeAreaServicePages) {
+                foreach ($areaServicePages as $servicePage) {
+                    $uri = "areas-served/{$area->slug}/services/{$servicePage}";
+                    
+                    $sitemap->add(
+                        Url::create("{$baseUrl}/{$uri}")
+                            ->setLastModificationDate($areaLastmod)
+                            ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
+                            ->setPriority(0.8) // High priority for local service keywords
+                    );
+                    $urlCount++;
+                    $areaCount++;
+                }
             }
         }
-        $totalPageTypes = count($areaPages) + count($areaServicePages);
+        $totalPageTypes = count($areaPages) + ($includeAreaServicePages ? count($areaServicePages) : 0);
         $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × {$totalPageTypes} page types)");
+        if (! $includeAreaServicePages) {
+            $this->comment('  Skipped area-service URLs (SITEMAP_INCLUDE_AREA_SERVICE_PAGES=false)');
+        }
 
         // Add ZIP-code service-area landing pages
         $this->info("Adding ZIP-code service-area pages to sitemap...");
@@ -218,17 +237,23 @@ class GenerateSitemap extends Command
         );
         $urlCount++;
         $zipCount = 0;
-        foreach ($zipMap as $zip => $info) {
-            $sitemap->add(
-                Url::create("{$baseUrl}/service-area/{$zip}")
-                    ->setLastModificationDate($areaLastmod)
-                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                    ->setPriority(0.65)
-            );
-            $urlCount++;
-            $zipCount++;
+        $includeZipPages = (bool) config('seo.sitemap_generation.include_zip_pages', true);
+        if ($includeZipPages) {
+            foreach ($zipMap as $zip => $info) {
+                $sitemap->add(
+                    Url::create("{$baseUrl}/service-area/{$zip}")
+                        ->setLastModificationDate($areaLastmod)
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.65)
+                );
+                $urlCount++;
+                $zipCount++;
+            }
         }
         $this->line("  Added {$zipCount} ZIP service-area pages");
+        if (! $includeZipPages) {
+            $this->comment('  Skipped ZIP URLs (SITEMAP_INCLUDE_ZIP_PAGES=false)');
+        }
 
         // Add individual testimonial pages
         $this->info("Adding testimonial pages to sitemap...");

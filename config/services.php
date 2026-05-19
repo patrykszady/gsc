@@ -96,7 +96,14 @@ return [
     ],
 
     'microsoft' => [
+        // Client-side Clarity project ID (used for JS snippet rendering).
         'clarity_id' => env('MICROSOFT_CLARITY_ID'),
+        // Server-side Clarity API sync (seo:clarity-sync).
+        'clarity' => [
+            'project_id' => env('MICROSOFT_CLARITY_PROJECT_ID', env('MICROSOFT_CLARITY_ID')),
+            'api_token' => env('MICROSOFT_CLARITY_API_TOKEN'),
+            'base_url' => env('MICROSOFT_CLARITY_API_BASE_URL', 'https://www.clarity.ms/export-data/api/v1'),
+        ],
     ],
 
     /*

@@ -214,6 +214,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sitemap Generation Controls
+    |--------------------------------------------------------------------------
+    |
+    | Temporary toggles for indexation strategy while resolving
+    | "Crawled - currently not indexed" groups.
+    |
+    | - include_area_service_pages:
+    |     /areas-served/{area}/services/{service}
+    | - include_zip_pages:
+    |     /service-area/{zip}
+    |
+    | Set to false (via env) to drop a bucket from sitemap without code edits.
+    */
+    'sitemap_generation' => [
+        'include_area_service_pages' => env('SITEMAP_INCLUDE_AREA_SERVICE_PAGES', true),
+        // Default false for now: ZIP pages are the most likely source of
+        // "Crawled - currently not indexed" due to thin/templated copy.
+        // Re-enable after ZIP copy has been enriched.
+        'include_zip_pages' => env('SITEMAP_INCLUDE_ZIP_PAGES', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | PageSpeed Insights URLs (seo:psi-sync)
     |--------------------------------------------------------------------------
     | URLs to snapshot weekly with the free PSI API. Override with --urls=.

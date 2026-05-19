@@ -217,16 +217,16 @@ Route::get('/compare/{slug}', CompareCompetitorPage::class)
     ->name('compare.show');
 
 // Admin auth
-Route::get('/admin/login', Login::class)->name('admin.login')->middleware('guest');
+Route::get('/admin/login', Login::class)->name('admin.login')->middleware(['guest', 'noindex']);
 Route::post('/admin/logout', function () {
     auth()->logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
     return redirect()->route('admin.login');
-})->name('admin.logout');
+})->name('admin.logout')->middleware('noindex');
 
 // Admin routes (protected by auth)
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', Dashboard::class)->name('dashboard');
     
     // Projects

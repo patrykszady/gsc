@@ -3,6 +3,7 @@
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\DetectCountry;
+use App\Http\Middleware\NoIndexHeader;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\Track404Responses;
@@ -46,6 +47,13 @@ return Application::configure(basePath: dirname(__DIR__))
             CaptureUtmParameters::class,
             SecurityHeaders::class,
             \Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders::class,
+        ]);
+
+        // Route-level alias: send X-Robots-Tag: noindex, nofollow on admin pages
+        // so search engines drop them from the index even when discovered via
+        // a backlink (robots.txt Disallow only blocks crawling, not indexing).
+        $middleware->alias([
+            'noindex' => NoIndexHeader::class,
         ]);
 
         // Global terminating middleware: track 404 responses (must be global,

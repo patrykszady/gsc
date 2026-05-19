@@ -114,12 +114,26 @@ Schedule::command('seo:competitor-brand-track --days=28 --markdown')
     ->appendOutputTo(storage_path('logs/seo-competitor-brand.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:competitor-brand-track failed'));
 
+// SEO/GEO: daily Microsoft Clarity behavioral metrics sync.
+Schedule::command('seo:clarity-sync --days=3')
+    ->dailyAt('08:32')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-clarity-sync.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:clarity-sync failed'));
+
 // SEO: weekly GSC week-over-week regression monitor (runs after Mon sync).
 Schedule::command('seo:gsc-monitor --window=7 --markdown')
     ->weeklyOn(2, '09:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-monitor.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-monitor failed'));
+
+// SEO: weekly Clarity integration health check (paired with GSC monitor window).
+Schedule::command('seo:clarity-health --markdown')
+    ->weeklyOn(2, '09:02')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-clarity-health.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:clarity-health failed'));
 
 // SEO: weekly competitor rank-gap (where configured competitors outrank us).
 Schedule::command('seo:competitor-rank-gap --max-queries=16 --markdown')
