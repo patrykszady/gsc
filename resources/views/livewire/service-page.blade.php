@@ -12,20 +12,33 @@
     <x-service-howto-schema :service="$data" :service-slug="$service" />
 
     {{-- Hero Section --}}
-    <livewire:main-project-hero-slider 
-        :project-type="$data['projectType']"
-        :slides="[
-            [
-                'heading' => $data['heroTitle'],
-                'subheading' => $data['heroSubtitle'],
-                'type' => $data['projectType'],
-            ],
-        ]"
-        primary-cta-text="Get a Free Quote"
-        primary-cta-url="/contact"
-        secondary-cta-text="View Our Work"
-        secondary-cta-url="/projects"
-    />
+    <section class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <livewire:main-project-hero-slider 
+            :project-type="$data['projectType']"
+            :slides="[
+                [
+                    'heading' => $data['heroTitle'],
+                    'subheading' => $data['heroSubtitle'],
+                    'type' => $data['projectType'],
+                ],
+                [
+                    'heading' => $data['heroTitle'],
+                    'subheading' => $data['heroSubtitle'],
+                    'type' => $data['projectType'],
+                ],
+                [
+                    'heading' => $data['heroTitle'],
+                    'subheading' => $data['heroSubtitle'],
+                    'type' => $data['projectType'],
+                ],
+            ]"
+            :slide-count="3"
+            primary-cta-text="Get a Free Quote"
+            primary-cta-url="/contact"
+            secondary-cta-text="View Our Work"
+            secondary-cta-url="/projects"
+        />
+    </section>
 
     {{-- About Section --}}
     {{-- <section class="py-16 sm:py-24">

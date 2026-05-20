@@ -34,7 +34,9 @@
         isVisible: true,
         isTabVisible: true,
         nextToLoad: 1,
+        hasMultipleSlides: false,
         init() {
+            this.hasMultipleSlides = this.slides.length > 1;
             // Mark already-cached images as loaded immediately
             this.slides.forEach((slide, index) => {
                 if (window.imageCache?.has(slide.image)) {
@@ -61,6 +63,7 @@
             }
         },
         scheduleAutoplay() {
+            if (!this.hasMultipleSlides) return;
             const run = () => this.startAutoplay();
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(run, { timeout: 1200 });
@@ -102,7 +105,7 @@
             return this.thumbsLoaded.includes(index);
         },
         startAutoplay() {
-            if (!this.isVisible || !this.isTabVisible || this.isHovered) return;
+            if (!this.hasMultipleSlides || !this.isVisible || !this.isTabVisible || this.isHovered) return;
             this.stopAutoplay();
             this.autoplay = setInterval(() => this.next(), 3000);
         },
@@ -113,9 +116,11 @@
             }
         },
         next() {
+            if (!this.hasMultipleSlides) return;
             this.currentSlide = (this.currentSlide + 1) % this.slides.length;
         },
         prev() {
+            if (!this.hasMultipleSlides) return;
             this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
         },
         handleVisibility(isVisible) {
@@ -139,8 +144,8 @@
     }"
     x-intersect:enter.threshold.40="handleVisibility(true)"
     x-intersect:leave.threshold.40="handleVisibility(false)"
-    @keydown.left.window="if (isVisible) { prev(); stopAutoplay(); startAutoplay(); }"
-    @keydown.right.window="if (isVisible) { next(); stopAutoplay(); startAutoplay(); }"
+    @keydown.left.window="if (hasMultipleSlides && isVisible) { prev(); stopAutoplay(); startAutoplay(); }"
+    @keydown.right.window="if (hasMultipleSlides && isVisible) { next(); stopAutoplay(); startAutoplay(); }"
     class="relative w-full overflow-hidden rounded-2xl"
 >
     @if(!$isImagesOnly && filled($srOnlyHeading))
@@ -382,6 +387,7 @@
 
     {{-- Left/Right Arrow Buttons --}}
     <button
+        x-show="hasMultipleSlides"
         @click="prev(); stopAutoplay(); startAutoplay();"
         class="absolute left-3 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 focus:outline-none"
         aria-label="Previous slide"
@@ -389,6 +395,7 @@
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
     </button>
     <button
+        x-show="hasMultipleSlides"
         @click="next(); stopAutoplay(); startAutoplay();"
         class="absolute right-3 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 focus:outline-none"
         aria-label="Next slide"
@@ -397,7 +404,7 @@
     </button>
 
     {{-- Dot Indicators (display only) --}}
-    <div class="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+    <div x-show="hasMultipleSlides" class="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 gap-2">
         <template x-for="(slide, index) in slides" :key="'dot-' + index">
             <div
                 :class="currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3'"
