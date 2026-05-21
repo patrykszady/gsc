@@ -584,15 +584,20 @@
         @case('kitchen-remodeling')
         @case('bathroom-remodeling')
         @case('home-remodeling')
+        @case('basement-remodeling')
+        @case('home-additions')
         @case('service')
             {{-- Area-Specific Service Page (e.g., Palatine Bathroom Remodeling) --}}
             @php
                 // Map URL slugs to internal service keys
-                $serviceKey = match($service ?? $page) {
+                $requestedService = $service ?? $page;
+                $serviceKey = match($requestedService) {
                     'kitchen-remodeling' => 'kitchen-remodeling',
                     'bathroom-remodeling' => 'bathroom-remodeling',
                     'home-remodeling' => 'home-remodeling',
-                    default => $page,
+                    'basement-remodeling' => 'basement-remodeling',
+                    'home-additions' => 'home-additions',
+                    default => $requestedService,
                 };
                 
                 $serviceConfig = [
@@ -664,8 +669,52 @@
                             ['question' => "Can you convert my {$area->city} home to an open floor plan?", 'answer' => "Open floor plan conversions are one of our specialties! We safely remove walls (including load-bearing walls with proper engineering) to create the modern, open layout you want."],
                         ],
                     ],
+                    'basement-remodeling' => [
+                        'label' => 'Basement Remodeling',
+                        'projectType' => 'basement',
+                        'urlSlug' => 'basement-remodeling',
+                        'heading' => $area->city . ' Basement Remodeling',
+                        'subheading' => 'Finish your basement into a comfortable, code-compliant living space',
+                        'description' => "Need basement remodeling in {$area->city}? GS Construction transforms unfinished or outdated basements into practical, beautiful spaces for entertaining, guests, work, and everyday family life.",
+                        'features' => [
+                            'Basement finishing and layout planning',
+                            'Family rooms, theaters, and rec spaces',
+                            'Guest bedrooms with egress updates',
+                            'Wet bars and basement bathrooms',
+                            'Lighting, flooring, and trim carpentry',
+                            'Code-compliant electrical and plumbing',
+                        ],
+                        'faqs' => [
+                            ['question' => "How much does basement remodeling cost in {$area->city}?", 'answer' => "Basement remodeling costs depend on square footage, finishes, and whether plumbing or bathroom additions are included. We provide free in-home estimates with a clear scope and pricing."],
+                            ['question' => "How long does a basement remodel take?", 'answer' => "Most basement remodels take several weeks depending on complexity, inspections, and finish selections. We share a detailed schedule before construction starts."],
+                            ['question' => "Can you add a bathroom or wet bar in my basement?", 'answer' => "Yes. We regularly build basement bathrooms and wet bars, including code-compliant plumbing, electrical, ventilation, and finish work."],
+                            ['question' => "Do you handle permits for basement projects in {$area->city}?", 'answer' => "Yes, we manage the permitting process and inspections required for basement remodeling in {$area->city}."],
+                        ],
+                    ],
+                    'home-additions' => [
+                        'label' => 'Home Additions',
+                        'projectType' => 'addition',
+                        'urlSlug' => 'home-additions',
+                        'heading' => $area->city . ' Home Additions',
+                        'subheading' => 'Expand your home with seamless additions designed to match your existing layout',
+                        'description' => "Planning a home addition in {$area->city}? GS Construction builds room additions, expanded living spaces, and major layout upgrades that blend naturally with your existing home.",
+                        'features' => [
+                            'Room and family-room additions',
+                            'Primary suite and bedroom expansions',
+                            'Kitchen and dining area extensions',
+                            'Sunrooms and enclosed porch conversions',
+                            'Structural framing and roof tie-ins',
+                            'Permit-ready plans and construction',
+                        ],
+                        'faqs' => [
+                            ['question' => "How much do home additions cost in {$area->city}?", 'answer' => "Addition costs vary by size, structural scope, and finish level. We provide a detailed estimate and phased plan so you understand the full investment."],
+                            ['question' => "How long does a home addition take?", 'answer' => "Timelines depend on design, permitting, and construction scope. Most additions take multiple phases, and we provide a project timeline before work begins."],
+                            ['question' => "Will a new addition match my current home?", 'answer' => "Yes. We design and build additions to align with your existing rooflines, materials, and architectural style for a cohesive final result."],
+                            ['question' => "Do you handle permits and inspections for additions in {$area->city}?", 'answer' => "Absolutely. We coordinate permits, inspections, and code compliance from planning through final walkthrough."],
+                        ],
+                    ],
                 ];
-                $config = $serviceConfig[$serviceKey];
+                $config = $serviceConfig[$serviceKey] ?? $serviceConfig['home-remodeling'];
                 
                 // Get geographically nearest areas for internal linking (Haversine, cached 24h).
                 // Falls back to random if coordinates aren't set yet.
