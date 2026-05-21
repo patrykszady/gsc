@@ -139,7 +139,7 @@ Route::get('/areas/{area}/{page}', AreaPage::class)
     ->name('areas.alias.page');
 Route::get('/areas/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
-    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling')
+    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
     ->name('areas.alias.service');
 
 // Locations alias (keep canonical on /areas-served)
@@ -152,7 +152,7 @@ Route::get('/locations/{area}/{page}', AreaPage::class)
     ->name('locations.page');
 Route::get('/locations/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
-    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling')
+    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
     ->name('locations.service');
 
 // Areas Served (canonical)
@@ -167,7 +167,7 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
 // Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchen-remodeling)
 Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
-    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling')
+    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
     ->name('areas.service');
 
 // 301 redirects from old short slugs to keyword-rich canonical URLs
@@ -205,10 +205,24 @@ Route::get('/services/bathroom-remodeling', ServicePage::class)
 Route::get('/services/home-remodeling', ServicePage::class)
     ->defaults('service', 'home-remodeling')
     ->name('services.home');
+Route::get('/services/basement-remodeling', ServicePage::class)
+    ->defaults('service', 'basement-remodeling')
+    ->name('services.basement');
+Route::get('/services/home-additions', ServicePage::class)
+    ->defaults('service', 'home-additions')
+    ->name('services.additions');
 
 // 301 redirects from old short service URLs
 Route::redirect('/services/kitchens', '/services/kitchen-remodeling', 301);
 Route::redirect('/services/bathrooms', '/services/bathroom-remodeling', 301);
+Route::redirect('/services/basements', '/services/basement-remodeling', 301);
+Route::redirect('/services/basement-finishing', '/services/basement-remodeling', 301);
+Route::redirect('/services/additions', '/services/home-additions', 301);
+Route::redirect('/services/room-additions', '/services/home-additions', 301);
+Route::redirect('/basement-remodeling', '/services/basement-remodeling', 301);
+Route::redirect('/basement-finishing', '/services/basement-remodeling', 301);
+Route::redirect('/home-additions', '/services/home-additions', 301);
+Route::redirect('/additions', '/services/home-additions', 301);
 
 // Comparison / "alternative to" landing pages
 Route::get('/compare', CompareIndexPage::class)->name('compare.index');

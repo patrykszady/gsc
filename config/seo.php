@@ -171,19 +171,34 @@ return [
             // Surrounding suburbs (priority growth markets)
             ['q' => 'kitchen remodeling Palatine IL',           'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
             ['q' => 'bathroom remodeling Palatine IL',          'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
+            ['q' => 'general contractor Palatine IL',           'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
+            ['q' => 'basement finishing Palatine IL',           'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
+            ['q' => 'home additions Palatine IL',               'location' => 'Palatine, Illinois, United States',           'city_slug' => 'palatine'],
             ['q' => 'kitchen remodeling Mount Prospect IL',     'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
             ['q' => 'bathroom remodeling Mount Prospect IL',    'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
             ['q' => 'general contractor Mount Prospect IL',     'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
+            ['q' => 'basement finishing Mount Prospect IL',     'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
+            ['q' => 'home additions Mount Prospect IL',         'location' => 'Mount Prospect, Illinois, United States',     'city_slug' => 'mount-prospect'],
             ['q' => 'kitchen remodeling Schaumburg IL',         'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
             ['q' => 'bathroom remodeling Schaumburg IL',        'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
+            ['q' => 'general contractor Schaumburg IL',         'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
+            ['q' => 'basement finishing Schaumburg IL',         'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
+            ['q' => 'home additions Schaumburg IL',             'location' => 'Schaumburg, Illinois, United States',         'city_slug' => 'schaumburg'],
             ['q' => 'kitchen remodeling Buffalo Grove IL',      'location' => 'Buffalo Grove, Illinois, United States',      'city_slug' => 'buffalo-grove'],
             ['q' => 'bathroom remodeling Buffalo Grove IL',     'location' => 'Buffalo Grove, Illinois, United States',      'city_slug' => 'buffalo-grove'],
+            ['q' => 'general contractor Buffalo Grove IL',      'location' => 'Buffalo Grove, Illinois, United States',      'city_slug' => 'buffalo-grove'],
             ['q' => 'kitchen remodeling Barrington IL',         'location' => 'Barrington, Illinois, United States',         'city_slug' => 'barrington'],
             ['q' => 'bathroom remodeling Barrington IL',        'location' => 'Barrington, Illinois, United States',         'city_slug' => 'barrington'],
+            ['q' => 'general contractor Barrington IL',         'location' => 'Barrington, Illinois, United States',         'city_slug' => 'barrington'],
 
             // Chicago (long-shot but tracks brand)
             ['q' => 'kitchen remodeling Chicago IL',            'location' => 'Chicago, Illinois, United States',            'city_slug' => 'chicago'],
             ['q' => 'bathroom remodeling Chicago IL',           'location' => 'Chicago, Illinois, United States',            'city_slug' => 'chicago'],
+            ['q' => 'general contractor Chicago IL',            'location' => 'Chicago, Illinois, United States',            'city_slug' => 'chicago'],
+            // Service-category long-tail (HQ region)
+            ['q' => 'basement finishing Arlington Heights IL',  'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
+            ['q' => 'home additions Arlington Heights IL',      'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
+            ['q' => 'room addition contractor Arlington Heights IL', 'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
         ],
 
         // Google Maps — uses SerpApi engine=google_maps with `ll` lat/lng.
@@ -195,6 +210,10 @@ return [
             ['q' => 'home remodeling',            'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
             ['q' => 'kitchen remodeler',          'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
             ['q' => 'bathroom remodeler',         'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'basement finishing',         'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'home additions',             'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],
+            ['q' => 'general contractor',         'll' => '@42.1103,-88.0342,12z', 'city_slug' => 'palatine'],
+            ['q' => 'general contractor',         'll' => '@42.0664,-87.9373,12z', 'city_slug' => 'mount-prospect'],
         ],
 
         // How many top listings to keep per snapshot.

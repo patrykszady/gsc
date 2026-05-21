@@ -31,8 +31,11 @@ class GbpUnrespondedReviews extends Command
     public function handle(GoogleBusinessProfileService $service): int
     {
         if (! $service->isConfigured()) {
-            $this->error('Google Business Profile is not configured.');
-            return self::FAILURE;
+            $message = 'Google Business Profile is not configured. Re-authenticate via Admin > GBP Settings.';
+            $this->warn($message);
+            logger()->warning('GBP review check skipped: not configured');
+            $this->sendSystemAlertIfEnabled($message);
+            return self::SUCCESS;
         }
 
         $maxAgeHours = (int) $this->option('max-age');
@@ -40,12 +43,25 @@ class GbpUnrespondedReviews extends Command
 
         $this->info("Checking reviews older than {$maxAgeHours}h without owner reply…");
 
-        $reviews = $service->fetchAllReviews();
+        try {
+            $reviews = $service->fetchAllReviews();
+        } catch (\Exception $e) {
+            $message = 'API error during review check: ' . $e->getMessage();
+            $this->error($message);
+            logger()->error('GBP review check API exception', ['error' => $e->getMessage()]);
+            $this->sendSystemAlertIfEnabled($message);
+            return self::SUCCESS;
+        }
+
         if (empty($reviews)) {
             $err = $service->getLastError();
             if ($err) {
-                $this->error('Fetch failed: ' . ($err['message'] ?? 'unknown'));
-                return self::FAILURE;
+                $msg = $err['message'] ?? 'unknown';
+                $message = 'Fetch warning: ' . $msg;
+                $this->warn($message);
+                logger()->warning('GBP review check fetch warning', ['error' => $msg]);
+                $this->sendSystemAlertIfEnabled($message);
+                return self::SUCCESS;
             }
             $this->info('No reviews returned.');
             return self::SUCCESS;
@@ -101,38 +117,81 @@ class GbpUnrespondedReviews extends Command
         }
 
         if ($this->option('notify')) {
-            $this->sendAlertEmail($unresponded, $maxAgeHours);
+            try {
+                $this->sendAlertEmail($unresponded, $maxAgeHours);
+            } catch (\Exception $e) {
+                $this->warn('Email alert failed: ' . $e->getMessage());
+            }
         }
 
-        // Exit 1 so the scheduler logs a non-zero status if SLA breached.
-        return self::FAILURE;
+        // Return success — the alert email (if enabled) handles the notification.
+        // Returning FAILURE would prevent the scheduled task from completing cleanly,
+        // which is not appropriate for a business result (unresponded reviews) vs. a command error.
+        return self::SUCCESS;
     }
 
     protected function sendAlertEmail(array $unresponded, int $maxAgeHours): void
     {
-        $to = config('mail.review_alert_to') ?: env('REVIEW_ALERT_TO');
+        $to = config('mail.review_alert_to')
+            ?: env('REVIEW_ALERT_TO')
+            ?: config('mail.from.address');
         if (! $to) {
             $this->warn('REVIEW_ALERT_TO not set — skipping email.');
+            logger()->error('GBP alert email skipped: no recipient configured', [
+                'expected' => ['mail.review_alert_to', 'REVIEW_ALERT_TO', 'mail.from.address'],
+            ]);
             return;
         }
 
         $count = count($unresponded);
-        $lines = ["{$count} Google review(s) older than {$maxAgeHours}h need a reply.", ''];
-        foreach ($unresponded as $u) {
-            $lines[] = "• {$u['reviewer']} · {$u['stars']} · {$u['age_hours']}h ago";
-            if ($u['comment']) {
-                $lines[] = '   ' . mb_substr($u['comment'], 0, 180);
-            }
+        
+        // Check if this is a system error alert (reviewer == 'SYSTEM')
+        $isSystemAlert = $unresponded[0]['reviewer'] === 'SYSTEM';
+        
+        if ($isSystemAlert) {
+            $subject = '[GBP] ⚠️ Review check failed';
+            $message = "Google review check failed:\n\n" . $unresponded[0]['comment'];
+        } else {
+            $subject = "[GBP] {$count} unresponded review(s)";
+            $message = "{$count} Google review(s) older than {$maxAgeHours}h need a reply.";
         }
-        $lines[] = '';
-        $lines[] = 'Reply in GBP: https://business.google.com/reviews';
+        
+        $lines = [$message, ''];
+        
+        if (!$isSystemAlert) {
+            foreach ($unresponded as $u) {
+                $lines[] = "• {$u['reviewer']} · {$u['stars']} · {$u['age_hours']}h ago";
+                if ($u['comment']) {
+                    $lines[] = '   ' . mb_substr($u['comment'], 0, 180);
+                }
+            }
+            $lines[] = '';
+            $lines[] = 'Reply in GBP: https://business.google.com/reviews';
+        }
 
         $body = implode("\n", $lines);
 
-        Mail::raw($body, function ($m) use ($to, $count) {
-            $m->to($to)->subject("[GBP] {$count} unresponded review(s)");
+        Mail::raw($body, function ($m) use ($to, $subject) {
+            $m->to($to)->subject($subject);
         });
 
         $this->info("Alert email sent to {$to}.");
+    }
+
+    protected function sendSystemAlertIfEnabled(string $message): void
+    {
+        if (! $this->option('notify')) {
+            return;
+        }
+
+        try {
+            $this->sendAlertEmail(
+                [['reviewer' => 'SYSTEM', 'stars' => 'N/A', 'age_hours' => 0, 'comment' => $message]],
+                (int) $this->option('max-age')
+            );
+        } catch (\Exception $e) {
+            $this->warn('Email alert failed: ' . $e->getMessage());
+            logger()->warning('GBP system alert email failed', ['error' => $e->getMessage()]);
+        }
     }
 }

@@ -35,6 +35,8 @@ class Navbar extends Component
             '/services/kitchen-remodeling' => 'kitchen-remodeling',
             '/services/bathroom-remodeling' => 'bathroom-remodeling',
             '/services/home-remodeling' => 'home-remodeling',
+            '/services/basement-remodeling' => 'basement-remodeling',
+            '/services/home-additions' => 'home-additions',
         ];
 
         if (isset($areaPageMap[$link['href']])) {

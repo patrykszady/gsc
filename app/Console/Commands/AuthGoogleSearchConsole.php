@@ -19,12 +19,13 @@ use Illuminate\Console\Command;
  *   php artisan seo:gsc-auth --manual
  *
  * Requires the same redirect URI to be registered in the Google Cloud
- * OAuth client. Default is http://127.0.0.1:8003. Override with --port.
+ * OAuth client. Default uses APP_URL.
  */
 class AuthGoogleSearchConsole extends Command
 {
     protected $signature = 'seo:gsc-auth
         {--port=8003 : Loopback port for the OAuth callback}
+        {--redirect= : Full redirect URI (overrides config/services.php)}
         {--manual : Skip the loopback listener; paste the code manually}
         {--no-open : Do not attempt to launch a browser}';
 
@@ -39,7 +40,19 @@ class AuthGoogleSearchConsole extends Command
         }
 
         $port = max(1024, (int) $this->option('port'));
-        $redirect = "http://127.0.0.1:{$port}";
+        $optionRedirect = (string) ($this->option('redirect') ?: '');
+        $redirect = trim($optionRedirect);
+        if ($redirect === '') {
+            $redirect = rtrim((string) config('app.url'), '/');
+        }
+
+        $isLoopbackRedirect = str_starts_with($redirect, 'http://127.0.0.1:')
+            || str_starts_with($redirect, 'http://localhost:');
+
+        if ($isLoopbackRedirect && $optionRedirect === '') {
+            $redirect = "http://127.0.0.1:{$port}";
+        }
+
         $url = $svc->getOAuthUrl($redirect);
 
         $this->info('Authorize URL:');
@@ -50,6 +63,11 @@ class AuthGoogleSearchConsole extends Command
         $this->line('');
 
         if ($this->option('manual')) {
+            return $this->runManual($svc, $redirect);
+        }
+
+        if (! $isLoopbackRedirect) {
+            $this->warn('Non-loopback redirect detected; using manual mode (paste the code from the redirected URL).');
             return $this->runManual($svc, $redirect);
         }
 

@@ -17,7 +17,7 @@ class SyncMicrosoftClarity extends Command
     public function handle(MicrosoftClarityService $svc): int
     {
         if (! $svc->isConfigured()) {
-            $this->error('Clarity not configured. Set MICROSOFT_CLARITY_PROJECT_ID and MICROSOFT_CLARITY_API_TOKEN in .env.');
+            $this->error('Clarity not configured. Set MICROSOFT_CLARITY_ID and MICROSOFT_CLARITY_API_TOKEN in .env.');
             return self::FAILURE;
         }
 

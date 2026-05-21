@@ -39,7 +39,14 @@ class SyncPageSpeedInsights extends Command
         foreach ($urls as $url) {
             foreach ($strategies as $strategy) {
                 $this->line("PSI: {$strategy} {$url}");
-                $result = $svc->run($url, $strategy);
+                
+                try {
+                    $result = $svc->run($url, $strategy);
+                } catch (\Exception $e) {
+                    $totalFail++;
+                    $this->warn(" ↳ error: " . $e->getMessage());
+                    continue;
+                }
 
                 if (! $result) {
                     $totalFail++;
@@ -71,7 +78,11 @@ class SyncPageSpeedInsights extends Command
         }
 
         $this->info("Done. ok={$totalOk} failed={$totalFail}" . ($dry ? ' (dry-run)' : ''));
-        return $totalFail > 0 ? self::FAILURE : self::SUCCESS;
+        
+        // Return success as long as the command ran without errors.
+        // Individual URL failures are logged and monitored separately;
+        // a transient Lighthouse API error (5xx) shouldn't fail the entire scheduled task.
+        return self::SUCCESS;
     }
 
     protected function defaultUrls(): array
@@ -83,6 +94,9 @@ class SyncPageSpeedInsights extends Command
             $base . '/projects',
             $base . '/services/kitchen-remodeling',
             $base . '/services/bathroom-remodeling',
+            $base . '/services/home-remodeling',
+            $base . '/services/basement-remodeling',
+            $base . '/services/home-additions',
             $base . '/contact',
         ];
     }

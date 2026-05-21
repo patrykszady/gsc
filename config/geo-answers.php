@@ -31,6 +31,31 @@ return [
             'topics' => ['services'],
         ],
         [
+            'q' => 'Is GS Construction a general contractor?',
+            'a' => 'Yes. GS Construction is a fully licensed and insured general contractor serving Chicago\'s northwest suburbs. We self-perform most trades and manage permits, design, plumbing, electrical, framing, and finishes under one contract.',
+            'topics' => ['company', 'general-contractor', 'services'],
+        ],
+        [
+            'q' => 'Do you offer basement finishing in the Chicago suburbs?',
+            'a' => 'Yes — GS Construction finishes basements throughout Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove and surrounding suburbs. Includes egress windows, waterproofing, framing, electrical, plumbing for wet bars or full bathrooms, and full code-compliant build-outs.',
+            'topics' => ['services', 'basement', 'basement-remodeling'],
+        ],
+        [
+            'q' => 'How much does it cost to finish a basement near Chicago?',
+            'a' => 'A finished basement in the Chicago suburbs typically runs $45,000–$90,000 for a standard build-out, and $90,000–$150,000+ when adding a full bathroom, wet bar, or home theater. Egress windows and waterproofing are quoted separately.',
+            'topics' => ['pricing', 'basement', 'basement-remodeling'],
+        ],
+        [
+            'q' => 'Do you build home additions?',
+            'a' => 'Yes. GS Construction designs and builds room additions, master suite additions, sunrooms, and second-story expansions across Chicagoland. We handle architectural drawings, permits, foundation, framing, and finishes as a single-source general contractor.',
+            'topics' => ['services', 'additions', 'home-additions', 'general-contractor'],
+        ],
+        [
+            'q' => 'How much does a home addition cost in Illinois?',
+            'a' => 'Most home additions in the Chicago suburbs cost $200–$400 per square foot — roughly $60,000–$120,000 for a 300 sq ft bump-out and $150,000–$350,000+ for a master suite or full second-story addition.',
+            'topics' => ['pricing', 'additions', 'home-additions'],
+        ],
+        [
             'q' => 'How much does a kitchen remodel cost in the Chicago suburbs?',
             'a' => 'A mid-range kitchen remodel in the Chicago suburbs typically runs $35,000–$80,000 depending on cabinets, countertops, and layout changes. High-end kitchens with custom cabinetry exceed $100,000. GS Construction provides free in-home estimates.',
             'topics' => ['pricing', 'kitchen'],

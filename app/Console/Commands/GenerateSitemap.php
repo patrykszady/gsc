@@ -122,6 +122,7 @@ class GenerateSitemap extends Command
             'services/bathroom-remodeling' => 0.9,
             'services/home-remodeling' => 0.9,
             'services/basement-remodeling' => 0.9,
+            'services/home-additions' => 0.9,
         ];
 
         $changeFrequencies = [
@@ -134,6 +135,7 @@ class GenerateSitemap extends Command
             'services/bathroom-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
             'services/home-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
             'services/basement-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'services/home-additions' => Url::CHANGE_FREQUENCY_WEEKLY,
         ];
 
         foreach ($staticRoutes as $route) {
@@ -180,7 +182,7 @@ class GenerateSitemap extends Command
         $this->info("Adding area-served pages to sitemap...");
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
-        $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
+        $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
         $includeAreaServicePages = (bool) config('seo.sitemap_generation.include_area_service_pages', true);
         $areaCount = 0;
 

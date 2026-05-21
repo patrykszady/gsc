@@ -268,6 +268,8 @@ class SeoCompetitorGap extends Command
         $service = match (true) {
             str_contains($queryLower, 'kitchen') => 'kitchen-remodeling',
             str_contains($queryLower, 'bathroom'), str_contains($queryLower, 'bath ') => 'bathroom-remodeling',
+            str_contains($queryLower, 'basement') => 'basement-remodeling',
+            str_contains($queryLower, 'addition'), str_contains($queryLower, 'sunroom'), str_contains($queryLower, 'second story') => 'home-additions',
             str_contains($queryLower, 'home remodel'), str_contains($queryLower, 'general contractor') => 'home-remodeling',
             default => null,
         };

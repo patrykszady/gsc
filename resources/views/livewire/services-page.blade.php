@@ -104,18 +104,28 @@
         shuffle($serviceSlides);
     @endphp
 
-    <livewire:main-project-hero-slider 
-        project-type="mixed"
-        :slides="$serviceSlides"
-        primary-cta-text="Get a Free Quote"
-        primary-cta-url="/contact"
-        secondary-cta-text="View Our Work"
-        secondary-cta-url="/projects"
-    />
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <livewire:main-project-hero-slider
+            project-type="mixed"
+            :slides="$serviceSlides"
+            primary-cta-text="Get a Free Quote"
+            primary-cta-url="/contact"
+            secondary-cta-text="View Our Work"
+            secondary-cta-url="/projects"
+        />
+    </div>
 
     {{-- Services Grid --}}
     <section class="py-16 sm:py-24">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="mx-auto mb-12 max-w-3xl text-center lg:mb-16">
+                <h2 class="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+                    Services provided by GS Construction &amp; Remodeling
+                </h2>
+                <p class="mt-4 text-base leading-7 text-zinc-600 sm:text-lg sm:leading-8 dark:text-zinc-400">
+                    Services provided by GS Construction &amp; Remodeling encompass a wide range of home improvement solutions tailored to elevate your living space in the Chicago suburbs. We specialize in kitchen remodeling, bathroom remodeling, whole-home renovations, basement finishing, and seamless home additions. As a family-owned and fully licensed general contractor with over 40 years of combined experience, we are committed to delivering exceptional craftsmanship, transparent pricing, and personalized service. Let us bring your vision to life with a free in-home consultation throughout Arlington Heights, Palatine, Schaumburg, and the wider Chicagoland area.
+                </p>
+            </div>
             <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                 @foreach ($this->services as $service)
                     <div class="group relative overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition hover:shadow-xl dark:bg-zinc-800 dark:ring-zinc-700">

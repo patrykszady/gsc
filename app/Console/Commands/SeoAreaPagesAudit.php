@@ -159,6 +159,8 @@ class SeoAreaPagesAudit extends Command
             'services-kitchen' => "/areas-served/{$areaSlug}/services/kitchen-remodeling",
             'services-bathroom' => "/areas-served/{$areaSlug}/services/bathroom-remodeling",
             'services-home' => "/areas-served/{$areaSlug}/services/home-remodeling",
+            'services-basement' => "/areas-served/{$areaSlug}/services/basement-remodeling",
+            'services-additions' => "/areas-served/{$areaSlug}/services/home-additions",
             default => null,
         };
     }

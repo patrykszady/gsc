@@ -35,6 +35,8 @@ class AreaPage extends Component
                 'kitchen-remodeling' => 'kitchen-remodeling',
                 'bathroom-remodeling' => 'bathroom-remodeling',
                 'home-remodeling' => 'home-remodeling',
+                'basement-remodeling' => 'basement-remodeling',
+                'home-additions' => 'home-additions',
             ];
             $serviceType = $serviceMap[$this->service] ?? abort(404);
             SeoService::areaService($area, $serviceType);

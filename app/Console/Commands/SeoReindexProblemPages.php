@@ -87,6 +87,8 @@ class SeoReindexProblemPages extends Command
             $base . '/services/kitchen-remodeling',
             $base . '/services/bathroom-remodeling',
             $base . '/services/home-remodeling',
+            $base . '/services/basement-remodeling',
+            $base . '/services/home-additions',
             $base . '/areas-served',
         ];
         AreaServed::query()->orderBy('city')->get()

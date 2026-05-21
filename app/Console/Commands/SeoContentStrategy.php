@@ -139,6 +139,8 @@ class SeoContentStrategy extends Command
         return match (true) {
             str_contains($query, 'kitchen') => 'kitchen-remodeling',
             str_contains($query, 'bathroom'), str_contains($query, 'bath ') => 'bathroom-remodeling',
+            str_contains($query, 'basement') => 'basement-remodeling',
+            str_contains($query, 'addition'), str_contains($query, 'sunroom'), str_contains($query, 'second story') => 'home-additions',
             str_contains($query, 'home remodel'), str_contains($query, 'whole home'), str_contains($query, 'general contractor') => 'home-remodeling',
             default => null,
         };
@@ -186,6 +188,8 @@ class SeoContentStrategy extends Command
             'kitchen-remodeling' => 'kitchen remodel',
             'bathroom-remodeling' => 'bathroom remodel',
             'home-remodeling' => 'home remodel',
+            'basement-remodeling' => 'basement remodel',
+            'home-additions' => 'home addition',
             default => 'remodeling',
         };
 

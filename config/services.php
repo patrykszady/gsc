@@ -37,7 +37,7 @@ return [
 
     'google' => [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY'),
-        'analytics_id' => env('GOOGLE_ANALYTICS_GTAG', env('GOOGLE_MEASUREMENT_ID', env('GOOGLE_ANALYTICS_ID'))),
+        'analytics_id' => env('GOOGLE_ANALYTICS_GTAG', env('GOOGLE_MEASUREMENT_ID')),
         'ads_id' => env('GOOGLE_ADS_ID'),
         'ads_conversions' => [
             'form' => env('GOOGLE_ADS_CONVERSION_FORM'),
@@ -58,7 +58,7 @@ return [
             'account_id' => env('GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID'),
             'location_id' => env('GOOGLE_BUSINESS_PROFILE_LOCATION_ID'),
             'place_id' => env('GOOGLE_BUSINESS_PROFILE_PLACE_ID'),
-            'production_url' => env('GOOGLE_BUSINESS_PROFILE_PRODUCTION_URL', 'https://gs.construction'),
+            'production_url' => env('APP_URL', 'https://gs.construction'),
             // Inject EXIF GPS into uploaded GBP photos. Coordinates come from
             // the project's matching AreaServed row; photos without a matching
             // area are uploaded without GPS rather than using a global fallback.
@@ -92,7 +92,7 @@ return [
     // Bing Webmaster Tools API (free, simple API-key auth).
     'bing' => [
         'webmaster_api_key' => env('BING_WEBMASTER_API_KEY'),
-        'site_url' => env('BING_WEBMASTER_SITE_URL', env('APP_URL', 'https://gs.construction')),
+        'site_url' => env('APP_URL', 'https://gs.construction'),
     ],
 
     'microsoft' => [
@@ -100,7 +100,7 @@ return [
         'clarity_id' => env('MICROSOFT_CLARITY_ID'),
         // Server-side Clarity API sync (seo:clarity-sync).
         'clarity' => [
-            'project_id' => env('MICROSOFT_CLARITY_PROJECT_ID', env('MICROSOFT_CLARITY_ID')),
+            'project_id' => env('MICROSOFT_CLARITY_ID'),
             'api_token' => env('MICROSOFT_CLARITY_API_TOKEN'),
             'base_url' => env('MICROSOFT_CLARITY_API_BASE_URL', 'https://www.clarity.ms/export-data/api/v1'),
         ],

@@ -40,7 +40,16 @@ class PageSpeedInsightsService
             . '&category=performance&category=accessibility&category=best-practices&category=seo'
             . ($key ? '&key=' . urlencode($key) : '');
 
-        $resp = Http::timeout(120)->retry(2, 2000)->get(self::API . '?' . $query);
+        try {
+            $resp = Http::timeout(120)->retry(2, 2000)->get(self::API . '?' . $query);
+        } catch (\Exception $e) {
+            Log::warning('PSI: HTTP error', [
+                'url' => $url,
+                'strategy' => $strategy,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
 
         if (! $resp->successful()) {
             Log::warning('PSI: failed', [

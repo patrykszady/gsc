@@ -344,6 +344,12 @@ class SeoService
                 'description' => 'Basement finishing & remodeling in Chicago\'s NW suburbs: home theaters, guest suites, rec rooms, wet bars. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel', 'basement remodeling near me'],
             ],
+            'home-additions' => [
+                'label' => 'Home Additions',
+                'title' => "Chicago Suburbs Home Additions — {$reviewBadge} & 40 Yrs",
+                'description' => 'Home additions in Chicago\'s NW suburbs: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom addition', 'second story addition', 'home addition contractors', 'addition builders near me', 'general contractor additions'],
+            ],
         ];
 
         $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'title' => 'Remodeling Services', 'description' => 'Expert remodeling services.', 'keywords' => []];
@@ -358,6 +364,7 @@ class SeoService
             'bathroom-remodeling' => 'bathroom',
             'home-remodeling' => 'home-remodel',
             'basement-remodeling' => 'basement',
+            'home-additions' => 'addition',
             default => null,
         };
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
@@ -399,6 +406,20 @@ class SeoService
                 'descriptionTemplate' => '%s, IL whole-home remodeling: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors', 'home remodelers'],
             ],
+            'basement-remodeling' => [
+                'label' => 'Basement Remodeling',
+                'shortLabel' => 'Basement',
+                'titleTemplate' => '%s Basement Finishing — %s',
+                'descriptionTemplate' => '%s, IL basement finishing & remodeling: home theaters, guest suites, rec rooms, wet bars, egress windows. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodelers', 'basement contractors'],
+            ],
+            'home-additions' => [
+                'label' => 'Home Additions',
+                'shortLabel' => 'Addition',
+                'titleTemplate' => '%s Home Additions — %s',
+                'descriptionTemplate' => '%s, IL home additions: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom', 'second story addition', 'addition contractors', 'addition builders'],
+            ],
         ];
 
         $reviewNum = self::getReviewCountNumeric();
@@ -424,6 +445,8 @@ class SeoService
             'kitchen-remodeling' => 'kitchen',
             'bathroom-remodeling' => 'bathroom',
             'home-remodeling' => 'home-remodel',
+            'basement-remodeling' => 'basement',
+            'home-additions' => 'addition',
             default => null,
         };
         $image = $projectType ? self::getCoverImageForType($projectType) : null;

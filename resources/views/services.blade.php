@@ -10,6 +10,7 @@
     <livewire:navbar />
 
     {{-- Hero Section with Image Slider --}}
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <livewire:main-project-hero-slider 
         project-type="mixed"
         :slides="[
@@ -39,6 +40,7 @@
         secondary-cta-text="View Our Work"
         secondary-cta-url="/projects"
     />
+    </div>
 
     {{-- Services Grid --}}
     <section class="py-16 sm:py-24">

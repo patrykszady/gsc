@@ -28,7 +28,7 @@ use Illuminate\Support\Str;
 class SeoCompetitorRankGap extends Command
 {
     protected $signature = 'seo:competitor-rank-gap
-        {--services=kitchen-remodeling,bathroom-remodeling,home-remodeling : CSV of service slugs to test}
+        {--services=kitchen-remodeling,bathroom-remodeling,home-remodeling,basement-remodeling,home-additions : CSV of service slugs to test}
         {--cities= : CSV of city names (defaults to first --max-cities AreaServed)}
         {--max-cities=4 : When --cities is empty, use this many top AreaServed rows}
         {--max-queries=20 : Hard cap on total SerpApi calls}

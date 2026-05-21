@@ -29,9 +29,11 @@
 
         {{-- Desktop navigation --}}
         <div class="hidden lg:flex lg:items-center lg:gap-x-8">
-            {{-- All nav links --}}
+            {{-- All nav links (skip moreOnly on desktop to avoid crowding) --}}
             @foreach($navLinks as $link)
-                <a href="{{ $link['href'] }}" wire:navigate.hover class="text-base {{ $link['bold'] ? 'font-bold text-zinc-800 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-200' }} hover:text-sky-600 dark:hover:text-sky-400">{{ $link['label'] }}</a>
+                @if(!($link['moreOnly'] ?? false))
+                    <a href="{{ $link['href'] }}" wire:navigate.hover class="text-base {{ $link['bold'] ? 'font-bold text-zinc-800 dark:text-zinc-100' : 'font-medium text-zinc-700 dark:text-zinc-200' }} hover:text-sky-600 dark:hover:text-sky-400">{{ $link['label'] }}</a>
+                @endif
             @endforeach
         </div>
 

@@ -69,7 +69,7 @@ class AiFeedController extends Controller
                 ->all();
 
             $areas = AreaServed::orderBy('city')->get();
-            $serviceSlugs = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'];
+            $serviceSlugs = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
 
             // Service-area matrix: per-city URLs + zip codes (used by AI Overviews
             // to answer "kitchen remodeling in <city>" with citations).
