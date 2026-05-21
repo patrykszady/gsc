@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -439,6 +440,92 @@ PROMPT;
         }
 
         return $out;
+    }
+
+    /**
+        * Choose a real published Chicagoland project image for a fallback service page hero.
+     *
+        * Gemini reviews a random sample of published project cover images and returns the
+        * best match for the requested service type. The result is cached briefly so the
+        * model is not called on every request while still rotating through images.
+     */
+    public function chooseServiceFallbackImageUrl(string $projectType): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+            return null;
+        }
+
+        $projectType = strtolower(trim($projectType));
+        $cacheKey = "gemini:service-fallback-image:{$projectType}:" . now()->format('Y-m-d-H');
+
+        return Cache::remember($cacheKey, now()->addDay(), function () use ($projectType) {
+            $candidates = ProjectImage::query()
+                ->with('project')
+                ->where('is_cover', true)
+                ->whereHas('project', fn ($query) => $query->published())
+                ->inRandomOrder()
+                ->orderByDesc('id')
+                ->limit(12)
+                ->get();
+
+            if ($candidates->isEmpty()) {
+                return null;
+            }
+
+            $serviceLabel = match ($projectType) {
+                'basement' => 'basement remodeling',
+                'addition' => 'home additions',
+                default => str_replace('-', ' ', $projectType),
+            };
+
+            $candidateSummary = $candidates->map(function (ProjectImage $image, int $index): string {
+                $project = $image->project;
+
+                return implode(' | ', array_filter([
+                    'option ' . ($index + 1),
+                    'image_id=' . $image->id,
+                    'type=' . ($project?->project_type ?? 'unknown'),
+                    'title=' . ($project?->title ?? 'unknown'),
+                    'location=' . ($project?->location ?? 'unknown'),
+                    'seo_alt=' . trim((string) ($image->seo_alt_text ?? '')),
+                    'caption=' . trim((string) ($image->caption ?? '')),
+                ]));
+            })->implode("\n");
+
+            $prompt = <<<PROMPT
+You are selecting a real project photo for a Chicago remodeling website.
+Choose the single best image for the {$serviceLabel} service page.
+
+Prefer a published project photo that feels like a real Chicagoland remodeling job.
+If multiple options fit, choose the one that best matches the service type and looks most polished.
+
+Candidates:
+{$candidateSummary}
+
+Return ONLY valid JSON with exactly these keys:
+- "image_id": the chosen image_id as a number
+- "reason": a short explanation
+PROMPT;
+
+            $raw = $this->callGeminiMultiImage($prompt, [], 200);
+            if ($raw === null) {
+                return $candidates->first()?->url;
+            }
+
+            $raw = preg_replace('/^```json\s*/i', '', $raw);
+            $raw = preg_replace('/^```\s*/i', '', $raw);
+            $raw = preg_replace('/\s*```$/i', '', $raw);
+            $decoded = json_decode(trim($raw), true);
+
+            if (! is_array($decoded) || empty($decoded['image_id'])) {
+                return $candidates->first()?->url;
+            }
+
+            $selected = $candidates->firstWhere('id', (int) $decoded['image_id']);
+
+            return $selected?->url ?: $candidates->first()?->url;
+        });
     }
 
     protected function parseJsonResponse(string $content): ?array

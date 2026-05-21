@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Project;
 use App\Models\ProjectImage;
+use App\Services\AiContentService;
 use App\Services\SeoService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -41,6 +42,13 @@ class ServicesPage extends Component
             $url = $cover?->url;
             if (is_string($url) && $url !== '') {
                 return $url;
+            }
+        }
+
+        if (in_array($projectType, ['basement', 'addition'], true)) {
+            $aiUrl = app(AiContentService::class)->chooseServiceFallbackImageUrl($projectType);
+            if (is_string($aiUrl) && $aiUrl !== '') {
+                return $aiUrl;
             }
         }
 

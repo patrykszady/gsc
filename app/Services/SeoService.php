@@ -610,6 +610,17 @@ class SeoService
             ->orderBy('id')
             ->first();
 
-        return $image?->url;
+        if ($image?->url) {
+            return $image->url;
+        }
+
+        if (in_array($projectType, ['basement', 'addition'], true)) {
+            $aiUrl = app(AiContentService::class)->chooseServiceFallbackImageUrl($projectType);
+            if (is_string($aiUrl) && $aiUrl !== '') {
+                return $aiUrl;
+            }
+        }
+
+        return null;
     }
 }

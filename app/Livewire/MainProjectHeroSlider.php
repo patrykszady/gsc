@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Models\ProjectImage;
+use App\Services\AiContentService;
 use Livewire\Component;
 
 class MainProjectHeroSlider extends Component
@@ -137,7 +138,16 @@ class MainProjectHeroSlider extends Component
 
     protected function getFallbackForType(string $type): string
     {
-        return match (strtolower(trim($type))) {
+        $type = strtolower(trim($type));
+
+        if (in_array($type, ['basement', 'addition'], true)) {
+            $aiUrl = app(AiContentService::class)->chooseServiceFallbackImageUrl($type);
+            if (is_string($aiUrl) && $aiUrl !== '') {
+                return $aiUrl;
+            }
+        }
+
+        return match ($type) {
             'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
             'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
             'mudroom' => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
