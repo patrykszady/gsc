@@ -212,6 +212,33 @@ class YelpRemoteLoginService
             return ['ok' => false, 'error' => 'Failed to start websockify. See ' . $wsLog];
         }
 
+        // Wait for websockify to actually accept TCP connections. Without this
+        // the iframe (which loads immediately with autoconnect=1) races against
+        // websockify's bind and nginx returns 502, which our client-side
+        // reporter then mistakes for a permanent failure and tears down.
+        $bound = false;
+        for ($i = 0; $i < 50; $i++) { // up to ~5s
+            $errno = 0; $errstr = '';
+            $sock = @fsockopen('127.0.0.1', $wsPort, $errno, $errstr, 0.5);
+            if ($sock) {
+                @fclose($sock);
+                $bound = true;
+                break;
+            }
+            usleep(100000); // 100ms
+        }
+        if (! $bound) {
+            Log::warning('Yelp remote login: websockify never bound port', [
+                'port' => $wsPort,
+                'ws_log' => $wsLog,
+            ]);
+            @posix_kill($wsPid, SIGTERM);
+            @posix_kill($vncPid, SIGTERM);
+            @posix_kill($chromePid, SIGTERM);
+            @posix_kill($xvfbPid, SIGTERM);
+            return ['ok' => false, 'error' => 'websockify failed to bind port ' . $wsPort . '. See ' . $wsLog];
+        }
+
         $now = time();
         $state = [
             'display' => $display,
