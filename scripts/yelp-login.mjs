@@ -494,8 +494,24 @@ async function modeLogin(args) {
           if (authenticated) {
             await sleep(1500);
             finish({ closed: false, authenticated: true });
-            await browser.close().catch(() => {});
-            return;
+            // Race browser.close() against a 3s timeout — Chromium with a
+            // persistent profile sometimes hangs on close, which would leave
+            // the noVNC viewer showing a stale desktop until manual cleanup.
+            await Promise.race([
+              browser.close().catch(() => {}),
+              new Promise(r => setTimeout(r, 3000)),
+            ]);
+            // Belt-and-suspenders: kill the spawned chromium process tree
+            // directly, then force-exit node so the PHP poll sees the death.
+            try {
+              const proc = browser.process && browser.process();
+              if (proc && proc.pid) {
+                try { process.kill(-proc.pid, 'SIGKILL'); } catch (_) {}
+                try { process.kill(proc.pid, 'SIGKILL'); } catch (_) {}
+              }
+            } catch (_) {}
+            emit({ ok: true, authenticated: true, closed: true });
+            process.exit(0);
           }
           if (await detectDataDome(page)) {
             await maybeBypassDataDome(page, proxyConfig, args);
