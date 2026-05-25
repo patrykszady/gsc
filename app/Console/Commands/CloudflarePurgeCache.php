@@ -44,6 +44,7 @@ class CloudflarePurgeCache extends Command
         // All /services top-level pages
         '/services',
         '/projects',
+        '/reviews',
         '/testimonials',
         '/about',
         '/contact',

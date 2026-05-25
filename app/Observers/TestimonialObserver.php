@@ -51,8 +51,8 @@ class TestimonialObserver
 
         try {
             $urls = [
-                route('testimonials.show', $testimonial),
-                route('testimonials.index'),
+                route('reviews.show', $testimonial),
+                route('reviews.index'),
             ];
 
             SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));

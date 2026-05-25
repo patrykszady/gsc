@@ -50,7 +50,7 @@
                    class="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-white dark:ring-zinc-700 dark:hover:bg-zinc-700">
                     Browse Projects
                 </a>
-                <a href="{{ route('testimonials.index') }}" wire:navigate
+                <a href="{{ route('reviews.index') }}" wire:navigate
                    class="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-zinc-800 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-50 dark:bg-zinc-800 dark:text-white dark:ring-zinc-700 dark:hover:bg-zinc-700">
                     Read Reviews
                 </a>

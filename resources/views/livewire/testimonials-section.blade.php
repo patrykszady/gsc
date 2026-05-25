@@ -185,11 +185,11 @@
 
                             {{-- Desktop: Read More button --}}
                             <div class="mt-6 flex items-center gap-4">
-                                <x-buttons.cta href="{{ route('testimonials.index') }}" size="sm">
+                                <x-buttons.cta href="{{ route('reviews.index') }}" size="sm">
                                     Read More Testimonials
                                 </x-buttons.cta>
                                 @if(!empty($current['slug']))
-                                <x-buttons.cta href="{{ route('testimonials.show', $current['slug']) }}" variant="secondary" size="sm">
+                                <x-buttons.cta href="{{ route('reviews.show', $current['slug']) }}" variant="secondary" size="sm">
                                     Show This Review
                                 </x-buttons.cta>
                                 @endif
@@ -273,11 +273,11 @@
                                 </div>
                             </div>
                             <div class="mt-4 flex flex-wrap items-center gap-3">
-                                <x-buttons.cta href="{{ route('testimonials.index') }}" size="sm">
+                                <x-buttons.cta href="{{ route('reviews.index') }}" size="sm">
                                     Read More Testimonials
                                 </x-buttons.cta>
                                 @if(!empty($current['slug']))
-                                <x-buttons.cta href="{{ route('testimonials.show', $current['slug']) }}" variant="secondary" size="sm">
+                                <x-buttons.cta href="{{ route('reviews.show', $current['slug']) }}" variant="secondary" size="sm">
                                     Show This Review
                                 </x-buttons.cta>
                                 @endif

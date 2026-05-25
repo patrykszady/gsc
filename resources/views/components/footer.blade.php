@@ -59,7 +59,7 @@
                                 <a href="/about" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">About</a>
                             </li>
                             <li>
-                                <a href="/testimonials" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
+                                <a href="/reviews" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
                             </li>
                             <li>
                                 <a href="/contact" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact</a>

@@ -23,7 +23,7 @@ The company specializes in transforming homes through kitchen remodeling, bathro
 - **Overall Rating**: 5 stars
 - **Total Reviews**: 53+
 - **Review Sources**: Google Business Profile, Yelp, Houzz, Angi
-- **Testimonials Page**: https://gs.construction/testimonials
+- **Reviews Page**: https://gs.construction/reviews
 
 ---
 
@@ -213,7 +213,7 @@ A: No. All work is performed by our in-house team. This ensures consistent quali
 | Bathroom Remodeling Service | https://gs.construction/services/bathroom-remodeling |
 | Home Remodeling Service | https://gs.construction/services/home-remodeling |
 | All Services | https://gs.construction/services |
-| Testimonials | https://gs.construction/testimonials |
+| Reviews | https://gs.construction/reviews |
 | About Us | https://gs.construction/about |
 | Contact | https://gs.construction/contact |
 | Areas Served | https://gs.construction/areas-served |

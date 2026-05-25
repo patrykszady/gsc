@@ -17,7 +17,7 @@ return [
         ['label' => 'Projects', 'href' => '/projects', 'bold' => false],
         ['label' => 'Services', 'href' => '/services', 'bold' => false],
         ['label' => 'About', 'href' => '/about', 'bold' => false],
-        ['label' => 'Reviews', 'href' => '/testimonials', 'bold' => true],
+        ['label' => 'Reviews', 'href' => '/reviews', 'bold' => true],
         ['label' => 'Contact', 'href' => '/contact', 'bold' => false],
     ],
 ];

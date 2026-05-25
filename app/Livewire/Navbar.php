@@ -25,6 +25,7 @@ class Navbar extends Component
         $areaPageMap = [
             '/contact' => 'contact',
             '/projects' => 'projects',
+            '/reviews' => 'testimonials',
             '/testimonials' => 'testimonials',
             '/about' => 'about',
             '/services' => 'services',

@@ -47,7 +47,7 @@ class GenerateSitemap extends Command
             'api',
             'robots.txt',
             'log-viewer',
-            'reviews',      // redirect to /testimonials
+            'testimonials', // redirect to /reviews
             'contact-us',   // redirect to /contact
             'bathroom-remodeling', // root-level redirect to /services/bathroom-remodeling
             'kitchen-remodeling',  // root-level redirect to /services/kitchen-remodeling
@@ -112,7 +112,7 @@ class GenerateSitemap extends Command
         // Priority mapping for static routes
         $priorities = [
             '/' => 1.0,
-            'testimonials' => 0.8,
+            'reviews' => 0.8,
             'projects' => 0.8,
             'contact' => 0.8,
             'about' => 0.7,
@@ -127,7 +127,7 @@ class GenerateSitemap extends Command
 
         $changeFrequencies = [
             '/' => Url::CHANGE_FREQUENCY_WEEKLY,
-            'testimonials' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'reviews' => Url::CHANGE_FREQUENCY_WEEKLY,
             'projects' => Url::CHANGE_FREQUENCY_WEEKLY,
             'contact' => Url::CHANGE_FREQUENCY_MONTHLY,
             'about' => Url::CHANGE_FREQUENCY_MONTHLY,
@@ -257,14 +257,14 @@ class GenerateSitemap extends Command
             $this->comment('  Skipped ZIP URLs (SITEMAP_INCLUDE_ZIP_PAGES=false)');
         }
 
-        // Add individual testimonial pages
-        $this->info("Adding testimonial pages to sitemap...");
+        // Add individual review pages
+        $this->info("Adding review pages to sitemap...");
         $testimonials = Testimonial::visible()->orderBy('review_date', 'desc')->get();
         $testimonialCount = 0;
 
         foreach ($testimonials as $testimonial) {
             $sitemap->add(
-                Url::create("{$baseUrl}/testimonials/{$testimonial->slug}")
+                Url::create("{$baseUrl}/reviews/{$testimonial->slug}")
                     ->setLastModificationDate($testimonial->updated_at ?? $testimonial->review_date ?? now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority(0.6)
@@ -272,7 +272,7 @@ class GenerateSitemap extends Command
             $urlCount++;
             $testimonialCount++;
         }
-        $this->line("  Added {$testimonialCount} testimonial pages");
+        $this->line("  Added {$testimonialCount} review pages");
 
         // Add project type filter pages (e.g., /projects/kitchens)
         $this->info("Adding project type filter pages to sitemap...");

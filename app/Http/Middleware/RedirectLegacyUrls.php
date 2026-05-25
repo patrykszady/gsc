@@ -15,7 +15,7 @@ class RedirectLegacyUrls
      */
     protected array $redirects = [
         // Old URL => New URL
-        '/reviews' => '/testimonials',
+        '/testimonials' => '/reviews',
         '/gallery' => '/projects',
         '/portfolio' => '/projects',
         '/our-work' => '/projects',

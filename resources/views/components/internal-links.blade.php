@@ -98,7 +98,7 @@ if ($projects->isEmpty()) {
         {{-- Quick Links --}}
         <div class="mt-8 flex flex-wrap gap-4 border-t border-zinc-200 pt-8 dark:border-zinc-700">
             <a 
-                href="{{ route('testimonials.index') }}"
+                href="{{ route('reviews.index') }}"
                 wire:navigate
                 class="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-sky-600 dark:text-zinc-400 dark:hover:text-sky-400"
             >

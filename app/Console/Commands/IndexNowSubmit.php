@@ -101,7 +101,7 @@ class IndexNowSubmit extends Command
             route('about'),
             route('contact'),
             route('projects.index'),
-            route('testimonials.index'),
+            route('reviews.index'),
             route('services.index'),
             route('services.kitchen'),
             route('services.bathroom'),
@@ -129,7 +129,7 @@ class IndexNowSubmit extends Command
         if (class_exists(Testimonial::class)) {
             $testimonials = Testimonial::visible()->get();
             foreach ($testimonials as $testimonial) {
-                $urls[] = route('testimonials.show', $testimonial);
+                $urls[] = route('reviews.show', $testimonial);
             }
         }
 

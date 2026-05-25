@@ -64,7 +64,7 @@
                             <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" width="280" height="40" class="hidden h-10 w-auto flex-none dark:block" />
                         </div>
                         <div>
-                            <x-buttons.cta href="{{ route('testimonials.show', $featured['slug']) }}" variant="secondary" size="sm">
+                            <x-buttons.cta href="{{ route('reviews.show', $featured['slug']) }}" variant="secondary" size="sm">
                                 Show This Review
                             </x-buttons.cta>
                         </div>
@@ -92,7 +92,7 @@
                         </div>
                     </figcaption>
                     <div class="mt-4">
-                        <x-buttons.cta href="{{ route('testimonials.show', $leftTop['slug']) }}" variant="secondary" size="sm">
+                        <x-buttons.cta href="{{ route('reviews.show', $leftTop['slug']) }}" variant="secondary" size="sm">
                             Show This Review
                         </x-buttons.cta>
                     </div>
@@ -119,7 +119,7 @@
                         </div>
                     </figcaption>
                     <div class="mt-4">
-                        <x-buttons.cta href="{{ route('testimonials.show', $rightTop['slug']) }}" variant="secondary" size="sm">
+                        <x-buttons.cta href="{{ route('reviews.show', $rightTop['slug']) }}" variant="secondary" size="sm">
                             Show This Review
                         </x-buttons.cta>
                     </div>
@@ -146,7 +146,7 @@
                         </div>
                     </figcaption>
                     <div class="mt-4">
-                        <x-buttons.cta href="{{ route('testimonials.show', $testimonial['slug']) }}" variant="secondary" size="sm">
+                        <x-buttons.cta href="{{ route('reviews.show', $testimonial['slug']) }}" variant="secondary" size="sm">
                             Show This Review
                         </x-buttons.cta>
                     </div>
@@ -173,7 +173,7 @@
                         </div>
                     </figcaption>
                     <div class="mt-4">
-                        <x-buttons.cta href="{{ route('testimonials.show', $testimonial['slug']) }}" variant="secondary" size="sm">
+                        <x-buttons.cta href="{{ route('reviews.show', $testimonial['slug']) }}" variant="secondary" size="sm">
                             Show This Review
                         </x-buttons.cta>
                     </div>
@@ -209,7 +209,7 @@
                             </div>
                         </figcaption>
                         <div class="mt-4">
-                            <x-buttons.cta href="{{ route('testimonials.show', $testimonial['slug']) }}" variant="secondary" size="sm">
+                            <x-buttons.cta href="{{ route('reviews.show', $testimonial['slug']) }}" variant="secondary" size="sm">
                                 Show This Review
                             </x-buttons.cta>
                         </div>

@@ -1,7 +1,7 @@
 <div class="bg-white dark:bg-zinc-900">
     {{-- Breadcrumb Schema --}}
     <x-breadcrumb-schema :items="[
-        ['name' => 'Testimonials', 'url' => route('testimonials.index')],
+        ['name' => 'Reviews', 'url' => route('reviews.index')],
         ['name' => $testimonial->display_name],
     ]" />
 
@@ -19,7 +19,7 @@
                     <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
-                    <a href="{{ route('testimonials.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Testimonials</a>
+                    <a href="{{ route('reviews.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
                 </li>
                 <li class="flex items-center">
                     <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">

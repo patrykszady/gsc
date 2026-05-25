@@ -146,7 +146,7 @@
                                             <flux:menu.item icon="pencil" href="{{ route('admin.testimonials.edit', $testimonial) }}">
                                                 Edit
                                             </flux:menu.item>
-                                            <flux:menu.item icon="eye" href="{{ route('testimonials.show', $testimonial) }}" target="_blank">
+                                            <flux:menu.item icon="eye" href="{{ route('reviews.show', $testimonial) }}" target="_blank">
                                                 View on site
                                             </flux:menu.item>
                                             <flux:menu.separator />

@@ -57,12 +57,21 @@ Route::get('/', function () {
 Route::get('/ai-feed.json', AiFeedController::class)->name('ai-feed');
 Route::get('/geo/answers.json', GeoAnswersController::class)->name('geo.answers');
 
-Route::get('/testimonials', function () {
+// Reviews (canonical). Old /testimonials URLs 301 → /reviews for SEO/GEO.
+// "reviews" matches schema.org/Review, has ~10× search volume vs "testimonials",
+// and aligns with how AI assistants phrase queries.
+Route::get('/reviews', function () {
     SeoService::testimonials();
     return view('testimonials');
-})->name('testimonials.index');
+})->name('reviews.index');
 
-Route::get('/testimonials/{testimonial}', TestimonialPage::class)->name('testimonials.show');
+Route::get('/reviews/{testimonial}', TestimonialPage::class)->name('reviews.show');
+
+// 301 redirects from legacy /testimonials URLs (preserves link equity).
+Route::redirect('/testimonials', '/reviews', 301)->name('testimonials.index');
+Route::get('/testimonials/{testimonial}', function (string $testimonial) {
+    return redirect("/reviews/{$testimonial}", 301);
+})->name('testimonials.show');
 
 Route::get('/about', function () {
     SeoService::about();
@@ -121,7 +130,6 @@ Route::get('/projects/{project}/photos/{image}', ProjectImagePage::class)->name(
 
 Route::get('/services', ServicesPage::class)->name('services.index');
 
-Route::redirect('/reviews', '/testimonials', 301)->name('reviews.index');
 Route::redirect('/contact-us', '/contact', 301);
 
 // Legacy root-level service URLs → new /services/* pattern

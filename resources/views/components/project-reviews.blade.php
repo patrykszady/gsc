@@ -18,7 +18,7 @@
         ])>
             @foreach($testimonials as $testimonial)
                 <a
-                    href="{{ route('testimonials.show', $testimonial->slug) }}"
+                    href="{{ route('reviews.show', $testimonial->slug) }}"
                     wire:navigate
                     class="group flex h-full flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm transition hover:border-sky-400 hover:shadow-md dark:border-white/10 dark:bg-zinc-900/70 dark:hover:border-sky-500"
                 >

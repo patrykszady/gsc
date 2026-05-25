@@ -19,7 +19,7 @@ module.exports = {
         'https://gs.construction/projects',
         'https://gs.construction/about',
         'https://gs.construction/contact',
-        'https://gs.construction/testimonials',
+        'https://gs.construction/reviews',
         'https://gs.construction/services',
         'https://gs.construction/areas-served',
       ],
