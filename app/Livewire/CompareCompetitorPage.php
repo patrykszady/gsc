@@ -7,18 +7,30 @@ use App\Models\Testimonial;
 use App\Services\SeoService;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
 class CompareCompetitorPage extends Component
 {
-    public string $slug;
+    #[Locked]
+    public string $slug = '';
 
-    /** @var array<string, mixed> */
-    public array $competitor = [];
+    /**
+     * Untyped on purpose. Livewire's page-mount pipeline can attempt to assign
+     * matching public props from request input *before* mount() runs (e.g.
+     * crafted query strings or stray snapshot keys from bot/crawler traffic).
+     * Strict `array` typing here caused production TypeErrors. mount() always
+     * sets a valid array; the #[Locked] attribute prevents client-side updates.
+     *
+     * @var array<string, mixed>
+     */
+    #[Locked]
+    public $competitor = [];
 
     /** @var array<int, array<string, string>> */
-    public array $criteria = [];
+    #[Locked]
+    public $criteria = [];
 
     public function mount(string $slug): void
     {
@@ -27,7 +39,11 @@ class CompareCompetitorPage extends Component
         }
 
         $this->slug = $slug;
-        $this->competitor = $this->findCompetitor($slug) ?? abort(404);
+        $found = $this->findCompetitor($slug);
+        if (! is_array($found)) {
+            abort(404);
+        }
+        $this->competitor = $found;
         $this->criteria = $this->buildCriteria($this->competitor);
 
         SeoService::compareCompetitor($this->competitor);

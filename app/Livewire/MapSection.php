@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\AreaServed;
+use App\Services\HiveProjectsClient;
 use Livewire\Component;
 use Illuminate\Support\Str;
 
@@ -23,9 +24,9 @@ class MapSection extends Component
         HTML;
     }
 
-    public function render()
+    public function render(HiveProjectsClient $hive)
     {
-        $zipCounts = $this->loadZipCountsFromCsv();
+        $zipCounts = $hive->zipCounts() ?? $this->loadZipCountsFromCsv();
         $maxCount = $zipCounts->max('count') ?? 0;
 
         return view('livewire.map-section', [

@@ -55,7 +55,11 @@ class SocialsCheck extends Command
             $this->newLine();
             $this->warn(count($issues).' social link(s) need attention.');
 
-            return self::FAILURE;
+            // Return SUCCESS even when findings exist so the Laravel scheduler
+            // doesn't log an extra ERROR on top of our WARNING. Real findings
+            // are surfaced via the warning log + storage/logs/socials-check.log.
+            // A non-zero exit is reserved for actual command crashes.
+            return self::SUCCESS;
         }
 
         if (! $this->option('quiet-on-success')) {

@@ -18,6 +18,12 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'hive' => [
+        'url' => env('HIVE_API_URL', 'https://hive.contractors'),
+        'token' => env('HIVE_API_TOKEN'),
+        'cache_ttl' => (int) env('HIVE_API_CACHE_TTL', 21600), // 6h
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

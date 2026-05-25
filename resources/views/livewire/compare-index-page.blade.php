@@ -29,6 +29,7 @@
 
         <ul class="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
             @foreach($competitors as $competitor)
+                @continue(empty($competitor['slug']))
                 <li>
                     <a href="{{ route('compare.show', ['slug' => $competitor['slug']]) }}"
                        wire:navigate
