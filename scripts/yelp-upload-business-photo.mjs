@@ -208,17 +208,43 @@ async function detectPhotosUrl(page, timeoutMs) {
   // Use whatever biz.yelp.<tld> origin the current page is on; Yelp may have
   // regionally redirected the session (e.g. to biz.yelp.co.uk).
   let origin = 'https://biz.yelp.com';
+  let homeBizId = null;
   try {
     const cur = new URL(page.url());
     if (/^biz\.yelp\./i.test(cur.hostname)) {
       origin = `${cur.protocol}//${cur.hostname}`;
     }
+    const m = cur.pathname.match(/\/home\/([A-Za-z0-9_-]+)/);
+    if (m) homeBizId = m[1];
   } catch {}
+  if (homeBizId) {
+    const url = `${origin}/biz_photos/${homeBizId}`;
+    console.error(`[yelp] derived photos URL from /home/: ${url}`);
+    return url;
+  }
   await page.goto(origin + '/', { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
   await sleep(1500);
 
+  // Yelp's dashboard often does client-side navigations after initial paint;
+  // retry evaluate() a few times so we ride out "Execution context was destroyed".
+  const safeEval = async (fn) => {
+    let lastErr;
+    for (let i = 0; i < 5; i++) {
+      try {
+        return await page.evaluate(fn);
+      } catch (e) {
+        lastErr = e;
+        if (!String(e && e.message).includes('Execution context was destroyed')) throw e;
+        // Wait for the new context to settle, then retry.
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 5000 }).catch(() => {});
+        await sleep(800);
+      }
+    }
+    throw lastErr;
+  };
+
   // Common locations: sidebar nav link, "Photos" tab, business URL pattern.
-  const found = await page.evaluate(() => {
+  const found = await safeEval(() => {
     const links = Array.from(document.querySelectorAll('a[href*="/biz_photos/"]'));
     if (links.length) return links[0].href;
     // Some dashboards link to /photos/<bizId> first then redirect.
@@ -232,7 +258,7 @@ async function detectPhotosUrl(page, timeoutMs) {
   }
 
   // Last resort: try guessing from any /biz/<id>/ link in the dashboard.
-  const bizId = await page.evaluate(() => {
+  const bizId = await safeEval(() => {
     const m = document.documentElement.innerHTML.match(/\/biz_photos\/([A-Za-z0-9_-]+)/)
       || document.documentElement.innerHTML.match(/\/biz\/([A-Za-z0-9_-]+)/);
     return m ? m[1] : null;
