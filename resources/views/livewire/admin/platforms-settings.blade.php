@@ -214,7 +214,7 @@
                             Close viewer
                         </flux:button>
                     </div>
-                    <div class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600" style="aspect-ratio: 16/10;">
+                    <div class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600" style="aspect-ratio: 16/10;" wire:ignore>
                         <iframe
                             src="{{ $yelpRemoteUrl }}"
                             class="w-full h-full"
