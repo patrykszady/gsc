@@ -248,7 +248,29 @@ class YelpRemoteLoginService
         $alive = $this->isAlive($state);
         if (! $alive) {
             // Chromium has exited — likely login completed (or failed). Tear down.
+            Log::info('Yelp remote login: chromium exited, tearing down', [
+                'pids' => $state['pids'] ?? [],
+                'started_at' => $state['started_at'] ?? null,
+            ]);
             $this->killState($state);
+        } else {
+            // Chromium is alive — but check that the support stack is too.
+            $deadProcs = [];
+            foreach (['xvfb', 'x11vnc', 'websockify'] as $proc) {
+                $pid = (int) ($state['pids'][$proc] ?? 0);
+                if ($pid > 0 && ! $this->pidAlive($pid)) {
+                    $deadProcs[] = "$proc(pid=$pid)";
+                }
+            }
+            if ($deadProcs) {
+                Log::warning('Yelp remote login: support process(es) died', [
+                    'dead' => $deadProcs,
+                    'state' => $state,
+                ]);
+                // Tear it all down so the viewer doesn't stay in a broken 502 state.
+                $this->killState($state);
+                $alive = false;
+            }
         }
 
         $loggedIn = null;

@@ -216,6 +216,26 @@
                     </div>
                     <div class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600" style="aspect-ratio: 16/10;" wire:ignore>
                         <iframe
+                            x-data="{
+                                checked: false,
+                                onLoad(e) {
+                                    // Try to detect 502/Cloudflare error pages by checking the document title.
+                                    try {
+                                        const doc = e.target.contentDocument;
+                                        const title = (doc?.title || '').toLowerCase();
+                                        if (title.includes('bad gateway') || title.includes('502') || title.includes('cloudflare')) {
+                                            $wire.reportYelpRemoteError('iframe shows ' + (doc?.title || 'gateway error'));
+                                        }
+                                    } catch (err) {
+                                        // Cross-origin — ignore.
+                                    }
+                                },
+                                onError() {
+                                    $wire.reportYelpRemoteError('iframe failed to load');
+                                }
+                            }"
+                            @load="onLoad($event)"
+                            @error="onError()"
                             src="{{ $yelpRemoteUrl }}"
                             class="w-full h-full"
                             allow="clipboard-read; clipboard-write"

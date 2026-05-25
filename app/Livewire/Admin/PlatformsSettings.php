@@ -6,6 +6,7 @@ use App\Models\PlatformSetting;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -176,6 +177,25 @@ class PlatformsSettings extends Component
                 session()->flash('platforms-error', 'Login window closed before a Yelp session could be verified. Click “Verify Login” to try again.');
             }
         }
+    }
+
+    /**
+     * Called from the browser when the noVNC iframe fails to load (502, etc).
+     * Logs the failure with full context and tears the session down so the
+     * admin can click Verify Login to start fresh.
+     */
+    public function reportYelpRemoteError(string $reason = 'iframe load failure'): void
+    {
+        Log::warning('Yelp remote login: iframe error reported by client', [
+            'reason' => $reason,
+            'url' => $this->yelpRemoteUrl,
+            'user_id' => auth()->id(),
+        ]);
+        app(YelpRemoteLoginService::class)->stop();
+        $this->yelpRemoteOpen = false;
+        $this->yelpRemoteUrl = null;
+        $this->yelpRemoteExpiresAt = null;
+        $this->yelpRemoteError = 'Remote viewer failed to connect (' . $reason . '). The VNC stack has been reset — click Verify Login to try again.';
     }
 
     public function checkYelpSession(): void
