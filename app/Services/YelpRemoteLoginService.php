@@ -287,6 +287,14 @@ class YelpRemoteLoginService
             $host = request()->getHost();
             $publicUrl = $scheme . '://' . $host . ':' . $state['ws_port'];
         }
+
+        // noVNC needs a websocket path that matches the reverse-proxy mount
+        // point. Example: public_url=https://gs.construction/yelp-vnc =>
+        // path=yelp-vnc/websockify (not just "websockify").
+        $publicPath = (string) (parse_url($publicUrl, PHP_URL_PATH) ?: '');
+        $mountPath = trim($publicPath, '/');
+        $wsPath = $mountPath !== '' ? $mountPath . '/websockify' : 'websockify';
+
         // Use vnc_lite for smaller chrome and auto-scaling.
         $url = rtrim($publicUrl, '/') . '/vnc.html?'
             . http_build_query([
@@ -294,7 +302,7 @@ class YelpRemoteLoginService
                 'resize' => 'scale',
                 'reconnect' => 1,
                 'password' => $state['password'],
-                'path' => 'websockify',
+                'path' => $wsPath,
             ]);
 
         return [
