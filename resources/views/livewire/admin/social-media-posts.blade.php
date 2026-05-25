@@ -27,7 +27,7 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-7">
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-zinc-900 dark:text-white">{{ $totalEligible }}</p>
             <p class="text-sm text-zinc-500">Total Images</p>
@@ -47,6 +47,14 @@
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-amber-600">{{ $remainingGbp }}</p>
             <p class="text-sm text-zinc-500">GBP Remaining</p>
+        </flux:card>
+        <flux:card class="text-center">
+            <p class="text-2xl font-bold text-red-600">{{ $uploadedYelp }}</p>
+            <p class="text-sm text-zinc-500">Yelp Uploaded</p>
+        </flux:card>
+        <flux:card class="text-center">
+            <p class="text-2xl font-bold text-zinc-400">{{ $remainingYelp }}</p>
+            <p class="text-sm text-zinc-500">Yelp Remaining</p>
         </flux:card>
     </div>
 
@@ -76,6 +84,7 @@ META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
             <option value="instagram">Instagram</option>
             <option value="facebook">Facebook</option>
             <option value="google_business">Google Business</option>
+            <option value="yelp">Yelp</option>
         </flux:select>
 
         <flux:select wire:model.live="statusFilter" class="w-40">
@@ -86,7 +95,8 @@ META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
         </flux:select>
     </div>
 
-    {{-- Posts Table --}}
+    {{-- Posts Table (Instagram / Facebook / GBP) --}}
+    @if($platformFilter !== 'yelp')
     <flux:card>
         @if($posts->isEmpty())
             <p class="py-8 text-center text-sm text-zinc-500">
@@ -153,6 +163,51 @@ META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
             </flux:table>
         @endif
     </flux:card>
+    @endif
 
-    {{ $posts->links() }}
+    {{ $platformFilter !== 'yelp' ? $posts->links() : '' }}
+
+    {{-- Yelp Biz Photos Table --}}
+    @if($yelpImages !== null)
+    <flux:heading size="lg" class="mt-2">Yelp Business Photos</flux:heading>
+    <flux:card>
+        @if($yelpImages->isEmpty())
+            <p class="py-8 text-center text-sm text-zinc-500">No Yelp biz photos uploaded yet. Run <code>php artisan yelp:sync-business-photos</code>.</p>
+        @else
+            <flux:table>
+                <flux:table.columns>
+                    <flux:table.column>Image</flux:table.column>
+                    <flux:table.column>Project</flux:table.column>
+                    <flux:table.column>Caption</flux:table.column>
+                    <flux:table.column>Uploaded</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @foreach($yelpImages as $image)
+                        <flux:table.row>
+                            <flux:table.cell>
+                                <img
+                                    src="{{ $image->getThumbnailUrl('thumb') }}"
+                                    alt="{{ $image->alt_text }}"
+                                    class="h-10 w-10 rounded object-cover"
+                                />
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                {{ $image->project?->title ?? '—' }}
+                            </flux:table.cell>
+                            <flux:table.cell class="max-w-xs truncate">
+                                <span title="{{ $image->caption ?? $image->alt_text }}">
+                                    {{ Str::limit($image->caption ?? $image->alt_text, 60) }}
+                                </span>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                {{ $image->yelp_biz_uploaded_at?->format('M j, Y g:i A') ?? '—' }}
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+        @endif
+    </flux:card>
+    {{ $yelpImages->links() }}
+    @endif
 </div>

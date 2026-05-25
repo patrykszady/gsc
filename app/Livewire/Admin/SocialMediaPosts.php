@@ -23,12 +23,17 @@ class SocialMediaPosts extends Component
     public int $remainingInstagram = 0;
     public int $remainingFacebook = 0;
     public int $remainingGbp = 0;
+    public int $remainingYelp = 0;
+    public int $uploadedYelp = 0;
 
     public function mount(): void
     {
         $this->remainingInstagram = SocialMediaPost::unpostedImagesQuery('instagram')->count();
         $this->remainingFacebook = SocialMediaPost::unpostedImagesQuery('facebook')->count();
         $this->remainingGbp = SocialMediaPost::unpostedImagesQuery('google_business')->count();
+        $this->remainingYelp = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))
+            ->whereNull('yelp_biz_uploaded_at')->count();
+        $this->uploadedYelp = ProjectImage::whereNotNull('yelp_biz_uploaded_at')->count();
     }
 
     public function postNow(string $platform = 'all'): void
@@ -86,8 +91,15 @@ class SocialMediaPosts extends Component
             ->where('alt_text', '!=', '')
             ->count();
 
+        $yelpImages = ProjectImage::with('project')
+            ->whereNotNull('yelp_biz_uploaded_at')
+            ->latest('yelp_biz_uploaded_at');
+
         return view('livewire.admin.social-media-posts', [
-            'posts' => $query->paginate(25),
+            'posts' => $this->platformFilter === 'yelp' ? collect() : $query->paginate(25),
+            'yelpImages' => $this->platformFilter === 'yelp' || $this->platformFilter === ''
+                ? $yelpImages->paginate(25, ['*'], 'ypage')
+                : null,
             'isConfigured' => $isConfigured,
             'totalEligible' => $totalEligible,
             'publishedCount' => SocialMediaPost::published()->count(),
