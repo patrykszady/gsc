@@ -221,6 +221,32 @@ return [
             'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),
+
+            // Remote-login viewer (Xvfb + x11vnc + noVNC + websockify) so the
+            // admin can complete login / captcha / 2FA from the website on
+            // a headless production server. Requires: xvfb, x11vnc, novnc,
+            // websockify packages installed on the host.
+            'remote_login' => [
+                'enabled' => env('YELP_REMOTE_LOGIN_ENABLED', true),
+                'display' => env('YELP_REMOTE_LOGIN_DISPLAY', ':99'),
+                'screen' => env('YELP_REMOTE_LOGIN_SCREEN', '1280x800x24'),
+                'vnc_port' => (int) env('YELP_REMOTE_LOGIN_VNC_PORT', 5999),
+                // websockify port — must be reachable from the browser.
+                // Default 0.0.0.0:6080. Put a TLS reverse proxy in front for HTTPS sites.
+                'ws_host' => env('YELP_REMOTE_LOGIN_WS_HOST', '0.0.0.0'),
+                'ws_port' => (int) env('YELP_REMOTE_LOGIN_WS_PORT', 6080),
+                // Public URL noVNC will be reached at (e.g. https://gs.construction/yelp-vnc).
+                // Leave null to build http://{request_host}:{ws_port} automatically.
+                'public_url' => env('YELP_REMOTE_LOGIN_PUBLIC_URL'),
+                // Path to noVNC web assets (vnc.html lives here). Ubuntu/Debian default:
+                'novnc_web' => env('YELP_REMOTE_LOGIN_NOVNC_WEB', '/usr/share/novnc'),
+                'xvfb_binary' => env('YELP_REMOTE_LOGIN_XVFB', 'Xvfb'),
+                'x11vnc_binary' => env('YELP_REMOTE_LOGIN_X11VNC', 'x11vnc'),
+                'websockify_binary' => env('YELP_REMOTE_LOGIN_WEBSOCKIFY', 'websockify'),
+                // Session is auto-killed after this many seconds in case the user
+                // walks away without clicking Stop.
+                'max_ttl_seconds' => (int) env('YELP_REMOTE_LOGIN_MAX_TTL', 1200),
+            ],
         ],
     ],
 

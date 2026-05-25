@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\PlatformSetting;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\YelpBusinessService;
+use App\Services\YelpRemoteLoginService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -32,6 +33,12 @@ class PlatformsSettings extends Component
     public bool $yelpHasPassword = false;
     public ?bool $yelpAuthenticated = null; // null = unknown, true/false = checked
     public ?string $yelpStatusNote = null;
+
+    // ---- Yelp remote-login viewer state ----
+    public bool $yelpRemoteOpen = false;
+    public ?string $yelpRemoteUrl = null;
+    public ?string $yelpRemoteError = null;
+    public ?int $yelpRemoteExpiresAt = null;
 
     public function mount(): void
     {
@@ -96,16 +103,14 @@ class PlatformsSettings extends Component
 
         $this->refreshStatus();
 
-        // Always (re)launch the headed login browser right after saving so the
-        // user can complete any 2FA / captcha challenges immediately, while
-        // they are still in front of their machine.
-        $launched = false;
+        // Always (re)launch the remote login viewer right after saving so the
+        // user can complete any 2FA / captcha challenges immediately, in-browser.
         if (app(YelpBusinessService::class)->isConfigured()) {
-            $launched = app(YelpBusinessService::class)->launchLoginBrowser();
+            $this->startYelpRemoteLogin();
         }
 
-        if ($launched) {
-            session()->flash('platforms-success', 'Yelp credentials saved. A Chromium window has opened — complete any captcha / 2FA there. The window will close automatically once login succeeds.');
+        if ($this->yelpRemoteOpen) {
+            session()->flash('platforms-success', 'Yelp credentials saved. A remote browser session has opened below — complete any captcha / 2FA there.');
         } else {
             session()->flash('platforms-success', 'Yelp credentials saved.');
         }
@@ -113,15 +118,63 @@ class PlatformsSettings extends Component
 
     public function verifyYelpLogin(): void
     {
+        $this->startYelpRemoteLogin();
+    }
+
+    /**
+     * Boot the in-browser remote login viewer (Xvfb + noVNC). Sets state
+     * so the blade can render an iframe; no Chromium window is opened on
+     * the server's local display (production is headless).
+     */
+    public function startYelpRemoteLogin(): void
+    {
         $svc = app(YelpBusinessService::class);
         if (! $svc->isConfigured()) {
             session()->flash('platforms-error', 'Set Yelp email and password first.');
             return;
         }
-        if ($svc->launchLoginBrowser()) {
-            session()->flash('platforms-success', 'Chromium window opened — complete login / 2FA / captcha. It will close itself when finished.');
-        } else {
-            session()->flash('platforms-error', 'Failed to launch login browser. Check logs.');
+        $remote = app(YelpRemoteLoginService::class);
+        $result = $remote->start();
+        if (! ($result['ok'] ?? false)) {
+            $this->yelpRemoteOpen = false;
+            $this->yelpRemoteUrl = null;
+            $this->yelpRemoteError = $result['error'] ?? 'Failed to start remote login session.';
+            return;
+        }
+        $this->yelpRemoteOpen = true;
+        $this->yelpRemoteUrl = $result['url'];
+        $this->yelpRemoteExpiresAt = $result['expires_at'] ?? null;
+        $this->yelpRemoteError = null;
+    }
+
+    public function stopYelpRemoteLogin(): void
+    {
+        app(YelpRemoteLoginService::class)->stop();
+        $this->yelpRemoteOpen = false;
+        $this->yelpRemoteUrl = null;
+        $this->yelpRemoteExpiresAt = null;
+        $this->refreshStatus();
+    }
+
+    /**
+     * Polled by the blade every few seconds while the iframe is open.
+     * Closes the viewer once the Chromium login process has exited.
+     */
+    public function pollYelpRemoteLogin(): void
+    {
+        if (! $this->yelpRemoteOpen) return;
+        $status = app(YelpRemoteLoginService::class)->status();
+        if (! ($status['running'] ?? false)) {
+            $this->yelpRemoteOpen = false;
+            $this->yelpRemoteUrl = null;
+            $this->yelpRemoteExpiresAt = null;
+            $svc = app(YelpBusinessService::class);
+            $this->yelpAuthenticated = $svc->checkSession();
+            if ($this->yelpAuthenticated === true) {
+                session()->flash('platforms-success', 'Yelp login completed — session is active.');
+            } else {
+                session()->flash('platforms-error', 'Login window closed before a Yelp session could be verified. Click “Verify Login” to try again.');
+            }
         }
     }
 

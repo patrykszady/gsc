@@ -113,14 +113,13 @@
 
             <div class="rounded-lg bg-sky-50 p-3 text-sm text-sky-800 dark:bg-sky-900/20 dark:text-sky-200">
                 <strong>How login works:</strong> When you save credentials below (or click <em>Verify Login</em>),
-                a Chromium window opens on this server's display. Complete any CAPTCHA / 2FA / device verification
-                in that window. The session is then persisted, and all future uploads run silently in the background.
+                a remote Chromium session opens <em>right here in this page</em>. Complete any CAPTCHA / 2FA / device
+                verification in the embedded viewer. The session is then persisted, and all future uploads run
+                silently in the background.
                 <br><br>
-                <strong>Email verification link?</strong> If Yelp emails you a "Confirm Email" link, that link will
-                open in your <em>default</em> browser &mdash; which is <strong>not</strong> the Chromium window we
-                opened. To verify the right session: in your email, <em>right-click the link &rarr; Copy link</em>,
-                then paste it into the address bar of the Chromium window we opened and press Enter. That window
-                will close itself once Yelp confirms the verification.
+                <strong>Email verification link?</strong> If Yelp emails you a &ldquo;Confirm Email&rdquo; link,
+                <em>right-click &rarr; Copy link</em> in your email client, then paste it into the address bar of
+                the embedded Chromium viewer and press Enter. The viewer closes itself once Yelp confirms.
             </div>
 
             <form wire:submit="saveYelp" class="space-y-4">
@@ -188,9 +187,52 @@
                 </div>
                 <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
                     Click <strong>Verify Login</strong> any time Yelp invalidates the session (e.g. after a password change
-                    or a long idle period). The window closes itself once login succeeds.
+                    or a long idle period). The embedded browser closes itself once login succeeds.
                 </p>
             </div>
+
+            {{-- Remote-login viewer (Xvfb + noVNC) --}}
+            @if($yelpRemoteError)
+                <div class="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">
+                    <strong>Remote login failed:</strong> {{ $yelpRemoteError }}
+                </div>
+            @endif
+
+            @if($yelpRemoteOpen && $yelpRemoteUrl)
+                <div
+                    class="border-t border-zinc-200 pt-4 dark:border-zinc-700"
+                    wire:poll.4s="pollYelpRemoteLogin"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">
+                            Remote login viewer
+                            <span class="ml-2 text-xs font-normal text-zinc-500">
+                                Complete login / captcha / 2FA in the embedded browser below.
+                            </span>
+                        </h4>
+                        <flux:button type="button" wire:click="stopYelpRemoteLogin" variant="danger" size="xs" icon="x-mark">
+                            Close viewer
+                        </flux:button>
+                    </div>
+                    <div class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600" style="aspect-ratio: 16/10;">
+                        <iframe
+                            src="{{ $yelpRemoteUrl }}"
+                            class="w-full h-full"
+                            allow="clipboard-read; clipboard-write"
+                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                        ></iframe>
+                    </div>
+                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Session auto-expires
+                        @if($yelpRemoteExpiresAt)
+                            at {{ \Carbon\Carbon::createFromTimestamp($yelpRemoteExpiresAt)->diffForHumans() }}
+                        @endif.
+                        If the viewer fails to connect, make sure port
+                        <code>{{ config('services.yelp.business.remote_login.ws_port') }}</code> is reachable
+                        (or set <code>YELP_REMOTE_LOGIN_PUBLIC_URL</code> to a TLS-terminated reverse-proxy URL).
+                    </p>
+                </div>
+            @endif
         </div>
     </section>
 </div>
