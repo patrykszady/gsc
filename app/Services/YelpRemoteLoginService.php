@@ -270,6 +270,26 @@ class YelpRemoteLoginService
                 // Tear it all down so the viewer doesn't stay in a broken 502 state.
                 $this->killState($state);
                 $alive = false;
+            } else {
+                // All PIDs alive — verify the websockify port is actually accepting
+                // connections. A common failure: websockify spawned but failed to
+                // bind (port already in use, missing python module), which leaves
+                // nginx returning 502 to the iframe.
+                $wsPort = (int) ($state['ws_port'] ?? 6080);
+                $errno = 0; $errstr = '';
+                $sock = @fsockopen('127.0.0.1', $wsPort, $errno, $errstr, 1.0);
+                if (! $sock) {
+                    Log::warning('Yelp remote login: websockify port unreachable', [
+                        'port' => $wsPort,
+                        'errno' => $errno,
+                        'errstr' => $errstr,
+                        'pids' => $state['pids'] ?? [],
+                    ]);
+                    $this->killState($state);
+                    $alive = false;
+                } else {
+                    @fclose($sock);
+                }
             }
         }
 

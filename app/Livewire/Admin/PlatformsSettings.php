@@ -198,10 +198,11 @@ class PlatformsSettings extends Component
         $this->yelpRemoteError = 'Remote viewer failed to connect (' . $reason . '). The VNC stack has been reset — click Verify Login to try again.';
     }
 
-    public function checkYelpSession(): void
+    public function checkYelpSession(bool $silent = false): void
     {
         $authed = app(YelpBusinessService::class)->checkSession();
         $this->yelpAuthenticated = $authed;
+        if ($silent) return;
         if ($authed === true) {
             session()->flash('platforms-success', 'Yelp session is active.');
         } elseif ($authed === false) {
