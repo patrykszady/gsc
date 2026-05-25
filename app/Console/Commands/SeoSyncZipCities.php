@@ -17,9 +17,11 @@ class SeoSyncZipCities extends Command
 
     public function handle(): int
     {
-        $zips = $this->readUniqueZipsFromCsv();
+        $zips = app(\App\Services\HiveProjectsClient::class)->storedZips();
+        // Filter to 5-digit only for consistency
+        $zips = array_values(array_filter($zips, fn ($z) => strlen((string) $z) === 5 && ctype_digit((string) $z)));
         if (empty($zips)) {
-            $this->error('No ZIPs found in public/project-zipcodes.csv');
+            $this->error('No ZIPs found in hive_project_zip_counts. Run `php artisan hive:sync` first.');
             return self::FAILURE;
         }
 
@@ -99,50 +101,6 @@ class SeoSyncZipCities extends Command
         $this->info("Done. resolved={$ok}, failed={$failed}, total_saved=" . count($updated));
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    protected function readUniqueZipsFromCsv(): array
-    {
-        $csv = public_path('project-zipcodes.csv');
-        if (! is_file($csv)) {
-            return [];
-        }
-
-        $handle = fopen($csv, 'r');
-        if ($handle === false) {
-            return [];
-        }
-
-        $header = fgetcsv($handle);
-        if (! $header) {
-            fclose($handle);
-            return [];
-        }
-
-        $cols = array_map(fn ($c) => strtolower(trim((string) $c)), $header);
-        $zipIdx = array_search('zip_code', $cols, true);
-        if ($zipIdx === false) {
-            fclose($handle);
-            return [];
-        }
-
-        $zips = [];
-        while (($row = fgetcsv($handle)) !== false) {
-            $zip = preg_replace('/\D/', '', (string) ($row[$zipIdx] ?? ''));
-            if (strlen((string) $zip) === 5) {
-                $zips[$zip] = true;
-            }
-        }
-
-        fclose($handle);
-
-        $list = array_keys($zips);
-        sort($list);
-
-        return $list;
     }
 
     protected function resolveCityForZip(string $zip): ?string

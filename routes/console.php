@@ -16,6 +16,11 @@ Artisan::command('inspire', function () {
 // Schedule sitemap regeneration daily
 Schedule::command('sitemap:generate')->daily();
 
+// Hive (hive.contractors) project zip-counts sync — feeds the homepage map
+Schedule::command('hive:sync')->dailyAt('02:00')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled hive:sync failed'));
+
 // Weekly health check of social/sameAs URLs
 Schedule::command('socials:check --quiet-on-success')->weekly()
     ->appendOutputTo(storage_path('logs/socials-check.log'));

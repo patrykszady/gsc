@@ -21,7 +21,7 @@ class SeoGenerateZipContent extends Command
     {
         $zipMap = $zips->getZipMap();
         if (empty($zipMap)) {
-            $this->error('No ZIP map rows found (project-zipcodes.csv or published projects missing).');
+            $this->error('No ZIP map rows found. Run `php artisan hive:sync` first to populate hive_project_zip_counts.');
             return self::FAILURE;
         }
 
