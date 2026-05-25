@@ -75,6 +75,11 @@ class PlatformsSettings extends Component
         $this->yelpPassword = '';
     }
 
+    public function checkYelpSession(): void
+    {
+        $this->yelpAuthenticated = app(YelpBusinessService::class)->checkSession();
+    }
+
     // ---- GBP actions ----
     public function connectGbp(): mixed
     {

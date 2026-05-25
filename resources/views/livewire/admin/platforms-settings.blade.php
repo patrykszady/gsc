@@ -1,4 +1,4 @@
-<div class="space-y-8">
+<div class="space-y-8" wire:init="checkYelpSession">
     {{-- Header --}}
     <div class="flex items-center justify-between">
         <div>
