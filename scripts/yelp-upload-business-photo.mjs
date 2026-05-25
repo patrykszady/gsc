@@ -99,9 +99,15 @@ function parseProxyUrl(proxyUrl) {
   }
 }
 
+const BIZ_YELP_HOST_RE = /^https:\/\/biz\.yelp\.(com|co\.uk|ca|com\.au|ie|fr|de|it|es|nl|com\.mx|com\.br|com\.sg|com\.ph|com\.hk|cl|co\.nz|at|be|ch|cz|dk|fi|no|pl|pt|se|tr)\//i;
+
+function isBizYelpUrl(url) {
+  return BIZ_YELP_HOST_RE.test(url || '');
+}
+
 async function isLoggedIn(page) {
   const url = page.url();
-  return url.startsWith('https://biz.yelp.com/') && !url.includes('/login');
+  return isBizYelpUrl(url) && !url.includes('/login');
 }
 
 async function dumpPage(page, label) {
@@ -199,7 +205,16 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
  */
 async function detectPhotosUrl(page, timeoutMs) {
   console.error('[yelp] auto-detecting biz_photos URL');
-  await page.goto('https://biz.yelp.com/', { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
+  // Use whatever biz.yelp.<tld> origin the current page is on; Yelp may have
+  // regionally redirected the session (e.g. to biz.yelp.co.uk).
+  let origin = 'https://biz.yelp.com';
+  try {
+    const cur = new URL(page.url());
+    if (/^biz\.yelp\./i.test(cur.hostname)) {
+      origin = `${cur.protocol}//${cur.hostname}`;
+    }
+  } catch {}
+  await page.goto(origin + '/', { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
   await sleep(1500);
 
   // Common locations: sidebar nav link, "Photos" tab, business URL pattern.
@@ -223,7 +238,7 @@ async function detectPhotosUrl(page, timeoutMs) {
     return m ? m[1] : null;
   });
   if (bizId) {
-    const url = `https://biz.yelp.com/biz_photos/${bizId}`;
+    const url = `${origin}/biz_photos/${bizId}`;
     console.error(`[yelp] guessed photos URL: ${url}`);
     return url;
   }
