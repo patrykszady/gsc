@@ -101,11 +101,32 @@ class YelpRemoteLoginService
         $maxTtl = (int) $cfg['max_ttl_seconds'];
 
         // Clean orphan processes that might be holding our display/ports.
-        @shell_exec('pkill -f ' . escapeshellarg('Xvfb ' . $display) . ' 2>/dev/null');
-        @shell_exec('pkill -f ' . escapeshellarg('x11vnc.*-rfbport ' . $vncPort) . ' 2>/dev/null');
-        @shell_exec('pkill -f ' . escapeshellarg('websockify.*' . $wsPort) . ' 2>/dev/null');
-        @shell_exec('pkill -f ' . escapeshellarg('yelp-login.mjs') . ' 2>/dev/null');
+        // Send SIGTERM first then SIGKILL — old x11vnc instances can hang on to
+        // port 5999 across restarts, causing the new VNC server to fail and the
+        // browser to talk to a stale server with the old password.
+        $killPatterns = [
+            'Xvfb ' . $display,
+            'x11vnc.*-rfbport ' . $vncPort,
+            'websockify.*' . $wsPort,
+            'yelp-login.mjs',
+        ];
+        foreach ($killPatterns as $pat) {
+            @shell_exec('pkill -TERM -f ' . escapeshellarg($pat) . ' 2>/dev/null');
+        }
         usleep(400000);
+        foreach ($killPatterns as $pat) {
+            @shell_exec('pkill -KILL -f ' . escapeshellarg($pat) . ' 2>/dev/null');
+        }
+        // Wait up to 3s for the VNC port to become free.
+        for ($i = 0; $i < 30; $i++) {
+            $errno = 0; $errstr = '';
+            $sock = @fsockopen('127.0.0.1', $vncPort, $errno, $errstr, 0.2);
+            if (! $sock) {
+                break;
+            }
+            @fclose($sock);
+            usleep(100000);
+        }
 
         // Fresh profile dir so we don't reopen with stale tabs / poisoned cookies.
         $userDataDir = (string) (config('services.yelp.business.user_data_dir') ?: storage_path('app/yelp-puppeteer'));
@@ -191,6 +212,29 @@ class YelpRemoteLoginService
             @posix_kill($chromePid, SIGTERM);
             @posix_kill($xvfbPid, SIGTERM);
             return ['ok' => false, 'error' => 'Failed to start x11vnc. See ' . $vncLog];
+        }
+        // Verify the new x11vnc is actually listening (binding to the port can
+        // fail silently when a stale instance is still around).
+        $vncBound = false;
+        for ($i = 0; $i < 30; $i++) {
+            $errno = 0; $errstr = '';
+            $sock = @fsockopen('127.0.0.1', $vncPort, $errno, $errstr, 0.2);
+            if ($sock) {
+                @fclose($sock);
+                $vncBound = true;
+                break;
+            }
+            usleep(100000);
+        }
+        if (! $vncBound) {
+            Log::warning('Yelp remote login: x11vnc never bound port', [
+                'port' => $vncPort,
+                'vnc_log' => $vncLog,
+            ]);
+            @posix_kill($vncPid, SIGKILL);
+            @posix_kill($chromePid, SIGTERM);
+            @posix_kill($xvfbPid, SIGTERM);
+            return ['ok' => false, 'error' => 'x11vnc failed to bind port ' . $vncPort . '. See ' . $vncLog];
         }
 
         // 4) websockify
