@@ -167,15 +167,11 @@
                 <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                     @php
                         $cfg = config('services.yelp.business');
-                        $sessionLabel = $yelpAuthenticated === true
-                            ? 'Browser session: logged in'
-                            : ($yelpAuthenticated === false ? 'Browser session: NOT logged in' : 'Browser session: unknown (click Check)');
                         $checks = [
                             'Email saved' => $yelpEmail !== '',
                             'Password saved' => $yelpHasPassword,
                             'Node binary' => !empty($cfg['node_binary']),
                             'User data dir' => !empty($cfg['user_data_dir']),
-                            $sessionLabel => $yelpAuthenticated === true,
                         ];
                     @endphp
                     @foreach($checks as $label => $ok)
@@ -184,6 +180,19 @@
                             <span class="text-zinc-700 dark:text-zinc-300">{{ $label }}</span>
                         </div>
                     @endforeach
+                    <div class="flex items-center gap-2" wire:target="checkYelpSession,pollYelpRemoteLogin">
+                        <span wire:loading.remove wire:target="checkYelpSession" class="size-2 rounded-full {{ $yelpAuthenticated === true ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                        <svg wire:loading wire:target="checkYelpSession" class="size-3 animate-spin text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                        <span class="text-zinc-700 dark:text-zinc-300">
+                            <span wire:loading.remove wire:target="checkYelpSession">
+                                Browser session: {{ $yelpAuthenticated === true ? 'logged in' : ($yelpAuthenticated === false ? 'NOT logged in' : 'unknown (click Check)') }}
+                            </span>
+                            <span wire:loading wire:target="checkYelpSession">Browser session: checking…</span>
+                        </span>
+                    </div>
                 </div>
                 <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
                     Click <strong>Verify Login</strong> any time Yelp invalidates the session (e.g. after a password change
@@ -235,7 +244,7 @@
                                 }
                             }"
                             @load="onLoad($event)"
-                            @error="onError()"
+                            x-on:error="onError()"
                             src="{{ $yelpRemoteUrl }}"
                             class="w-full h-full"
                             allow="clipboard-read; clipboard-write"
