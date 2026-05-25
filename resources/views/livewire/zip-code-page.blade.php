@@ -182,5 +182,5 @@
     @endif
 
     {{-- Shared custom project ZIP map used across the site --}}
-    <livewire:map-section />
+    <livewire:map-section :area="$area" />
 </div>

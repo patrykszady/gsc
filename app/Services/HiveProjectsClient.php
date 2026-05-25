@@ -37,6 +37,55 @@ class HiveProjectsClient
     }
 
     /**
+     * Read the locally-stored project counts (no network), aggregated by city.
+     * Returns Collection<{city, state, lat, lng, count}> sorted desc.
+     * Used by the heatmap. Rows without coordinates are skipped (they can't
+     * be plotted).
+     */
+    public function storedCityCounts(): Collection
+    {
+        return HiveProjectZipCount::query()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->selectRaw('city, MAX(state) as state, MAX(latitude) as lat, MAX(longitude) as lng, SUM(`count`) as total')
+            ->groupBy('city')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'city' => $row->city,
+                'state' => $row->state,
+                'lat' => (float) $row->lat,
+                'lng' => (float) $row->lng,
+                'count' => (int) $row->total,
+            ]);
+    }
+
+    /**
+     * Per-zip points for the map overlay. One row per distinct ZIP
+     * (counts summed across cities sharing the zip) so the bubble sits
+     * on the true ZIP centroid rather than any one city's center.
+     * Returns Collection<{zip, lat, lng, count}> sorted desc by count.
+     */
+    public function storedZipPoints(): Collection
+    {
+        return HiveProjectZipCount::query()
+            ->whereNotNull('zip_latitude')
+            ->whereNotNull('zip_longitude')
+            ->selectRaw('zip, MAX(zip_latitude) as lat, MAX(zip_longitude) as lng, SUM(`count`) as total')
+            ->groupBy('zip')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn ($row) => [
+                'zip' => $row->zip,
+                'lat' => (float) $row->lat,
+                'lng' => (float) $row->lng,
+                'count' => (int) $row->total,
+            ]);
+    }
+
+    /**
      * Distinct zip codes currently stored.
      *
      * @return array<int, string>
@@ -121,8 +170,31 @@ class HiveProjectsClient
         }
 
         $now = now();
+        // Build lookups so we can preserve previously-geocoded coordinates
+        // and avoid re-hitting Nominatim:
+        //   - cityCoords: keyed by (city,state) — city centroid (drives big bubbles).
+        //   - zipCoords:  keyed by zip       — ZIP centroid (drives small bubbles).
+        $existing = HiveProjectZipCount::query()
+            ->get(['zip', 'city', 'state', 'latitude', 'longitude', 'zip_latitude', 'zip_longitude']);
+
+        $cityCoords = $existing
+            ->filter(fn ($r) => $r->latitude !== null && $r->longitude !== null && $r->city)
+            ->mapWithKeys(fn ($r) => [
+                mb_strtolower(trim((string) $r->city)) . '|' . mb_strtolower(trim((string) $r->state))
+                    => ['lat' => (float) $r->latitude, 'lng' => (float) $r->longitude],
+            ])
+            ->all();
+
+        $zipCoords = $existing
+            ->filter(fn ($r) => $r->zip_latitude !== null && $r->zip_longitude !== null)
+            ->mapWithKeys(fn ($r) => [
+                trim((string) $r->zip)
+                    => ['lat' => (float) $r->zip_latitude, 'lng' => (float) $r->zip_longitude],
+            ])
+            ->all();
+
         $records = collect($rows)
-            ->map(function ($row) use ($now) {
+            ->map(function ($row) use ($now, $cityCoords, $zipCoords) {
                 $zip = trim((string) ($row['zip'] ?? ''));
                 $count = (int) ($row['count'] ?? 0);
                 if ($zip === '' || $count <= 0) {
@@ -130,10 +202,17 @@ class HiveProjectsClient
                 }
                 $city = isset($row['city']) ? trim((string) $row['city']) : '';
                 $state = isset($row['state']) ? trim((string) $row['state']) : '';
+                $cityKey = mb_strtolower($city) . '|' . mb_strtolower($state);
+                $city = $cityCoords[$cityKey] ?? ['lat' => null, 'lng' => null];
+                $zipPt = $zipCoords[$zip] ?? ['lat' => null, 'lng' => null];
                 return [
                     'zip' => $zip,
-                    'city' => $city !== '' ? $city : null,
+                    'city' => isset($row['city']) && trim((string) $row['city']) !== '' ? trim((string) $row['city']) : null,
                     'state' => $state !== '' ? $state : null,
+                    'latitude' => $city['lat'],
+                    'longitude' => $city['lng'],
+                    'zip_latitude' => $zipPt['lat'],
+                    'zip_longitude' => $zipPt['lng'],
                     'count' => $count,
                     'synced_at' => $now,
                 ];
@@ -155,6 +234,142 @@ class HiveProjectsClient
             }
         });
 
+        // Fill in any missing coordinates via Nominatim (free, no key).
+        $this->geocodeMissing();
+
         return count($records);
+    }
+
+    /**
+     * Populate any missing coordinates via OpenStreetMap Nominatim:
+     *   - latitude/longitude          → city+state centroid (per distinct city)
+     *   - zip_latitude/zip_longitude  → ZIP centroid (per distinct ZIP)
+     * Respects the 1 req/sec usage policy. Failures are logged and skipped.
+     */
+    public function geocodeMissing(): int
+    {
+        $resolved = 0;
+
+        // 1) City coords — distinct (city, state) lacking lat/lng.
+        $missingCities = HiveProjectZipCount::query()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->where(function ($q) {
+                $q->whereNull('latitude')->orWhereNull('longitude');
+            })
+            ->select('city', 'state')
+            ->distinct()
+            ->get();
+
+        foreach ($missingCities as $row) {
+            $city = (string) $row->city;
+            $state = (string) ($row->state ?? '');
+            $coords = $this->nominatimGeocodeCity($city, $state);
+            usleep(1_100_000);
+
+            if (!$coords) {
+                Log::warning('HiveProjectsClient city geocode miss', compact('city', 'state'));
+                continue;
+            }
+
+            HiveProjectZipCount::query()
+                ->where('city', $city)
+                ->where('state', $state)
+                ->update(['latitude' => $coords['lat'], 'longitude' => $coords['lng']]);
+            $resolved++;
+        }
+
+        // 2) ZIP coords — distinct ZIP lacking zip_lat/zip_lng.
+        $missingZips = HiveProjectZipCount::query()
+            ->where(function ($q) {
+                $q->whereNull('zip_latitude')->orWhereNull('zip_longitude');
+            })
+            ->select('zip')
+            ->distinct()
+            ->pluck('zip');
+
+        foreach ($missingZips as $zip) {
+            $zip = (string) $zip;
+            $coords = $this->nominatimGeocodeZip($zip);
+            usleep(1_100_000);
+
+            if (!$coords) {
+                Log::warning('HiveProjectsClient zip geocode miss', compact('zip'));
+                continue;
+            }
+
+            HiveProjectZipCount::query()
+                ->where('zip', $zip)
+                ->update(['zip_latitude' => $coords['lat'], 'zip_longitude' => $coords['lng']]);
+            $resolved++;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * @return array{lat: float, lng: float}|null
+     */
+    protected function nominatimGeocodeZip(string $zip): ?array
+    {
+        if ($zip === '') {
+            return null;
+        }
+        return $this->nominatimRequest(['postalcode' => $zip, 'country' => 'USA']);
+    }
+
+    /**
+     * @return array{lat: float, lng: float}|null
+     */
+    protected function nominatimGeocodeCity(string $city, string $state): ?array
+    {
+        if ($city === '') {
+            return null;
+        }
+        return $this->nominatimRequest(array_filter([
+            'city' => $city,
+            'state' => $state !== '' ? $state : null,
+            'country' => 'USA',
+        ]));
+    }
+
+    /**
+     * @param  array<string, string>  $params
+     * @return array{lat: float, lng: float}|null
+     */
+    protected function nominatimRequest(array $params): ?array
+    {
+        $params = array_merge([
+            'format' => 'json',
+            'limit' => 1,
+            'countrycodes' => 'us',
+        ], $params);
+
+        try {
+            $response = Http::withHeaders([
+                    // Nominatim requires a descriptive UA identifying the app.
+                    'User-Agent' => 'gs.construction hive-sync (contact: patryk@gs.construction)',
+                    'Accept' => 'application/json',
+                ])
+                ->timeout(8)
+                ->get('https://nominatim.openstreetmap.org/search', $params);
+        } catch (Throwable $e) {
+            Log::warning('Nominatim request failed', ['params' => $params, 'error' => $e->getMessage()]);
+            return null;
+        }
+
+        if (!$response->successful()) {
+            return null;
+        }
+
+        $hit = $response->json(0);
+        if (!is_array($hit) || !isset($hit['lat'], $hit['lon'])) {
+            return null;
+        }
+
+        return [
+            'lat' => (float) $hit['lat'],
+            'lng' => (float) $hit['lon'],
+        ];
     }
 }

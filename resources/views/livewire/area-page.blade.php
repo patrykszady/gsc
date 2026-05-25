@@ -278,7 +278,7 @@
 
             <livewire:testimonials-section :area="$area" />
             
-            <livewire:map-section />
+            <livewire:map-section :area="$area" />
 
             {{-- Nearby Areas — internal linking + local SEO signal --}}
             @php
@@ -359,7 +359,7 @@
                 <livewire:contact-section :area="$area" />
             </div>
 
-            <livewire:map-section />
+            <livewire:map-section :area="$area" />
 
             <livewire:testimonials-section :area="$area" />
 
@@ -383,7 +383,7 @@
 
             <livewire:testimonials-grid :area="$area" :show-header="false" />
 
-            <livewire:map-section />
+            <livewire:map-section :area="$area" />
 
             <livewire:testimonials-section :area="$area" :show-header="false" />
             @break
@@ -798,7 +798,7 @@
             <livewire:testimonials-section :area="$area" />
 
             {{-- Map Section --}}
-            <livewire:map-section />
+            <livewire:map-section :area="$area" />
 
             {{-- Other Services in This City (cross-service internal linking) --}}
             <section class="bg-zinc-50 py-12 dark:bg-zinc-800/50">
@@ -862,7 +862,7 @@
 
     {{-- About page: show map above the "Explore {City}" navigation footer. --}}
     @if($page === 'about')
-        <livewire:map-section />
+        <livewire:map-section :area="$area" />
     @endif
 
     {{-- Area Navigation --}}
