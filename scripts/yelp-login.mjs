@@ -486,7 +486,12 @@ async function modeLogin(args) {
         const startedAt = Date.now();
         while (Date.now() - startedAt < args.timeoutMs) {
           if (browser.connected === false) break;
-          if (isAuthedUrl(page.url())) {
+          // Check ALL open tabs — the user may complete login on a tab other
+          // than the original login page (e.g. email verification link opens
+          // a new tab that lands on the biz dashboard).
+          const allPages = await browser.pages().catch(() => [page]);
+          const authenticated = allPages.some(p => isAuthedUrl(p.url()));
+          if (authenticated) {
             await sleep(1500);
             finish({ closed: false, authenticated: true });
             await browser.close().catch(() => {});
