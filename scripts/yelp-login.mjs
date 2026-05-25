@@ -429,13 +429,12 @@ async function autofillLogin(page, email, password) {
   // wait for the button to become clickable.
   await sleep(400 + Math.random() * 400);
   await page.keyboard.press('Tab').catch(() => {});
-  console.error('[yelp-login] waiting for password-step submit to enable');
-  const enabled = await waitForSubmitEnabled(page, 15000);
-  if (!enabled) {
-    console.error('[yelp-login] submit button never became enabled within 15s');
-  }
-  await sleep(300 + Math.random() * 400);
-  await clickSubmit(page, 'password-step');
+  // NOTE: intentionally do NOT auto-click the final Continue button. Yelp's
+  // DataDome layer flags programmatic submits even when the keystrokes look
+  // human — leaving the actual click to the operator (who is watching the
+  // embedded noVNC viewer) is the most reliable bypass. The credentials are
+  // pre-filled; they just press Continue themselves.
+  console.error('[yelp-login] form pre-filled; waiting for operator to press Continue in viewer');
 }
 
 async function modeCheck(args) {
@@ -474,12 +473,20 @@ async function modeLogin(args) {
         await maybeBypassDataDome(page, proxyConfig, args);
 
         if (!isAuthedUrl(page.url())) {
-          // Auto-fill the form. Use humanized per-keystroke delays so Yelp's
-          // bot-detection doesn't trivially flag the keystroke timing.
-          try {
-            await autofillLogin(page, args.email, args.password);
-          } catch (e) {
-            console.error('[yelp-login] autofill skipped: ' + (e?.message || e));
+          // If DataDome has already flagged this session (url carries
+          // ?dd_referrer=, or Yelp is showing the generic "error processing
+          // your request" copy) skip autofill entirely and let the operator
+          // handle the page manually in the viewer.
+          const url = page.url();
+          const burned = url.includes('dd_referrer') || url.includes('datadome');
+          if (burned) {
+            console.error('[yelp-login] DataDome challenge detected on initial load; leaving form for manual entry');
+          } else {
+            try {
+              await autofillLogin(page, args.email, args.password);
+            } catch (e) {
+              console.error('[yelp-login] autofill skipped: ' + (e?.message || e));
+            }
           }
         }
 
