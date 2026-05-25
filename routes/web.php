@@ -11,6 +11,8 @@ use App\Livewire\Admin\TagList;
 use App\Livewire\Admin\ContactSubmissions;
 use App\Livewire\Admin\TestimonialForm;
 use App\Livewire\Admin\TestimonialList;
+use App\Livewire\Admin\AreaList;
+use App\Livewire\Admin\AreaForm;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
 use App\Livewire\CompareCompetitorPage;
@@ -266,6 +268,11 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
     Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');
     Route::get('/testimonials/create', TestimonialForm::class)->name('testimonials.create');
     Route::get('/testimonials/{testimonial}/edit', TestimonialForm::class)->name('testimonials.edit');
+
+    // Service Areas
+    Route::get('/areas', AreaList::class)->name('areas.index');
+    Route::get('/areas/create', AreaForm::class)->name('areas.create');
+    Route::get('/areas/{area}/edit', AreaForm::class)->name('areas.edit');
 
     // Social Media
     Route::get('/social-media', \App\Livewire\Admin\SocialMediaPosts::class)->name('social-media.index');

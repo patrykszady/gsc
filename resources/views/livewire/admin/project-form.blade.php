@@ -815,4 +815,10 @@
             </div>
         </div>
     </form>
+
+    @if($project?->exists)
+        <div class="mt-6">
+            <livewire:admin.seo-overrides-panel :model="$project" :key="'seo-project-'.$project->id"/>
+        </div>
+    @endif
 </div>

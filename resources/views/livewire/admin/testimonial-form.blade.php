@@ -163,4 +163,10 @@
             </div>
         </div>
     </form>
+
+    @if($testimonial?->exists)
+        <div class="mt-6">
+            <livewire:admin.seo-overrides-panel :model="$testimonial" :key="'seo-testimonial-'.$testimonial->id"/>
+        </div>
+    @endif
 </div>

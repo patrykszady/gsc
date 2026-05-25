@@ -219,6 +219,8 @@ return [
             'headed' => env('YELP_BIZ_HEADED', false),
             'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 180000),
             'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
+            // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
+            'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),
         ],
     ],
 

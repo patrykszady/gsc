@@ -229,6 +229,79 @@ PROMPT;
     }
 
     /**
+     * Rewrite an existing caption as a keyword-heavy SEO caption capped at $limit chars.
+     * Used for short-form social/listing captions (Yelp = 140 chars).
+     * Returns null on failure so caller can fall back to truncation.
+     */
+    public function shortenCaptionForSeo(ProjectImage $image, int $limit = 140): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+            return null;
+        }
+
+        $project = $image->project;
+        $original = trim((string) ($image->caption ?? ''));
+        if ($original === '') {
+            $original = trim((string) ($image->seo_alt_text ?? $image->alt_text ?? ''));
+        }
+        if ($original === '') {
+            $original = trim((string) ($project?->title ?? 'Home remodeling project'));
+        }
+
+        $cacheKey = "yelp_caption_seo:{$image->id}:{$limit}:" . md5($original);
+        return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
+            $type = $project?->project_type
+                ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
+                : 'home remodel';
+            $location = trim((string) ($project?->location ?? '')) ?: 'Chicago suburbs';
+            $title = trim((string) ($project?->title ?? ''));
+
+            $prompt = <<<PROMPT
+Rewrite the following caption as a single keyword-rich SEO caption for a Yelp business photo.
+
+HARD RULES:
+- Maximum {$limit} characters total (including spaces and punctuation). Count carefully.
+- One sentence, no line breaks, no hashtags, no emojis, no quotes.
+- Pack in high-intent local SEO keywords naturally (project type, materials, finishes, location).
+- Sound human, factual, and benefits-driven — not spammy.
+- Do NOT invent details that aren't in the source caption or context.
+
+CONTEXT:
+- Business: GS Construction (home remodeling, Chicago area)
+- Project type: {$type}
+- Location: {$location}
+- Project title: {$title}
+
+ORIGINAL CAPTION:
+{$original}
+
+Return ONLY the rewritten caption text. No JSON, no labels, no quotes.
+PROMPT;
+
+            $raw = $this->callGeminiMultiImage($prompt, [], 200);
+            if (!is_string($raw) || trim($raw) === '') {
+                return null;
+            }
+            $clean = trim($raw);
+            // Strip wrapping quotes if Gemini added them anyway.
+            $clean = trim($clean, "\"'`\n\r\t ");
+            // Collapse whitespace to a single line.
+            $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
+            if (mb_strlen($clean) > $limit) {
+                // Try to cut at last word boundary within limit.
+                $cut = mb_substr($clean, 0, $limit);
+                $space = mb_strrpos($cut, ' ');
+                if ($space !== false && $space > $limit - 30) {
+                    $cut = rtrim(mb_substr($cut, 0, $space), " ,.;:-");
+                }
+                $clean = $cut;
+            }
+            return $clean !== '' ? $clean : null;
+        });
+    }
+
+    /**
      * Get image data as base64 for Gemini API.
      */
     protected function getImageData(ProjectImage $image): ?array

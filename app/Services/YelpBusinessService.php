@@ -6,6 +6,7 @@ use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
@@ -183,6 +184,16 @@ class YelpBusinessService
         try {
             $process->run();
         } catch (ProcessTimedOutException) {
+            Log::warning('Yelp: checkSession timed out');
+            return null;
+        } catch (ProcessSignaledException $e) {
+            Log::warning('Yelp: checkSession subprocess killed', [
+                'signal' => $e->getSignal(),
+                'stderr' => mb_substr($process->getErrorOutput(), 0, 500),
+            ]);
+            return null;
+        } catch (\Throwable $e) {
+            Log::warning('Yelp: checkSession failed', ['error' => $e->getMessage()]);
             return null;
         }
 
@@ -287,6 +298,100 @@ class YelpBusinessService
         return $payload['photo_id'] ?? ('uploaded-' . now()->timestamp);
     }
 
+    /**
+     * Upload a single ProjectImage to the account-wide Yelp Business Photos
+     * gallery (biz.yelp.com/biz_photos). Unlike uploadProjectImage() this
+     * does not require a per-project portfolio URL.
+     *
+     * Returns: ['photo_id' => string, 'photos_url' => string] on success, null on failure.
+     */
+    public function uploadProjectImageToBusinessPhotos(ProjectImage $image): ?array
+    {
+        $absolutePath = $this->resolveAbsolutePath($image);
+        if (! $absolutePath) {
+            Log::warning('Yelp biz: source image not found on disk', [
+                'image_id' => $image->id,
+                'disk' => $image->disk,
+                'path' => $image->path,
+            ]);
+            return null;
+        }
+
+        $cfg = config('services.yelp.business');
+        $script = base_path('scripts/yelp-upload-business-photo.mjs');
+        $caption = $this->buildCaption($image);
+
+        $args = [
+            $cfg['node_binary'] ?? 'node',
+            $script,
+            '--photo=' . $absolutePath,
+            '--caption=' . $caption,
+            '--user-data-dir=' . ($cfg['user_data_dir'] ?? storage_path('app/yelp-puppeteer')),
+            '--email=' . $this->getEmail(),
+            '--password=' . $this->getPassword(),
+            '--timeout-ms=' . (int) ($cfg['timeout_ms'] ?? 180000),
+        ];
+
+        if (! empty($cfg['biz_photos_url'])) {
+            $args[] = '--photos-url=' . $cfg['biz_photos_url'];
+        }
+        if (! empty($cfg['headed'])) {
+            $args[] = '--headed';
+        }
+        if (! empty($cfg['proxy'])) {
+            $args[] = '--proxy=' . $cfg['proxy'];
+        }
+        if ($key = config('services.twocaptcha.api_key')) {
+            $args[] = '--twocaptcha-key=' . $key;
+        }
+        if ($key = config('services.anticaptcha.api_key')) {
+            $args[] = '--anticaptcha-key=' . $key;
+        }
+
+        $process = new Process($args, base_path());
+        $process->setTimeout(((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30);
+
+        try {
+            $process->run();
+        } catch (ProcessTimedOutException $e) {
+            Log::error('Yelp biz: upload script timed out', [
+                'image_id' => $image->id,
+                'message' => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        $stdout = trim($process->getOutput());
+        $stderr = trim($process->getErrorOutput());
+
+        if (! $process->isSuccessful()) {
+            Log::error('Yelp biz: upload script exited with error', [
+                'image_id' => $image->id,
+                'exit_code' => $process->getExitCode(),
+                'stderr' => $stderr,
+                'stdout' => $stdout,
+            ]);
+            return null;
+        }
+
+        $jsonLine = $this->lastJsonLine($stdout);
+        $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+
+        if (! is_array($payload) || empty($payload['ok'])) {
+            Log::error('Yelp biz: upload script returned no/invalid payload', [
+                'image_id' => $image->id,
+                'stdout' => $stdout,
+                'stderr' => $stderr,
+            ]);
+            return null;
+        }
+
+        return [
+            'photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
+            'photos_url' => $payload['photos_url'] ?? null,
+        ];
+    }
+
     protected function resolveAbsolutePath(ProjectImage $image): ?string
     {
         try {
@@ -320,7 +425,23 @@ class YelpBusinessService
         if ($caption === '') {
             $caption = trim((string) ($image->project?->title ?? 'Project photo'));
         }
-        return mb_substr($caption, 0, 240);
+
+        $limit = 140;
+
+        // Try a keyword-rich Gemini rewrite first so we don't ship mid-word truncations.
+        try {
+            $seo = app(AiContentService::class)->shortenCaptionForSeo($image, $limit);
+            if (is_string($seo) && $seo !== '' && mb_strlen($seo) <= $limit) {
+                return $seo;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Yelp biz caption SEO rewrite failed', [
+                'image_id' => $image->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return mb_substr($caption, 0, $limit);
     }
 
     protected function lastJsonLine(string $stdout): ?string

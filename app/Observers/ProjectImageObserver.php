@@ -6,6 +6,7 @@ use App\Jobs\DeleteGooglePlacesMedia;
 use App\Jobs\GenerateAiContentJob;
 use App\Jobs\UploadProjectImageToGooglePlaces;
 use App\Jobs\UploadProjectImageToYelp;
+use App\Jobs\UploadProjectImageToYelpBusinessPhotos;
 use App\Models\ProjectImage;
 use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
@@ -58,6 +59,18 @@ class ProjectImageObserver
             UploadProjectImageToYelp::dispatch($image->id)
                 ->onQueue('media-sync')
                 ->delay(now()->addSeconds(20));
+        }
+
+        // Upload new images to the account-wide Yelp Business Photos gallery
+        // if Yelp is configured (no per-project portfolio URL required).
+        if (
+            app(\App\Services\YelpBusinessService::class)->isConfigured()
+            && $image->project
+            && $image->project->is_published
+        ) {
+            UploadProjectImageToYelpBusinessPhotos::dispatch($image->id)
+                ->onQueue('media-sync')
+                ->delay(now()->addSeconds(40));
         }
     }
 

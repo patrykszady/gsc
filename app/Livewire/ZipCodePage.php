@@ -6,9 +6,7 @@ use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\ZipCodeService;
-use Artesaos\SEOTools\Facades\JsonLd;
-use Artesaos\SEOTools\Facades\OpenGraph;
-use Artesaos\SEOTools\Facades\SEOMeta;
+use App\Support\SEO\SEOBuilder;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -102,24 +100,19 @@ class ZipCodePage extends Component
                 . "Free in-home estimates from a family-owned, licensed contractor. "
                 . ($this->projectCount > 0 ? "{$this->projectCount} completed projects nearby." : ''));
 
-        SEOMeta::setTitle($title);
-        SEOMeta::setDescription($description);
-        SEOMeta::setCanonical(url('/service-area/' . $this->zip));
-        SEOMeta::addKeyword([
-            "remodeling {$this->zip}",
-            "kitchen remodel {$this->city}",
-            "bathroom remodel {$this->city}",
-            "general contractor {$this->city} IL",
-        ]);
-        OpenGraph::setTitle($title)
-            ->setDescription($description)
-            ->setUrl(url('/service-area/' . $this->zip))
-            ->setType('website');
-
-        JsonLd::setTitle($title)
-            ->setDescription($description)
-            ->setUrl(url('/service-area/' . $this->zip))
-            ->setType('LocalBusiness');
+        app(SEOBuilder::class)
+            ->title($title)
+            ->description($description)
+            ->canonical(url('/service-area/' . $this->zip))
+            ->url(url('/service-area/' . $this->zip))
+            ->type('website')
+            ->keywords([
+                "remodeling {$this->zip}",
+                "kitchen remodel {$this->city}",
+                "bathroom remodel {$this->city}",
+                "general contractor {$this->city} IL",
+            ]);
+        // LocalBusiness JSON-LD is emitted inline by livewire.zip-code-page view.
     }
 
     public function render()

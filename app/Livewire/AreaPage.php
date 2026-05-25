@@ -4,8 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Services\SeoService;
-use Artesaos\SEOTools\Facades\OpenGraph;
-use Artesaos\SEOTools\Facades\SEOMeta;
+use App\Support\SEO\SEOBuilder;
 use Illuminate\Support\Facades\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -54,9 +53,10 @@ class AreaPage extends Component
         $path = request()->path();
         if (str_starts_with($path, 'locations/') || str_starts_with($path, 'areas/')) {
             $canonicalPath = preg_replace('#^(locations|areas)/#', 'areas-served/', $path);
-            SEOMeta::setCanonical(url('/' . ltrim($canonicalPath, '/')));
-            OpenGraph::setUrl(url('/' . ltrim($canonicalPath, '/')));
-            SEOMeta::setRobots('noindex,follow');
+            app(SEOBuilder::class)
+                ->canonical(url('/' . ltrim($canonicalPath, '/')))
+                ->url(url('/' . ltrim($canonicalPath, '/')))
+                ->markNoindex();
         }
     }
 

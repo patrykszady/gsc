@@ -1,16 +1,10 @@
 @php
-    use Artesaos\SEOTools\Facades\SEOMeta;
-    use Artesaos\SEOTools\Facades\OpenGraph;
-    use Artesaos\SEOTools\Facades\TwitterCard;
-
-    SEOMeta::setTitle('Page Not Found');
-    SEOMeta::setDescription('Sorry, we couldn\'t find that page. Browse our remodeling services, projects, and service areas in the Chicago suburbs.');
-    SEOMeta::setRobots('noindex,follow');
-    SEOMeta::setCanonical(url('/'));
-    OpenGraph::setTitle('Page Not Found | GS Construction');
-    OpenGraph::setDescription('Sorry, we couldn\'t find that page.');
-    OpenGraph::setUrl(url()->current());
-    TwitterCard::setTitle('Page Not Found | GS Construction');
+    app(\App\Support\SEO\SEOBuilder::class)
+        ->title('Page Not Found | GS Construction')
+        ->description("Sorry, we couldn't find that page. Browse our remodeling services, projects, and service areas in the Chicago suburbs.")
+        ->canonical(url('/'))
+        ->url(url()->current())
+        ->markNoindex();
 
     $popularAreas = \App\Models\AreaServed::orderBy('city')->limit(12)->get();
 @endphp

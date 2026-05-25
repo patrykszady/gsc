@@ -47,6 +47,10 @@
                 Reviews
             </flux:sidebar.item>
 
+            <flux:sidebar.item icon="map-pin" href="{{ route('admin.areas.index') }}" :current="request()->routeIs('admin.areas.*')">
+                Service Areas
+            </flux:sidebar.item>
+
             <flux:sidebar.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
                 Social Media
             </flux:sidebar.item>

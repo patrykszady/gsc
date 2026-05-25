@@ -5,13 +5,16 @@ namespace App\Services;
 use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
-use Artesaos\SEOTools\Facades\OpenGraph;
-use Artesaos\SEOTools\Facades\SEOMeta;
-use Artesaos\SEOTools\Facades\TwitterCard;
+use App\Support\SEO\SEOBuilder;
 use Illuminate\Support\Str;
 
 class SeoService
 {
+    protected static function seo(): SEOBuilder
+    {
+        return app(SEOBuilder::class);
+    }
+
     /**
      * Apply domain-specific SEO enhancements.
      * Call this at the end of any page's SEO setup when on alternate domains.
@@ -21,22 +24,21 @@ class SeoService
         $domainConfig = view()->shared('domainConfig');
         $isAlternateDomain = view()->shared('isAlternateDomain', false);
         $primaryDomain = config('services.domains.primary', 'gs.construction');
-        
+
         if (!$domainConfig) {
             return;
         }
-        
+
         // Add domain-specific keywords
         if (!empty($domainConfig['keywords'])) {
-            SEOMeta::addKeyword($domainConfig['keywords']);
+            self::seo()->keywords($domainConfig['keywords']);
         }
-        
+
         // Set canonical to primary domain (critical for SEO)
         // This tells search engines the primary domain is authoritative
         if ($isAlternateDomain) {
             $canonicalUrl = 'https://' . $primaryDomain . request()->getRequestUri();
-            SEOMeta::setCanonical($canonicalUrl);
-            OpenGraph::setUrl($canonicalUrl);
+            self::seo()->canonical($canonicalUrl)->url($canonicalUrl);
         }
     }
 
@@ -198,10 +200,7 @@ class SeoService
             ? "Meet GS Construction — family-owned remodeling contractors serving {$city}, IL. {$reviewCount} five-star reviews, 40+ years experience. Licensed & insured."
             : 'Meet Greg & Patryk — family-owned kitchen & bathroom remodeling contractors in Chicago. 40+ years combined experience. Licensed & insured.';
 
-        self::setTags($title, $description);
-        
-        OpenGraph::addImage(asset('images/greg-patryk.jpg'));
-        TwitterCard::setImage(asset('images/greg-patryk.jpg'));
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
     }
 
     /**
@@ -261,15 +260,15 @@ class SeoService
         $image = self::getCoverImageForType('kitchen');
 
         self::setTags($title, $description, $image);
-        
-        SEOMeta::addKeyword([
+
+        self::seo()->keywords([
             'remodeling services',
             'kitchen remodeling',
             'bathroom remodeling',
             'home renovation',
             'basement finishing',
             'Chicago contractors',
-            'home improvement'
+            'home improvement',
         ]);
     }
 
@@ -300,8 +299,8 @@ class SeoService
         }
 
         self::setTags($title, $description, $image);
-        
-        SEOMeta::addKeyword([
+
+        self::seo()->keywords([
             $typeLabel,
             'remodeling project',
             $project->location ?? 'Chicago',
@@ -370,10 +369,8 @@ class SeoService
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
 
         self::setTags($title, $description, $image);
-        
-        // Add service-specific keywords
-        $keywords = $service['keywords'];
-        SEOMeta::addKeyword($keywords);
+
+        self::seo()->keywords($service['keywords']);
     }
 
     /**
@@ -479,7 +476,7 @@ class SeoService
                 "{$shortLabel} remodeling company {$cityLower}",
             ]
         );
-        SEOMeta::addKeyword($areaKeywords);
+        self::seo()->keywords($areaKeywords);
     }
 
     /**
@@ -510,7 +507,7 @@ class SeoService
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
-        SEOMeta::addKeyword([
+        self::seo()->keywords([
             'compare remodeling contractors chicago',
             'best chicago remodeling contractor',
             'remodeling contractor alternatives',
@@ -535,7 +532,7 @@ class SeoService
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
-        SEOMeta::addKeyword([
+        self::seo()->keywords([
             "alternative to {$name}",
             "{$name} vs",
             "{$name} reviews",
@@ -544,38 +541,24 @@ class SeoService
     }
 
     /**
-     * Helper to set common meta tags.
+     * Helper to set common meta tags via the SEO builder.
      */
     protected static function setTags(string $title, string $description, ?string $image = null): void
     {
-        SEOMeta::setTitle($title);
-        SEOMeta::setDescription($description);
-
         // Canonical: strip noisy params (utm_*, gclid, fbclid, pagination) so
         // each indexable URL maps to one clean canonical regardless of source.
         $canonical = self::buildCleanCanonical();
-        SEOMeta::setCanonical($canonical);
-
-        OpenGraph::setTitle($title);
-        OpenGraph::setDescription($description);
-        OpenGraph::setUrl($canonical);
-        OpenGraph::setSiteName('GS Construction');
-        OpenGraph::addProperty('locale', 'en_US');
-        OpenGraph::addProperty('type', 'website');
-
-        // Set OG image for social sharing (iMessage, Facebook, etc.)
         $ogImage = $image ?? asset('images/greg-patryk.jpg');
-        OpenGraph::addImage($ogImage, [
-            'width' => 1200,
-            'height' => 630,
-            'alt' => $title,
-            'type' => str_ends_with(strtolower($ogImage), '.png') ? 'image/png' : 'image/jpeg',
-        ]);
 
-        TwitterCard::setTitle($title);
-        TwitterCard::setDescription($description);
-        TwitterCard::setImage($ogImage);
-        TwitterCard::setType('summary_large_image');
+        self::seo()
+            ->title($title)
+            ->description($description)
+            ->canonical($canonical)
+            ->url($canonical)
+            ->image($ogImage)
+            ->siteName('GS Construction')
+            ->locale('en_US')
+            ->type('website');
 
         // Apply domain-specific SEO enhancements (keywords, canonical)
         self::applyDomainEnhancements();

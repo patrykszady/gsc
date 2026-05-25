@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {!! SEO::generate() !!}
+    @php($__seoBuilder = app(\App\Support\SEO\SEOBuilder::class))
+    {!! seo($__seoBuilder->build()) !!}
+    @if($__kw = $__seoBuilder->keywordList())
+        <meta name="keywords" content="{{ implode(', ', $__kw) }}">
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-white dark:bg-zinc-900">

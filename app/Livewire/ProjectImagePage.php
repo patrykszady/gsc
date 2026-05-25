@@ -5,10 +5,7 @@ namespace App\Livewire;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\GoogleBusinessProfileService;
-use Artesaos\SEOTools\Facades\JsonLd;
-use Artesaos\SEOTools\Facades\OpenGraph;
-use Artesaos\SEOTools\Facades\SEOMeta;
-use Artesaos\SEOTools\Facades\TwitterCard;
+use App\Support\SEO\SEOBuilder;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -140,40 +137,41 @@ class ProjectImagePage extends Component
         $canonicalUrl = $this->getCanonicalUrl();
         $currentUrl = $canonicalUrl;
 
-        SEOMeta::setTitle($title);
-        SEOMeta::setDescription($description);
-        SEOMeta::setCanonical($canonicalUrl);
+        app(SEOBuilder::class)
+            ->title($title)
+            ->description($description)
+            ->canonical($canonicalUrl)
+            ->url($currentUrl)
+            ->type('article')
+            ->image($googleUrl ?: $imageUrl);
 
-        OpenGraph::setTitle($title);
-        OpenGraph::setDescription($description);
-        OpenGraph::setUrl($currentUrl);
-        OpenGraph::addProperty('type', 'article');
-        OpenGraph::addImage($imageUrl);
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'ImageObject',
+            'name' => $title,
+            'description' => $description,
+            'url' => $currentUrl,
+            'contentUrl' => $imageUrl,
+            'thumbnail' => $this->image->getThumbnailUrl('thumb'),
+            'representativeOfPage' => (bool) $this->image->is_cover,
+            'caption' => $this->image->caption ?? $this->image->alt_text,
+        ];
         if ($googleUrl) {
-            OpenGraph::addImage($googleUrl);
+            $schema['sameAs'] = $googleUrl;
         }
-
-        TwitterCard::setTitle($title);
-        TwitterCard::setDescription($description);
-        TwitterCard::setImage($googleUrl ?: $imageUrl);
-
-        JsonLd::setType('ImageObject');
-        JsonLd::setTitle($title);
-        JsonLd::setDescription($description);
-        JsonLd::setUrl($currentUrl);
-        JsonLd::addValue('contentUrl', $imageUrl);
-        if ($googleUrl) {
-            JsonLd::addValue('sameAs', $googleUrl);
-        }
-        JsonLd::addValue('thumbnail', $this->image->getThumbnailUrl('thumb'));
-        JsonLd::addValue('representativeOfPage', $this->image->is_cover);
-        JsonLd::addValue('caption', $this->image->caption ?? $this->image->alt_text);
-        
         if ($this->image->width && $this->image->height) {
-            JsonLd::addValue('width', $this->image->width);
-            JsonLd::addValue('height', $this->image->height);
+            $schema['width'] = $this->image->width;
+            $schema['height'] = $this->image->height;
         }
+        $this->imageSchema = $schema;
     }
+
+    /**
+     * JSON-LD ImageObject schema for this image (rendered by the view).
+     *
+     * @var array<string, mixed>
+     */
+    public array $imageSchema = [];
 
     protected function getProjectTypeLabel(): string
     {

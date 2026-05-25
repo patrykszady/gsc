@@ -24,8 +24,9 @@ import fs from 'node:fs';
 puppeteer.use(StealthPlugin());
 
 const SELECTORS = {
-  loginEmail: 'input[name="email"], input#email',
-  loginPassword: 'input[name="password"], input#password',
+  loginEmail: 'input[type="email"], input[name="email"], input#email, input[name="username"], input[autocomplete="username"]',
+  loginPassword: 'input[type="password"], input[name="password"], input#password, input[autocomplete="current-password"]',
+  loginSubmit: 'button[type="submit"], button[data-button-style="primary"], form button:not([type="button"])',
 };
 
 function parseArgs(argv) {
@@ -256,6 +257,187 @@ async function maybeBypassDataDome(page, proxyConfig, args) {
 }
 
 // ---- Modes ----
+function humanDelay() {
+  // 80-180ms between keystrokes - roughly matches a real typist.
+  return 80 + Math.floor(Math.random() * 100);
+}
+
+async function typeHumanLike(el, text) {
+  for (const ch of text) {
+    await el.type(ch, { delay: humanDelay() });
+  }
+}
+
+async function waitForVisible(page, selector, timeout = 20000) {
+  // Wait for the element to be present AND visible AND not disabled. Yelp's
+  // login form mounts via JS after a brief delay, so the selector can match
+  // before the input is actually interactive.
+  return page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return false;
+      const style = window.getComputedStyle(el);
+      if (style.visibility === 'hidden' || style.display === 'none') return false;
+      if (el.disabled || el.readOnly) return false;
+      return true;
+    },
+    { timeout, polling: 200 },
+    selector,
+  );
+}
+
+async function waitForSubmitEnabled(page, timeout = 10000) {
+  // Yelp enables the submit button only after JS validates the form.
+  // Poll using the same allow/block rules as clickSubmit.
+  try {
+    await page.waitForFunction(
+      () => {
+        const allowed = new Set(['continue', 'next', 'log in', 'sign in', 'login', 'submit']);
+        const blocked = ['google', 'apple', 'facebook', 'email', 'link', 'forgot', 'claim'];
+        const candidates = Array.from(document.querySelectorAll('button, input[type="submit"], a[role="button"], [role="button"]'));
+        for (const el of candidates) {
+          const raw = (el.innerText || el.value || '').trim().toLowerCase();
+          if (!raw) continue;
+          if (blocked.some((kw) => raw.includes(kw))) continue;
+          if (!allowed.has(raw)) continue;
+          const r = el.getBoundingClientRect();
+          const s = window.getComputedStyle(el);
+          if (r.width === 0 || r.height === 0) continue;
+          if (s.visibility === 'hidden' || s.display === 'none') continue;
+          if (el.disabled) continue;
+          if (el.getAttribute('aria-disabled') === 'true') continue;
+          return true;
+        }
+        return false;
+      },
+      { timeout, polling: 200 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function clickSubmit(page, label) {
+  // Try the CSS selector first.
+  const byCss = await page.$(SELECTORS.loginSubmit);
+  if (byCss) {
+    const visible = await page.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const s = window.getComputedStyle(el);
+      if (r.width === 0 || r.height === 0) return false;
+      if (s.visibility === 'hidden' || s.display === 'none') return false;
+      if (el.disabled) return false;
+      if (el.getAttribute('aria-disabled') === 'true') return false;
+      return true;
+    }, byCss).catch(() => false);
+    if (visible) {
+      console.error(`[yelp-login] clicking submit (css) for ${label}`);
+      await byCss.click().catch(() => {});
+      return true;
+    }
+  }
+  // Fall back to finding a button by visible text (Continue / Next / Log in / Sign in).
+  const handle = await page.evaluateHandle(() => {
+    // Exact-match whitelist of acceptable button labels.
+    const allowed = new Set(['continue', 'next', 'log in', 'sign in', 'login', 'submit']);
+    // Anything containing these substrings is a social/alt-login button - skip.
+    const blocked = ['google', 'apple', 'facebook', 'email', 'link', 'forgot', 'claim'];
+    const candidates = Array.from(document.querySelectorAll('button, input[type="submit"], a[role="button"], [role="button"]'));
+    for (const el of candidates) {
+      const raw = (el.innerText || el.value || '').trim().toLowerCase();
+      if (!raw) continue;
+      if (blocked.some((kw) => raw.includes(kw))) continue;
+      if (!allowed.has(raw)) continue;
+      const r = el.getBoundingClientRect();
+      const s = window.getComputedStyle(el);
+      if (r.width === 0 || r.height === 0) continue;
+      if (s.visibility === 'hidden' || s.display === 'none') continue;
+      if (el.disabled) continue;
+      if (el.getAttribute('aria-disabled') === 'true') continue;
+      return el;
+    }
+    return null;
+  });
+  const el = handle.asElement();
+  if (el) {
+    console.error(`[yelp-login] clicking submit (text-match) for ${label}`);
+    await el.click().catch(() => {});
+    await handle.dispose();
+    return true;
+  }
+  await handle.dispose();
+  // Last resort: press Enter in the currently-focused field.
+  console.error(`[yelp-login] no submit button found; pressing Enter for ${label}`);
+  await page.keyboard.press('Enter').catch(() => {});
+  return false;
+}
+
+async function autofillLogin(page, email, password) {
+  // Give the page a generous settle period - Yelp hydrates the login form
+  // via JS and the input is briefly non-interactive after first paint.
+  console.error('[yelp-login] waiting for email field to become interactive');
+  try {
+    await waitForVisible(page, SELECTORS.loginEmail, 20000);
+  } catch {
+    console.error('[yelp-login] email field never became interactive; leaving form for manual entry');
+    return;
+  }
+  await sleep(1500 + Math.random() * 1000);
+
+  const emailEl = await page.$(SELECTORS.loginEmail);
+  if (!emailEl) {
+    console.error('[yelp-login] email field disappeared; leaving form for manual entry');
+    return;
+  }
+  console.error('[yelp-login] autofilling email');
+  await emailEl.focus();
+  await sleep(200 + Math.random() * 300);
+  await emailEl.click({ clickCount: 3 });
+  await sleep(300 + Math.random() * 300);
+  await typeHumanLike(emailEl, email);
+
+  let passEl = await page.$(SELECTORS.loginPassword);
+  if (!passEl) {
+    // Email-first 2-step flow: submit email, wait for password field.
+    console.error('[yelp-login] email-first flow; submitting to reveal password field');
+    await sleep(500 + Math.random() * 500);
+    console.error('[yelp-login] waiting for email-step submit to enable');
+    await waitForSubmitEnabled(page, 10000);
+    await clickSubmit(page, 'email-step');
+    try {
+      await waitForVisible(page, SELECTORS.loginPassword, 15000);
+    } catch {}
+    await sleep(800 + Math.random() * 600);
+    passEl = await page.$(SELECTORS.loginPassword);
+  }
+  if (!passEl) {
+    console.error('[yelp-login] password field still not found; leaving for manual entry');
+    return;
+  }
+  console.error('[yelp-login] autofilling password');
+  await passEl.focus();
+  await sleep(200 + Math.random() * 300);
+  await passEl.click({ clickCount: 3 });
+  await sleep(300 + Math.random() * 300);
+  await typeHumanLike(passEl, password);
+
+  // Yelp validates the form async and only enables the submit button after
+  // the password field has been blurred / debounced. Tab off the field and
+  // wait for the button to become clickable.
+  await sleep(400 + Math.random() * 400);
+  await page.keyboard.press('Tab').catch(() => {});
+  console.error('[yelp-login] waiting for password-step submit to enable');
+  const enabled = await waitForSubmitEnabled(page, 15000);
+  if (!enabled) {
+    console.error('[yelp-login] submit button never became enabled within 15s');
+  }
+  await sleep(300 + Math.random() * 400);
+  await clickSubmit(page, 'password-step');
+}
+
 async function modeCheck(args) {
   const { browser, proxyConfig } = await buildBrowser(args, true);
   try {
@@ -292,12 +474,13 @@ async function modeLogin(args) {
         await maybeBypassDataDome(page, proxyConfig, args);
 
         if (!isAuthedUrl(page.url())) {
-          // Intentionally do NOT pre-fill the form. Yelp's bot detection
-          // scores the keystroke timing of the email/password fields, so
-          // synthetic typing tanks the trust score. Let the human type.
+          // Auto-fill the form. Use humanized per-keystroke delays so Yelp's
+          // bot-detection doesn't trivially flag the keystroke timing.
           try {
-            await page.waitForSelector(SELECTORS.loginEmail, { timeout: 15000 });
-          } catch {}
+            await autofillLogin(page, args.email, args.password);
+          } catch (e) {
+            console.error('[yelp-login] autofill skipped: ' + (e?.message || e));
+          }
         }
 
         const startedAt = Date.now();

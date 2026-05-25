@@ -20,6 +20,8 @@ class PublishToSocialMediaJob implements ShouldQueue
 
     public int $tries = 3;
     public array $backoff = [60, 300, 900]; // 1, 5, 15 min
+    /** @var array<string, mixed> */
+    protected array $platformErrors = [];
 
     public function __construct(
         public ProjectImage $image,
@@ -85,6 +87,8 @@ class PublishToSocialMediaJob implements ShouldQueue
         array $content,
         string $linkUrl,
     ): void {
+        $this->platformErrors[$platform] = null;
+
         // Block only if there's a pending post (race protection) or a published
         // post within the last 30 days (anti-spam). Older published posts are
         // eligible for recycling so weekly GBP posts keep flowing.
@@ -132,8 +136,11 @@ class PublishToSocialMediaJob implements ShouldQueue
                     'post_id' => $result['id'],
                 ]);
             } else {
-                $error = $metaService->getLastError();
-                $post->markFailed(json_encode($error));
+                $error = $platform === 'google_business'
+                    ? ($this->platformErrors['google_business'] ?? null)
+                    : $metaService->getLastError();
+
+                $post->markFailed($this->formatErrorForStorage($error));
                 Log::error("Social Media: Failed to publish to {$platform}", [
                     'image_id' => $image->id,
                     'error' => $error,
@@ -171,6 +178,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         $result = $gbpService->createLocalPost($gbpImageUrl, $summary, $linkUrl, 'LEARN_MORE');
 
         if (! $result) {
+            $this->platformErrors['google_business'] = $gbpService->getLastError();
             return null;
         }
 
@@ -178,5 +186,31 @@ class PublishToSocialMediaJob implements ShouldQueue
             'id' => $result['name'],
             'permalink' => $result['searchUrl'],
         ];
+    }
+
+    /**
+     * Convert mixed service error payloads into a readable, compact string.
+     */
+    protected function formatErrorForStorage(mixed $error): string
+    {
+        if (is_string($error) && trim($error) !== '') {
+            return $error;
+        }
+
+        if (is_array($error)) {
+            $message = $error['message'] ?? $error['error_description'] ?? null;
+            $status = $error['status'] ?? null;
+
+            if (is_string($message) && trim($message) !== '') {
+                return $status ? "{$message} (status {$status})" : $message;
+            }
+
+            $encoded = json_encode($error, JSON_UNESCAPED_SLASHES);
+            if (is_string($encoded) && $encoded !== 'null' && $encoded !== '') {
+                return $encoded;
+            }
+        }
+
+        return 'Unknown publish error';
     }
 }

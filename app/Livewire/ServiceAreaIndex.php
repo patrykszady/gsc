@@ -3,8 +3,7 @@
 namespace App\Livewire;
 
 use App\Services\ZipCodeService;
-use Artesaos\SEOTools\Facades\OpenGraph;
-use Artesaos\SEOTools\Facades\SEOMeta;
+use App\Support\SEO\SEOBuilder;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -25,10 +24,11 @@ class ServiceAreaIndex extends Component
         $description = 'GS Construction serves ' . $this->totalZips
             . ' ZIP codes across Chicagoland. Find your ZIP for kitchen, bathroom and home remodeling near you.';
 
-        SEOMeta::setTitle($title);
-        SEOMeta::setDescription($description);
-        SEOMeta::setCanonical(url('/service-area'));
-        OpenGraph::setTitle($title)->setDescription($description)->setUrl(url('/service-area'));
+        app(SEOBuilder::class)
+            ->title($title)
+            ->description($description)
+            ->canonical(url('/service-area'))
+            ->url(url('/service-area'));
     }
 
     public function render()

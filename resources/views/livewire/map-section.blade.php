@@ -6,18 +6,18 @@
                 class="absolute inset-0 bg-fixed bg-center bg-cover"
                 style="background-image: url('{{ asset('images/gs_map.png') }}');"
             ></div>
-        @elseif($zipCounts->isEmpty())
+        @elseif($zipPoints->isEmpty())
             <div class="flex size-full items-center justify-center bg-white dark:bg-zinc-800">
                 <div class="text-center">
-                    <p class="text-base font-semibold text-zinc-700 dark:text-zinc-200">No zip code data yet.</p>
-                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Add zip codes to projects to populate the map.</p>
+                    <p class="text-base font-semibold text-zinc-700 dark:text-zinc-200">No Hive zip data yet.</p>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Run the Hive sync to populate map bubbles.</p>
                 </div>
             </div>
         @else
             {{-- Fixed map - clip-path on parent creates the mask effect --}}
             <div
                 x-data="{
-                    zipCounts: @js($zipCounts),
+                    zipPoints: @js($zipPoints),
                     maxCount: {{ $maxCount }},
                     mapCenter: @js($mapCenter),
                     mapModuleLoaded: false,
@@ -26,7 +26,7 @@
                         if (this.mapModuleLoaded) return;
                         this.mapModuleLoaded = true;
                         const { createProjectZipMap } = await window.loadProjectZipMap();
-                        Object.assign(this, createProjectZipMap(this.zipCounts, this.maxCount, this.mapCenter));
+                        Object.assign(this, createProjectZipMap(this.zipPoints, this.maxCount, this.mapCenter));
                         await this.initMap();
                         // Kick tile rendering on multiple frames — the clip-path container
                         // can confuse Google Maps' visibility detection.

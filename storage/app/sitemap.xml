@@ -2,79 +2,139 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
     <url>
     <loc>https://gs.construction</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <loc>https://gs.construction/reviews</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/about</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
     <loc>https://gs.construction/contact</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/services</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/areas-served</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/service-area</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/services/basement-remodeling</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/services/home-additions</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/services/basements</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/services/basement-finishing</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/services/additions</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/services/room-additions</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/basement-remodeling</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/basement-finishing</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/home-additions</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/additions</loc>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/compare</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
     <loc>https://gs.construction/compare/kitchen-village</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
     <loc>https://gs.construction/compare/4ever-remodeling</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
     <loc>https://gs.construction/compare/airoom</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
     <loc>https://gs.construction/compare/normandy-remodeling</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
@@ -128,6 +188,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/arlington-heights/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/arlington-heights/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/arlington-heights/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -187,6 +259,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/barrington/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/barrington/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/barrington-hills</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -236,6 +320,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/barrington-hills/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/barrington-hills/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/barrington-hills/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -295,6 +391,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/buffalo-grove/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/buffalo-grove/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/chicago</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -344,6 +452,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/chicago/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/chicago/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/chicago/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -403,6 +523,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/countryside/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/countryside/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/deer-park</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -452,6 +584,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/deer-park/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/deer-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/deer-park/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -511,6 +655,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/deerfield/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/deerfield/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/deerpath</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -560,6 +716,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/deerpath/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/deerpath/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/deerpath/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -619,6 +787,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/des-plaines/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/des-plaines/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/elgin</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -668,6 +848,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/elgin/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/elgin/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/elgin/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -727,6 +919,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/elk-grove-village/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/elk-grove-village/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/elmwood-park</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -776,6 +980,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/elmwood-park/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/elmwood-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/elmwood-park/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -835,6 +1051,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/evanston/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/evanston/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/forest-lake</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -884,6 +1112,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/forest-lake/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/forest-lake/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/forest-lake/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -943,6 +1183,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/forest-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/forest-park/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/forest-view</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -992,6 +1244,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/forest-view/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/forest-view/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/forest-view/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1051,6 +1315,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/fort-hill/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fort-hill/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/fox-lake</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1100,6 +1376,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/fox-lake/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fox-lake/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fox-lake/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1159,6 +1447,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/fox-lake-hills/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fox-lake-hills/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/fox-point-north</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1208,6 +1508,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/fox-point-north/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fox-point-north/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fox-point-north/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1267,6 +1579,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/fox-river-grove/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/fox-river-grove/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/glencoe</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1316,6 +1640,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/glencoe/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/glencoe/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/glencoe/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1375,6 +1711,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/glenview/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/glenview/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/grayslake</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1424,6 +1772,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/grayslake/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/grayslake/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/grayslake/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1483,6 +1843,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/great-lakes/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/great-lakes/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/green-oaks</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1532,6 +1904,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/green-oaks/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/green-oaks/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/green-oaks/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1591,6 +1975,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/gurnee/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/gurnee/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/harwood-heights</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1640,6 +2036,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/harwood-heights/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/harwood-heights/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/harwood-heights/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1699,6 +2107,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/hawthorn-woods/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/hawthorn-woods/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/highland-park</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1748,6 +2168,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/highland-park/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/highland-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/highland-park/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1807,6 +2239,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/hoffman-estates/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/hoffman-estates/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/hometown</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1856,6 +2300,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/hometown/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/hometown/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/hometown/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1915,6 +2371,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/homewood/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/homewood/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/indian-creek</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -1964,6 +2432,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/indian-creek/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/indian-creek/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/indian-creek/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2023,6 +2503,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/inverness/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/inverness/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/kenilworth</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2072,6 +2564,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/kenilworth/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/kenilworth/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/kenilworth/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2131,6 +2635,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/kildeer/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/kildeer/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/lake-barrington</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2180,6 +2696,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/lake-barrington/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-barrington/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-barrington/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2239,6 +2767,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/lake-bluff/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-bluff/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/lake-forest</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2288,6 +2828,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/lake-forest/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-forest/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-forest/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2347,6 +2899,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/lake-villa/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-villa/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/lake-zurich</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2396,6 +2960,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/lake-zurich/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-zurich/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lake-zurich/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2455,6 +3031,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/libertyville/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/libertyville/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/lincolnshire</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2504,6 +3092,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/lincolnshire/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lincolnshire/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lincolnshire/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2563,6 +3163,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/lincolnwood/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lincolnwood/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/lindenhurst</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2612,6 +3224,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/lindenhurst/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lindenhurst/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/lindenhurst/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2671,6 +3295,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/long-grove/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/long-grove/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/long-lake</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2720,6 +3356,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/long-lake/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/long-lake/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/long-lake/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2779,6 +3427,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/melrose-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/melrose-park/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/morton-grove</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2828,6 +3488,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/morton-grove/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/morton-grove/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/morton-grove/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2887,6 +3559,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/mount-prospect/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/mount-prospect/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/mundelein</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -2936,6 +3620,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/mundelein/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/mundelein/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/mundelein/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2995,6 +3691,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/niles/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/niles/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/norridge</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3044,6 +3752,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/norridge/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/norridge/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/norridge/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3103,6 +3823,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/north-barrington/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/north-barrington/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/northbrook</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3152,6 +3884,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/northbrook/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/northbrook/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/northbrook/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3211,6 +3955,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/northfield/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/northfield/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/northlake</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3260,6 +4016,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/northlake/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/northlake/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/northlake/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3319,6 +4087,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/oak-forest/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/oak-forest/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/oak-lawn</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3368,6 +4148,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/oak-lawn/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/oak-lawn/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/oak-lawn/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3427,6 +4219,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/oak-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/oak-park/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/orland-hills</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3476,6 +4280,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/orland-hills/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/orland-hills/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/orland-hills/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3535,6 +4351,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/orland-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/orland-park/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/palatine</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3584,6 +4412,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/palatine/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/palatine/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/palatine/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3643,6 +4483,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/palos-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/palos-park/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/park-forest</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3692,6 +4544,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/park-forest/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/park-forest/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/park-forest/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3751,6 +4615,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/park-ridge/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/park-ridge/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/port-barrington</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3800,6 +4676,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/port-barrington/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/port-barrington/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/port-barrington/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3859,6 +4747,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/prospect-heights/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/prospect-heights/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/river-forest</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -3908,6 +4808,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/river-forest/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/river-forest/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/river-forest/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3967,6 +4879,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/river-grove/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/river-grove/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/riverdale</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4016,6 +4940,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/riverdale/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/riverdale/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/riverdale/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4075,6 +5011,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/riverside/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/riverside/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/riverwoods</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4124,6 +5072,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/riverwoods/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/riverwoods/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/riverwoods/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4183,6 +5143,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/rolling-meadows/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/rolling-meadows/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/rosemont</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4232,6 +5204,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/rosemont/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/rosemont/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/rosemont/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4291,6 +5275,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/round-lake/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/round-lake/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/schaumburg</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4340,6 +5336,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/schaumburg/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/schaumburg/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/schaumburg/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4399,6 +5407,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/schiller-park/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/schiller-park/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/skokie</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4448,6 +5468,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/skokie/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/skokie/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/skokie/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4507,6 +5539,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/south-barrington/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/south-barrington/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/streamwood</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4556,6 +5600,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/streamwood/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/streamwood/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/streamwood/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4615,6 +5671,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/vernon-hills/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/vernon-hills/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/western-springs</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4664,6 +5732,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/western-springs/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/western-springs/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/western-springs/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4723,6 +5803,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/wheeling/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/wheeling/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/willow-springs</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4772,6 +5864,18 @@
             </url>
     <url>
     <loc>https://gs.construction/areas-served/willow-springs/services/home-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/willow-springs/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/willow-springs/services/home-additions</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4831,6 +5935,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/wilmette/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/wilmette/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/areas-served/winnetka</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4885,6 +6001,18 @@
     <priority>0.8</priority>
             </url>
     <url>
+    <loc>https://gs.construction/areas-served/winnetka/services/basement-remodeling</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/areas-served/winnetka/services/home-additions</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/service-area/60004</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -4892,6 +6020,12 @@
             </url>
     <url>
     <loc>https://gs.construction/service-area/60005</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/service-area/60007</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -4909,7 +6043,19 @@
     <priority>0.7</priority>
             </url>
     <url>
+    <loc>https://gs.construction/service-area/60013</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/service-area/60015</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/service-area/60021</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -4976,6 +6122,12 @@
             </url>
     <url>
     <loc>https://gs.construction/service-area/60048</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/service-area/60053</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -5125,6 +6277,12 @@
     <priority>0.7</priority>
             </url>
     <url>
+    <loc>https://gs.construction/service-area/60453</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/service-area/60515</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
@@ -5137,7 +6295,19 @@
     <priority>0.7</priority>
             </url>
     <url>
+    <loc>https://gs.construction/service-area/60540</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
     <loc>https://gs.construction/service-area/60558</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/service-area/60602</loc>
     <lastmod>2026-05-04T01:50:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
@@ -5233,434 +6403,440 @@
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-115</loc>
+    <loc>https://gs.construction/service-area/60707</loc>
+    <lastmod>2026-05-04T01:50:29+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+            </url>
+    <url>
+    <loc>https://gs.construction/reviews/chicago-home-review-115</loc>
     <lastmod>2026-04-14T11:00:05+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-home-remodel-review-111</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-home-remodel-review-111</loc>
     <lastmod>2026-04-07T00:45:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-bathroom-review-88</loc>
+    <loc>https://gs.construction/reviews/palatine-il-bathroom-review-88</loc>
     <lastmod>2026-04-07T06:03:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-kitchen-review-87</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-kitchen-review-87</loc>
     <lastmod>2026-04-07T06:02:47+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-kitchen-review-86</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-kitchen-review-86</loc>
     <lastmod>2026-04-05T00:00:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-bathroom-review-85</loc>
+    <loc>https://gs.construction/reviews/palatine-il-bathroom-review-85</loc>
     <lastmod>2026-04-07T06:00:27+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-103</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-103</loc>
     <lastmod>2026-03-15T11:00:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-105</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-105</loc>
     <lastmod>2026-04-07T03:04:40+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-90</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-90</loc>
     <lastmod>2026-04-05T00:07:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-bathroom-review-91</loc>
+    <loc>https://gs.construction/reviews/palatine-il-bathroom-review-91</loc>
     <lastmod>2026-04-05T00:36:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-bathroom-review-106</loc>
+    <loc>https://gs.construction/reviews/palatine-il-bathroom-review-106</loc>
     <lastmod>2026-04-07T06:01:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/barrington-il-kitchen-review-92</loc>
+    <loc>https://gs.construction/reviews/barrington-il-kitchen-review-92</loc>
     <lastmod>2026-05-04T01:33:05+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-93</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-93</loc>
     <lastmod>2026-03-13T11:00:05+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-107</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-107</loc>
     <lastmod>2026-04-07T01:42:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-94</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-94</loc>
     <lastmod>2026-03-13T11:00:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-108</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-108</loc>
     <lastmod>2026-04-07T03:08:05+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-49</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-49</loc>
     <lastmod>2026-04-07T21:49:19+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-home-remodel-review-48</loc>
+    <loc>https://gs.construction/reviews/palatine-il-home-remodel-review-48</loc>
     <lastmod>2026-04-05T00:06:55+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/inverness-il-home-remodel-review-47</loc>
+    <loc>https://gs.construction/reviews/inverness-il-home-remodel-review-47</loc>
     <lastmod>2026-05-04T01:33:49+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-home-remodel-review-46</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-home-remodel-review-46</loc>
     <lastmod>2026-04-07T21:47:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-home-remodel-review-45</loc>
+    <loc>https://gs.construction/reviews/palatine-il-home-remodel-review-45</loc>
     <lastmod>2026-04-07T21:46:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-bathroom-review-50</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-bathroom-review-50</loc>
     <lastmod>2026-04-05T00:00:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/mount-prospect-il-kitchen-review-44</loc>
+    <loc>https://gs.construction/reviews/mount-prospect-il-kitchen-review-44</loc>
     <lastmod>2026-05-04T01:33:22+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-kitchen-review-42</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-kitchen-review-42</loc>
     <lastmod>2026-04-05T00:01:01+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/inverness-il-kitchen-review-34</loc>
+    <loc>https://gs.construction/reviews/inverness-il-kitchen-review-34</loc>
     <lastmod>2026-04-05T00:01:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-kitchen-review-43</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-kitchen-review-43</loc>
     <lastmod>2026-04-07T06:04:02+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-kitchen-review-23</loc>
+    <loc>https://gs.construction/reviews/palatine-il-kitchen-review-23</loc>
     <lastmod>2026-04-07T03:14:33+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-110</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-110</loc>
     <lastmod>2026-04-07T03:15:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-kitchen-review-41</loc>
+    <loc>https://gs.construction/reviews/palatine-il-kitchen-review-41</loc>
     <lastmod>2026-04-05T00:06:49+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/hoffman-estates-il-kitchen-review-40</loc>
+    <loc>https://gs.construction/reviews/hoffman-estates-il-kitchen-review-40</loc>
     <lastmod>2026-05-09T02:43:36+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-84</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-84</loc>
     <lastmod>2026-04-05T00:01:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-12</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-12</loc>
     <lastmod>2026-04-07T03:16:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/inverness-il-kitchen-review-39</loc>
+    <loc>https://gs.construction/reviews/inverness-il-kitchen-review-39</loc>
     <lastmod>2026-04-07T03:18:25+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-38</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-38</loc>
     <lastmod>2026-04-07T21:51:52+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/deer-park-il-kitchen-review-37</loc>
+    <loc>https://gs.construction/reviews/deer-park-il-kitchen-review-37</loc>
     <lastmod>2026-04-07T03:20:07+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-kitchen-review-83</loc>
+    <loc>https://gs.construction/reviews/palatine-il-kitchen-review-83</loc>
     <lastmod>2026-04-07T03:20:59+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-bathroom-review-35</loc>
+    <loc>https://gs.construction/reviews/palatine-il-bathroom-review-35</loc>
     <lastmod>2026-04-07T03:21:51+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlingotn-heights-il-kitchen-review-33</loc>
+    <loc>https://gs.construction/reviews/arlingotn-heights-il-kitchen-review-33</loc>
     <lastmod>2026-04-05T00:06:44+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/long-grove-il-basement-review-32</loc>
+    <loc>https://gs.construction/reviews/long-grove-il-basement-review-32</loc>
     <lastmod>2026-04-07T03:24:28+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-31</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-31</loc>
     <lastmod>2026-04-07T03:25:20+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-bathroom-review-30</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-bathroom-review-30</loc>
     <lastmod>2026-04-05T00:06:42+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/wilmette-il-kitchen-review-29</loc>
+    <loc>https://gs.construction/reviews/wilmette-il-kitchen-review-29</loc>
     <lastmod>2026-04-07T03:27:03+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-il-kitchen-review-28</loc>
+    <loc>https://gs.construction/reviews/chicago-il-kitchen-review-28</loc>
     <lastmod>2026-04-05T00:06:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/kildeer-il-bathroom-review-27</loc>
+    <loc>https://gs.construction/reviews/kildeer-il-bathroom-review-27</loc>
     <lastmod>2026-04-07T03:28:46+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-home-remodel-review-26</loc>
+    <loc>https://gs.construction/reviews/palatine-il-home-remodel-review-26</loc>
     <lastmod>2026-04-07T03:29:37+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-home-remodel-review-25</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-home-remodel-review-25</loc>
     <lastmod>2026-04-05T00:06:39+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-bathroom-review-24</loc>
+    <loc>https://gs.construction/reviews/palatine-il-bathroom-review-24</loc>
     <lastmod>2026-04-07T03:31:20+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-kitchen-review-22</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-kitchen-review-22</loc>
     <lastmod>2026-04-07T03:32:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-kitchen-review-21</loc>
+    <loc>https://gs.construction/reviews/palatine-il-kitchen-review-21</loc>
     <lastmod>2026-04-07T03:33:04+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/arlington-heights-il-kitchen-review-20</loc>
+    <loc>https://gs.construction/reviews/arlington-heights-il-kitchen-review-20</loc>
     <lastmod>2026-04-07T03:33:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-19</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-19</loc>
     <lastmod>2026-04-07T03:34:49+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-il-home-remodel-review-18</loc>
+    <loc>https://gs.construction/reviews/chicago-il-home-remodel-review-18</loc>
     <lastmod>2026-04-07T03:35:41+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/buffalo-grove-il-bathroom-review-17</loc>
+    <loc>https://gs.construction/reviews/buffalo-grove-il-bathroom-review-17</loc>
     <lastmod>2026-04-07T03:36:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/lake-zurich-il-kitchen-review-16</loc>
+    <loc>https://gs.construction/reviews/lake-zurich-il-kitchen-review-16</loc>
     <lastmod>2026-04-05T00:06:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-il-kitchen-review-15</loc>
+    <loc>https://gs.construction/reviews/chicago-il-kitchen-review-15</loc>
     <lastmod>2026-04-05T04:09:54+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-il-home-remodel-review-14</loc>
+    <loc>https://gs.construction/reviews/chicago-il-home-remodel-review-14</loc>
     <lastmod>2026-04-07T03:39:06+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/buffalo-grove-il-bathroom-review-13</loc>
+    <loc>https://gs.construction/reviews/buffalo-grove-il-bathroom-review-13</loc>
     <lastmod>2026-04-07T03:39:58+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-il-kitchen-review-11</loc>
+    <loc>https://gs.construction/reviews/chicago-il-kitchen-review-11</loc>
     <lastmod>2026-04-05T00:06:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/hoffman-estates-il-kitchen-review-10</loc>
+    <loc>https://gs.construction/reviews/hoffman-estates-il-kitchen-review-10</loc>
     <lastmod>2026-04-07T03:41:40+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/evanston-il-kitchen-review-9</loc>
+    <loc>https://gs.construction/reviews/evanston-il-kitchen-review-9</loc>
     <lastmod>2026-04-07T03:42:32+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/mount-prospect-il-bathroom-review-82</loc>
+    <loc>https://gs.construction/reviews/mount-prospect-il-bathroom-review-82</loc>
     <lastmod>2026-04-05T00:06:57+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/palatine-il-kitchen-review-7</loc>
+    <loc>https://gs.construction/reviews/palatine-il-kitchen-review-7</loc>
     <lastmod>2026-04-07T03:43:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/evanston-il-kitchen-review-6</loc>
+    <loc>https://gs.construction/reviews/evanston-il-kitchen-review-6</loc>
     <lastmod>2026-04-05T00:06:26+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/rolling-meadows-il-bathroom-review-5</loc>
+    <loc>https://gs.construction/reviews/rolling-meadows-il-bathroom-review-5</loc>
     <lastmod>2026-04-07T03:45:07+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-home-review-114</loc>
+    <loc>https://gs.construction/reviews/chicago-home-review-114</loc>
     <lastmod>2026-04-07T21:44:29+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/wheeling-il-bathroom-review-4</loc>
+    <loc>https://gs.construction/reviews/wheeling-il-bathroom-review-4</loc>
     <lastmod>2026-04-07T03:45:59+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/vernon-hills-il-home-remodel-review-3</loc>
+    <loc>https://gs.construction/reviews/vernon-hills-il-home-remodel-review-3</loc>
     <lastmod>2026-04-07T03:46:50+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/glencoe-il-bathroom-review-2</loc>
+    <loc>https://gs.construction/reviews/glencoe-il-bathroom-review-2</loc>
     <lastmod>2026-04-07T03:47:42+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/testimonials/chicago-il-bathroom-review-51</loc>
+    <loc>https://gs.construction/reviews/chicago-il-bathroom-review-51</loc>
     <lastmod>2026-04-07T03:48:09+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/kitchens</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/bathrooms</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
     <loc>https://gs.construction/projects/home-remodeling</loc>
-    <lastmod>2026-05-19T21:17:46+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
@@ -5702,7 +6878,7 @@
         </url>
     <url>
     <loc>https://gs.construction/projects/palatine-kitchen-remodel/photos/modern-kitchen-remodel-palatine-white-palatine-il</loc>
-    <lastmod>2026-05-18T02:57:59+00:00</lastmod>
+    <lastmod>2026-05-25T20:38:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
     <image:image>

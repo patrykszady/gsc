@@ -24,7 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Per-request SEO state accumulator (consumed by app layout).
+        $this->app->singleton(\App\Support\SEO\SEOBuilder::class);
     }
 
     /**

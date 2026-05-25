@@ -75,6 +75,16 @@ Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:
     ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'))
     ->when(fn () => filled(config('services.serpapi.api_key')));
 
+// Yelp: weekly upload of any new project images to the account-wide
+// Business Photos gallery. Mirrors GBP media sync. Limited to 5/run so a
+// single weekly slot doesn't hammer Yelp's anti-bot.
+Schedule::command('yelp:sync-business-photos --limit=5')
+    ->weeklyOn(1, '09:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled Yelp business photos sync failed'))
+    ->when(fn () => filled(config('services.yelp.business.email')) && filled(config('services.yelp.business.password')));
+
 // Google: probe daily via free Places API; only call SerpApi when review count changes.
 Schedule::command('testimonials:sync-google-reviews-serpapi --only-new')
     ->dailyAt('07:15')

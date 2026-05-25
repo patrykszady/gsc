@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    {{-- SEOTools: Meta, OpenGraph, Twitter --}}
-    {!! \Artesaos\SEOTools\Facades\SEOMeta::generate() !!}
-    {!! \Artesaos\SEOTools\Facades\OpenGraph::generate() !!}
-    {!! \Artesaos\SEOTools\Facades\TwitterCard::generate() !!}
+    {{-- SEO: title, description, canonical, robots, OG, Twitter, JSON-LD (ralphjsmit/laravel-seo) --}}
+    @php($__seoBuilder = app(\App\Support\SEO\SEOBuilder::class))
+    {!! seo($__seoBuilder->build()) !!}
+    @if($__kw = $__seoBuilder->keywordList())
+        <meta name="keywords" content="{{ implode(', ', $__kw) }}">
+    @endif
 
     {{-- hreflang: explicit US-English signal (single-language site, prevents Google guessing) --}}
     <link rel="alternate" hreflang="en-us" href="{{ url()->current() }}" />

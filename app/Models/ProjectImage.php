@@ -32,6 +32,9 @@ class ProjectImage extends Model
         'google_places_uploaded_at',
         'yelp_photo_id',
         'yelp_uploaded_at',
+        'yelp_biz_photo_id',
+        'yelp_biz_uploaded_at',
+        'yelp_biz_photos_url',
     ];
 
     protected $casts = [
@@ -39,6 +42,7 @@ class ProjectImage extends Model
         'thumbnails' => 'array',
         'google_places_uploaded_at' => 'datetime',
         'yelp_uploaded_at' => 'datetime',
+        'yelp_biz_uploaded_at' => 'datetime',
     ];
 
 

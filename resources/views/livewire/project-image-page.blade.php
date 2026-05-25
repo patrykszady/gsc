@@ -244,4 +244,8 @@
         secondaryCtaText="View All Projects"
         secondaryCtaUrl="/projects"
     />
+
+    @if(!empty($imageSchema))
+        <script type="application/ld+json">{!! json_encode($imageSchema, JSON_UNESCAPED_SLASHES) !!}</script>
+    @endif
 </div>
