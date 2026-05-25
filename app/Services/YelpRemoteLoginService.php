@@ -273,6 +273,10 @@ class YelpRemoteLoginService
         $state = $this->readState();
         if ($state) {
             $this->killState($state);
+        } else {
+            // No state file (e.g. stale from a previous deploy) — still kill
+            // any orphaned processes by pattern and remove leftover files.
+            $this->killOrphans();
         }
         return ['ok' => true];
     }
@@ -366,6 +370,17 @@ class YelpRemoteLoginService
         @unlink($this->stateFile);
         @unlink(storage_path('app/yelp-remote-login.passwd'));
         Log::info('Yelp remote login: session stopped');
+    }
+
+    protected function killOrphans(): void
+    {
+        @shell_exec('pkill -f ' . escapeshellarg('yelp-login.mjs') . ' 2>/dev/null');
+        @shell_exec('pkill -f "x11vnc.*-rfbport" 2>/dev/null');
+        @shell_exec('pkill -f "websockify" 2>/dev/null');
+        @shell_exec('pkill -f "Xvfb :99" 2>/dev/null');
+        @unlink($this->stateFile);
+        @unlink(storage_path('app/yelp-remote-login.passwd'));
+        Log::info('Yelp remote login: orphan cleanup completed');
     }
 
     protected function readState(): ?array
