@@ -123,6 +123,13 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
   // /login often loads a DataDome overlay that hides the form.
   await maybeBypassDataDome(page, proxyConfig, args);
 
+  // Dismiss OneTrust / cookie-consent banners that can block form elements.
+  await page.evaluate(() => {
+    const btn = document.querySelector('#onetrust-accept-btn-handler, button[id*="accept"][id*="cookie" i], button[class*="cookie" i][class*="accept" i]');
+    if (btn) btn.click();
+  }).catch(() => {});
+  await sleep(600);
+
   if (await isLoggedIn(page)) {
     console.error('[yelp] already logged in (cookies reused)');
     return true;
@@ -146,7 +153,7 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
     // the password field, then wait for it.
     console.error('[yelp] email-first flow detected - submitting email to reveal password field');
     const submitFirst = await page.$(SELECTORS.loginSubmit);
-    if (submitFirst) await submitFirst.click().catch(() => {});
+    if (submitFirst) await submitFirst.click().catch(() => page.evaluate(el => el.click(), submitFirst));
     await page.waitForSelector(SELECTORS.loginPassword, { timeout: 15000 }).catch(() => {});
     passEl = await page.$(SELECTORS.loginPassword);
   }
@@ -165,7 +172,9 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
   }
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {}),
-    submit.click(),
+    // Use JS click as fallback — bypasses Puppeteer's "not clickable" check
+    // that fires when a cookie-consent overlay covers the button.
+    submit.click().catch(() => page.evaluate(el => el.click(), submit)),
   ]);
 
   // Yelp may show DataDome again after submit.
