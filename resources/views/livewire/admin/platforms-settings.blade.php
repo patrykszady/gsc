@@ -1,4 +1,9 @@
-<div class="space-y-8" wire:init="checkYelpSession(true)">
+<div
+    class="space-y-8"
+    wire:init="checkYelpSession(true)"
+    x-data
+    x-init="setTimeout(() => { try { $wire.checkYelpSession(true) } catch (e) {} }, 250)"
+>
     {{-- Header --}}
     <div class="flex items-center justify-between">
         <div>

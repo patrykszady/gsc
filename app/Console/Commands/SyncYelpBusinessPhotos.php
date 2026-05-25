@@ -6,6 +6,8 @@ use App\Jobs\UploadProjectImageToYelpBusinessPhotos;
 use App\Models\ProjectImage;
 use App\Services\YelpBusinessService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 class SyncYelpBusinessPhotos extends Command
 {
@@ -48,7 +50,9 @@ class SyncYelpBusinessPhotos extends Command
 
         $showProcess = (bool) $this->option('show-process');
 
-        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, $force, $sync, $showProcess, $service) {
+        $chain = [];
+
+        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, &$chain, $force, $sync, $showProcess, $service) {
             if ($sync) {
                 $this->line("  - processing image #{$image->id}");
 
@@ -72,12 +76,28 @@ class SyncYelpBusinessPhotos extends Command
                     $this->error("    failed image #{$image->id} (see logs for details)");
                 }
             } else {
-                UploadProjectImageToYelpBusinessPhotos::dispatch($image->id, $force)
-                    ->onQueue('media-sync');
+                // Skip if this image is already in a pending chain from a
+                // previous run (each upload takes ~3-4 min).
+                $cacheKey = 'yelp_biz_upload_queued:' . $image->id;
+                if (! $force && Cache::has($cacheKey)) {
+                    $this->line("  - skip image #{$image->id} (already queued)");
+                    return;
+                }
+                // Mark as queued for up to 2 hours; the job will forget it.
+                Cache::put($cacheKey, true, now()->addHours(2));
+
+                // Build a chain so each upload waits for the previous to
+                // finish — Yelp uploads take 3-4 min and we must not run
+                // them in parallel (browser session + WithoutOverlapping).
+                $chain[] = new UploadProjectImageToYelpBusinessPhotos($image->id, $force);
                 $this->line("  - queued image #{$image->id}");
             }
             $count++;
         });
+
+        if (! $sync && ! empty($chain)) {
+            Bus::chain($chain)->onQueue('media-sync')->dispatch();
+        }
 
         $this->info("Dispatched {$count} Yelp business-photos upload job(s).");
         return self::SUCCESS;

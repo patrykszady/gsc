@@ -6,6 +6,7 @@ use App\Models\PlatformSetting;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -74,6 +75,13 @@ class PlatformsSettings extends Component
         $this->yelpEmail = (string) ($yelp->getEmail() ?? '');
         $this->yelpHasPassword = ! empty($yelp->getPassword());
         $this->yelpPassword = '';
+
+        // Seed last known Yelp auth state from cache so the UI doesn't flash "unknown"
+        // on every page load while the silent re-check runs in the background.
+        $cached = Cache::get('yelp.last_auth');
+        if ($cached !== null) {
+            $this->yelpAuthenticated = (bool) $cached;
+        }
     }
 
     // ---- GBP actions ----
@@ -202,6 +210,9 @@ class PlatformsSettings extends Component
     {
         $authed = app(YelpBusinessService::class)->checkSession();
         $this->yelpAuthenticated = $authed;
+        if ($authed !== null) {
+            Cache::put('yelp.last_auth', $authed, now()->addHours(6));
+        }
         if ($silent) return;
         if ($authed === true) {
             session()->flash('platforms-success', 'Yelp session is active.');

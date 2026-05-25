@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -43,6 +44,11 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue
 
     public function handle(YelpBusinessService $service): void
     {
+        // Always clear the "queued" marker once the job actually runs so the
+        // next sync command can re-queue this image if it ends up not being
+        // uploaded (e.g. unpublished, missing config, upload failure).
+        Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+
         $image = ProjectImage::with('project')->find($this->imageId);
         if (! $image) {
             Log::warning('Yelp biz: image not found', ['image_id' => $this->imageId]);
@@ -77,5 +83,10 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue
                 'photo_id' => $result['photo_id'],
             ]);
         }
+    }
+
+    public function failed(?\Throwable $e = null): void
+    {
+        Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
     }
 }
