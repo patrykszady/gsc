@@ -13,7 +13,8 @@ class SyncYelpBusinessPhotos extends Command
         {--project= : Limit to a single project ID}
         {--force : Re-upload images even if already synced}
         {--limit=0 : Cap number of images dispatched (0 = unlimited)}
-        {--sync : Run jobs synchronously (default: queue)}';
+        {--sync : Run uploads synchronously in this process (default: queue)}
+        {--show-process : Stream Yelp uploader process output (sync mode only)}';
 
     protected $description = 'Dispatch upload jobs for project images to the account-wide Yelp Business Photos gallery.';
 
@@ -45,14 +46,36 @@ class SyncYelpBusinessPhotos extends Command
         $force = (bool) $this->option('force');
         $sync = (bool) $this->option('sync');
 
-        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, $force, $sync) {
+        $showProcess = (bool) $this->option('show-process');
+
+        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, $force, $sync, $showProcess, $service) {
             if ($sync) {
-                UploadProjectImageToYelpBusinessPhotos::dispatchSync($image->id, $force);
+                $this->line("  - processing image #{$image->id}");
+
+                $onProgress = null;
+                if ($showProcess) {
+                    $onProgress = function (string $type, string $line): void {
+                        $prefix = $type === 'err' ? '    [yelp] ' : '    [yelp:out] ';
+                        $this->line($prefix . $line);
+                    };
+                }
+
+                $result = $service->uploadProjectImageToBusinessPhotos($image, $onProgress);
+                if ($result) {
+                    $image->update([
+                        'yelp_biz_photo_id' => $result['photo_id'],
+                        'yelp_biz_uploaded_at' => now(),
+                        'yelp_biz_photos_url' => $result['photos_url'] ?? $image->yelp_biz_photos_url,
+                    ]);
+                    $this->info("    uploaded image #{$image->id} (photo_id={$result['photo_id']})");
+                } else {
+                    $this->error("    failed image #{$image->id} (see logs for details)");
+                }
             } else {
                 UploadProjectImageToYelpBusinessPhotos::dispatch($image->id, $force)
                     ->onQueue('media-sync');
+                $this->line("  - queued image #{$image->id}");
             }
-            $this->line("  - queued image #{$image->id}");
             $count++;
         });
 

@@ -40,7 +40,8 @@ const SELECTORS = {
   loginPassword: 'input[type="password"], input[name="password"], input#password, input[autocomplete="current-password"]',
   loginSubmit: 'button[type="submit"], button[data-button-style="primary"], form button:not([type="button"])',
   // Hidden <input type="file"> behind the "Add Photos" button on biz_photos page.
-  fileInput: 'input[type="file"][accept*="image"]',
+  // Keep this broad because Yelp frequently changes accept/data-testid attrs.
+  fileInput: 'input[type="file"]',
   // Caption field on the per-photo editor that opens after upload.
   captionField: 'textarea[placeholder*="describe your photo" i], textarea[placeholder*="caption" i], textarea[name*="caption" i], textarea[aria-label*="caption" i]',
   // Save / done in the photo editor modal.
@@ -264,32 +265,76 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs) {
   // input behind a styled button - click any visible upload trigger first so
   // the underlying <input type=file> mounts.
   const clicked = await page.evaluate(() => {
-    const candidates = Array.from(document.querySelectorAll('button, a, [role="button"], label'));
+    const candidates = Array.from(document.querySelectorAll('button, a, [role="button"], label, [data-testid], [aria-label], [title]'));
+    const re = /(add|upload).*(photo|image)|photo.*(add|upload)|image.*(add|upload)|add media|upload media/i;
     const trigger = candidates.find(el => {
-      const t = (el.textContent || '').trim().toLowerCase();
-      return /^(add photo|upload photo|add photos|upload photos|add a photo)$/i.test(t)
-        || /add photo|upload photo|add photos|upload photos/.test(t);
+      const text = (el.textContent || '').trim();
+      const aria = el.getAttribute('aria-label') || '';
+      const title = el.getAttribute('title') || '';
+      const tid = el.getAttribute('data-testid') || '';
+      const id = el.id || '';
+      const cls = el.className || '';
+      const haystack = [text, aria, title, tid, id, cls].join(' ');
+      if (!re.test(haystack)) return false;
+      const style = window.getComputedStyle(el);
+      return style && style.display !== 'none' && style.visibility !== 'hidden';
     });
     if (trigger) {
       trigger.click();
-      return trigger.outerHTML.slice(0, 200);
+      return (trigger.outerHTML || '').slice(0, 200);
     }
     return null;
   }).catch(() => null);
   console.error(`[yelp] upload trigger clicked: ${clicked ? 'yes' : 'no'}`);
   await sleep(1500);
 
-  let fileInput = await page.waitForSelector('input[data-testid="photo-file-input"]', { timeout: 15000 }).catch(() => null);
+  let fileInput = await page.waitForSelector('input[data-testid="photo-file-input"]', { timeout: 8000 }).catch(() => null);
   if (!fileInput) {
-    fileInput = await page.waitForSelector(SELECTORS.fileInput, { timeout: 15000 }).catch(() => null);
+    fileInput = await page.waitForSelector(SELECTORS.fileInput, { timeout: 8000 }).catch(() => null);
   }
   if (!fileInput) {
     fileInput = await page.$('input[type="file"]');
   }
   if (!fileInput) {
-    await dumpPage(page, 'no-file-input');
-    await snap(page, 'no-file-input');
-    throw new Error('file input not found on photos page - update SELECTORS.fileInput');
+    // Some Yelp variants use a native file chooser without exposing a stable
+    // input in DOM. Fall back to filechooser flow.
+    const openChooser = async () => {
+      const chooser = await page.waitForFileChooser({ timeout: 15000 });
+      await page.evaluate(() => {
+        const nodes = Array.from(document.querySelectorAll('button, a, [role="button"], label, [data-testid], [aria-label], [title]'));
+        const re = /(add|upload).*(photo|image)|photo.*(add|upload)|image.*(add|upload)|add media|upload media/i;
+        const target = nodes.find(el => {
+          const text = (el.textContent || '').trim();
+          const aria = el.getAttribute('aria-label') || '';
+          const title = el.getAttribute('title') || '';
+          const tid = el.getAttribute('data-testid') || '';
+          const id = el.id || '';
+          const cls = el.className || '';
+          const haystack = [text, aria, title, tid, id, cls].join(' ');
+          if (!re.test(haystack)) return false;
+          const style = window.getComputedStyle(el);
+          return style && style.display !== 'none' && style.visibility !== 'hidden';
+        });
+        if (target) target.click();
+      });
+      return chooser;
+    };
+
+    let chooser = null;
+    try {
+      chooser = await openChooser();
+    } catch (_) {
+      chooser = null;
+    }
+
+    if (chooser) {
+      console.error('[yelp] DOM file input missing; using file chooser fallback');
+      await chooser.accept([photoPath]);
+    } else {
+      await dumpPage(page, 'no-file-input');
+      await snap(page, 'no-file-input');
+      throw new Error('file input/chooser not found on photos page - Yelp UI changed (see /tmp/yelp-no-file-input-*.html)');
+    }
   }
   // Log which input we picked.
   const inputInfo = await page.evaluate(el => ({
@@ -298,8 +343,12 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs) {
   }), fileInput);
   console.error(`[yelp] file input found: ${JSON.stringify(inputInfo)}`);
 
-  console.error(`[yelp] uploading file: ${photoPath}`);
-  await fileInput.uploadFile(photoPath);
+  if (fileInput) {
+    console.error(`[yelp] uploading file via input: ${photoPath}`);
+    await fileInput.uploadFile(photoPath);
+  } else {
+    console.error(`[yelp] uploading file via chooser: ${photoPath}`);
+  }
 
   // Wait longer + watch for upload completion modal / save button.
   await sleep(8000);

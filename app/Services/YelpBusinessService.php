@@ -305,7 +305,7 @@ class YelpBusinessService
      *
      * Returns: ['photo_id' => string, 'photos_url' => string] on success, null on failure.
      */
-    public function uploadProjectImageToBusinessPhotos(ProjectImage $image): ?array
+    public function uploadProjectImageToBusinessPhotos(ProjectImage $image, ?callable $onProgress = null): ?array
     {
         $absolutePath = $this->resolveAbsolutePath($image);
         if (! $absolutePath) {
@@ -352,7 +352,17 @@ class YelpBusinessService
         $process->setTimeout(((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30);
 
         try {
-            $process->run();
+            $process->run(function (string $type, string $buffer) use ($onProgress): void {
+                if (! $onProgress) {
+                    return;
+                }
+                foreach (preg_split('/\r?\n/', $buffer) ?: [] as $line) {
+                    $line = trim($line);
+                    if ($line !== '') {
+                        $onProgress($type, $line);
+                    }
+                }
+            });
         } catch (ProcessTimedOutException $e) {
             Log::error('Yelp biz: upload script timed out', [
                 'image_id' => $image->id,
