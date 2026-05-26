@@ -226,11 +226,16 @@ return [
             // This protects production nodes from overlapping Chromium sessions.
             'automation_lock_ttl_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_TTL', 900),
             'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 5),
-            // Hard throttle: minimum seconds between Yelp Chromium launches
-            // across the whole host. Chromium is heavy; running them
-            // back-to-back saturates CPU + RAM. Default = 1 upload / 10 min.
-            // Set to 0 to disable throttling (NOT recommended in production).
-            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 600),
+            // Optional hard throttle: minimum seconds between Yelp Chromium
+            // launches across the whole host. Set > 0 ONLY if the natural
+            // serialization (Redis lock + maxProcesses=1 + group-kill
+            // cleanup) is not enough for your VPS. Default 0 = next
+            // upload starts as soon as the previous Chromium has exited.
+            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 0),
+            // Override where Puppeteer looks for its installed Chrome.
+            // Defaults to {real-$HOME}/.cache/puppeteer. Set this only if
+            // your deploy installs Chrome at a non-standard location.
+            'puppeteer_cache_dir' => env('PUPPETEER_CACHE_DIR'),
             'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),

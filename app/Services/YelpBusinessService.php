@@ -44,12 +44,22 @@ class YelpBusinessService
         @mkdir($cacheHome, 0775, true);
         @mkdir($fontCache, 0775, true);
 
+        // Puppeteer's Chrome download lives under the REAL user $HOME
+        // (e.g. /home/forge/.cache/puppeteer), placed there by
+        // `npx puppeteer browsers install chrome` at deploy time. We must
+        // pin PUPPETEER_CACHE_DIR explicitly because we override HOME
+        // below to a per-release writable path that has no browser.
+        $realHome = getenv('HOME') ?: '/home/forge';
+        $puppeteerCache = config('services.yelp.business.puppeteer_cache_dir')
+            ?: ($realHome . '/.cache/puppeteer');
+
         return [
             'HOME' => $runtimeHome,
             'XDG_CACHE_HOME' => $cacheHome,
             'XDG_CONFIG_HOME' => $runtimeHome . '/.config',
             'FONTCONFIG_PATH' => '/etc/fonts',
             'FC_CACHEDIR' => $fontCache,
+            'PUPPETEER_CACHE_DIR' => $puppeteerCache,
             // Keep app env explicit for subprocess logs/behavior.
             'APP_ENV' => (string) config('app.env', 'production'),
         ];

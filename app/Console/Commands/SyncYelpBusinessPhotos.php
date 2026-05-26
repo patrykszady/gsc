@@ -51,13 +51,17 @@ class SyncYelpBusinessPhotos extends Command
         $watch = (bool) $this->option('watch');
         $showProcess = (bool) $this->option('show-process');
 
-        $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 600));
-        if (! $sync && $minInterval > 0) {
-            $this->line(sprintf(
-                'Throttle: 1 upload every %d seconds (~%s).',
-                $minInterval,
-                $this->humanInterval($minInterval),
-            ));
+        $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 0));
+        if (! $sync) {
+            if ($minInterval > 0) {
+                $this->line(sprintf(
+                    'Throttle: 1 upload every %d seconds (~%s).',
+                    $minInterval,
+                    $this->humanInterval($minInterval),
+                ));
+            } else {
+                $this->line('Mode: serial (next upload starts as soon as the previous Chromium exits).');
+            }
         }
 
         $dispatchedIds = [];
@@ -122,6 +126,8 @@ class SyncYelpBusinessPhotos extends Command
                 $total,
                 $this->humanInterval($eta),
             ));
+        } else {
+            $this->line(sprintf('Watching %d upload(s); they will run back-to-back.', $total));
         }
 
         $bar = $this->output->createProgressBar($total);
@@ -158,12 +164,15 @@ class SyncYelpBusinessPhotos extends Command
             $bar->setMessage((string) $failed, 'failed');
 
             $lastRunAt = (int) Cache::get('yelp:browser-automation:last-run-at', 0);
-            $statusMsg = 'idle';
-            if ($lastRunAt > 0) {
-                $sinceLast = time() - $lastRunAt;
-                $statusMsg = $sinceLast < $minInterval
-                    ? sprintf('next in %ds', max(0, $minInterval - $sinceLast))
-                    : 'ready';
+            $lockHeld = Cache::has('yelp:browser-automation:lock');
+            if ($lockHeld) {
+                $statusMsg = 'uploading';
+            } elseif ($minInterval > 0 && $lastRunAt > 0 && (time() - $lastRunAt) < $minInterval) {
+                $statusMsg = sprintf('next in %ds', max(0, $minInterval - (time() - $lastRunAt)));
+            } elseif ($pending > 0) {
+                $statusMsg = 'starting next';
+            } else {
+                $statusMsg = 'idle';
             }
             $bar->setMessage($statusMsg, 'status');
 
