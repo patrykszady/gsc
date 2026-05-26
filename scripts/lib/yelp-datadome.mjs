@@ -42,11 +42,10 @@ export function parseDataDomeCookie(cookieStr) {
 // ---- 2captcha ----
 async function solveWith2Captcha({ captchaUrl, pageUrl, proxyStr, userAgent, apiKey }) {
   console.error('[datadome:2captcha] submitting challenge');
-  const t = new URL(captchaUrl).searchParams.get('t');
-  if (t === 'bv') {
-    console.error('[datadome:2captcha] t=bv - IP banned, rotate proxy');
-    return null;
-  }
+  // Note: do NOT short-circuit on t=bv. The `t` parameter just identifies the
+  // DataDome challenge variant ('fe' = slider, 'bv' = interstitial). 2captcha's
+  // datadome method handles both. A previous version bailed here with a
+  // misleading "IP banned" message and never even submitted the task.
   const submitRes = await fetch('https://2captcha.com/in.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
