@@ -184,7 +184,7 @@ class YelpRemoteLoginService
             );
             if ($count > 0 && is_string($rotated)) {
                 $proxyUrl = $rotated;
-                Log::info('Yelp remote login: rotated proxy session token');
+                logger()->info('Yelp remote login: rotated proxy session token');
             }
             $cmdParts[] = '--proxy=' . escapeshellarg($proxyUrl);
         }
