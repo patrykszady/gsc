@@ -269,21 +269,24 @@ class ContactSection extends Component
     protected function detectSpam(): ?string
     {
         // 0. Turnstile verification (if enabled)
-        // Note: We only block on failed verification, not missing token
-        // (missing token could be due to ad blockers, network issues, etc.)
+        // For non-US traffic, token is required and must verify.
+        // For US traffic, we still allow graceful fallback for ad blockers.
         if (config('services.turnstile.enabled') && config('services.turnstile.secret_key')) {
-            if (!empty($this->turnstileToken)) {
-                if (!$this->verifyTurnstile()) {
-                    return 'turnstile_failed';
+            if (empty($this->turnstileToken)) {
+                if ($this->requiresTurnstileToken()) {
+                    return 'turnstile_missing_token';
                 }
-            } else {
-                // Log missing token for monitoring but don't block
-                // Real users may have ad blockers or slow connections
-                Log::channel('submissions')->info('Turnstile token missing (not blocked)', [
+
+                Log::channel('submissions')->info('Turnstile token missing (allowed for US visitor)', [
                     'ip' => request()->ip(),
                     'name' => $this->name,
                     'email' => $this->email,
+                    'visitor_country' => session('visitor_country', 'XX'),
                 ]);
+            } else {
+                if (! $this->verifyTurnstile()) {
+                    return 'turnstile_failed';
+                }
             }
         }
 
@@ -328,6 +331,9 @@ class ContactSection extends Component
             'mobile friendly', 'web development services',
             // Estimator/takeoff outreach spam
             'takeoff services', 'construction takeoffs', 'takeoffs',
+            'construction cost estimation', 'cost estimation services',
+            'material take-off services', 'material take off services',
+            'improve bid success',
             'color-coded drawings or pdfs',
             'share your plans or project links',
             'competitive and economical quote',
@@ -373,6 +379,25 @@ class ContactSection extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Require a Turnstile token for non-US visitors.
+     */
+    protected function requiresTurnstileToken(): bool
+    {
+        return ! $this->isUSVisitor();
+    }
+
+    /**
+     * Mirrors DetectCountry middleware US/territory logic.
+     */
+    protected function isUSVisitor(): bool
+    {
+        $country = session('visitor_country', 'XX');
+        $usCountries = ['US', 'PR', 'VI', 'GU', 'AS', 'MP'];
+
+        return in_array($country, $usCountries, true) || $country === 'XX';
     }
 
     /**

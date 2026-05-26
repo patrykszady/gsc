@@ -2,9 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\YelpUploadThrottledException;
 use App\Models\ProjectImage;
 use App\Services\YelpBusinessService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -19,18 +21,31 @@ use Illuminate\Support\Facades\Log;
  * Fires for any published project image once Yelp is configured, no
  * yelp_portfolio_url required.
  */
-class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue
+class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 2;
+    // tries is high because we lean on `release()` to back off when the
+    // hard min-interval throttle says "not yet". `retryUntil()` is the
+    // real bound \u2014 12h of attempts then give up.
+    public int $tries = 100;
     public int $timeout = 300;
-    public int $backoff = 60;
+    public int $uniqueFor = 7200;
+
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(12)->toDateTime();
+    }
 
     public function __construct(
         public int $imageId,
         public bool $forceRefresh = false,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return (string) $this->imageId;
+    }
 
     // Sequencing is enforced by the media-sync Horizon supervisor running with
     // --max-processes=1 --balance=simple. We intentionally do NOT use
@@ -44,34 +59,60 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue
         // Always clear the "queued" marker once the job actually runs so the
         // next sync command can re-queue this image if it ends up not being
         // uploaded (e.g. unpublished, missing config, upload failure).
-        Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+        try {
+            $image = ProjectImage::with('project')->find($this->imageId);
+            if (! $image) {
+                Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                Log::warning('Yelp biz: image not found', ['image_id' => $this->imageId]);
+                return;
+            }
 
-        $image = ProjectImage::with('project')->find($this->imageId);
-        if (! $image) {
-            Log::warning('Yelp biz: image not found', ['image_id' => $this->imageId]);
-            return;
-        }
+            if (! $image->project || ! $image->project->is_published) {
+                Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                return;
+            }
 
-        if (! $image->project || ! $image->project->is_published) {
-            return;
-        }
+            if ($image->yelp_biz_uploaded_at && ! $this->forceRefresh) {
+                Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                return;
+            }
 
-        if ($image->yelp_biz_uploaded_at && ! $this->forceRefresh) {
-            return;
-        }
+            if (! $service->isConfigured()) {
+                Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                Log::info('Yelp biz: service not configured, skipping');
+                return;
+            }
 
-        if (! $service->isConfigured()) {
-            Log::info('Yelp biz: service not configured, skipping');
-            return;
-        }
+            try {
+                $result = $service->uploadProjectImageToBusinessPhotos($image);
+            } catch (YelpUploadThrottledException $e) {
+                // Another upload is in flight or the min-interval has not
+                // elapsed. Release this job back to the queue so the worker
+                // picks it up after the throttle window. Keep the "queued"
+                // marker so duplicate dispatches still no-op.
+                Log::info('Yelp biz: throttled, releasing job', [
+                    'image_id' => $this->imageId,
+                    'retry_after_seconds' => $e->retryAfterSeconds,
+                ]);
+                $this->release($e->retryAfterSeconds);
+                return;
+            }
 
-        $result = $service->uploadProjectImageToBusinessPhotos($image);
+            Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
 
-        if ($result) {
-            Log::info('Yelp biz: project image synced to business gallery', [
-                'image_id' => $image->id,
+            if ($result) {
+                Log::info('Yelp biz: project image synced to business gallery', [
+                    'image_id' => $image->id,
+                    'force_refresh' => $this->forceRefresh,
+                    'photo_id' => $result['photo_id'] ?? null,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+            Log::error('Yelp biz: unexpected job failure', [
+                'image_id' => $this->imageId,
                 'force_refresh' => $this->forceRefresh,
-                'photo_id' => $result['photo_id'],
+                'error' => $e->getMessage(),
             ]);
         }
     }

@@ -209,6 +209,13 @@ async function main() {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--renderer-process-limit=1',
+      '--no-zygote',
+      '--no-first-run',
+      '--no-default-browser-check',
     ],
   };
   if (args.proxy) {

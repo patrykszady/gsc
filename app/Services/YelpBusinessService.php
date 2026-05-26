@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use App\Exceptions\YelpUploadThrottledException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +25,56 @@ class YelpBusinessService
 {
     public const SETTING_EMAIL = 'yelp_biz_email';
     public const SETTING_PASSWORD = 'yelp_biz_password';
+    private const AUTOMATION_LOCK_KEY = 'yelp:browser-automation:lock';
+    private const LAST_RUN_KEY = 'yelp:browser-automation:last-run-at';
+
+    /**
+     * Environment for Node/Chromium subprocesses.
+     * Ensures fontconfig/cache paths are writable under forge/deploy users.
+     *
+     * @return array<string, string>
+     */
+    protected function browserProcessEnv(): array
+    {
+        $runtimeHome = storage_path('app/yelp-runtime');
+        $cacheHome = $runtimeHome . '/.cache';
+        $fontCache = $cacheHome . '/fontconfig';
+
+        @mkdir($runtimeHome, 0775, true);
+        @mkdir($cacheHome, 0775, true);
+        @mkdir($fontCache, 0775, true);
+
+        return [
+            'HOME' => $runtimeHome,
+            'XDG_CACHE_HOME' => $cacheHome,
+            'XDG_CONFIG_HOME' => $runtimeHome . '/.config',
+            'FONTCONFIG_PATH' => '/etc/fonts',
+            'FC_CACHEDIR' => $fontCache,
+            // Keep app env explicit for subprocess logs/behavior.
+            'APP_ENV' => (string) config('app.env', 'production'),
+        ];
+    }
+
+    /**
+     * Wrap a Node command with the OS-level flock script so two Yelp
+     * Chromium processes can NEVER run at the same time — even across
+     * deploy releases, queue workers, or stale code paths.
+     *
+     * @param  array<int, string>  $args
+     * @return array<int, string>
+     */
+    protected function wrapWithFlock(array $args): array
+    {
+        $wrapper = base_path('scripts/yelp-run-locked.sh');
+        if (! is_file($wrapper)) {
+            return $args;
+        }
+        if (! is_executable($wrapper)) {
+            @chmod($wrapper, 0775);
+        }
+
+        return array_merge(['/bin/bash', $wrapper], $args);
+    }
 
     public function getEmail(): ?string
     {
@@ -296,46 +348,57 @@ class YelpBusinessService
             $args[] = '--twocaptcha-key=' . $key;
         }
 
-        $process = new Process($args, base_path());
-        $process->setTimeout(((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30);
+        return $this->withAutomationLock(
+            operation: 'portfolio_upload',
+            callback: function () use ($args, $cfg, $image): ?string {
+                $timeoutSec = ((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30;
+                $process = new Process($this->wrapWithFlock($args), base_path());
+                $process->setTimeout($timeoutSec);
+                $process->setEnv($this->browserProcessEnv() + [
+                    'YELP_RUN_TIMEOUT' => (string) (int) ($timeoutSec - 10),
+                    'YELP_RUN_LOCK_WAIT' => (string) max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 20)),
+                ]);
 
-        try {
-            $process->run();
-        } catch (ProcessTimedOutException $e) {
-            Log::error('Yelp: upload script timed out', [
-                'image_id' => $image->id,
-                'message' => $e->getMessage(),
-            ]);
-            return null;
-        }
+                try {
+                    $process->run();
+                } catch (ProcessTimedOutException $e) {
+                    Log::error('Yelp: upload script timed out', [
+                        'image_id' => $image->id,
+                        'message' => $e->getMessage(),
+                    ]);
+                    return null;
+                }
 
-        $stdout = trim($process->getOutput());
-        $stderr = trim($process->getErrorOutput());
+                $stdout = trim($process->getOutput());
+                $stderr = trim($process->getErrorOutput());
 
-        if (! $process->isSuccessful()) {
-            Log::error('Yelp: upload script exited with error', [
-                'image_id' => $image->id,
-                'exit_code' => $process->getExitCode(),
-                'stderr' => $stderr,
-                'stdout' => $stdout,
-            ]);
-            return null;
-        }
+                if (! $process->isSuccessful()) {
+                    Log::error('Yelp: upload script exited with error', [
+                        'image_id' => $image->id,
+                        'exit_code' => $process->getExitCode(),
+                        'stderr' => $stderr,
+                        'stdout' => $stdout,
+                    ]);
+                    return null;
+                }
 
-        // Script prints a single JSON line on stdout: {"ok":true,"photo_id":"..."}
-        $jsonLine = $this->lastJsonLine($stdout);
-        $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+                // Script prints a single JSON line on stdout: {"ok":true,"photo_id":"..."}
+                $jsonLine = $this->lastJsonLine($stdout);
+                $payload = $jsonLine ? json_decode($jsonLine, true) : null;
 
-        if (! is_array($payload) || empty($payload['ok'])) {
-            Log::error('Yelp: upload script returned no/invalid payload', [
-                'image_id' => $image->id,
-                'stdout' => $stdout,
-                'stderr' => $stderr,
-            ]);
-            return null;
-        }
+                if (! is_array($payload) || empty($payload['ok'])) {
+                    Log::error('Yelp: upload script returned no/invalid payload', [
+                        'image_id' => $image->id,
+                        'stdout' => $stdout,
+                        'stderr' => $stderr,
+                    ]);
+                    return null;
+                }
 
-        return $payload['photo_id'] ?? ('uploaded-' . now()->timestamp);
+                return $payload['photo_id'] ?? ('uploaded-' . now()->timestamp);
+            },
+            context: ['image_id' => $image->id]
+        );
     }
 
     /**
@@ -388,69 +451,157 @@ class YelpBusinessService
             $args[] = '--anticaptcha-key=' . $key;
         }
 
-        $process = new Process($args, base_path());
-        $process->setTimeout(((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30);
+        return $this->withAutomationLock(
+            operation: 'business_photos_upload',
+            callback: function () use ($args, $cfg, $image, $onProgress, $caption): ?array {
+                $timeoutSec = ((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30;
+                $process = new Process($this->wrapWithFlock($args), base_path());
+                $process->setTimeout($timeoutSec);
+                $process->setEnv($this->browserProcessEnv() + [
+                    'YELP_RUN_TIMEOUT' => (string) (int) ($timeoutSec - 10),
+                    'YELP_RUN_LOCK_WAIT' => (string) max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 20)),
+                ]);
+
+                try {
+                    $process->run(function (string $type, string $buffer) use ($onProgress): void {
+                        if (! $onProgress) {
+                            return;
+                        }
+                        foreach (preg_split('/\r?\n/', $buffer) ?: [] as $line) {
+                            $line = trim($line);
+                            if ($line !== '') {
+                                $onProgress($type, $line);
+                            }
+                        }
+                    });
+                } catch (ProcessTimedOutException $e) {
+                    Log::error('Yelp biz: upload script timed out', [
+                        'image_id' => $image->id,
+                        'message' => $e->getMessage(),
+                    ]);
+                    return null;
+                }
+
+                $stdout = trim($process->getOutput());
+                $stderr = trim($process->getErrorOutput());
+
+                if (! $process->isSuccessful()) {
+                    Log::error('Yelp biz: upload script exited with error', [
+                        'image_id' => $image->id,
+                        'exit_code' => $process->getExitCode(),
+                        'stderr' => $stderr,
+                        'stdout' => $stdout,
+                    ]);
+                    return null;
+                }
+
+                $jsonLine = $this->lastJsonLine($stdout);
+                $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+
+                if (! is_array($payload) || empty($payload['ok'])) {
+                    Log::error('Yelp biz: upload script returned no/invalid payload', [
+                        'image_id' => $image->id,
+                        'stdout' => $stdout,
+                        'stderr' => $stderr,
+                    ]);
+                    return null;
+                }
+
+                // A successful upload proves the session cookies still work.
+                $this->markSessionFresh();
+
+                $image->update([
+                    'yelp_biz_photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
+                    'yelp_biz_uploaded_at' => now(),
+                    'yelp_biz_photos_url' => $payload['photos_url'] ?? $image->yelp_biz_photos_url,
+                    'yelp_biz_caption' => $caption,
+                ]);
+
+                return [
+                    'photo_id' => $image->yelp_biz_photo_id,
+                    'photos_url' => $image->yelp_biz_photos_url,
+                    'caption' => $caption,
+                ];
+            },
+            context: ['image_id' => $image->id]
+        );
+    }
+
+    /**
+     * Ensure all Yelp browser automations are globally serialized.
+     * This prevents overlapping Chromium runs when commands/jobs overlap.
+     *
+     * @template T
+     * @param  callable():T  $callback
+     * @param  array<string,mixed>  $context
+     * @return T|null
+     */
+    protected function withAutomationLock(string $operation, callable $callback, array $context = []): mixed
+    {
+        $cfg = config('services.yelp.business');
+        $lockTtl = max(60, (int) ($cfg['automation_lock_ttl_seconds'] ?? 900));
+        $lockWait = max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 5));
+        $minInterval = max(0, (int) ($cfg['min_interval_seconds'] ?? 600));
+
+        // 1. Hard throttle: enforce a minimum gap between successful runs.
+        //    This is the primary safeguard against server overload —
+        //    Chromium is heavy, so we cap real launches at one per
+        //    min_interval_seconds across the entire host.
+        if ($minInterval > 0) {
+            $lastRunAt = (int) Cache::get(self::LAST_RUN_KEY, 0);
+            $elapsed = time() - $lastRunAt;
+            if ($lastRunAt > 0 && $elapsed < $minInterval) {
+                $retryAfter = $minInterval - $elapsed;
+                Log::info('Yelp: throttled by min_interval_seconds', [
+                    'operation' => $operation,
+                    'min_interval_seconds' => $minInterval,
+                    'retry_after_seconds' => $retryAfter,
+                ] + $context);
+                throw new YelpUploadThrottledException(
+                    "Yelp automation throttled; retry in {$retryAfter}s",
+                    $retryAfter,
+                );
+            }
+        }
+
+        $lock = Cache::lock(self::AUTOMATION_LOCK_KEY, $lockTtl);
 
         try {
-            $process->run(function (string $type, string $buffer) use ($onProgress): void {
-                if (! $onProgress) {
-                    return;
-                }
-                foreach (preg_split('/\r?\n/', $buffer) ?: [] as $line) {
-                    $line = trim($line);
-                    if ($line !== '') {
-                        $onProgress($type, $line);
-                    }
-                }
-            });
-        } catch (ProcessTimedOutException $e) {
-            Log::error('Yelp biz: upload script timed out', [
-                'image_id' => $image->id,
-                'message' => $e->getMessage(),
-            ]);
-            return null;
+            if ($lockWait > 0) {
+                $result = $lock->block($lockWait, function () use ($callback, $operation, $context) {
+                    Log::info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
+                    return $callback();
+                });
+                Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
+                return $result;
+            }
+
+            if (! $lock->get()) {
+                Log::warning('Yelp: automation lock busy', ['operation' => $operation] + $context);
+                throw new YelpUploadThrottledException(
+                    'Yelp automation lock busy',
+                    max(60, $minInterval ?: 60),
+                );
+            }
+
+            Log::info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
+            try {
+                $result = $callback();
+                Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
+                return $result;
+            } finally {
+                $lock->release();
+            }
+        } catch (LockTimeoutException) {
+            Log::warning('Yelp: automation lock wait timed out', [
+                'operation' => $operation,
+                'wait_seconds' => $lockWait,
+            ] + $context);
+            throw new YelpUploadThrottledException(
+                'Yelp automation lock wait timed out',
+                max(60, $minInterval ?: 60),
+            );
         }
-
-        $stdout = trim($process->getOutput());
-        $stderr = trim($process->getErrorOutput());
-
-        if (! $process->isSuccessful()) {
-            Log::error('Yelp biz: upload script exited with error', [
-                'image_id' => $image->id,
-                'exit_code' => $process->getExitCode(),
-                'stderr' => $stderr,
-                'stdout' => $stdout,
-            ]);
-            return null;
-        }
-
-        $jsonLine = $this->lastJsonLine($stdout);
-        $payload = $jsonLine ? json_decode($jsonLine, true) : null;
-
-        if (! is_array($payload) || empty($payload['ok'])) {
-            Log::error('Yelp biz: upload script returned no/invalid payload', [
-                'image_id' => $image->id,
-                'stdout' => $stdout,
-                'stderr' => $stderr,
-            ]);
-            return null;
-        }
-
-        // A successful upload proves the session cookies still work.
-        $this->markSessionFresh();
-
-        $image->update([
-            'yelp_biz_photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
-            'yelp_biz_uploaded_at' => now(),
-            'yelp_biz_photos_url' => $payload['photos_url'] ?? $image->yelp_biz_photos_url,
-            'yelp_biz_caption' => $caption,
-        ]);
-
-        return [
-            'photo_id' => $image->yelp_biz_photo_id,
-            'photos_url' => $image->yelp_biz_photos_url,
-            'caption' => $caption,
-        ];
     }
 
     protected function resolveAbsolutePath(ProjectImage $image): ?string

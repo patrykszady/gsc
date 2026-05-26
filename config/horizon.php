@@ -222,7 +222,7 @@ return [
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 256,
-            'tries' => 3,
+            'tries' => 1,
             'timeout' => 300, // must exceed worst-case Symfony Process timeout (~210s)
             'nice' => 0,
         ],

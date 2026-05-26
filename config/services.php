@@ -222,6 +222,15 @@ return [
             // (~30s) + cookie inject + reload + actual upload. 240s gives
             // PHP a 270s wall-clock budget (timeout_ms/1000 + 30).
             'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 240000),
+            // Global Redis lock to enforce one Yelp browser automation at a time.
+            // This protects production nodes from overlapping Chromium sessions.
+            'automation_lock_ttl_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_TTL', 900),
+            'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 5),
+            // Hard throttle: minimum seconds between Yelp Chromium launches
+            // across the whole host. Chromium is heavy; running them
+            // back-to-back saturates CPU + RAM. Default = 1 upload / 10 min.
+            // Set to 0 to disable throttling (NOT recommended in production).
+            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 600),
             'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),

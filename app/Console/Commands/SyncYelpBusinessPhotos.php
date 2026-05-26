@@ -15,7 +15,9 @@ class SyncYelpBusinessPhotos extends Command
         {--force : Re-upload images even if already synced}
         {--limit=0 : Cap number of images dispatched (0 = unlimited)}
         {--sync : Run uploads synchronously in this process (default: queue)}
-        {--show-process : Stream Yelp uploader process output (sync mode only)}';
+        {--show-process : Stream Yelp uploader process output (sync mode only)}
+        {--watch : After dispatching, poll the DB and show a live progress bar until all queued uploads complete or timeout elapses (queue mode only)}
+        {--watch-timeout=21600 : Max seconds to watch before bailing out (default 6h)}';
 
     protected $description = 'Dispatch upload jobs for project images to the account-wide Yelp Business Photos gallery.';
 
@@ -46,10 +48,21 @@ class SyncYelpBusinessPhotos extends Command
         $count = 0;
         $force = (bool) $this->option('force');
         $sync = (bool) $this->option('sync');
-
+        $watch = (bool) $this->option('watch');
         $showProcess = (bool) $this->option('show-process');
 
-        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, $force, $sync, $showProcess, $service) {
+        $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 600));
+        if (! $sync && $minInterval > 0) {
+            $this->line(sprintf(
+                'Throttle: 1 upload every %d seconds (~%s).',
+                $minInterval,
+                $this->humanInterval($minInterval),
+            ));
+        }
+
+        $dispatchedIds = [];
+
+        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, &$dispatchedIds, $force, $sync, $showProcess, $service) {
             if ($sync) {
                 $this->line("  - processing image #{$image->id}");
 
@@ -68,29 +81,131 @@ class SyncYelpBusinessPhotos extends Command
                     $this->error("    failed image #{$image->id} (see logs for details)");
                 }
             } else {
-                // Skip if this image is already pending from a previous run
-                // (each upload takes ~3-4 min).
                 $cacheKey = 'yelp_biz_upload_queued:' . $image->id;
                 if (! $force && Cache::has($cacheKey)) {
                     $this->line("  - skip image #{$image->id} (already queued)");
                     return;
                 }
-                // Mark as queued for up to 2 hours; the job will forget it.
-                Cache::put($cacheKey, true, now()->addHours(2));
+                Cache::put($cacheKey, true, now()->addHours(12));
 
-                // Dispatch directly to the media-sync queue. That supervisor
-                // runs ONE worker, so jobs are naturally processed FIFO —
-                // each upload starts after the previous one completes.
-                // Pending jobs sit in the plain queues:media-sync LIST so
-                // they can be cancelled instantly with `redis-cli DEL`.
                 UploadProjectImageToYelpBusinessPhotos::dispatch($image->id, $force)
                     ->onQueue('media-sync');
                 $this->line("  - queued image #{$image->id}");
+                $dispatchedIds[] = $image->id;
             }
             $count++;
         });
 
         $this->info("Dispatched {$count} Yelp business-photos upload job(s).");
+
+        if (! $sync && $watch && ! empty($dispatchedIds)) {
+            $this->watchProgress($dispatchedIds, $minInterval, (int) $this->option('watch-timeout'));
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Poll the DB until every dispatched image is marked uploaded (or has
+     * exceeded retries / been removed). Shows a live progress bar with
+     * ETA based on the configured min_interval_seconds.
+     *
+     * @param  array<int, int>  $imageIds
+     */
+    protected function watchProgress(array $imageIds, int $minInterval, int $maxSeconds): void
+    {
+        $total = count($imageIds);
+        $eta = $minInterval > 0 ? $minInterval * $total : 0;
+        if ($eta > 0) {
+            $this->line(sprintf(
+                'Watching %d upload(s); estimated total time: ~%s',
+                $total,
+                $this->humanInterval($eta),
+            ));
+        }
+
+        $bar = $this->output->createProgressBar($total);
+        $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%%  done=%done% pending=%pending% failed=%failed%  elapsed=%elapsed%  status=%status%');
+        $bar->setMessage('0', 'done');
+        $bar->setMessage((string) $total, 'pending');
+        $bar->setMessage('0', 'failed');
+        $bar->setMessage('starting', 'status');
+        $bar->start();
+
+        $start = time();
+        $lastLogged = null;
+
+        while (true) {
+            $rows = ProjectImage::query()
+                ->whereIn('id', $imageIds)
+                ->get(['id', 'yelp_biz_uploaded_at']);
+
+            $done = $rows->whereNotNull('yelp_biz_uploaded_at')->count();
+            $pending = $total - $done;
+
+            // Detect failed (no longer in queue, still not uploaded, not in
+            // the "queued" cache marker).
+            $failed = 0;
+            foreach ($rows as $row) {
+                if ($row->yelp_biz_uploaded_at) continue;
+                if (! Cache::has('yelp_biz_upload_queued:' . $row->id)) {
+                    $failed++;
+                }
+            }
+
+            $bar->setMessage((string) $done, 'done');
+            $bar->setMessage((string) $pending, 'pending');
+            $bar->setMessage((string) $failed, 'failed');
+
+            $lastRunAt = (int) Cache::get('yelp:browser-automation:last-run-at', 0);
+            $statusMsg = 'idle';
+            if ($lastRunAt > 0) {
+                $sinceLast = time() - $lastRunAt;
+                $statusMsg = $sinceLast < $minInterval
+                    ? sprintf('next in %ds', max(0, $minInterval - $sinceLast))
+                    : 'ready';
+            }
+            $bar->setMessage($statusMsg, 'status');
+
+            // Re-set position so the bar visibly advances.
+            $bar->setProgress($done);
+
+            // Periodic info line below the bar (every 5 min) for log capture.
+            $elapsed = time() - $start;
+            if ($lastLogged === null || $elapsed - $lastLogged >= 300) {
+                $lastLogged = $elapsed;
+            }
+
+            if ($done >= $total) {
+                $bar->finish();
+                $this->newLine(2);
+                $this->info("All {$total} upload(s) completed.");
+                return;
+            }
+
+            if ($elapsed >= $maxSeconds) {
+                $bar->finish();
+                $this->newLine(2);
+                $this->warn(sprintf(
+                    'Watch timeout reached (%s). Remaining: %d pending, %d failed.',
+                    $this->humanInterval($maxSeconds),
+                    $pending,
+                    $failed,
+                ));
+                return;
+            }
+
+            // Poll cadence: every 10s.
+            sleep(10);
+        }
+    }
+
+    protected function humanInterval(int $seconds): string
+    {
+        if ($seconds < 60) return $seconds . 's';
+        if ($seconds < 3600) return floor($seconds / 60) . 'm ' . ($seconds % 60) . 's';
+        $h = floor($seconds / 3600);
+        $m = floor(($seconds % 3600) / 60);
+        return $h . 'h ' . $m . 'm';
     }
 }

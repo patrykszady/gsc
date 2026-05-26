@@ -2,26 +2,39 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\YelpUploadThrottledException;
 use App\Models\ProjectImage;
 use App\Services\YelpBusinessService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class UploadProjectImageToYelp implements ShouldQueue
+class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 2;
+    public int $tries = 100;
     public int $timeout = 300;
+    public int $uniqueFor = 7200;
+
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(12)->toDateTime();
+    }
 
     public function __construct(
         public int $imageId,
         public bool $forceRefresh = false,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return (string) $this->imageId;
+    }
 
     // Sequencing is enforced by the media-sync Horizon supervisor running with
     // --max-processes=1 --balance=simple. We intentionally do NOT use
@@ -32,46 +45,64 @@ class UploadProjectImageToYelp implements ShouldQueue
 
     public function handle(YelpBusinessService $service): void
     {
-        $image = ProjectImage::with('project')->find($this->imageId);
+        try {
+            $image = ProjectImage::with('project')->find($this->imageId);
 
-        if (! $image) {
-            Log::warning('Yelp: image not found', ['image_id' => $this->imageId]);
-            return;
-        }
+            if (! $image) {
+                Log::warning('Yelp: image not found', ['image_id' => $this->imageId]);
+                return;
+            }
 
-        $project = $image->project;
-        if (! $project || ! $project->is_published) {
-            return;
-        }
+            $project = $image->project;
+            if (! $project || ! $project->is_published) {
+                return;
+            }
 
-        if ($image->yelp_uploaded_at && ! $this->forceRefresh) {
-            return;
-        }
+            if ($image->yelp_uploaded_at && ! $this->forceRefresh) {
+                return;
+            }
 
-        if (! $service->isConfigured()) {
-            Log::info('Yelp: service not configured, skipping');
-            return;
-        }
+            if (! $service->isConfigured()) {
+                Log::info('Yelp: service not configured, skipping');
+                return;
+            }
 
-        if (empty($project->yelp_portfolio_url)) {
-            Log::info('Yelp: project has no yelp_portfolio_url, skipping', [
-                'project_id' => $project->id,
-            ]);
-            return;
-        }
+            if (empty($project->yelp_portfolio_url)) {
+                Log::info('Yelp: project has no yelp_portfolio_url, skipping', [
+                    'project_id' => $project->id,
+                ]);
+                return;
+            }
 
-        $photoId = $service->uploadProjectImage($image);
+            $photoId = null;
+            try {
+                $photoId = $service->uploadProjectImage($image);
+            } catch (YelpUploadThrottledException $e) {
+                Log::info('Yelp: throttled, releasing portfolio job', [
+                    'image_id' => $this->imageId,
+                    'retry_after_seconds' => $e->retryAfterSeconds,
+                ]);
+                $this->release($e->retryAfterSeconds);
+                return;
+            }
 
-        if ($photoId) {
-            $image->update([
-                'yelp_photo_id' => $photoId,
-                'yelp_uploaded_at' => now(),
-            ]);
+            if ($photoId) {
+                $image->update([
+                    'yelp_photo_id' => $photoId,
+                    'yelp_uploaded_at' => now(),
+                ]);
 
-            Log::info('Yelp: project image synced', [
-                'image_id' => $image->id,
+                Log::info('Yelp: project image synced', [
+                    'image_id' => $image->id,
+                    'force_refresh' => $this->forceRefresh,
+                    'photo_id' => $photoId,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Yelp: unexpected job failure', [
+                'image_id' => $this->imageId,
                 'force_refresh' => $this->forceRefresh,
-                'photo_id' => $photoId,
+                'error' => $e->getMessage(),
             ]);
         }
     }

@@ -65,9 +65,9 @@ class ProjectImageObserver
 
         // Upload new images to the account-wide Yelp Business Photos gallery
         // if Yelp is configured (no per-project portfolio URL required).
-        // No artificial delay — the WithoutOverlapping('yelp-portfolio-upload')
-        // lock on the job already serializes execution, so multiple images
-        // uploaded in the same admin session queue up FIFO and run one-at-a-time.
+        // No artificial delay — media-sync runs with a single worker
+        // (balance=simple, maxProcesses=1) so uploads are processed FIFO
+        // one-at-a-time.
         if (
             app(\App\Services\YelpBusinessService::class)->isConfigured()
             && $image->project
