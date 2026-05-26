@@ -20,6 +20,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
+import { purgeStaleChromiumLocks, installShutdownHandlers } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -89,15 +90,16 @@ async function buildBrowser(args, headless) {
   if (proxyConfig) {
     launchArgs.push(`--proxy-server=${proxyConfig.host}`);
   }
-  return {
-    browser: await puppeteer.launch({
-      headless: headless ? 'new' : false,
-      userDataDir: args.userDataDir || undefined,
-      defaultViewport: { width: 1366, height: 900 },
-      args: launchArgs,
-    }),
-    proxyConfig,
-  };
+  // Reap any leftover Chromium / SingletonLock from a prior killed run.
+  purgeStaleChromiumLocks(args.userDataDir);
+  const browser = await puppeteer.launch({
+    headless: headless ? 'new' : false,
+    userDataDir: args.userDataDir || undefined,
+    defaultViewport: { width: 1366, height: 900 },
+    args: launchArgs,
+  });
+  installShutdownHandlers(browser);
+  return { browser, proxyConfig };
 }
 
 async function setupPage(page, args, proxyConfig) {
@@ -444,6 +446,16 @@ async function modeCheck(args) {
     await setupPage(page, args, proxyConfig);
     await page.goto('https://biz.yelp.com/', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
     await sleep(2000 + Math.random() * 2000);
+    await maybeBypassDataDome(page, proxyConfig, args);
+    if (isAuthedUrl(page.url())) return true;
+
+    // Yelp sometimes redirects '/' to a regional landing page
+    // (e.g. biz.yelp.com.br/landing/signup_fy21) for authenticated US
+    // accounts when proxy geo guesses wrong. Force the canonical /home once
+    // before declaring the session dead.
+    console.error(`[yelp-login] check: '/' redirected to ${page.url()} - retrying via /home`);
+    await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
+    await sleep(1500);
     await maybeBypassDataDome(page, proxyConfig, args);
     return isAuthedUrl(page.url());
   } finally {

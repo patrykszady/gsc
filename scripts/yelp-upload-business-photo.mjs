@@ -31,6 +31,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
 import { maybeBypassDataDome, detectDataDome } from './lib/yelp-datadome.mjs';
+import { purgeStaleChromiumLocks, installShutdownHandlers } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -539,12 +540,16 @@ async function main() {
   const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'];
   if (proxyConfig) launchArgs.push(`--proxy-server=${proxyConfig.host}`);
 
+  // Reap any leftover Chromium / SingletonLock from a prior killed run.
+  purgeStaleChromiumLocks(args.userDataDir);
+
   const browser = await puppeteer.launch({
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir || undefined,
     defaultViewport: { width: 1366, height: 900 },
     args: launchArgs,
   });
+  installShutdownHandlers(browser);
 
   let exitCode = 0;
   try {
