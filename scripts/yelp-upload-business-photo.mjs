@@ -100,7 +100,11 @@ function parseProxyUrl(proxyUrl) {
   }
 }
 
-const BIZ_YELP_HOST_RE = /^https:\/\/biz\.yelp\.(com|co\.uk|ca|com\.au|ie|fr|de|it|es|nl|com\.mx|com\.br|com\.sg|com\.ph|com\.hk|cl|co\.nz|at|be|ch|cz|dk|fi|no|pl|pt|se|tr)\//i;
+// Accepted Yelp business hosts. Yelp now redirects biz.yelp.com/ to the
+// rebranded dashboard at business.yelp.com/<bizId>/home, but the actual
+// biz_photos uploader endpoint is still served from biz.yelp.com/biz_photos/...
+// so we accept BOTH and let direct nav to the photos URL do the work.
+const BIZ_YELP_HOST_RE = /^https:\/\/(biz|business)\.yelp\.(com|co\.uk|ca|com\.au|ie|fr|de|it|es|nl|com\.mx|com\.br|com\.sg|com\.ph|com\.hk|cl|co\.nz|at|be|ch|cz|dk|fi|no|pl|pt|se|tr)\//i;
 
 function isBizYelpUrl(url) {
   return BIZ_YELP_HOST_RE.test(url || '');
@@ -649,7 +653,11 @@ async function main() {
     // fair chance, then re-evaluate.
     try {
       const u = new URL(page.url());
-      if (!/^biz\.yelp\.com$/i.test(u.hostname) || UNAUTHED_BIZ_PATH_RE.test(u.pathname)) {
+      // biz.yelp.com and business.yelp.com are both valid post-login landings
+      // (Yelp redirects biz -> business for the rebranded dashboard). Only retry
+      // if we ended up on a different host entirely or on an unauthenticated path.
+      const okHost = /^(biz|business)\.yelp\.com$/i.test(u.hostname);
+      if (!okHost || UNAUTHED_BIZ_PATH_RE.test(u.pathname)) {
         console.error(`[yelp] persistent session landed on ${page.url()} - retrying via biz.yelp.com/home`);
         await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
         await sleep(1500);
