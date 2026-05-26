@@ -197,21 +197,34 @@ function installBizIdCapture(page, userDataDir, state) {
 async function isLoggedIn(page) {
   const url = page.url();
   if (!isBizYelpUrl(url)) return false;
-  let pathname = '/';
-  try { pathname = new URL(url).pathname; } catch { /* noop */ }
-  if (UNAUTHED_BIZ_PATH_RE.test(pathname)) return false;
-  // Root marketing pages are often visible to anonymous visitors.
-  // Treat only dashboard-ish paths as authenticated.
-  if (pathname === '/' || /^\/($|\?)/.test(pathname)) {
-    const hasBizMarker = await page.evaluate(() => {
-      const html = (document.documentElement && document.documentElement.outerHTML) || '';
-      return /\/home\/[A-Za-z0-9_-]{12,}|business\.yelp\.com\/[A-Za-z0-9_-]{12,}\//i.test(html);
-    }).catch(() => false);
-    if (!hasBizMarker) {
-      return false;
-    }
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
   }
-  return true;
+
+  const host = parsed.hostname.toLowerCase();
+  const pathname = parsed.pathname || '/';
+  if (UNAUTHED_BIZ_PATH_RE.test(pathname)) return false;
+
+  // Strictly require dashboard/gallery paths. The marketing root at
+  // https://business.yelp.com/ is public and must not be treated as authed.
+  if (host === 'biz.yelp.com') {
+    if (/^\/(home\/[A-Za-z0-9_-]{12,}|biz_photos\/[A-Za-z0-9_-]{12,}|biz\/[A-Za-z0-9_-]{12,})(\/|$)/i.test(pathname)) {
+      return true;
+    }
+    return false;
+  }
+
+  if (host === 'business.yelp.com') {
+    if (/^\/[A-Za-z0-9_-]{12,}\/(home|photos|reviews|leads|insights|messages|settings)(\/|$)/i.test(pathname)) {
+      return true;
+    }
+    return false;
+  }
+
+  return false;
 }
 
 async function dumpPage(page, label) {
