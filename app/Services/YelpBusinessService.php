@@ -442,6 +442,7 @@ class YelpBusinessService
         return [
             'photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
             'photos_url' => $payload['photos_url'] ?? null,
+            'caption' => $caption,
         ];
     }
 

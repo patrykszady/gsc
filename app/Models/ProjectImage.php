@@ -35,6 +35,7 @@ class ProjectImage extends Model
         'yelp_biz_photo_id',
         'yelp_biz_uploaded_at',
         'yelp_biz_photos_url',
+        'yelp_biz_caption',
     ];
 
     protected $casts = [

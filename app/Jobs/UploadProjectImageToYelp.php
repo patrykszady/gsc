@@ -9,7 +9,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 
 class UploadProjectImageToYelp implements ShouldQueue
@@ -24,14 +23,12 @@ class UploadProjectImageToYelp implements ShouldQueue
         public bool $forceRefresh = false,
     ) {}
 
-    /**
-     * Serialize uploads so Puppeteer's Chromium userDataDir is not
-     * accessed concurrently (would corrupt the session lock).
-     */
-    public function middleware(): array
-    {
-        return [(new WithoutOverlapping('yelp-portfolio-upload'))->expireAfter(600)];
-    }
+    // Sequencing is enforced by the media-sync Horizon supervisor running with
+    // --max-processes=1 --balance=simple. We intentionally do NOT use
+    // WithoutOverlapping here — releasing-with-delay would push jobs into the
+    // delayed ZSET and make pending uploads hard to wipe in an emergency.
+    // With one worker, pending jobs sit in the plain queues:media-sync LIST
+    // and `redis-cli DEL queues:media-sync` clears them instantly.
 
     public function handle(YelpBusinessService $service): void
     {

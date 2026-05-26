@@ -56,21 +56,25 @@ class ProjectImageObserver
             && $image->project->is_published
             && ! empty($image->project->yelp_portfolio_url)
         ) {
+            // No delay — the media-sync supervisor runs one worker so jobs
+            // naturally FIFO. Pending uploads stay in the queue LIST where
+            // they can be wiped with a single redis DEL if needed.
             UploadProjectImageToYelp::dispatch($image->id)
-                ->onQueue('media-sync')
-                ->delay(now()->addSeconds(20));
+                ->onQueue('media-sync');
         }
 
         // Upload new images to the account-wide Yelp Business Photos gallery
         // if Yelp is configured (no per-project portfolio URL required).
+        // No artificial delay — the WithoutOverlapping('yelp-portfolio-upload')
+        // lock on the job already serializes execution, so multiple images
+        // uploaded in the same admin session queue up FIFO and run one-at-a-time.
         if (
             app(\App\Services\YelpBusinessService::class)->isConfigured()
             && $image->project
             && $image->project->is_published
         ) {
             UploadProjectImageToYelpBusinessPhotos::dispatch($image->id)
-                ->onQueue('media-sync')
-                ->delay(now()->addSeconds(40));
+                ->onQueue('media-sync');
         }
     }
 

@@ -8,7 +8,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -33,15 +32,12 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue
         public bool $forceRefresh = false,
     ) {}
 
-    /**
-     * Serialize uploads so Puppeteer's Chromium userDataDir is not
-     * accessed concurrently (would corrupt the session lock). Shares the
-     * same lock as UploadProjectImageToYelp on purpose.
-     */
-    public function middleware(): array
-    {
-        return [(new WithoutOverlapping('yelp-portfolio-upload'))->expireAfter(600)];
-    }
+    // Sequencing is enforced by the media-sync Horizon supervisor running with
+    // --max-processes=1 --balance=simple. We intentionally do NOT use
+    // WithoutOverlapping here — releasing-with-delay would push jobs into the
+    // delayed ZSET and make pending uploads hard to wipe in an emergency.
+    // With one worker, pending jobs sit in the plain queues:media-sync LIST
+    // and `redis-cli DEL queues:media-sync` clears them instantly.
 
     public function handle(YelpBusinessService $service): void
     {
@@ -76,6 +72,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue
                 'yelp_biz_photo_id' => $result['photo_id'],
                 'yelp_biz_uploaded_at' => now(),
                 'yelp_biz_photos_url' => $result['photos_url'] ?? $image->yelp_biz_photos_url,
+                'yelp_biz_caption' => $result['caption'] ?? $image->yelp_biz_caption,
             ]);
 
             Log::info('Yelp biz: project image synced to business gallery', [

@@ -249,8 +249,8 @@ PROMPT;
             $original = trim((string) ($project?->title ?? 'Home remodeling project'));
         }
 
-        // v9 = source-driven, shorter, no formulaic tail, materials still banned.
-        $cacheKey = "yelp_caption_seo:v9:{$image->id}:{$limit}:" . md5($original);
+        // v13 = also avoid vague progress-status framings ("wrapping", "in the middle of").
+        $cacheKey = "yelp_caption_seo:v13:{$image->id}:{$limit}:" . md5($original);
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             $type = $project?->project_type
                 ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
@@ -282,31 +282,44 @@ HARD RULES:
 - Mention "GS Construction" exactly once.
 - Mention the project type "{$type}" twice, each time paired with a DIFFERENT service-variant word (e.g. "kitchen remodel" + "kitchen renovation", "mudroom remodel" + "mudroom renovation").
 - KEYWORD VARIETY (CRITICAL — NO REPEATS): each of these service-variant words may appear LITERALLY AT MOST ONCE — "remodel", "remodeling", "renovation", "renovate", "contractor", "remodeler", "design-build", "finishing". Treat morphological variants as the same word ("remodel"="remodels"). At least TWO different variants total.
+- IMAGE-SPECIFIC PHRASING (CRITICAL): refer to the project with a demonstrative pronoun — "this {$location} {$type} remodel", "this kitchen", "these built-ins", "this gut", "this layout". When you mention the second service-variant, use "this" again (e.g. "...this {$location} {$type} renovation we're handling") or weave it into a clause about the work shown. NEVER write generic phrases like "the {$location} {$type} renovation", "the kitchen remodel", "a {$location} bathroom remodel" — those make the caption read like a services-page blurb instead of a photo caption. The reader should feel you are pointing at THIS specific photo.
+- OPENING (CRITICAL): do NOT front-load a construction-task detail (no opening like "Wall taken down between dining and kitchen...", "Pantry wall reworked on...", "Load-bearing wall coming down on...", "Plumbing relocated on...", "Island enlarged on..."). Lead instead with the PROJECT framing — the city + project type + "this/these", the phase, or "GS Construction". Put the specific scope detail (if any) in the MIDDLE or END as a short supporting clause, not the headline. AT MOST ONE concrete scope detail per caption; zero is fine when the source is thin.
+- AVOID PROGRESS-STATUS FILLER: do NOT use vague status phrases like "in the middle of", "in the middle of this", "wrapping", "wrapping up", "working on", "underway", "in progress", "currently", "hard at work on", "busy with". They burn characters without adding image-specific or SEO value. If you must convey phase, use a concrete one from the SOURCE CAPTION ("demo day", "framing stage", "rough-in", "final reveal", "punch-list day") — otherwise skip phase entirely and lead with the city + project type.
 - VOICE: GS Construction IS the remodeler / contractor. NEVER write "our remodeler", "our contractor", "our remodeling contractor", "our design-build contractor", or "our remodelers". Allowed: "we", "we handle", "as your {$location} remodeler", "as a design-build contractor", "our team", "our crew", "our design-build team". Also AVOID the formulaic tail "part of our [city] [type] renovation as a design-build team" — it sounds robotic. Prefer integrating the keywords into the main clause.
 - Do NOT mention materials, finishes, colors, fixtures, brand names, or cosmetic appearance (no "white cabinets", "quartz countertops", "hardwood floors", "tile", "marble", "stainless steel", "shaker", "matte black", "subway tile", etc.). Talk about WHAT was done, WHERE in the home, and WHAT PHASE — never how it looks.
-- Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect, sleek, elegant.
+- Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect, sleek, elegant, homeowner, homeowners, owner, owners, client, clients, family, families.
 - Do NOT invent facts not present in the SOURCE CAPTION or context. If the source is thin, keep the caption short rather than fabricating detail.
 
-IMAGE-SPECIFIC DETAIL (no materials):
+IMAGE-SPECIFIC DETAIL (no materials, no people references):
 Use 2-4 concrete, NON-COSMETIC details from the SOURCE CAPTION. Examples of allowed details:
 - Room/area: "primary bath", "powder room", "kitchen island", "mudroom bench", "basement bar", "laundry alcove", "pantry wall", "stair landing".
 - Scope of work: "load-bearing wall removed", "layout reconfigured", "ceiling raised", "opened sightlines", "wall taken down", "doorway widened", "plumbing relocated", "built-in lockers added", "island enlarged", "floor plan opened up".
 - Phase: "framing stage", "demo day", "rough-in", "final reveal", "before tear-out", "mid-renovation", "punch-list day".
-- Homeowner angle: "for a Palatine family", "for empty-nesters", "first-time clients".
+Do NOT reference the people who live there ("homeowner", "owners", "client", "family", "empty-nesters", "for a Palatine family", etc.) — those phrases burn precious characters with zero SEO value. Focus on the WORK and the SPACE.
 NOT allowed (these are cosmetic): cabinet colors, countertop materials, tile patterns, paint, hardware finishes, lighting style, flooring material.
 
-GOOD EXAMPLES (study the voice — natural, source-driven, no awkward tail):
-- "Mudroom bench and built-in lockers framed up on this Inverness mudroom remodel by GS Construction, a full Inverness mudroom renovation we handled end-to-end."
-- "Load-bearing wall coming down on a Palatine kitchen remodel, opening up the floor plan — GS Construction is the design-build contractor on this Palatine kitchen renovation."
-- "Demo day on a Schaumburg primary-bath gut, the start of a Schaumburg bathroom remodel GS Construction is handling as the design-build contractor for the full bathroom renovation."
-- "Framing-stage view of a Hoffman Estates basement remodel with the load-bearing wall reframed by GS Construction, our Hoffman Estates basement finishing job in progress."
-- "Final reveal of a Palatine kitchen remodel after we reconfigured the layout, a Palatine kitchen renovation GS Construction completed as a design-build team."
+GOOD EXAMPLES (study the voice — lead with the project/location, no vague progress filler):
+- "This Palatine kitchen remodel by GS Construction opened up the floor plan, a Palatine kitchen renovation our team ran end-to-end."
+- "This Inverness mudroom remodel by GS Construction added a bench-and-locker wall, an Inverness mudroom renovation we handled from demo through punch-list."
+- "Demo day on this Schaumburg primary bath, the Schaumburg bathroom remodel GS Construction is running as design-build contractor."
+- "Framing stage on this Hoffman Estates basement remodel, GS Construction running the full Hoffman Estates basement finishing top to bottom."
+- "Final reveal of this Palatine kitchen remodel, the Palatine kitchen renovation our team just finished as your local design-build contractor."
+- "This Arlington Heights bathroom remodel by GS Construction reconfigured the layout, an Arlington Heights bathroom renovation we ran as design-build contractor."
 
 BANNED EXAMPLES (do NOT return anything like these):
+- "GS Construction in the middle of this Palatine kitchen remodel..." — "in the middle of" is vague filler; lead with the project itself.
+- "GS Construction wrapping this Arlington Heights bathroom remodel..." — "wrapping" is vague status filler; cut it or use a concrete phase like "final reveal".
+- "Mid-build on this Inverness mudroom remodel..." — same vague-status problem; drop it.
+- "Working on this Schaumburg kitchen remodel..." / "Currently underway on this Barrington bathroom remodel..." — vague status filler.
+- "Wall taken down between dining and kitchen on this Deer Park kitchen remodel..." — task detail front-loaded; lead with the project, not the wall.
+- "Pantry wall reworked on this Long Grove kitchen remodel..." — opens with task detail; should open with the project or a concrete phase.
+- "Load-bearing wall coming down on this Palatine kitchen remodel..." — task-first opener; move that detail to a mid-sentence clause or drop it.
+- "Island enlarged and doorway widened on this Barrington kitchen remodel..." — stacks two task details up front.
 - "GS Construction Mudroom renovation in Inverness: custom built-ins, full-service remodeling contractor for Inverness Mudroom remodeling" — colon-then-list fragment, "remodeling" repeats.
-- "GS Construction completed a Palatine kitchen remodel with a new island layout, and we handle every Palatine kitchen renovation as a design-build contractor." — generic ad copy; the image-specific portion is too thin.
-- "New island layout and opened-up sightlines on a Palatine kitchen remodel by GS Construction, part of our Palatine kitchen renovation as a design-build team." — awkward formulaic tail ("part of our X renovation as a design-build team").
+- "GS Construction completed a Palatine kitchen remodel with a new island layout, and we handle every Palatine kitchen renovation as a design-build contractor." — generic ad copy; no "this", reads like a services page.
+- "New island layout on a Palatine kitchen remodel by GS Construction, the Palatine kitchen renovation we just finished." — "a" + "the" make it sound generic; should be "this".
 - Any caption mentioning materials, colors, finishes, tile, countertops, paint, or hardware.
+- Any caption mentioning homeowners, owners, clients, families, or who lives there.
 
 CONTEXT:
 - Business: GS Construction (home remodeling company)
