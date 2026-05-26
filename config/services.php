@@ -224,8 +224,16 @@ return [
             'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 240000),
             // Global Redis lock to enforce one Yelp browser automation at a time.
             // This protects production nodes from overlapping Chromium sessions.
-            'automation_lock_ttl_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_TTL', 900),
-            'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 5),
+            // Keep TTL slightly above the Horizon worker timeout (300s)
+            // so a SIGKILL'd worker's lock self-clears within ~30s of the
+            // timeout instead of blocking the queue for the full TTL.
+            'automation_lock_ttl_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_TTL', 330),
+            // How long a job waits for the lock before giving up and
+            // releasing itself back to the queue. Must be < Horizon worker
+            // timeout (300s) so the worker itself doesn't get killed while
+            // waiting. 240s comfortably outlasts a Symfony Process upload
+            // (~210s max) so a queued job will inherit the lock cleanly.
+            'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 240),
             // Optional hard throttle: minimum seconds between Yelp Chromium
             // launches across the whole host. Set > 0 ONLY if the natural
             // serialization (Redis lock + maxProcesses=1 + group-kill
