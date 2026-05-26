@@ -249,8 +249,8 @@ PROMPT;
             $original = trim((string) ($project?->title ?? 'Home remodeling project'));
         }
 
-        // v2 = keyword-density pattern (city×2, project-type×2, brand×1, banned filler words).
-        $cacheKey = "yelp_caption_seo:v2:{$image->id}:{$limit}:" . md5($original);
+        // v4 = per-image personalization (room/area/scope/phase from source caption).
+        $cacheKey = "yelp_caption_seo:v4:{$image->id}:{$limit}:" . md5($original);
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             $type = $project?->project_type
                 ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
@@ -273,12 +273,15 @@ HARD RULES:
 - Mention "GS Construction" exactly once.
 - Use the project type "{$type}" twice using two different keyword variants (e.g. "kitchen remodel" + "kitchen remodeling" or "kitchen renovation", "bathroom remodel" + "bathroom renovation", "basement remodel" + "basement finishing").
 - Include at least one service-intent keyword: "remodeling", "renovation", "contractor", "remodeler", or "design-build".
-- Materials/finishes are optional — at most one short phrase (2-4 words). Do NOT list three or more materials.
+- PERSONALIZE this caption to THIS specific photo. Pick ONE concrete, project-scope detail from the SOURCE CAPTION below and weave it in (2-5 words). Good details: room/area ("primary bath", "powder room", "kitchen island", "mudroom"), scope ("full gut remodel", "layout reconfiguration", "load-bearing wall removal"), phase ("framing stage", "demo day", "final reveal", "before tear-out"), or homeowner angle ("for a Palatine family"). Different photos of the same project MUST get different details — never repeat the same phrase across images.
+- Do NOT mention materials, finishes, colors, fixtures, brand names, or cosmetic appearance (no "white cabinets", "quartz countertops", "hardwood floors", "tile", "marble", "stainless steel", "shaker", "matte black", etc.). Talk about WHAT was done, not how it looks.
 - Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect.
 - Do NOT invent facts not present in the source caption or context.
 
-PREFERRED PATTERN (adapt, don't copy verbatim):
-"{$location} {$type} remodeling by GS Construction. {$type} renovation, <one detail>, and design-build services for {$location} homeowners."
+PATTERN HINTS (adapt — never copy verbatim, and vary across photos):
+- "{$location} {$type} remodeling by GS Construction — <project-scope detail> for a {$location} home, full-service renovation and design-build contractor work."
+- "<project-scope detail> on a {$location} {$type} renovation by GS Construction, end-to-end remodeling contractor services for {$location} homeowners."
+- "GS Construction {$type} remodel in {$location}: <project-scope detail>, design-build renovation for {$location} homeowners."
 
 CONTEXT:
 - Business: GS Construction (home remodeling company)
