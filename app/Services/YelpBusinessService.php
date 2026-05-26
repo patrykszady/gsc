@@ -439,9 +439,16 @@ class YelpBusinessService
         // A successful upload proves the session cookies still work.
         $this->markSessionFresh();
 
+        $image->update([
+            'yelp_biz_photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
+            'yelp_biz_uploaded_at' => now(),
+            'yelp_biz_photos_url' => $payload['photos_url'] ?? $image->yelp_biz_photos_url,
+            'yelp_biz_caption' => $caption,
+        ]);
+
         return [
-            'photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
-            'photos_url' => $payload['photos_url'] ?? null,
+            'photo_id' => $image->yelp_biz_photo_id,
+            'photos_url' => $image->yelp_biz_photos_url,
             'caption' => $caption,
         ];
     }

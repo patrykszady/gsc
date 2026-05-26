@@ -63,12 +63,6 @@ class SyncYelpBusinessPhotos extends Command
 
                 $result = $service->uploadProjectImageToBusinessPhotos($image, $onProgress);
                 if ($result) {
-                    $image->update([
-                        'yelp_biz_photo_id' => $result['photo_id'],
-                        'yelp_biz_uploaded_at' => now(),
-                        'yelp_biz_photos_url' => $result['photos_url'] ?? $image->yelp_biz_photos_url,
-                        'yelp_biz_caption' => $result['caption'] ?? $image->yelp_biz_caption,
-                    ]);
                     $this->info("    uploaded image #{$image->id} (photo_id={$result['photo_id']})");
                 } else {
                     $this->error("    failed image #{$image->id} (see logs for details)");
