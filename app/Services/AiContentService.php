@@ -249,34 +249,47 @@ PROMPT;
             $original = trim((string) ($project?->title ?? 'Home remodeling project'));
         }
 
-        $cacheKey = "yelp_caption_seo:{$image->id}:{$limit}:" . md5($original);
+        // v2 = keyword-density pattern (city×2, project-type×2, brand×1, banned filler words).
+        $cacheKey = "yelp_caption_seo:v2:{$image->id}:{$limit}:" . md5($original);
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             $type = $project?->project_type
                 ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
                 : 'home remodel';
-            $location = trim((string) ($project?->location ?? '')) ?: 'Chicago suburbs';
+            // City only — strip any ", IL" / state code so we don't burn chars.
+            $rawLocation = trim((string) ($project?->location ?? ''));
+            $rawLocation = preg_replace('/\s*,\s*[A-Z]{2}\b.*$/', '', $rawLocation) ?? $rawLocation;
+            $location = $rawLocation !== '' ? $rawLocation : 'Chicago suburbs';
             $title = trim((string) ($project?->title ?? ''));
+            // Target band: aim high so Gemini uses the keyword budget.
+            $minChars = max(120, $limit - 20);
 
             $prompt = <<<PROMPT
-Rewrite the following caption as a single keyword-rich SEO caption for a Yelp business photo.
+Rewrite the source caption as a single local-SEO Yelp business photo caption for GS Construction.
 
 HARD RULES:
-- Maximum {$limit} characters total (including spaces and punctuation). Count carefully.
-- One sentence, no line breaks, no hashtags, no emojis, no quotes.
-- Pack in high-intent local SEO keywords naturally (project type, materials, finishes, location).
-- Sound human, factual, and benefits-driven — not spammy.
-- Do NOT invent details that aren't in the source caption or context.
+- Length: between {$minChars} and {$limit} characters (count every space and punctuation mark).
+- One sentence. No line breaks, hashtags, emojis, quotes, or exclamation points.
+- Mention the city "{$location}" TWICE. Do NOT include the state ("IL", "Illinois") or "Chicago" / "Chicago area".
+- Mention "GS Construction" exactly once.
+- Use the project type "{$type}" twice using two different keyword variants (e.g. "kitchen remodel" + "kitchen remodeling" or "kitchen renovation", "bathroom remodel" + "bathroom renovation", "basement remodel" + "basement finishing").
+- Include at least one service-intent keyword: "remodeling", "renovation", "contractor", "remodeler", or "design-build".
+- Materials/finishes are optional — at most one short phrase (2-4 words). Do NOT list three or more materials.
+- Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect.
+- Do NOT invent facts not present in the source caption or context.
+
+PREFERRED PATTERN (adapt, don't copy verbatim):
+"{$location} {$type} remodeling by GS Construction. {$type} renovation, <one detail>, and design-build services for {$location} homeowners."
 
 CONTEXT:
-- Business: GS Construction (home remodeling, Chicago area)
+- Business: GS Construction (home remodeling company)
 - Project type: {$type}
-- Location: {$location}
+- City: {$location}
 - Project title: {$title}
 
-ORIGINAL CAPTION:
+SOURCE CAPTION:
 {$original}
 
-Return ONLY the rewritten caption text. No JSON, no labels, no quotes.
+Return ONLY the rewritten caption text on a single line. No JSON, no labels, no quotes.
 PROMPT;
 
             $raw = $this->callGeminiMultiImage($prompt, [], 200);
