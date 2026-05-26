@@ -268,20 +268,11 @@ export async function maybeBypassDataDome(page, proxyConfig, args) {
     }
   }
 
-  // t=fe (fingerprint) challenges are NOT solvable by 2captcha/anticaptcha:
-  // there is no human action and no slider, the challenge is a pure
-  // client-side fingerprint score. Calling a third-party solver just wastes
-  // ~30s and credits, then returns a short bogus "cookie" that DataDome
-  // immediately rejects. The only real fixes for t=fe are (a) a better
-  // browser fingerprint (run headed under Xvfb, real-browser puppeteer)
-  // and (b) a higher-trust IP. Fail fast so the caller can surface the
-  // right action instead of looping on a non-bypassable challenge.
-  let challengeType = null;
-  try { challengeType = new URL(captchaUrl).searchParams.get('t'); } catch {}
-  if (challengeType === 'fe') {
-    console.error('[datadome] t=fe (fingerprint) challenge: solver providers cannot bypass this; needs headed/stealth browser or higher-trust IP. Aborting.');
-    return false;
-  }
+  // NOTE: previously we early-aborted here when the challenge URL contained
+  // t=fe (fingerprint), assuming solvers couldn't handle it. That was wrong:
+  // 2captcha's DataDomeSliderTask handles both t=bv and t=fe variants and
+  // this pipeline was solving t=fe successfully before that short-circuit
+  // was introduced. Always go through the solver.
 
   if (!args.twoCaptchaKey && !args.antiCaptchaKey) {
     console.error('[datadome] cannot solve: no captcha provider keys supplied');
