@@ -249,8 +249,8 @@ PROMPT;
             $original = trim((string) ($project?->title ?? 'Home remodeling project'));
         }
 
-        // v4 = per-image personalization (room/area/scope/phase from source caption).
-        $cacheKey = "yelp_caption_seo:v4:{$image->id}:{$limit}:" . md5($original);
+        // v9 = source-driven, shorter, no formulaic tail, materials still banned.
+        $cacheKey = "yelp_caption_seo:v9:{$image->id}:{$limit}:" . md5($original);
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             $type = $project?->project_type
                 ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
@@ -260,28 +260,53 @@ PROMPT;
             $rawLocation = preg_replace('/\s*,\s*[A-Z]{2}\b.*$/', '', $rawLocation) ?? $rawLocation;
             $location = $rawLocation !== '' ? $rawLocation : 'Chicago suburbs';
             $title = trim((string) ($project?->title ?? ''));
-            // Target band: aim high so Gemini uses the keyword budget.
-            $minChars = max(120, $limit - 20);
+            // Lower min so Gemini can write simpler, shorter sentences when the
+            // source caption is brief. Cap is still the hard 140.
+            $minChars = max(90, $limit - 50);
 
             $prompt = <<<PROMPT
-Rewrite the source caption as a single local-SEO Yelp business photo caption for GS Construction.
+Shorten and lightly rewrite the SOURCE CAPTION as a single Yelp business photo caption for GS Construction.
+
+GOAL: A natural-sounding photo caption that describes THIS specific image. It should sound like a human posting a project photo — not ad copy, not a tag dump, not a corporate services blurb. Keep the SOURCE CAPTION's specific language about the work; just compress it and add local-SEO keywords where they fit naturally.
+
+WRITING APPROACH:
+- Start from the SOURCE CAPTION. Keep its concrete, image-specific phrases verbatim when possible (the room/area, what was done, the phase). Strip filler, marketing words, and any material/finish/color mentions.
+- Then weave in: the city "{$location}" (twice), the project type "{$type}" (twice with two different service-variant words), and "GS Construction" (once). These should flow as part of a normal sentence, NOT be tacked on at the end as a keyword tail.
+- Aim for {$minChars}-{$limit} characters. Shorter is fine if the source is short. Do not pad with marketing language to hit the cap.
 
 HARD RULES:
-- Length: between {$minChars} and {$limit} characters (count every space and punctuation mark).
-- One sentence. No line breaks, hashtags, emojis, quotes, or exclamation points.
-- Mention the city "{$location}" TWICE. Do NOT include the state ("IL", "Illinois") or "Chicago" / "Chicago area".
+- ONE complete grammatical sentence. Starts with a capital letter, ends with a period. Real subject + verb. No fragments, no colon-then-list, no em-dash-then-list, no comma-spliced tag dumps.
+- No line breaks, hashtags, emojis, quotes, or exclamation points.
+- Max length: {$limit} characters (count every space and punctuation mark).
+- Mention the city "{$location}" exactly twice. Do NOT include the state ("IL", "Illinois") or "Chicago" / "Chicago area".
 - Mention "GS Construction" exactly once.
-- Use the project type "{$type}" twice using two different keyword variants (e.g. "kitchen remodel" + "kitchen remodeling" or "kitchen renovation", "bathroom remodel" + "bathroom renovation", "basement remodel" + "basement finishing").
-- Include at least one service-intent keyword: "remodeling", "renovation", "contractor", "remodeler", or "design-build".
-- PERSONALIZE this caption to THIS specific photo. Pick ONE concrete, project-scope detail from the SOURCE CAPTION below and weave it in (2-5 words). Good details: room/area ("primary bath", "powder room", "kitchen island", "mudroom"), scope ("full gut remodel", "layout reconfiguration", "load-bearing wall removal"), phase ("framing stage", "demo day", "final reveal", "before tear-out"), or homeowner angle ("for a Palatine family"). Different photos of the same project MUST get different details — never repeat the same phrase across images.
-- Do NOT mention materials, finishes, colors, fixtures, brand names, or cosmetic appearance (no "white cabinets", "quartz countertops", "hardwood floors", "tile", "marble", "stainless steel", "shaker", "matte black", etc.). Talk about WHAT was done, not how it looks.
-- Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect.
-- Do NOT invent facts not present in the source caption or context.
+- Mention the project type "{$type}" twice, each time paired with a DIFFERENT service-variant word (e.g. "kitchen remodel" + "kitchen renovation", "mudroom remodel" + "mudroom renovation").
+- KEYWORD VARIETY (CRITICAL — NO REPEATS): each of these service-variant words may appear LITERALLY AT MOST ONCE — "remodel", "remodeling", "renovation", "renovate", "contractor", "remodeler", "design-build", "finishing". Treat morphological variants as the same word ("remodel"="remodels"). At least TWO different variants total.
+- VOICE: GS Construction IS the remodeler / contractor. NEVER write "our remodeler", "our contractor", "our remodeling contractor", "our design-build contractor", or "our remodelers". Allowed: "we", "we handle", "as your {$location} remodeler", "as a design-build contractor", "our team", "our crew", "our design-build team". Also AVOID the formulaic tail "part of our [city] [type] renovation as a design-build team" — it sounds robotic. Prefer integrating the keywords into the main clause.
+- Do NOT mention materials, finishes, colors, fixtures, brand names, or cosmetic appearance (no "white cabinets", "quartz countertops", "hardwood floors", "tile", "marble", "stainless steel", "shaker", "matte black", "subway tile", etc.). Talk about WHAT was done, WHERE in the home, and WHAT PHASE — never how it looks.
+- Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect, sleek, elegant.
+- Do NOT invent facts not present in the SOURCE CAPTION or context. If the source is thin, keep the caption short rather than fabricating detail.
 
-PATTERN HINTS (adapt — never copy verbatim, and vary across photos):
-- "{$location} {$type} remodeling by GS Construction — <project-scope detail> for a {$location} home, full-service renovation and design-build contractor work."
-- "<project-scope detail> on a {$location} {$type} renovation by GS Construction, end-to-end remodeling contractor services for {$location} homeowners."
-- "GS Construction {$type} remodel in {$location}: <project-scope detail>, design-build renovation for {$location} homeowners."
+IMAGE-SPECIFIC DETAIL (no materials):
+Use 2-4 concrete, NON-COSMETIC details from the SOURCE CAPTION. Examples of allowed details:
+- Room/area: "primary bath", "powder room", "kitchen island", "mudroom bench", "basement bar", "laundry alcove", "pantry wall", "stair landing".
+- Scope of work: "load-bearing wall removed", "layout reconfigured", "ceiling raised", "opened sightlines", "wall taken down", "doorway widened", "plumbing relocated", "built-in lockers added", "island enlarged", "floor plan opened up".
+- Phase: "framing stage", "demo day", "rough-in", "final reveal", "before tear-out", "mid-renovation", "punch-list day".
+- Homeowner angle: "for a Palatine family", "for empty-nesters", "first-time clients".
+NOT allowed (these are cosmetic): cabinet colors, countertop materials, tile patterns, paint, hardware finishes, lighting style, flooring material.
+
+GOOD EXAMPLES (study the voice — natural, source-driven, no awkward tail):
+- "Mudroom bench and built-in lockers framed up on this Inverness mudroom remodel by GS Construction, a full Inverness mudroom renovation we handled end-to-end."
+- "Load-bearing wall coming down on a Palatine kitchen remodel, opening up the floor plan — GS Construction is the design-build contractor on this Palatine kitchen renovation."
+- "Demo day on a Schaumburg primary-bath gut, the start of a Schaumburg bathroom remodel GS Construction is handling as the design-build contractor for the full bathroom renovation."
+- "Framing-stage view of a Hoffman Estates basement remodel with the load-bearing wall reframed by GS Construction, our Hoffman Estates basement finishing job in progress."
+- "Final reveal of a Palatine kitchen remodel after we reconfigured the layout, a Palatine kitchen renovation GS Construction completed as a design-build team."
+
+BANNED EXAMPLES (do NOT return anything like these):
+- "GS Construction Mudroom renovation in Inverness: custom built-ins, full-service remodeling contractor for Inverness Mudroom remodeling" — colon-then-list fragment, "remodeling" repeats.
+- "GS Construction completed a Palatine kitchen remodel with a new island layout, and we handle every Palatine kitchen renovation as a design-build contractor." — generic ad copy; the image-specific portion is too thin.
+- "New island layout and opened-up sightlines on a Palatine kitchen remodel by GS Construction, part of our Palatine kitchen renovation as a design-build team." — awkward formulaic tail ("part of our X renovation as a design-build team").
+- Any caption mentioning materials, colors, finishes, tile, countertops, paint, or hardware.
 
 CONTEXT:
 - Business: GS Construction (home remodeling company)
