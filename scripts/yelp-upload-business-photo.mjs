@@ -30,7 +30,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
-import { maybeBypassDataDome, detectDataDome } from './lib/yelp-datadome.mjs';
+import { maybeBypassDataDome, detectDataDome, clearStaleDataDomeCookies } from './lib/yelp-datadome.mjs';
 import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
@@ -122,11 +122,34 @@ async function isLoggedIn(page) {
 
 async function dumpPage(page, label) {
   try {
-    const html = await page.content();
     const fs = await import('node:fs');
-    const file = `/tmp/yelp-${label}-${Date.now()}.html`;
-    fs.writeFileSync(file, html);
-    console.error(`[yelp:dump] ${label} -> ${file} (url=${page.url()}, len=${html.length})`);
+    const stamp = Date.now();
+    const html = await page.content();
+    const htmlFile = `/tmp/yelp-${label}-${stamp}.html`;
+    fs.writeFileSync(htmlFile, html);
+
+    // Visible text is what the user actually sees - far more useful than the
+    // full HTML (which on Yelp's React SPA contains the entire i18n bundle
+    // and produces thousands of false-positive grep hits for "captcha" /
+    // "locked" / etc.). innerText strips invisible JS-state strings.
+    let visible = '';
+    try {
+      visible = await page.evaluate(() => (document.body && document.body.innerText) || '');
+    } catch {}
+    const txtFile = `/tmp/yelp-${label}-${stamp}.txt`;
+    fs.writeFileSync(txtFile, visible);
+
+    // Screenshot is the ultimate ground truth - shows reCAPTCHA widgets,
+    // "verify it's you" dialogs, error toasts, hCaptcha frames, etc.
+    let pngFile = null;
+    try {
+      pngFile = `/tmp/yelp-${label}-${stamp}.png`;
+      await page.screenshot({ path: pngFile, fullPage: true });
+    } catch (e) {
+      pngFile = `screenshot-failed:${e?.message}`;
+    }
+
+    console.error(`[yelp:dump] ${label} url=${page.url()} html=${htmlFile} (${html.length}b) text=${txtFile} (${visible.length}b) png=${pngFile}`);
   } catch (e) {
     console.error(`[yelp:dump] failed: ${e.message}`);
   }
@@ -603,6 +626,11 @@ async function main() {
       await page.authenticate({ username: proxyConfig.username, password: proxyConfig.password });
       proxyConfig._sessionUsername = proxyConfig.username;
     }
+
+    // Drop any stale (potentially banned) datadome cookie carried over from
+    // a previous run before we navigate; otherwise DataDome hard-blocks on
+    // the first request and we waste the whole self-resolve window.
+    await clearStaleDataDomeCookies(page);
 
     // Initial visit + datadome handling. If the persistent profile already
     // holds a valid biz.yelp.com session, Yelp redirects '/' to '/home/<bizId>/'

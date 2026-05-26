@@ -39,6 +39,28 @@ export function parseDataDomeCookie(cookieStr) {
   return kv ? kv.slice('datadome='.length) : null;
 }
 
+/**
+ * Wipe any persisted "datadome" cookies from the browser cookie jar before
+ * navigating to Yelp. A stale (banned) datadome value carried over from a
+ * previous run causes DataDome to immediately hard-block the session, so we
+ * always want to start clean and let DataDome issue a fresh challenge/cookie
+ * based on the current fingerprint + IP.
+ *
+ * Other Yelp session cookies (yelp_session, etc.) are preserved.
+ */
+export async function clearStaleDataDomeCookies(page) {
+  try {
+    const cdp = await page.createCDPSession();
+    for (const domain of ['.yelp.com', '.biz.yelp.com', 'biz.yelp.com', 'yelp.com', 'www.yelp.com', 'www.biz.yelp.com']) {
+      await cdp.send('Network.deleteCookies', { name: 'datadome', domain }).catch(() => {});
+      await cdp.send('Network.deleteCookies', { name: 'datadome', domain, path: '/' }).catch(() => {});
+    }
+    await cdp.detach().catch(() => {});
+  } catch (e) {
+    console.error(`[datadome] clearStaleDataDomeCookies failed: ${e?.message || e}`);
+  }
+}
+
 // ---- 2captcha (modern createTask API) ----
 // Migrated from legacy in.php (which expects form-encoded body and was
 // rejecting our JSON payload with ERROR_BAD_PARAMETERS) to the modern
@@ -221,6 +243,22 @@ export async function maybeBypassDataDome(page, proxyConfig, args) {
   }
 
   console.error('[datadome] hard block on ' + page.url());
+
+  // t=fe (fingerprint) challenges are NOT solvable by 2captcha/anticaptcha:
+  // there is no human action and no slider, the challenge is a pure
+  // client-side fingerprint score. Calling a third-party solver just wastes
+  // ~30s and credits, then returns a short bogus "cookie" that DataDome
+  // immediately rejects. The only real fixes for t=fe are (a) a better
+  // browser fingerprint (run headed under Xvfb, real-browser puppeteer)
+  // and (b) a higher-trust IP. Fail fast so the caller can surface the
+  // right action instead of looping on a non-bypassable challenge.
+  let challengeType = null;
+  try { challengeType = new URL(captchaUrl).searchParams.get('t'); } catch {}
+  if (challengeType === 'fe') {
+    console.error('[datadome] t=fe (fingerprint) challenge: solver providers cannot bypass this; needs headed/stealth browser or higher-trust IP. Aborting.');
+    return false;
+  }
+
   if (!args.twoCaptchaKey && !args.antiCaptchaKey) {
     console.error('[datadome] cannot solve: no captcha provider keys supplied');
     return false;
