@@ -31,7 +31,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
 import { maybeBypassDataDome, detectDataDome } from './lib/yelp-datadome.mjs';
-import { purgeStaleChromiumLocks, installShutdownHandlers } from './lib/yelp-userdata-lock.mjs';
+import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -132,13 +132,53 @@ async function dumpPage(page, label) {
   }
 }
 
+async function waitForStablePage(page, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await page.waitForFunction(() => document.readyState === 'complete' || document.readyState === 'interactive', { timeout: 2500 });
+      return true;
+    } catch (e) {
+      // Yelp does SPA/client redirects around auth; tolerate transient context swaps.
+      if (!String(e?.message || '').includes('Execution context was destroyed')) {
+        await sleep(400);
+      }
+    }
+  }
+  return false;
+}
+
+async function findSelectorWithRetries(page, selector, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await page.waitForSelector(selector, { timeout: 3500 });
+      const el = await page.$(selector);
+      if (el) return el;
+    } catch (e) {
+      const msg = String(e?.message || '');
+      const isTransient =
+        msg.includes('Execution context was destroyed') ||
+        msg.includes('detached Frame') ||
+        msg.includes('Cannot find context with specified id');
+      if (!isTransient) throw e;
+      await waitForStablePage(page, 4000);
+    }
+    await sleep(300);
+  }
+  return null;
+}
+
 async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
   console.error('[yelp] navigating to login');
   await page.goto('https://biz.yelp.com/login', { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   await sleep(1500);
 
   // /login often loads a DataDome overlay that hides the form.
-  await maybeBypassDataDome(page, proxyConfig, args);
+  const bypassed = await maybeBypassDataDome(page, proxyConfig, args);
+  if (!bypassed) {
+    throw new Error('DataDome hard block could not be bypassed on /login (likely banned proxy or captcha provider failure). Rotate proxy/session and retry.');
+  }
 
   // Dismiss OneTrust / cookie-consent banners that can block form elements.
   await page.evaluate(() => {
@@ -154,8 +194,8 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
 
   // Wait for the email field. Yelp may ship a 2-step (email first, then password)
   // flow where the password input only appears after submitting the email.
-  await page.waitForSelector(SELECTORS.loginEmail, { timeout: 30000 }).catch(() => {});
-  let emailEl = await page.$(SELECTORS.loginEmail);
+  await waitForStablePage(page, 10000);
+  let emailEl = await findSelectorWithRetries(page, SELECTORS.loginEmail, 30000);
   if (!emailEl) {
     await dumpPage(page, 'no-email-field');
     throw new Error('login email field not found - update SELECTORS.loginEmail (HTML dumped to /tmp)');
@@ -163,7 +203,7 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
   await emailEl.click({ clickCount: 3 });
   await emailEl.type(email, { delay: 30 });
 
-  let passEl = await page.$(SELECTORS.loginPassword);
+  let passEl = await findSelectorWithRetries(page, SELECTORS.loginPassword, 4000);
 
   if (!passEl) {
     // Likely an email-first flow - click the "Continue" / submit button to reveal
@@ -171,8 +211,7 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
     console.error('[yelp] email-first flow detected - submitting email to reveal password field');
     const submitFirst = await page.$(SELECTORS.loginSubmit);
     if (submitFirst) await submitFirst.click().catch(() => page.evaluate(el => el.click(), submitFirst));
-    await page.waitForSelector(SELECTORS.loginPassword, { timeout: 15000 }).catch(() => {});
-    passEl = await page.$(SELECTORS.loginPassword);
+    passEl = await findSelectorWithRetries(page, SELECTORS.loginPassword, 15000);
   }
 
   if (!passEl) {
@@ -196,7 +235,10 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
 
   // Yelp may show DataDome again after submit.
   await sleep(3000);
-  await maybeBypassDataDome(page, proxyConfig, args);
+  const bypassedAfterSubmit = await maybeBypassDataDome(page, proxyConfig, args);
+  if (!bypassedAfterSubmit) {
+    throw new Error('DataDome hard block after login submit (likely banned proxy/session). Rotate proxy and retry.');
+  }
 
   if (!(await isLoggedIn(page))) {
     await dumpPage(page, 'post-submit-not-authed');
@@ -540,14 +582,15 @@ async function main() {
   const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'];
   if (proxyConfig) launchArgs.push(`--proxy-server=${proxyConfig.host}`);
 
-  // Reap any leftover Chromium / SingletonLock from a prior killed run.
-  purgeStaleChromiumLocks(args.userDataDir);
-
-  const browser = await puppeteer.launch({
+  const browser = await launchPuppeteerWithLockRecovery({
+    puppeteer,
+    userDataDir: args.userDataDir,
+    launchOptions: {
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir || undefined,
     defaultViewport: { width: 1366, height: 900 },
     args: launchArgs,
+    },
   });
   installShutdownHandlers(browser);
 
@@ -566,7 +609,10 @@ async function main() {
     // and we can skip the (DataDome-fortified) /login flow entirely.
     await page.goto('https://biz.yelp.com/', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
     await sleep(1500 + Math.random() * 1500);
-    await maybeBypassDataDome(page, proxyConfig, args);
+    const bypassed = await maybeBypassDataDome(page, proxyConfig, args);
+    if (!bypassed) {
+      throw new Error('DataDome hard block on initial Yelp load (likely proxy IP banned). Rotate proxy/session and retry.');
+    }
 
     // If Yelp regionally redirected us (e.g. to biz.yelp.com.br/landing/signup_fy21)
     // the session is effectively useless: those landing pages render fully for
@@ -578,7 +624,10 @@ async function main() {
         console.error(`[yelp] persistent session landed on ${page.url()} - retrying via biz.yelp.com/home`);
         await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
         await sleep(1500);
-        await maybeBypassDataDome(page, proxyConfig, args);
+        const bypassedRetry = await maybeBypassDataDome(page, proxyConfig, args);
+        if (!bypassedRetry) {
+          throw new Error('DataDome hard block after forcing biz.yelp.com/home (proxy likely banned). Rotate proxy/session and retry.');
+        }
       }
     } catch { /* noop */ }
 

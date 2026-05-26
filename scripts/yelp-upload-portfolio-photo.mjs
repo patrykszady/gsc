@@ -30,7 +30,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
-import { purgeStaleChromiumLocks, installShutdownHandlers } from './lib/yelp-userdata-lock.mjs';
+import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -218,10 +218,11 @@ async function main() {
     } catch {}
   }
 
-  // Reap any leftover Chromium / SingletonLock from a prior killed run.
-  purgeStaleChromiumLocks(args.userDataDir);
-
-  const browser = await puppeteer.launch(launchOpts);
+  const browser = await launchPuppeteerWithLockRecovery({
+    puppeteer,
+    userDataDir: args.userDataDir,
+    launchOptions: launchOpts,
+  });
   installShutdownHandlers(browser);
   let exitCode = 0;
   try {

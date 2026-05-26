@@ -145,3 +145,40 @@ export function installShutdownHandlers(browser, log = (m) => console.error(m)) 
   process.once('SIGTERM', () => handler('SIGTERM'));
   process.once('SIGINT', () => handler('SIGINT'));
 }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function isLaunchRaceError(err) {
+  const msg = String(err?.message || err || '');
+  return (
+    msg.includes('Target closed') ||
+    msg.includes('Target.setDiscoverTargets') ||
+    msg.includes('Protocol error')
+  );
+}
+
+/**
+ * Launch Chromium with one recovery retry after lock cleanup.
+ * This handles startup races where a freshly-killed stale browser
+ * has not fully exited yet and Puppeteer fails with TargetCloseError.
+ */
+export async function launchPuppeteerWithLockRecovery({
+  puppeteer,
+  launchOptions,
+  userDataDir,
+  log = (m) => console.error(m),
+}) {
+  purgeStaleChromiumLocks(userDataDir, log);
+  await sleep(1200);
+
+  try {
+    return await puppeteer.launch(launchOptions);
+  } catch (e) {
+    if (!isLaunchRaceError(e)) throw e;
+    log(`[yelp-lock] launch failed (${e.message}); retrying after second lock purge`);
+
+    purgeStaleChromiumLocks(userDataDir, log);
+    await sleep(1800);
+    return await puppeteer.launch(launchOptions);
+  }
+}
