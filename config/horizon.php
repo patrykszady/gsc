@@ -201,7 +201,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'ai-content', 'media-sync'],
+            'queue' => ['default', 'ai-content'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -210,6 +210,20 @@ return [
             'memory' => 128,
             'tries' => 5,
             'timeout' => 60,
+            'nice' => 0,
+        ],
+
+        'supervisor-media-sync' => [
+            'connection' => 'redis',
+            'queue' => ['media-sync'],
+            'balance' => 'simple',
+            'minProcesses' => 1,
+            'maxProcesses' => 1, // serialise Puppeteer/Yelp uploads
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 3,
+            'timeout' => 300, // must exceed worst-case Symfony Process timeout (~210s)
             'nice' => 0,
         ],
     ],
@@ -221,11 +235,17 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+            'supervisor-media-sync' => [
+                'maxProcesses' => 1,
+            ],
         ],
 
         'local' => [
             'supervisor-1' => [
                 'maxProcesses' => 3,
+            ],
+            'supervisor-media-sync' => [
+                'maxProcesses' => 1,
             ],
         ],
     ],
