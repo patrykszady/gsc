@@ -249,8 +249,9 @@ PROMPT;
             $original = trim((string) ($project?->title ?? 'Home remodeling project'));
         }
 
-        // v13 = also avoid vague progress-status framings ("wrapping", "in the middle of").
-        $cacheKey = "yelp_caption_seo:v13:{$image->id}:{$limit}:" . md5($original);
+        // v14 = allow multi-sentence captions but require every sentence be complete
+        // (no dangling fragments like "This Arlington Heights Home Remodel" at the end).
+        $cacheKey = "yelp_caption_seo:v14:{$image->id}:{$limit}:" . md5($original);
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             $type = $project?->project_type
                 ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
@@ -275,7 +276,9 @@ WRITING APPROACH:
 - Aim for {$minChars}-{$limit} characters. Shorter is fine if the source is short. Do not pad with marketing language to hit the cap.
 
 HARD RULES:
-- ONE complete grammatical sentence. Starts with a capital letter, ends with a period. Real subject + verb. No fragments, no colon-then-list, no em-dash-then-list, no comma-spliced tag dumps.
+- 1-3 complete grammatical sentences. Every sentence MUST have a real subject + verb, start with a capital letter, and end with a period. NO fragments, NO dangling clauses, NO sentence that is just a noun phrase (e.g. "This Arlington Heights Home Remodel." is BANNED — that's a noun phrase with no verb).
+- The final sentence in particular must be a complete thought ending in a period. Never let the caption end with a hanging noun phrase or a half-finished clause that was about to say something else.
+- No colon-then-list, no em-dash-then-list, no comma-spliced tag dumps.
 - No line breaks, hashtags, emojis, quotes, or exclamation points.
 - Max length: {$limit} characters (count every space and punctuation mark).
 - Mention the city "{$location}" exactly twice. Do NOT include the state ("IL", "Illinois") or "Chicago" / "Chicago area".
@@ -307,6 +310,7 @@ GOOD EXAMPLES (study the voice — lead with the project/location, no vague prog
 - "This Arlington Heights bathroom remodel by GS Construction reconfigured the layout, an Arlington Heights bathroom renovation we ran as design-build contractor."
 
 BANNED EXAMPLES (do NOT return anything like these):
+- "GS Construction did this Arlington Heights Home Remodel, showcasing the bright, open kitchen. This Arlington Heights Home Remodel" — second "sentence" is a noun-phrase fragment with no verb; also repeats the exact same phrase verbatim instead of varying the service word; also uses cosmetic "bright, open" and the filler verb "showcasing".
 - "GS Construction in the middle of this Palatine kitchen remodel..." — "in the middle of" is vague filler; lead with the project itself.
 - "GS Construction wrapping this Arlington Heights bathroom remodel..." — "wrapping" is vague status filler; cut it or use a concrete phase like "final reveal".
 - "Mid-build on this Inverness mudroom remodel..." — same vague-status problem; drop it.
@@ -333,26 +337,109 @@ SOURCE CAPTION:
 Return ONLY the rewritten caption text on a single line. No JSON, no labels, no quotes.
 PROMPT;
 
-            $raw = $this->callGeminiMultiImage($prompt, [], 200);
-            if (!is_string($raw) || trim($raw) === '') {
-                return null;
-            }
-            $clean = trim($raw);
-            // Strip wrapping quotes if Gemini added them anyway.
-            $clean = trim($clean, "\"'`\n\r\t ");
-            // Collapse whitespace to a single line.
-            $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
-            if (mb_strlen($clean) > $limit) {
-                // Try to cut at last word boundary within limit.
-                $cut = mb_substr($clean, 0, $limit);
-                $space = mb_strrpos($cut, ' ');
-                if ($space !== false && $space > $limit - 30) {
-                    $cut = rtrim(mb_substr($cut, 0, $space), " ,.;:-");
+            $maxAttempts = 3;
+            $lastClean = '';
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                $attemptPrompt = $prompt;
+                if ($attempt > 1) {
+                    // Strengthen the prompt on retry with the specific failure mode.
+                    $attemptPrompt = "PREVIOUS ATTEMPT WAS REJECTED for being malformed (fragment, repeated phrase, or missing verb). Re-read every HARD RULE and BANNED EXAMPLE before answering. Your previous output was:\n\"{$lastClean}\"\n\n" . $prompt;
                 }
-                $clean = $cut;
+
+                $raw = $this->callGeminiMultiImage($attemptPrompt, [], 200);
+                if (!is_string($raw) || trim($raw) === '') {
+                    continue;
+                }
+                $clean = trim($raw);
+                // Strip wrapping quotes if Gemini added them anyway.
+                $clean = trim($clean, "\"'`\n\r\t ");
+                // Collapse whitespace to a single line.
+                $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
+                if (mb_strlen($clean) > $limit) {
+                    // Try to cut at last word boundary within limit.
+                    $cut = mb_substr($clean, 0, $limit);
+                    $space = mb_strrpos($cut, ' ');
+                    if ($space !== false && $space > $limit - 30) {
+                        $cut = rtrim(mb_substr($cut, 0, $space), " ,.;:-");
+                    }
+                    $clean = $cut;
+                }
+                $lastClean = $clean;
+
+                if ($this->isCaptionWellFormed($clean, $location, $type)) {
+                    return $clean !== '' ? $clean : null;
+                }
+
+                Log::warning('Yelp caption rewrite failed quality gate; retrying', [
+                    'image_id' => $image->id,
+                    'attempt' => $attempt,
+                    'caption' => $clean,
+                ]);
             }
-            return $clean !== '' ? $clean : null;
+
+            // All retries exhausted with malformed output. Abort hard so the
+            // upload fails loudly instead of shipping a bad caption or a
+            // dumb mid-word truncation.
+            throw new \RuntimeException(sprintf(
+                'Gemini caption rewrite failed quality gate after %d attempts (image #%d). Last output: %s',
+                $maxAttempts,
+                $image->id,
+                $lastClean !== '' ? $lastClean : '[empty]'
+            ));
         });
+    }
+
+    /**
+     * Validate a Gemini-rewritten caption. Returns false if it contains a
+     * trailing noun-phrase fragment, duplicate clauses, or other malformations
+     * we'd rather not ship to Yelp.
+     */
+    protected function isCaptionWellFormed(string $caption, string $location, string $type): bool
+    {
+        if ($caption === '') return false;
+
+        // Must end with terminal punctuation. If Gemini's last "sentence" was a
+        // dangling fragment we'll have truncated mid-clause — reject.
+        if (! preg_match('/[.!?]$/', $caption)) {
+            return false;
+        }
+
+        // Split into sentences and require each to have a verb-shaped token
+        // (at least one word ending in common verb suffixes OR a known
+        // copula/auxiliary). This catches "This Arlington Heights Home Remodel."
+        $sentences = preg_split('/(?<=[.!?])\s+/u', $caption) ?: [];
+        $verbHints = '/\b(is|are|was|were|been|being|be|has|have|had|do|does|did|will|would|can|could|should|may|might|gets|got|going|run|ran|runs|running|added|opened|reconfigured|removed|relocated|finished|handled|handling|handles|reveal|wrap|wrapped|stage|building|built|builds|installed|raised|widened|reworked|remodel(?:s|ed|ing)?|renovat(?:e|es|ed|ing|ion)|design(?:ed|ing)?)\b/i';
+        // A verb suffix heuristic — words ending in -ed, -ing, -s preceded by
+        // a consonant cluster — covers most action verbs we'd see.
+        $verbSuffix = '/\b[a-z]{3,}(?:ed|ing|s)\b/i';
+        foreach ($sentences as $sentence) {
+            $sentence = trim($sentence);
+            if ($sentence === '') continue;
+            $wordCount = str_word_count($sentence);
+            if ($wordCount < 4) {
+                return false; // too short to be a real sentence
+            }
+            if (! preg_match($verbHints, $sentence) && ! preg_match($verbSuffix, $sentence)) {
+                return false;
+            }
+        }
+
+        // Reject if any chunk of 4+ consecutive words repeats verbatim — the
+        // bad case "...Arlington Heights Home Remodel. This Arlington Heights
+        // Home Remodel" trips this.
+        $words = preg_split('/\s+/u', mb_strtolower($caption)) ?: [];
+        if (count($words) >= 8) {
+            $seen = [];
+            for ($i = 0; $i + 3 < count($words); $i++) {
+                $gram = implode(' ', array_slice($words, $i, 4));
+                if (isset($seen[$gram])) {
+                    return false;
+                }
+                $seen[$gram] = true;
+            }
+        }
+
+        return true;
     }
 
     /**

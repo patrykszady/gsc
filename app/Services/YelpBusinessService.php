@@ -650,20 +650,19 @@ class YelpBusinessService
 
         $limit = 140;
 
-        // Try a keyword-rich Gemini rewrite first so we don't ship mid-word truncations.
-        try {
-            $seo = app(AiContentService::class)->shortenCaptionForSeo($image, $limit);
-            if (is_string($seo) && $seo !== '' && mb_strlen($seo) <= $limit) {
-                return $seo;
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Yelp biz caption SEO rewrite failed', [
-                'image_id' => $image->id,
-                'error' => $e->getMessage(),
-            ]);
+        // Keyword-rich Gemini rewrite. We do NOT fall back to a plain
+        // mb_substr truncation on failure — a mid-word cut on Yelp looks
+        // worse than skipping the upload. Let the exception bubble; the
+        // job will fail loudly with the bad output in the logs.
+        $seo = app(AiContentService::class)->shortenCaptionForSeo($image, $limit);
+        if (is_string($seo) && $seo !== '' && mb_strlen($seo) <= $limit) {
+            return $seo;
         }
 
-        return mb_substr($caption, 0, $limit);
+        throw new \RuntimeException(sprintf(
+            'Yelp caption rewrite returned no usable result for image #%d.',
+            $image->id
+        ));
     }
 
     protected function lastJsonLine(string $stdout): ?string
