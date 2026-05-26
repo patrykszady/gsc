@@ -197,9 +197,17 @@ export async function solveDataDome({ captchaUrl, pageUrl, proxyStr, userAgent, 
  */
 export async function maybeBypassDataDome(page, proxyConfig, args) {
   // Give the DataDome JS challenge a chance to self-resolve via stealth.
-  for (let i = 0; i < 6; i++) {
-    if (!(await detectDataDome(page))) return true;
-    await sleep(2000);
+  // A real Chromium on a clean residential IP often passes within 20-40s
+  // once the embedded JS runs and posts the challenge solution. Calling
+  // 2captcha is expensive and the returned cookie is fragile (IP-bound),
+  // so we wait substantially longer than before (was 12s, now up to 60s)
+  // before escalating.
+  for (let i = 0; i < 20; i++) {
+    if (!(await detectDataDome(page))) {
+      if (i > 0) console.error(`[datadome] self-resolved after ${i * 3}s`);
+      return true;
+    }
+    await sleep(3000);
   }
 
   const captchaUrl = await detectDataDome(page);
@@ -240,16 +248,35 @@ export async function maybeBypassDataDome(page, proxyConfig, args) {
   if (!raw) return false;
   const value = parseDataDomeCookie(raw) || raw;
   if (!value) return false;
+  console.error(`[datadome] injecting cookie (len=${value.length}, head=${value.slice(0, 20)}...)`);
 
+  // Clear any existing datadome cookies across all yelp domains.
   const cdp = await page.createCDPSession();
-  await cdp.send('Network.deleteCookies', { name: 'datadome', domain: '.yelp.com' }).catch(() => {});
-  await cdp.detach();
-  for (const domain of ['.yelp.com', '.biz.yelp.com']) {
-    await page.setCookie({ name: 'datadome', value, domain, path: '/', secure: true, sameSite: 'Lax' });
+  for (const domain of ['.yelp.com', '.biz.yelp.com', 'biz.yelp.com', 'yelp.com', 'www.yelp.com']) {
+    await cdp.send('Network.deleteCookies', { name: 'datadome', domain }).catch(() => {});
   }
-  await page.evaluate((v) => {
-    document.cookie = `datadome=${v}; domain=.yelp.com; path=/; secure; SameSite=Lax`;
-  }, value).catch(() => {});
+  // Inject via CDP Network.setCookie too (matches what a real Set-Cookie
+  // response header would do, including httpOnly which document.cookie
+  // can never set). DataDome typically sets its cookie httpOnly so the
+  // server-side check passes only when the cookie is present in the
+  // request header AND was originally set with httpOnly semantics.
+  for (const domain of ['.yelp.com', '.biz.yelp.com']) {
+    await cdp.send('Network.setCookie', {
+      name: 'datadome',
+      value,
+      domain,
+      path: '/',
+      secure: true,
+      httpOnly: true,
+      sameSite: 'Lax',
+      expires: Math.floor(Date.now() / 1000) + 31536000,
+    }).catch((e) => console.error(`[datadome] CDP setCookie ${domain} failed: ${e?.message}`));
+  }
+  await cdp.detach();
+  // Also call Puppeteer setCookie as a belt-and-braces fallback.
+  for (const domain of ['.yelp.com', '.biz.yelp.com']) {
+    await page.setCookie({ name: 'datadome', value, domain, path: '/', secure: true, httpOnly: true, sameSite: 'Lax' }).catch(() => {});
+  }
 
   if (!page._ddInterceptInstalled) {
     page._ddInterceptInstalled = true;
