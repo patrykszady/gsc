@@ -217,7 +217,11 @@ return [
             'node_binary' => env('YELP_NODE_BINARY', 'node'),
             // Run Chromium headed for first-time login / debugging.
             'headed' => env('YELP_BIZ_HEADED', false),
-            'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 90000),
+            // Per-script Chromium budget (ms). Must accommodate the worst
+            // case: DataDome JS self-resolve loop (~60s) + 2captcha solve
+            // (~30s) + cookie inject + reload + actual upload. 240s gives
+            // PHP a 270s wall-clock budget (timeout_ms/1000 + 30).
+            'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 240000),
             'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),
