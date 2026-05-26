@@ -833,6 +833,37 @@ async function main() {
       }
     }
 
+    // If we still don't know the bizId (e.g. session restored at the marketing
+    // root https://business.yelp.com/ where the URL leaks nothing), force-nav
+    // to biz.yelp.com/home which 302s to /home/<bizId>/ for authed users. The
+    // framenavigated listener will capture+cache it during the redirect.
+    if (!bizIdState.bizId) {
+      try {
+        const cur = new URL(page.url());
+        const onDashboard = /^biz\.yelp\.com$/i.test(cur.hostname) && /^\/home\//.test(cur.pathname);
+        if (!onDashboard) {
+          console.error('[yelp] no bizId yet - forcing nav to biz.yelp.com/home to capture it');
+          await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
+          await sleep(1500);
+          // Fallback: scrape the bizId out of the rendered HTML if the URL
+          // didn't end up with /home/<id>/ (e.g. SPA-style routing).
+          if (!bizIdState.bizId) {
+            const scraped = await page.evaluate(() => {
+              const re = /\/home\/([A-Za-z0-9_-]{12,})(?:[\/"?])|business\.yelp\.com\/([A-Za-z0-9_-]{12,})\/(?:home|photos|reviews|leads|insights|messages|settings)\b/g;
+              const html = document.documentElement.outerHTML;
+              const m = re.exec(html);
+              return m ? (m[1] || m[2]) : null;
+            }).catch(() => null);
+            if (scraped) {
+              bizIdState.bizId = scraped;
+              console.error(`[yelp] scraped bizId=${scraped} from page HTML`);
+              writeCachedBizId(args.userDataDir, scraped);
+            }
+          }
+        }
+      } catch { /* noop */ }
+    }
+
     let photosUrl = args.photosUrl;
     if (!photosUrl && bizIdState.bizId) {
       photosUrl = `https://biz.yelp.com/biz_photos/${bizIdState.bizId}`;
