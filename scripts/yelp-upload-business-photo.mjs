@@ -290,6 +290,31 @@ async function detectPhotosUrl(page, timeoutMs) {
   // biz.yelp.com directly.
   const origin = 'https://biz.yelp.com';
 
+  // Tokens that look like a path segment but are NEVER bizIds. The Yelp
+  // marketing CMS at business.yelp.com serves /wp-content/, /wp-admin/,
+  // /static/, /assets/, etc., and we must not mistake those for accounts.
+  const BIZID_BLACKLIST = new Set([
+    'wp-content', 'wp-admin', 'wp-includes', 'wp-json',
+    'static', 'assets', 'public', 'images', 'image', 'img', 'photos', 'photo',
+    'css', 'js', 'fonts', 'media', 'uploads', 'cdn',
+    'api', 'graphql', '_next', '_nuxt', '__data',
+    'home', 'login', 'logout', 'signup', 'signin', 'account', 'settings',
+    'dashboard', 'support', 'help', 'contact', 'about', 'pricing',
+    'reviews', 'leads', 'messages', 'insights', 'advertise', 'products',
+    'biz', 'biz_photos',
+  ]);
+  // Real Yelp bizIds are URL-safe base64-ish strings, usually 18-30 chars
+  // long, containing a healthy mix of letters/digits. Reject obvious
+  // non-matches (anything in the blacklist or too short).
+  const looksLikeBizId = (token) => {
+    if (!token) return false;
+    if (BIZID_BLACKLIST.has(token.toLowerCase())) return false;
+    if (!/^[A-Za-z0-9_-]{12,}$/.test(token)) return false;
+    // bizIds always contain at least one digit OR mixed case; pure-lowercase
+    // single-word slugs (wp-content, hello-world, etc.) almost never qualify.
+    return /[0-9]/.test(token) || /[A-Z]/.test(token);
+  };
+
   // Try to extract bizId from the current page URL. Recognised patterns:
   //   biz.yelp.com/home/<bizId>          (legacy dashboard)
   //   business.yelp.com/<bizId>/home     (rebranded dashboard, mid-2026+)
@@ -298,10 +323,10 @@ async function detectPhotosUrl(page, timeoutMs) {
     try {
       const url = new URL(u);
       let m = url.pathname.match(/^\/home\/([A-Za-z0-9_-]+)/);
-      if (m) return m[1];
+      if (m && looksLikeBizId(m[1])) return m[1];
       if (/^business\.yelp\.com$/i.test(url.hostname)) {
-        m = url.pathname.match(/^\/([A-Za-z0-9_-]{10,})(?:\/|$)/);
-        if (m) return m[1];
+        m = url.pathname.match(/^\/([A-Za-z0-9_-]+)(?:\/|$)/);
+        if (m && looksLikeBizId(m[1])) return m[1];
       }
     } catch {}
     return null;
@@ -314,15 +339,30 @@ async function detectPhotosUrl(page, timeoutMs) {
     return url;
   }
 
-  // Navigate to the dashboard and let Yelp redirect us to the per-business
-  // landing so we can pull the bizId out of the final URL.
-  await page.goto(origin + '/', { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
-  await sleep(1500);
-  homeBizId = extractBizIdFromUrl(page.url());
-  if (homeBizId) {
-    const url = `${origin}/biz_photos/${homeBizId}`;
-    console.error(`[yelp] derived photos URL after dashboard redirect: ${url}`);
-    return url;
+  // Navigate to entry URLs that should force Yelp to redirect to the
+  // authenticated per-business dashboard, then poll for the bizId in the URL.
+  // Try several candidates because regional/AB variations affect which URL
+  // resolves to /<bizId>/home vs. a generic marketing landing.
+  const candidates = [
+    'https://business.yelp.com/home',
+    'https://biz.yelp.com/home',
+    'https://business.yelp.com/',
+  ];
+  for (const candidate of candidates) {
+    await page.goto(candidate, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
+    // Yelp's SPA dashboard often does a client-side redirect after initial paint.
+    try {
+      await page.waitForFunction(
+        () => /\/[A-Za-z0-9_-]{12,}\/(home|photos|reviews|leads|insights|messages|settings)\b/.test(location.pathname),
+        { timeout: 8000 }
+      );
+    } catch {}
+    homeBizId = extractBizIdFromUrl(page.url());
+    if (homeBizId) {
+      const url = `${origin}/biz_photos/${homeBizId}`;
+      console.error(`[yelp] derived photos URL after redirect via ${candidate}: ${url}`);
+      return url;
+    }
   }
 
   // Yelp's dashboard often does client-side navigations after initial paint;
@@ -344,31 +384,44 @@ async function detectPhotosUrl(page, timeoutMs) {
   };
 
   // Common locations: sidebar nav link, "Photos" tab, business URL pattern.
-  const found = await safeEval(() => {
-    const links = Array.from(document.querySelectorAll('a[href*="/biz_photos/"]'));
-    if (links.length) return links[0].href;
+  const candidateUrls = await safeEval(() => {
+    const out = [];
+    for (const a of document.querySelectorAll('a[href*="/biz_photos/"]')) out.push(a.href);
     // Some dashboards link to /photos/<bizId> first then redirect.
-    const alt = Array.from(document.querySelectorAll('a[href*="/photos/"]'));
-    if (alt.length) return alt[0].href;
-    return null;
+    for (const a of document.querySelectorAll('a[href*="/photos/"]')) out.push(a.href);
+    return out;
   });
-  if (found) {
-    console.error(`[yelp] detected photos URL: ${found}`);
-    return found;
+  for (const href of (candidateUrls || [])) {
+    let m = href.match(/\/biz_photos\/([A-Za-z0-9_-]+)/);
+    if (!m) m = href.match(/\/photos\/([A-Za-z0-9_-]+)/);
+    if (m && looksLikeBizId(m[1])) {
+      const url = `${origin}/biz_photos/${m[1]}`;
+      console.error(`[yelp] detected photos URL: ${url}`);
+      return url;
+    }
   }
 
   // Last resort: try guessing from any /biz/<id>/ link in the dashboard.
+  // Collect candidates and filter through looksLikeBizId so we never pick up
+  // CMS asset paths like /wp-content/.
   const bizId = await safeEval(() => {
     const html = document.documentElement.innerHTML;
-    const m = html.match(/\/biz_photos\/([A-Za-z0-9_-]+)/)
-      || html.match(/\/biz\/([A-Za-z0-9_-]+)/)
+    const hits = [];
+    for (const re of [
+      /\/biz_photos\/([A-Za-z0-9_-]+)/g,
+      /\/biz\/([A-Za-z0-9_-]+)/g,
       // business.yelp.com rebrand: dashboard links look like /<bizId>/home,
       // /<bizId>/photos, /<bizId>/reviews, etc.
-      || html.match(/business\.yelp\.com\/([A-Za-z0-9_-]{10,})\//);
-    return m ? m[1] : null;
+      /business\.yelp\.com\/([A-Za-z0-9_-]+)\/(?:home|photos|reviews|leads|insights|messages|settings)\b/g,
+    ]) {
+      let m;
+      while ((m = re.exec(html))) hits.push(m[1]);
+    }
+    return hits;
   });
-  if (bizId) {
-    const url = `${origin}/biz_photos/${bizId}`;
+  const filtered = (Array.isArray(bizId) ? bizId : []).filter(looksLikeBizId);
+  if (filtered.length) {
+    const url = `${origin}/biz_photos/${filtered[0]}`;
     console.error(`[yelp] guessed photos URL: ${url}`);
     return url;
   }
