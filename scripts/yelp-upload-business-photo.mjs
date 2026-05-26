@@ -115,6 +115,76 @@ function isBizYelpUrl(url) {
 // biz.yelp.com.br/landing/... etc. must NOT be treated as logged-in.
 const UNAUTHED_BIZ_PATH_RE = /^\/(login|signup|signup_fy21|landing|claim|welcome|forgot|reset|password|verify|signup-|account\/(login|signup))(\/|$|\?)/i;
 
+// -----------------------------------------------------------------------------
+// bizId capture + persistent cache
+// -----------------------------------------------------------------------------
+// Yelp's dashboard URLs leak the account's bizId in the path immediately after
+// any successful login (or persistent-session reuse). We sniff every page URL
+// we observe and persist the first match to a small file inside the user-data
+// dir so subsequent runs skip auto-detection entirely.
+
+// Recognised dashboard URL shapes:
+//   biz.yelp.com/home/<bizId>/...           (legacy)
+//   business.yelp.com/<bizId>/home          (rebranded, mid-2026+)
+//   business.yelp.com/<bizId>/{photos,reviews,leads,insights,messages,settings}
+function extractBizIdFromAnyUrl(u) {
+  try {
+    const url = new URL(u);
+    if (/^biz\.yelp\.com$/i.test(url.hostname)) {
+      const m = url.pathname.match(/^\/home\/([A-Za-z0-9_-]{12,})(?:\/|$)/);
+      if (m) return m[1];
+    }
+    if (/^business\.yelp\.com$/i.test(url.hostname)) {
+      const m = url.pathname.match(/^\/([A-Za-z0-9_-]{12,})\/(?:home|photos|reviews|leads|insights|messages|settings)\b/);
+      if (m) return m[1];
+    }
+  } catch {}
+  return null;
+}
+
+function bizIdCachePath(userDataDir) {
+  return userDataDir ? path.join(userDataDir, '.yelp-bizid') : null;
+}
+
+function readCachedBizId(userDataDir) {
+  const p = bizIdCachePath(userDataDir);
+  if (!p) return null;
+  try {
+    const v = fs.readFileSync(p, 'utf8').trim();
+    return /^[A-Za-z0-9_-]{12,}$/.test(v) ? v : null;
+  } catch { return null; }
+}
+
+function writeCachedBizId(userDataDir, bizId) {
+  const p = bizIdCachePath(userDataDir);
+  if (!p || !bizId) return;
+  try {
+    fs.writeFileSync(p, bizId, 'utf8');
+    console.error(`[yelp] cached bizId=${bizId} to ${p}`);
+  } catch (e) {
+    console.error(`[yelp] WARN: could not cache bizId: ${e.message}`);
+  }
+}
+
+// Install a frame-navigation listener that opportunistically captures the
+// bizId from any URL we visit and persists it on first sight. Idempotent.
+function installBizIdCapture(page, userDataDir, state) {
+  if (page._bizIdCaptureInstalled) return;
+  page._bizIdCaptureInstalled = true;
+  const capture = (url) => {
+    if (state.bizId) return;
+    const id = extractBizIdFromAnyUrl(url);
+    if (id) {
+      state.bizId = id;
+      console.error(`[yelp] captured bizId=${id} from ${url}`);
+      writeCachedBizId(userDataDir, id);
+    }
+  };
+  page.on('framenavigated', (f) => { try { capture(f.url()); } catch {} });
+  // Catch the current URL too in case we've already navigated past it.
+  capture(page.url());
+}
+
 async function isLoggedIn(page) {
   const url = page.url();
   if (!isBizYelpUrl(url)) return false;
@@ -708,6 +778,15 @@ async function main() {
       proxyConfig._sessionUsername = proxyConfig.username;
     }
 
+    // Opportunistically capture and cache the account's bizId from any
+    // dashboard URL we navigate to. Once cached, future runs skip the
+    // detectPhotosUrl() dance entirely.
+    const bizIdState = { bizId: readCachedBizId(args.userDataDir) };
+    if (bizIdState.bizId) {
+      console.error(`[yelp] using cached bizId=${bizIdState.bizId}`);
+    }
+    installBizIdCapture(page, args.userDataDir, bizIdState);
+
     // NOTE: stale datadome cookie wiping is now CONDITIONAL inside
     // maybeBypassDataDome(): it only fires if the page is actually hard-blocked.
     // An unconditional wipe forces DataDome into a fresh fingerprint
@@ -755,6 +834,10 @@ async function main() {
     }
 
     let photosUrl = args.photosUrl;
+    if (!photosUrl && bizIdState.bizId) {
+      photosUrl = `https://biz.yelp.com/biz_photos/${bizIdState.bizId}`;
+      console.error(`[yelp] using cached bizId for photos URL: ${photosUrl}`);
+    }
     if (!photosUrl) {
       photosUrl = await detectPhotosUrl(page, args.timeoutMs);
     }
