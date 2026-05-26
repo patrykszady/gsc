@@ -39,46 +39,71 @@ export function parseDataDomeCookie(cookieStr) {
   return kv ? kv.slice('datadome='.length) : null;
 }
 
-// ---- 2captcha ----
+// ---- 2captcha (modern createTask API) ----
+// Migrated from legacy in.php (which expects form-encoded body and was
+// rejecting our JSON payload with ERROR_BAD_PARAMETERS) to the modern
+// api.2captcha.com/createTask endpoint. Same JSON task shape as
+// anti-captcha. Handles both t=fe (slider) and t=bv (interstitial)
+// DataDome challenge variants.
 async function solveWith2Captcha({ captchaUrl, pageUrl, proxyStr, userAgent, apiKey }) {
-  console.error('[datadome:2captcha] submitting challenge');
-  // Note: do NOT short-circuit on t=bv. The `t` parameter just identifies the
-  // DataDome challenge variant ('fe' = slider, 'bv' = interstitial). 2captcha's
-  // datadome method handles both. A previous version bailed here with a
-  // misleading "IP banned" message and never even submitted the task.
-  const submitRes = await fetch('https://2captcha.com/in.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: apiKey,
-      method: 'datadome',
-      captcha_url: captchaUrl,
-      pageurl: pageUrl,
-      userAgent,
-      proxy: proxyStr,
-      proxytype: 'http',
-      json: 1,
-    }),
-  }).catch((e) => ({ ok: false, _err: e?.message }));
-  const submitData = await submitRes.json?.().catch(() => null);
-  if (!submitData || submitData.status !== 1) {
-    console.error(`[datadome:2captcha] submit error: ${submitData?.request || submitRes._err || 'unknown'}`);
+  let proxyParts = null;
+  if (proxyStr) {
+    // proxyStr format: "user:pass@host:port" - password may contain ':' so
+    // use a non-greedy match on user and a greedy match on password.
+    const m = proxyStr.match(/^([^:]+):(.+)@([^:]+):(\d+)$/);
+    if (m) proxyParts = { login: m[1], password: m[2], address: m[3], port: Number(m[4]) };
+  }
+  if (!proxyParts) {
+    console.error('[datadome:2captcha] missing/invalid proxy - DataDome requires solving through the same egress IP');
     return null;
   }
-  const taskId = submitData.request;
+
+  let t = null;
+  try { t = new URL(captchaUrl).searchParams.get('t'); } catch {}
+  console.error(`[datadome:2captcha] submitting challenge (t=${t || 'unknown'})`);
+
+  const task = {
+    type: 'DataDomeSliderTask',
+    websiteURL: pageUrl,
+    captchaUrl,
+    userAgent,
+    proxyType: 'http',
+    proxyAddress: proxyParts.address,
+    proxyPort: proxyParts.port,
+    proxyLogin: proxyParts.login,
+    proxyPassword: proxyParts.password,
+  };
+
+  const createRes = await fetch('https://api.2captcha.com/createTask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientKey: apiKey, task }),
+  }).catch((e) => ({ ok: false, _err: e?.message }));
+  const createData = await createRes.json?.().catch(() => null);
+  if (!createData || createData.errorId !== 0) {
+    const desc = createData?.errorDescription || createData?.errorCode || createRes._err || 'unknown';
+    console.error(`[datadome:2captcha] createTask error: ${desc}`);
+    return null;
+  }
+  const taskId = createData.taskId;
   console.error(`[datadome:2captcha] task ${taskId} submitted, polling...`);
+
   for (let i = 0; i < 36; i++) {
     await sleep(5000);
-    const r = await fetch(`https://2captcha.com/res.php?key=${apiKey}&action=get&id=${taskId}&json=1`).catch(() => null);
+    const r = await fetch('https://api.2captcha.com/getTaskResult', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientKey: apiKey, taskId }),
+    }).catch(() => null);
     const d = await r?.json?.().catch(() => null);
     if (!d) continue;
-    if (d.status === 1) {
-      console.error('[datadome:2captcha] solved');
-      return d.request;
-    }
-    if (d.request !== 'CAPCHA_NOT_READY') {
-      console.error(`[datadome:2captcha] error: ${d.request}`);
+    if (d.errorId !== 0) {
+      console.error(`[datadome:2captcha] error: ${d.errorDescription || d.errorCode}`);
       return null;
+    }
+    if (d.status === 'ready') {
+      console.error('[datadome:2captcha] solved');
+      return d.solution?.cookie || d.solution?.token || null;
     }
   }
   console.error('[datadome:2captcha] timed out');
