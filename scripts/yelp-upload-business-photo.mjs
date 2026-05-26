@@ -284,26 +284,46 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
  */
 async function detectPhotosUrl(page, timeoutMs) {
   console.error('[yelp] auto-detecting biz_photos URL');
-  // Always prefer the canonical US origin for /biz_photos/<id>. Regional
-  // hosts (e.g. biz.yelp.com.br) serve unauthenticated landing pages and
-  // would never resolve a bizId for our account.
-  let origin = 'https://biz.yelp.com';
-  let homeBizId = null;
-  try {
-    const cur = new URL(page.url());
-    if (/^biz\.yelp\.com$/i.test(cur.hostname)) {
-      origin = `${cur.protocol}//${cur.hostname}`;
-    }
-    const m = cur.pathname.match(/\/home\/([A-Za-z0-9_-]+)/);
-    if (m) homeBizId = m[1];
-  } catch {}
+  // The biz_photos uploader endpoint is ALWAYS served from biz.yelp.com,
+  // even though Yelp rebranded the dashboard to business.yelp.com. We only
+  // need to discover the bizId; once known, we construct the photos URL on
+  // biz.yelp.com directly.
+  const origin = 'https://biz.yelp.com';
+
+  // Try to extract bizId from the current page URL. Recognised patterns:
+  //   biz.yelp.com/home/<bizId>          (legacy dashboard)
+  //   business.yelp.com/<bizId>/home     (rebranded dashboard, mid-2026+)
+  //   business.yelp.com/<bizId>/...      (any other rebranded sub-page)
+  const extractBizIdFromUrl = (u) => {
+    try {
+      const url = new URL(u);
+      let m = url.pathname.match(/^\/home\/([A-Za-z0-9_-]+)/);
+      if (m) return m[1];
+      if (/^business\.yelp\.com$/i.test(url.hostname)) {
+        m = url.pathname.match(/^\/([A-Za-z0-9_-]{10,})(?:\/|$)/);
+        if (m) return m[1];
+      }
+    } catch {}
+    return null;
+  };
+
+  let homeBizId = extractBizIdFromUrl(page.url());
   if (homeBizId) {
     const url = `${origin}/biz_photos/${homeBizId}`;
-    console.error(`[yelp] derived photos URL from /home/: ${url}`);
+    console.error(`[yelp] derived photos URL from dashboard URL: ${url}`);
     return url;
   }
+
+  // Navigate to the dashboard and let Yelp redirect us to the per-business
+  // landing so we can pull the bizId out of the final URL.
   await page.goto(origin + '/', { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
   await sleep(1500);
+  homeBizId = extractBizIdFromUrl(page.url());
+  if (homeBizId) {
+    const url = `${origin}/biz_photos/${homeBizId}`;
+    console.error(`[yelp] derived photos URL after dashboard redirect: ${url}`);
+    return url;
+  }
 
   // Yelp's dashboard often does client-side navigations after initial paint;
   // retry evaluate() a few times so we ride out "Execution context was destroyed".
@@ -339,8 +359,12 @@ async function detectPhotosUrl(page, timeoutMs) {
 
   // Last resort: try guessing from any /biz/<id>/ link in the dashboard.
   const bizId = await safeEval(() => {
-    const m = document.documentElement.innerHTML.match(/\/biz_photos\/([A-Za-z0-9_-]+)/)
-      || document.documentElement.innerHTML.match(/\/biz\/([A-Za-z0-9_-]+)/);
+    const html = document.documentElement.innerHTML;
+    const m = html.match(/\/biz_photos\/([A-Za-z0-9_-]+)/)
+      || html.match(/\/biz\/([A-Za-z0-9_-]+)/)
+      // business.yelp.com rebrand: dashboard links look like /<bizId>/home,
+      // /<bizId>/photos, /<bizId>/reviews, etc.
+      || html.match(/business\.yelp\.com\/([A-Za-z0-9_-]{10,})\//);
     return m ? m[1] : null;
   });
   if (bizId) {
