@@ -244,6 +244,30 @@ export async function maybeBypassDataDome(page, proxyConfig, args) {
 
   console.error('[datadome] hard block on ' + page.url());
 
+  // One-shot conditional cookie wipe: if we're hard-blocked AND we still
+  // have a (possibly stale/banned) datadome cookie sitting in the jar,
+  // try wiping it once and reloading. A stale banned cookie can keep the
+  // session hard-blocked even on a clean IP; conversely a valid cookie
+  // gets us past without any solver call. Only fires once per page.
+  if (!page._ddCookieWipeAttempted) {
+    page._ddCookieWipeAttempted = true;
+    let hadCookie = false;
+    try {
+      const cookies = await page.cookies('https://biz.yelp.com', 'https://www.yelp.com', 'https://yelp.com');
+      hadCookie = cookies.some((c) => c.name === 'datadome');
+    } catch {}
+    if (hadCookie) {
+      console.error('[datadome] hard block with existing cookie - wiping and retrying once');
+      await clearStaleDataDomeCookies(page);
+      const curUrl = page.url();
+      await page.goto(curUrl, { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
+      await sleep(2000);
+      // Re-enter bypass logic from the top so the self-resolve window
+      // applies to the freshly issued challenge.
+      return maybeBypassDataDome(page, proxyConfig, args);
+    }
+  }
+
   // t=fe (fingerprint) challenges are NOT solvable by 2captcha/anticaptcha:
   // there is no human action and no slider, the challenge is a pure
   // client-side fingerprint score. Calling a third-party solver just wastes

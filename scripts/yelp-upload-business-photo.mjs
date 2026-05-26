@@ -30,7 +30,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
-import { maybeBypassDataDome, detectDataDome, clearStaleDataDomeCookies } from './lib/yelp-datadome.mjs';
+import { maybeBypassDataDome, detectDataDome } from './lib/yelp-datadome.mjs';
 import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
@@ -627,10 +627,11 @@ async function main() {
       proxyConfig._sessionUsername = proxyConfig.username;
     }
 
-    // Drop any stale (potentially banned) datadome cookie carried over from
-    // a previous run before we navigate; otherwise DataDome hard-blocks on
-    // the first request and we waste the whole self-resolve window.
-    await clearStaleDataDomeCookies(page);
+    // NOTE: stale datadome cookie wiping is now CONDITIONAL inside
+    // maybeBypassDataDome(): it only fires if the page is actually hard-blocked.
+    // An unconditional wipe forces DataDome into a fresh fingerprint
+    // evaluation that frequently scores low (t=fe) and is unsolvable,
+    // so we preserve the cookie unless it proves to be the problem.
 
     // Initial visit + datadome handling. If the persistent profile already
     // holds a valid biz.yelp.com session, Yelp redirects '/' to '/home/<bizId>/'
