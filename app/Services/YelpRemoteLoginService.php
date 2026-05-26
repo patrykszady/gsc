@@ -171,7 +171,22 @@ class YelpRemoteLoginService
             '--timeout-ms=' . escapeshellarg((string) ($maxTtl * 1000)),
         ];
         if (! empty($bizCfg['proxy'])) {
-            $cmdParts[] = '--proxy=' . escapeshellarg((string) $bizCfg['proxy']);
+            // Rotate IPRoyal sticky-session token (`_session-XYZ_lifetime-...`)
+            // on every login attempt so a DataDome-blocked exit IP is replaced
+            // by a fresh one automatically — no .env edit needed.
+            $proxyUrl = (string) $bizCfg['proxy'];
+            $rotated = preg_replace(
+                '/_session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
+                '_session-Yelp' . time() . random_int(100, 999) . '$1',
+                $proxyUrl,
+                1,
+                $count
+            );
+            if ($count > 0 && is_string($rotated)) {
+                $proxyUrl = $rotated;
+                Log::info('Yelp remote login: rotated proxy session token');
+            }
+            $cmdParts[] = '--proxy=' . escapeshellarg($proxyUrl);
         }
         if ($key = config('services.twocaptcha.api_key')) {
             $cmdParts[] = '--twocaptcha-key=' . escapeshellarg((string) $key);
