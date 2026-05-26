@@ -303,37 +303,39 @@ export async function maybeBypassDataDome(page, proxyConfig, args) {
   if (!value) return false;
   console.error(`[datadome] injecting cookie (len=${value.length}, head=${value.slice(0, 20)}...)`);
 
-  // Clear any existing datadome cookies across all yelp domains.
+  // Inject the cookie the way the original working revision (987cd67) did.
+  // Critical: do NOT set httpOnly. DataDome's client-side validation JS
+  // reads the datadome value via document.cookie when posting the
+  // fingerprint that activates the session - making it httpOnly hides it
+  // from JS, the fingerprint POST then omits/mismatches the value, and DD
+  // re-blocks every time. Setting on both .yelp.com and .biz.yelp.com is
+  // what the working code did; the duplicate-cookie tampering theory was
+  // wrong (DD edge accepts the pair). Also restore the request interception
+  // that aborts captcha-delivery.com / datadome.co / tags.js - it was in
+  // the working version and prevents DD from re-issuing a fresh challenge
+  // immediately on reload before our cookie has a chance to be honored.
   const cdp = await page.createCDPSession();
-  for (const domain of ['.yelp.com', '.biz.yelp.com', 'biz.yelp.com', 'yelp.com', 'www.yelp.com']) {
-    await cdp.send('Network.deleteCookies', { name: 'datadome', domain }).catch(() => {});
-  }
-  // Inject via CDP Network.setCookie (matches what a real Set-Cookie
-  // response header would do, including httpOnly which document.cookie
-  // can never set). DataDome sets its cookie httpOnly+secure on the
-  // parent domain `.yelp.com` only - DO NOT also set it on .biz.yelp.com
-  // or the browser will send two `datadome` cookies on every biz.yelp.com
-  // request and DataDome's edge will reject the pair as tampered.
-  await cdp.send('Network.setCookie', {
-    name: 'datadome',
-    value,
-    domain: '.yelp.com',
-    path: '/',
-    secure: true,
-    httpOnly: true,
-    sameSite: 'Lax',
-    expires: Math.floor(Date.now() / 1000) + 31536000,
-  }).catch((e) => console.error(`[datadome] CDP setCookie failed: ${e?.message}`));
+  await cdp.send('Network.deleteCookies', { name: 'datadome', domain: '.yelp.com' }).catch(() => {});
   await cdp.detach();
-  // Belt-and-braces: Puppeteer setCookie on the same single domain.
-  await page.setCookie({ name: 'datadome', value, domain: '.yelp.com', path: '/', secure: true, httpOnly: true, sameSite: 'Lax' }).catch(() => {});
+  for (const domain of ['.yelp.com', '.biz.yelp.com']) {
+    await page.setCookie({ name: 'datadome', value, domain, path: '/', secure: true, sameSite: 'Lax' }).catch(() => {});
+  }
+  await page.evaluate((v) => {
+    document.cookie = `datadome=${v}; domain=.yelp.com; path=/; secure; SameSite=Lax`;
+  }, value).catch(() => {});
 
-  // IMPORTANT: do NOT install request interception that blocks tags.js or
-  // datadome.co. DataDome's client-side JS posts a fingerprint to those
-  // endpoints carrying the just-injected cookie; the server validates the
-  // (cookie, fingerprint, IP) tuple and only then clears the block. If we
-  // abort those requests the cookie never gets activated and the next
-  // navigation still hard-blocks. Let the validation traffic flow.
+  if (!page._ddInterceptInstalled) {
+    page._ddInterceptInstalled = true;
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const u = req.url();
+      if (u.includes('captcha-delivery.com') || u.includes('datadome.co') || u.endsWith('/tags.js')) {
+        req.abort().catch(() => {});
+      } else {
+        req.continue().catch(() => {});
+      }
+    });
+  }
 
   await page.reload({ waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
   await sleep(3000);
