@@ -105,9 +105,18 @@ function isBizYelpUrl(url) {
   return BIZ_YELP_HOST_RE.test(url || '');
 }
 
+// Paths that Yelp serves to UNauthenticated visitors on biz.yelp.* hosts.
+// Landing/signup pages happily render with no session, so being on
+// biz.yelp.com.br/landing/... etc. must NOT be treated as logged-in.
+const UNAUTHED_BIZ_PATH_RE = /^\/(login|signup|signup_fy21|landing|claim|welcome|forgot|reset|password|verify|signup-|account\/(login|signup))(\/|$|\?)/i;
+
 async function isLoggedIn(page) {
   const url = page.url();
-  return isBizYelpUrl(url) && !url.includes('/login');
+  if (!isBizYelpUrl(url)) return false;
+  let pathname = '/';
+  try { pathname = new URL(url).pathname; } catch { /* noop */ }
+  if (UNAUTHED_BIZ_PATH_RE.test(pathname)) return false;
+  return true;
 }
 
 async function dumpPage(page, label) {
@@ -205,13 +214,14 @@ async function tryLogin(page, email, password, timeoutMs, proxyConfig, args) {
  */
 async function detectPhotosUrl(page, timeoutMs) {
   console.error('[yelp] auto-detecting biz_photos URL');
-  // Use whatever biz.yelp.<tld> origin the current page is on; Yelp may have
-  // regionally redirected the session (e.g. to biz.yelp.co.uk).
+  // Always prefer the canonical US origin for /biz_photos/<id>. Regional
+  // hosts (e.g. biz.yelp.com.br) serve unauthenticated landing pages and
+  // would never resolve a bizId for our account.
   let origin = 'https://biz.yelp.com';
   let homeBizId = null;
   try {
     const cur = new URL(page.url());
-    if (/^biz\.yelp\./i.test(cur.hostname)) {
+    if (/^biz\.yelp\.com$/i.test(cur.hostname)) {
       origin = `${cur.protocol}//${cur.hostname}`;
     }
     const m = cur.pathname.match(/\/home\/([A-Za-z0-9_-]+)/);
@@ -552,6 +562,20 @@ async function main() {
     await page.goto('https://biz.yelp.com/', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
     await sleep(1500 + Math.random() * 1500);
     await maybeBypassDataDome(page, proxyConfig, args);
+
+    // If Yelp regionally redirected us (e.g. to biz.yelp.com.br/landing/signup_fy21)
+    // the session is effectively useless: those landing pages render fully for
+    // anonymous visitors. Force the canonical US host once to give cookies a
+    // fair chance, then re-evaluate.
+    try {
+      const u = new URL(page.url());
+      if (!/^biz\.yelp\.com$/i.test(u.hostname) || UNAUTHED_BIZ_PATH_RE.test(u.pathname)) {
+        console.error(`[yelp] persistent session landed on ${page.url()} - retrying via biz.yelp.com/home`);
+        await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
+        await sleep(1500);
+        await maybeBypassDataDome(page, proxyConfig, args);
+      }
+    } catch { /* noop */ }
 
     if (await isLoggedIn(page)) {
       console.error(`[yelp] reusing persistent session (url=${page.url()}) - skipping /login`);

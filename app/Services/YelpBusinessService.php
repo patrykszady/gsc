@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Exception\ProcessSignaledException;
@@ -155,8 +156,45 @@ class YelpBusinessService
     }
 
     /**
-     * Quick headless check: are biz.yelp.com cookies still authenticated?
-     * Returns null if it could not determine (script error / timeout).
+     * Fast best-effort check (no subprocess, no network):
+     *   1. Cached result from a previous real check (≤ 6h old).
+     *   2. Recent successful upload (cookie file touched within 30 days
+     *      AND a Chromium "Cookies" sqlite exists for the profile).
+     * Returns null when we genuinely don't know.
+     */
+    public function quickCheckSession(): ?bool
+    {
+        $cached = Cache::get('yelp.last_auth');
+        if ($cached !== null) {
+            return (bool) $cached;
+        }
+
+        $cfg = config('services.yelp.business');
+        $userDataDir = $cfg['user_data_dir'] ?? storage_path('app/yelp-puppeteer');
+        $cookiesFile = $userDataDir . '/Default/Cookies';
+        if (is_file($cookiesFile)) {
+            // If the cookies db was touched within the last 30 days, treat
+            // the session as good. Yelp sessions live well past that.
+            $age = time() - (int) filemtime($cookiesFile);
+            if ($age < 60 * 60 * 24 * 30) {
+                return true;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Mark the session as authenticated. Called after any operation that
+     * proves the cookies still work (upload, login success, manual check).
+     */
+    public function markSessionFresh(): void
+    {
+        Cache::put('yelp.last_auth', true, now()->addHours(6));
+    }
+
+    /**
+     * Slow headless check: launches a headless Chromium and visits
+     * biz.yelp.com. Returns null if it could not determine.
      */
     public function checkSession(): ?bool
     {
@@ -201,7 +239,9 @@ class YelpBusinessService
         if (! is_array($payload) || empty($payload['ok'])) {
             return null;
         }
-        return (bool) ($payload['authenticated'] ?? false);
+        $authed = (bool) ($payload['authenticated'] ?? false);
+        Cache::put('yelp.last_auth', $authed, now()->addHours(6));
+        return $authed;
     }
 
     /**
@@ -395,6 +435,9 @@ class YelpBusinessService
             ]);
             return null;
         }
+
+        // A successful upload proves the session cookies still work.
+        $this->markSessionFresh();
 
         return [
             'photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),

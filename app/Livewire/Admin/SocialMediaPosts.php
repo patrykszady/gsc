@@ -25,12 +25,16 @@ class SocialMediaPosts extends Component
     public int $remainingGbp = 0;
     public int $remainingYelp = 0;
     public int $uploadedYelp = 0;
+    public int $uploadedGbp = 0;
 
     public function mount(): void
     {
         $this->remainingInstagram = SocialMediaPost::unpostedImagesQuery('instagram')->count();
         $this->remainingFacebook = SocialMediaPost::unpostedImagesQuery('facebook')->count();
-        $this->remainingGbp = SocialMediaPost::unpostedImagesQuery('google_business')->count();
+        $this->remainingGbp = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))
+            ->whereNull('google_places_uploaded_at')->count();
+        $this->uploadedGbp = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))
+            ->whereNotNull('google_places_uploaded_at')->count();
         $this->remainingYelp = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))
             ->whereNull('yelp_biz_uploaded_at')->count();
         $this->uploadedYelp = ProjectImage::whereNotNull('yelp_biz_uploaded_at')->count();
@@ -86,17 +90,65 @@ class SocialMediaPosts extends Component
             || app(MetaSocialService::class)->isFacebookConfigured()
             || app(GoogleBusinessProfileService::class)->isConfigured();
 
+        $remainingImages = collect();
+        $remainingPlatformLabels = [
+            'instagram' => 'Instagram',
+            'facebook' => 'Facebook',
+        ];
+
+        foreach ($remainingPlatformLabels as $platform => $label) {
+            if ($this->platformFilter && $this->platformFilter !== $platform) {
+                continue;
+            }
+
+            $remainingImages = $remainingImages->merge(
+                SocialMediaPost::unpostedImagesQuery($platform)
+                    ->with('project')
+                    ->latest('id')
+                    ->get()
+                    ->map(fn (ProjectImage $image) => [
+                        'kind' => 'remaining',
+                        'platform' => $platform,
+                        'label' => $label,
+                        'image' => $image,
+                    ])
+            );
+        }
+
+        if (! $this->platformFilter || $this->platformFilter === 'google_business') {
+            $remainingImages = $remainingImages->merge(
+                ProjectImage::with('project')
+                    ->whereHas('project', fn ($q) => $q->where('is_published', true))
+                    ->whereNull('google_places_uploaded_at')
+                    ->latest('id')
+                    ->get()
+                    ->map(fn (ProjectImage $image) => [
+                        'kind' => 'remaining',
+                        'platform' => 'google_business',
+                        'label' => 'Google Business',
+                        'image' => $image,
+                    ])
+            );
+        }
+
         $totalEligible = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))
             ->whereNotNull('alt_text')
             ->where('alt_text', '!=', '')
             ->count();
+
+        $gbpImages = ProjectImage::with('project')
+            ->whereHas('project', fn ($q) => $q->where('is_published', true))
+            ->whereNotNull('google_places_uploaded_at')
+            ->latest('google_places_uploaded_at');
 
         $yelpImages = ProjectImage::with('project')
             ->whereNotNull('yelp_biz_uploaded_at')
             ->latest('yelp_biz_uploaded_at');
 
         return view('livewire.admin.social-media-posts', [
-            'posts' => $this->platformFilter === 'yelp' ? collect() : $query->paginate(25),
+            'uploadedPosts' => $this->platformFilter === 'yelp' ? collect() : $query->paginate(24, ['*'], 'upage'),
+            'remainingImages' => $remainingImages,
+            'gbpImages' => $gbpImages->paginate(25, ['*'], 'gpage'),
             'yelpImages' => $this->platformFilter === 'yelp' || $this->platformFilter === ''
                 ? $yelpImages->paginate(25, ['*'], 'ypage')
                 : null,

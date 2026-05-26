@@ -34,6 +34,11 @@ Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:
 Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Yelp biz: verify the persisted browser session is still authenticated once a day.
+Schedule::command('yelp:check-session')->dailyAt('04:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+
 // Google Business Profile: sync new reviews daily at 06:00 AM CT
 Schedule::command('google-business-profile:sync-reviews')->dailyAt('06:00')
     ->timezone('America/Chicago')

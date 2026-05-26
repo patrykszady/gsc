@@ -76,11 +76,17 @@ class PlatformsSettings extends Component
         $this->yelpHasPassword = ! empty($yelp->getPassword());
         $this->yelpPassword = '';
 
-        // Seed last known Yelp auth state from cache so the UI doesn't flash "unknown"
-        // on every page load while the silent re-check runs in the background.
-        $cached = Cache::get('yelp.last_auth');
-        if ($cached !== null) {
-            $this->yelpAuthenticated = (bool) $cached;
+        // Seed last known Yelp auth state from cache / cookie-file so the UI
+        // doesn't flash "unknown" on every page load while the slow re-check
+        // runs in the background.
+        $quick = $yelp->quickCheckSession();
+        if ($quick !== null) {
+            $this->yelpAuthenticated = $quick;
+        } else {
+            $cached = Cache::get('yelp.last_auth');
+            if ($cached !== null) {
+                $this->yelpAuthenticated = (bool) $cached;
+            }
         }
     }
 
@@ -206,14 +212,12 @@ class PlatformsSettings extends Component
         $this->yelpRemoteError = 'Remote viewer failed to connect (' . $reason . '). The VNC stack has been reset — click Verify Login to try again.';
     }
 
-    public function checkYelpSession(bool $silent = false): void
+    public function checkYelpSession(): void
     {
-        $authed = app(YelpBusinessService::class)->checkSession();
+        $yelp = app(YelpBusinessService::class);
+
+        $authed = $yelp->checkSession();
         $this->yelpAuthenticated = $authed;
-        if ($authed !== null) {
-            Cache::put('yelp.last_auth', $authed, now()->addHours(6));
-        }
-        if ($silent) return;
         if ($authed === true) {
             session()->flash('platforms-success', 'Yelp session is active.');
         } elseif ($authed === false) {
