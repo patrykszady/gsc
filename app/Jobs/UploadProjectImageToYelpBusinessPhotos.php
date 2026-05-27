@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\YelpSessionExpiredException;
 use App\Exceptions\YelpUploadThrottledException;
 use App\Models\ProjectImage;
 use App\Services\YelpBusinessService;
@@ -95,6 +96,18 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                     'retry_after_seconds' => $e->retryAfterSeconds,
                 ]);
                 $this->release($e->retryAfterSeconds);
+                return;
+            } catch (YelpSessionExpiredException $e) {
+                // Persistent Chromium profile is no longer logged in. Driving
+                // /login from this unattended job triggers DataDome and burns
+                // 2captcha credit, so we fail the job immediately. Admin must
+                // re-login interactively via /admin/platforms (Verify Login).
+                Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                Log::warning('Yelp biz: session expired, failing job - admin must re-login via /admin/platforms', [
+                    'image_id' => $this->imageId,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->fail($e);
                 return;
             }
 

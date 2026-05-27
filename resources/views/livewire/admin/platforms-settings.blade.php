@@ -122,6 +122,29 @@
                 the embedded Chromium viewer and press Enter. The viewer closes itself once Yelp confirms.
             </div>
 
+            @if($yelpSessionDead)
+                <div class="mt-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-700/60 dark:bg-red-900/20 dark:text-red-200">
+                    <div class="flex items-start gap-3">
+                        <flux:icon.exclamation-triangle class="size-5 shrink-0 text-red-600 dark:text-red-400" />
+                        <div class="space-y-1">
+                            <p class="font-semibold">Yelp session expired &mdash; re-login required</p>
+                            <p>
+                                The persistent Chromium profile is no longer authenticated, so background photo
+                                uploads are being skipped. Click <strong>Verify Login</strong> below to re-establish
+                                the session in the embedded viewer (DataDome blocks unattended scripted logins, so
+                                this step must be interactive).
+                            </p>
+                            @if($yelpSessionDeadAt)
+                                <p class="text-xs opacity-75">Detected at {{ $yelpSessionDeadAt }}.</p>
+                            @endif
+                            @if($yelpSessionDeadNote)
+                                <p class="text-xs opacity-75">Last error: {{ $yelpSessionDeadNote }}</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <form wire:submit="saveYelp" class="space-y-4">
                 <flux:field>
                     <flux:label>Yelp business email</flux:label>

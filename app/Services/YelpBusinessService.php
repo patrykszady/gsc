@@ -6,6 +6,7 @@ use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use App\Exceptions\YelpUploadThrottledException;
+use App\Exceptions\YelpSessionExpiredException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -252,6 +253,21 @@ class YelpBusinessService
     public function markSessionFresh(): void
     {
         Cache::put('yelp.last_auth', true, now()->addHours(6));
+        Cache::forget('yelp.session_dead');
+    }
+
+    /**
+     * Mark the session as expired. Called when an unattended automation
+     * detects the persistent profile is no longer logged in. Surfaces a
+     * sticky flag the admin UI uses to nag the user to re-login.
+     */
+    public function markSessionDead(?string $note = null): void
+    {
+        Cache::put('yelp.last_auth', false, now()->addHours(6));
+        Cache::put('yelp.session_dead', [
+            'at' => now()->toIso8601String(),
+            'note' => $note,
+        ], now()->addDays(30));
     }
 
     /**
@@ -496,9 +512,30 @@ class YelpBusinessService
                 $stderr = trim($process->getErrorOutput());
 
                 if (! $process->isSuccessful()) {
+                    // Exit code 3 = structured session_expired signal from the
+                    // upload script. We still parse stdout JSON to confirm and
+                    // capture any human-readable note for the admin UI.
+                    $exit = (int) $process->getExitCode();
+                    $jsonLine = $this->lastJsonLine($stdout);
+                    $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+                    $isSessionDead = $exit === 3
+                        || (is_array($payload) && ($payload['code'] ?? null) === 'session_expired');
+
+                    if ($isSessionDead) {
+                        $note = is_array($payload) ? (string) ($payload['error'] ?? '') : '';
+                        $this->markSessionDead($note);
+                        Log::warning('Yelp biz: session expired - admin must re-login via /admin/platforms', [
+                            'image_id' => $image->id,
+                            'note' => $note,
+                        ]);
+                        throw new YelpSessionExpiredException(
+                            $note !== '' ? $note : 'Yelp session is not authenticated.'
+                        );
+                    }
+
                     Log::error('Yelp biz: upload script exited with error', [
                         'image_id' => $image->id,
-                        'exit_code' => $process->getExitCode(),
+                        'exit_code' => $exit,
                         'stderr' => $stderr,
                         'stdout' => $stdout,
                     ]);

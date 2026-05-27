@@ -888,10 +888,19 @@ async function main() {
     if (await isLoggedIn(page)) {
       console.error(`[yelp] reusing persistent session (url=${page.url()}) - skipping /login`);
     } else {
-      await tryLogin(page, args.email, args.password, args.timeoutMs, proxyConfig, args);
-      if (await detectDataDome(page)) {
-        await maybeBypassDataDome(page, proxyConfig, args);
-      }
+      // We DO NOT attempt to drive /login here. DataDome reliably blocks
+      // unattended Puppeteer logins, and every failed attempt burns 2captcha
+      // credit + further poisons the proxy IP. Fail fast with a structured
+      // signal so the PHP layer can stop retrying and ask the admin to
+      // re-login interactively via /admin/platforms (noVNC viewer).
+      console.error(`[yelp] persistent session is not authenticated (url=${page.url()}) - aborting`);
+      emit({
+        ok: false,
+        code: 'session_expired',
+        error: 'Yelp session is not authenticated. Re-login via /admin/platforms (Verify Login).',
+      });
+      await browser.close().catch(() => {});
+      process.exit(3);
     }
 
     // If we still don't know the bizId (e.g. session restored at the marketing
@@ -941,8 +950,19 @@ async function main() {
     emit({ ok: true, photo_id: photoId, photos_url: photosUrl });
   } catch (e) {
     console.error(`[yelp] error: ${e.stack || e.message}`);
-    emit({ ok: false, error: e.message });
-    exitCode = 1;
+    const msg = String(e?.message || '');
+    const isSessionExpired = /redirected away from photos URL|session not authenticated|not authenticated/i.test(msg);
+    if (isSessionExpired) {
+      emit({
+        ok: false,
+        code: 'session_expired',
+        error: 'Yelp session is not authenticated. Re-login via /admin/platforms (Verify Login).',
+      });
+      exitCode = 3;
+    } else {
+      emit({ ok: false, error: e.message });
+      exitCode = 1;
+    }
   } finally {
     await browser.close().catch(() => {});
     process.exit(exitCode);

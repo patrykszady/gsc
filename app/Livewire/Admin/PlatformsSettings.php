@@ -35,6 +35,9 @@ class PlatformsSettings extends Component
     public bool $yelpHasPassword = false;
     public ?bool $yelpAuthenticated = null; // null = unknown, true/false = checked
     public ?string $yelpStatusNote = null;
+    public bool $yelpSessionDead = false;
+    public ?string $yelpSessionDeadAt = null;
+    public ?string $yelpSessionDeadNote = null;
 
     // ---- Yelp remote-login viewer state ----
     public bool $yelpRemoteOpen = false;
@@ -87,6 +90,21 @@ class PlatformsSettings extends Component
             if ($cached !== null) {
                 $this->yelpAuthenticated = (bool) $cached;
             }
+        }
+
+        // Sticky "session expired" signal set by upload jobs when they
+        // detect the persistent Chromium profile is no longer logged in.
+        // Cleared by markSessionFresh() on the next successful upload /
+        // verify-login.
+        $dead = Cache::get('yelp.session_dead');
+        if (is_array($dead)) {
+            $this->yelpSessionDead = true;
+            $this->yelpSessionDeadAt = (string) ($dead['at'] ?? '');
+            $this->yelpSessionDeadNote = (string) ($dead['note'] ?? '');
+        } else {
+            $this->yelpSessionDead = false;
+            $this->yelpSessionDeadAt = null;
+            $this->yelpSessionDeadNote = null;
         }
     }
 
