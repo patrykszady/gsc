@@ -488,8 +488,27 @@ class YelpBusinessService
                     'YELP_RUN_LOCK_WAIT' => (string) max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 20)),
                 ]);
 
+                // Always tee the script's stderr to a dedicated log file so
+                // diagnostic lines like "[yelp] captured real photo_id=..."
+                // are visible even when running via Horizon (where the
+                // $onProgress callback is null). Trimmed to last 5MB on each
+                // run to avoid unbounded growth.
+                $teeLog = storage_path('logs/yelp-upload.log');
+                @mkdir(dirname($teeLog), 0775, true);
+                $teeFh = @fopen($teeLog, 'ab');
+                if ($teeFh) {
+                    @fwrite($teeFh, sprintf(
+                        "\n===== %s image_id=%d =====\n",
+                        now()->toIso8601String(),
+                        $image->id,
+                    ));
+                }
+
                 try {
-                    $process->run(function (string $type, string $buffer) use ($onProgress): void {
+                    $process->run(function (string $type, string $buffer) use ($onProgress, $teeFh): void {
+                        if ($teeFh) {
+                            @fwrite($teeFh, $buffer);
+                        }
                         if (! $onProgress) {
                             return;
                         }
@@ -505,7 +524,22 @@ class YelpBusinessService
                         'image_id' => $image->id,
                         'message' => $e->getMessage(),
                     ]);
+                    if ($teeFh) {
+                        @fclose($teeFh);
+                    }
                     return null;
+                }
+
+                if ($teeFh) {
+                    @fclose($teeFh);
+                }
+                // Cap the tee log at ~5MB by truncating to the last 5MB
+                // whenever it grows beyond ~6MB. Cheap, no log-rotate dep.
+                if (is_file($teeLog) && filesize($teeLog) > 6 * 1024 * 1024) {
+                    $tail = @file_get_contents($teeLog, false, null, -5 * 1024 * 1024);
+                    if ($tail !== false) {
+                        @file_put_contents($teeLog, $tail);
+                    }
                 }
 
                 $stdout = trim($process->getOutput());

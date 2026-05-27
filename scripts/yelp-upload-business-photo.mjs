@@ -97,12 +97,34 @@ function parseProxyUrl(proxyUrl) {
   if (!proxyUrl) return null;
   try {
     const u = new URL(proxyUrl);
+    let password = decodeURIComponent(u.password || '');
+    // IPRoyal (and most rotating-residential providers) accept an inline
+    // "_session-<token>" suffix on the credential field to pin requests to
+    // a single egress IP. Rotating that token every run gives us a fresh
+    // IP per upload — recommended by IPRoyal as the cheapest way to avoid
+    // DataDome/Yelp blocking the same IP repeatedly.
+    //
+    // Two ways to opt in:
+    //   1. Put `_session-AUTO` literally in the proxy password — we replace
+    //      it with a freshly minted 10-char hex token on each run.
+    //   2. Set env YELP_PROXY_ROTATE_SESSION=1 — we append `_session-<tok>`
+    //      to the password if no `_session-` suffix is present yet.
+    const sessionToken = () => Math.random().toString(16).slice(2, 12).padEnd(10, '0');
+    if (/_session-AUTO\b/i.test(password)) {
+      const tok = sessionToken();
+      password = password.replace(/_session-AUTO\b/gi, `_session-${tok}`);
+      console.error(`[yelp] proxy session rotated (token=${tok})`);
+    } else if (process.env.YELP_PROXY_ROTATE_SESSION === '1' && !/_session-/i.test(password)) {
+      const tok = sessionToken();
+      password = `${password}_session-${tok}`;
+      console.error(`[yelp] proxy session appended (token=${tok})`);
+    }
     return {
       host: `${u.protocol}//${u.hostname}:${u.port}`,
       hostname: u.hostname,
       port: u.port,
       username: decodeURIComponent(u.username || ''),
-      password: decodeURIComponent(u.password || ''),
+      password,
     };
   } catch {
     return null;
