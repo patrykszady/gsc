@@ -557,8 +557,26 @@ class YelpBusinessService
                 // A successful upload proves the session cookies still work.
                 $this->markSessionFresh();
 
+                // The script returns a real Yelp photo_id only when it
+                // successfully captured one from the upload XHR response.
+                // If null, the upload almost certainly went through (the
+                // dialog closed) but we couldn't verify it, so we store
+                // NULL rather than a synthetic stamp the gallery can never
+                // resolve. A later verification job can backfill it.
+                $realPhotoId = is_string($payload['photo_id'] ?? null) && $payload['photo_id'] !== ''
+                    ? $payload['photo_id']
+                    : null;
+                $verified = (bool) ($payload['photo_id_verified'] ?? false);
+
+                if (! $verified) {
+                    Log::warning('Yelp biz: upload committed but photo_id not captured - storing NULL for later verification', [
+                        'image_id' => $image->id,
+                        'photos_url' => $payload['photos_url'] ?? null,
+                    ]);
+                }
+
                 $image->update([
-                    'yelp_biz_photo_id' => $payload['photo_id'] ?? ('uploaded-' . now()->timestamp),
+                    'yelp_biz_photo_id' => $realPhotoId,
                     'yelp_biz_uploaded_at' => now(),
                     'yelp_biz_photos_url' => $payload['photos_url'] ?? $image->yelp_biz_photos_url,
                     'yelp_biz_caption' => $caption,
@@ -568,6 +586,7 @@ class YelpBusinessService
                     'photo_id' => $image->yelp_biz_photo_id,
                     'photos_url' => $image->yelp_biz_photos_url,
                     'caption' => $caption,
+                    'verified' => $verified,
                 ];
             },
             context: ['image_id' => $image->id]

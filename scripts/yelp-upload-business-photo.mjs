@@ -532,11 +532,102 @@ async function detectPhotosUrl(page, timeoutMs) {
 }
 
 async function countPhotos(page) {
+  // Yelp's gallery is virtualized: only the visible window of tiles is in
+  // the DOM at any time, so naive img counts swing wildly between renders.
+  // Prefer the gallery's own count text (e.g. "37 photos") when present;
+  // fall back to slideshow-photo-manager tiles; finally return null if we
+  // genuinely can't tell.
   return await page.evaluate(() => {
-    // Yelp's biz_photos gallery uses <img> tiles inside the main grid.
-    // Heuristic: count images served from photo CDN domains.
-    const imgs = Array.from(document.querySelectorAll('img'));
-    return imgs.filter(i => /yelpcdn\.com|ybiz\.yelp|s3-media|biz\.yelp\.com\/uploads/i.test(i.src || '')).length;
+    // 1. Header text like "37 photos" / "1 photo".
+    const text = document.body ? document.body.innerText : '';
+    const m = text.match(/\b(\d{1,5})\s+photos?\b/i);
+    if (m) return Number(m[1]);
+
+    // 2. Tiles inside the slideshow manager container.
+    const mgr = document.querySelector('[data-testid="slideshow-photo-manager"]');
+    if (mgr) {
+      const tiles = mgr.querySelectorAll('img, [data-testid*="photo" i][data-testid*="tile" i]');
+      if (tiles.length) return tiles.length;
+    }
+    return null;
+  });
+}
+
+/**
+ * Install a response listener that opportunistically captures the new
+ * photo's real Yelp ID from the upload XHR/fetch responses. Yelp's
+ * uploader posts to endpoints under /biz_photos/, /photo/, /api/, or
+ * /messaging-graphql with JSON containing fields like `id`, `photo_id`,
+ * `encid` (encoded id), or `url` containing a /photo/<id> segment.
+ *
+ * The captured value lives on `state.photoId` so uploadPhoto() can prefer
+ * it over any synthetic fallback. Idempotent.
+ */
+function installPhotoIdCapture(page, state) {
+  if (page._photoIdCaptureInstalled) return;
+  page._photoIdCaptureInstalled = true;
+
+  // ID-shaped string (Yelp's encoded photo IDs are 18-30 base64ish chars).
+  const looksLikePhotoId = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{16,40}$/.test(v);
+
+  const extractFromObject = (obj, depth = 0) => {
+    if (!obj || depth > 6) return null;
+    if (typeof obj === 'string') {
+      // Pull /photo_id=... or /photo/<id> from URLs and strings.
+      const m1 = obj.match(/\/photo\/([A-Za-z0-9_-]{16,40})(?:[\/?#"]|$)/);
+      if (m1 && looksLikePhotoId(m1[1])) return m1[1];
+      const m2 = obj.match(/photo[_-]?id["':=\s]+([A-Za-z0-9_-]{16,40})/i);
+      if (m2 && looksLikePhotoId(m2[1])) return m2[1];
+      return null;
+    }
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        const got = extractFromObject(item, depth + 1);
+        if (got) return got;
+      }
+      return null;
+    }
+    if (typeof obj !== 'object') return null;
+    // Direct field hits first.
+    for (const key of ['photo_id', 'photoId', 'encid', 'encId', 'id']) {
+      if (key in obj && looksLikePhotoId(obj[key])) return obj[key];
+    }
+    // Then walk the rest.
+    for (const v of Object.values(obj)) {
+      const got = extractFromObject(v, depth + 1);
+      if (got) return got;
+    }
+    return null;
+  };
+
+  page.on('response', async (resp) => {
+    try {
+      if (state.photoId) return;
+      const url = resp.url();
+      if (!/yelp\.com/i.test(url)) return;
+      // Narrow to photo-upload-shaped endpoints. Be permissive; Yelp
+      // shuffles URLs across releases.
+      if (!/(biz_photos|photo_upload|photos\/upload|graphql|\/photo\/|photo[_-]?id)/i.test(url)) return;
+      const status = resp.status();
+      if (status >= 400) return;
+      const ctype = (resp.headers()['content-type'] || '').toLowerCase();
+      let body;
+      if (ctype.includes('json')) {
+        body = await resp.json().catch(() => null);
+      } else {
+        // Some uploaders return text/plain with JSON inside, or HTML
+        // referencing the new photo URL. Read up to 64KB.
+        const text = await resp.text().catch(() => null);
+        if (!text) return;
+        try { body = JSON.parse(text); } catch { body = text; }
+      }
+      const id = extractFromObject(body);
+      if (id) {
+        state.photoId = id;
+        state.photoIdSource = url;
+        console.error(`[yelp] captured real photo_id=${id} from ${url}`);
+      }
+    } catch { /* swallow — diagnostic only */ }
   });
 }
 
@@ -550,7 +641,7 @@ async function snap(page, label) {
   }
 }
 
-async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs) {
+async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photoIdState) {
   console.error(`[yelp] navigating to photos page: ${photosUrl}`);
   await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs });
   await sleep(2000);
@@ -559,8 +650,15 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs) {
     throw new Error('redirected away from photos URL - session not authenticated');
   }
 
+  // Reset any photo_id captured during page chrome/init so we only retain
+  // ids observed from THIS upload cycle.
+  if (photoIdState) {
+    photoIdState.photoId = null;
+    photoIdState.photoIdSource = null;
+  }
+
   const beforeCount = await countPhotos(page);
-  console.error(`[yelp] gallery photo count before upload: ${beforeCount}`);
+  console.error(`[yelp] gallery photo count before upload: ${beforeCount === null ? 'unknown' : beforeCount}`);
 
   // The "Add Photos" button on the biz_photos page often hides the real file
   // input behind a styled button - click any visible upload trigger first so
@@ -705,54 +803,111 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs) {
 
   // Try clicking save/done/upload/post in any modal that appeared. Yelp's
   // post-upload modal has a red "Upload" primary button.
-  const saveClicked = await page.evaluate(() => {
-    const all = Array.from(document.querySelectorAll('button, [role="button"]'));
-    // Prefer exact-match primary actions first.
-    const exact = all.find(b => {
-      const t = (b.textContent || '').trim().toLowerCase();
-      return /^(upload|save|done|post|publish|submit)$/i.test(t)
-        && !b.disabled && b.getAttribute('aria-disabled') !== 'true'
-        && (b.offsetWidth > 0 || b.offsetHeight > 0);
+  //
+  // CRITICAL: scope the search to inside the upload dialog. Otherwise we
+  // can match the toolbar's "Add Photos / Upload" trigger button which is
+  // always visible on the gallery page, and clicking it does nothing
+  // useful (re-opens the picker) while letting the in-flight upload modal
+  // sit idle until our 90s wait expires.
+  const saveResult = await page.evaluate(() => {
+    const isVisible = (el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) return false;
+      const s = window.getComputedStyle(el);
+      return s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0';
+    };
+    const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+    const uploadDialogs = dialogs.filter(d => {
+      const label = (d.getAttribute('aria-label') || '').toLowerCase();
+      if (label.includes('cookie')) return false;
+      return isVisible(d);
     });
-    if (exact) { exact.click(); return exact.textContent.trim(); }
-    return null;
-  }).catch(() => null);
-  console.error(`[yelp] save/upload button clicked: ${saveClicked || 'none'}`);
-  if (!saveClicked) {
+    if (uploadDialogs.length === 0) {
+      return { clicked: null, dialogFound: false, dialogsCount: dialogs.length };
+    }
+    // Prefer the topmost / most recently opened dialog.
+    const dlg = uploadDialogs[uploadDialogs.length - 1];
+    const buttons = Array.from(dlg.querySelectorAll('button, [role="button"]'))
+      .filter(b => !b.disabled && b.getAttribute('aria-disabled') !== 'true' && isVisible(b));
+    const PRIMARY_RE = /^(upload|save|done|post|publish|submit|continue|finish)$/i;
+    const primary = buttons.find(b => PRIMARY_RE.test((b.textContent || '').trim()));
+    if (primary) {
+      primary.click();
+      return {
+        clicked: (primary.textContent || '').trim(),
+        dialogFound: true,
+        dialogLabel: dlg.getAttribute('aria-label') || '',
+      };
+    }
+    // Fall back to any button[type=submit] inside the dialog.
+    const submitBtn = buttons.find(b => b.getAttribute('type') === 'submit');
+    if (submitBtn) {
+      submitBtn.click();
+      return {
+        clicked: `[submit]${(submitBtn.textContent || '').trim()}`,
+        dialogFound: true,
+        dialogLabel: dlg.getAttribute('aria-label') || '',
+      };
+    }
+    return {
+      clicked: null,
+      dialogFound: true,
+      dialogLabel: dlg.getAttribute('aria-label') || '',
+      buttonCount: buttons.length,
+    };
+  }).catch((e) => ({ clicked: null, error: e.message }));
+  console.error(`[yelp] save/upload click: ${JSON.stringify(saveResult)}`);
+  if (!saveResult || !saveResult.dialogFound) {
+    await dumpPage(page, 'no-upload-dialog');
+    await snap(page, 'no-upload-dialog');
+    throw new Error('upload dialog did not open after selecting file - Yelp UI changed or upload was rejected (see /tmp/yelp-no-upload-dialog-*.html)');
+  }
+  if (!saveResult.clicked) {
     await dumpPage(page, 'no-save-button');
     await snap(page, 'no-save-button');
-    throw new Error('upload modal save/Upload button not found - see /tmp/yelp-no-save-button-*.html');
+    throw new Error('upload dialog open but no primary save button found inside it - see /tmp/yelp-no-save-button-*.html');
   }
 
-  // Wait for the dialog to actually close (= upload committed). The upload
-  // can take 30-60s; do NOT navigate away while the dialog is still open or
-  // we'll cancel the in-flight upload.
-  console.error('[yelp] waiting for upload modal to close...');
-  const modalClosed = await page.waitForFunction(
-    () => {
-      const dialogs = Array.from(document.querySelectorAll('[role="dialog"][aria-modal="true"]'));
-      // Ignore OneTrust cookie consent dialog (always in DOM, mostly hidden).
+  // Wait for the dialog to actually close (= upload committed) OR for a
+  // real photo_id to land via XHR (whichever comes first). The upload
+  // can take 30-60s; do NOT navigate away while the dialog is still open
+  // or we'll cancel the in-flight upload.
+  console.error('[yelp] waiting for upload to commit (dialog close or photo_id)...');
+  const completionDeadline = Date.now() + 120000;
+  let completionReason = null;
+  while (Date.now() < completionDeadline) {
+    if (photoIdState && photoIdState.photoId) {
+      completionReason = `photo_id=${photoIdState.photoId}`;
+      break;
+    }
+    const dialogStillOpen = await page.evaluate(() => {
+      const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
       const real = dialogs.filter(d => {
         const label = (d.getAttribute('aria-label') || '').toLowerCase();
         if (label.includes('cookie')) return false;
-        // visible?
-        return d.offsetWidth > 0 || d.offsetHeight > 0;
+        const r = d.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
       });
-      return real.length === 0;
-    },
-    { timeout: 90000 }
-  ).then(() => true).catch(() => false);
-  await snap(page, 'after-save-click');
-  if (!modalClosed) {
-    await dumpPage(page, 'modal-stuck');
-    throw new Error('upload modal did not close within 90s - upload likely failed (see /tmp/yelp-modal-stuck-*.html)');
+      return real.length > 0;
+    }).catch(() => true);
+    if (!dialogStillOpen) {
+      completionReason = 'dialog-closed';
+      break;
+    }
+    await sleep(1500);
   }
-  console.error('[yelp] upload modal closed');
+  await snap(page, 'after-save-click');
+  if (!completionReason) {
+    await dumpPage(page, 'modal-stuck');
+    throw new Error('upload did not complete within 120s - dialog stayed open and no photo_id captured (see /tmp/yelp-modal-stuck-*.html)');
+  }
+  console.error(`[yelp] upload committed: ${completionReason}`);
   await sleep(3000);
 
   // Re-navigate to gallery. Yelp's gallery sometimes shows a transient
   // "Oops! Something went wrong" page - retry a couple times.
-  let afterCount = 0;
+  let afterCount = null;
   let galleryOk = false;
   for (let attempt = 1; attempt <= 3; attempt++) {
     await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
@@ -769,22 +924,27 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs) {
     galleryOk = true;
     break;
   }
-  console.error(`[yelp] gallery photo count after upload: ${afterCount} (galleryOk=${galleryOk})`);
-  await snap(page, `gallery-final-${afterCount}`);
+  console.error(`[yelp] gallery photo count after upload: ${afterCount === null ? 'unknown' : afterCount} (galleryOk=${galleryOk})`);
+  await snap(page, `gallery-final-${afterCount === null ? 'unknown' : afterCount}`);
 
-  // Yelp sometimes delays reflecting the new upload in the gallery count even
-  // after the modal has closed and the upload has been accepted. Treat the
-  // closed modal as the primary success signal, and keep the count check as a
-  // diagnostic only.
-  if (galleryOk && afterCount <= beforeCount) {
-    await dumpPage(page, 'verify-softfail');
-    console.error(`[yelp] gallery count did not increase yet (before=${beforeCount}, after=${afterCount}); trusting closed modal as success`);
-  } else if (galleryOk) {
+  // The count check is informational only — Yelp's gallery is virtualized
+  // and frequently lags behind the upload. The real success signals are
+  // (a) the upload dialog closing and (b) the captured photo_id (if any).
+  if (
+    galleryOk
+    && typeof afterCount === 'number'
+    && typeof beforeCount === 'number'
+    && afterCount > beforeCount
+  ) {
     console.error(`[yelp] verified: gallery grew by ${afterCount - beforeCount}`);
   } else {
-    console.error('[yelp] gallery kept erroring - trusting modal-closed signal as success');
+    console.error('[yelp] gallery count did not confirm upload (virtualized/delayed); trusting commit signal');
   }
-  return `yelp-biz-${Date.now()}-${path.basename(photoPath)}`;
+
+  // Prefer the real Yelp photo_id when we captured one. Otherwise return
+  // null so the caller can mark the image as "uploaded but unverified"
+  // instead of stamping a synthetic ID it can never look up later.
+  return photoIdState && photoIdState.photoId ? photoIdState.photoId : null;
 }
 
 async function main() {
@@ -847,6 +1007,12 @@ async function main() {
       console.error(`[yelp] using cached bizId=${bizIdState.bizId}`);
     }
     installBizIdCapture(page, args.userDataDir, bizIdState);
+
+    // Capture the real Yelp photo_id from upload XHR responses so we can
+    // report a verifiable ID back to the PHP caller instead of a synthetic
+    // stamp.
+    const photoIdState = { photoId: null, photoIdSource: null };
+    installPhotoIdCapture(page, photoIdState);
 
     // NOTE: stale datadome cookie wiping is now CONDITIONAL inside
     // maybeBypassDataDome(): it only fires if the page is actually hard-blocked.
@@ -946,8 +1112,14 @@ async function main() {
       throw new Error('could not determine biz_photos URL - pass --photos-url=https://biz.yelp.com/biz_photos/<bizId>');
     }
 
-    const photoId = await uploadPhoto(page, photosUrl, args.photo, args.caption, args.timeoutMs);
-    emit({ ok: true, photo_id: photoId, photos_url: photosUrl });
+    const photoId = await uploadPhoto(page, photosUrl, args.photo, args.caption, args.timeoutMs, photoIdState);
+    emit({
+      ok: true,
+      photo_id: photoId,
+      photo_id_verified: photoId !== null,
+      photo_id_source: photoIdState.photoIdSource || null,
+      photos_url: photosUrl,
+    });
   } catch (e) {
     console.error(`[yelp] error: ${e.stack || e.message}`);
     const msg = String(e?.message || '');
