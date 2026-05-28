@@ -65,9 +65,15 @@ class YelpRemoteLoginService
      * Start a remote-login session. Idempotent: if one is already running and
      * still alive, returns its connection info instead of starting a new one.
      *
+     * Pass $resetProfile=true to wipe the persistent Chromium profile before
+     * launch. Default is to PRESERVE the profile so DataDome cookies, login
+     * progress, and 2captcha solves carry across Verify Login clicks — wiping
+     * on every attempt is what makes the proxy IP look like a bot and earns
+     * the 429 Too Many Requests we keep seeing in the wild.
+     *
      * @return array{ok:bool, error?:string, url?:string, password?:string, started_at?:int, expires_at?:int}
      */
-    public function start(): array
+    public function start(bool $resetProfile = false): array
     {
         if (! $this->isEnabled()) {
             return ['ok' => false, 'error' => 'Remote login is disabled (services.yelp.business.remote_login.enabled).'];
@@ -131,9 +137,17 @@ class YelpRemoteLoginService
             usleep(100000);
         }
 
-        // Fresh profile dir so we don't reopen with stale tabs / poisoned cookies.
+        // Persistent Chromium profile dir. We do NOT wipe by default: the
+        // operator may have spent 2captcha credits getting past DataDome on
+        // the previous attempt, and throwing away those cookies forces a
+        // fresh challenge plus a hot proxy IP -> 429 spiral. Wipe only when
+        // explicitly requested (Reset Profile button) or if the dir doesn't
+        // exist yet.
         $userDataDir = (string) (config('services.yelp.business.user_data_dir') ?: storage_path('app/yelp-puppeteer'));
-        if (is_dir($userDataDir)) {
+        if ($resetProfile && is_dir($userDataDir)) {
+            Log::channel('yelp')->info('Yelp remote login: wiping user-data-dir (resetProfile=true)', [
+                'dir' => $userDataDir,
+            ]);
             @shell_exec('rm -rf ' . escapeshellarg($userDataDir));
         }
         @mkdir($userDataDir, 0775, true);

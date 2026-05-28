@@ -246,6 +246,18 @@
                             Close viewer
                         </flux:button>
                     </div>
+                    <div class="mb-2 flex justify-end">
+                        <flux:button
+                            type="button"
+                            wire:click="resetYelpProfile"
+                            wire:confirm="Wipe the saved Chromium profile and start fresh? Use this if DataDome is stuck on the same cookie."
+                            variant="ghost"
+                            size="xs"
+                            icon="arrow-path"
+                        >
+                            Reset browser profile
+                        </flux:button>
+                    </div>
                     <div class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600" style="aspect-ratio: 16/10;" wire:ignore>
                         <iframe
                             x-data="{

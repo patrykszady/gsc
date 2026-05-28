@@ -169,7 +169,7 @@ class PlatformsSettings extends Component
      * so the blade can render an iframe; no Chromium window is opened on
      * the server's local display (production is headless).
      */
-    public function startYelpRemoteLogin(): void
+    public function startYelpRemoteLogin(bool $resetProfile = false): void
     {
         $svc = app(YelpBusinessService::class);
         if (! $svc->isConfigured()) {
@@ -177,7 +177,7 @@ class PlatformsSettings extends Component
             return;
         }
         $remote = app(YelpRemoteLoginService::class);
-        $result = $remote->start();
+        $result = $remote->start($resetProfile);
         if (! ($result['ok'] ?? false)) {
             $this->yelpRemoteOpen = false;
             $this->yelpRemoteUrl = null;
@@ -188,6 +188,22 @@ class PlatformsSettings extends Component
         $this->yelpRemoteUrl = $result['url'];
         $this->yelpRemoteExpiresAt = $result['expires_at'] ?? null;
         $this->yelpRemoteError = null;
+    }
+
+    /**
+     * Wipe the persistent Chromium profile and start a fresh session. Use
+     * when DataDome appears stuck on the same cookie or the profile is
+     * otherwise poisoned.
+     */
+    public function resetYelpProfile(): void
+    {
+        Cache::forget('yelp.session_dead');
+        Log::channel('yelp')->info('Yelp remote login: operator requested profile reset', [
+            'user_id' => auth()->id(),
+        ]);
+        // Stop first so killState() releases any locks on the profile dir.
+        app(YelpRemoteLoginService::class)->stop();
+        $this->startYelpRemoteLogin(resetProfile: true);
     }
 
     public function stopYelpRemoteLogin(): void
