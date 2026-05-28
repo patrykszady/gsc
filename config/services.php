@@ -224,22 +224,24 @@ return [
             'timeout_ms' => (int) env('YELP_BIZ_TIMEOUT_MS', 240000),
             // Global Redis lock to enforce one Yelp browser automation at a time.
             // This protects production nodes from overlapping Chromium sessions.
-            // Keep TTL slightly above the Horizon worker timeout (300s)
+            // Keep TTL slightly above the Horizon worker timeout (360s)
             // so a SIGKILL'd worker's lock self-clears within ~30s of the
             // timeout instead of blocking the queue for the full TTL.
-            'automation_lock_ttl_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_TTL', 330),
+            'automation_lock_ttl_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_TTL', 390),
             // How long a job waits for the lock before giving up and
-            // releasing itself back to the queue. Must be < Horizon worker
-            // timeout (300s) so the worker itself doesn't get killed while
-            // waiting. 240s comfortably outlasts a Symfony Process upload
-            // (~210s max) so a queued job will inherit the lock cleanly.
-            'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 240),
-            // Optional hard throttle: minimum seconds between Yelp Chromium
-            // launches across the whole host. Set > 0 ONLY if the natural
-            // serialization (Redis lock + maxProcesses=1 + group-kill
-            // cleanup) is not enough for your VPS. Default 0 = next
-            // upload starts as soon as the previous Chromium has exited.
-            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 0),
+            // releasing itself back to the queue. With maxProcesses=1 only
+            // ONE worker exists for this queue — blocking it on the lock is
+            // pointless because no other worker can free the lock. Keep this
+            // short (5s) so a busy lock immediately releases the job back to
+            // the queue with the throttle back-off, freeing the worker to
+            // pick up something else / wait out the back-off.
+            'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 5),
+            // Hard throttle between Yelp Chromium launches across the whole
+            // host. 5s lets the previous Chromium tree finish tearing down
+            // (browser.close + helper exits) before the next launch races
+            // for the user-data-dir, without adding noticeable per-image
+            // overhead. Bump higher only if you see SingletonLock collisions.
+            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 5),
             // Override where Puppeteer looks for its installed Chrome.
             // Defaults to {real-$HOME}/.cache/puppeteer. Set this only if
             // your deploy installs Chrome at a non-standard location.

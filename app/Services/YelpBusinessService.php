@@ -694,11 +694,16 @@ class YelpBusinessService
 
         try {
             if ($lockWait > 0) {
+                $startedAt = microtime(true);
                 $result = $lock->block($lockWait, function () use ($callback, $operation, $context) {
                     Log::channel('yelp')->info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
                     return $callback();
                 });
                 Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
+                Log::channel('yelp')->info('Yelp: automation lock released (ok)', [
+                    'operation' => $operation,
+                    'duration_seconds' => round(microtime(true) - $startedAt, 1),
+                ] + $context);
                 return $result;
             }
 
@@ -711,12 +716,17 @@ class YelpBusinessService
             }
 
             Log::channel('yelp')->info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
+            $startedAt = microtime(true);
             try {
                 $result = $callback();
                 Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
                 return $result;
             } finally {
                 $lock->release();
+                Log::channel('yelp')->info('Yelp: automation lock released', [
+                    'operation' => $operation,
+                    'duration_seconds' => round(microtime(true) - $startedAt, 1),
+                ] + $context);
             }
         } catch (LockTimeoutException) {
             Log::channel('yelp')->warning('Yelp: automation lock wait timed out', [

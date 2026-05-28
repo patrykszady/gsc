@@ -956,17 +956,28 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
 
   // Re-navigate to gallery. Yelp's gallery sometimes shows a transient
   // "Oops! Something went wrong" page - retry a couple times.
+  //
+  // IMPORTANT: this entire block is INFORMATIONAL ONLY (see comment below).
+  // Upload success was already confirmed by dialog-close + photo_id capture.
+  // We MUST NOT let post-upload sightseeing kill the worker:
+  //   - waitUntil 'networkidle2' hangs the full timeout on Yelp (analytics
+  //     beacons + websockets never go idle), so we use 'domcontentloaded'
+  //   - per-attempt timeout is hard-capped to 15s (was timeoutMs=240s, which
+  //     × 3 retries = up to 12 min of pointless waiting that gets the
+  //     Horizon worker SIGKILL'd before process.exit() runs, leaking the
+  //     automation lock and starving the queue)
   let afterCount = null;
   let galleryOk = false;
+  const GALLERY_VERIFY_TIMEOUT_MS = 15000;
   for (let attempt = 1; attempt <= 3; attempt++) {
-    await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
-    await sleep(3000);
+    await page.goto(photosUrl, { waitUntil: 'domcontentloaded', timeout: GALLERY_VERIFY_TIMEOUT_MS }).catch(() => {});
+    await sleep(2000);
     const hasError = await page.evaluate(() =>
       /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
     ).catch(() => false);
     if (hasError) {
       console.error(`[yelp] gallery error page on attempt ${attempt}, retrying...`);
-      await sleep(5000);
+      await sleep(3000);
       continue;
     }
     afterCount = await countPhotos(page);

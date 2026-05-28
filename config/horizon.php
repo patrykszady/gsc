@@ -221,9 +221,12 @@ return [
             'maxProcesses' => 1, // serialise Puppeteer/Yelp uploads
             'maxTime' => 0,
             'maxJobs' => 0,
-            'memory' => 256,
+            'memory' => 512, // Chromium peaks ~800MB — 256 caused mid-job worker exits
             'tries' => 1,
-            'timeout' => 300, // must exceed worst-case Symfony Process timeout (~210s)
+            // Must exceed: Symfony Process timeout (240s YELP_BIZ_TIMEOUT_MS/1000)
+            // + Chromium teardown (~15s) + safety margin. 360s gives lock
+            // release a chance to run in `finally` instead of SIGKILL leaking it.
+            'timeout' => 360,
             'nice' => 0,
         ],
     ],

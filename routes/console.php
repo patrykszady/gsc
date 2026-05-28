@@ -292,6 +292,44 @@ Schedule::command('seo:cloudflare-403-audit --markdown')
     ->appendOutputTo(storage_path('logs/seo-cloudflare-403-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:cloudflare-403-audit failed'));
 
+// SEO: bulk URL Inspection sweep across sitemap (~150/run, stale-first). Populates
+// gsc_coverage_states proactively so canonical-conflict and crawl-budget reports
+// have current data without waiting for problem URLs to surface reactively.
+Schedule::command('seo:gsc-inspect-bulk --limit=150 --markdown')
+    ->weeklyOn(3, '04:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-inspect-bulk.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:gsc-inspect-bulk failed'))
+    ->when(fn () => config('services.google.search_console.enabled'));
+
+// SEO: daily sitemap submission-status check (errors, warnings, stale lastDownloaded).
+Schedule::command('seo:gsc-sitemap-status --markdown')
+    ->dailyAt('05:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-sitemap-status.log'))
+    ->emailOutputOnFailure((string) env('SEO_ALERT_EMAIL', ''))
+    ->when(fn () => config('services.google.search_console.enabled'));
+
+// SEO: weekly canonical-conflict report + auto re-warm (Google chose different canonical).
+Schedule::command('seo:gsc-canonical-conflicts --warm --markdown')
+    ->weeklyOn(3, '05:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-canonical-conflicts.log'));
+
+// SEO: daily critical-page health canary (manual-action / security-issue proxy).
+Schedule::command('seo:gsc-critical-health --markdown')
+    ->dailyAt('05:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-critical-health.log'))
+    ->emailOutputOnFailure((string) env('SEO_ALERT_EMAIL', ''))
+    ->when(fn () => config('services.google.search_console.enabled'));
+
+// SEO: weekly crawl-budget staleness report (derived from URL Inspection lastCrawlTime).
+Schedule::command('seo:gsc-crawl-budget --markdown')
+    ->weeklyOn(3, '05:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-crawl-budget.log'));
+
 // SEO: daily Google Search Console sync (free, official API).
 // GSC data lags ~2 days, so we always pull the last 7-day window and upsert.
 Schedule::command('seo:gsc-sync --days=7')

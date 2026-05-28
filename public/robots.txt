@@ -116,6 +116,7 @@ Disallow: /storage/
 
 # Sitemap location
 Sitemap: https://gs.construction/sitemap.xml
+Sitemap: https://gs.construction/image-sitemap.xml
 
 # LLM context files (AEO/GEO) — informational only.
 # Note: Googlebot does not understand non-standard fields like "LLMs-Txt:"

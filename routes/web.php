@@ -55,6 +55,10 @@ Route::get('/', function () {
     return view('home');
 })->name('home');
 
+// Gone-for-good URLs. Returning 410 (instead of 404) tells Google to deindex faster.
+// /faq was indexed in the past but the page was removed; this stops it cluttering coverage reports.
+Route::get('/faq', fn () => response('Gone', 410))->name('gone.faq');
+
 // AI / GEO: structured feed for ChatGPT, Perplexity, Google AI Overviews, Claude.
 Route::get('/ai-feed.json', AiFeedController::class)->name('ai-feed');
 Route::get('/geo/answers.json', GeoAnswersController::class)->name('geo.answers');

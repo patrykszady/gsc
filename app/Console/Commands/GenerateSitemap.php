@@ -380,6 +380,9 @@ class GenerateSitemap extends Command
         $this->info("  - Project pages: {$projectCount} ({$imageCount} images)");
         $this->info("  - Photo pages: {$photoPageCount}");
 
+        // Keep public/image-sitemap.xml in sync so GSC image-search tracking has a stable feed.
+        $this->call('seo:image-sitemap-build');
+
         return Command::SUCCESS;
     }
 }
