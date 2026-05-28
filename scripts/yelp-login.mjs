@@ -119,6 +119,21 @@ async function buildBrowser(args, headless) {
         delete prefs.session.startup_urls;
         fs.writeFileSync(prefsPath, JSON.stringify(prefs));
       }
+      // Preferences alone is NOT enough — Chromium reads the actual tab
+      // list from Default/Sessions/{Session,Tabs}_* files and restores
+      // them regardless of the restore_on_startup pref. Delete them.
+      // We also nuke Default/Current Session / Current Tabs / Last Session
+      // / Last Tabs which Chromium uses as fallbacks.
+      const sessionDir = path.join(args.userDataDir, 'Default', 'Sessions');
+      if (fs.existsSync(sessionDir)) {
+        for (const f of fs.readdirSync(sessionDir)) {
+          try { fs.unlinkSync(path.join(sessionDir, f)); } catch (_) {}
+        }
+      }
+      for (const f of ['Current Session', 'Current Tabs', 'Last Session', 'Last Tabs']) {
+        const p = path.join(args.userDataDir, 'Default', f);
+        try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch (_) {}
+      }
     } catch (_) { /* best effort */ }
   }
   const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled', '--hide-crash-restore-bubble'];
@@ -588,6 +603,25 @@ async function modeLogin(args) {
           try { await p.close({ runBeforeUnload: false }); } catch {}
         }
         await setupPage(page, args, proxyConfig);
+
+        // Defensive: for the first 6 seconds after launch, slam shut any
+        // OTHER tab Chromium async-restores from session files we missed.
+        // The hard-reset-session-files step above handles 99% of cases but
+        // some Chromium versions write extra files (CurrentSession.bak,
+        // SessionLog_*, etc.) we don't enumerate; this is the safety net.
+        const initialKill = (target) => {
+          if (target.type() !== 'page') return;
+          (async () => {
+            try {
+              const p = await target.page();
+              if (!p || p === page) return;
+              await p.close({ runBeforeUnload: false }).catch(() => {});
+              console.error('[yelp-login] closed unexpected restored tab');
+            } catch (_) {}
+          })();
+        };
+        browser.on('targetcreated', initialKill);
+        setTimeout(() => browser.off('targetcreated', initialKill), 6000);
 
         // Attach interaction logging to every NEW tab the operator (or Yelp)
         // opens — magic-link verification typically lands on a fresh tab.
