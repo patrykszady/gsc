@@ -669,6 +669,23 @@ async function modeLogin(args) {
             try { authedUrl = authedPage.url(); } catch (_) {}
             console.error(`[yelp-login] authenticated url detected: ${authedUrl}`);
 
+            // CRITICAL: immediately silence every OTHER tab. The main tab
+            // is typically still sitting on /login and Yelp's JS will
+            // navigate it on a timer — that navigation triggers DataDome,
+            // burns 2captcha credit, and (worst of all) flags the proxy
+            // exit IP. Stop their loading and close them BEFORE the
+            // cookie-flush sleep so they can't fire during the 3s window.
+            for (const p of allPages) {
+              if (p === authedPage) continue;
+              try { await p.evaluate(() => { try { window.stop(); } catch (_) {} }); } catch (_) {}
+              try { await p._client().send('Page.stopLoading'); } catch (_) {}
+              try { await p.close({ runBeforeUnload: false }); } catch (_) {}
+            }
+            // Also stop any further navigation on the authed tab itself
+            // (Yelp loves to bounce post-login users through tracker URLs
+            // that can 403 → DataDome challenge).
+            try { await authedPage.evaluate(() => { try { window.stop(); } catch (_) {} }); } catch (_) {}
+
             // Dump the cookies we'll be persisting BEFORE closing the browser.
             // This is critical for debugging "logged in" -> "session expired"
             // 8 minutes later: if `s` / `bse` / `_csrf` / `bsd` are absent

@@ -47,6 +47,10 @@ class PlatformsSettings extends Component
     public ?string $yelpRemoteError = null;
     public ?int $yelpRemoteExpiresAt = null;
     public ?string $yelpRemoteLogTail = null;
+    // True once the login script has exited. The noVNC iframe is gone but
+    // the log-tail panel stays visible so the operator can review the
+    // final captured stderr (auth outcome, cookie summary, errors).
+    public bool $yelpRemoteFinished = false;
 
     public function mount(): void
     {
@@ -194,6 +198,8 @@ class PlatformsSettings extends Component
         $this->yelpRemoteOpen = true;
         $this->yelpRemoteUrl = $result['url'];
         $this->yelpRemoteExpiresAt = $result['expires_at'] ?? null;
+        $this->yelpRemoteFinished = false;
+        $this->yelpRemoteError = null;
         $this->yelpRemoteError = null;
     }
 
@@ -217,6 +223,7 @@ class PlatformsSettings extends Component
         $this->yelpRemoteExpiresAt = null;
         $this->yelpRemoteLogTail = null;
         $this->yelpRemoteError = null;
+        $this->yelpRemoteFinished = false;
 
         app(YelpRemoteLoginService::class)->stop();
         // Give port 6080 a moment to fully release before start() races to
@@ -231,6 +238,8 @@ class PlatformsSettings extends Component
         $this->yelpRemoteOpen = false;
         $this->yelpRemoteUrl = null;
         $this->yelpRemoteExpiresAt = null;
+        $this->yelpRemoteFinished = false;
+        $this->yelpRemoteLogTail = null;
         $this->refreshStatus();
     }
 
@@ -248,9 +257,14 @@ class PlatformsSettings extends Component
         // detections, magic-link redirects) from the admin panel.
         $this->yelpRemoteLogTail = $remote->tailChromeLog(6000);
         if (! ($status['running'] ?? false)) {
-            $this->yelpRemoteOpen = false;
+            // Tear down the noVNC iframe (browser is dead, viewer would just
+            // show a connection-failed banner) but KEEP the log-tail panel
+            // visible so the operator can review the final captured stderr
+            // (auth outcome, cookie summary, errors). They click "Close"
+            // to dismiss it manually.
             $this->yelpRemoteUrl = null;
             $this->yelpRemoteExpiresAt = null;
+            $this->yelpRemoteFinished = true;
             $svc = app(YelpBusinessService::class);
 
             // Prefer the login script's own outcome over a fresh headless

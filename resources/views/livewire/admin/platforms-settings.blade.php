@@ -240,77 +240,113 @@
                     <div class="flex items-center justify-between mb-2">
                         <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">
                             Remote login viewer
-                            <span class="ml-2 text-xs font-normal text-zinc-500">
-                                Complete login / captcha / 2FA in the embedded browser below.
-                            </span>
+                            @if($yelpRemoteFinished)
+                                <span class="ml-2 inline-block rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                                    Session ended — log preserved
+                                </span>
+                            @else
+                                <span class="ml-2 text-xs font-normal text-zinc-500">
+                                    Complete login / captcha / 2FA in the embedded browser below.
+                                </span>
+                            @endif
                         </h4>
                         <flux:button type="button" wire:click="stopYelpRemoteLogin" variant="danger" size="xs" icon="x-mark">
                             Close viewer
                         </flux:button>
                     </div>
-                    <div class="mb-2 flex justify-end">
-                        <flux:button
-                            type="button"
-                            wire:click="resetYelpProfile"
-                            wire:confirm="Wipe the saved Chromium profile and start fresh? Use this if DataDome is stuck on the same cookie."
-                            variant="ghost"
-                            size="xs"
-                            icon="arrow-path"
+                    @unless($yelpRemoteFinished)
+                        <div class="mb-2 flex justify-end">
+                            <flux:button
+                                type="button"
+                                wire:click="resetYelpProfile"
+                                wire:confirm="Wipe the saved Chromium profile and start fresh? Use this if DataDome is stuck on the same cookie."
+                                variant="ghost"
+                                size="xs"
+                                icon="arrow-path"
+                            >
+                                Reset browser profile
+                            </flux:button>
+                        </div>
+                        <div
+                            class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600"
+                            style="aspect-ratio: 16/10;"
+                            wire:ignore
+                            wire:key="yelp-vnc-iframe-{{ md5((string) $yelpRemoteUrl) }}"
                         >
-                            Reset browser profile
-                        </flux:button>
-                    </div>
-                    <div
-                        class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600"
-                        style="aspect-ratio: 16/10;"
-                        wire:ignore
-                        wire:key="yelp-vnc-iframe-{{ md5((string) $yelpRemoteUrl) }}"
-                    >
-                        <iframe
-                            x-data="{
-                                checked: false,
-                                onLoad(e) {
-                                    // Try to detect 502/Cloudflare error pages by checking the document title.
-                                    try {
-                                        const doc = e.target.contentDocument;
-                                        const title = (doc?.title || '').toLowerCase();
-                                        if (title.includes('bad gateway') || title.includes('502') || title.includes('cloudflare')) {
-                                            $wire.reportYelpRemoteError('iframe shows ' + (doc?.title || 'gateway error'));
+                            <iframe
+                                x-data="{
+                                    checked: false,
+                                    onLoad(e) {
+                                        // Try to detect 502/Cloudflare error pages by checking the document title.
+                                        try {
+                                            const doc = e.target.contentDocument;
+                                            const title = (doc?.title || '').toLowerCase();
+                                            if (title.includes('bad gateway') || title.includes('502') || title.includes('cloudflare')) {
+                                                $wire.reportYelpRemoteError('iframe shows ' + (doc?.title || 'gateway error'));
+                                            }
+                                        } catch (err) {
+                                            // Cross-origin — ignore.
                                         }
-                                    } catch (err) {
-                                        // Cross-origin — ignore.
+                                    },
+                                    onError() {
+                                        $wire.reportYelpRemoteError('iframe failed to load');
                                     }
-                                },
-                                onError() {
-                                    $wire.reportYelpRemoteError('iframe failed to load');
-                                }
-                            }"
-                            @load="onLoad($event)"
-                            x-on:error="onError()"
-                            src="{{ $yelpRemoteUrl }}"
-                            class="w-full h-full"
-                            allow="clipboard-read; clipboard-write"
-                        ></iframe>
-                    </div>
-                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                        Session auto-expires
-                        @if($yelpRemoteExpiresAt)
-                            at {{ \Carbon\Carbon::createFromTimestamp($yelpRemoteExpiresAt)->diffForHumans() }}
-                        @endif.
-                        If the viewer fails to connect, make sure port
-                        <code>{{ config('services.yelp.business.remote_login.ws_port') }}</code> is reachable
-                        (or set <code>YELP_REMOTE_LOGIN_PUBLIC_URL</code> to a TLS-terminated reverse-proxy URL).
-                    </p>
+                                }"
+                                @load="onLoad($event)"
+                                x-on:error="onError()"
+                                src="{{ $yelpRemoteUrl }}"
+                                class="w-full h-full"
+                                allow="clipboard-read; clipboard-write"
+                            ></iframe>
+                        </div>
+                        <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Session auto-expires
+                            @if($yelpRemoteExpiresAt)
+                                at {{ \Carbon\Carbon::createFromTimestamp($yelpRemoteExpiresAt)->diffForHumans() }}
+                            @endif.
+                            If the viewer fails to connect, make sure port
+                            <code>{{ config('services.yelp.business.remote_login.ws_port') }}</code> is reachable
+                            (or set <code>YELP_REMOTE_LOGIN_PUBLIC_URL</code> to a TLS-terminated reverse-proxy URL).
+                        </p>
+                    @endunless
 
                     {{-- Live tail of the embedded Chromium's stderr so the operator can
                          see what the browser is doing (navigations, DataDome detections,
-                         magic-link redirects, etc.) without SSH. --}}
+                         magic-link redirects, etc.) without SSH. Stays visible even
+                         after the session ends so the operator can review the final
+                         outcome line and cookie summary. --}}
                     <details class="mt-3" open>
                         <summary class="cursor-pointer text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                             Browser activity log (live)
                         </summary>
                         <pre class="mt-2 max-h-64 overflow-auto rounded bg-zinc-900 p-2 text-[11px] leading-relaxed text-zinc-100 whitespace-pre-wrap"
                              wire:poll.4s="pollYelpRemoteLogin">{{ $yelpRemoteLogTail ?: '(no activity yet)' }}</pre>
+                    </details>
+                </div>
+            @elseif($yelpRemoteOpen && $yelpRemoteFinished)
+                {{-- Script exited successfully (or with an error). The noVNC iframe is
+                     gone but we keep the activity log visible so the operator can
+                     review what happened. Polls one more time to refresh tail. --}}
+                <div
+                    class="border-t border-zinc-200 pt-4 dark:border-zinc-700"
+                    wire:poll.10s="pollYelpRemoteLogin"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">
+                            Remote login viewer
+                            <span class="ml-2 inline-block rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900/30 dark:text-green-200">
+                                Session ended — log preserved
+                            </span>
+                        </h4>
+                        <flux:button type="button" wire:click="stopYelpRemoteLogin" variant="ghost" size="xs" icon="x-mark">
+                            Close viewer
+                        </flux:button>
+                    </div>
+                    <details class="mt-3" open>
+                        <summary class="cursor-pointer text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                            Browser activity log (final)
+                        </summary>
+                        <pre class="mt-2 max-h-96 overflow-auto rounded bg-zinc-900 p-2 text-[11px] leading-relaxed text-zinc-100 whitespace-pre-wrap">{{ $yelpRemoteLogTail ?: '(no activity captured)' }}</pre>
                     </details>
                 </div>
             @endif

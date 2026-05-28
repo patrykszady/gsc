@@ -493,7 +493,21 @@ class YelpBusinessService
             $args[] = '--headed';
         }
         if (! empty($cfg['proxy'])) {
-            $args[] = '--proxy=' . $cfg['proxy'];
+            // Rotate the IPRoyal sticky-session token on every upload so a
+            // burned exit IP from a prior run doesn't poison this one.
+            // Same rewrite the login service does; see YelpRemoteLoginService.
+            $proxyUrl = (string) $cfg['proxy'];
+            $rotated = preg_replace(
+                '/_session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
+                '_session-YelpUp' . time() . random_int(100, 999) . '$1',
+                $proxyUrl,
+                1,
+                $count
+            );
+            if ($count > 0 && is_string($rotated)) {
+                $proxyUrl = $rotated;
+            }
+            $args[] = '--proxy=' . $proxyUrl;
         }
         if ($key = config('services.twocaptcha.api_key')) {
             $args[] = '--twocaptcha-key=' . $key;
