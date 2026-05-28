@@ -969,20 +969,31 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
   let afterCount = null;
   let galleryOk = false;
   const GALLERY_VERIFY_TIMEOUT_MS = 15000;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    await page.goto(photosUrl, { waitUntil: 'domcontentloaded', timeout: GALLERY_VERIFY_TIMEOUT_MS }).catch(() => {});
-    await sleep(2000);
-    const hasError = await page.evaluate(() =>
-      /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
-    ).catch(() => false);
-    if (hasError) {
-      console.error(`[yelp] gallery error page on attempt ${attempt}, retrying...`);
-      await sleep(3000);
-      continue;
+  try {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await page.goto(photosUrl, { waitUntil: 'domcontentloaded', timeout: GALLERY_VERIFY_TIMEOUT_MS }).catch(() => {});
+      await sleep(2000);
+      const hasError = await page.evaluate(() =>
+        /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
+      ).catch(() => false);
+      if (hasError) {
+        console.error(`[yelp] gallery error page on attempt ${attempt}, retrying...`);
+        await sleep(3000);
+        continue;
+      }
+      afterCount = await countPhotos(page).catch((e) => {
+        console.error(`[yelp] countPhotos failed (informational): ${e.message}`);
+        return null;
+      });
+      galleryOk = true;
+      break;
     }
-    afterCount = await countPhotos(page);
-    galleryOk = true;
-    break;
+  } catch (e) {
+    // Defensive: this entire block is informational. A detached Frame,
+    // navigation error, or any other thrown exception here MUST NOT fail
+    // the script — the upload already committed and photo_id was captured
+    // above. Swallow and continue to the success-return path below.
+    console.error(`[yelp] post-commit gallery verification threw (ignored): ${e.message}`);
   }
   console.error(`[yelp] gallery photo count after upload: ${afterCount === null ? 'unknown' : afterCount} (galleryOk=${galleryOk})`);
   await snap(page, `gallery-final-${afterCount === null ? 'unknown' : afterCount}`);
