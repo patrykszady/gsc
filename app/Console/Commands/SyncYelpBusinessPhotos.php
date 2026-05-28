@@ -73,9 +73,10 @@ class SyncYelpBusinessPhotos extends Command
         }
 
         $limit = (int) $this->option('limit');
-        if ($limit > 0) {
-            $query->limit($limit);
-        }
+        // NOTE: do NOT apply ->limit($limit) at the query level. The dispatch
+        // loop may skip rows whose cache marker is still set (already queued)
+        // and we want the SQL limit to count only ACTUALLY dispatched images,
+        // not "considered" ones. We stop manually after $limit dispatches.
 
         $count = 0;
         $force = (bool) $this->option('force');
@@ -97,7 +98,14 @@ class SyncYelpBusinessPhotos extends Command
 
         $dispatchedIds = [];
 
-        $query->orderBy('id')->each(function (ProjectImage $image) use (&$count, &$dispatchedIds, $force, $sync, $showProcess, $service) {
+        // Process newest pending first ("the next N that need to be uploaded"),
+        // and stop only when we've dispatched $limit images (not merely
+        // considered $limit rows). Skipped rows do not consume the budget.
+        $query->orderByDesc('id')->each(function (ProjectImage $image) use (&$count, &$dispatchedIds, $force, $sync, $showProcess, $service, $limit) {
+            if ($limit > 0 && $count >= $limit) {
+                return false; // stop the each() iteration
+            }
+
             if ($sync) {
                 $this->line("  - processing image #{$image->id}");
 
