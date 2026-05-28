@@ -20,6 +20,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
+import path from 'node:path';
 import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
 
 puppeteer.use(StealthPlugin());
@@ -101,7 +102,26 @@ function parseProxyUrl(proxyUrl) {
 
 async function buildBrowser(args, headless) {
   if (args.userDataDir) fs.mkdirSync(args.userDataDir, { recursive: true });
-  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'];
+  // Pre-launch: rewrite Default/Preferences so Chromium doesn't try to
+  // restore the previous session's tabs (operator was getting 7+ stale
+  // biz.yelp tabs across launches) and doesn't show the "Chrome didn't
+  // shut down correctly" infobar.
+  if (args.userDataDir) {
+    try {
+      const prefsPath = path.join(args.userDataDir, 'Default', 'Preferences');
+      if (fs.existsSync(prefsPath)) {
+        const prefs = JSON.parse(fs.readFileSync(prefsPath, 'utf8'));
+        prefs.profile = prefs.profile || {};
+        prefs.profile.exit_type = 'Normal';
+        prefs.profile.exited_cleanly = true;
+        prefs.session = prefs.session || {};
+        prefs.session.restore_on_startup = 5; // "Open New Tab Page"
+        delete prefs.session.startup_urls;
+        fs.writeFileSync(prefsPath, JSON.stringify(prefs));
+      }
+    } catch (_) { /* best effort */ }
+  }
+  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled', '--hide-crash-restore-bubble'];
   const proxyConfig = parseProxyUrl(args.proxy);
   if (proxyConfig) {
     launchArgs.push(`--proxy-server=${proxyConfig.host}`);
@@ -558,8 +578,15 @@ async function modeLogin(args) {
 
     (async () => {
       try {
-        const pages = await browser.pages();
-        const page = pages[0] || (await browser.newPage());
+        // Chromium with a persistent userDataDir restores the previous
+        // session's tabs on launch — operator was seeing 7+ stale tabs from
+        // prior login attempts. Open a fresh blank tab and close every
+        // restored page so they start clean every time.
+        const restored = await browser.pages();
+        const page = await browser.newPage();
+        for (const p of restored) {
+          try { await p.close({ runBeforeUnload: false }); } catch {}
+        }
         await setupPage(page, args, proxyConfig);
 
         // Attach interaction logging to every NEW tab the operator (or Yelp)

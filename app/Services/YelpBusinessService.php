@@ -64,6 +64,10 @@ class YelpBusinessService
             'FONTCONFIG_PATH' => '/etc/fonts',
             'FC_CACHEDIR' => $fontCache,
             'PUPPETEER_CACHE_DIR' => $puppeteerCache,
+            // Pass the userDataDir to the bash wrapper so its hard-timeout
+            // cleanup can `pkill` any Chromium tree that escapes the
+            // process-group SIGKILL (e.g. detached helper procs).
+            'YELP_USER_DATA_DIR' => (string) (config('services.yelp.business.user_data_dir') ?: ''),
             // Keep app env explicit for subprocess logs/behavior.
             'APP_ENV' => (string) config('app.env', 'production'),
         ];
@@ -541,10 +545,26 @@ class YelpBusinessService
                         }
                     });
                 } catch (ProcessTimedOutException $e) {
+                    // Symfony tripped its own wall-clock timeout (i.e. the
+                    // bash wrapper failed to return in time). Belt-and-
+                    // suspenders: SIGKILL the Symfony child group AND any
+                    // chromium still holding our userDataDir, so the
+                    // automation lock is released and the next job can run.
                     Log::channel('yelp')->error('Yelp biz: upload script timed out', [
                         'image_id' => $image->id,
                         'message' => $e->getMessage(),
                     ]);
+                    try {
+                        $pid = $process->getPid();
+                        if ($pid) {
+                            @posix_kill(-$pid, SIGKILL);
+                            @posix_kill($pid, SIGKILL);
+                        }
+                    } catch (\Throwable $ignored) {}
+                    $userDataDir = (string) (config('services.yelp.business.user_data_dir') ?: '');
+                    if ($userDataDir !== '') {
+                        @exec('pkill -KILL -f ' . escapeshellarg('user-data-dir=' . $userDataDir));
+                    }
                     if ($teeFh) {
                         @fclose($teeFh);
                     }
