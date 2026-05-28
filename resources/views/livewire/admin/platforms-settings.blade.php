@@ -260,7 +260,12 @@
                             Reset browser profile
                         </flux:button>
                     </div>
-                    <div class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600" style="aspect-ratio: 16/10;" wire:ignore>
+                    <div
+                        class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600"
+                        style="aspect-ratio: 16/10;"
+                        wire:ignore
+                        wire:key="yelp-vnc-iframe-{{ md5((string) $yelpRemoteUrl) }}"
+                    >
                         <iframe
                             x-data="{
                                 checked: false,
