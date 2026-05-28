@@ -275,6 +275,23 @@ Schedule::command('seo:404-indexnow --min-hits=3')
     ->appendOutputTo(storage_path('logs/seo-404-indexnow.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:404-indexnow failed'));
 
+// SEO: weekly URL Inspection sweep — persists coverage states to
+// gsc_coverage_states and re-pushes "Crawled - currently not indexed" /
+// "Blocked due to access forbidden" pages through IndexNow + cache warm.
+Schedule::command('seo:reindex-problem-pages --auto')
+    ->weeklyOn(2, '09:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-reindex-problem-pages.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:reindex-problem-pages failed'))
+    ->when(fn () => config('services.google.search_console.enabled'));
+
+// SEO: weekly Cloudflare/WAF Googlebot-403 probe (detects bot-fight blocks).
+Schedule::command('seo:cloudflare-403-audit --markdown')
+    ->weeklyOn(2, '10:00')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-cloudflare-403-audit.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:cloudflare-403-audit failed'));
+
 // SEO: daily Google Search Console sync (free, official API).
 // GSC data lags ~2 days, so we always pull the last 7-day window and upsert.
 Schedule::command('seo:gsc-sync --days=7')

@@ -47,10 +47,18 @@
     </script>
     @endif
 
-    {{-- Favicons --}}
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}" media="(prefers-color-scheme: light)">
+    {{-- Favicons.
+         IMPORTANT for Google SERP "site icon" quality:
+           • Google picks the *largest* favicon it can find. Without a 192/512
+             reference it falls back to the 32px PNG and the SERP avatar looks
+             pixelated. https://developers.google.com/search/docs/appearance/favicon-in-search
+           • The unconditional SVG (without media query) is what Google reads;
+             the media-query SVGs are for browsers only. --}}
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon-dark.svg') }}" media="(prefers-color-scheme: dark)">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('android-chrome-192x192.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">

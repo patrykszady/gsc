@@ -260,16 +260,22 @@ $organization = [
     ],
 ];
 
-// WebSite schema for sitelinks search + site name display
-// Note: alternateName must NOT include LLC or other legal variants — Google uses it for site name
+// WebSite schema for sitelinks search + site name display.
+//   • Google site-name rules (https://developers.google.com/search/docs/appearance/site-names):
+//       - WebSite schema on homepage only
+//       - `name` must be a short, brand-consistent string (no LLC / domain)
+//       - `alternateName` is for ALTERNATE variants — never repeat `name`
+//       - Reinforce with og:site_name + a publisher (Organization) reference
+//   • `image` here is the Organization logo — helps Google build the entity card.
 $website = [
     '@context' => 'https://schema.org',
     '@type' => 'WebSite',
     '@id' => 'https://gs.construction/#website',
     'name' => 'GS Construction',
-    'alternateName' => ['GS Construction', 'GS Construction & Remodeling'],
+    'alternateName' => 'GS Construction & Remodeling',
     'url' => 'https://gs.construction/',
     'publisher' => ['@id' => 'https://gs.construction/#organization'],
+    'image' => ['@id' => 'https://gs.construction/#logo'],
     'inLanguage' => 'en-US',
     'potentialAction' => [
         '@type' => 'SearchAction',
@@ -281,19 +287,35 @@ $website = [
     ],
 ];
 
-// Speakable schema — tells voice assistants and AI which content to read aloud
+// WebPage schema — per-page entity with the actual page title and the same
+// hero/og image we send via meta tags. `primaryImageOfPage` is the strongest
+// signal we can give Google for the SERP thumbnail. Also carries the speakable
+// hints for voice assistants.
+$__seoBuilderInstance = app(\App\Support\SEO\SEOBuilder::class);
+$__pageData = $__seoBuilderInstance->build();
+$pageImage = $__pageData->image ?: asset('android-chrome-512x512.png');
+$pageTitle = $__pageData->title ?: 'GS Construction';
+
 $speakable = [
     '@context' => 'https://schema.org',
     '@type' => 'WebPage',
+    '@id' => url()->current() . '#webpage',
+    'url' => url()->current(),
+    'name' => $pageTitle,
+    'isPartOf' => ['@id' => 'https://gs.construction/#website'],
+    'about' => ['@id' => 'https://gs.construction/#business'],
+    'primaryImageOfPage' => [
+        '@type' => 'ImageObject',
+        'url' => $pageImage,
+        'contentUrl' => $pageImage,
+    ],
+    'image' => $pageImage,
+    'inLanguage' => 'en-US',
     'speakable' => [
         '@type' => 'SpeakableSpecification',
         'cssSelector' => ['h1', 'h2', '.speakable', '[data-speakable]', '[role="main"] p:first-of-type'],
         'xpath' => ['/html/head/title'],
     ],
-    'name' => 'GS Construction',
-    'url' => url()->current(),
-    'isPartOf' => ['@id' => 'https://gs.construction/#website'],
-    'about' => ['@id' => 'https://gs.construction/#business'],
 ];
 @endphp
 

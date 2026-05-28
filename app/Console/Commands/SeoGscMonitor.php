@@ -184,7 +184,7 @@ class SeoGscMonitor extends Command
     {
         $out = [];
         foreach ($prior as $key => $p) {
-            if ($p['clicks'] < $minPriorClicks) {
+            if ($p['clicks'] < $minPriorClicks || $p['clicks'] <= 0) {
                 continue;
             }
             $c = $cur[$key] ?? ['clicks' => 0];
@@ -210,7 +210,7 @@ class SeoGscMonitor extends Command
     {
         $out = [];
         foreach ($prior as $key => $p) {
-            if ($p['impr'] < $minPriorImpr) {
+            if ($p['impr'] < $minPriorImpr || $p['impr'] <= 0) {
                 continue;
             }
             $c = $cur[$key] ?? ['impr' => 0];

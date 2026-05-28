@@ -359,6 +359,10 @@
                 <livewire:contact-section :area="$area" />
             </div>
 
+            {{-- Per-city unique content — breaks the 25-cluster /contact near-duplicate
+                 group surfaced by seo:area-pages-audit (May 2026). --}}
+            @include('partials.area-unique-content', ['area' => $area, 'context' => 'contact'])
+
             <livewire:map-section :area="$area" />
 
             <livewire:testimonials-section :area="$area" />
@@ -729,6 +733,9 @@
             
             {{-- Service Schema for rich results --}}
             <x-service-schema :service="$config" :area="$area" />
+
+            {{-- Product Schema — required for Google review-star rich results (Service alone won't render stars). --}}
+            <x-product-service-schema :service-slug="$config['urlSlug']" :area="$area" />
             
             {{-- Hero with projects slider --}}
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -765,6 +772,12 @@
                 :service-title="$config['label']" 
                 :service-short-title="$config['label']" 
             />
+
+            {{-- Per-city unique content — breaks the 12 /services/kitchen-remodeling
+                 (and adjacent service) near-duplicate clusters surfaced by
+                 seo:area-pages-audit (May 2026). Heading + landmarks + permit notes
+                 are interpolated per (city, service) so each URL has unique prose. --}}
+            @include('partials.area-unique-content', ['area' => $area, 'context' => $config['urlSlug']])
 
             {{-- Long-Form Content Sections (SEO depth) --}}
             @if(!empty($config['contentSections']))

@@ -73,12 +73,18 @@ class SeoService
             $title = $domainConfig['title_prefix'];
             $description = $domainConfig['description'];
         } elseif ($city) {
-            // City landing page. Lead with city name (matches "{city} kitchen remodel" queries word-for-word)
-            // and add a star + review-count proof element to lift CTR. Keep under ~58 chars before " | GS Construction".
+            // City landing page. Lead with the city name + the dominant local query intent.
+            // GSC data (May 2026) shows the highest-impression queries for these pages are
+            // "{city} home remodeling" / "{city} home remodeler" / "kitchen renovation
+            // contractor {city}" — the previous "Kitchen & Bath" framing missed "home
+            // remodeling" and "contractor" intent entirely. New title leads with the
+            // contractor noun (matches "remodeling contractor {city}") and covers both
+            // kitchen and home remodeling. Keep under ~62 chars before " | GS Construction".
             $reviewCount = self::getReviewCountLabel();
             $reviewNum = self::getReviewCountNumeric();
-            $title = "{$city} Kitchen & Bath Remodeling — " . ($reviewNum ? "{$reviewNum}★ Reviews" : 'Local Pros');
-            $description = "{$city}, IL homeowners' choice for kitchen, bathroom & full home remodels. {$reviewCount} 5-star reviews, licensed & insured, free in-home estimate. Call (224) 735-4200.";
+            $badge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated';
+            $title = "{$city} Remodeling Contractor — Kitchen, Bath & Home • {$badge}";
+            $description = "{$city}, IL remodeling contractor for kitchen, bathroom & whole-home renovations. {$reviewCount} 5-star reviews, 40+ yrs experience, licensed & insured. Free in-home estimate — (224) 735-4200.";
         } else {
             // Lead with brand on the homepage so Google adopts "GS Construction"
             // as the site name (https://developers.google.com/search/docs/appearance/site-names)

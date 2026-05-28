@@ -1,6 +1,20 @@
 @blaze(memo: true)
 @props(['testimonials' => collect(), 'testimonial' => null])
 
+{{--
+    IMPORTANT — Google rich-result rules for Review:
+      • Reviews must be nested inside the parent entity being reviewed.
+      • A nested Review must NOT contain its own `itemReviewed` field —
+        the parent entity IS the item reviewed. Including both produces
+        the "directional conflict" warning in Search Console and disables
+        review rich results.
+      • Google does NOT render star snippets for self-serving LocalBusiness
+        reviews (deprecated 2019). Stars in SERPs for contractors come from
+        the Google Business Profile, not on-page Review schema.
+      • We keep emitting Review nodes here for AI/voice assistants and
+        Bing/DuckDuckGo, which still consume them.
+--}}
+
 @php
 // Handle single testimonial or collection
 $items = $testimonial ? collect([$testimonial]) : $testimonials;
@@ -27,11 +41,6 @@ foreach ($items as $item) {
         ],
         'reviewBody' => $item->review_description,
         'datePublished' => ($item->review_date ?? $item->created_at)->toIso8601String(),
-        'itemReviewed' => [
-            '@type' => 'LocalBusiness',
-            '@id' => 'https://gs.construction/#business',
-            'name' => 'GS Construction',
-        ],
     ];
 
     // Cite the originating platform when available so AI engines can verify the source.

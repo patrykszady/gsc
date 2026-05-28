@@ -8,6 +8,10 @@
     {{-- Service Schema --}}
     <x-service-schema :service="$data" />
 
+    {{-- Product Schema — only schema type that triggers review-star rich results today.
+         Self-serving LocalBusiness review snippets were deprecated by Google in 2019. --}}
+    <x-product-service-schema :service-slug="$service" />
+
     {{-- HowTo Schema (process steps as a HowTo rich result) --}}
     <x-service-howto-schema :service="$data" :service-slug="$service" />
 

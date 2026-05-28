@@ -3,9 +3,12 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Models\GscCoverageState;
+use App\Models\GscCoverageStateHistory;
 use App\Models\OAuthToken;
 use App\Services\IndexNowService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -108,6 +111,9 @@ class SeoReindexProblemPages extends Command
             $r = $resp->json()['inspectionResult']['indexStatusResult'] ?? [];
             $verdict = $r['verdict'] ?? '?';
             $coverage = $r['coverageState'] ?? '?';
+
+            $this->persistInspection($u, $r);
+
             if ($verdict !== 'PASS' || str_contains(strtolower($coverage), 'forbidden') || str_contains(strtolower($coverage), 'not indexed')) {
                 $problems[] = $u;
                 $this->line(sprintf('  flag  %-8s %-45s %s', $verdict, substr($coverage, 0, 45), $u));
@@ -115,6 +121,55 @@ class SeoReindexProblemPages extends Command
         }
 
         return $problems;
+    }
+
+    /**
+     * Upsert a GSC URL Inspection result and append a history row when state changed.
+     *
+     * @param array<string,mixed> $r indexStatusResult payload from Search Console.
+     */
+    protected function persistInspection(string $url, array $r): void
+    {
+        $verdict = $r['verdict'] ?? null;
+        $coverage = $r['coverageState'] ?? null;
+        $pageFetch = $r['pageFetchState'] ?? null;
+        $lastCrawl = isset($r['lastCrawlTime']) ? Carbon::parse($r['lastCrawlTime']) : null;
+
+        $existing = GscCoverageState::where('url', $url)->first();
+        $stateChanged = ! $existing
+            || $existing->verdict !== $verdict
+            || $existing->coverage_state !== $coverage
+            || $existing->page_fetch_state !== $pageFetch;
+
+        $row = GscCoverageState::updateOrCreate(
+            ['url' => $url],
+            [
+                'verdict' => $verdict,
+                'coverage_state' => $coverage,
+                'robots_txt_state' => $r['robotsTxtState'] ?? null,
+                'indexing_state' => $r['indexingState'] ?? null,
+                'page_fetch_state' => $pageFetch,
+                'sitemap_url' => $r['sitemap'][0] ?? null,
+                'last_crawl_time' => $lastCrawl,
+                'user_canonical' => $r['userCanonical'] ?? null,
+                'google_canonical' => $r['googleCanonical'] ?? null,
+                'inspected_at' => now(),
+                'last_changed_at' => $stateChanged ? now() : ($existing->last_changed_at ?? now()),
+                'consecutive_failures' => $verdict !== 'PASS'
+                    ? (($existing->consecutive_failures ?? 0) + 1)
+                    : 0,
+            ]
+        );
+
+        if ($stateChanged) {
+            GscCoverageStateHistory::create([
+                'url' => $url,
+                'verdict' => $verdict,
+                'coverage_state' => $coverage,
+                'page_fetch_state' => $pageFetch,
+                'observed_at' => now(),
+            ]);
+        }
     }
 
     protected function fetchAccessToken(): ?string
