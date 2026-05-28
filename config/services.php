@@ -248,7 +248,21 @@ return [
             // Defaults to {real-$HOME}/.cache/puppeteer. Set this only if
             // your deploy installs Chrome at a non-standard location.
             'puppeteer_cache_dir' => env('PUPPETEER_CACHE_DIR'),
-            'proxy' => env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL')),
+            // YELP_BIZ_PROXY may be a single URL or a comma/newline-separated
+            // list of URLs. When multiple are provided, one is picked at
+            // random per process — gives us automatic fallback between
+            // dedicated ISP IPs without a code change when one gets flagged.
+            'proxy' => (function () {
+                $raw = (string) env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL', ''));
+                if ($raw === '') return null;
+                $list = array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $raw)) ?: []));
+                if (count($list) === 0) return null;
+                return $list[array_rand($list)];
+            })(),
+            // Full list (debug / admin UI display).
+            'proxy_pool' => array_values(array_filter(array_map('trim',
+                preg_split('/[,\n]+/', (string) env('YELP_BIZ_PROXY', env('SCRAPER_PROXY_URL', ''))) ?: []
+            ))),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),
 
