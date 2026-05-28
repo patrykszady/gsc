@@ -70,11 +70,21 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
 
             if (! $image->project || ! $image->project->is_published) {
                 Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                Log::channel('yelp')->info('Yelp biz: skipping unpublished project', [
+                    'image_id' => $this->imageId,
+                    'project_id' => $image->project_id,
+                    'project_published' => $image->project?->is_published ?? false,
+                ]);
                 return;
             }
 
             if ($image->yelp_biz_uploaded_at && ! $this->forceRefresh) {
                 Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                Log::channel('yelp')->info('Yelp biz: already uploaded, skipping', [
+                    'image_id' => $this->imageId,
+                    'yelp_biz_photo_id' => $image->yelp_biz_photo_id,
+                    'uploaded_at' => $image->yelp_biz_uploaded_at?->toIso8601String(),
+                ]);
                 return;
             }
 
