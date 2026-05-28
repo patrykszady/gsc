@@ -59,9 +59,25 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const emit = (p) => process.stdout.write(JSON.stringify(p) + '\n');
 
 function isAuthedUrl(url) {
+  // Must match the dashboard URL shapes the upload script also uses:
+  //   biz.yelp.com/home/<bizId>(/...)
+  //   biz.yelp.com/biz_photos/<bizId>(/...)
+  //   biz.yelp.com/biz/<bizId>(/...)
+  //   business.yelp.com/<bizId>/{home,photos,reviews,leads,insights,messages,settings}
+  // Anything else (bare "/", "/home", "/login", regional landings, marketing
+  // root) is NOT authed — accepting them gives a false positive that the
+  // operator's session is good when the cookies are actually missing/expired.
   try {
     const u = new URL(url);
-    return u.hostname.endsWith('biz.yelp.com') && !u.pathname.startsWith('/login') && !u.pathname.startsWith('/signup');
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname || '/';
+    if (host === 'biz.yelp.com') {
+      return /^\/(home\/[A-Za-z0-9_-]{12,}|biz_photos\/[A-Za-z0-9_-]{12,}|biz\/[A-Za-z0-9_-]{12,})(\/|$)/i.test(path);
+    }
+    if (host === 'business.yelp.com') {
+      return /^\/[A-Za-z0-9_-]{12,}\/(home|photos|reviews|leads|insights|messages|settings)(\/|$)/i.test(path);
+    }
+    return false;
   } catch {
     return false;
   }
@@ -625,22 +641,52 @@ async function modeLogin(args) {
             let authedUrl = '';
             try { authedUrl = authedPage.url(); } catch (_) {}
             console.error(`[yelp-login] authenticated url detected: ${authedUrl}`);
-            await sleep(1500);
+
+            // Dump the cookies we'll be persisting BEFORE closing the browser.
+            // This is critical for debugging "logged in" -> "session expired"
+            // 8 minutes later: if `s` / `bse` / `_csrf` / `bsd` are absent
+            // here, no amount of disk-flush will help — they were never set
+            // in the first place.
+            try {
+              const cookies = await authedPage.cookies('https://biz.yelp.com', 'https://business.yelp.com', 'https://www.yelp.com');
+              const summary = cookies.map(c => ({
+                n: c.name, d: c.domain, p: c.path,
+                sz: (c.value || '').length,
+                exp: c.expires > 0 ? new Date(c.expires * 1000).toISOString() : 'session',
+                http: !!c.httpOnly, sec: !!c.secure,
+              }));
+              const interesting = summary.filter(c => /^(s|bse|bsd|_csrf|yuv|hl|datadome|recentlocations|location)$/i.test(c.n));
+              console.error(`[yelp-login] persisted cookies count=${summary.length} interesting=${JSON.stringify(interesting)}`);
+            } catch (e) {
+              console.error('[yelp-login] cookie dump failed: ' + (e?.message || e));
+            }
+
+            // Give Chromium time to flush its cookie SQLite DB to disk BEFORE
+            // we tear it down. The earlier code SIGKILL'd after 7ms which
+            // bypassed the cookie write -> upload script 8 min later sees a
+            // profile with no session cookies. 3s is plenty for sqlite WAL.
+            await sleep(3000);
             finish({ closed: false, authenticated: true });
-            // Race browser.close() against a 3s timeout — Chromium with a
-            // persistent profile sometimes hangs on close, which would leave
-            // the noVNC viewer showing a stale desktop until manual cleanup.
+            // Graceful close lets Chromium run its OnExit handlers
+            // (cookie/preferences flush, session restore, etc.). Race
+            // against 6s in case a persistent profile hangs on close.
             await Promise.race([
               browser.close().catch(() => {}),
-              new Promise(r => setTimeout(r, 3000)),
+              new Promise(r => setTimeout(r, 6000)),
             ]);
-            // Belt-and-suspenders: kill the spawned chromium process tree
-            // directly, then force-exit node so the PHP poll sees the death.
+            // Only after the graceful close do we resort to killing leftover
+            // chromium helper processes (zombie GPU/utility processes that
+            // sometimes linger). By this point the parent has already
+            // checkpointed its on-disk state.
             try {
               const proc = browser.process && browser.process();
               if (proc && proc.pid) {
-                try { process.kill(-proc.pid, 'SIGKILL'); } catch (_) {}
-                try { process.kill(proc.pid, 'SIGKILL'); } catch (_) {}
+                if (proc.exitCode === null) {
+                  try { process.kill(-proc.pid, 'SIGTERM'); } catch (_) {}
+                  await sleep(800);
+                  try { process.kill(-proc.pid, 'SIGKILL'); } catch (_) {}
+                  try { process.kill(proc.pid, 'SIGKILL'); } catch (_) {}
+                }
               }
             } catch (_) {}
             emit({ ok: true, authenticated: true, closed: true });

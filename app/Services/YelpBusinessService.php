@@ -606,15 +606,14 @@ class YelpBusinessService
                     if ($isSessionDead) {
                         $note = is_array($payload) ? (string) ($payload['error'] ?? '') : '';
                         $this->markSessionDead($note);
+                        // Surface 4KB of stderr tail (not 2KB) because the new
+                        // cookie summary line at session-fail can easily be
+                        // 1.5KB on its own, and we'd otherwise lose the
+                        // preceding [yelp] navigation breadcrumbs.
                         Log::channel('yelp')->warning('Yelp biz: session expired - admin must re-login via /admin/platforms', [
                             'image_id' => $image->id,
                             'note' => $note,
-                            // Include stderr tail so we can see the actual URL
-                            // the upload script landed on before declaring
-                            // session dead (most informative line in stderr
-                            // is `[yelp] persistent session is not
-                            // authenticated (url=...) - aborting`).
-                            'stderr_tail' => mb_substr($stderr, -2000),
+                            'stderr_tail' => mb_substr($stderr, -4000),
                         ]);
                         throw new YelpSessionExpiredException(
                             $note !== '' ? $note : 'Yelp session is not authenticated.'

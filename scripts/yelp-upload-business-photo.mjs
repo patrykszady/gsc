@@ -1188,6 +1188,21 @@ async function main() {
       if (await isLoggedIn(page)) {
         console.error(`[yelp] reusing persistent session (url=${page.url()}) - skipping /login (recovered)`);
       } else {
+        // Dump cookies so we can see WHY the persisted profile failed:
+        // missing Yelp session cookies (login script's SIGKILL ate the
+        // flush), expired cookies, or wrong-domain cookies.
+        try {
+          const cookies = await page.cookies('https://biz.yelp.com', 'https://business.yelp.com', 'https://www.yelp.com');
+          const summary = cookies.map(c => ({
+            n: c.name, d: c.domain,
+            sz: (c.value || '').length,
+            exp: c.expires > 0 ? new Date(c.expires * 1000).toISOString() : 'session',
+          }));
+          const interesting = summary.filter(c => /^(s|bse|bsd|_csrf|yuv|hl|datadome|recentlocations|location)$/i.test(c.n));
+          console.error(`[yelp] cookies at session-fail: total=${summary.length} interesting=${JSON.stringify(interesting)}`);
+        } catch (e) {
+          console.error('[yelp] cookie dump at session-fail failed: ' + (e?.message || e));
+        }
         // We DO NOT attempt to drive /login here. DataDome reliably blocks
         // unattended Puppeteer logins, and every failed attempt burns 2captcha
         // credit + further poisons the proxy IP. Fail fast with a structured
