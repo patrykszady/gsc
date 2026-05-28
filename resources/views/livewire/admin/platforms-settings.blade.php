@@ -282,6 +282,17 @@
                         <code>{{ config('services.yelp.business.remote_login.ws_port') }}</code> is reachable
                         (or set <code>YELP_REMOTE_LOGIN_PUBLIC_URL</code> to a TLS-terminated reverse-proxy URL).
                     </p>
+
+                    {{-- Live tail of the embedded Chromium's stderr so the operator can
+                         see what the browser is doing (navigations, DataDome detections,
+                         magic-link redirects, etc.) without SSH. --}}
+                    <details class="mt-3" open>
+                        <summary class="cursor-pointer text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                            Browser activity log (live)
+                        </summary>
+                        <pre class="mt-2 max-h-64 overflow-auto rounded bg-zinc-900 p-2 text-[11px] leading-relaxed text-zinc-100 whitespace-pre-wrap"
+                             wire:poll.4s="pollYelpRemoteLogin">{{ $yelpRemoteLogTail ?: '(no activity yet)' }}</pre>
+                    </details>
                 </div>
             @endif
         </div>

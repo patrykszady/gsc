@@ -79,6 +79,9 @@ class YelpRemoteLoginService
 
         $req = $this->checkRequirements();
         if (! $req['ok']) {
+            Log::channel('yelp')->error('Yelp remote login: missing host packages', [
+                'missing' => $req['missing'],
+            ]);
             return ['ok' => false, 'error' => 'Missing host packages: ' . implode(', ', $req['missing']) . '. Install with: sudo apt install xvfb x11vnc novnc websockify'];
         }
 
@@ -152,6 +155,10 @@ class YelpRemoteLoginService
             $xvfbLog
         );
         if (! $xvfbPid) {
+            Log::channel('yelp')->error('Yelp remote login: Xvfb spawn failed', [
+                'log' => $xvfbLog,
+                'tail' => $this->tailLog($xvfbLog),
+            ]);
             return ['ok' => false, 'error' => 'Failed to start Xvfb. See ' . $xvfbLog];
         }
         // Give Xvfb a moment to bind the display socket.
@@ -196,8 +203,26 @@ class YelpRemoteLoginService
             $chromeLog
         );
         if (! $chromePid) {
+            Log::channel('yelp')->error('Yelp remote login: Chromium spawn failed', [
+                'log' => $chromeLog,
+                'tail' => $this->tailLog($chromeLog),
+            ]);
             @posix_kill($xvfbPid, SIGTERM);
             return ['ok' => false, 'error' => 'Failed to start Chromium. See ' . $chromeLog];
+        }
+        // Give Chromium a moment to actually start (it might crash on launch
+        // due to missing libs, bad proxy URL, or a corrupt user-data dir).
+        // Confirm the puppeteer process is still alive — if not, surface the
+        // log tail rather than silently proceeding to x11vnc.
+        usleep(800000);
+        if (! $this->pidAlive($chromePid)) {
+            Log::channel('yelp')->error('Yelp remote login: Chromium exited immediately after launch', [
+                'pid' => $chromePid,
+                'log' => $chromeLog,
+                'tail' => $this->tailLog($chromeLog),
+            ]);
+            @posix_kill($xvfbPid, SIGTERM);
+            return ['ok' => false, 'error' => 'Chromium exited immediately. See ' . $chromeLog];
         }
 
         // 3) x11vnc — random password so the noVNC URL needs the secret.
@@ -224,6 +249,10 @@ class YelpRemoteLoginService
             $vncPid = $realVncPid;
         }
         if (! $vncPid) {
+            Log::channel('yelp')->error('Yelp remote login: x11vnc spawn failed', [
+                'log' => $vncLog,
+                'tail' => $this->tailLog($vncLog),
+            ]);
             @posix_kill($chromePid, SIGTERM);
             @posix_kill($xvfbPid, SIGTERM);
             return ['ok' => false, 'error' => 'Failed to start x11vnc. See ' . $vncLog];
@@ -245,6 +274,7 @@ class YelpRemoteLoginService
             Log::channel('yelp')->warning('Yelp remote login: x11vnc never bound port', [
                 'port' => $vncPort,
                 'vnc_log' => $vncLog,
+                'tail' => $this->tailLog($vncLog),
             ]);
             @posix_kill($vncPid, SIGKILL);
             @posix_kill($chromePid, SIGTERM);
@@ -265,6 +295,10 @@ class YelpRemoteLoginService
             $wsLog
         );
         if (! $wsPid) {
+            Log::channel('yelp')->error('Yelp remote login: websockify spawn failed', [
+                'log' => $wsLog,
+                'tail' => $this->tailLog($wsLog),
+            ]);
             @posix_kill($vncPid, SIGTERM);
             @posix_kill($chromePid, SIGTERM);
             @posix_kill($xvfbPid, SIGTERM);
@@ -290,6 +324,7 @@ class YelpRemoteLoginService
             Log::channel('yelp')->warning('Yelp remote login: websockify never bound port', [
                 'port' => $wsPort,
                 'ws_log' => $wsLog,
+                'tail' => $this->tailLog($wsLog),
             ]);
             @posix_kill($wsPid, SIGTERM);
             @posix_kill($vncPid, SIGTERM);
@@ -334,9 +369,12 @@ class YelpRemoteLoginService
         $alive = $this->isAlive($state);
         if (! $alive) {
             // Chromium has exited — likely login completed (or failed). Tear down.
+            $chromeLog = storage_path('logs/yelp-remote-chrome.log');
             Log::channel('yelp')->info('Yelp remote login: chromium exited, tearing down', [
                 'pids' => $state['pids'] ?? [],
                 'started_at' => $state['started_at'] ?? null,
+                'ran_seconds' => isset($state['started_at']) ? time() - (int) $state['started_at'] : null,
+                'chrome_log_tail' => $this->tailLog($chromeLog, 2000),
             ]);
             $this->killState($state);
         } else {
@@ -385,6 +423,17 @@ class YelpRemoteLoginService
         $cookieDb = $userDataDir . '/Default/Cookies';
         if (is_file($cookieDb) && filesize($cookieDb) > 1024) {
             $loggedIn = true;
+        }
+
+        // Only log the heuristic result when the session has actually ended,
+        // so we leave a breadcrumb ("login finished, cookies persisted: yes/no")
+        // without spamming on every iframe poll.
+        if (! $alive) {
+            Log::channel('yelp')->info('Yelp remote login: post-teardown state', [
+                'logged_in_heuristic' => $loggedIn,
+                'cookie_db_exists' => is_file($cookieDb),
+                'cookie_db_size' => is_file($cookieDb) ? @filesize($cookieDb) : null,
+            ]);
         }
 
         return [
@@ -454,6 +503,73 @@ class YelpRemoteLoginService
         );
         $pid = (int) trim((string) @shell_exec($full));
         return $pid > 0 ? $pid : 0;
+    }
+
+    /**
+     * Public accessor for the live tail of the headed Chromium's stderr log
+     * (every navigation, console message, DataDome detection, etc.). Polled
+     * by the admin viewer so the operator can see what the embedded browser
+     * is doing in real time.
+     */
+    public function tailChromeLog(int $bytes = 6000): string
+    {
+        return $this->tailLog(storage_path('logs/yelp-remote-chrome.log'), $bytes);
+    }
+
+    /**
+     * Parse the chrome log to recover the script's final outcome JSON line
+     * (`{"ok":true,"authenticated":true,...}`). The login script emits this
+     * to stdout right before `process.exit(0)`, so it's the most reliable
+     * signal that the operator actually completed login — more trustworthy
+     * than re-probing biz.yelp.com headlessly (which triggers a fresh
+     * DataDome challenge unrelated to the cookies we just acquired).
+     *
+     * Returns null when no outcome line is present (script crashed,
+     * timed out, or still running).
+     */
+    public function readLoginOutcome(): ?array
+    {
+        $log = storage_path('logs/yelp-remote-chrome.log');
+        if (! is_file($log)) return null;
+        $tail = $this->tailLog($log, 8000);
+        if ($tail === '' || $tail === '(empty)' || $tail === '(unable to read)') {
+            return null;
+        }
+        $lines = preg_split('/\r?\n/', $tail) ?: [];
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            $line = trim($lines[$i]);
+            if ($line === '' || $line[0] !== '{') continue;
+            $data = json_decode($line, true);
+            if (is_array($data) && array_key_exists('ok', $data)) {
+                return $data;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Read the last few KB of a spawn log file so it can be embedded in the
+     * yelp log channel context. Helps the admin see *why* a process failed
+     * without having to SSH into the server.
+     */
+    protected function tailLog(string $file, int $bytes = 4000): string
+    {
+        if (! is_file($file)) {
+            return '(log file does not exist)';
+        }
+        $size = (int) @filesize($file);
+        if ($size <= 0) {
+            return '(empty)';
+        }
+        $fh = @fopen($file, 'rb');
+        if (! $fh) {
+            return '(unable to read)';
+        }
+        $offset = max(0, $size - $bytes);
+        @fseek($fh, $offset);
+        $tail = (string) @fread($fh, $bytes);
+        @fclose($fh);
+        return trim($tail);
     }
 
     protected function isAlive(array $state): bool

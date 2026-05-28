@@ -1139,13 +1139,28 @@ async function main() {
     try {
       const u = new URL(page.url());
       // biz.yelp.com and business.yelp.com are both valid post-login landings
-      // (Yelp redirects biz -> business for the rebranded dashboard). Only retry
-      // if we ended up on a different host entirely or on an unauthenticated path.
+      // (Yelp redirects biz -> business for the rebranded dashboard). We also
+      // retry whenever we ended up on a non-dashboard path on those hosts —
+      // e.g. bare "/" or "/home" (no bizId) — because Yelp's auth redirect
+      // chain (bare "/" -> "/home" -> "/home/<bizId>/") sometimes races with
+      // puppeteer's networkidle2 signal, leaving us on a transient URL that
+      // isLoggedIn() rejects even though cookies are perfectly valid. Forcing
+      // a navigation to the bizId-specific dashboard (when we have the bizId
+      // cached) deterministically resolves the redirect.
       const okHost = /^(biz|business)\.yelp\.com$/i.test(u.hostname);
-      if (!okHost || UNAUTHED_BIZ_PATH_RE.test(u.pathname)) {
-        console.error(`[yelp] persistent session landed on ${page.url()} - retrying via biz.yelp.com/home`);
-        await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
-        await sleep(1500);
+      const host = u.hostname.toLowerCase();
+      const isBizDash = host === 'biz.yelp.com'
+        && /^\/(home\/[A-Za-z0-9_-]{12,}|biz_photos\/[A-Za-z0-9_-]{12,}|biz\/[A-Za-z0-9_-]{12,})(\/|$)/i.test(u.pathname);
+      const isBusinessDash = host === 'business.yelp.com'
+        && /^\/[A-Za-z0-9_-]{12,}\/(home|photos|reviews|leads|insights|messages|settings)(\/|$)/i.test(u.pathname);
+      const isAuthedPath = isBizDash || isBusinessDash;
+      if (!okHost || UNAUTHED_BIZ_PATH_RE.test(u.pathname) || !isAuthedPath) {
+        const target = bizIdState.bizId
+          ? `https://biz.yelp.com/home/${bizIdState.bizId}/`
+          : 'https://biz.yelp.com/home';
+        console.error(`[yelp] persistent session landed on ${page.url()} - retrying via ${target}`);
+        await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await sleep(2000);
         const bypassedRetry = await maybeBypassDataDome(page, proxyConfig, args);
         if (!bypassedRetry) {
           throw new Error('DataDome hard block after forcing biz.yelp.com/home (proxy likely banned). Rotate proxy/session and retry.');
@@ -1156,19 +1171,37 @@ async function main() {
     if (await isLoggedIn(page)) {
       console.error(`[yelp] reusing persistent session (url=${page.url()}) - skipping /login`);
     } else {
-      // We DO NOT attempt to drive /login here. DataDome reliably blocks
-      // unattended Puppeteer logins, and every failed attempt burns 2captcha
-      // credit + further poisons the proxy IP. Fail fast with a structured
-      // signal so the PHP layer can stop retrying and ask the admin to
-      // re-login interactively via /admin/platforms (noVNC viewer).
-      console.error(`[yelp] persistent session is not authenticated (url=${page.url()}) - aborting`);
-      emit({
-        ok: false,
-        code: 'session_expired',
-        error: 'Yelp session is not authenticated. Re-login via /admin/platforms (Verify Login).',
-      });
-      await browser.close().catch(() => {});
-      process.exit(3);
+      // Defense-in-depth: isLoggedIn() can be a false negative when puppeteer's
+      // networkidle2 signal fires mid-redirect chain (bare "/" hasn't yet
+      // resolved to "/home/<bizId>/"). Before declaring the session dead and
+      // failing the job, attempt ONE deterministic re-navigation to the
+      // bizId-specific dashboard URL using a fast domcontentloaded budget. If
+      // cookies are valid this finishes in <2s; if they're truly dead, Yelp
+      // will redirect to /login and we abort below.
+      const recoveryTarget = bizIdState.bizId
+        ? `https://biz.yelp.com/home/${bizIdState.bizId}/`
+        : 'https://biz.yelp.com/home';
+      console.error(`[yelp] isLoggedIn=false at ${page.url()} - last-chance retry via ${recoveryTarget}`);
+      await page.goto(recoveryTarget, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+      await sleep(2000);
+
+      if (await isLoggedIn(page)) {
+        console.error(`[yelp] reusing persistent session (url=${page.url()}) - skipping /login (recovered)`);
+      } else {
+        // We DO NOT attempt to drive /login here. DataDome reliably blocks
+        // unattended Puppeteer logins, and every failed attempt burns 2captcha
+        // credit + further poisons the proxy IP. Fail fast with a structured
+        // signal so the PHP layer can stop retrying and ask the admin to
+        // re-login interactively via /admin/platforms (noVNC viewer).
+        console.error(`[yelp] persistent session is not authenticated (url=${page.url()}) - aborting`);
+        emit({
+          ok: false,
+          code: 'session_expired',
+          error: 'Yelp session is not authenticated. Re-login via /admin/platforms (Verify Login).',
+        });
+        await browser.close().catch(() => {});
+        process.exit(3);
+      }
     }
 
     // If we still don't know the bizId (e.g. session restored at the marketing

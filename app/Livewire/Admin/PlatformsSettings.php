@@ -44,6 +44,7 @@ class PlatformsSettings extends Component
     public ?string $yelpRemoteUrl = null;
     public ?string $yelpRemoteError = null;
     public ?int $yelpRemoteExpiresAt = null;
+    public ?string $yelpRemoteLogTail = null;
 
     public function mount(): void
     {
@@ -151,6 +152,15 @@ class PlatformsSettings extends Component
 
     public function verifyYelpLogin(): void
     {
+        // Clear the sticky 12h session_dead banner up-front. Without this, if
+        // the operator successfully logs in but the post-login checkSession
+        // poll fails (DataDome on the headless verifier, network blip), the
+        // banner stays set and every queued upload fails with "session
+        // expired" — even though the cookies are actually fresh.
+        Cache::forget('yelp.session_dead');
+        Log::channel('yelp')->info('Yelp Verify Login: operator initiated, cleared session_dead flag', [
+            'user_id' => auth()->id(),
+        ]);
         $this->startYelpRemoteLogin();
     }
 
@@ -196,13 +206,41 @@ class PlatformsSettings extends Component
     public function pollYelpRemoteLogin(): void
     {
         if (! $this->yelpRemoteOpen) return;
-        $status = app(YelpRemoteLoginService::class)->status();
+        $remote = app(YelpRemoteLoginService::class);
+        $status = $remote->status();
+        // Live tail of the headed Chromium's stderr so the operator can see
+        // what the embedded browser is doing (navigations, DataDome
+        // detections, magic-link redirects) from the admin panel.
+        $this->yelpRemoteLogTail = $remote->tailChromeLog(6000);
         if (! ($status['running'] ?? false)) {
             $this->yelpRemoteOpen = false;
             $this->yelpRemoteUrl = null;
             $this->yelpRemoteExpiresAt = null;
             $svc = app(YelpBusinessService::class);
-            $this->yelpAuthenticated = $svc->checkSession();
+
+            // Prefer the login script's own outcome over a fresh headless
+            // probe: re-visiting biz.yelp.com headlessly fires a new
+            // DataDome challenge that has nothing to do with the cookies
+            // the operator just acquired, and the probe almost always
+            // reports "NOT logged in" even when the session is valid.
+            $outcome = $remote->readLoginOutcome();
+            if (is_array($outcome) && ($outcome['authenticated'] ?? false) === true) {
+                $svc->markSessionFresh();
+                $this->yelpAuthenticated = true;
+                Log::channel('yelp')->info('Yelp remote login: script reported authenticated=true, skipping headless re-check', [
+                    'outcome' => $outcome,
+                    'user_id' => auth()->id(),
+                ]);
+            } else {
+                $this->yelpAuthenticated = $svc->checkSession();
+                Log::channel('yelp')->info('Yelp remote login: poll detected session ended, falling back to checkSession', [
+                    'status' => $status,
+                    'outcome' => $outcome,
+                    'checkSession_result' => $this->yelpAuthenticated,
+                    'user_id' => auth()->id(),
+                ]);
+            }
+
             if ($this->yelpAuthenticated === true) {
                 session()->flash('platforms-success', 'Yelp login completed — session is active.');
             } else {

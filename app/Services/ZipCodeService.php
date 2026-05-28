@@ -48,7 +48,7 @@ class ZipCodeService
             ->get();
         return $areas->pluck('slug')->unique()->values()->all();
     }
-     private const CACHE_KEY = 'service_area:zip_map:v3';
+     private const CACHE_KEY = 'service_area:zip_map:v4';
     private const CACHE_TTL = 86400; // 24h
 
     /**
@@ -110,22 +110,44 @@ class ZipCodeService
      */
     protected function loadZipCityMap(): array
     {
-        $path = 'seo/zip-city-map.json';
-        if (! Storage::disk('local')->exists($path)) {
-            return [];
-        }
-
-        $decoded = json_decode((string) Storage::disk('local')->get($path), true);
-        if (! is_array($decoded)) {
-            return [];
-        }
-
+        // Source of truth #1: hive_project_zip_counts table. The Hive sync
+        // populates `city` per zip from the contractors source, so this is
+        // available on every environment that has run `php artisan hive:sync`
+        // (no separate seo:sync-zip-cities step required).
         $out = [];
-        foreach ($decoded as $zip => $city) {
-            $zip = preg_replace('/\D/', '', (string) $zip);
-            $city = trim((string) $city);
-            if (strlen((string) $zip) === 5 && $city !== '') {
-                $out[$zip] = $city;
+        try {
+            $rows = \App\Models\HiveProjectZipCount::query()
+                ->whereNotNull('city')
+                ->where('city', '!=', '')
+                ->select('zip', 'city')
+                ->distinct()
+                ->get();
+            foreach ($rows as $row) {
+                $zip = preg_replace('/\D/', '', (string) $row->zip);
+                $city = trim((string) $row->city);
+                if (strlen((string) $zip) === 5 && $city !== '') {
+                    $out[$zip] = $city;
+                }
+            }
+        } catch (\Throwable) {
+            // Table missing (fresh install) — fall through to JSON only.
+        }
+
+        // Source of truth #2 (override): storage/app/private/seo/zip-city-map.json.
+        // Wins over the Hive value when both are present, so manual curation
+        // via seo:sync-zip-cities can correct any odd city labels from Hive
+        // (e.g. "Glenview Nas" -> "Glenview").
+        $path = 'seo/zip-city-map.json';
+        if (Storage::disk('local')->exists($path)) {
+            $decoded = json_decode((string) Storage::disk('local')->get($path), true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $zip => $city) {
+                    $zip = preg_replace('/\D/', '', (string) $zip);
+                    $city = trim((string) $city);
+                    if (strlen((string) $zip) === 5 && $city !== '') {
+                        $out[$zip] = $city;
+                    }
+                }
             }
         }
 

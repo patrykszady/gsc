@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\GoogleBusinessProfileService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -117,11 +118,36 @@ class GbpUnrespondedReviews extends Command
         }
 
         if ($this->option('notify')) {
-            try {
-                $this->sendAlertEmail($unresponded, $maxAgeHours);
-            } catch (\Exception $e) {
-                $this->warn('Email alert failed: ' . $e->getMessage());
+            // Only email when there is at least one NEW unresponded review
+            // since the last successful run. Otherwise the daily schedule
+            // spams the same backlog every morning (e.g. "16 unresponded"
+            // when only 2 of those 16 are actually new this cycle).
+            $seenKey = 'gbp:unresponded-reviews:notified';
+            $seen = (array) Cache::get($seenKey, []);
+            $currentNames = array_values(array_filter(array_map(
+                fn ($u) => (string) ($u['name'] ?? ''),
+                $unresponded
+            )));
+            $newNames = array_values(array_diff($currentNames, $seen));
+
+            if (empty($newNames)) {
+                $this->info('No NEW unresponded reviews since last run; skipping email.');
+            } else {
+                $newOnly = array_values(array_filter(
+                    $unresponded,
+                    fn ($u) => in_array((string) ($u['name'] ?? ''), $newNames, true)
+                ));
+                try {
+                    $this->sendAlertEmail($newOnly, $maxAgeHours);
+                } catch (\Exception $e) {
+                    $this->warn('Email alert failed: ' . $e->getMessage());
+                }
             }
+
+            // Always refresh the seen-set to the current outstanding backlog
+            // so a review that gets replied-to (and falls out of the list)
+            // and later edited by the reviewer can re-trigger an email.
+            Cache::put($seenKey, $currentNames, now()->addDays(60));
         }
 
         // Return success — the alert email (if enabled) handles the notification.

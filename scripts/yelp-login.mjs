@@ -115,6 +115,55 @@ async function setupPage(page, args, proxyConfig) {
     await page.authenticate({ username: proxyConfig.username, password: proxyConfig.password });
     proxyConfig._sessionUsername = proxyConfig.username;
   }
+  attachInteractionLogging(page);
+}
+
+// Attach event listeners that surface every meaningful browser action to
+// stderr (and thus to storage/logs/yelp-remote-chrome.log, which the admin
+// panel live-tails). Lets us debug what the operator is doing inside the
+// noVNC viewer without screen-sharing.
+function attachInteractionLogging(page, label = 'main') {
+  if (page._interactionLoggingInstalled) return;
+  page._interactionLoggingInstalled = true;
+
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      console.error(`[browser:${label}] nav ${frame.url()}`);
+    }
+  });
+  page.on('console', (msg) => {
+    const type = msg.type();
+    if (type === 'error' || type === 'warning') {
+      const text = msg.text();
+      if (text && text.length < 400) {
+        console.error(`[browser:${label}] console.${type}: ${text}`);
+      }
+    }
+  });
+  page.on('pageerror', (err) => {
+    console.error(`[browser:${label}] pageerror: ${err?.message || err}`);
+  });
+  page.on('dialog', (dlg) => {
+    console.error(`[browser:${label}] dialog ${dlg.type()}: ${dlg.message()}`);
+  });
+  page.on('response', (res) => {
+    try {
+      const req = res.request();
+      if (req.resourceType() !== 'document') return;
+      if (req.frame() !== page.mainFrame()) return;
+      const status = res.status();
+      if (status >= 400 || (status >= 300 && status < 400)) {
+        console.error(`[browser:${label}] doc ${status} ${req.method()} ${res.url()}`);
+      }
+    } catch {}
+  });
+  page.on('requestfailed', (req) => {
+    try {
+      if (req.resourceType() !== 'document') return;
+      const err = req.failure()?.errorText || 'unknown';
+      console.error(`[browser:${label}] reqfailed ${req.method()} ${req.url()} - ${err}`);
+    } catch {}
+  });
 }
 
 // ---- DataDome handling ----
@@ -482,6 +531,20 @@ async function modeLogin(args) {
         const page = pages[0] || (await browser.newPage());
         await setupPage(page, args, proxyConfig);
 
+        // Attach interaction logging to every NEW tab the operator (or Yelp)
+        // opens — magic-link verification typically lands on a fresh tab.
+        let tabCounter = 1;
+        browser.on('targetcreated', async (target) => {
+          if (target.type() !== 'page') return;
+          try {
+            const newPage = await target.page();
+            if (!newPage) return;
+            const label = `tab${tabCounter++}`;
+            attachInteractionLogging(newPage, label);
+            console.error(`[browser:${label}] opened url=${newPage.url()}`);
+          } catch {}
+        });
+
         await page.goto('https://biz.yelp.com/login', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
         await sleep(2000 + Math.random() * 2000);
         await maybeBypassDataDome(page, proxyConfig, args);
@@ -505,14 +568,48 @@ async function modeLogin(args) {
         }
 
         const startedAt = Date.now();
+        let lastLoggedUrls = new Map(); // pageId -> url, to avoid spamming
+        let magicLinkLogged = false;
+        let pollCount = 0;
         while (Date.now() - startedAt < args.timeoutMs) {
           if (browser.connected === false) break;
+          pollCount++;
           // Check ALL open tabs — the user may complete login on a tab other
           // than the original login page (e.g. email verification link opens
           // a new tab that lands on the biz dashboard).
           const allPages = await browser.pages().catch(() => [page]);
-          const authenticated = allPages.some(p => isAuthedUrl(p.url()));
-          if (authenticated) {
+
+          // Log every URL transition across every tab so the PHP log
+          // viewer can show exactly what the operator-driven browser is
+          // doing (magic-link redirects, DataDome challenges, regional
+          // landing traps, etc.).
+          for (let i = 0; i < allPages.length; i++) {
+            const p = allPages[i];
+            let u = '';
+            try { u = p.url(); } catch (_) { continue; }
+            const key = `${i}`;
+            if (lastLoggedUrls.get(key) !== u) {
+              lastLoggedUrls.set(key, u);
+              console.error(`[yelp-login] tab[${i}] url=${u}`);
+              if (!magicLinkLogged && u.includes('/login/passwordless/')) {
+                magicLinkLogged = true;
+                console.error('[yelp-login] passwordless/magic-link redirect detected — waiting for biz dashboard');
+              }
+            }
+          }
+
+          // Periodic heartbeat every ~30s so the operator knows the loop
+          // is alive and what state we are in.
+          if (pollCount % 15 === 0) {
+            const elapsed = Math.round((Date.now() - startedAt) / 1000);
+            console.error(`[yelp-login] heartbeat: ${elapsed}s elapsed, ${allPages.length} tab(s), waiting for authenticated url`);
+          }
+
+          const authedPage = allPages.find(p => { try { return isAuthedUrl(p.url()); } catch { return false; } });
+          if (authedPage) {
+            let authedUrl = '';
+            try { authedUrl = authedPage.url(); } catch (_) {}
+            console.error(`[yelp-login] authenticated url detected: ${authedUrl}`);
             await sleep(1500);
             finish({ closed: false, authenticated: true });
             // Race browser.close() against a 3s timeout — Chromium with a

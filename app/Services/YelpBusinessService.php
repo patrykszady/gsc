@@ -267,10 +267,18 @@ class YelpBusinessService
     public function markSessionDead(?string $note = null): void
     {
         Cache::put('yelp.last_auth', false, now()->addHours(6));
+        // Sticky banner TTL is intentionally short (12h, not days). The
+        // detection heuristic in scripts/yelp-upload-business-photo.mjs can
+        // false-positive on a transient redirect race (bare "/" hasn't
+        // resolved to "/home/<bizId>/" yet when networkidle2 fires). A long
+        // TTL turns a brief race into a multi-day nag in /admin/platforms.
+        // The next successful upload calls markSessionFresh() and clears the
+        // flag anyway; if the session really is dead, the next failed job
+        // re-sets it within minutes.
         Cache::put('yelp.session_dead', [
             'at' => now()->toIso8601String(),
             'note' => $note,
-        ], now()->addDays(30));
+        ], now()->addHours(12));
     }
 
     /**
@@ -322,6 +330,16 @@ class YelpBusinessService
         }
         $authed = (bool) ($payload['authenticated'] ?? false);
         Cache::put('yelp.last_auth', $authed, now()->addHours(6));
+        // Keep the sticky session_dead banner in sync with reality. Without
+        // this, a successful Verify Login leaves yelp.session_dead set from
+        // an earlier failed upload, and every subsequent job aborts with
+        // "session expired" until the 12h TTL elapses.
+        if ($authed) {
+            Cache::forget('yelp.session_dead');
+            Log::channel('yelp')->info('Yelp: checkSession authed=true, cleared session_dead flag');
+        } else {
+            $this->markSessionDead('checkSession reported not authenticated');
+        }
         return $authed;
     }
 
@@ -591,6 +609,12 @@ class YelpBusinessService
                         Log::channel('yelp')->warning('Yelp biz: session expired - admin must re-login via /admin/platforms', [
                             'image_id' => $image->id,
                             'note' => $note,
+                            // Include stderr tail so we can see the actual URL
+                            // the upload script landed on before declaring
+                            // session dead (most informative line in stderr
+                            // is `[yelp] persistent session is not
+                            // authenticated (url=...) - aborting`).
+                            'stderr_tail' => mb_substr($stderr, -2000),
                         ]);
                         throw new YelpSessionExpiredException(
                             $note !== '' ? $note : 'Yelp session is not authenticated.'
