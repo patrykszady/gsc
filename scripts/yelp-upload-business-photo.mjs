@@ -918,19 +918,29 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
     throw new Error('upload dialog open but no primary save button found inside it - see /tmp/yelp-no-save-button-*.html');
   }
 
-  // Wait for the dialog to actually close (= upload committed) OR for a
-  // real photo_id to land via XHR (whichever comes first). The upload
-  // can take 30-60s; do NOT navigate away while the dialog is still open
-  // or we'll cancel the in-flight upload.
-  console.error('[yelp] waiting for upload to commit (dialog close or photo_id)...');
-  const completionDeadline = Date.now() + 120000;
+  // Wait for the upload to commit. Multiple signals — any one is enough:
+  //   1. Real photo_id captured via XHR (most reliable)
+  //   2. Upload dialog closed
+  //   3. Gallery photo count increased vs. beforeCount (Yelp sometimes
+  //      leaves a "success" dialog open after the photo is actually live)
+  //   4. Known rejection text appeared in the dialog → fail fast (no retry)
+  //
+  // Extended to 240s because real uploads on a sparse account have been
+  // observed taking 130-180s end-to-end (Yelp moderation lag).
+  // Do NOT navigate away while the dialog is still open or we cancel
+  // the in-flight upload.
+  console.error('[yelp] waiting for upload to commit (dialog close, photo_id, or gallery count increase)...');
+  const REJECTION_RE = /(too large|file size|unsupported|invalid (?:file|image|format)|duplicate|already (?:exists|uploaded)|violates|inappropriate|moderation|try again)/i;
+  const completionDeadline = Date.now() + 240000;
   let completionReason = null;
+  let rejectionText = null;
+  let lastGalleryCheck = 0;
   while (Date.now() < completionDeadline) {
     if (photoIdState && photoIdState.photoId) {
       completionReason = `photo_id=${photoIdState.photoId}`;
       break;
     }
-    const dialogStillOpen = await page.evaluate(() => {
+    const probe = await page.evaluate(() => {
       const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
       const real = dialogs.filter(d => {
         const label = (d.getAttribute('aria-label') || '').toLowerCase();
@@ -938,18 +948,39 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
         const r = d.getBoundingClientRect();
         return r.width > 0 && r.height > 0;
       });
-      return real.length > 0;
-    }).catch(() => true);
-    if (!dialogStillOpen) {
+      return {
+        dialogOpen: real.length > 0,
+        dialogText: real.map(d => (d.textContent || '').trim()).join(' | ').slice(0, 500),
+      };
+    }).catch(() => ({ dialogOpen: true, dialogText: '' }));
+
+    if (!probe.dialogOpen) {
       completionReason = 'dialog-closed';
       break;
+    }
+    if (probe.dialogText && REJECTION_RE.test(probe.dialogText)) {
+      rejectionText = probe.dialogText;
+      break;
+    }
+    // Gallery count signal — poll at most every 9s to avoid hammering Yelp.
+    if (typeof beforeCount === 'number' && Date.now() - lastGalleryCheck > 9000) {
+      lastGalleryCheck = Date.now();
+      const nowCount = await countPhotos(page).catch(() => null);
+      if (typeof nowCount === 'number' && nowCount > beforeCount) {
+        completionReason = `gallery-count-increased(${beforeCount}→${nowCount})`;
+        break;
+      }
     }
     await sleep(1500);
   }
   await snap(page, 'after-save-click');
+  if (rejectionText) {
+    await dumpPage(page, 'upload-rejected');
+    throw new Error(`Yelp rejected the upload: "${rejectionText.slice(0, 200)}" (see /tmp/yelp-upload-rejected-*.html)`);
+  }
   if (!completionReason) {
     await dumpPage(page, 'modal-stuck');
-    throw new Error('upload did not complete within 120s - dialog stayed open and no photo_id captured (see /tmp/yelp-modal-stuck-*.html)');
+    throw new Error('upload did not complete within 240s - dialog stayed open, no photo_id, gallery count unchanged (see /tmp/yelp-modal-stuck-*.html)');
   }
   console.error(`[yelp] upload committed: ${completionReason}`);
   await sleep(3000);
