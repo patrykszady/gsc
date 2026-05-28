@@ -140,6 +140,11 @@ async function buildBrowser(args, headless) {
   const proxyConfig = parseProxyUrl(args.proxy);
   if (proxyConfig) {
     launchArgs.push(`--proxy-server=${proxyConfig.host}`);
+    // Bright Data residential proxies present their own CA on HTTPS — without
+    // installing that CA system-wide, Chromium throws ERR_CERT_AUTHORITY_INVALID
+    // on every navigation. Accept the proxy's cert chain. Safe here because
+    // the only traffic going through this Chromium is to known target sites.
+    launchArgs.push('--ignore-certificate-errors');
   }
   const browser = await launchPuppeteerWithLockRecovery({
     puppeteer,

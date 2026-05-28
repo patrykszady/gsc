@@ -121,9 +121,12 @@ class ResetYelpProfile extends Command
         }
         $newToken = 'Reset' . date('YmdHis') . random_int(100, 999);
         $count = 0;
+        // Matches both IPRoyal (`_session-XYZ`) and Bright Data (`-session-XYZ`)
+        // username-embedded rotation tokens. The leading `[_-]` is captured
+        // so we preserve the provider's delimiter convention.
         $env = preg_replace(
-            '/_session-[A-Za-z0-9]+/',
-            '_session-' . $newToken,
+            '/([_-])session-[A-Za-z0-9]+/',
+            '${1}session-' . $newToken,
             $env,
             -1,
             $count

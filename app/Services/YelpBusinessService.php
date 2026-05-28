@@ -498,8 +498,8 @@ class YelpBusinessService
             // Same rewrite the login service does; see YelpRemoteLoginService.
             $proxyUrl = (string) $cfg['proxy'];
             $rotated = preg_replace(
-                '/_session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
-                '_session-YelpUp' . time() . random_int(100, 999) . '$1',
+                '/([_-])session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
+                '${1}session-YelpUp' . time() . random_int(100, 999) . '$2',
                 $proxyUrl,
                 1,
                 $count

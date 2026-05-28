@@ -228,8 +228,8 @@ class YelpRemoteLoginService
             // by a fresh one automatically — no .env edit needed.
             $proxyUrl = (string) $bizCfg['proxy'];
             $rotated = preg_replace(
-                '/_session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
-                '_session-Yelp' . time() . random_int(100, 999) . '$1',
+                '/([_-])session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
+                '${1}session-Yelp' . time() . random_int(100, 999) . '$2',
                 $proxyUrl,
                 1,
                 $count

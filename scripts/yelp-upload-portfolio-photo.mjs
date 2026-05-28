@@ -222,6 +222,7 @@ async function main() {
     try {
       const u = new URL(args.proxy);
       launchOpts.args.push(`--proxy-server=${u.protocol}//${u.hostname}:${u.port}`);
+      launchOpts.args.push('--ignore-certificate-errors');
     } catch {}
   }
 

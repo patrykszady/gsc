@@ -1077,7 +1077,10 @@ async function main() {
     '--no-first-run',
     '--no-default-browser-check',
   ];
-  if (proxyConfig) launchArgs.push(`--proxy-server=${proxyConfig.host}`);
+  if (proxyConfig) {
+    launchArgs.push(`--proxy-server=${proxyConfig.host}`);
+    launchArgs.push('--ignore-certificate-errors');
+  }
 
   const browser = await launchPuppeteerWithLockRecovery({
     puppeteer,
