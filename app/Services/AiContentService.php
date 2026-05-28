@@ -175,7 +175,7 @@ PROMPT;
     /**
      * Call Gemini API with multiple images.
      */
-    protected function callGeminiMultiImage(string $prompt, array $imagesData = [], int $maxOutputTokens = 500): ?string
+    protected function callGeminiMultiImage(string $prompt, array $imagesData = [], int $maxOutputTokens = 500, float $temperature = 0.7): ?string
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
 
@@ -204,7 +204,7 @@ PROMPT;
                         ],
                     ],
                     'generationConfig' => [
-                        'temperature' => 0.7,
+                        'temperature' => $temperature,
                         'maxOutputTokens' => $maxOutputTokens,
                     ],
                 ]);
@@ -250,9 +250,10 @@ PROMPT;
             $original = trim((string) ($project?->title ?? 'Home remodeling project'));
         }
 
-        // v14 = allow multi-sentence captions but require every sentence be complete
-        // (no dangling fragments like "This Arlington Heights Home Remodel" at the end).
-        $cacheKey = "yelp_caption_seo:v14:{$image->id}:{$limit}:" . md5($original);
+        // v15 = specific gate-failure feedback to Gemini on retry + smart
+        // sentence-boundary truncation instead of mid-word cuts.
+        // v16 = tight, ordered, self-checking prompt + lower temperature.
+        $cacheKey = "yelp_caption_seo:v16:{$image->id}:{$limit}:" . md5($original);
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             $type = $project?->project_type
                 ? ucwords(str_replace(['-', '_'], ' ', (string) $project->project_type))
@@ -262,93 +263,76 @@ PROMPT;
             $rawLocation = preg_replace('/\s*,\s*[A-Z]{2}\b.*$/', '', $rawLocation) ?? $rawLocation;
             $location = $rawLocation !== '' ? $rawLocation : 'Chicago suburbs';
             $title = trim((string) ($project?->title ?? ''));
-            // Lower min so Gemini can write simpler, shorter sentences when the
-            // source caption is brief. Cap is still the hard 140.
-            $minChars = max(90, $limit - 50);
 
             $prompt = <<<PROMPT
-Shorten and lightly rewrite the SOURCE CAPTION as a single Yelp business photo caption for GS Construction.
+Write ONE Yelp business-photo caption for GS Construction.
 
-GOAL: A natural-sounding photo caption that describes THIS specific image. It should sound like a human posting a project photo — not ad copy, not a tag dump, not a corporate services blurb. Keep the SOURCE CAPTION's specific language about the work; just compress it and add local-SEO keywords where they fit naturally.
+ABSOLUTE LIMIT: {$limit} characters TOTAL, including spaces and punctuation. Count before you answer. If your draft is over {$limit}, rewrite it shorter. NEVER exceed {$limit}.
 
-WRITING APPROACH:
-- Start from the SOURCE CAPTION. Keep its concrete, image-specific phrases verbatim when possible (the room/area, what was done, the phase). Strip filler, marketing words, and any material/finish/color mentions.
-- Then weave in: the city "{$location}" (twice), the project type "{$type}" (twice with two different service-variant words), and "GS Construction" (once). These should flow as part of a normal sentence, NOT be tacked on at the end as a keyword tail.
-- Aim for {$minChars}-{$limit} characters. Shorter is fine if the source is short. Do not pad with marketing language to hit the cap.
+REQUIRED CONTENT (every caption must contain all of these):
+1. "GS Construction" — exactly once.
+2. The city "{$location}" — exactly twice.
+3. The project type "{$type}" — exactly twice, each time paired with a DIFFERENT service word from this list: remodel, renovation, remodeling, finishing. Pick two different ones. (e.g. "{$location} {$type} remodel" + "{$location} {$type} renovation")
+4. At least one demonstrative — "this", "these" — pointing at the photo.
 
-HARD RULES:
-- 1-3 complete grammatical sentences. Every sentence MUST have a real subject + verb, start with a capital letter, and end with a period. NO fragments, NO dangling clauses, NO sentence that is just a noun phrase (e.g. "This Arlington Heights Home Remodel." is BANNED — that's a noun phrase with no verb).
-- The final sentence in particular must be a complete thought ending in a period. Never let the caption end with a hanging noun phrase or a half-finished clause that was about to say something else.
-- No colon-then-list, no em-dash-then-list, no comma-spliced tag dumps.
-- No line breaks, hashtags, emojis, quotes, or exclamation points.
-- Max length: {$limit} characters (count every space and punctuation mark).
-- Mention the city "{$location}" exactly twice. Do NOT include the state ("IL", "Illinois") or "Chicago" / "Chicago area".
-- Mention "GS Construction" exactly once.
-- Mention the project type "{$type}" twice, each time paired with a DIFFERENT service-variant word (e.g. "kitchen remodel" + "kitchen renovation", "mudroom remodel" + "mudroom renovation").
-- KEYWORD VARIETY (CRITICAL — NO REPEATS): each of these service-variant words may appear LITERALLY AT MOST ONCE — "remodel", "remodeling", "renovation", "renovate", "contractor", "remodeler", "design-build", "finishing". Treat morphological variants as the same word ("remodel"="remodels"). At least TWO different variants total.
-- IMAGE-SPECIFIC PHRASING (CRITICAL): refer to the project with a demonstrative pronoun — "this {$location} {$type} remodel", "this kitchen", "these built-ins", "this gut", "this layout". When you mention the second service-variant, use "this" again (e.g. "...this {$location} {$type} renovation we're handling") or weave it into a clause about the work shown. NEVER write generic phrases like "the {$location} {$type} renovation", "the kitchen remodel", "a {$location} bathroom remodel" — those make the caption read like a services-page blurb instead of a photo caption. The reader should feel you are pointing at THIS specific photo.
-- OPENING (CRITICAL): do NOT front-load a construction-task detail (no opening like "Wall taken down between dining and kitchen...", "Pantry wall reworked on...", "Load-bearing wall coming down on...", "Plumbing relocated on...", "Island enlarged on..."). Lead instead with the PROJECT framing — the city + project type + "this/these", the phase, or "GS Construction". Put the specific scope detail (if any) in the MIDDLE or END as a short supporting clause, not the headline. AT MOST ONE concrete scope detail per caption; zero is fine when the source is thin.
-- AVOID PROGRESS-STATUS FILLER: do NOT use vague status phrases like "in the middle of", "in the middle of this", "wrapping", "wrapping up", "working on", "underway", "in progress", "currently", "hard at work on", "busy with". They burn characters without adding image-specific or SEO value. If you must convey phase, use a concrete one from the SOURCE CAPTION ("demo day", "framing stage", "rough-in", "final reveal", "punch-list day") — otherwise skip phase entirely and lead with the city + project type.
-- VOICE: GS Construction IS the remodeler / contractor. NEVER write "our remodeler", "our contractor", "our remodeling contractor", "our design-build contractor", or "our remodelers". Allowed: "we", "we handle", "as your {$location} remodeler", "as a design-build contractor", "our team", "our crew", "our design-build team". Also AVOID the formulaic tail "part of our [city] [type] renovation as a design-build team" — it sounds robotic. Prefer integrating the keywords into the main clause.
-- Do NOT mention materials, finishes, colors, fixtures, brand names, or cosmetic appearance (no "white cabinets", "quartz countertops", "hardwood floors", "tile", "marble", "stainless steel", "shaker", "matte black", "subway tile", etc.). Talk about WHAT was done, WHERE in the home, and WHAT PHASE — never how it looks.
-- Do NOT use these filler words: stunning, beautiful, modern, gorgeous, dream, transform, create, breathtaking, amazing, perfect, sleek, elegant, homeowner, homeowners, owner, owners, client, clients, family, families.
-- Do NOT invent facts not present in the SOURCE CAPTION or context. If the source is thin, keep the caption short rather than fabricating detail.
+GRAMMAR (every caption must pass these — NO exceptions):
+5. 1 or 2 complete sentences. Each sentence has a subject + a real verb (is, has, opened, added, finished, handled, ran, reconfigured, removed, etc.) and ends with a period.
+6. The final character MUST be "." — never end mid-clause, never end with a noun phrase, never end with "a"/"the"/"with"/"and"/"of".
+7. No line breaks, hashtags, emojis, quotes, exclamation points, colons, em-dashes, or list fragments.
 
-IMAGE-SPECIFIC DETAIL (no materials, no people references):
-Use 2-4 concrete, NON-COSMETIC details from the SOURCE CAPTION. Examples of allowed details:
-- Room/area: "primary bath", "powder room", "kitchen island", "mudroom bench", "basement bar", "laundry alcove", "pantry wall", "stair landing".
-- Scope of work: "load-bearing wall removed", "layout reconfigured", "ceiling raised", "opened sightlines", "wall taken down", "doorway widened", "plumbing relocated", "built-in lockers added", "island enlarged", "floor plan opened up".
-- Phase: "framing stage", "demo day", "rough-in", "final reveal", "before tear-out", "mid-renovation", "punch-list day".
-Do NOT reference the people who live there ("homeowner", "owners", "client", "family", "empty-nesters", "for a Palatine family", etc.) — those phrases burn precious characters with zero SEO value. Focus on the WORK and the SPACE.
-NOT allowed (these are cosmetic): cabinet colors, countertop materials, tile patterns, paint, hardware finishes, lighting style, flooring material.
+CONTENT BANS:
+8. NO materials, colors, finishes, fixtures, brand names: no "white", "quartz", "tile", "marble", "stainless", "shaker", "hardwood", "matte", "subway", "cabinets", "countertops", "flooring", etc.
+9. NO people refs: no "homeowner", "owner", "client", "family".
+10. NO filler/marketing: no "stunning", "beautiful", "modern", "gorgeous", "dream", "transform", "create", "perfect", "sleek", "elegant", "showcasing".
+11. NO vague status verbs: no "wrapping", "working on", "underway", "currently", "in the middle of", "in progress", "hard at work", "busy with".
+12. NO repetition: do not repeat any 4-word phrase verbatim. Vary your wording — that is why rule 3 uses two different service words.
 
-GOOD EXAMPLES (study the voice — lead with the project/location, no vague progress filler):
-- "This Palatine kitchen remodel by GS Construction opened up the floor plan, a Palatine kitchen renovation our team ran end-to-end."
-- "This Inverness mudroom remodel by GS Construction added a bench-and-locker wall, an Inverness mudroom renovation we handled from demo through punch-list."
-- "Demo day on this Schaumburg primary bath, the Schaumburg bathroom remodel GS Construction is running as design-build contractor."
-- "Framing stage on this Hoffman Estates basement remodel, GS Construction running the full Hoffman Estates basement finishing top to bottom."
-- "Final reveal of this Palatine kitchen remodel, the Palatine kitchen renovation our team just finished as your local design-build contractor."
-- "This Arlington Heights bathroom remodel by GS Construction reconfigured the layout, an Arlington Heights bathroom renovation we ran as design-build contractor."
+OPENING:
+13. Lead with the project/location framing ("This {$location} {$type} remodel...", "Final reveal of this {$location} {$type}...", "GS Construction handled this {$location}..."). Do NOT lead with a construction task ("Wall removed...", "Pantry reworked...", "Island enlarged...").
 
-BANNED EXAMPLES (do NOT return anything like these):
-- "GS Construction did this Arlington Heights Home Remodel, showcasing the bright, open kitchen. This Arlington Heights Home Remodel" — second "sentence" is a noun-phrase fragment with no verb; also repeats the exact same phrase verbatim instead of varying the service word; also uses cosmetic "bright, open" and the filler verb "showcasing".
-- "GS Construction in the middle of this Palatine kitchen remodel..." — "in the middle of" is vague filler; lead with the project itself.
-- "GS Construction wrapping this Arlington Heights bathroom remodel..." — "wrapping" is vague status filler; cut it or use a concrete phase like "final reveal".
-- "Mid-build on this Inverness mudroom remodel..." — same vague-status problem; drop it.
-- "Working on this Schaumburg kitchen remodel..." / "Currently underway on this Barrington bathroom remodel..." — vague status filler.
-- "Wall taken down between dining and kitchen on this Deer Park kitchen remodel..." — task detail front-loaded; lead with the project, not the wall.
-- "Pantry wall reworked on this Long Grove kitchen remodel..." — opens with task detail; should open with the project or a concrete phase.
-- "Load-bearing wall coming down on this Palatine kitchen remodel..." — task-first opener; move that detail to a mid-sentence clause or drop it.
-- "Island enlarged and doorway widened on this Barrington kitchen remodel..." — stacks two task details up front.
-- "GS Construction Mudroom renovation in Inverness: custom built-ins, full-service remodeling contractor for Inverness Mudroom remodeling" — colon-then-list fragment, "remodeling" repeats.
-- "GS Construction completed a Palatine kitchen remodel with a new island layout, and we handle every Palatine kitchen renovation as a design-build contractor." — generic ad copy; no "this", reads like a services page.
-- "New island layout on a Palatine kitchen remodel by GS Construction, the Palatine kitchen renovation we just finished." — "a" + "the" make it sound generic; should be "this".
-- Any caption mentioning materials, colors, finishes, tile, countertops, paint, or hardware.
-- Any caption mentioning homeowners, owners, clients, families, or who lives there.
+GOOD EXAMPLES (each one passes every rule above — note the length in [brackets]):
+- "This {$location} {$type} remodel by GS Construction opened the layout end to end, a {$location} {$type} renovation we ran top to bottom." [≤140]
+- "Final reveal of this {$location} {$type} remodel. GS Construction handled the full {$location} {$type} renovation from demo to punch-list." [≤140]
+- "GS Construction reconfigured this {$location} {$type} remodel, a {$location} {$type} renovation our team ran as design-build." [≤140]
+
+BAD EXAMPLES (these are REJECTED — do not produce anything like them):
+- Ends mid-clause: "...This {$location} {$type} renovation features a" → no period, fragment.
+- Repeated 4-gram: "this {$location} {$type} remodel. ... this {$location} {$type} remodel" → same phrase twice, breaks rule 12.
+- Noun-phrase sentence: "This {$location} {$type}." → no verb, breaks rule 5.
 
 CONTEXT:
-- Business: GS Construction (home remodeling company)
+- Business: GS Construction (home remodeling)
 - Project type: {$type}
 - City: {$location}
 - Project title: {$title}
 
-SOURCE CAPTION:
+SOURCE CAPTION (compress, reword, keep concrete scope details but drop materials/colors/people):
 {$original}
 
-Return ONLY the rewritten caption text on a single line. No JSON, no labels, no quotes.
+BEFORE YOU ANSWER: silently check your draft against rules 1-13 and count characters. If anything fails, fix it. Then output ONLY the final caption on a single line — no labels, no quotes, no commentary.
 PROMPT;
 
-            $maxAttempts = 3;
+            $maxAttempts = 5;
             $lastClean = '';
+            $lastReason = '';
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                 $attemptPrompt = $prompt;
-                if ($attempt > 1) {
-                    // Strengthen the prompt on retry with the specific failure mode.
-                    $attemptPrompt = "PREVIOUS ATTEMPT WAS REJECTED for being malformed (fragment, repeated phrase, or missing verb). Re-read every HARD RULE and BANNED EXAMPLE before answering. Your previous output was:\n\"{$lastClean}\"\n\n" . $prompt;
+                if ($attempt > 1 && $lastReason !== '') {
+                    // Tell Gemini EXACTLY which rule it broke last time so it
+                    // can course-correct instead of guessing.
+                    $attemptPrompt = "YOUR PREVIOUS ATTEMPT WAS REJECTED.\n"
+                        . "Reason: {$lastReason}\n"
+                        . "Previous output: \"{$lastClean}\"\n\n"
+                        . "Fix THAT specific problem. Re-read every rule. Return a NEW caption that passes all 13 rules.\n\n"
+                        . $prompt;
                 }
 
-                $raw = $this->callGeminiMultiImage($attemptPrompt, [], 200);
+                // Low temperature (0.25) — constraints + creativity don't mix.
+                // We want deterministic, rule-following output, not novelty.
+                // 400 tokens gives Gemini headroom to draft and self-trim.
+                $raw = $this->callGeminiMultiImage($attemptPrompt, [], 400, 0.25);
                 if (!is_string($raw) || trim($raw) === '') {
+                    $lastReason = 'Empty response from model. Return a single-line caption.';
                     continue;
                 }
                 $clean = trim($raw);
@@ -356,24 +340,25 @@ PROMPT;
                 $clean = trim($clean, "\"'`\n\r\t ");
                 // Collapse whitespace to a single line.
                 $clean = preg_replace('/\s+/u', ' ', $clean) ?? $clean;
+
+                // SMART TRUNCATION: prefer cutting at the last complete sentence
+                // within the limit. NEVER cut mid-sentence — that always fails
+                // the well-formed gate (no terminal punctuation).
                 if (mb_strlen($clean) > $limit) {
-                    // Try to cut at last word boundary within limit.
-                    $cut = mb_substr($clean, 0, $limit);
-                    $space = mb_strrpos($cut, ' ');
-                    if ($space !== false && $space > $limit - 30) {
-                        $cut = rtrim(mb_substr($cut, 0, $space), " ,.;:-");
-                    }
-                    $clean = $cut;
+                    $clean = $this->truncateToCompleteSentence($clean, $limit);
                 }
                 $lastClean = $clean;
 
-                if ($this->isCaptionWellFormed($clean, $location, $type)) {
+                $reason = $this->captionRejectReason($clean, $location, $type, $limit);
+                if ($reason === null) {
                     return $clean !== '' ? $clean : null;
                 }
+                $lastReason = $reason;
 
                 Log::warning('Yelp caption rewrite failed quality gate; retrying', [
                     'image_id' => $image->id,
                     'attempt' => $attempt,
+                    'reason' => $reason,
                     'caption' => $clean,
                 ]);
             }
@@ -382,9 +367,10 @@ PROMPT;
             // upload fails loudly instead of shipping a bad caption or a
             // dumb mid-word truncation.
             throw new \RuntimeException(sprintf(
-                'Gemini caption rewrite failed quality gate after %d attempts (image #%d). Last output: %s',
+                'Gemini caption rewrite failed quality gate after %d attempts (image #%d). Last reason: %s. Last output: %s',
                 $maxAttempts,
                 $image->id,
+                $lastReason !== '' ? $lastReason : '[unknown]',
                 $lastClean !== '' ? $lastClean : '[empty]'
             ));
         });
@@ -397,12 +383,32 @@ PROMPT;
      */
     protected function isCaptionWellFormed(string $caption, string $location, string $type): bool
     {
-        if ($caption === '') return false;
+        return $this->captionRejectReason($caption, $location, $type, 140) === null;
+    }
+
+    /**
+     * Returns null if the caption passes every quality gate. Otherwise returns
+     * a SHORT, SPECIFIC reason string suitable for feeding back to Gemini on
+     * retry (so the model can fix the exact problem instead of guessing).
+     */
+    protected function captionRejectReason(string $caption, string $location, string $type, int $limit = 140): ?string
+    {
+        if ($caption === '') {
+            return 'Caption was empty.';
+        }
+
+        if (mb_strlen($caption) > $limit) {
+            return sprintf(
+                'Caption was %d characters; max is %d. Write a SHORTER caption.',
+                mb_strlen($caption),
+                $limit
+            );
+        }
 
         // Must end with terminal punctuation. If Gemini's last "sentence" was a
         // dangling fragment we'll have truncated mid-clause — reject.
         if (! preg_match('/[.!?]$/', $caption)) {
-            return false;
+            return 'Caption did not end with a period. Every caption must end with "." and the last sentence must be a complete thought.';
         }
 
         // Split into sentences and require each to have a verb-shaped token
@@ -410,18 +416,23 @@ PROMPT;
         // copula/auxiliary). This catches "This Arlington Heights Home Remodel."
         $sentences = preg_split('/(?<=[.!?])\s+/u', $caption) ?: [];
         $verbHints = '/\b(is|are|was|were|been|being|be|has|have|had|do|does|did|will|would|can|could|should|may|might|gets|got|going|run|ran|runs|running|added|opened|reconfigured|removed|relocated|finished|handled|handling|handles|reveal|wrap|wrapped|stage|building|built|builds|installed|raised|widened|reworked|remodel(?:s|ed|ing)?|renovat(?:e|es|ed|ing|ion)|design(?:ed|ing)?)\b/i';
-        // A verb suffix heuristic — words ending in -ed, -ing, -s preceded by
-        // a consonant cluster — covers most action verbs we'd see.
         $verbSuffix = '/\b[a-z]{3,}(?:ed|ing|s)\b/i';
         foreach ($sentences as $sentence) {
             $sentence = trim($sentence);
             if ($sentence === '') continue;
             $wordCount = str_word_count($sentence);
             if ($wordCount < 4) {
-                return false; // too short to be a real sentence
+                return sprintf(
+                    'One sentence was too short (%d words): "%s". Every sentence needs at least 4 words AND a verb.',
+                    $wordCount,
+                    $sentence
+                );
             }
             if (! preg_match($verbHints, $sentence) && ! preg_match($verbSuffix, $sentence)) {
-                return false;
+                return sprintf(
+                    'This sentence has no verb (it is a noun phrase, not a real sentence): "%s". Rewrite it as a complete sentence with a real action verb.',
+                    $sentence
+                );
             }
         }
 
@@ -434,13 +445,45 @@ PROMPT;
             for ($i = 0; $i + 3 < count($words); $i++) {
                 $gram = implode(' ', array_slice($words, $i, 4));
                 if (isset($seen[$gram])) {
-                    return false;
+                    return sprintf(
+                        'You repeated the same 4-word phrase verbatim: "%s". Vary your wording \u2014 use different service-variant words (remodel/renovation) and reword the second mention.',
+                        $gram
+                    );
                 }
                 $seen[$gram] = true;
             }
         }
 
-        return true;
+        return null;
+    }
+
+    /**
+     * Trim a too-long caption back to the last COMPLETE sentence that fits
+     * within $limit. Returns the original string if no sentence boundary fits;
+     * the caller's quality gate will then reject it and ask Gemini to retry
+     * shorter.
+     */
+    protected function truncateToCompleteSentence(string $caption, int $limit): string
+    {
+        if (mb_strlen($caption) <= $limit) {
+            return $caption;
+        }
+
+        $head = mb_substr($caption, 0, $limit);
+        // Find the last sentence-terminator within the head.
+        if (preg_match_all('/[.!?](?=\s|$)/u', $head, $m, PREG_OFFSET_CAPTURE)) {
+            $last = end($m[0]);
+            // $last[1] is byte offset of the punctuation; include it.
+            $end = $last[1] + mb_strlen($last[0]);
+            $candidate = rtrim(substr($head, 0, $end));
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        // No complete sentence fits inside the limit. Return the original so
+        // the gate flags it as "too long" and Gemini gets specific feedback.
+        return $caption;
     }
 
     /**

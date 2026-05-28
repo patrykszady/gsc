@@ -147,10 +147,11 @@ class SyncYelpBusinessPhotos extends Command
                 ->get(['id', 'yelp_biz_uploaded_at']);
 
             $done = $rows->whereNotNull('yelp_biz_uploaded_at')->count();
-            $pending = $total - $done;
 
-            // Detect failed (no longer in queue, still not uploaded, not in
-            // the "queued" cache marker).
+            // Detect failed (no longer in queue, still not uploaded, no
+            // "queued" cache marker held). These will never become done
+            // without manual re-dispatch, so we must include them in the
+            // exit condition or the watch loop spins forever.
             $failed = 0;
             foreach ($rows as $row) {
                 if ($row->yelp_biz_uploaded_at) continue;
@@ -158,6 +159,8 @@ class SyncYelpBusinessPhotos extends Command
                     $failed++;
                 }
             }
+
+            $pending = max(0, $total - $done - $failed);
 
             $bar->setMessage((string) $done, 'done');
             $bar->setMessage((string) $pending, 'pending');
@@ -185,10 +188,19 @@ class SyncYelpBusinessPhotos extends Command
                 $lastLogged = $elapsed;
             }
 
-            if ($done >= $total) {
+            if ($done + $failed >= $total) {
+                $bar->setProgress($done);
                 $bar->finish();
                 $this->newLine(2);
-                $this->info("All {$total} upload(s) completed.");
+                if ($failed > 0) {
+                    $this->warn(sprintf(
+                        '%d upload(s) completed, %d failed (see failed_jobs / laravel.log).',
+                        $done,
+                        $failed,
+                    ));
+                } else {
+                    $this->info("All {$total} upload(s) completed.");
+                }
                 return;
             }
 
