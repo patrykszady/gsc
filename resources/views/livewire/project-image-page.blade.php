@@ -1,9 +1,22 @@
 @php
     // Get all images for the slider
     $gbpService = app(\App\Services\GoogleBusinessProfileService::class);
+    $yelpPublicSlug = config('services.yelp.business.public_biz_slug');
     $allImages = $project->images()->orderBy('sort_order')->get();
-    $imagesData = $allImages->map(function ($img) use ($project, $gbpService) {
+    $imagesData = $allImages->map(function ($img) use ($project, $gbpService, $yelpPublicSlug) {
         $imageKey = $img->slug ?: $img->id;
+
+        // Only build a public Yelp link when we have a *real* Yelp photo hash.
+        // Real hashes look like "Kb6faGEhsJBT-0zCgk7CyA" (22-ish base64-url
+        // chars, no file extension). Legacy synthetic IDs ("yelp-biz-...jpg")
+        // would 404 on www.yelp.com — skip them.
+        $yelpUrl = null;
+        if ($yelpPublicSlug
+            && $img->yelp_biz_photo_id
+            && preg_match('/^[A-Za-z0-9_-]{18,32}$/', $img->yelp_biz_photo_id)
+        ) {
+            $yelpUrl = "https://www.yelp.com/biz_photos/{$yelpPublicSlug}?select=" . $img->yelp_biz_photo_id;
+        }
 
         return [
             'id' => $img->id,
@@ -13,6 +26,7 @@
             'googleUrl' => $img->google_places_media_name
                 ? $gbpService->getMediaUrlCached($img->google_places_media_name)
                 : null,
+            'yelpUrl' => $yelpUrl,
             'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
             'caption' => $this->localizeText($img->caption),
             'isCover' => $img->is_cover,
@@ -167,6 +181,16 @@
                                 @click.stop
                             >
                                 View on Google
+                            </a>
+                            <a
+                                x-show="current.yelpUrl"
+                                :href="current.yelpUrl"
+                                target="_blank"
+                                rel="noopener"
+                                class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-red-700 shadow-lg hover:bg-white"
+                                @click.stop
+                            >
+                                View on Yelp
                             </a>
                             {{-- Hidden but accessible Full Size link --}}
                             <a :href="current.originalUrl" 

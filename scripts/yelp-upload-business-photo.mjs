@@ -665,8 +665,35 @@ async function snap(page, label) {
 
 async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photoIdState) {
   console.error(`[yelp] navigating to photos page: ${photosUrl}`);
-  await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs });
+
+  // Yelp's /biz_photos/<id> endpoint intermittently 500s (especially after a
+  // streak of uploads in the same session) and serves an
+  // "Oops! Something went wrong" page that contains no upload UI at all.
+  // Don't sleep here — emit a structured marker on stdout and exit so the
+  // PHP job catches `YelpUploadThrottledException` and `release()`s itself
+  // back to the queue (10 min). That frees the Horizon worker for other
+  // jobs instead of blocking it for the whole cool-down.
+  await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
   await sleep(2000);
+  const hasOopsError = await page.evaluate(() =>
+    /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
+  ).catch(() => false);
+  if (hasOopsError) {
+    await dumpPage(page, 'photos-page-oops');
+    await snap(page, 'photos-page-oops');
+    console.error('[yelp] photos page returned "Oops! Something went wrong" - signalling throttle to release job for 10 min');
+    // Structured signal for the PHP caller.
+    process.stdout.write(JSON.stringify({
+      ok: false,
+      throttled: true,
+      retry_after_seconds: 600,
+      reason: 'photos_page_oops',
+      message: 'Yelp /biz_photos/<id> returned "Oops! Something went wrong" - cooling down',
+    }) + '\n');
+    // Exit code 75 (EX_TEMPFAIL) — distinguishes a recoverable throttle from
+    // a hard failure (exit 1) so the wrapper / shell scripts can tell them apart.
+    process.exit(75);
+  }
 
   if (!(await isLoggedIn(page))) {
     throw new Error('redirected away from photos URL - session not authenticated');

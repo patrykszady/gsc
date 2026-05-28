@@ -552,6 +552,33 @@ class YelpBusinessService
                     $exit = (int) $process->getExitCode();
                     $jsonLine = $this->lastJsonLine($stdout);
                     $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+
+                    // Exit code 75 (EX_TEMPFAIL) = recoverable throttle signal
+                    // (e.g. /biz_photos/<id> returned "Oops! Something went
+                    // wrong"). Throw the throttle exception so the calling
+                    // job releases itself back to the queue with the
+                    // requested delay instead of failing. This frees the
+                    // worker for other jobs during the cool-down.
+                    $isThrottle = $exit === 75
+                        || (is_array($payload) && ! empty($payload['throttled']));
+                    if ($isThrottle) {
+                        $retryAfter = is_array($payload)
+                            ? (int) ($payload['retry_after_seconds'] ?? 600)
+                            : 600;
+                        $reason = is_array($payload)
+                            ? (string) ($payload['reason'] ?? 'script_throttle')
+                            : 'script_throttle';
+                        Log::info('Yelp biz: upload script signalled throttle, releasing job', [
+                            'image_id' => $image->id,
+                            'reason' => $reason,
+                            'retry_after_seconds' => $retryAfter,
+                        ]);
+                        throw new YelpUploadThrottledException(
+                            "Yelp upload throttled ({$reason}); retry in {$retryAfter}s",
+                            $retryAfter,
+                        );
+                    }
+
                     $isSessionDead = $exit === 3
                         || (is_array($payload) && ($payload['code'] ?? null) === 'session_expired');
 

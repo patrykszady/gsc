@@ -248,6 +248,11 @@ return [
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),
 
+            // Public-facing Yelp page slug used to build deep links into
+            // www.yelp.com/biz_photos/<slug>?select=<photo_id>. Defaults to
+            // the Prospect Heights location.
+            'public_biz_slug' => env('YELP_PUBLIC_BIZ_SLUG', 'gs-construction-prospect-heights'),
+
             // Remote-login viewer (Xvfb + x11vnc + noVNC + websockify) so the
             // admin can complete login / captcha / 2FA from the website on
             // a headless production server. Requires: xvfb, x11vnc, novnc,

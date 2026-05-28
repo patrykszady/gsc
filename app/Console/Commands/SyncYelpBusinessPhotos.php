@@ -40,6 +40,38 @@ class SyncYelpBusinessPhotos extends Command
             $query->whereNull('yelp_biz_uploaded_at');
         }
 
+        // Visibility: show how many we're skipping vs queueing so the
+        // operator can confirm we never re-upload already-synced images
+        // and that previously-failed images ARE being retried.
+        if (! $this->option('force')) {
+            $totalPublished = ProjectImage::query()
+                ->whereHas('project', function ($q) {
+                    $q->where('is_published', true);
+                    if ($projectId = $this->option('project')) {
+                        $q->where('id', $projectId);
+                    }
+                })
+                ->count();
+            $alreadyUploaded = ProjectImage::query()
+                ->whereHas('project', function ($q) {
+                    $q->where('is_published', true);
+                    if ($projectId = $this->option('project')) {
+                        $q->where('id', $projectId);
+                    }
+                })
+                ->whereNotNull('yelp_biz_uploaded_at')
+                ->count();
+            $pendingOrFailed = max(0, $totalPublished - $alreadyUploaded);
+            $this->line(sprintf(
+                'Eligible: %d published image(s); %d already uploaded (skipped), %d pending or previously failed (will be processed).',
+                $totalPublished,
+                $alreadyUploaded,
+                $pendingOrFailed,
+            ));
+        } else {
+            $this->warn('--force enabled: ALL eligible images will be re-uploaded, including already-synced ones.');
+        }
+
         $limit = (int) $this->option('limit');
         if ($limit > 0) {
             $query->limit($limit);
