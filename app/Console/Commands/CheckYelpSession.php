@@ -30,8 +30,13 @@ class CheckYelpSession extends Command
             return self::FAILURE;
         }
 
+        // Indeterminate = the check itself errored or timed out (e.g. Chromium
+        // launch race, locked profile, network blip). Do NOT propagate as a
+        // scheduler failure — that floods laravel.log with stack traces for
+        // transient issues that aren't actionable. The warning still lands in
+        // yelp.log so admins can spot patterns of repeated indeterminate runs.
         Log::channel('yelp')->warning('Yelp daily session check: indeterminate (script error / timeout)');
-        $this->warn('Yelp session: could not determine');
-        return self::FAILURE;
+        $this->warn('Yelp session: could not determine (transient — not a hard failure)');
+        return self::SUCCESS;
     }
 }

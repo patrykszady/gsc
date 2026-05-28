@@ -28,6 +28,9 @@ class YelpBusinessService
     public const SETTING_PASSWORD = 'yelp_biz_password';
     private const AUTOMATION_LOCK_KEY = 'yelp:browser-automation:lock';
     private const LAST_RUN_KEY = 'yelp:browser-automation:last-run-at';
+    // Live status published by withAutomationLock for the operator-facing
+    // sync command's progress bar. JSON: {operation, image_id, started_at}.
+    private const CURRENT_OP_KEY = 'yelp:browser-automation:current';
 
     /**
      * Environment for Node/Chromium subprocesses.
@@ -700,7 +703,16 @@ class YelpBusinessService
                 $startedAt = microtime(true);
                 $result = $lock->block($lockWait, function () use ($callback, $operation, $context) {
                     Log::channel('yelp')->info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
-                    return $callback();
+                    Cache::put(self::CURRENT_OP_KEY, json_encode([
+                        'operation' => $operation,
+                        'image_id' => $context['image_id'] ?? null,
+                        'started_at' => time(),
+                    ]), now()->addMinutes(15));
+                    try {
+                        return $callback();
+                    } finally {
+                        Cache::forget(self::CURRENT_OP_KEY);
+                    }
                 });
                 Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
                 Log::channel('yelp')->info('Yelp: automation lock released (ok)', [
@@ -719,12 +731,18 @@ class YelpBusinessService
             }
 
             Log::channel('yelp')->info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
+            Cache::put(self::CURRENT_OP_KEY, json_encode([
+                'operation' => $operation,
+                'image_id' => $context['image_id'] ?? null,
+                'started_at' => time(),
+            ]), now()->addMinutes(15));
             $startedAt = microtime(true);
             try {
                 $result = $callback();
                 Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
                 return $result;
             } finally {
+                Cache::forget(self::CURRENT_OP_KEY);
                 $lock->release();
                 Log::channel('yelp')->info('Yelp: automation lock released', [
                     'operation' => $operation,

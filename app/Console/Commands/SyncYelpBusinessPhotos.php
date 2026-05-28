@@ -211,13 +211,40 @@ class SyncYelpBusinessPhotos extends Command
             $bar->setMessage((string) $failed, 'failed');
 
             $lastRunAt = (int) Cache::get('yelp:browser-automation:last-run-at', 0);
+            $current = Cache::get('yelp:browser-automation:current');
+            $currentData = null;
+            if (is_string($current)) {
+                $decoded = json_decode($current, true);
+                if (is_array($decoded)) {
+                    $currentData = $decoded;
+                }
+            }
             $lockHeld = Cache::has('yelp:browser-automation:lock');
-            if ($lockHeld) {
+
+            if ($currentData && isset($currentData['image_id'], $currentData['started_at'])) {
+                // Live: a worker is actively running the upload subprocess.
+                $elapsedSec = max(0, time() - (int) $currentData['started_at']);
+                $statusMsg = sprintf('uploading #%d (%ds)', (int) $currentData['image_id'], $elapsedSec);
+            } elseif ($lockHeld) {
+                // Lock exists but no current-op marker — race window between
+                // lock acquisition and marker write, or stale lock.
                 $statusMsg = 'uploading';
             } elseif ($minInterval > 0 && $lastRunAt > 0 && (time() - $lastRunAt) < $minInterval) {
-                $statusMsg = sprintf('next in %ds', max(0, $minInterval - (time() - $lastRunAt)));
+                $statusMsg = sprintf('throttle cooldown: %ds', max(0, $minInterval - (time() - $lastRunAt)));
             } elseif ($pending > 0) {
-                $statusMsg = 'starting next';
+                // No active upload, no throttle window. Next pending image
+                // and how long we've been waiting on the worker to pick up.
+                $nextId = null;
+                foreach ($rows as $row) {
+                    if (! $row->yelp_biz_uploaded_at && Cache::has('yelp_biz_upload_queued:' . $row->id)) {
+                        $nextId = $row->id;
+                        break;
+                    }
+                }
+                $sinceLast = $lastRunAt > 0 ? (time() - $lastRunAt) : (time() - $start);
+                $statusMsg = $nextId
+                    ? sprintf('next #%d (waiting %ds for worker)', $nextId, $sinceLast)
+                    : sprintf('waiting %ds for worker', $sinceLast);
             } else {
                 $statusMsg = 'idle';
             }
