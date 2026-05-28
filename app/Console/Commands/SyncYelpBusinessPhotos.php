@@ -7,6 +7,7 @@ use App\Models\ProjectImage;
 use App\Services\YelpBusinessService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class SyncYelpBusinessPhotos extends Command
 {
@@ -178,6 +179,13 @@ class SyncYelpBusinessPhotos extends Command
         $lastLogged = null;
 
         while (true) {
+            // Force a fresh DB connection each poll so we always see the
+            // latest committed rows. Without this, the long-running artisan
+            // process can sit on a stale REPEATABLE READ snapshot and never
+            // observe the worker's UPDATE to yelp_biz_uploaded_at, leaving
+            // the bar stuck at 0/N even after the upload succeeded.
+            DB::connection()->disconnect();
+
             $rows = ProjectImage::query()
                 ->whereIn('id', $imageIds)
                 ->get(['id', 'yelp_biz_uploaded_at']);
