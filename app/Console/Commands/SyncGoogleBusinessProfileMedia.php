@@ -254,7 +254,8 @@ class SyncGoogleBusinessProfileMedia extends Command
 
             if ($mediaName) {
                 $image->updateQuietly([
-                    'google_places_media_name' => $mediaName,
+                    'google_places_media_name' => $mediaName['name'],
+                    'google_places_media_url' => $mediaName['url'],
                     'google_places_uploaded_at' => now(),
                 ]);
                 $uploaded++;

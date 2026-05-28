@@ -242,7 +242,7 @@ class YelpRemoteLoginService
             usleep(100000);
         }
         if (! $vncBound) {
-            Log::warning('Yelp remote login: x11vnc never bound port', [
+            Log::channel('yelp')->warning('Yelp remote login: x11vnc never bound port', [
                 'port' => $vncPort,
                 'vnc_log' => $vncLog,
             ]);
@@ -287,7 +287,7 @@ class YelpRemoteLoginService
             usleep(100000); // 100ms
         }
         if (! $bound) {
-            Log::warning('Yelp remote login: websockify never bound port', [
+            Log::channel('yelp')->warning('Yelp remote login: websockify never bound port', [
                 'port' => $wsPort,
                 'ws_log' => $wsLog,
             ]);
@@ -317,7 +317,7 @@ class YelpRemoteLoginService
         ];
         $this->writeState($state);
 
-        Log::info('Yelp remote login: session started', $state);
+        Log::channel('yelp')->info('Yelp remote login: session started', $state);
 
         return $this->buildResponse($state);
     }
@@ -334,7 +334,7 @@ class YelpRemoteLoginService
         $alive = $this->isAlive($state);
         if (! $alive) {
             // Chromium has exited — likely login completed (or failed). Tear down.
-            Log::info('Yelp remote login: chromium exited, tearing down', [
+            Log::channel('yelp')->info('Yelp remote login: chromium exited, tearing down', [
                 'pids' => $state['pids'] ?? [],
                 'started_at' => $state['started_at'] ?? null,
             ]);
@@ -349,7 +349,7 @@ class YelpRemoteLoginService
                 }
             }
             if ($deadProcs) {
-                Log::warning('Yelp remote login: support process(es) died', [
+                Log::channel('yelp')->warning('Yelp remote login: support process(es) died', [
                     'dead' => $deadProcs,
                     'state' => $state,
                 ]);
@@ -365,7 +365,7 @@ class YelpRemoteLoginService
                 $errno = 0; $errstr = '';
                 $sock = @fsockopen('127.0.0.1', $wsPort, $errno, $errstr, 1.0);
                 if (! $sock) {
-                    Log::warning('Yelp remote login: websockify port unreachable', [
+                    Log::channel('yelp')->warning('Yelp remote login: websockify port unreachable', [
                         'port' => $wsPort,
                         'errno' => $errno,
                         'errstr' => $errstr,
@@ -497,7 +497,7 @@ class YelpRemoteLoginService
         }
         @unlink($this->stateFile);
         @unlink(storage_path('app/yelp-remote-login.passwd'));
-        Log::info('Yelp remote login: session stopped');
+        Log::channel('yelp')->info('Yelp remote login: session stopped');
     }
 
     protected function killOrphans(): void
@@ -508,7 +508,7 @@ class YelpRemoteLoginService
         @shell_exec('pkill -f "Xvfb :99" 2>/dev/null');
         @unlink($this->stateFile);
         @unlink(storage_path('app/yelp-remote-login.passwd'));
-        Log::info('Yelp remote login: orphan cleanup completed');
+        Log::channel('yelp')->info('Yelp remote login: orphan cleanup completed');
     }
 
     protected function readState(): ?array

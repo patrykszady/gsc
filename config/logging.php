@@ -135,6 +135,17 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Dedicated channel for Yelp portfolio/business-photo automation,
+        // remote-login service, AI caption rewrites, and admin UI errors.
+        // Keeps `laravel.log` from being flooded with Yelp telemetry.
+        'yelp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/yelp.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

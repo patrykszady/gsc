@@ -29,12 +29,12 @@ class ProjectImage extends Model
         'sort_order',
         'thumbnails',
         'google_places_media_name',
+        'google_places_media_url',
         'google_places_uploaded_at',
         'yelp_photo_id',
         'yelp_uploaded_at',
         'yelp_biz_photo_id',
         'yelp_biz_uploaded_at',
-        'yelp_biz_photos_url',
         'yelp_biz_caption',
     ];
 

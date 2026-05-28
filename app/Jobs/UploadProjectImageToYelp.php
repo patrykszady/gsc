@@ -49,7 +49,7 @@ class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
             $image = ProjectImage::with('project')->find($this->imageId);
 
             if (! $image) {
-                Log::warning('Yelp: image not found', ['image_id' => $this->imageId]);
+                Log::channel('yelp')->warning('Yelp: image not found', ['image_id' => $this->imageId]);
                 return;
             }
 
@@ -63,12 +63,12 @@ class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
             }
 
             if (! $service->isConfigured()) {
-                Log::info('Yelp: service not configured, skipping');
+                Log::channel('yelp')->info('Yelp: service not configured, skipping');
                 return;
             }
 
             if (empty($project->yelp_portfolio_url)) {
-                Log::info('Yelp: project has no yelp_portfolio_url, skipping', [
+                Log::channel('yelp')->info('Yelp: project has no yelp_portfolio_url, skipping', [
                     'project_id' => $project->id,
                 ]);
                 return;
@@ -78,7 +78,7 @@ class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
             try {
                 $photoId = $service->uploadProjectImage($image);
             } catch (YelpUploadThrottledException $e) {
-                Log::info('Yelp: throttled, releasing portfolio job', [
+                Log::channel('yelp')->info('Yelp: throttled, releasing portfolio job', [
                     'image_id' => $this->imageId,
                     'retry_after_seconds' => $e->retryAfterSeconds,
                 ]);
@@ -92,14 +92,14 @@ class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
                     'yelp_uploaded_at' => now(),
                 ]);
 
-                Log::info('Yelp: project image synced', [
+                Log::channel('yelp')->info('Yelp: project image synced', [
                     'image_id' => $image->id,
                     'force_refresh' => $this->forceRefresh,
                     'photo_id' => $photoId,
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('Yelp: unexpected job failure', [
+            Log::channel('yelp')->error('Yelp: unexpected job failure', [
                 'image_id' => $this->imageId,
                 'force_refresh' => $this->forceRefresh,
                 'error' => $e->getMessage(),

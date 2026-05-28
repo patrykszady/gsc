@@ -121,8 +121,8 @@ class ProjectImagePage extends Component
                . "Professional remodeling by GS Construction.";
 
         $imageUrl = $this->image->getAnyUrl('large');
-        $googleUrl = null;
-        if ($this->image->google_places_media_name) {
+        $googleUrl = $this->image->google_places_media_url;
+        if (! $googleUrl && $this->image->google_places_media_name) {
             $googleUrl = app(GoogleBusinessProfileService::class)
                 ->getMediaUrlCached($this->image->google_places_media_name);
         }

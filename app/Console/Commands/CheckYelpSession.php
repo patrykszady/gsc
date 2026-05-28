@@ -25,12 +25,12 @@ class CheckYelpSession extends Command
             return self::SUCCESS;
         }
         if ($authed === false) {
-            Log::warning('Yelp daily session check: NOT authenticated');
+            Log::channel('yelp')->warning('Yelp daily session check: NOT authenticated');
             $this->error('Yelp session: NOT authenticated - manual login required');
             return self::FAILURE;
         }
 
-        Log::warning('Yelp daily session check: indeterminate (script error / timeout)');
+        Log::channel('yelp')->warning('Yelp daily session check: indeterminate (script error / timeout)');
         $this->warn('Yelp session: could not determine');
         return self::FAILURE;
     }

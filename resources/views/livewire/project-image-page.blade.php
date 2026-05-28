@@ -23,9 +23,13 @@
             'url' => $img->getWebpThumbnailUrl('large') ?: $img->getThumbnailUrl('large'),
             'thumbUrl' => $img->getWebpThumbnailUrl('thumbnail') ?: $img->getThumbnailUrl('thumbnail'),
             'originalUrl' => $img->url,
-            'googleUrl' => $img->google_places_media_name
-                ? $gbpService->getMediaUrlCached($img->google_places_media_name)
-                : null,
+            // Prefer the URL stored at upload time (no API call). Fall back
+            // to the cached GBP lookup only for legacy rows that pre-date
+            // the google_places_media_url column.
+            'googleUrl' => $img->google_places_media_url
+                ?: ($img->google_places_media_name
+                    ? $gbpService->getMediaUrlCached($img->google_places_media_name)
+                    : null),
             'yelpUrl' => $yelpUrl,
             'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
             'caption' => $this->localizeText($img->caption),

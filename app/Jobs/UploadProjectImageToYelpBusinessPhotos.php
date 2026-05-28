@@ -64,7 +64,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
             $image = ProjectImage::with('project')->find($this->imageId);
             if (! $image) {
                 Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
-                Log::warning('Yelp biz: image not found', ['image_id' => $this->imageId]);
+                Log::channel('yelp')->warning('Yelp biz: image not found', ['image_id' => $this->imageId]);
                 return;
             }
 
@@ -80,7 +80,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
 
             if (! $service->isConfigured()) {
                 Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
-                Log::info('Yelp biz: service not configured, skipping');
+                Log::channel('yelp')->info('Yelp biz: service not configured, skipping');
                 return;
             }
 
@@ -91,7 +91,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 // elapsed. Release this job back to the queue so the worker
                 // picks it up after the throttle window. Keep the "queued"
                 // marker so duplicate dispatches still no-op.
-                Log::info('Yelp biz: throttled, releasing job', [
+                Log::channel('yelp')->info('Yelp biz: throttled, releasing job', [
                     'image_id' => $this->imageId,
                     'retry_after_seconds' => $e->retryAfterSeconds,
                 ]);
@@ -103,7 +103,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 // 2captcha credit, so we fail the job immediately. Admin must
                 // re-login interactively via /admin/platforms (Verify Login).
                 Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
-                Log::warning('Yelp biz: session expired, failing job - admin must re-login via /admin/platforms', [
+                Log::channel('yelp')->warning('Yelp biz: session expired, failing job - admin must re-login via /admin/platforms', [
                     'image_id' => $this->imageId,
                     'error' => $e->getMessage(),
                 ]);
@@ -114,7 +114,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
             Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
 
             if ($result) {
-                Log::info('Yelp biz: project image synced to business gallery', [
+                Log::channel('yelp')->info('Yelp biz: project image synced to business gallery', [
                     'image_id' => $image->id,
                     'force_refresh' => $this->forceRefresh,
                     'photo_id' => $result['photo_id'] ?? null,
@@ -122,7 +122,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
             }
         } catch (\Throwable $e) {
             Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
-            Log::error('Yelp biz: unexpected job failure', [
+            Log::channel('yelp')->error('Yelp biz: unexpected job failure', [
                 'image_id' => $this->imageId,
                 'force_refresh' => $this->forceRefresh,
                 'error' => $e->getMessage(),

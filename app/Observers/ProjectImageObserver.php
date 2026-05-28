@@ -90,12 +90,12 @@ class ProjectImageObserver
         // IndexNow on every Yelp/GBP photo sync is pure noise.
         $syncOnlyFields = [
             'google_places_media_name',
+            'google_places_media_url',
             'google_places_uploaded_at',
             'yelp_photo_id',
             'yelp_uploaded_at',
             'yelp_biz_photo_id',
             'yelp_biz_uploaded_at',
-            'yelp_biz_photos_url',
             'updated_at',
         ];
         $changed = array_keys($image->getChanges());

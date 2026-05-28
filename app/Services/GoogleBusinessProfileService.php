@@ -188,7 +188,14 @@ class GoogleBusinessProfileService
     /**
      * Upload a project image to Google Business Profile.
      */
-    public function uploadProjectImage(ProjectImage $image): ?string
+    /**
+     * Upload an image to GBP. Returns the created MediaItem's
+     * `['name' => ..., 'url' => ...]` so callers can persist both the
+     * resource name and the public lh3.googleusercontent.com URL.
+     *
+     * @return array{name: string, url: ?string}|null
+     */
+    public function uploadProjectImage(ProjectImage $image): ?array
     {
         if (! $this->isConfigured()) {
             return null;
@@ -238,13 +245,24 @@ class GoogleBusinessProfileService
         $data = $response->json();
         $this->lastError = null;
 
+        $mediaName = $data['name'] ?? null;
+        if (! $mediaName) {
+            return null;
+        }
+
+        $googleUrl = $data['googleUrl'] ?? $data['thumbnailUrl'] ?? null;
+
         Log::info('GBP: Uploaded image', [
             'image_id' => $image->id,
-            'media_name' => $data['name'] ?? null,
+            'media_name' => $mediaName,
+            'has_url' => $googleUrl !== null,
             'category' => $payload['locationAssociation']['category'],
         ]);
 
-        return $data['name'] ?? null;
+        return [
+            'name' => $mediaName,
+            'url' => $googleUrl,
+        ];
     }
 
     /**
@@ -346,6 +364,12 @@ class GoogleBusinessProfileService
 
     /**
      * Get a cached public Google URL for a GBP media item.
+     *
+     * Positive results (real URL) are cached for `$ttlSeconds` (default 7 days).
+     * Negative results (null — transient API failure, rate limit, or a media
+     * item that was deleted on Google's side) are cached for only 5 minutes
+     * so a brief upstream blip doesn't hide the "View on Google" link on
+     * every project image page for a week.
      */
     public function getMediaUrlCached(string $mediaName, int $ttlSeconds = 604800): ?string
     {
@@ -354,10 +378,25 @@ class GoogleBusinessProfileService
         }
 
         $cacheKey = 'gbp_media_url_' . $mediaName;
+        $negativeTtl = 300; // 5 min
 
-        return Cache::remember($cacheKey, $ttlSeconds, function () use ($mediaName) {
-            return $this->getMediaUrl($mediaName);
-        });
+        $cached = Cache::get($cacheKey, '__missing__');
+        if ($cached !== '__missing__') {
+            return $cached; // may be null (negative cache hit) or string
+        }
+
+        $url = $this->getMediaUrl($mediaName);
+        if ($url) {
+            Cache::put($cacheKey, $url, $ttlSeconds);
+        } else {
+            Cache::put($cacheKey, null, $negativeTtl);
+            Log::info('GBP: cached null media URL (transient failure or deleted item)', [
+                'media_name' => $mediaName,
+                'negative_ttl_seconds' => $negativeTtl,
+            ]);
+        }
+
+        return $url;
     }
 
     /**

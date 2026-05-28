@@ -51,11 +51,12 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
             $service->deleteMedia($previousMediaName);
         }
 
-        $mediaName = $service->uploadProjectImage($image);
+        $result = $service->uploadProjectImage($image);
 
-        if ($mediaName) {
+        if ($result) {
             $image->update([
-                'google_places_media_name' => $mediaName,
+                'google_places_media_name' => $result['name'],
+                'google_places_media_url' => $result['url'],
                 'google_places_uploaded_at' => now(),
             ]);
 
@@ -63,7 +64,8 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
                 'image_id' => $image->id,
                 'force_refresh' => $this->forceRefresh,
                 'previous_media_name' => $previousMediaName,
-                'new_media_name' => $mediaName,
+                'new_media_name' => $result['name'],
+                'has_url' => $result['url'] !== null,
             ]);
         }
     }

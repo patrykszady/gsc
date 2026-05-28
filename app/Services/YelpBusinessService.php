@@ -167,7 +167,7 @@ class YelpBusinessService
             escapeshellarg($logFile)
         );
 
-        Log::info('Yelp: launching headed login browser', [
+        Log::channel('yelp')->info('Yelp: launching headed login browser', [
             'cmd' => $cmd,
             'display' => $display,
             'xauthority' => $xauth,
@@ -175,11 +175,11 @@ class YelpBusinessService
 
         $pid = trim((string) shell_exec($cmd));
         if ($pid === '' || ! ctype_digit($pid)) {
-            Log::error('Yelp: login browser launch returned no PID', ['pid' => $pid]);
+            Log::channel('yelp')->error('Yelp: login browser launch returned no PID', ['pid' => $pid]);
             return false;
         }
 
-        Log::info('Yelp: headed login browser launched', ['pid' => $pid, 'log' => $logFile]);
+        Log::channel('yelp')->info('Yelp: headed login browser launched', ['pid' => $pid, 'log' => $logFile]);
         return true;
     }
 
@@ -300,16 +300,16 @@ class YelpBusinessService
         try {
             $process->run();
         } catch (ProcessTimedOutException) {
-            Log::warning('Yelp: checkSession timed out');
+            Log::channel('yelp')->warning('Yelp: checkSession timed out');
             return null;
         } catch (ProcessSignaledException $e) {
-            Log::warning('Yelp: checkSession subprocess killed', [
+            Log::channel('yelp')->warning('Yelp: checkSession subprocess killed', [
                 'signal' => $e->getSignal(),
                 'stderr' => mb_substr($process->getErrorOutput(), 0, 500),
             ]);
             return null;
         } catch (\Throwable $e) {
-            Log::warning('Yelp: checkSession failed', ['error' => $e->getMessage()]);
+            Log::channel('yelp')->warning('Yelp: checkSession failed', ['error' => $e->getMessage()]);
             return null;
         }
 
@@ -330,7 +330,7 @@ class YelpBusinessService
     {
         $project = $image->project;
         if (! $project || empty($project->yelp_portfolio_url)) {
-            Log::info('Yelp: skipping upload - project has no yelp_portfolio_url', [
+            Log::channel('yelp')->info('Yelp: skipping upload - project has no yelp_portfolio_url', [
                 'image_id' => $image->id,
                 'project_id' => $project?->id,
             ]);
@@ -339,7 +339,7 @@ class YelpBusinessService
 
         $absolutePath = $this->resolveAbsolutePath($image);
         if (! $absolutePath) {
-            Log::warning('Yelp: source image not found on disk', [
+            Log::channel('yelp')->warning('Yelp: source image not found on disk', [
                 'image_id' => $image->id,
                 'disk' => $image->disk,
                 'path' => $image->path,
@@ -388,7 +388,7 @@ class YelpBusinessService
                 try {
                     $process->run();
                 } catch (ProcessTimedOutException $e) {
-                    Log::error('Yelp: upload script timed out', [
+                    Log::channel('yelp')->error('Yelp: upload script timed out', [
                         'image_id' => $image->id,
                         'message' => $e->getMessage(),
                     ]);
@@ -399,7 +399,7 @@ class YelpBusinessService
                 $stderr = trim($process->getErrorOutput());
 
                 if (! $process->isSuccessful()) {
-                    Log::error('Yelp: upload script exited with error', [
+                    Log::channel('yelp')->error('Yelp: upload script exited with error', [
                         'image_id' => $image->id,
                         'exit_code' => $process->getExitCode(),
                         'stderr' => $stderr,
@@ -413,7 +413,7 @@ class YelpBusinessService
                 $payload = $jsonLine ? json_decode($jsonLine, true) : null;
 
                 if (! is_array($payload) || empty($payload['ok'])) {
-                    Log::error('Yelp: upload script returned no/invalid payload', [
+                    Log::channel('yelp')->error('Yelp: upload script returned no/invalid payload', [
                         'image_id' => $image->id,
                         'stdout' => $stdout,
                         'stderr' => $stderr,
@@ -438,7 +438,7 @@ class YelpBusinessService
     {
         $absolutePath = $this->resolveAbsolutePath($image);
         if (! $absolutePath) {
-            Log::warning('Yelp biz: source image not found on disk', [
+            Log::channel('yelp')->warning('Yelp biz: source image not found on disk', [
                 'image_id' => $image->id,
                 'disk' => $image->disk,
                 'path' => $image->path,
@@ -520,7 +520,7 @@ class YelpBusinessService
                         }
                     });
                 } catch (ProcessTimedOutException $e) {
-                    Log::error('Yelp biz: upload script timed out', [
+                    Log::channel('yelp')->error('Yelp biz: upload script timed out', [
                         'image_id' => $image->id,
                         'message' => $e->getMessage(),
                     ]);
@@ -568,7 +568,7 @@ class YelpBusinessService
                         $reason = is_array($payload)
                             ? (string) ($payload['reason'] ?? 'script_throttle')
                             : 'script_throttle';
-                        Log::info('Yelp biz: upload script signalled throttle, releasing job', [
+                        Log::channel('yelp')->info('Yelp biz: upload script signalled throttle, releasing job', [
                             'image_id' => $image->id,
                             'reason' => $reason,
                             'retry_after_seconds' => $retryAfter,
@@ -585,7 +585,7 @@ class YelpBusinessService
                     if ($isSessionDead) {
                         $note = is_array($payload) ? (string) ($payload['error'] ?? '') : '';
                         $this->markSessionDead($note);
-                        Log::warning('Yelp biz: session expired - admin must re-login via /admin/platforms', [
+                        Log::channel('yelp')->warning('Yelp biz: session expired - admin must re-login via /admin/platforms', [
                             'image_id' => $image->id,
                             'note' => $note,
                         ]);
@@ -594,7 +594,7 @@ class YelpBusinessService
                         );
                     }
 
-                    Log::error('Yelp biz: upload script exited with error', [
+                    Log::channel('yelp')->error('Yelp biz: upload script exited with error', [
                         'image_id' => $image->id,
                         'exit_code' => $exit,
                         'stderr' => $stderr,
@@ -607,7 +607,7 @@ class YelpBusinessService
                 $payload = $jsonLine ? json_decode($jsonLine, true) : null;
 
                 if (! is_array($payload) || empty($payload['ok'])) {
-                    Log::error('Yelp biz: upload script returned no/invalid payload', [
+                    Log::channel('yelp')->error('Yelp biz: upload script returned no/invalid payload', [
                         'image_id' => $image->id,
                         'stdout' => $stdout,
                         'stderr' => $stderr,
@@ -630,7 +630,7 @@ class YelpBusinessService
                 $verified = (bool) ($payload['photo_id_verified'] ?? false);
 
                 if (! $verified) {
-                    Log::warning('Yelp biz: upload committed but photo_id not captured - storing NULL for later verification', [
+                    Log::channel('yelp')->warning('Yelp biz: upload committed but photo_id not captured - storing NULL for later verification', [
                         'image_id' => $image->id,
                         'photos_url' => $payload['photos_url'] ?? null,
                     ]);
@@ -639,13 +639,12 @@ class YelpBusinessService
                 $image->update([
                     'yelp_biz_photo_id' => $realPhotoId,
                     'yelp_biz_uploaded_at' => now(),
-                    'yelp_biz_photos_url' => $payload['photos_url'] ?? $image->yelp_biz_photos_url,
                     'yelp_biz_caption' => $caption,
                 ]);
 
                 return [
                     'photo_id' => $image->yelp_biz_photo_id,
-                    'photos_url' => $image->yelp_biz_photos_url,
+                    'photos_url' => $payload['photos_url'] ?? null,
                     'caption' => $caption,
                     'verified' => $verified,
                 ];
@@ -679,7 +678,7 @@ class YelpBusinessService
             $elapsed = time() - $lastRunAt;
             if ($lastRunAt > 0 && $elapsed < $minInterval) {
                 $retryAfter = $minInterval - $elapsed;
-                Log::info('Yelp: throttled by min_interval_seconds', [
+                Log::channel('yelp')->info('Yelp: throttled by min_interval_seconds', [
                     'operation' => $operation,
                     'min_interval_seconds' => $minInterval,
                     'retry_after_seconds' => $retryAfter,
@@ -696,7 +695,7 @@ class YelpBusinessService
         try {
             if ($lockWait > 0) {
                 $result = $lock->block($lockWait, function () use ($callback, $operation, $context) {
-                    Log::info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
+                    Log::channel('yelp')->info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
                     return $callback();
                 });
                 Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
@@ -704,14 +703,14 @@ class YelpBusinessService
             }
 
             if (! $lock->get()) {
-                Log::warning('Yelp: automation lock busy', ['operation' => $operation] + $context);
+                Log::channel('yelp')->warning('Yelp: automation lock busy', ['operation' => $operation] + $context);
                 throw new YelpUploadThrottledException(
                     'Yelp automation lock busy',
                     max(60, $minInterval ?: 60),
                 );
             }
 
-            Log::info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
+            Log::channel('yelp')->info('Yelp: automation lock acquired', ['operation' => $operation] + $context);
             try {
                 $result = $callback();
                 Cache::put(self::LAST_RUN_KEY, time(), now()->addDay());
@@ -720,7 +719,7 @@ class YelpBusinessService
                 $lock->release();
             }
         } catch (LockTimeoutException) {
-            Log::warning('Yelp: automation lock wait timed out', [
+            Log::channel('yelp')->warning('Yelp: automation lock wait timed out', [
                 'operation' => $operation,
                 'wait_seconds' => $lockWait,
             ] + $context);
@@ -747,7 +746,7 @@ class YelpBusinessService
             file_put_contents($tmp, $disk->get($image->path));
             return $tmp;
         } catch (\Throwable $e) {
-            Log::error('Yelp: failed to resolve image path', [
+            Log::channel('yelp')->error('Yelp: failed to resolve image path', [
                 'image_id' => $image->id,
                 'error' => $e->getMessage(),
             ]);

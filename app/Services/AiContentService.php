@@ -345,7 +345,7 @@ PROMPT;
                 }
                 $lastReason = $reason;
 
-                Log::warning('Yelp caption rewrite failed quality gate; retrying', [
+                Log::channel('yelp')->warning('Yelp caption rewrite failed quality gate; retrying', [
                     'image_id' => $image->id,
                     'attempt' => $attempt,
                     'reason' => $reason,
@@ -356,7 +356,7 @@ PROMPT;
             // Gemini still failed. Return null so the caller can fall back to
             // a deterministic, guaranteed-valid caption. We do NOT throw — the
             // upload should never block on caption generation.
-            Log::warning('Yelp caption rewrite gave up after retries; caller will use deterministic fallback', [
+            Log::channel('yelp')->warning('Yelp caption rewrite gave up after retries; caller will use deterministic fallback', [
                 'image_id' => $image->id,
                 'last_reason' => $lastReason,
                 'last_output' => $lastClean,

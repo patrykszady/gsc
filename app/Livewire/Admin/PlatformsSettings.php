@@ -218,7 +218,7 @@ class PlatformsSettings extends Component
      */
     public function reportYelpRemoteError(string $reason = 'iframe load failure'): void
     {
-        Log::warning('Yelp remote login: iframe error reported by client', [
+        Log::channel('yelp')->warning('Yelp remote login: iframe error reported by client', [
             'reason' => $reason,
             'url' => $this->yelpRemoteUrl,
             'user_id' => auth()->id(),
