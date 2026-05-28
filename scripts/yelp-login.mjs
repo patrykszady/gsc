@@ -477,6 +477,21 @@ async function autofillLogin(page, email, password) {
   await sleep(300 + Math.random() * 300);
   await typeHumanLike(passEl, password);
 
+  // Read back what actually landed in the field. If the length differs from
+  // what we typed (Yelp's React onChange dedup, IME interference, or the
+  // field being a duplicate "confirm password") we'd otherwise hand Yelp a
+  // truncated password and the operator sees "wrong password".
+  try {
+    const actual = await page.$eval(SELECTORS.loginPassword, (el) => el.value || '');
+    if (actual.length !== password.length) {
+      console.error(`[yelp-login] WARNING password field readback mismatch: typed=${password.length} chars, field=${actual.length} chars`);
+    } else {
+      console.error(`[yelp-login] password readback OK (${actual.length} chars)`);
+    }
+  } catch (e) {
+    console.error('[yelp-login] password readback failed: ' + (e?.message || e));
+  }
+
   // Yelp validates the form async and only enables the submit button after
   // the password field has been blurred / debounced. Tab off the field and
   // wait for the button to become clickable.

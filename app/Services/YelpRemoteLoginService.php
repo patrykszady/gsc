@@ -136,6 +136,20 @@ class YelpRemoteLoginService
             @fclose($sock);
             usleep(100000);
         }
+        // Wait up to 3s for the websockify port to become free too. Without
+        // this, Reset Profile re-spawns websockify while the old instance is
+        // still holding port 6080 in TIME_WAIT / actively bound, and the new
+        // iframe ends up talking to a dead websockify (or fails to bind at
+        // all and nginx returns 502 "failed to connect to the new server").
+        for ($i = 0; $i < 30; $i++) {
+            $errno = 0; $errstr = '';
+            $sock = @fsockopen('127.0.0.1', $wsPort, $errno, $errstr, 0.2);
+            if (! $sock) {
+                break;
+            }
+            @fclose($sock);
+            usleep(100000);
+        }
 
         // Persistent Chromium profile dir. We do NOT wipe by default: the
         // operator may have spent 2captcha credits getting past DataDome on
@@ -182,13 +196,30 @@ class YelpRemoteLoginService
         $bizCfg = config('services.yelp.business');
         $node = $bizCfg['node_binary'] ?? 'node';
         $script = base_path('scripts/yelp-login.mjs');
+        $email = (string) $biz->getEmail();
+        $password = (string) $biz->getPassword();
+
+        // Surface what credentials we are about to hand to puppeteer-core
+        // WITHOUT leaking the actual password. A length + 6-char sha256 prefix
+        // is enough for the operator to detect "wrong password" stored in the
+        // DB (e.g. accidental whitespace, last char dropped, autofill leaked
+        // the email into the password slot, etc.).
+        Log::channel('yelp')->info('Yelp remote login: launching script with credentials', [
+            'email' => $email,
+            'email_len' => strlen($email),
+            'password_len' => strlen($password),
+            'password_fp' => $password !== '' ? substr(hash('sha256', $password), 0, 6) : null,
+            'password_has_leading_space' => $password !== '' && ctype_space($password[0]),
+            'password_has_trailing_space' => $password !== '' && ctype_space($password[strlen($password) - 1]),
+        ]);
+
         $cmdParts = [
             escapeshellarg((string) $node),
             escapeshellarg($script),
             '--mode=login',
             '--user-data-dir=' . escapeshellarg($userDataDir),
-            '--email=' . escapeshellarg((string) $biz->getEmail()),
-            '--password=' . escapeshellarg((string) $biz->getPassword()),
+            '--email=' . escapeshellarg($email),
+            '--password=' . escapeshellarg($password),
             '--timeout-ms=' . escapeshellarg((string) ($maxTtl * 1000)),
         ];
         if (! empty($bizCfg['proxy'])) {
@@ -239,20 +270,27 @@ class YelpRemoteLoginService
             return ['ok' => false, 'error' => 'Chromium exited immediately. See ' . $chromeLog];
         }
 
-        // 3) x11vnc — random password so the noVNC URL needs the secret.
-        $password = Str::random(20);
-        $passwdFile = storage_path('app/yelp-remote-login.passwd');
-        @file_put_contents($passwdFile, $password);
-        @chmod($passwdFile, 0600);
-        // Use -storepasswd-style file (`-passwdfile`) which accepts plain text.
+        // 3) x11vnc — random password. The legacy VNC auth (security type 2)
+        // truncates to 8 bytes, so generate exactly 8 alphanumeric chars to
+        // avoid any URL-encoding / truncation ambiguity between the noVNC
+        // iframe param and what x11vnc actually compares against.
+        //
+        // We pass the password via -passwd (NOT -passwdfile) because some
+        // x11vnc builds treat -passwdfile as an obfuscated `-storepasswd`
+        // file and reject plain text with "wrong password" on every connect.
+        // Localhost-only process => visibility in `ps` is acceptable.
+        $password = Str::random(8);
+        // Belt-and-suspenders: clean up any stale plaintext file from prior
+        // versions so we don't leave secrets lying around.
+        @unlink(storage_path('app/yelp-remote-login.passwd'));
         $vncPid = $this->spawn(
             sprintf(
-                '%s -display %s -rfbport %d -localhost -nolookup -shared -forever -bg -o %s -passwdfile %s -quiet',
+                '%s -display %s -rfbport %d -localhost -nolookup -shared -forever -bg -o %s -passwd %s -quiet',
                 escapeshellarg((string) $cfg['x11vnc_binary']),
                 escapeshellarg($display),
                 $vncPort,
                 escapeshellarg($vncLog),
-                escapeshellarg($passwdFile)
+                escapeshellarg($password)
             ),
             $vncLog
         );
@@ -366,7 +404,12 @@ class YelpRemoteLoginService
         ];
         $this->writeState($state);
 
-        Log::channel('yelp')->info('Yelp remote login: session started', $state);
+        Log::channel('yelp')->info('Yelp remote login: session started', $state + [
+            // Fingerprint the VNC password so we can confirm noVNC iframe
+            // and x11vnc are using the same secret without leaking it.
+            'vnc_password_len' => strlen($password),
+            'vnc_password_fp' => substr(hash('sha256', $password), 0, 6),
+        ]);
 
         return $this->buildResponse($state);
     }

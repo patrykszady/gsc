@@ -156,7 +156,9 @@
                     <flux:label>
                         Password
                         @if($yelpHasPassword)
-                            <span class="ml-2 text-xs text-green-600 dark:text-green-400">(saved &mdash; leave blank to keep)</span>
+                            <span class="ml-2 text-xs text-green-600 dark:text-green-400">
+                                (saved — leave blank to keep, len {{ $yelpPasswordLen }}, fp <code>{{ $yelpPasswordFingerprint }}</code>)
+                            </span>
                         @endif
                     </flux:label>
                     <flux:input wire:model="yelpPassword" type="password" placeholder="{{ $yelpHasPassword ? '••••••••' : 'Set password' }}" autocomplete="new-password" />

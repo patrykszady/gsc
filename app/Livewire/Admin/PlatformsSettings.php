@@ -33,6 +33,8 @@ class PlatformsSettings extends Component
     public string $yelpPassword = '';
 
     public bool $yelpHasPassword = false;
+    public ?int $yelpPasswordLen = null;
+    public ?string $yelpPasswordFingerprint = null;
     public ?bool $yelpAuthenticated = null; // null = unknown, true/false = checked
     public ?string $yelpStatusNote = null;
     public bool $yelpSessionDead = false;
@@ -77,7 +79,12 @@ class PlatformsSettings extends Component
         // Yelp
         $yelp = app(YelpBusinessService::class);
         $this->yelpEmail = (string) ($yelp->getEmail() ?? '');
-        $this->yelpHasPassword = ! empty($yelp->getPassword());
+        $storedPassword = (string) ($yelp->getPassword() ?? '');
+        $this->yelpHasPassword = $storedPassword !== '';
+        $this->yelpPasswordLen = $this->yelpHasPassword ? strlen($storedPassword) : null;
+        $this->yelpPasswordFingerprint = $this->yelpHasPassword
+            ? substr(hash('sha256', $storedPassword), 0, 6)
+            : null;
         $this->yelpPassword = '';
 
         // Seed last known Yelp auth state from cache / cookie-file so the UI
@@ -201,8 +208,20 @@ class PlatformsSettings extends Component
         Log::channel('yelp')->info('Yelp remote login: operator requested profile reset', [
             'user_id' => auth()->id(),
         ]);
-        // Stop first so killState() releases any locks on the profile dir.
+        // Clear viewer state up-front so the iframe unmounts before the
+        // new session boots. Without this, the iframe keeps polling the
+        // dying websockify and the browser caches the failed handshake,
+        // so even a brand-new server gets a "failed to connect" verdict.
+        $this->yelpRemoteOpen = false;
+        $this->yelpRemoteUrl = null;
+        $this->yelpRemoteExpiresAt = null;
+        $this->yelpRemoteLogTail = null;
+        $this->yelpRemoteError = null;
+
         app(YelpRemoteLoginService::class)->stop();
+        // Give port 6080 a moment to fully release before start() races to
+        // re-bind it.
+        usleep(500000);
         $this->startYelpRemoteLogin(resetProfile: true);
     }
 
