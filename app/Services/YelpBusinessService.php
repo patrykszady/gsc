@@ -730,29 +730,122 @@ class YelpBusinessService
 
     protected function buildCaption(ProjectImage $image): string
     {
-        $caption = trim((string) ($image->caption ?? ''));
-        if ($caption === '') {
-            $caption = trim((string) ($image->seo_alt_text ?? $image->alt_text ?? ''));
+        $source = trim((string) ($image->caption ?? ''));
+        if ($source === '') {
+            $source = trim((string) ($image->seo_alt_text ?? $image->alt_text ?? ''));
         }
-        if ($caption === '') {
-            $caption = trim((string) ($image->project?->title ?? 'Project photo'));
+        if ($source === '') {
+            $source = trim((string) ($image->project?->title ?? 'Project photo'));
         }
 
         $limit = 140;
 
-        // Keyword-rich Gemini rewrite. We do NOT fall back to a plain
-        // mb_substr truncation on failure — a mid-word cut on Yelp looks
-        // worse than skipping the upload. Let the exception bubble; the
-        // job will fail loudly with the bad output in the logs.
+        // Try the Gemini SEO rewrite first.
         $seo = app(AiContentService::class)->shortenCaptionForSeo($image, $limit);
         if (is_string($seo) && $seo !== '' && mb_strlen($seo) <= $limit) {
             return $seo;
         }
 
-        throw new \RuntimeException(sprintf(
-            'Yelp caption rewrite returned no usable result for image #%d.',
-            $image->id
-        ));
+        // Gemini failed (or was rate-limited / unavailable). Build a
+        // deterministic, guaranteed-valid caption from project data so the
+        // upload never blocks on caption generation.
+        return $this->buildFallbackCaption($image, $source, $limit);
+    }
+
+    /**
+     * Deterministic caption builder. ALWAYS returns a non-empty string ≤ $limit
+     * chars ending with ".". Used when Gemini is unavailable or fails the
+     * quality gate. Strips filler/cosmetic words so the output is still clean
+     * enough to ship.
+     */
+    protected function buildFallbackCaption(ProjectImage $image, string $source, int $limit): string
+    {
+        $project = $image->project;
+        $city = trim((string) ($project?->location ?? ''));
+        $city = preg_replace('/\s*,\s*[A-Z]{2}\b.*$/', '', $city) ?? $city;
+        $type = $project?->project_type
+            ? strtolower(str_replace(['-', '_'], ' ', (string) $project->project_type))
+            : 'home remodel';
+
+        // Strip filler adjectives + cosmetic terms so the fallback doesn't
+        // ship "stunning white quartz". This is a coarse pass — good enough
+        // for a last-resort caption.
+        $cleaned = $this->stripCosmeticAndFiller($source);
+        $cleaned = preg_replace('/\s+/u', ' ', $cleaned) ?? $cleaned;
+        $cleaned = trim($cleaned, " \t,;:-");
+
+        if ($cleaned !== '') {
+            // Take just the first sentence (or full string if no terminator).
+            if (preg_match('/^(.+?[.!?])(\s|$)/u', $cleaned, $m)) {
+                $candidate = trim($m[1]);
+            } else {
+                $candidate = $cleaned;
+            }
+            // Ensure terminal period and strip trailing junk.
+            $candidate = rtrim($candidate, " \t.!?;:,-") . '.';
+
+            // If too long, cut at the last comma/space within the limit so we
+            // never end with a dangling preposition or article.
+            if (mb_strlen($candidate) > $limit) {
+                $cut = mb_substr($candidate, 0, $limit - 1);
+                $boundary = max(
+                    (int) mb_strrpos($cut, ', '),
+                    (int) mb_strrpos($cut, '; '),
+                    (int) mb_strrpos($cut, ' and '),
+                    (int) mb_strrpos($cut, ' with '),
+                    (int) mb_strrpos($cut, ' featuring ')
+                );
+                if ($boundary > $limit - 60) {
+                    $candidate = rtrim(mb_substr($cut, 0, $boundary), " ,;:-") . '.';
+                } else {
+                    // No clean clause boundary — fall through to generic.
+                    $candidate = '';
+                }
+            }
+
+            if ($candidate !== '' && $candidate !== '.' && mb_strlen($candidate) <= $limit) {
+                return $candidate;
+            }
+        }
+
+        // Generic last-resort caption from project metadata. Always valid.
+        $cityPart = $city !== '' ? " in {$city}" : '';
+        $generic = "GS Construction {$type} project{$cityPart}.";
+        if (mb_strlen($generic) > $limit) {
+            $generic = mb_substr($generic, 0, $limit - 1) . '.';
+        }
+        return $generic;
+    }
+
+    /**
+     * Coarse pass to remove cosmetic/material/filler words from a caption.
+     * Used only by the fallback path — Gemini handles this properly when up.
+     */
+    protected function stripCosmeticAndFiller(string $text): string
+    {
+        // Words/phrases to drop entirely. Order matters: longer first so we
+        // remove "white quartz countertop" before "white" / "quartz".
+        $patterns = [
+            // multi-word cosmetic phrases
+            '/\b(?:white|black|gray|grey|blue|green|dark|warm|rich)\s+(?:quartz|marble|granite|stone|tile|hardwood|wood|shaker|subway|herringbone|matte|stainless|brass|gold|bronze|silver|chrome)\s+\w+/i',
+            '/\b(?:quartz|marble|granite|hardwood|stainless|herringbone|subway|shaker)\s+\w+/i',
+            // filler adjectives
+            '/\b(?:stunning|beautiful|beautifully|gorgeous|modern|sleek|elegant|elegantly|luxurious|spa-like|sophisticated|stylish|stylishly|classic|spacious|bright|functional|breathtaking|amazing|perfect|dream|charming)\b\s*/i',
+            // material/finish single words (when not caught above)
+            '/\b(?:quartz|marble|granite|hardwood|tile|tiled|subway|shaker|herringbone|matte|stainless|chrome|brass)\b\s*/i',
+            // people refs
+            '/\b(?:homeowner|homeowners|owner|owners|client|clients|family|families)\b\s*/i',
+            // ", IL" / state codes
+            '/,\s*[A-Z]{2}\b/',
+        ];
+        foreach ($patterns as $p) {
+            $text = preg_replace($p, ' ', $text) ?? $text;
+        }
+        // Collapse leftover punctuation/whitespace artifacts.
+        $text = preg_replace('/\s+,/u', ',', $text) ?? $text;
+        $text = preg_replace('/,\s*,/u', ',', $text) ?? $text;
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        return trim($text);
     }
 
     protected function lastJsonLine(string $stdout): ?string
