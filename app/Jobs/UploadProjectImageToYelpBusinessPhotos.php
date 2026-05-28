@@ -91,7 +91,11 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 // elapsed. Release this job back to the queue so the worker
                 // picks it up after the throttle window. Keep the "queued"
                 // marker so duplicate dispatches still no-op.
-                Log::channel('yelp')->info('Yelp biz: throttled, releasing job', [
+                //
+                // Debug-level: this is the expected hot-path while a queue
+                // of pending jobs waits for the active upload to finish.
+                // INFO would flood the log with N lines per upload cycle.
+                Log::channel('yelp')->debug('Yelp biz: throttled, releasing job', [
                     'image_id' => $this->imageId,
                     'retry_after_seconds' => $e->retryAfterSeconds,
                 ]);

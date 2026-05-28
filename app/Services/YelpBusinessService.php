@@ -678,7 +678,10 @@ class YelpBusinessService
             $elapsed = time() - $lastRunAt;
             if ($lastRunAt > 0 && $elapsed < $minInterval) {
                 $retryAfter = $minInterval - $elapsed;
-                Log::channel('yelp')->info('Yelp: throttled by min_interval_seconds', [
+                // Debug-level: this is the expected hot-path for a queue of
+                // pending jobs. INFO/WARNING would flood the log with N lines
+                // per upload cycle (one per pending job per retry).
+                Log::channel('yelp')->debug('Yelp: throttled by min_interval_seconds', [
                     'operation' => $operation,
                     'min_interval_seconds' => $minInterval,
                     'retry_after_seconds' => $retryAfter,
@@ -729,13 +732,23 @@ class YelpBusinessService
                 ] + $context);
             }
         } catch (LockTimeoutException) {
-            Log::channel('yelp')->warning('Yelp: automation lock wait timed out', [
+            // Smarter retry-after: a typical upload takes ~120s. Backing off
+            // for ~upload_duration prevents N pending jobs from all retrying
+            // every 60s and flooding the log. Add small per-job jitter
+            // (0-15s) to prevent thundering-herd collisions when the holder
+            // finishes and multiple jobs wake up simultaneously.
+            $retryAfter = 90 + random_int(0, 30);
+            // Debug-level: this is the expected hot-path for a queue of
+            // pending jobs while one is uploading. WARNING would log N lines
+            // per upload cycle (one per pending job per retry).
+            Log::channel('yelp')->debug('Yelp: automation lock wait timed out', [
                 'operation' => $operation,
                 'wait_seconds' => $lockWait,
+                'retry_after_seconds' => $retryAfter,
             ] + $context);
             throw new YelpUploadThrottledException(
                 'Yelp automation lock wait timed out',
-                max(60, $minInterval ?: 60),
+                $retryAfter,
             );
         }
     }

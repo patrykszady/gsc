@@ -84,16 +84,15 @@ class SyncYelpBusinessPhotos extends Command
         $showProcess = (bool) $this->option('show-process');
 
         $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 0));
+        // Empirical per-image budget: ~120s upload work + min_interval buffer.
+        // Used for ETA display only — actual time can vary +/- 30s per image.
+        $perImageSeconds = 120 + $minInterval;
         if (! $sync) {
-            if ($minInterval > 0) {
-                $this->line(sprintf(
-                    'Throttle: 1 upload every %d seconds (~%s).',
-                    $minInterval,
-                    $this->humanInterval($minInterval),
-                ));
-            } else {
-                $this->line('Mode: serial (next upload starts as soon as the previous Chromium exits).');
-            }
+            $this->line(sprintf(
+                'Throttle: %ds buffer between successful uploads. Typical upload ~120s, so plan on ~%ds per image.',
+                $minInterval,
+                $perImageSeconds,
+            ));
         }
 
         $dispatchedIds = [];
@@ -135,7 +134,7 @@ class SyncYelpBusinessPhotos extends Command
         $this->info("Dispatched {$count} Yelp business-photos upload job(s).");
 
         if (! $sync && $watch && ! empty($dispatchedIds)) {
-            $this->watchProgress($dispatchedIds, $minInterval, (int) $this->option('watch-timeout'));
+            $this->watchProgress($dispatchedIds, $perImageSeconds, $minInterval, (int) $this->option('watch-timeout'));
         }
 
         return self::SUCCESS;
@@ -144,23 +143,20 @@ class SyncYelpBusinessPhotos extends Command
     /**
      * Poll the DB until every dispatched image is marked uploaded (or has
      * exceeded retries / been removed). Shows a live progress bar with
-     * ETA based on the configured min_interval_seconds.
+     * ETA based on the empirical per-image upload budget (~120s + buffer).
      *
      * @param  array<int, int>  $imageIds
      */
-    protected function watchProgress(array $imageIds, int $minInterval, int $maxSeconds): void
+    protected function watchProgress(array $imageIds, int $perImageSeconds, int $minInterval, int $maxSeconds): void
     {
         $total = count($imageIds);
-        $eta = $minInterval > 0 ? $minInterval * $total : 0;
-        if ($eta > 0) {
-            $this->line(sprintf(
-                'Watching %d upload(s); estimated total time: ~%s',
-                $total,
-                $this->humanInterval($eta),
-            ));
-        } else {
-            $this->line(sprintf('Watching %d upload(s); they will run back-to-back.', $total));
-        }
+        $eta = $perImageSeconds * $total;
+        $this->line(sprintf(
+            'Watching %d upload(s); estimated total time: ~%s (assumes ~%ds per image).',
+            $total,
+            $this->humanInterval($eta),
+            $perImageSeconds,
+        ));
 
         $bar = $this->output->createProgressBar($total);
         $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%%  done=%done% pending=%pending% failed=%failed%  elapsed=%elapsed%  status=%status%');
@@ -211,8 +207,12 @@ class SyncYelpBusinessPhotos extends Command
             }
             $bar->setMessage($statusMsg, 'status');
 
-            // Re-set position so the bar visibly advances.
+            // Re-set position AND force display() so the elapsed/status
+            // segment of the bar updates in-place on every tick even when
+            // $done hasn't changed (ProgressBar skips redraw when the
+            // progress integer is unchanged).
             $bar->setProgress($done);
+            $bar->display();
 
             // Periodic info line below the bar (every 5 min) for log capture.
             $elapsed = time() - $start;
@@ -248,8 +248,10 @@ class SyncYelpBusinessPhotos extends Command
                 return;
             }
 
-            // Poll cadence: every 10s.
-            sleep(10);
+            // Poll every 2s. Bar redraws in-place via \r so this does not
+            // spam the terminal with new lines. Each tick is one indexed
+            // SELECT + ~2 Redis reads (~50ms total) — negligible load.
+            sleep(2);
         }
     }
 
