@@ -237,11 +237,13 @@ return [
             // pick up something else / wait out the back-off.
             'automation_lock_wait_seconds' => (int) env('YELP_BIZ_AUTOMATION_LOCK_WAIT', 5),
             // Hard throttle between Yelp Chromium launches across the whole
-            // host. 5s lets the previous Chromium tree finish tearing down
-            // (browser.close + helper exits) before the next launch races
-            // for the user-data-dir, without adding noticeable per-image
-            // overhead. Bump higher only if you see SingletonLock collisions.
-            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 5),
+            // host. 30s gives the previous Chromium tree time to fully tear
+            // down (browser.close + helper exits + zombie reap + user-data-dir
+            // SingletonLock release + port release) before the next launch.
+            // 5s was too tight and caused back-to-back uploads to start while
+            // the prior Chromium was still finalizing. Bump higher only if
+            // you still see SingletonLock collisions.
+            'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 30),
             // Override where Puppeteer looks for its installed Chrome.
             // Defaults to {real-$HOME}/.cache/puppeteer. Set this only if
             // your deploy installs Chrome at a non-standard location.
