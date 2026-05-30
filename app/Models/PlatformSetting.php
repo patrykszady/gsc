@@ -42,6 +42,18 @@ class PlatformSetting extends Model
             static::where('key', $key)->delete();
             return;
         }
+        // If a prior row was encrypted with a rotated APP_KEY, updateOrCreate
+        // tries to read the existing value (for dirty tracking) and throws
+        // MAC invalid. Detect and drop it so the save can proceed.
+        $existing = static::where('key', $key)->first();
+        if ($existing) {
+            try {
+                $existing->value;
+            } catch (DecryptException $e) {
+                $existing->delete();
+                $existing = null;
+            }
+        }
         static::updateOrCreate(['key' => $key], ['value' => $value]);
     }
 }

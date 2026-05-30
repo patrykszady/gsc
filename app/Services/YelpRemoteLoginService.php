@@ -109,6 +109,27 @@ class YelpRemoteLoginService
         $novncWeb = rtrim((string) $cfg['novnc_web'], '/');
         $maxTtl = (int) $cfg['max_ttl_seconds'];
 
+        // When the iframe is reached through a path-prefixed reverse proxy
+        // (e.g. https://dev.gs.construction/yelp-vnc), cloudflared/nginx do
+        // NOT strip the prefix before forwarding to websockify. Without help,
+        // websockify looks up `/yelp-vnc/vnc.html` in `/usr/share/novnc/` and
+        // 404s on every static asset. Build a small writable web root that
+        // contains the prefix as a symlink to the real noVNC tree, and point
+        // websockify at it. WS upgrades are path-agnostic so this only
+        // affects the static HTML/JS/CSS lookup.
+        $publicUrlPath = (string) (parse_url((string) ($cfg['public_url'] ?? ''), PHP_URL_PATH) ?: '');
+        $mountPath = trim($publicUrlPath, '/');
+        if ($mountPath !== '' && is_dir($novncWeb)) {
+            $aliasRoot = storage_path('app/yelp-novnc-web');
+            if (! is_dir($aliasRoot)) @mkdir($aliasRoot, 0755, true);
+            $aliasLink = $aliasRoot . '/' . $mountPath;
+            if (! is_link($aliasLink) || @readlink($aliasLink) !== $novncWeb) {
+                if (is_link($aliasLink) || file_exists($aliasLink)) @unlink($aliasLink);
+                @symlink($novncWeb, $aliasLink);
+            }
+            $novncWeb = $aliasRoot;
+        }
+
         // Clean orphan processes that might be holding our display/ports.
         // Send SIGTERM first then SIGKILL — old x11vnc instances can hang on to
         // port 5999 across restarts, causing the new VNC server to fail and the
@@ -222,22 +243,23 @@ class YelpRemoteLoginService
             '--password=' . escapeshellarg($password),
             '--timeout-ms=' . escapeshellarg((string) ($maxTtl * 1000)),
         ];
-        if (! empty($bizCfg['proxy'])) {
-            // Rotate IPRoyal sticky-session token (`_session-XYZ_lifetime-...`)
-            // on every login attempt so a DataDome-blocked exit IP is replaced
-            // by a fresh one automatically — no .env edit needed.
-            $proxyUrl = (string) $bizCfg['proxy'];
-            $rotated = preg_replace(
-                '/([_-])session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
-                '${1}session-Yelp' . time() . random_int(100, 999) . '$2',
-                $proxyUrl,
-                1,
-                $count
-            );
-            if ($count > 0 && is_string($rotated)) {
-                $proxyUrl = $rotated;
-                logger()->info('Yelp remote login: rotated proxy session token');
-            }
+        // Cookie injection: when a cookies file is present we skip the
+        // proxy entirely. Cookies are bound by Yelp to the IP that issued
+        // them; pairing them with a fresh proxy IP raises DataDome's
+        // suspicion. Connecting direct from this host (where the operator
+        // also runs their personal browser) keeps the IP fingerprint
+        // consistent with the cookies.
+        $cookiesFile = storage_path('app/yelp-cookies.json');
+        $hasCookies = is_file($cookiesFile) && filesize($cookiesFile) > 0;
+        if ($hasCookies) {
+            $cmdParts[] = '--cookies-file=' . escapeshellarg($cookiesFile);
+        }
+        if (! $hasCookies && ! empty($bizCfg['proxy'])) {
+            // Force a unique exit IP on every login attempt so a
+            // DataDome-blocked IP is replaced automatically — no .env edit
+            // needed. Supports IPRoyal (`_session-XYZ_lifetime-...`) and
+            // Bright Data (`-session-XYZ` appended to the username).
+            $proxyUrl = $this->forceUniqueProxySession((string) $bizCfg['proxy'], 'Yelp');
             $cmdParts[] = '--proxy=' . escapeshellarg($proxyUrl);
         }
         if ($key = config('services.twocaptcha.api_key')) {
@@ -283,9 +305,14 @@ class YelpRemoteLoginService
         // Belt-and-suspenders: clean up any stale plaintext file from prior
         // versions so we don't leave secrets lying around.
         @unlink(storage_path('app/yelp-remote-login.passwd'));
+        // x11vnc 0.9.16 inspects the host session env and refuses to run
+        // ("Wayland sessions are as of now only supported via -rawfb...
+        // Exiting.") when WAYLAND_DISPLAY / XDG_SESSION_TYPE=wayland are
+        // present, even though we explicitly target an Xvfb display. Strip
+        // those vars (plus the host's DISPLAY) before exec'ing x11vnc.
         $vncPid = $this->spawn(
             sprintf(
-                '%s -display %s -rfbport %d -localhost -nolookup -shared -forever -bg -o %s -passwd %s -quiet',
+                'env -u WAYLAND_DISPLAY -u XDG_SESSION_TYPE -u DISPLAY -u XDG_RUNTIME_DIR %s -display %s -rfbport %d -localhost -nolookup -shared -forever -bg -o %s -passwd %s -quiet',
                 escapeshellarg((string) $cfg['x11vnc_binary']),
                 escapeshellarg($display),
                 $vncPort,
@@ -602,6 +629,33 @@ class YelpRemoteLoginService
             }
         }
         return null;
+    }
+
+    /**
+     * Force a fresh upstream session token on a proxy URL so the next request
+     * gets a new exit IP. Handles both providers we use:
+     *   IPRoyal:    user_session-OLD_lifetime-30m  →  user_session-NEW_lifetime-30m
+     *   Bright Data brd-customer-X-zone-Y-session-OLD → -session-NEW (or appended)
+     */
+    protected function forceUniqueProxySession(string $proxyUrl, string $tag = 'GSC'): string
+    {
+        $token = $tag . time() . random_int(100, 999);
+        $rotated = preg_replace(
+            '/([_-])session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
+            '${1}session-' . $token . '$2',
+            $proxyUrl,
+            1,
+            $count
+        );
+        if ($count > 0 && is_string($rotated)) {
+            return $rotated;
+        }
+        // No session marker present — leave the URL untouched. Providers like
+        // IPRoyal expect sessions in the *password* (`_session-X_lifetime-...`),
+        // so blindly injecting `-session-X` into the username breaks auth and
+        // surfaces as ERR_TUNNEL_CONNECTION_FAILED in Chromium. Without a
+        // marker the gateway already rotates per request, which is what we want.
+        return $proxyUrl;
     }
 
     /**

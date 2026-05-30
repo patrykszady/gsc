@@ -32,6 +32,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { maybeBypassDataDome, detectDataDome } from './lib/yelp-datadome.mjs';
 import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
+import { wrapProxyForChromium } from './lib/yelp-proxy.mjs';
+import { loadCookiesFromFile, applyCookies } from './lib/yelp-cookies.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -70,6 +72,7 @@ function parseArgs(argv) {
     proxy: null,
     twoCaptchaKey: null,
     antiCaptchaKey: null,
+    cookiesFile: null,
     timeoutMs: 180000,
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   };
@@ -83,6 +86,7 @@ function parseArgs(argv) {
     else if (a.startsWith('--proxy=')) args.proxy = a.slice('--proxy='.length);
     else if (a.startsWith('--twocaptcha-key=')) args.twoCaptchaKey = a.slice('--twocaptcha-key='.length);
     else if (a.startsWith('--anticaptcha-key=')) args.antiCaptchaKey = a.slice('--anticaptcha-key='.length);
+    else if (a.startsWith('--cookies-file=')) args.cookiesFile = a.slice('--cookies-file='.length);
     else if (a.startsWith('--timeout-ms=')) args.timeoutMs = Number(a.slice('--timeout-ms='.length)) || args.timeoutMs;
     else if (a.startsWith('--user-agent=')) args.userAgent = a.slice('--user-agent='.length);
     else if (a === '--headed') args.headless = false;
@@ -1064,7 +1068,7 @@ async function main() {
     fs.mkdirSync(args.userDataDir, { recursive: true });
   }
 
-  const proxyConfig = parseProxyUrl(args.proxy);
+  const proxyConfig = await wrapProxyForChromium(args.proxy);
   const launchArgs = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
@@ -1078,7 +1082,9 @@ async function main() {
     '--no-default-browser-check',
   ];
   if (proxyConfig) {
-    launchArgs.push(`--proxy-server=${proxyConfig.host}`);
+    // Use proxy-chain's local forwarder — Chromium's --proxy-server can't
+    // handle upstream basic-auth on HTTPS CONNECT (ERR_PROXY_AUTH_UNSUPPORTED).
+    launchArgs.push(`--proxy-server=${proxyConfig.localUrl}`);
     launchArgs.push('--ignore-certificate-errors');
   }
 
@@ -1093,6 +1099,15 @@ async function main() {
     },
   });
   installShutdownHandlers(browser);
+  if (args.cookiesFile) {
+    try {
+      const cookies = loadCookiesFromFile(args.cookiesFile);
+      const n = await applyCookies(browser, cookies);
+      console.error(`[yelp-upload] injected ${n} cookies from ${args.cookiesFile}`);
+    } catch (e) {
+      console.error(`[yelp-upload] cookie injection failed: ${e?.message || e}`);
+    }
+  }
 
   let exitCode = 0;
   try {
@@ -1100,7 +1115,8 @@ async function main() {
     await page.setUserAgent(args.userAgent);
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
     if (proxyConfig && (proxyConfig.username || proxyConfig.password)) {
-      await page.authenticate({ username: proxyConfig.username, password: proxyConfig.password });
+      // proxy-chain forwarder handles upstream auth; just record session user
+      // for 2captcha DataDome bypass which uses the upstream URL directly.
       proxyConfig._sessionUsername = proxyConfig.username;
     }
 

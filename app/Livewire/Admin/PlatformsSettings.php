@@ -84,6 +84,14 @@ class PlatformsSettings extends Component
     // final captured stderr (auth outcome, cookie summary, errors).
     public bool $yelpRemoteFinished = false;
 
+    // ---- Yelp cookie-injection state ----
+    public string $yelpCookiePaste = '';
+    public bool $yelpCookieReplace = false;
+    public ?int $yelpCookieFileCount = null;
+    public ?string $yelpCookieFileUpdatedAt = null;
+    public ?string $yelpCookieDataDomeExpiresAt = null;
+    public ?string $yelpCookieBseExpiresAt = null;
+
     public function mount(): void
     {
         $this->refreshStatus();
@@ -154,6 +162,8 @@ class PlatformsSettings extends Component
             $this->yelpSessionDeadAt = null;
             $this->yelpSessionDeadNote = null;
         }
+
+        $this->refreshYelpCookieStatus();
     }
 
     protected function refreshMetaStatus(): void
@@ -698,6 +708,131 @@ class PlatformsSettings extends Component
         }
 
         session()->flash('platforms-success', "Meta test succeeded for image #{$image->id}. Container ID: {$container['id']} (not published).");
+        $this->refreshStatus();
+    }
+
+    /**
+     * Inspect storage/app/yelp-cookies.json and surface a few headline
+     * facts (count, mtime, key cookie expirations) for the admin UI.
+     */
+    protected function refreshYelpCookieStatus(): void
+    {
+        $path = storage_path('app/yelp-cookies.json');
+        if (! is_file($path)) {
+            $this->yelpCookieFileCount = null;
+            $this->yelpCookieFileUpdatedAt = null;
+            $this->yelpCookieDataDomeExpiresAt = null;
+            $this->yelpCookieBseExpiresAt = null;
+            return;
+        }
+        $raw = (string) @file_get_contents($path);
+        $data = json_decode($raw, true);
+        if (! is_array($data)) {
+            $this->yelpCookieFileCount = 0;
+            $this->yelpCookieFileUpdatedAt = date('c', (int) filemtime($path));
+            return;
+        }
+        $this->yelpCookieFileCount = count($data);
+        $this->yelpCookieFileUpdatedAt = date('c', (int) filemtime($path));
+        $this->yelpCookieDataDomeExpiresAt = null;
+        $this->yelpCookieBseExpiresAt = null;
+        foreach ($data as $c) {
+            $name = strtolower((string) ($c['name'] ?? ''));
+            if (! isset($c['expires']) && ! isset($c['expirationDate'])) continue;
+            $exp = (int) ($c['expires'] ?? $c['expirationDate'] ?? 0);
+            if ($exp <= 0) continue;
+            $iso = date('c', $exp);
+            if ($name === 'datadome') $this->yelpCookieDataDomeExpiresAt = $iso;
+            if ($name === 'bse') $this->yelpCookieBseExpiresAt = $iso;
+        }
+    }
+
+    /**
+     * Accept a Cookie-Editor JSON paste, filter to yelp.com cookies,
+     * normalize to the puppeteer-compatible shape, and merge or replace
+     * storage/app/yelp-cookies.json. Mirrors the yelp:import-cookies
+     * artisan command so production admins don't need shell access.
+     */
+    public function importYelpCookiesFromPaste(): void
+    {
+        $raw = trim($this->yelpCookiePaste);
+        if ($raw === '') {
+            session()->flash('platforms-error', 'Paste a Cookie-Editor JSON export first.');
+            return;
+        }
+        $data = json_decode($raw, true);
+        if (! is_array($data)) {
+            session()->flash('platforms-error', 'That does not look like valid JSON.');
+            return;
+        }
+        if (isset($data['cookies']) && is_array($data['cookies'])) {
+            $data = $data['cookies'];
+        }
+        if (count($data) === 0 || ! isset($data[0]['name'])) {
+            session()->flash('platforms-error', 'Expected an array of cookie objects ({name, value, domain, ...}).');
+            return;
+        }
+        $yelpCookies = array_values(array_filter($data, function ($c) {
+            $d = strtolower((string) ($c['domain'] ?? ''));
+            return str_contains($d, 'yelp.com');
+        }));
+        if (count($yelpCookies) === 0) {
+            session()->flash('platforms-error', 'No yelp.com cookies found in the pasted JSON.');
+            return;
+        }
+
+        $dest = storage_path('app/yelp-cookies.json');
+        @mkdir(dirname($dest), 0755, true);
+
+        $merged = $yelpCookies;
+        if (! $this->yelpCookieReplace && is_file($dest)) {
+            $existing = json_decode((string) file_get_contents($dest), true) ?: [];
+            $byKey = [];
+            foreach (array_merge($existing, $yelpCookies) as $c) {
+                if (! isset($c['name'], $c['domain'])) continue;
+                $k = strtolower(($c['domain'] ?? '').'|'.($c['path'] ?? '/').'|'.$c['name']);
+                $byKey[$k] = $c;
+            }
+            $merged = array_values($byKey);
+        }
+
+        file_put_contents($dest, json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        @chmod($dest, 0600);
+
+        $names = collect($merged)->pluck('name')->map(fn ($n) => strtolower((string) $n))->all();
+        $hasSession = (bool) array_intersect(['s', 'bse', 'bsd'], $names);
+
+        Log::channel('yelp')->info('Yelp cookies imported via paste', [
+            'user_id' => auth()->id(),
+            'added' => count($yelpCookies),
+            'total' => count($merged),
+            'replace' => $this->yelpCookieReplace,
+            'has_session_cookie' => $hasSession,
+        ]);
+
+        // Importing fresh cookies almost always means the prior session
+        // was dead — clear the sticky banner so queued uploads can resume.
+        Cache::forget('yelp.session_dead');
+
+        $this->yelpCookiePaste = '';
+        $msg = 'Imported '.count($yelpCookies).' cookies ('.count($merged).' total in store).';
+        if (! $hasSession) {
+            $msg .= ' WARN: no session cookie (s/bse/bsd) detected — login may not actually be authenticated.';
+        }
+        session()->flash('platforms-success', $msg);
+        $this->refreshStatus();
+    }
+
+    public function clearYelpCookieFile(): void
+    {
+        $path = storage_path('app/yelp-cookies.json');
+        if (is_file($path)) {
+            @unlink($path);
+            Log::channel('yelp')->info('Yelp cookies file deleted', [
+                'user_id' => auth()->id(),
+            ]);
+        }
+        session()->flash('platforms-success', 'Cookie file cleared.');
         $this->refreshStatus();
     }
 

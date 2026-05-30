@@ -382,11 +382,15 @@ Schedule::command('social:post --platform=instagram --via=puppeteer --yes --rand
     ->onFailure(fn () => logger()->error('Scheduled Instagram daily post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
-// Facebook + Google Business Profile: 1 post daily at 10:00 AM CT
-Schedule::command('social:post --platform=facebook --queue')->dailyAt('10:00')
+// Facebook: 1 post per day in the 10 AM - 2 PM CT engagement window.
+// Random delay 0-240 min on top of 10:00 → actual post lands between 10 AM and 2 PM.
+Schedule::command('social:post --platform=facebook --yes --random-delay=240')
+    ->dailyAt('10:00')
     ->timezone('America/Chicago')
+    ->withoutOverlapping(60 * 5) // command can sleep up to 4h + run ~1m, give it 5h
+    ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Facebook post failed'))
+    ->onFailure(fn () => logger()->error('Scheduled Facebook daily post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
 // Google Business Profile: 1 weekly post (image + Gemini-generated caption) on Mondays at 10:00 AM CT.

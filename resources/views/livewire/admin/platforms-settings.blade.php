@@ -475,6 +475,71 @@
                 </p>
             </div>
 
+            {{-- Cookie injection (paste from Cookie-Editor extension) --}}
+            <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Cookie injection</h4>
+                    @if($yelpCookieFileCount !== null)
+                        <flux:button type="button" wire:click="clearYelpCookieFile" wire:confirm="Delete the stored Yelp cookie file? Uploads will fail until new cookies are imported." variant="subtle" size="xs">
+                            Clear stored cookies
+                        </flux:button>
+                    @endif
+                </div>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                    Paste a JSON export from <a href="https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm" target="_blank" rel="noopener" class="underline">Cookie-Editor</a>
+                    after logging into Yelp in your desktop browser. Export both <code>biz.yelp.com</code> and <code>yelp.com</code>
+                    domains and paste each in turn (merge mode keeps both). When valid cookies are present, uploads bypass
+                    the headless login flow entirely (DataDome-friendly).
+                </p>
+
+                @if($yelpCookieFileCount !== null)
+                    <div class="rounded-lg bg-zinc-50 p-3 mb-3 text-xs dark:bg-zinc-800/50">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="size-2 rounded-full bg-green-500"></span>
+                            <span class="font-semibold text-zinc-900 dark:text-white">
+                                {{ $yelpCookieFileCount }} cookies stored
+                            </span>
+                            @if($yelpCookieFileUpdatedAt)
+                                <span class="text-zinc-500">
+                                    (updated {{ \Carbon\Carbon::parse($yelpCookieFileUpdatedAt)->diffForHumans() }})
+                                </span>
+                            @endif
+                        </div>
+                        @if($yelpCookieBseExpiresAt)
+                            <div class="text-zinc-600 dark:text-zinc-400">
+                                <code>bse</code> expires {{ \Carbon\Carbon::parse($yelpCookieBseExpiresAt)->diffForHumans() }}
+                            </div>
+                        @endif
+                        @if($yelpCookieDataDomeExpiresAt)
+                            <div class="text-zinc-600 dark:text-zinc-400">
+                                <code>datadome</code> expires {{ \Carbon\Carbon::parse($yelpCookieDataDomeExpiresAt)->diffForHumans() }}
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="rounded-lg bg-amber-50 p-3 mb-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                        No cookie file stored yet. Uploads will fall back to the headless login flow (often blocked by DataDome).
+                    </div>
+                @endif
+
+                <flux:textarea
+                    wire:model="yelpCookiePaste"
+                    placeholder='Paste Cookie-Editor JSON here, e.g. [{"domain":".yelp.com","name":"bse","value":"...","path":"/", ...}, ...]'
+                    rows="6"
+                    class="font-mono text-xs"
+                />
+                <div class="mt-2 flex items-center justify-between gap-3">
+                    <label class="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                        <input type="checkbox" wire:model="yelpCookieReplace" class="rounded border-zinc-300 dark:border-zinc-700">
+                        Replace existing (default merges)
+                    </label>
+                    <flux:button type="button" wire:click="importYelpCookiesFromPaste" variant="primary" size="sm" icon="key">
+                        <span wire:loading.remove wire:target="importYelpCookiesFromPaste">Import cookies</span>
+                        <span wire:loading wire:target="importYelpCookiesFromPaste">Importing…</span>
+                    </flux:button>
+                </div>
+            </div>
+
             {{-- Remote-login viewer (Xvfb + noVNC) --}}
             @if($yelpRemoteError)
                 <div class="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">

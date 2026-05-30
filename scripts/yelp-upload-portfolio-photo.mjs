@@ -31,6 +31,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
 import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
+import { wrapProxyForChromium } from './lib/yelp-proxy.mjs';
+import { loadCookiesFromFile, applyCookies } from './lib/yelp-cookies.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -60,6 +62,7 @@ function parseArgs(argv) {
     headless: true,
     proxy: null,
     twocaptchaKey: null,
+    cookiesFile: null,
     timeoutMs: 180000,
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   };
@@ -72,6 +75,7 @@ function parseArgs(argv) {
     else if (arg.startsWith('--password=')) args.password = arg.slice('--password='.length);
     else if (arg.startsWith('--proxy=')) args.proxy = arg.slice('--proxy='.length);
     else if (arg.startsWith('--twocaptcha-key=')) args.twocaptchaKey = arg.slice('--twocaptcha-key='.length);
+    else if (arg.startsWith('--cookies-file=')) args.cookiesFile = arg.slice('--cookies-file='.length);
     else if (arg.startsWith('--timeout-ms=')) args.timeoutMs = Number(arg.slice('--timeout-ms='.length)) || args.timeoutMs;
     else if (arg.startsWith('--user-agent=')) args.userAgent = arg.slice('--user-agent='.length);
     else if (arg === '--headed') args.headless = false;
@@ -218,12 +222,11 @@ async function main() {
       '--no-default-browser-check',
     ],
   };
-  if (args.proxy) {
-    try {
-      const u = new URL(args.proxy);
-      launchOpts.args.push(`--proxy-server=${u.protocol}//${u.hostname}:${u.port}`);
-      launchOpts.args.push('--ignore-certificate-errors');
-    } catch {}
+  const proxyWrap = await wrapProxyForChromium(args.proxy);
+  if (proxyWrap) {
+    // proxy-chain local forwarder — see yelp-proxy.mjs for rationale.
+    launchOpts.args.push(`--proxy-server=${proxyWrap.localUrl}`);
+    launchOpts.args.push('--ignore-certificate-errors');
   }
 
   const browser = await launchPuppeteerWithLockRecovery({
@@ -232,22 +235,21 @@ async function main() {
     launchOptions: launchOpts,
   });
   installShutdownHandlers(browser);
+  if (args.cookiesFile) {
+    try {
+      const cookies = loadCookiesFromFile(args.cookiesFile);
+      const n = await applyCookies(browser, cookies);
+      console.error(`[yelp-portfolio] injected ${n} cookies from ${args.cookiesFile}`);
+    } catch (e) {
+      console.error(`[yelp-portfolio] cookie injection failed: ${e?.message || e}`);
+    }
+  }
   let exitCode = 0;
   try {
     const page = await browser.newPage();
     await page.setUserAgent(args.userAgent);
 
-    if (args.proxy) {
-      try {
-        const u = new URL(args.proxy);
-        if (u.username || u.password) {
-          await page.authenticate({
-            username: decodeURIComponent(u.username),
-            password: decodeURIComponent(u.password),
-          });
-        }
-      } catch {}
-    }
+    // proxy-chain forwarder handles upstream auth; nothing to do here.
 
     await tryLogin(page, args.email, args.password, args.timeoutMs);
     const photoId = await uploadPhoto(page, args.portfolioUrl, args.photo, args.caption, args.timeoutMs);

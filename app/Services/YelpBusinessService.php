@@ -490,21 +490,17 @@ class YelpBusinessService
         if (! empty($cfg['headed'])) {
             $args[] = '--headed';
         }
-        if (! empty($cfg['proxy'])) {
-            // Rotate the IPRoyal sticky-session token on every upload so a
-            // burned exit IP from a prior run doesn't poison this one.
-            // Same rewrite the login service does; see YelpRemoteLoginService.
-            $proxyUrl = (string) $cfg['proxy'];
-            $rotated = preg_replace(
-                '/([_-])session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
-                '${1}session-YelpUp' . time() . random_int(100, 999) . '$2',
-                $proxyUrl,
-                1,
-                $count
-            );
-            if ($count > 0 && is_string($rotated)) {
-                $proxyUrl = $rotated;
-            }
+        $cookiesFile = storage_path('app/yelp-cookies.json');
+        $hasCookies = is_file($cookiesFile) && filesize($cookiesFile) > 0;
+        if ($hasCookies) {
+            $args[] = '--cookies-file=' . $cookiesFile;
+        }
+        if (! $hasCookies && ! empty($cfg['proxy'])) {
+            // Force unique exit IP on every upload so a burned proxy IP
+            // from a prior run doesn't poison this one. Supports both
+            // IPRoyal `_session-XYZ` rotation and Bright Data
+            // `-session-XYZ` username injection.
+            $proxyUrl = $this->forceUniqueProxySession((string) $cfg['proxy'], 'YelpUp');
             $args[] = '--proxy=' . $proxyUrl;
         }
         if ($key = config('services.twocaptcha.api_key')) {
@@ -978,5 +974,28 @@ class YelpBusinessService
             }
         }
         return null;
+    }
+
+    /**
+     * Force a fresh upstream session on a proxy URL. Handles IPRoyal
+     * (`_session-X_lifetime-...`) by rewriting and Bright Data
+     * (`brd-customer-X-zone-Y`) by injecting `-session-X` in the username.
+     */
+    protected function forceUniqueProxySession(string $proxyUrl, string $tag = 'GSC'): string
+    {
+        $token = $tag . time() . random_int(100, 999);
+        $rotated = preg_replace(
+            '/([_-])session-[A-Za-z0-9]+(_lifetime-[^:@\s]+)?/',
+            '${1}session-' . $token . '$2',
+            $proxyUrl,
+            1,
+            $count
+        );
+        if ($count > 0 && is_string($rotated)) {
+            return $rotated;
+        }
+        // No session marker — leave URL untouched (see YelpRemoteLoginService
+        // for rationale). Per-request rotation by the gateway is sufficient.
+        return $proxyUrl;
     }
 }

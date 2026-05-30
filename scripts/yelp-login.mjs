@@ -22,6 +22,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import path from 'node:path';
 import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
+import { wrapProxyForChromium } from './lib/yelp-proxy.mjs';
+import { loadCookiesFromFile, applyCookies } from './lib/yelp-cookies.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -40,6 +42,7 @@ function parseArgs(argv) {
     timeoutMs: 600000,
     proxy: null,
     twocaptchaKey: null,
+    cookiesFile: null,
     userAgent:
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   };
@@ -51,6 +54,7 @@ function parseArgs(argv) {
     else if (a.startsWith('--timeout-ms=')) args.timeoutMs = Number(a.slice('--timeout-ms='.length)) || args.timeoutMs;
     else if (a.startsWith('--proxy=')) args.proxy = a.slice('--proxy='.length);
     else if (a.startsWith('--twocaptcha-key=')) args.twocaptchaKey = a.slice('--twocaptcha-key='.length);
+    else if (a.startsWith('--cookies-file=')) args.cookiesFile = a.slice('--cookies-file='.length);
     else if (a.startsWith('--user-agent=')) args.userAgent = a.slice('--user-agent='.length);
   }
   return args;
@@ -137,9 +141,14 @@ async function buildBrowser(args, headless) {
     } catch (_) { /* best effort */ }
   }
   const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled', '--hide-crash-restore-bubble'];
-  const proxyConfig = parseProxyUrl(args.proxy);
+  // Wrap upstream proxy in a local auth-injecting forwarder. Chromium's
+  // --proxy-server flag does NOT support `user:pass@host` for HTTPS-via-CONNECT
+  // (page.authenticate() fails with ERR_PROXY_AUTH_UNSUPPORTED on the first
+  // CONNECT). proxy-chain spins up a local HTTP proxy that injects the upstream
+  // credentials and exposes an auth-free target to Chromium.
+  const proxyConfig = await wrapProxyForChromium(args.proxy);
   if (proxyConfig) {
-    launchArgs.push(`--proxy-server=${proxyConfig.host}`);
+    launchArgs.push(`--proxy-server=${proxyConfig.localUrl}`);
     // Bright Data residential proxies present their own CA on HTTPS — without
     // installing that CA system-wide, Chromium throws ERR_CERT_AUTHORITY_INVALID
     // on every navigation. Accept the proxy's cert chain. Safe here because
@@ -157,6 +166,15 @@ async function buildBrowser(args, headless) {
     },
   });
   installShutdownHandlers(browser);
+  if (args.cookiesFile) {
+    try {
+      const cookies = loadCookiesFromFile(args.cookiesFile);
+      const n = await applyCookies(browser, cookies);
+      console.error(`[yelp-login] injected ${n} cookies from ${args.cookiesFile}`);
+    } catch (e) {
+      console.error(`[yelp-login] cookie injection failed: ${e?.message || e}`);
+    }
+  }
   return { browser, proxyConfig };
 }
 
@@ -164,11 +182,8 @@ async function setupPage(page, args, proxyConfig) {
   await page.setUserAgent(args.userAgent);
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
   if (proxyConfig && (proxyConfig.username || proxyConfig.password)) {
-    // Authenticate with the exact credentials from the proxy URL. Do NOT
-    // mutate the username with session suffixes — most providers (2captcha,
-    // BrightData gateway, etc.) reject anything other than the literal
-    // credentials and the connection silently resets.
-    await page.authenticate({ username: proxyConfig.username, password: proxyConfig.password });
+    // proxy-chain handles upstream auth; record session username for the
+    // 2captcha DataDome bypass which still needs the upstream URL with creds.
     proxyConfig._sessionUsername = proxyConfig.username;
   }
   attachInteractionLogging(page);
@@ -655,6 +670,8 @@ async function modeLogin(args) {
           const burned = url.includes('dd_referrer') || url.includes('datadome');
           if (burned) {
             console.error('[yelp-login] DataDome challenge detected on initial load; leaving form for manual entry');
+          } else if (args.cookiesFile) {
+            console.error('[yelp-login] cookies injected; skipping autofill');
           } else {
             try {
               await autofillLogin(page, args.email, args.password);
@@ -803,8 +820,8 @@ async function main() {
       process.exit(0);
     }
     if (args.mode === 'login') {
-      if (!args.email || !args.password) {
-        emit({ ok: false, error: 'missing --email/--password' });
+      if ((!args.email || !args.password) && !args.cookiesFile) {
+        emit({ ok: false, error: 'missing --email/--password (or --cookies-file)' });
         process.exit(2);
       }
       const result = await modeLogin(args);
