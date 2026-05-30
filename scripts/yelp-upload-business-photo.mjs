@@ -557,28 +557,6 @@ async function detectPhotosUrl(page, timeoutMs) {
   return null;
 }
 
-async function countPhotos(page) {
-  // Yelp's gallery is virtualized: only the visible window of tiles is in
-  // the DOM at any time, so naive img counts swing wildly between renders.
-  // Prefer the gallery's own count text (e.g. "37 photos") when present;
-  // fall back to slideshow-photo-manager tiles; finally return null if we
-  // genuinely can't tell.
-  return await page.evaluate(() => {
-    // 1. Header text like "37 photos" / "1 photo".
-    const text = document.body ? document.body.innerText : '';
-    const m = text.match(/\b(\d{1,5})\s+photos?\b/i);
-    if (m) return Number(m[1]);
-
-    // 2. Tiles inside the slideshow manager container.
-    const mgr = document.querySelector('[data-testid="slideshow-photo-manager"]');
-    if (mgr) {
-      const tiles = mgr.querySelectorAll('img, [data-testid*="photo" i][data-testid*="tile" i]');
-      if (tiles.length) return tiles.length;
-    }
-    return null;
-  });
-}
-
 /**
  * Install a response listener that opportunistically captures the new
  * photo's real Yelp ID from the upload XHR/fetch responses. Yelp's
@@ -710,8 +688,14 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
     photoIdState.photoIdSource = null;
   }
 
-  const beforeCount = await countPhotos(page);
-  console.error(`[yelp] gallery photo count before upload: ${beforeCount === null ? 'unknown' : beforeCount}`);
+  // Confirm we landed on /biz_photos/<id>. If DataDome punted us to a
+  // challenge or login page, fail fast rather than chase phantom
+  // selectors for minutes.
+  const urlNow = page.url();
+  if (!/\/biz_photos\//.test(urlNow)) {
+    await dumpPage(page, 'navigated-away-from-photos').catch(() => {});
+    throw new Error(`not on photos page after navigation: now at ${urlNow}`);
+  }
 
   // The "Add Photos" button on the biz_photos page often hides the real file
   // input behind a styled button - click any visible upload trigger first so
@@ -922,23 +906,20 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
     throw new Error('upload dialog open but no primary save button found inside it - see /tmp/yelp-no-save-button-*.html');
   }
 
-  // Wait for the upload to commit. Multiple signals — any one is enough:
+  // Wait for the upload to commit. Two signals — either is enough:
   //   1. Real photo_id captured via XHR (most reliable)
   //   2. Upload dialog closed
-  //   3. Gallery photo count increased vs. beforeCount (Yelp sometimes
-  //      leaves a "success" dialog open after the photo is actually live)
-  //   4. Known rejection text appeared in the dialog → fail fast (no retry)
+  //   3. Known rejection text appeared in the dialog → fail fast (no retry)
   //
   // Extended to 240s because real uploads on a sparse account have been
   // observed taking 130-180s end-to-end (Yelp moderation lag).
   // Do NOT navigate away while the dialog is still open or we cancel
   // the in-flight upload.
-  console.error('[yelp] waiting for upload to commit (dialog close, photo_id, or gallery count increase)...');
+  console.error('[yelp] waiting for upload to commit (dialog close or photo_id)...');
   const REJECTION_RE = /(too large|file size|unsupported|invalid (?:file|image|format)|duplicate|already (?:exists|uploaded)|violates|inappropriate|moderation|try again)/i;
   const completionDeadline = Date.now() + 240000;
   let completionReason = null;
   let rejectionText = null;
-  let lastGalleryCheck = 0;
   while (Date.now() < completionDeadline) {
     if (photoIdState && photoIdState.photoId) {
       completionReason = `photo_id=${photoIdState.photoId}`;
@@ -966,15 +947,6 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
       rejectionText = probe.dialogText;
       break;
     }
-    // Gallery count signal — poll at most every 9s to avoid hammering Yelp.
-    if (typeof beforeCount === 'number' && Date.now() - lastGalleryCheck > 9000) {
-      lastGalleryCheck = Date.now();
-      const nowCount = await countPhotos(page).catch(() => null);
-      if (typeof nowCount === 'number' && nowCount > beforeCount) {
-        completionReason = `gallery-count-increased(${beforeCount}→${nowCount})`;
-        break;
-      }
-    }
     await sleep(1500);
   }
   await snap(page, 'after-save-click');
@@ -984,68 +956,10 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
   }
   if (!completionReason) {
     await dumpPage(page, 'modal-stuck');
-    throw new Error('upload did not complete within 240s - dialog stayed open, no photo_id, gallery count unchanged (see /tmp/yelp-modal-stuck-*.html)');
+    throw new Error('upload did not complete within 240s - dialog stayed open, no photo_id (see /tmp/yelp-modal-stuck-*.html)');
   }
   console.error(`[yelp] upload committed: ${completionReason}`);
-  await sleep(3000);
-
-  // Re-navigate to gallery. Yelp's gallery sometimes shows a transient
-  // "Oops! Something went wrong" page - retry a couple times.
-  //
-  // IMPORTANT: this entire block is INFORMATIONAL ONLY (see comment below).
-  // Upload success was already confirmed by dialog-close + photo_id capture.
-  // We MUST NOT let post-upload sightseeing kill the worker:
-  //   - waitUntil 'networkidle2' hangs the full timeout on Yelp (analytics
-  //     beacons + websockets never go idle), so we use 'domcontentloaded'
-  //   - per-attempt timeout is hard-capped to 15s (was timeoutMs=240s, which
-  //     × 3 retries = up to 12 min of pointless waiting that gets the
-  //     Horizon worker SIGKILL'd before process.exit() runs, leaking the
-  //     automation lock and starving the queue)
-  let afterCount = null;
-  let galleryOk = false;
-  const GALLERY_VERIFY_TIMEOUT_MS = 15000;
-  try {
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      await page.goto(photosUrl, { waitUntil: 'domcontentloaded', timeout: GALLERY_VERIFY_TIMEOUT_MS }).catch(() => {});
-      await sleep(2000);
-      const hasError = await page.evaluate(() =>
-        /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
-      ).catch(() => false);
-      if (hasError) {
-        console.error(`[yelp] gallery error page on attempt ${attempt}, retrying...`);
-        await sleep(3000);
-        continue;
-      }
-      afterCount = await countPhotos(page).catch((e) => {
-        console.error(`[yelp] countPhotos failed (informational): ${e.message}`);
-        return null;
-      });
-      galleryOk = true;
-      break;
-    }
-  } catch (e) {
-    // Defensive: this entire block is informational. A detached Frame,
-    // navigation error, or any other thrown exception here MUST NOT fail
-    // the script — the upload already committed and photo_id was captured
-    // above. Swallow and continue to the success-return path below.
-    console.error(`[yelp] post-commit gallery verification threw (ignored): ${e.message}`);
-  }
-  console.error(`[yelp] gallery photo count after upload: ${afterCount === null ? 'unknown' : afterCount} (galleryOk=${galleryOk})`);
-  await snap(page, `gallery-final-${afterCount === null ? 'unknown' : afterCount}`);
-
-  // The count check is informational only — Yelp's gallery is virtualized
-  // and frequently lags behind the upload. The real success signals are
-  // (a) the upload dialog closing and (b) the captured photo_id (if any).
-  if (
-    galleryOk
-    && typeof afterCount === 'number'
-    && typeof beforeCount === 'number'
-    && afterCount > beforeCount
-  ) {
-    console.error(`[yelp] verified: gallery grew by ${afterCount - beforeCount}`);
-  } else {
-    console.error('[yelp] gallery count did not confirm upload (virtualized/delayed); trusting commit signal');
-  }
+  await snap(page, 'after-commit');
 
   // Prefer the real Yelp photo_id when we captured one. Otherwise return
   // null so the caller can mark the image as "uploaded but unverified"
