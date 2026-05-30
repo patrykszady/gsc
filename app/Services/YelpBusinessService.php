@@ -33,6 +33,17 @@ class YelpBusinessService
     private const CURRENT_OP_KEY = 'yelp:browser-automation:current';
 
     /**
+     * Cache key flagging an in-flight upload attempt. Set BEFORE the Chromium
+     * subprocess is spawned and cleared only on the success path. If the
+     * parent PHP process dies between Yelp accepting the photo and our DB
+     * write, this marker survives and tells the next retry to NOT re-upload.
+     */
+    public static function inFlightCacheKey(int $imageId): string
+    {
+        return 'yelp_biz_upload_in_flight:' . $imageId;
+    }
+
+    /**
      * Environment for Node/Chromium subprocesses.
      * Ensures fontconfig/cache paths are writable under forge/deploy users.
      *
@@ -513,6 +524,21 @@ class YelpBusinessService
         return $this->withAutomationLock(
             operation: 'business_photos_upload',
             callback: function () use ($args, $cfg, $image, $onProgress, $caption): ?array {
+                // Crash-safe claim: stamp an in-flight marker BEFORE spawning
+                // Chromium. If the parent PHP process is SIGKILL'd (OOM,
+                // deploy, manual kill) between Yelp accepting the photo and
+                // us reading the success JSON, the next retry sees this
+                // marker and refuses to re-upload — which would create a
+                // duplicate photo on Yelp. We use a Cache key (not a
+                // platform_uploads row) so the upload progress bar's
+                // "done = has platform_uploads row" counter is unaffected.
+                $claimKey = self::inFlightCacheKey($image->id);
+                Cache::put($claimKey, json_encode([
+                    'image_id' => $image->id,
+                    'caption' => $caption,
+                    'started_at' => now()->toIso8601String(),
+                ]), now()->addHour());
+
                 $timeoutSec = ((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 + 30;
                 $process = new Process($this->wrapWithFlock($args), base_path());
                 $process->setTimeout($timeoutSec);
@@ -694,6 +720,8 @@ class YelpBusinessService
                     'remote_id' => $realPhotoId,
                     'caption' => $caption,
                 ]);
+                // Successful commit — drop the in-flight crash-safe marker.
+                Cache::forget(self::inFlightCacheKey($image->id));
 
                 return [
                     'photo_id' => $image->fresh()->yelp_biz_photo_id,
@@ -856,17 +884,46 @@ class YelpBusinessService
         }
 
         $limit = 140;
+        // Reserve space for the idempotency marker (`· #g{id}`) so the final
+        // caption + marker stays within Yelp's 140-char cap.
+        $marker = $this->idempotencyMarker($image);
+        $usable = max(40, $limit - mb_strlen($marker));
 
         // Try the Gemini SEO rewrite first.
-        $seo = app(AiContentService::class)->shortenCaptionForSeo($image, $limit);
-        if (is_string($seo) && $seo !== '' && mb_strlen($seo) <= $limit) {
-            return $seo;
+        $seo = app(AiContentService::class)->shortenCaptionForSeo($image, $usable);
+        if (is_string($seo) && $seo !== '' && mb_strlen($seo) <= $usable) {
+            return $this->withIdempotencyMarker($seo, $image, $limit);
         }
 
         // Gemini failed (or was rate-limited / unavailable). Build a
         // deterministic, guaranteed-valid caption from project data so the
         // upload never blocks on caption generation.
-        return $this->buildFallbackCaption($image, $source, $limit);
+        $base = $this->buildFallbackCaption($image, $source, $usable);
+        return $this->withIdempotencyMarker($base, $image, $limit);
+    }
+
+    /**
+     * Stable per-image marker appended to every caption. Lets a retry after
+     * the parent PHP process is SIGKILL'd recognize the just-uploaded photo
+     * on Yelp without creating a duplicate. Keep it short and visually
+     * inert (looks like a project tag).
+     */
+    protected function idempotencyMarker(ProjectImage $image): string
+    {
+        return ' ·#g' . $image->id;
+    }
+
+    protected function withIdempotencyMarker(string $caption, ProjectImage $image, int $limit): string
+    {
+        $marker = $this->idempotencyMarker($image);
+        if (str_contains($caption, trim($marker))) {
+            return $caption;
+        }
+        $caption = rtrim($caption);
+        if (mb_strlen($caption . $marker) > $limit) {
+            $caption = rtrim(mb_substr($caption, 0, $limit - mb_strlen($marker)), " \t.!?;:,-");
+        }
+        return $caption . $marker;
     }
 
     /**

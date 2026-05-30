@@ -94,6 +94,28 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 return;
             }
 
+            // Crash-safe retry guard: if a previous attempt set the in-flight
+            // marker and never cleared it, the parent PHP process was killed
+            // mid-upload (SIGKILL, OOM, deploy). The photo MAY already be on
+            // Yelp — re-uploading would create a duplicate. Fail permanently
+            // so an admin can verify on biz.yelp.com (caption ends with
+            // `·#g{imageId}`) and decide whether to mark uploaded or clear
+            // the marker for a retry.
+            $inFlightKey = YelpBusinessService::inFlightCacheKey($this->imageId);
+            if (Cache::has($inFlightKey)) {
+                $marker = Cache::get($inFlightKey);
+                Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+                Log::channel('yelp')->warning('Yelp biz: in-flight marker present from prior killed attempt, refusing to re-upload (manual verification required)', [
+                    'image_id' => $this->imageId,
+                    'in_flight_marker' => is_string($marker) ? $marker : null,
+                    'hint' => "Search biz.yelp.com photos for caption ending with '·#g{$this->imageId}'. If found, run: php artisan tinker -- \\App\\Models\\ImagePlatformUpload::record({$this->imageId}, 'yelp_biz', ['remote_id' => null, 'caption' => null]); \\Cache::forget('".$inFlightKey."');",
+                ]);
+                $this->fail(new \RuntimeException(
+                    'Yelp biz: previous upload attempt was killed mid-flight; manual verification required to avoid duplicate'
+                ));
+                return;
+            }
+
             try {
                 $result = $service->uploadProjectImageToBusinessPhotos($image);
             } catch (YelpUploadThrottledException $e) {
@@ -147,5 +169,31 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
     public function failed(?\Throwable $e = null): void
     {
         Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
+
+        // SIGKILL / SIGTERM path: Symfony Process throws with this message
+        // when the subprocess is killed by a signal. The photo MAY have been
+        // accepted by Yelp before the parent process died — leave the
+        // in-flight marker in place so future retries refuse to re-upload
+        // until an admin verifies.
+        $msg = $e?->getMessage() ?? '';
+        if (str_contains($msg, 'signal "9"') || str_contains($msg, 'signal "15"')) {
+            Log::channel('yelp')->warning('Yelp biz: job killed by signal — upload may have committed on Yelp; manual verification required', [
+                'image_id' => $this->imageId,
+                'error' => $msg,
+                'in_flight_key' => YelpBusinessService::inFlightCacheKey($this->imageId),
+                'caption_marker' => '·#g' . $this->imageId,
+            ]);
+            return;
+        }
+
+        // Permanent verification-required failure (in-flight marker hit on
+        // retry). Clear the marker only when the admin manually confirms.
+        if (str_contains($msg, 'killed mid-flight')) {
+            return;
+        }
+
+        // All other failure paths: clear the in-flight marker so a future
+        // dispatch can proceed normally.
+        Cache::forget(YelpBusinessService::inFlightCacheKey($this->imageId));
     }
 }
