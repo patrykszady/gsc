@@ -117,20 +117,19 @@ return [
     | Meta (Instagram + Facebook) Social Publishing
     |--------------------------------------------------------------------------
     |
-    | Graph API credentials for automated posting to Instagram Business
-    | and Facebook Page. Both use the same Page Access Token.
-    |
-    | Setup: php artisan social:meta-auth
+    | Graph API app credentials. Page Access Token, Page ID, and Instagram
+    | Business ID are obtained via OAuth and stored in the oauth_tokens
+    | table (provider='meta'). Connect at /admin/platforms.
     |
     */
     'meta' => [
-        'enabled' => env('META_SOCIAL_ENABLED', false),
+        'enabled' => true,
         'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),
         'page_access_token' => env('META_PAGE_ACCESS_TOKEN'),
         'facebook_page_id' => env('META_FACEBOOK_PAGE_ID'),
+        'facebook_place_id' => env('META_FACEBOOK_PLACE_ID'),
         'instagram_account_id' => env('META_INSTAGRAM_ACCOUNT_ID'),
-        'production_url' => env('META_PRODUCTION_URL', 'https://gs.construction'),
     ],
 
     'mailtrap' => [
@@ -304,6 +303,37 @@ return [
         'zone_id'   => env('CLOUDFLARE_ZONE_ID'),
         // API Token: must have "Cache Purge" permission scoped to this zone
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Instagram (Puppeteer / web UI fallback)
+    |--------------------------------------------------------------------------
+    |
+    | Used by the hybrid publish flow that adds location tags via the IG web
+    | UI after Graph API publish. Also powers the /admin/platforms remote
+    | login viewer so an operator can re-authenticate the persistent
+    | Chromium profile when IG invalidates the session.
+    |
+    */
+    'instagram' => [
+        'user_data_dir' => env('INSTAGRAM_USER_DATA_DIR', storage_path('app/instagram-puppeteer')),
+        'node_binary' => env('INSTAGRAM_NODE_BINARY', 'node'),
+        'remote_login' => [
+            'enabled' => env('INSTAGRAM_REMOTE_LOGIN_ENABLED', true),
+            'display' => env('INSTAGRAM_REMOTE_LOGIN_DISPLAY', ':98'),
+            'screen' => env('INSTAGRAM_REMOTE_LOGIN_SCREEN', '1366x900x24'),
+            // Distinct ports from Yelp (5999/6080) so both can run side-by-side.
+            'vnc_port' => (int) env('INSTAGRAM_REMOTE_LOGIN_VNC_PORT', 5998),
+            'ws_host' => env('INSTAGRAM_REMOTE_LOGIN_WS_HOST', '0.0.0.0'),
+            'ws_port' => (int) env('INSTAGRAM_REMOTE_LOGIN_WS_PORT', 6081),
+            'public_url' => env('INSTAGRAM_REMOTE_LOGIN_PUBLIC_URL'),
+            'novnc_web' => env('INSTAGRAM_REMOTE_LOGIN_NOVNC_WEB', '/usr/share/novnc'),
+            'xvfb_binary' => env('INSTAGRAM_REMOTE_LOGIN_XVFB', 'Xvfb'),
+            'x11vnc_binary' => env('INSTAGRAM_REMOTE_LOGIN_X11VNC', 'x11vnc'),
+            'websockify_binary' => env('INSTAGRAM_REMOTE_LOGIN_WEBSOCKIFY', 'websockify'),
+            'max_ttl_seconds' => (int) env('INSTAGRAM_REMOTE_LOGIN_MAX_TTL', 1500),
+        ],
     ],
 
 ];

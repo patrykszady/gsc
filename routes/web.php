@@ -304,4 +304,28 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
 
         return redirect()->route('admin.platforms.index');
     })->name('platforms.gbp-callback');
+
+    Route::get('/platforms/meta/callback', function (\Illuminate\Http\Request $request) {
+        $code = $request->query('code');
+        if (! $code) {
+            $err = $request->query('error_description') ?? $request->query('error') ?? 'No authorisation code returned.';
+            session()->flash('platforms-error', 'Meta connection cancelled: ' . $err);
+            return redirect()->route('admin.platforms.index');
+        }
+
+        $result = app(\App\Services\MetaSocialService::class)
+            ->exchangeCodeAndStore($code, route('admin.platforms.meta-callback'));
+
+        if ($result['success']) {
+            $msg = 'Meta connected: ' . ($result['page_name'] ?? 'Facebook Page');
+            if (! empty($result['ig_username'])) {
+                $msg .= ' · @' . $result['ig_username'];
+            }
+            session()->flash('platforms-success', $msg);
+        } else {
+            session()->flash('platforms-error', 'Meta connection failed: ' . ($result['error'] ?? 'unknown'));
+        }
+
+        return redirect()->route('admin.platforms.index');
+    })->name('platforms.meta-callback');
 });

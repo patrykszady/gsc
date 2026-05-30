@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\AreaServed;
 use App\Models\ProjectImage;
-use App\Models\SocialMediaPost;
+use App\Models\ImageSocialPost;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -126,13 +126,13 @@ class SeoHealth extends Command
     /** GBP activity: recent posts + recent media uploads. */
     protected function scoreGbpActivity(): array
     {
-        $postsLast30 = SocialMediaPost::query()
+        $postsLast30 = ImageSocialPost::query()
             ->where('platform', 'google_business')
             ->where('status', 'published')
             ->where('published_at', '>=', now()->subDays(30))
             ->count();
 
-        $postsLast7 = SocialMediaPost::query()
+        $postsLast7 = ImageSocialPost::query()
             ->where('platform', 'google_business')
             ->where('status', 'published')
             ->where('published_at', '>=', now()->subDays(7))
@@ -144,10 +144,10 @@ class SeoHealth extends Command
         // Photo uploads in last 90 days.
         $photoScore = 100;
         $photosLast90 = null;
-        if (Schema::hasTable('project_images') && Schema::hasColumn('project_images', 'google_places_media_name')) {
-            $photosLast90 = ProjectImage::query()
-                ->whereNotNull('google_places_media_name')
-                ->where('google_places_uploaded_at', '>=', now()->subDays(90))
+        if (Schema::hasTable('image_platform_uploads')) {
+            $photosLast90 = \App\Models\ImagePlatformUpload::query()
+                ->where('platform', 'google_places')
+                ->where('uploaded_at', '>=', now()->subDays(90))
                 ->count();
             $photoScore = $photosLast90 > 0 ? 100 : 60;
         }

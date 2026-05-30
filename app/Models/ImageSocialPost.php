@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class SocialMediaPost extends Model
+class ImageSocialPost extends Model
 {
     protected $fillable = [
         'project_image_id',
@@ -87,16 +87,26 @@ class SocialMediaPost extends Model
      */
     public static function unpostedImagesQuery(string $platform)
     {
-        return ProjectImage::query()
+        $query = ProjectImage::query()
             ->whereHas('project', fn ($q) => $q->where('is_published', true))
             ->where(function ($q) {
                 // Must have AI content (alt_text) so we know the image is processed
                 $q->whereNotNull('alt_text')->where('alt_text', '!=', '');
             })
-            ->whereDoesntHave('socialMediaPosts', function ($q) use ($platform) {
+            ->whereDoesntHave('imageSocialPosts', function ($q) use ($platform) {
                 $q->where('platform', $platform)
                     ->whereIn('status', ['published', 'pending']);
             });
+
+        // Keep Facebook media distinct from Instagram media.
+        if ($platform === 'facebook') {
+            $query->whereDoesntHave('imageSocialPosts', function ($q) {
+                $q->where('platform', 'instagram')
+                    ->whereIn('status', ['published', 'pending']);
+            });
+        }
+
+        return $query;
     }
 
     /**
@@ -109,6 +119,10 @@ class SocialMediaPost extends Model
 
     /**
      * Full caption including hashtags and link.
+     *
+     * Instagram does not make caption URLs clickable, so we omit the URL
+     * line for IG to keep captions clean. Facebook (and others) keep it
+     * because those URLs are clickable and crawlable.
      */
     public function getFullCaptionAttribute(): string
     {
@@ -118,7 +132,7 @@ class SocialMediaPost extends Model
             $parts[] = $this->caption;
         }
 
-        if ($this->link_url) {
+        if ($this->link_url && $this->platform !== 'instagram') {
             $parts[] = "\n🔗 {$this->link_url}";
         }
 

@@ -59,7 +59,8 @@ class ReconcileYelpBusinessPhotos extends Command
         // Fetch existing rows in bulk.
         $rows = ProjectImage::query()
             ->whereIn('id', array_keys($pairs))
-            ->get(['id', 'yelp_biz_photo_id', 'yelp_biz_uploaded_at'])
+            ->with(['platformUploads' => fn ($q) => $q->where('platform', 'yelp_biz')])
+            ->get(['id'])
             ->keyBy('id');
 
         $toBackfill = [];
@@ -72,7 +73,7 @@ class ReconcileYelpBusinessPhotos extends Command
                 $missingRow++;
                 continue;
             }
-            if ($row->yelp_biz_uploaded_at) {
+            if ($row->platformUploads->isNotEmpty()) {
                 $alreadyDone++;
                 continue;
             }
@@ -111,12 +112,10 @@ class ReconcileYelpBusinessPhotos extends Command
 
         DB::transaction(function () use ($toBackfill, $now, $clearMarkers, &$written): void {
             foreach ($toBackfill as $imageId => $photoId) {
-                ProjectImage::where('id', $imageId)
-                    ->whereNull('yelp_biz_uploaded_at')
-                    ->update([
-                        'yelp_biz_photo_id' => $photoId,
-                        'yelp_biz_uploaded_at' => $now,
-                    ]);
+                \App\Models\ImagePlatformUpload::record($imageId, \App\Models\ImagePlatformUpload::PLATFORM_YELP_BIZ, [
+                    'remote_id' => $photoId,
+                    'uploaded_at' => $now,
+                ]);
                 $written++;
 
                 if ($clearMarkers) {

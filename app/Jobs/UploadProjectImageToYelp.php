@@ -87,9 +87,8 @@ class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
             }
 
             if ($photoId) {
-                $image->update([
-                    'yelp_photo_id' => $photoId,
-                    'yelp_uploaded_at' => now(),
+                \App\Models\ImagePlatformUpload::record($image->id, \App\Models\ImagePlatformUpload::PLATFORM_YELP_PORTFOLIO, [
+                    'remote_id' => $photoId,
                 ]);
 
                 Log::channel('yelp')->info('Yelp: project image synced', [

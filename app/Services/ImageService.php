@@ -20,6 +20,8 @@ class ImageService
         'hero' => [1200, 675],
         // Used for hero/large displays (16:9)
         'large' => [2400, 1350],
+        // Instagram feed square (1:1) — center-cropped to avoid letterboxing
+        'instagram' => [1440, 1440],
     ];
 
     protected int $maxWidth = 3200;
@@ -66,7 +68,6 @@ class ImageService
             'filename' => $filename,
             'original_filename' => $originalFilename,
             'path' => $path,
-            'disk' => 'public',
             'mime_type' => $file->getMimeType(),
             'size' => strlen($encoded),
             'width' => $width,
@@ -273,5 +274,51 @@ class ImageService
         $image->update(['thumbnails' => $thumbnails]);
 
         return ['generated' => $generated, 'skipped' => $skipped];
+    }
+
+    /**
+     * Build a pair of 1:1 crops (left half + right half) of the original image
+     * for use as an Instagram carousel. Each crop is sized 1440×1440.
+     *
+     * Returns an array of relative storage paths: ['left' => ..., 'right' => ...].
+     */
+    public function generateInstagramCarouselCrops(ProjectImage $image): array
+    {
+        $originalPath = $image->path;
+        $basePath = dirname($originalPath);
+        $filename = basename($originalPath);
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+        $originalFile = Storage::disk('public')->get($originalPath);
+        $size = 1440;
+
+        $paths = [];
+        foreach (['left', 'right'] as $side) {
+            $thumbFilename = "{$nameWithoutExt}_instagram_{$side}.{$extension}";
+            $thumbPath = "{$basePath}/thumbs/{$thumbFilename}";
+
+            $img = Image::read($originalFile);
+            $w = $img->width();
+            $h = $img->height();
+
+            // Each half is half-width × full-height of the source, then cover-cropped to a square.
+            $halfW = (int) floor($w / 2);
+            $cropX = $side === 'left' ? 0 : ($w - $halfW);
+            $img->crop($halfW, $h, $cropX, 0);
+            $img->cover($size, $size);
+
+            $encoded = $this->encodeImage($img, $extension);
+            Storage::disk('public')->put($thumbPath, $encoded);
+            $paths[$side] = $thumbPath;
+        }
+
+        // Persist on the model so we can reuse without regenerating
+        $thumbnails = $image->thumbnails ?? [];
+        $thumbnails['instagram_left'] = $paths['left'];
+        $thumbnails['instagram_right'] = $paths['right'];
+        $image->update(['thumbnails' => $thumbnails]);
+
+        return $paths;
     }
 }

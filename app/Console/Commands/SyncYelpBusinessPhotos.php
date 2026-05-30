@@ -38,7 +38,7 @@ class SyncYelpBusinessPhotos extends Command
             });
 
         if (! $this->option('force')) {
-            $query->whereNull('yelp_biz_uploaded_at');
+            $query->notUploadedTo('yelp_biz');
         }
 
         // Visibility: show how many we're skipping vs queueing so the
@@ -60,7 +60,7 @@ class SyncYelpBusinessPhotos extends Command
                         $q->where('id', $projectId);
                     }
                 })
-                ->whereNotNull('yelp_biz_uploaded_at')
+                ->uploadedTo('yelp_biz')
                 ->count();
             $pendingOrFailed = max(0, $totalPublished - $alreadyUploaded);
             $this->line(sprintf(
@@ -188,9 +188,10 @@ class SyncYelpBusinessPhotos extends Command
 
             $rows = ProjectImage::query()
                 ->whereIn('id', $imageIds)
-                ->get(['id', 'yelp_biz_uploaded_at']);
+                ->with(['platformUploads' => fn ($q) => $q->where('platform', 'yelp_biz')])
+                ->get(['id']);
 
-            $done = $rows->whereNotNull('yelp_biz_uploaded_at')->count();
+            $done = $rows->filter(fn ($r) => $r->platformUploads->isNotEmpty())->count();
 
             // Detect failed (no longer in queue, still not uploaded, no
             // "queued" cache marker held). These will never become done
@@ -198,7 +199,7 @@ class SyncYelpBusinessPhotos extends Command
             // exit condition or the watch loop spins forever.
             $failed = 0;
             foreach ($rows as $row) {
-                if ($row->yelp_biz_uploaded_at) continue;
+                if ($row->platformUploads->isNotEmpty()) continue;
                 if (! Cache::has('yelp_biz_upload_queued:' . $row->id)) {
                     $failed++;
                 }
@@ -236,7 +237,7 @@ class SyncYelpBusinessPhotos extends Command
                 // and how long we've been waiting on the worker to pick up.
                 $nextId = null;
                 foreach ($rows as $row) {
-                    if (! $row->yelp_biz_uploaded_at && Cache::has('yelp_biz_upload_queued:' . $row->id)) {
+                    if ($row->platformUploads->isEmpty() && Cache::has('yelp_biz_upload_queued:' . $row->id)) {
                         $nextId = $row->id;
                         break;
                     }

@@ -21,6 +21,8 @@ class AreaServed extends Model
         'local_intro',
         'landmarks',
         'permit_notes',
+        'ig_location_id',
+        'fb_place_id',
     ];
 
     /**

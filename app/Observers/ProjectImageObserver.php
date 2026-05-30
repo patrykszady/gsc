@@ -84,25 +84,12 @@ class ProjectImageObserver
      */
     public function updated(ProjectImage $image): void
     {
-        // Skip sitemap regen + IndexNow when the only changed columns are
-        // internal sync-tracking metadata (GBP/Yelp upload IDs + timestamps).
-        // Those updates don't change anything user-visible, so pinging
-        // IndexNow on every Yelp/GBP photo sync is pure noise.
-        $syncOnlyFields = [
-            'google_places_media_name',
-            'google_places_media_url',
-            'google_places_uploaded_at',
-            'yelp_photo_id',
-            'yelp_uploaded_at',
-            'yelp_biz_photo_id',
-            'yelp_biz_uploaded_at',
-            'updated_at',
-        ];
+        // (Per-platform sync timestamps now live in image_platform_uploads,
+        // so updates to those don't trigger ProjectImage::updated at all.)
         $changed = array_keys($image->getChanges());
-        $isSyncOnlyUpdate = ! empty($changed) && empty(array_diff($changed, $syncOnlyFields));
+        $isMetaOnlyUpdate = ! empty($changed) && empty(array_diff($changed, ['updated_at']));
 
-        if (! $isSyncOnlyUpdate) {
-            // Regenerate sitemap and notify IndexNow on user-visible updates
+        if (! $isMetaOnlyUpdate) {
             $this->regenerateSitemap();
             $this->submitToIndexNow($image);
         }

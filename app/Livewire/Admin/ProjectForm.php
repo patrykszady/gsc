@@ -720,7 +720,7 @@ class ProjectForm extends Component
                     $filename = $sortOrder . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
                     $path = $basePath . '/' . $filename;
 
-                    $sourceContent = \Illuminate\Support\Facades\Storage::disk($galleryImage->disk)->get($galleryImage->path);
+                    $sourceContent = \Illuminate\Support\Facades\Storage::disk('public')->get($galleryImage->path);
                     \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
 
                     ProjectTimelapseFrame::create([
@@ -792,7 +792,7 @@ class ProjectForm extends Component
                     $extension = pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg';
                     $filename = 'before_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
                     $path = $basePath . '/' . $filename;
-                    $sourceContent = \Illuminate\Support\Facades\Storage::disk($galleryImage->disk)->get($galleryImage->path);
+                    $sourceContent = \Illuminate\Support\Facades\Storage::disk('public')->get($galleryImage->path);
                     \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
                     if ($old && $old !== $path) {
                         \Illuminate\Support\Facades\Storage::disk('public')->delete($old);
@@ -828,7 +828,7 @@ class ProjectForm extends Component
                     $extension = pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg';
                     $filename = 'after_' . $model->id . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
                     $path = $basePath . '/' . $filename;
-                    $sourceContent = \Illuminate\Support\Facades\Storage::disk($galleryImage->disk)->get($galleryImage->path);
+                    $sourceContent = \Illuminate\Support\Facades\Storage::disk('public')->get($galleryImage->path);
                     \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
                     if ($old && $old !== $path) {
                         \Illuminate\Support\Facades\Storage::disk('public')->delete($old);

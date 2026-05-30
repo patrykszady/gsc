@@ -366,7 +366,6 @@ class YelpBusinessService
         if (! $absolutePath) {
             Log::channel('yelp')->warning('Yelp: source image not found on disk', [
                 'image_id' => $image->id,
-                'disk' => $image->disk,
                 'path' => $image->path,
             ]);
             return null;
@@ -465,7 +464,6 @@ class YelpBusinessService
         if (! $absolutePath) {
             Log::channel('yelp')->warning('Yelp biz: source image not found on disk', [
                 'image_id' => $image->id,
-                'disk' => $image->disk,
                 'path' => $image->path,
             ]);
             return null;
@@ -696,14 +694,13 @@ class YelpBusinessService
                     ]);
                 }
 
-                $image->update([
-                    'yelp_biz_photo_id' => $realPhotoId,
-                    'yelp_biz_uploaded_at' => now(),
-                    'yelp_biz_caption' => $caption,
+                \App\Models\ImagePlatformUpload::record($image->id, \App\Models\ImagePlatformUpload::PLATFORM_YELP_BIZ, [
+                    'remote_id' => $realPhotoId,
+                    'caption' => $caption,
                 ]);
 
                 return [
-                    'photo_id' => $image->yelp_biz_photo_id,
+                    'photo_id' => $image->fresh()->yelp_biz_photo_id,
                     'photos_url' => $payload['photos_url'] ?? null,
                     'caption' => $caption,
                     'verified' => $verified,
@@ -831,7 +828,7 @@ class YelpBusinessService
     protected function resolveAbsolutePath(ProjectImage $image): ?string
     {
         try {
-            $disk = Storage::disk($image->disk ?: 'public');
+            $disk = Storage::disk('public');
             if (! $disk->exists($image->path)) {
                 return null;
             }

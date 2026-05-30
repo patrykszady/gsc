@@ -54,10 +54,9 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
         $result = $service->uploadProjectImage($image);
 
         if ($result) {
-            $image->update([
-                'google_places_media_name' => $result['name'],
-                'google_places_media_url' => $result['url'],
-                'google_places_uploaded_at' => now(),
+            \App\Models\ImagePlatformUpload::record($image->id, \App\Models\ImagePlatformUpload::PLATFORM_GOOGLE_PLACES, [
+                'remote_id' => $result['name'],
+                'remote_url' => $result['url'],
             ]);
 
             Log::info('GBP: Project image synced', [

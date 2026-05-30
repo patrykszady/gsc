@@ -13,7 +13,7 @@ class BackfillGooglePlacesMediaUrls extends Command
         {--sleep-ms=250 : Delay between API calls in milliseconds}
         {--dry-run : Show what would be updated without writing}';
 
-    protected $description = 'Populate project_images.google_places_media_url for rows that already have a google_places_media_name.';
+    protected $description = 'Populate image_platform_uploads.remote_url for google_places rows missing it.';
 
     public function handle(GoogleBusinessProfileService $service): int
     {
@@ -26,9 +26,10 @@ class BackfillGooglePlacesMediaUrls extends Command
         $sleepUs = max(0, (int) $this->option('sleep-ms')) * 1000;
         $dryRun = (bool) $this->option('dry-run');
 
-        $query = ProjectImage::query()
-            ->whereNotNull('google_places_media_name')
-            ->whereNull('google_places_media_url')
+        $query = \App\Models\ImagePlatformUpload::query()
+            ->where('platform', \App\Models\ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)
+            ->whereNotNull('remote_id')
+            ->whereNull('remote_url')
             ->orderBy('id');
 
         if ($limit > 0) {
@@ -47,13 +48,13 @@ class BackfillGooglePlacesMediaUrls extends Command
         $updated = 0;
         $missing = 0;
 
-        $query->chunkById(50, function ($images) use ($service, $bar, &$updated, &$missing, $sleepUs, $dryRun) {
-            foreach ($images as $image) {
-                $url = $service->getMediaUrl($image->google_places_media_name);
+        $query->chunkById(50, function ($rows) use ($service, $bar, &$updated, &$missing, $sleepUs, $dryRun) {
+            foreach ($rows as $row) {
+                $url = $service->getMediaUrl($row->remote_id);
 
                 if ($url) {
                     if (! $dryRun) {
-                        $image->updateQuietly(['google_places_media_url' => $url]);
+                        $row->update(['remote_url' => $url]);
                     }
                     $updated++;
                 } else {

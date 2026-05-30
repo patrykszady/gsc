@@ -740,7 +740,7 @@ class GoogleBusinessProfileService
     public function getStats(): array
     {
         $total = ProjectImage::count();
-        $uploaded = ProjectImage::whereNotNull('google_places_uploaded_at')->count();
+        $uploaded = ProjectImage::uploadedTo('google_places')->count();
         $pending = $total - $uploaded;
 
         return [
@@ -843,7 +843,7 @@ class GoogleBusinessProfileService
      */
     protected function getGbpJpegUrl(ProjectImage $image): ?string
     {
-        $disk = $image->disk ?: 'public';
+        $disk = 'public';
         $path = $image->path;
 
         if (! $path || ! Storage::disk($disk)->exists($path)) {

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\AreaServed;
+use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
@@ -13,6 +14,7 @@ use App\Observers\TestimonialObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
@@ -43,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->applySocialUrlOverrides();
+
         // Register IndexNow observers for automatic URL submission
         Testimonial::observe(TestimonialObserver::class);
         AreaServed::observe(AreaServedObserver::class);
@@ -61,5 +65,23 @@ class AppServiceProvider extends ServiceProvider
         Blaze::optimize()
             ->in(resource_path('views/components'))
             ->in(resource_path('views/components/layouts'), compile: false);
+    }
+
+    private function applySocialUrlOverrides(): void
+    {
+        try {
+            if (! Schema::hasTable('platform_settings')) {
+                return;
+            }
+
+            foreach (['instagram', 'google', 'facebook', 'yelp', 'houzz', 'angi'] as $platform) {
+                $override = PlatformSetting::get('socials.url.' . $platform);
+                if (is_string($override) && $override !== '') {
+                    config()->set('socials.' . $platform . '.url', $override);
+                }
+            }
+        } catch (\Throwable) {
+            // During install/migrate, settings table may be unavailable.
+        }
     }
 }

@@ -74,7 +74,7 @@ class ProjectObserver
             && config('services.google.business_profile.enabled')
         ) {
             $project->images()
-                ->whereNull('google_places_uploaded_at')
+                ->notUploadedTo('google_places')
                 ->pluck('id')
                 ->each(fn ($imageId) => UploadProjectImageToGooglePlaces::dispatch($imageId)
                     ->onQueue('media-sync')

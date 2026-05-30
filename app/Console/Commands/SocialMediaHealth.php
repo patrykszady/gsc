@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\SocialMediaPost;
+use App\Models\ImageSocialPost;
 use App\Models\ProjectImage;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\MetaSocialService;
@@ -34,16 +34,16 @@ class SocialMediaHealth extends Command
             ->where('alt_text', '!=', '')
             ->count();
 
-        $igPosted = SocialMediaPost::where('platform', 'instagram')->published()->count();
-        $fbPosted = SocialMediaPost::where('platform', 'facebook')->published()->count();
-        $gbpPosted = SocialMediaPost::where('platform', 'google_business')->published()->count();
-        $igFailed = SocialMediaPost::where('platform', 'instagram')->failed()->count();
-        $fbFailed = SocialMediaPost::where('platform', 'facebook')->failed()->count();
-        $gbpFailed = SocialMediaPost::where('platform', 'google_business')->failed()->count();
+        $igPosted = ImageSocialPost::where('platform', 'instagram')->published()->count();
+        $fbPosted = ImageSocialPost::where('platform', 'facebook')->published()->count();
+        $gbpPosted = ImageSocialPost::where('platform', 'google_business')->published()->count();
+        $igFailed = ImageSocialPost::where('platform', 'instagram')->failed()->count();
+        $fbFailed = ImageSocialPost::where('platform', 'facebook')->failed()->count();
+        $gbpFailed = ImageSocialPost::where('platform', 'google_business')->failed()->count();
 
-        $igRemaining = SocialMediaPost::unpostedImagesQuery('instagram')->count();
-        $fbRemaining = SocialMediaPost::unpostedImagesQuery('facebook')->count();
-        $gbpRemaining = SocialMediaPost::unpostedImagesQuery('google_business')->count();
+        $igRemaining = ImageSocialPost::unpostedImagesQuery('instagram')->count();
+        $fbRemaining = ImageSocialPost::unpostedImagesQuery('facebook')->count();
+        $gbpRemaining = ImageSocialPost::unpostedImagesQuery('google_business')->count();
 
         $this->newLine();
         $this->table(['Metric', 'Instagram', 'Facebook', 'Google Business'], [
@@ -55,7 +55,7 @@ class SocialMediaHealth extends Command
         ]);
 
         // Last posts
-        $lastPosts = SocialMediaPost::with('projectImage.project')
+        $lastPosts = ImageSocialPost::with('projectImage.project')
             ->published()
             ->latest('published_at')
             ->take(5)

@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ProjectImage;
-use App\Models\SocialMediaPost;
+use App\Models\ImageSocialPost;
 use App\Services\AiContentService;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\MetaSocialService;
@@ -13,6 +13,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class PublishToSocialMediaJob implements ShouldQueue
 {
@@ -92,7 +93,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         // Block only if there's a pending post (race protection) or a published
         // post within the last 30 days (anti-spam). Older published posts are
         // eligible for recycling so weekly GBP posts keep flowing.
-        $exists = SocialMediaPost::where('project_image_id', $image->id)
+        $exists = ImageSocialPost::where('project_image_id', $image->id)
             ->where('platform', $platform)
             ->where(function ($q) {
                 $q->where('status', 'pending')
@@ -109,12 +110,14 @@ class PublishToSocialMediaJob implements ShouldQueue
         }
 
         // Create the tracking record
-        $post = SocialMediaPost::create([
+        [$caption, $hashtags] = $this->formatContentForPlatform($platform, $content);
+
+        $post = ImageSocialPost::create([
             'project_image_id' => $image->id,
             'platform' => $platform,
             'status' => 'pending',
-            'caption' => $content['caption'],
-            'hashtags' => $content['hashtags'],
+            'caption' => $caption,
+            'hashtags' => $hashtags,
             'link_url' => $linkUrl,
         ]);
 
@@ -123,8 +126,13 @@ class PublishToSocialMediaJob implements ShouldQueue
 
         try {
             $result = match ($platform) {
-                'instagram' => $metaService->publishToInstagram($imageUrl, $fullCaption),
-                'facebook' => $metaService->publishToFacebook($imageUrl, $fullCaption),
+                'instagram' => $metaService->publishToInstagramForImage($image, $fullCaption),
+                'facebook' => $metaService->publishToFacebook(
+                    $imageUrl,
+                    $fullCaption,
+                    $metaService->findFacebookPlaceId($image->project?->location)
+                        ?: config('services.meta.facebook_place_id')
+                ),
                 'google_business' => $this->publishToGoogleBusiness($image, $content, $linkUrl),
                 default => null,
             };
@@ -212,5 +220,42 @@ class PublishToSocialMediaJob implements ShouldQueue
         }
 
         return 'Unknown publish error';
+    }
+
+    /**
+     * Apply platform-specific text shaping before persistence/publish.
+     * Facebook performs better with fewer hashtags and concise copy.
+     *
+     * @param array{caption:string,hashtags:string} $content
+     * @return array{0:string,1:string}
+     */
+    protected function formatContentForPlatform(string $platform, array $content): array
+    {
+        $caption = trim((string) ($content['caption'] ?? ''));
+        $hashtags = trim((string) ($content['hashtags'] ?? ''));
+
+        if ($platform !== 'facebook') {
+            return [$caption, $hashtags];
+        }
+
+        // Facebook benefits from fuller storytelling than Instagram.
+        // If AI returns a short caption, add one extra value/CTA line.
+        if (mb_strlen($caption) < 260) {
+            $caption .= "\n\nThinking about a remodel like this? See more project photos on our site and request your estimate.";
+        }
+
+        // Keep within FB-friendly length while allowing richer copy.
+        $caption = trim(Str::limit($caption, 1200, ''));
+
+        preg_match_all('/#[A-Za-z0-9_]+/u', $hashtags, $matches);
+        $tags = collect($matches[0] ?? [])
+            ->map(fn ($t) => trim($t))
+            ->filter()
+            ->unique(fn ($t) => mb_strtolower($t))
+            ->take(8)
+            ->values()
+            ->all();
+
+        return [$caption, implode(' ', $tags)];
     }
 }

@@ -369,20 +369,17 @@ Schedule::command('seo:bing-sync')
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
     ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
 
-// Instagram: 2 posts per day — morning + late afternoon (Central Time)
-// Random delay spreads posts naturally within each window
-Schedule::command('social:post --platform=instagram --queue --random-delay=150')
-    ->dailyAt('07:00')
+// Instagram: 1 post per day in the 4-7 PM CT engagement window.
+// Random delay 0-180 min on top of 16:00 → actual post lands between 4 PM and 7 PM.
+// Uses --via=puppeteer so the post is also location-tagged via the IG web UI
+// (Graph API can't tag location without App Review).
+Schedule::command('social:post --platform=instagram --via=puppeteer --yes --random-delay=180')
+    ->dailyAt('16:00')
     ->timezone('America/Chicago')
+    ->withoutOverlapping(60 * 4) // command can sleep up to 3h + run ~1m, give it 4h
+    ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Instagram morning post failed'))
-    ->when(fn () => config('services.meta.enabled'));
-
-Schedule::command('social:post --platform=instagram --queue --random-delay=120')
-    ->dailyAt('15:00')
-    ->timezone('America/Chicago')
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Instagram afternoon post failed'))
+    ->onFailure(fn () => logger()->error('Scheduled Instagram daily post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
 // Facebook + Google Business Profile: 1 post daily at 10:00 AM CT

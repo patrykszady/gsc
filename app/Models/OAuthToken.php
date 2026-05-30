@@ -17,6 +17,7 @@ class OAuthToken extends Model
         'refresh_token_expires_at',
         'scopes',
         'granted_by_email',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class OAuthToken extends Model
             'access_token_expires_at' => 'datetime',
             'refresh_token_expires_at' => 'datetime',
             'scopes' => 'array',
+            'metadata' => 'array',
         ];
     }
 

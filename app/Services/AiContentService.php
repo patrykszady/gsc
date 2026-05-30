@@ -525,7 +525,7 @@ PROMPT;
      */
     protected function getImageData(ProjectImage $image): ?array
     {
-        $disk = $image->disk ?: 'public';
+        $disk = 'public';
         $filePath = $image->path;
         
         // Try thumbnail first, fall back to original
@@ -890,6 +890,7 @@ PROMPT;
         }
 
         $projectContext = $this->buildProjectContext($project);
+        $cityOnly = trim(explode(',', (string) $project->location)[0]) ?: 'Chicago';
 
         $prompt = <<<PROMPT
 You are a social media manager for GS Construction, a premium home remodeling company based in Chicago.
@@ -904,22 +905,26 @@ Generate a JSON object with these keys:
 1. "caption": An engaging social media caption (2-4 sentences). Requirements:
    - Start with something eye-catching (emoji optional, but keep it professional)
    - Describe what's shown in the photo with specific details (materials, colors, design choices)
-   - Mention the location ({$project->location}) naturally
-   - Include a call-to-action like "See the full project at {$linkUrl}" or "Link in bio"
+   - Mention the city ({$cityOnly}) naturally — use the CITY NAME ONLY, never the state abbreviation (no ", IL", no "Illinois")
+   - Keep it concise — no "link in bio", no "DM us", no CTA sentence. Let the work speak for itself.
    - Sound premium but approachable — like a proud craftsman showing off great work
    - Do NOT include hashtags in the caption
+   - Do NOT include any "http", "https", "www.", ".com", or other URL fragments anywhere in the caption.
 
-2. "hashtags": A string of 15-25 relevant hashtags separated by spaces. Mix of:
-   - High-volume: #HomeRemodeling #InteriorDesign #HomeImprovement #Renovation
-   - Location: #ChicagoContractor #ChicagoRemodeling #{$this->locationToHashtag($project->location)}
-   - Project-specific: related to the room type, materials, style visible in the photo
-   - Industry: #GeneralContractor #BeforeAndAfter #HomeDesign #LuxuryHome
-   - Brand: #GSConstruction #GSCConstruction
+2. "hashtags": A string of EXACTLY 10–12 relevant hashtags separated by single spaces. Rules:
+   - No duplicates (case-insensitive). #GSConstruction and #GSConstruction count as one.
+   - Pick a mix that covers ALL of these buckets (don't skip any):
+       * Brand: #GSConstruction
+       * Location: #{$this->locationToHashtag($project->location)} plus ONE of #ChicagoContractor / #ChicagoRemodeling
+       * Room/scope: pick from #KitchenRemodel #BathroomRemodel #BasementRemodel #HomeRemodel #FireplaceRemodel #ReadingNook (whichever fits the photo)
+       * Industry: ONE of #GeneralContractor #DesignBuild #HomeRenovation
+       * Visible features: 2–4 niche tags describing materials/style ACTUALLY VISIBLE in the photo (e.g. #QuartzCountertops, #StoneFireplace, #CustomCabinetry)
+   - AVOID megafeed tags with >50M posts (#interiordesign, #home, #design) — they bury the post.
+   - Each hashtag in PascalCase or CamelCase, starts with #, no spaces inside.
 
 Rules:
-- Caption must be under 2000 characters
+- Caption must be under 1500 characters
 - No markdown formatting in the caption
-- Hashtags should start with # and be separated by spaces
 - Return ONLY valid JSON, no markdown code blocks
 
 PROMPT;
@@ -950,10 +955,108 @@ PROMPT;
             return null;
         }
 
+        $caption = $this->sanitizeSocialCaption((string) $decoded['caption']);
+        $hashtags = $this->sanitizeSocialHashtags((string) $decoded['hashtags']);
+
         return [
-            'caption' => mb_substr(trim($decoded['caption']), 0, 2000),
-            'hashtags' => trim($decoded['hashtags']),
+            'caption' => mb_substr($caption, 0, 1500),
+            'hashtags' => $hashtags,
         ];
+    }
+
+    /**
+     * Remove URLs/URL fragments from a caption — Instagram does not make
+     * caption URLs clickable, and the publisher appends a short link
+     * separately. Also collapses any whitespace artefacts left behind.
+     */
+    protected function sanitizeSocialCaption(string $caption): string
+    {
+        $caption = trim($caption);
+        // Strip full URLs and bare host fragments.
+        $caption = preg_replace('#https?://\S+#i', '', $caption) ?? $caption;
+        $caption = preg_replace('#\bwww\.\S+#i', '', $caption) ?? $caption;
+        $caption = preg_replace('#\b[\w-]+\.(com|net|org|co|io)\b\S*#i', '', $caption) ?? $caption;
+        // Remove leftover "See the full project at ." style fragments.
+        $caption = preg_replace('/\b(see|view|check out|find)\s+(the\s+)?(full\s+)?project\s+at\s*[\.,!\?]?/i', '', $caption) ?? $caption;
+        // Remove "link in bio" / "tap the link" style CTAs (any sentence containing them).
+        $caption = preg_replace('/[^.!?\n]*\b(link in (our )?bio|tap the link|link in profile)\b[^.!?\n]*[.!?]?/i', '', $caption) ?? $caption;
+        // Drop US state abbreviation after city (", IL" / ", IL.") — caption should use city only.
+        $caption = preg_replace('/,\s*[A-Z]{2}\b\.?/', '', $caption) ?? $caption;
+        // Collapse double spaces / orphan punctuation.
+        $caption = preg_replace('/[ \t]{2,}/', ' ', $caption) ?? $caption;
+        $caption = preg_replace('/\s+([\.,!\?])/', '$1', $caption) ?? $caption;
+        return trim($caption);
+    }
+
+    /**
+     * Normalise hashtag string: split, dedupe (case-insensitive), drop
+     * megafeed tags, cap at 12, return space-separated.
+     */
+    protected function sanitizeSocialHashtags(string $raw, int $max = 12): string
+    {
+        $blocklist = [
+            '#interiordesign', '#home', '#design', '#beforeandafter',
+            '#homedecor', '#luxuryhome', '#luxuryhomes', '#homedesign',
+        ];
+
+        $tokens = preg_split('/\s+/', trim($raw)) ?: [];
+        $seen = [];
+        $out = [];
+        $brand = null;
+        $cityTag = null;
+        // Detect city tag (locationToHashtag-style: city name with non-alnum stripped).
+        $cityNeedle = null; // set later from caller context if needed
+        foreach ($tokens as $token) {
+            $token = trim($token);
+            if ($token === '') {
+                continue;
+            }
+            if ($token[0] !== '#') {
+                $token = '#' . ltrim($token, '#');
+            }
+            // Drop anything non-tag-ish.
+            if (!preg_match('/^#[A-Za-z0-9_]{2,}$/', $token)) {
+                continue;
+            }
+            $key = strtolower($token);
+            if (isset($seen[$key]) || in_array($key, $blocklist, true)) {
+                continue;
+            }
+            $seen[$key] = true;
+            // Hold #GSConstruction aside — it goes last.
+            if ($key === '#gsconstruction') {
+                $brand = $token;
+                continue;
+            }
+            // Hold first location-style tag aside (matches known city patterns or #Chicago*).
+            if ($cityTag === null && preg_match('/^#(chicago[a-z]*|palatine|arlingtonheights|prospectheights|mountprospect|barrington|wheeling|buffalogrove|northbrook|glenview|deerfield|elgin|schaumburg|hoffmanestates|inverness|naperville|evanston|skokie|desplaines|parkridge|highlandpark|rollingmeadows|streamwood)$/i', $token)) {
+                // Prefer the specific city over #Chicago* when both appear; keep first hit but allow upgrade if it's #ChicagoContractor-ish and a more specific one comes later.
+                if (!preg_match('/^#chicago/i', $token)) {
+                    $cityTag = $token;
+                } elseif ($cityTag === null) {
+                    $cityTag = $token;
+                }
+                continue;
+            }
+            $out[] = $token;
+        }
+
+        // Re-append city then brand at the end.
+        if ($cityTag !== null) {
+            $out[] = $cityTag;
+        }
+        if ($brand !== null) {
+            $out[] = $brand;
+        }
+
+        if (count($out) > $max) {
+            // Trim from the middle (keep first niche tags + the brand/city tail).
+            $tail = array_slice($out, -2); // city + brand
+            $head = array_slice($out, 0, $max - count($tail));
+            $out = array_merge($head, $tail);
+        }
+
+        return implode(' ', $out);
     }
 
     /**

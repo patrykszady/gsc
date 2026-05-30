@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
         <div>
             <flux:heading size="xl">Platforms</flux:heading>
-            <flux:subheading>Manage third-party platform connections (Google Business Profile, Yelp).</flux:subheading>
+            <flux:subheading>Manage third-party platform connections (Google Business Profile, Meta, Yelp).</flux:subheading>
         </div>
         <flux:button wire:click="refreshStatus" icon="arrow-path" variant="subtle" size="sm">Refresh</flux:button>
     </div>
@@ -96,6 +96,256 @@
                         </div>
                     @endforeach
                 </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ============ Meta (Instagram + Facebook) ============ --}}
+    <section class="space-y-3">
+        <flux:heading size="lg">Meta (Instagram + Facebook)</flux:heading>
+
+        <div class="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">
+            <div class="flex items-start gap-4">
+                <div @class([
+                    'flex size-12 shrink-0 items-center justify-center rounded-full',
+                    'bg-green-100 dark:bg-green-900/30' => $metaHealthStatus === 'ok',
+                    'bg-amber-100 dark:bg-amber-900/30' => $metaHealthStatus === 'partial',
+                    'bg-red-100 dark:bg-red-900/30' => in_array($metaHealthStatus, ['error', 'not_configured'], true),
+                    'bg-zinc-100 dark:bg-zinc-700' => $metaHealthStatus === 'disabled',
+                ])>
+                    @if($metaHealthStatus === 'ok')
+                        <flux:icon.check-circle class="size-6 text-green-600 dark:text-green-400" />
+                    @elseif($metaHealthStatus === 'partial')
+                        <flux:icon.exclamation-triangle class="size-6 text-amber-600 dark:text-amber-400" />
+                    @elseif(in_array($metaHealthStatus, ['error', 'not_configured'], true))
+                        <flux:icon.exclamation-triangle class="size-6 text-red-600 dark:text-red-400" />
+                    @else
+                        <flux:icon.link class="size-6 text-zinc-400 dark:text-zinc-500" />
+                    @endif
+                </div>
+
+                <div class="flex-1 space-y-1">
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
+                        @if($metaHealthStatus === 'ok') Connected
+                        @elseif($metaHealthStatus === 'partial') Partially Connected
+                        @elseif($metaHealthStatus === 'error') Connection Error
+                        @elseif($metaHealthStatus === 'not_configured') Not Configured
+                        @else Disabled
+                        @endif
+                    </h3>
+
+                    @if($metaPageName || $metaPageId)
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                            Facebook Page:
+                            <span class="font-medium">{{ $metaPageName ?: 'Unknown' }}</span>
+                            @if($metaPageId) &middot; ID {{ $metaPageId }} @endif
+                        </p>
+                    @endif
+
+                    @if($metaInstagramUsername || $metaInstagramId)
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                            Instagram:
+                            <span class="font-medium">{{ $metaInstagramUsername ? '@' . $metaInstagramUsername : 'Unknown' }}</span>
+                            @if($metaInstagramId) &middot; ID {{ $metaInstagramId }} @endif
+                        </p>
+                    @endif
+
+                    @if($metaHealthError)
+                        <p class="text-sm text-red-600 dark:text-red-400">{{ $metaHealthError }}</p>
+                    @endif
+
+                    @if($metaHealthWarning)
+                        <p class="text-sm text-amber-700 dark:text-amber-300">{{ $metaHealthWarning }}</p>
+                    @endif
+                </div>
+
+                <div class="flex shrink-0 gap-2">
+                    @if($metaConnected)
+                        <flux:button wire:click="testMetaConnection" variant="primary" size="sm" icon="paper-airplane">
+                            Test Meta Connection
+                        </flux:button>
+                        <flux:button wire:click="disconnectMeta" wire:confirm="Disconnect Meta? Automated Instagram and Facebook posts will stop until you reconnect." variant="danger" size="sm">
+                            Disconnect
+                        </flux:button>
+                    @endif
+                    <flux:button wire:click="connectMeta" variant="{{ $metaConnected ? 'subtle' : 'primary' }}" size="sm" icon="link">
+                        {{ $metaConnected ? 'Reconnect Facebook' : 'Connect Facebook' }}
+                    </flux:button>
+                </div>
+            </div>
+
+            <div class="-mx-6 mt-6 border-t border-zinc-200 px-6 pt-4 dark:border-zinc-700">
+                <h4 class="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">Configuration Status</h4>
+                <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                    @php
+                        $metaCfg = config('services.meta');
+                        $metaChecks = [
+                            'Posting enabled' => !empty($metaCfg['enabled']),
+                            'App credentials (META_APP_ID / SECRET)' => !empty($metaCfg['app_id']) && !empty($metaCfg['app_secret']),
+                            'Connected via OAuth' => $metaConnected,
+                            'Facebook Page discovered' => !empty($metaPageId),
+                            'Instagram Business linked' => !empty($metaInstagramId),
+                            'Instagram ready for posting' => $metaInstagramConfigured,
+                            'Facebook ready for posting' => $metaFacebookConfigured,
+                        ];
+                    @endphp
+                    @foreach($metaChecks as $label => $ok)
+                        <div class="flex items-center gap-2">
+                            <span class="size-2 rounded-full {{ $ok ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                            <span class="text-zinc-700 dark:text-zinc-300">{{ $label }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                    Use <code>php artisan social:post --platform=instagram --dry-run</code> to preview content,
+                    then <code>php artisan social:post --platform=instagram --instagram-container-only</code> to verify Meta API upload without publishing.
+                </p>
+            </div>
+
+            {{-- ===== Instagram (Puppeteer profile, used for location-tagging) ===== --}}
+            <div class="-mx-6 mt-6 border-t border-zinc-200 px-6 pt-4 dark:border-zinc-700 space-y-4">
+                <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Instagram (Puppeteer session)</h4>
+                <flux:text class="text-sm">
+                Daily IG posts publish via the Graph API, then a headless Chromium opens the post and adds the location tag via the IG web UI.
+                That requires a logged-in <code>storage/app/instagram-puppeteer/</code> profile. If IG invalidates the session, posts will publish but
+                location-tagging will silently fail — verify here, and re-login from the browser when needed.
+            </flux:text>
+
+            {{-- Status badge --}}
+            <div class="flex items-center gap-3">
+                <div @class([
+                    'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium',
+                    'bg-green-100 dark:bg-green-900/30' => $igSessionAuthenticated === true,
+                    'bg-red-100 dark:bg-red-900/30' => $igSessionAuthenticated === false,
+                    'bg-zinc-100 dark:bg-zinc-700' => $igSessionAuthenticated === null,
+                ])>
+                    @if($igSessionAuthenticated === true)
+                        <flux:icon.check-circle class="size-4 text-green-700 dark:text-green-300" />
+                    @elseif($igSessionAuthenticated === false)
+                        <flux:icon.x-circle class="size-4 text-red-700 dark:text-red-300" />
+                    @else
+                        <flux:icon.question-mark-circle class="size-4 text-zinc-500" />
+                    @endif
+                    <span @class([
+                        'text-green-700 dark:text-green-300' => $igSessionAuthenticated === true,
+                        'text-red-700 dark:text-red-300' => $igSessionAuthenticated === false,
+                        'text-zinc-700 dark:text-zinc-300' => $igSessionAuthenticated === null,
+                    ])>
+                        @if($igSessionAuthenticated === true)
+                            Logged in
+                            @if($igSessionUsername) as <span class="font-mono">{{ $igSessionUsername }}</span>@endif
+                        @elseif($igSessionAuthenticated === false)
+                            Session invalid — re-login required
+                        @else
+                            Status unknown — click Verify
+                        @endif
+                    </span>
+                </div>
+                @if($igSessionCheckedAt)
+                    <flux:text class="text-xs opacity-60">
+                        Last checked {{ \Carbon\Carbon::parse($igSessionCheckedAt)->diffForHumans() }}
+                    </flux:text>
+                @endif
+            </div>
+
+            <div class="text-xs opacity-70">
+                Profile dir: <code>storage/app/instagram-puppeteer/</code>
+                @if($igProfileExists === false)
+                    <span class="text-amber-700 dark:text-amber-300">(not created yet)</span>
+                @endif
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <flux:button type="button" wire:click="verifyInstagramSession" variant="subtle" size="xs" icon="check-circle">
+                    Verify Session
+                </flux:button>
+                <flux:button type="button" wire:click="startInstagramRemoteLogin" variant="primary" size="xs" icon="window">
+                    Open Login Window
+                </flux:button>
+                @if($igProfileExists)
+                    <flux:button type="button" wire:click="resetInstagramProfile"
+                                 wire:confirm="Wipe the saved Instagram session and start a fresh login? This will delete cookies and force a clean re-auth."
+                                 variant="danger" size="xs" icon="trash">
+                        Reset Profile
+                    </flux:button>
+                @endif
+                <div class="flex items-center gap-2" wire:loading wire:target="verifyInstagramSession,pollInstagramRemoteLogin">
+                    <flux:icon.loading class="size-4 text-zinc-500" />
+                    <span class="text-xs opacity-70">Checking…</span>
+                </div>
+            </div>
+
+            @if($igRemoteError)
+                <div class="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                    <strong>Remote login failed:</strong> {{ $igRemoteError }}
+                </div>
+            @endif
+
+            @if($igRemoteOpen && $igRemoteUrl)
+                <div class="rounded-lg border border-zinc-300 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900"
+                     wire:poll.4s="pollInstagramRemoteLogin"
+                     wire:ignore.self>
+                    <div class="flex items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                        <div class="text-sm font-medium">
+                            @if($igRemoteFinished)
+                                <span class="text-zinc-700 dark:text-zinc-300">Login window closed — review log below.</span>
+                            @else
+                                <span class="text-zinc-700 dark:text-zinc-300">Complete the Instagram login in the embedded browser.</span>
+                                <span class="text-xs opacity-60 ml-2">(2FA &amp; "Save info" prompts handled automatically)</span>
+                            @endif
+                        </div>
+                        <flux:button type="button" wire:click="stopInstagramRemoteLogin" variant="danger" size="xs" icon="x-mark">
+                            Close
+                        </flux:button>
+                    </div>
+
+                    @unless($igRemoteFinished)
+                        <div class="relative bg-black"
+                             x-data="{
+                                reported: false,
+                                report(reason) {
+                                    if (this.reported) return;
+                                    this.reported = true;
+                                    $wire.reportInstagramRemoteError(reason);
+                                }
+                             }"
+                             style="aspect-ratio: 1366 / 900; max-height: 75vh;">
+                            <iframe
+                                wire:key="ig-vnc-iframe-{{ md5((string) $igRemoteUrl) }}"
+                                x-on:load="(() => {
+                                    try {
+                                        const doc = $event.target.contentDocument;
+                                        if (doc && /502|gateway|nginx/i.test(doc.title || '')) {
+                                            report('iframe shows ' + (doc?.title || 'gateway error'));
+                                        }
+                                    } catch {}
+                                })()"
+                                x-on:error="report('iframe failed to load')"
+                                src="{{ $igRemoteUrl }}"
+                                class="absolute inset-0 h-full w-full border-0"
+                                allow="clipboard-read; clipboard-write"></iframe>
+                        </div>
+                        <div class="px-3 py-2 text-xs opacity-70">
+                            @if($igRemoteExpiresAt)
+                                Session auto-stops {{ \Carbon\Carbon::createFromTimestamp($igRemoteExpiresAt)->diffForHumans() }}.
+                            @endif
+                            The script auto-detects login and closes when complete.
+                        </div>
+                    @endunless
+
+                    <div class="border-t border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
+                        <div class="font-medium mb-1 opacity-70">Chromium log tail</div>
+                        <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-tight opacity-80"
+                             wire:poll.4s="pollInstagramRemoteLogin">{{ $igRemoteLogTail ?: '(no activity yet)' }}</pre>
+                    </div>
+                </div>
+            @elseif($igRemoteOpen && $igRemoteFinished)
+                <div class="rounded-lg border border-zinc-300 bg-zinc-50 p-3 text-xs dark:border-zinc-600 dark:bg-zinc-900"
+                     wire:poll.10s="pollInstagramRemoteLogin">
+                    <div class="font-medium mb-1 opacity-70">Final Chromium log</div>
+                    <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-tight opacity-80">{{ $igRemoteLogTail ?: '(empty)' }}</pre>
+                </div>
+            @endif
             </div>
         </div>
     </section>

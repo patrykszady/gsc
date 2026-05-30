@@ -1,0 +1,179 @@
+#!/usr/bin/env node
+/**
+ * Scrape Facebook Place IDs for one or more cities.
+ *
+ * Uses an authenticated Chromium session (created via facebook-login.mjs)
+ * and the desktop www.facebook.com place-search results page:
+ *
+ *   GET https://www.facebook.com/search/places/?q=<city>%2C+<state>
+ *
+ * The page lists matching Pages as anchors of the form:
+ *   <a href="https://www.facebook.com/profile.php?id=<NUMERIC_ID>">City Name, State</a>
+ *
+ * We extract the first anchor whose text matches the queried city and whose
+ * href is a `/profile.php?id=<digits>` URL. Vanity-URL pages (e.g.
+ * /palatine.il.us) are skipped — those aren't reliably the canonical "city"
+ * Place page and resolving them to numeric IDs requires a second fetch.
+ *
+ * Reads queries from stdin (one per line) or --query flag(s). Emits NDJSON
+ * to stdout, one object per query.
+ */
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import fs from 'node:fs';
+import readline from 'node:readline';
+
+puppeteer.use(StealthPlugin());
+
+function parseArgs(argv) {
+  const args = { userDataDir: null, queries: [], delayMs: 4000, headless: true };
+  for (const a of argv.slice(2)) {
+    if (a.startsWith('--user-data-dir=')) args.userDataDir = a.slice('--user-data-dir='.length);
+    else if (a.startsWith('--query=')) args.queries.push(a.slice('--query='.length));
+    else if (a.startsWith('--delay-ms=')) args.delayMs = parseInt(a.slice('--delay-ms='.length), 10);
+    else if (a === '--headed') args.headless = false;
+  }
+  return args;
+}
+
+async function readStdinLines() {
+  if (process.stdin.isTTY) return [];
+  const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+  const lines = [];
+  for await (const line of rl) {
+    const t = line.trim();
+    if (t) lines.push(t);
+  }
+  return lines;
+}
+
+const stateExpansions = {
+  IL: 'illinois', WI: 'wisconsin', IN: 'indiana', MI: 'michigan',
+  IA: 'iowa', MO: 'missouri', OH: 'ohio',
+};
+
+async function scrapeOne(page, query) {
+  const url = 'https://www.facebook.com/search/places/?q=' + encodeURIComponent(query);
+  const resp = await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+  if (!resp || !resp.ok()) {
+    return { id: null, name: null, error: `http_${resp ? resp.status() : 'no_response'}` };
+  }
+
+  if (/\/(login|checkpoint|recover)/.test(page.url())) {
+    return { id: null, name: null, error: 'auth_required' };
+  }
+
+  // Extract anchors that point at a Page profile by numeric ID.
+  const candidates = await page.evaluate(() => {
+    const out = [];
+    for (const a of Array.from(document.querySelectorAll('a[href*="profile.php?id="]'))) {
+      const href = a.getAttribute('href') || '';
+      const text = (a.textContent || '').trim();
+      if (!text) continue;
+      const m = href.match(/profile\.php\?id=(\d{6,})/);
+      if (!m) continue;
+      out.push({ id: m[1], text, href });
+    }
+    return out;
+  });
+
+  if (!candidates.length) {
+    return { id: null, name: null, error: 'no_result' };
+  }
+
+  const city = query.split(',')[0].trim().toLowerCase();
+  const stateRaw = (query.split(',')[1] || '').trim();
+  const stateFull = (stateExpansions[stateRaw.toUpperCase()] || stateRaw).toLowerCase();
+
+  const expectedNames = [
+    stateFull ? `${city}, ${stateFull}` : null,
+    stateFull ? `${city} ${stateFull}` : null,
+    stateRaw ? `${city}, ${stateRaw.toLowerCase()}` : null,
+    stateRaw ? `${city} ${stateRaw.toLowerCase()}` : null,
+    city,
+  ].filter(Boolean);
+
+  // De-dupe by id, preserve order.
+  const seen = new Set();
+  const unique = [];
+  for (const c of candidates) {
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
+    unique.push(c);
+  }
+
+  // Exact name match (case-insensitive). FB's `/search/places/` returns
+  // results in relevance order — the canonical city Place is normally the
+  // first profile.php hit whose visible text is exactly "City, State" or
+  // "City Illinois". Anything looser (substring match) ends up tagging
+  // unrelated real-estate / community groups, so we refuse those.
+  for (const c of unique) {
+    const t = c.text.toLowerCase();
+    if (expectedNames.includes(t)) {
+      return { id: c.id, name: c.text, error: null };
+    }
+  }
+  return { id: null, name: null, error: 'no_match' };
+}
+
+(async () => {
+  const args = parseArgs(process.argv);
+  if (!args.userDataDir) {
+    console.error('--user-data-dir is required');
+    process.exit(2);
+  }
+
+  const stdinQueries = await readStdinLines();
+  const queries = [...args.queries, ...stdinQueries];
+  if (queries.length === 0) {
+    console.error('No queries provided (via --query or stdin)');
+    process.exit(2);
+  }
+
+  fs.mkdirSync(args.userDataDir, { recursive: true });
+
+  const browser = await puppeteer.launch({
+    headless: args.headless ? 'new' : false,
+    userDataDir: args.userDataDir,
+    defaultViewport: { width: 1366, height: 900 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+    ],
+  });
+
+  let exitCode = 0;
+  try {
+    const page = (await browser.pages())[0] || (await browser.newPage());
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    for (let i = 0; i < queries.length; i++) {
+      const q = queries[i];
+      let result;
+      try {
+        result = await scrapeOne(page, q);
+      } catch (e) {
+        result = { id: null, name: null, error: 'exception: ' + (e.message || String(e)) };
+      }
+      process.stdout.write(JSON.stringify({ query: q, ...result }) + '\n');
+
+      if (result.error === 'auth_required'
+          || (typeof result.error === 'string' && (result.error.startsWith('http_4') || result.error.startsWith('http_5')))) {
+        exitCode = 3;
+        break;
+      }
+
+      if (i < queries.length - 1 && args.delayMs > 0) {
+        await new Promise((r) => setTimeout(r, args.delayMs));
+      }
+    }
+  } finally {
+    await browser.close().catch(() => {});
+  }
+
+  process.exit(exitCode);
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

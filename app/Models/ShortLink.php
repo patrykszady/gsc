@@ -50,7 +50,7 @@ class ShortLink extends Model
      */
     public function getShortUrlAttribute(): string
     {
-        $domain = rtrim(config('services.meta.production_url', 'https://gs.construction'), '/');
+        $domain = rtrim((string) config('app.url'), '/');
 
         return "{$domain}/s/{$this->code}";
     }

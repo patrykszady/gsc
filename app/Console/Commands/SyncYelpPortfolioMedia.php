@@ -35,7 +35,7 @@ class SyncYelpPortfolioMedia extends Command
             });
 
         if (! $this->option('force')) {
-            $query->whereNull('yelp_uploaded_at');
+            $query->notUploadedTo('yelp_portfolio');
         }
 
         $limit = (int) $this->option('limit');

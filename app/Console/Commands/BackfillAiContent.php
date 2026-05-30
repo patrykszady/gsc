@@ -156,7 +156,7 @@ class BackfillAiContent extends Command
             }
 
             // Skip stale DB records that no longer have files on disk.
-            $disk = $image->disk ?: 'public';
+            $disk = 'public';
             if (!Storage::disk($disk)->exists($image->path)) {
                 $updateData = [];
                 $rawSeoAltText = $image->getRawOriginal('seo_alt_text');

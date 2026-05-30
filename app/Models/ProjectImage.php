@@ -16,7 +16,6 @@ class ProjectImage extends Model
         'filename',
         'original_filename',
         'path',
-        'disk',
         'mime_type',
         'size',
         'width',
@@ -28,22 +27,11 @@ class ProjectImage extends Model
         'is_cover',
         'sort_order',
         'thumbnails',
-        'google_places_media_name',
-        'google_places_media_url',
-        'google_places_uploaded_at',
-        'yelp_photo_id',
-        'yelp_uploaded_at',
-        'yelp_biz_photo_id',
-        'yelp_biz_uploaded_at',
-        'yelp_biz_caption',
     ];
 
     protected $casts = [
         'is_cover' => 'boolean',
         'thumbnails' => 'array',
-        'google_places_uploaded_at' => 'datetime',
-        'yelp_uploaded_at' => 'datetime',
-        'yelp_biz_uploaded_at' => 'datetime',
     ];
 
 
@@ -137,15 +125,110 @@ class ProjectImage extends Model
         return $this->belongsToMany(Tag::class)->withTimestamps();
     }
 
-    public function socialMediaPosts(): HasMany
+    public function imageSocialPosts(): HasMany
     {
-        return $this->hasMany(SocialMediaPost::class);
+        return $this->hasMany(ImageSocialPost::class);
+    }
+
+    public function platformUploads(): HasMany
+    {
+        return $this->hasMany(ImagePlatformUpload::class);
+    }
+
+    public function scopeUploadedTo($query, string $platform)
+    {
+        return $query->whereHas('platformUploads', fn ($q) => $q->where('platform', $platform));
+    }
+
+    public function scopeNotUploadedTo($query, string $platform)
+    {
+        return $query->whereDoesntHave('platformUploads', fn ($q) => $q->where('platform', $platform));
+    }
+
+    public function scopeOrderByUploadedTo($query, string $platform, string $direction = 'desc')
+    {
+        $sub = ImagePlatformUpload::select('uploaded_at')
+            ->whereColumn('project_image_id', 'project_images.id')
+            ->where('platform', $platform)
+            ->limit(1);
+        return $query->orderBy($sub, $direction);
+    }
+
+    /**
+     * Cached lookup of a single platform upload row.
+     */
+    public function platformUpload(string $platform): ?ImagePlatformUpload
+    {
+        $key = '__platformUpload_' . $platform;
+        if (! array_key_exists($key, $this->attributes)) {
+            $this->attributes[$key] = $this->platformUploads
+                ? $this->platformUploads->firstWhere('platform', $platform)
+                : $this->platformUploads()->where('platform', $platform)->first();
+        }
+        return $this->attributes[$key];
+    }
+
+    // ------------------------------------------------------------------
+    // Convenience accessors that read from the image_platform_uploads table.
+    // ------------------------------------------------------------------
+
+    public function getGooglePlacesMediaNameAttribute(): ?string
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)?->remote_id;
+    }
+
+    public function getGooglePlacesMediaUrlAttribute(): ?string
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)?->remote_url;
+    }
+
+    public function getGooglePlacesUploadedAtAttribute()
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)?->uploaded_at;
+    }
+
+    public function getYelpPhotoIdAttribute(): ?string
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_YELP_PORTFOLIO)?->remote_id;
+    }
+
+    public function getYelpUploadedAtAttribute()
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_YELP_PORTFOLIO)?->uploaded_at;
+    }
+
+    public function getYelpBizPhotoIdAttribute(): ?string
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_YELP_BIZ)?->remote_id;
+    }
+
+    public function getYelpBizUploadedAtAttribute()
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_YELP_BIZ)?->uploaded_at;
+    }
+
+    public function getYelpBizCaptionAttribute(): ?string
+    {
+        return $this->platformUpload(ImagePlatformUpload::PLATFORM_YELP_BIZ)?->caption;
+    }
+
+    /**
+     * Latest published Instagram permalink for this image, if any.
+     */
+    public function getInstagramUrlAttribute(): ?string
+    {
+        return $this->imageSocialPosts()
+            ->where('platform', 'instagram')
+            ->where('status', 'published')
+            ->whereNotNull('platform_permalink')
+            ->latest('published_at')
+            ->value('platform_permalink');
     }
 
     public function getUrlAttribute(): ?string
     {
-        if (Storage::disk($this->disk)->exists($this->path)) {
-            return Storage::disk($this->disk)->url($this->path);
+        if (Storage::disk('public')->exists($this->path)) {
+            return Storage::disk('public')->url($this->path);
         }
         
         return null;
@@ -157,12 +240,12 @@ class ProjectImage extends Model
         
         if (isset($thumbnails[$size])) {
             $thumbnailPath = $thumbnails[$size];
-            if (Storage::disk($this->disk)->exists($thumbnailPath)) {
-                return Storage::disk($this->disk)->url($thumbnailPath);
+            if (Storage::disk('public')->exists($thumbnailPath)) {
+                return Storage::disk('public')->url($thumbnailPath);
             }
         }
         
-        if (Storage::disk($this->disk)->exists($this->path)) {
+        if (Storage::disk('public')->exists($this->path)) {
             return $this->url;
         }
 
@@ -176,8 +259,8 @@ class ProjectImage extends Model
     {
         $webpPath = $this->webp_path ?? null;
         
-        if ($webpPath && Storage::disk($this->disk)->exists($webpPath)) {
-            return Storage::disk($this->disk)->url($webpPath);
+        if ($webpPath && Storage::disk('public')->exists($webpPath)) {
+            return Storage::disk('public')->url($webpPath);
         }
         
         return null;
@@ -193,8 +276,8 @@ class ProjectImage extends Model
         
         if (isset($thumbnails[$webpKey])) {
             $webpPath = $thumbnails[$webpKey];
-            if (Storage::disk($this->disk)->exists($webpPath)) {
-                return Storage::disk($this->disk)->url($webpPath);
+            if (Storage::disk('public')->exists($webpPath)) {
+                return Storage::disk('public')->url($webpPath);
             }
         }
         
@@ -237,7 +320,7 @@ class ProjectImage extends Model
      */
     public function fileExists(): bool
     {
-        return Storage::disk($this->disk)->exists($this->path);
+        return Storage::disk('public')->exists($this->path);
     }
 
     /**
@@ -253,11 +336,11 @@ class ProjectImage extends Model
     public function deleteFile(): void
     {
         // Delete main image
-        Storage::disk($this->disk)->delete($this->path);
+        Storage::disk('public')->delete($this->path);
         
         // Delete thumbnails
         foreach ($this->thumbnails ?? [] as $thumbnail) {
-            Storage::disk($this->disk)->delete($thumbnail);
+            Storage::disk('public')->delete($thumbnail);
         }
     }
 

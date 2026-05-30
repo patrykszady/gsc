@@ -31,6 +31,7 @@
                     ? $gbpService->getMediaUrlCached($img->google_places_media_name)
                     : null),
             'yelpUrl' => $yelpUrl,
+            'instagramUrl' => $img->instagram_url,
             'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
             'caption' => $this->localizeText($img->caption),
             'isCover' => $img->is_cover,
@@ -195,6 +196,16 @@
                                 @click.stop
                             >
                                 View on Yelp
+                            </a>
+                            <a
+                                x-show="current.instagramUrl"
+                                :href="current.instagramUrl"
+                                target="_blank"
+                                rel="noopener"
+                                class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-pink-700 shadow-lg hover:bg-white"
+                                @click.stop
+                            >
+                                Show on Instagram
                             </a>
                             {{-- Hidden but accessible Full Size link --}}
                             <a :href="current.originalUrl" 

@@ -27,18 +27,15 @@
     @endif
 
     {{-- Stats Cards --}}
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-6">
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-zinc-900 dark:text-white">{{ $totalEligible }}</p>
             <p class="text-sm text-zinc-500">Total Images</p>
         </flux:card>
         <flux:card class="text-center">
-            <p class="text-2xl font-bold text-green-600">{{ $publishedCount }}</p>
-            <p class="text-sm text-zinc-500">Published</p>
-        </flux:card>
-        <flux:card class="text-center">
             <p class="text-2xl font-bold text-pink-600">{{ $remainingInstagram }}</p>
             <p class="text-sm text-zinc-500">IG Remaining</p>
+            <p class="mt-1 text-xs text-zinc-400">{{ $postedInstagram }} {{ \Illuminate\Support\Str::plural('post', $postedInstagram) }} posted</p>
         </flux:card>
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-blue-600">{{ $remainingFacebook }}</p>
@@ -47,29 +44,73 @@
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-amber-600">{{ $remainingGbp }}</p>
             <p class="text-sm text-zinc-500">GBP Remaining</p>
-            <p class="mt-1 text-xs text-zinc-400">{{ $uploadedGbp }} uploaded</p>
+            <p class="mt-1 text-xs text-zinc-400">{{ $postedGbp }} {{ \Illuminate\Support\Str::plural('post', $postedGbp) }} posted</p>
+            <p class="mt-1 text-xs text-zinc-400">{{ $uploadedGbp }} {{ \Illuminate\Support\Str::plural('image', $uploadedGbp) }} uploaded</p>
         </flux:card>
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-red-600">{{ $remainingYelp }}</p>
             <p class="text-sm text-zinc-500">Yelp Remaining</p>
-            <p class="mt-1 text-xs text-zinc-400">{{ $uploadedYelp }} uploaded</p>
+            <p class="mt-1 text-xs text-zinc-400">{{ $uploadedYelp }} {{ \Illuminate\Support\Str::plural('image', $uploadedYelp) }} uploaded</p>
         </flux:card>
     </div>
+
+    <flux:card>
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <flux:heading size="lg">Social Profile URLs</flux:heading>
+                <p class="text-sm text-zinc-500">Used in footer/schema and social links across the site.</p>
+            </div>
+            <flux:button wire:click="saveSocialUrls" variant="primary" size="sm" icon="check">
+                Save URLs
+            </flux:button>
+        </div>
+
+        @php
+            $socialUrlFields = [
+                'instagram' => ['label' => 'Instagram', 'placeholder' => 'https://www.instagram.com/gs.construction.co/'],
+                'google' => ['label' => 'Google', 'placeholder' => 'https://www.google.com/search?q=GS+Construction+chicago'],
+                'facebook' => ['label' => 'Facebook', 'placeholder' => 'https://www.facebook.com/gs.construction.chi'],
+                'yelp' => ['label' => 'Yelp', 'placeholder' => 'https://www.yelp.com/biz/gs-construction-chicago-2'],
+                'houzz' => ['label' => 'Houzz', 'placeholder' => 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575'],
+                'angi' => ['label' => 'Angi', 'placeholder' => 'https://www.angi.com/companylist/us/il/chicagoland/gs-construction-and-remodeling-reviews-11400361.htm'],
+            ];
+        @endphp
+
+        <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            @foreach($socialUrlFields as $key => $field)
+                <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                    <div class="mb-2 flex items-center gap-2">
+                        <img src="{{ asset(config('socials.' . $key . '.icon')) }}" alt="{{ $field['label'] }} logo" class="size-5 rounded-sm object-contain" />
+                        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $field['label'] }}</span>
+                    </div>
+                    <flux:input
+                        wire:model.defer="socialUrls.{{ $key }}"
+                        type="url"
+                        placeholder="{{ $field['placeholder'] }}"
+                    />
+                </div>
+            @endforeach
+        </div>
+
+        @error('socialUrls.instagram') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @error('socialUrls.google') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @error('socialUrls.facebook') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @error('socialUrls.yelp') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @error('socialUrls.houzz') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @error('socialUrls.angi') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+    </flux:card>
 
     @if(!$isConfigured)
         <flux:card class="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
             <div class="space-y-2">
                 <flux:heading size="lg">Setup Required</flux:heading>
                 <p class="text-sm text-zinc-600 dark:text-zinc-400">
-                    To start posting, add your Meta credentials to <code class="rounded bg-zinc-200 px-1 dark:bg-zinc-700">.env</code>:
+                    Meta isn't connected yet. Set the app credentials in <code class="rounded bg-zinc-200 px-1 dark:bg-zinc-700">.env</code>:
                 </p>
-                <pre class="rounded bg-zinc-100 p-3 text-xs dark:bg-zinc-800">META_SOCIAL_ENABLED=true
-META_APP_ID=your_app_id
-META_APP_SECRET=your_app_secret
-META_FACEBOOK_PAGE_ID=your_page_id
-META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
+                <pre class="rounded bg-zinc-100 p-3 text-xs dark:bg-zinc-800">META_APP_ID=your_app_id
+META_APP_SECRET=your_app_secret</pre>
                 <p class="text-sm text-zinc-600 dark:text-zinc-400">
-                    Then run: <code class="rounded bg-zinc-200 px-1 dark:bg-zinc-700">php artisan social:meta-auth</code>
+                    Then connect your Facebook Page at <a href="{{ route('admin.platforms') }}" class="underline">/admin/platforms</a>.
                 </p>
             </div>
         </flux:card>
@@ -244,9 +285,6 @@ META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
                     </flux:table>
                 </flux:card>
 
-                <div>
-                    {{ $uploadedPosts->links() }}
-                </div>
             @endif
         </div>
     </div>
@@ -319,9 +357,6 @@ META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
                     </flux:table>
                 </flux:card>
 
-                <div>
-                    {{ $gbpImages->links() }}
-                </div>
             @endif
         </div>
     </div>
@@ -389,9 +424,6 @@ META_INSTAGRAM_ACCOUNT_ID=your_ig_id</pre>
                 </flux:card>
             @endif
         </div>
-    </div>
-    <div>
-        {{ $yelpImages->links() }}
     </div>
     @endif
 </div>

@@ -126,8 +126,9 @@ class SyncGoogleBusinessProfileMedia extends Command
         }
 
         // Get all local media names that have been uploaded
-        $localMediaNames = ProjectImage::whereNotNull('google_places_media_name')
-            ->pluck('google_places_media_name')
+        $localMediaNames = \App\Models\ImagePlatformUpload::query()
+            ->where('platform', \App\Models\ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)
+            ->pluck('remote_id')
             ->all();
 
         $orphans = collect($gbpItems)->filter(function ($item) use ($localMediaNames) {
@@ -189,7 +190,7 @@ class SyncGoogleBusinessProfileMedia extends Command
             ->whereHas('project', fn ($q) => $q->where('is_published', true));
 
         if (! $force) {
-            $query->whereNull('google_places_uploaded_at');
+            $query->notUploadedTo('google_places');
         }
 
         if ($projectId) {
@@ -253,10 +254,9 @@ class SyncGoogleBusinessProfileMedia extends Command
             $mediaName = $service->uploadProjectImage($image);
 
             if ($mediaName) {
-                $image->updateQuietly([
-                    'google_places_media_name' => $mediaName['name'],
-                    'google_places_media_url' => $mediaName['url'],
-                    'google_places_uploaded_at' => now(),
+                \App\Models\ImagePlatformUpload::record($image->id, \App\Models\ImagePlatformUpload::PLATFORM_GOOGLE_PLACES, [
+                    'remote_id' => $mediaName['name'],
+                    'remote_url' => $mediaName['url'],
                 ]);
                 $uploaded++;
             } else {

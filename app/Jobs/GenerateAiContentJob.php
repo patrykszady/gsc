@@ -69,7 +69,7 @@ class GenerateAiContentJob implements ShouldQueue
         }
 
         // Check if image file exists before trying to process
-        $disk = $image->disk ?: 'public';
+        $disk = 'public';
         if (!\Illuminate\Support\Facades\Storage::disk($disk)->exists($image->path)) {
             Log::warning('GenerateAiContentJob: Image file not found, skipping', [
                 'image_id' => $image->id,
