@@ -18,7 +18,7 @@
             ->orderByDesc('is_cover')
             ->orderBy('sort_order')
             ->limit((int) $limit)
-            ->get(['id','project_id','path','disk','thumbnails','alt_text','seo_alt_text','caption','width','height','is_cover']);
+            ->get(['id','project_id','path','thumbnails','alt_text','seo_alt_text','caption','width','height','is_cover']);
 
         if ($images->isNotEmpty()) {
             $geo = (! empty($area->latitude) && ! empty($area->longitude))
