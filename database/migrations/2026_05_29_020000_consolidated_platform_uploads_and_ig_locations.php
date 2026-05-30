@@ -27,6 +27,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. image_platform_uploads (replaces per-platform columns on project_images)
+        if (! Schema::hasTable('image_platform_uploads')) {
         Schema::create('image_platform_uploads', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_image_id')->constrained()->cascadeOnDelete();
@@ -42,6 +43,7 @@ return new class extends Migration
             $table->index('platform');
             $table->index('uploaded_at');
         });
+        }
 
         // 2. Backfill image_platform_uploads from legacy project_images columns
         if (Schema::hasColumn('project_images', 'google_places_media_name')) {
@@ -158,6 +160,7 @@ return new class extends Migration
         });
 
         // 4. GSC coverage state tracking
+        if (! Schema::hasTable('gsc_coverage_states')) {
         Schema::create('gsc_coverage_states', function (Blueprint $table) {
             $table->id();
             $table->string('url', 500);
@@ -179,7 +182,9 @@ return new class extends Migration
             $table->index(['verdict', 'coverage_state'], 'gsc_coverage_state_idx');
             $table->index('inspected_at', 'gsc_coverage_inspected_idx');
         });
+        }
 
+        if (! Schema::hasTable('gsc_coverage_state_history')) {
         Schema::create('gsc_coverage_state_history', function (Blueprint $table) {
             $table->id();
             $table->string('url', 500);
@@ -191,6 +196,7 @@ return new class extends Migration
 
             $table->index(['url', 'observed_at'], 'gsc_coverage_hist_url_idx');
         });
+        }
 
         // 5. areas_served.ig_location_id + fb_place_id (per-city platform IDs)
         Schema::table('areas_served', function (Blueprint $table) {
@@ -239,16 +245,20 @@ return new class extends Migration
         }
 
         // 8. oauth_tokens.metadata
-        Schema::table('oauth_tokens', function (Blueprint $table) {
-            $table->json('metadata')->nullable()->after('granted_by_email');
-        });
+        if (! Schema::hasColumn('oauth_tokens', 'metadata')) {
+            Schema::table('oauth_tokens', function (Blueprint $table) {
+                $table->json('metadata')->nullable()->after('granted_by_email');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('oauth_tokens', function (Blueprint $table) {
-            $table->dropColumn('metadata');
-        });
+        if (Schema::hasColumn('oauth_tokens', 'metadata')) {
+            Schema::table('oauth_tokens', function (Blueprint $table) {
+                $table->dropColumn('metadata');
+            });
+        }
 
         if (Schema::hasTable('image_social_posts') && ! Schema::hasTable('social_media_posts')) {
             Schema::rename('image_social_posts', 'social_media_posts');
