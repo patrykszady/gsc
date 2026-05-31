@@ -697,8 +697,8 @@ class YelpBusinessService
                         || (is_array($payload) && ! empty($payload['throttled']));
                     if ($isThrottle) {
                         $retryAfter = is_array($payload)
-                            ? (int) ($payload['retry_after_seconds'] ?? 600)
-                            : 600;
+                            ? (int) ($payload['retry_after_seconds'] ?? 90)
+                            : 90;
                         $reason = is_array($payload)
                             ? (string) ($payload['reason'] ?? 'script_throttle')
                             : 'script_throttle';

@@ -67,52 +67,181 @@ async function openCheckin(page) {
     throw new Error('auth_required');
   }
 
-  const triggered = await page.evaluate(() => {
-    for (const el of Array.from(document.querySelectorAll('[role="button"], div'))) {
-      const txt = (el.textContent || '').trim();
-      if (txt.startsWith("What's on your mind")) {
-        el.click();
-        return true;
-      }
-    }
-    return false;
-  });
-  if (!triggered) throw new Error('composer_trigger_not_found');
-  await sleep(3500);
+  // Dismiss any open popovers/dialogs (notifications panel etc.) that would
+  // otherwise be picked up as the "composer dialog".
+  await page.keyboard.press('Escape').catch(() => {});
+  await sleep(300);
+  await page.keyboard.press('Escape').catch(() => {});
+  await sleep(300);
 
-  // Click the Check-in entry exactly once. We don't try to detect the
-  // picker UI — FB renders it through several intermediate states (spinner,
-  // dialog, inline) that don't all expose stable selectors. Instead we wait
-  // a fixed budget for the picker to settle, then drive it via the keyboard
-  // and watch for the typeahead GraphQL response.
-  const clicked = await page.evaluate(() => {
-    for (const el of Array.from(document.querySelectorAll('[aria-label="Check in"], [role="button"]'))) {
+  // Click the actual composer trigger. The text "What's on your mind" is
+  // wrapped by several divs; clicking an outer div doesn't always open the
+  // dialog. Target the leaf [role="button"] that contains the prompt text,
+  // or the textbox itself.
+  const triggered = await page.evaluate(() => {
+    // 1. Prefer a [role="button"] whose own text starts with "What's on your mind".
+    const buttons = Array.from(document.querySelectorAll('[role="button"]'));
+    for (const el of buttons) {
       const txt = (el.textContent || '').trim();
-      const aria = el.getAttribute('aria-label') || '';
-      if (txt === 'Check in' || aria === 'Check in') {
+      if (txt.startsWith("What's on your mind") && txt.length < 60) {
         el.scrollIntoView();
         el.click();
-        return true;
+        return 'button';
       }
     }
-    return false;
+    // 2. Fallback: the textbox/textarea with that placeholder/aria-label.
+    const inputs = Array.from(document.querySelectorAll('[role="textbox"], textarea, input'));
+    for (const el of inputs) {
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+      if (aria.startsWith("what's on your mind") || ph.startsWith("what's on your mind")) {
+        el.scrollIntoView();
+        el.click();
+        return 'textbox';
+      }
+    }
+    return null;
   });
-  if (!clicked) {
-    try { await page.screenshot({ path: '/tmp/fb-scraper-no-checkin.png', fullPage: false }); } catch (_) {}
-    throw new Error('checkin_button_not_found');
+  if (!triggered) throw new Error('composer_trigger_not_found');
+
+  // Wait for the composer dialog to actually appear. We identify it as a
+  // dialog that contains the "Add to your post" toolbar (or a Check in /
+  // Photo button), not just any new [role="dialog"].
+  let composerDialogFound = false;
+  for (let i = 0; i < 40; i++) {
+    await sleep(250);
+    composerDialogFound = await page.evaluate(() => {
+      const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
+      return dialogs.some((d) => {
+        const txt = (d.textContent || '').toLowerCase();
+        // Composer always contains "Add to your post" or has a Photo/video tile.
+        return txt.includes('add to your post') ||
+               txt.includes("what's on your mind") ||
+               (txt.includes('photo') && txt.includes('check in'));
+      });
+    }).catch(() => false);
+    if (composerDialogFound) break;
   }
-  await sleep(3500);
+  if (!composerDialogFound) {
+    try { await page.screenshot({ path: '/tmp/fb-scraper-no-composer.png', fullPage: false }); } catch (_) {}
+    throw new Error('composer_dialog_not_found (trigger=' + triggered + ')');
+  }
+
+  // Click the Check-in entry inside the composer dialog. Match the composer
+  // by content, not by index — there may be multiple dialogs (e.g. a residual
+  // notifications popover) and we want the one with the post toolbar.
+  const clicked = await page.evaluate(() => {
+    const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
+    const dialog = dialogs.find((d) => {
+      const txt = (d.textContent || '').toLowerCase();
+      return txt.includes('add to your post') || txt.includes("what's on your mind");
+    });
+    if (!dialog) return { ok: false, reason: 'composer_dialog_lost' };
+    const labels = [];
+    const candidates = Array.from(
+      dialog.querySelectorAll('[aria-label], [role="button"]')
+    );
+    let match = null;
+    for (const el of candidates) {
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      if (aria) labels.push(aria);
+      if (aria === 'check in' || aria === 'add location' ||
+          aria.startsWith('check in') || aria.includes('check-in')) {
+        match = el;
+        break;
+      }
+    }
+    if (!match) {
+      for (const el of Array.from(dialog.querySelectorAll('[role="button"], div, span'))) {
+        const txt = (el.textContent || '').trim();
+        if (txt === 'Check in') { match = el; break; }
+      }
+    }
+    if (!match) return { ok: false, reason: 'not_in_dialog', labels: labels.slice(0, 30) };
+    match.scrollIntoView();
+    match.click();
+    return { ok: true };
+  });
+  if (!clicked.ok) {
+    try { await page.screenshot({ path: '/tmp/fb-scraper-no-checkin.png', fullPage: false }); } catch (_) {}
+    const labelDump = clicked.labels ? ' labels=' + JSON.stringify(clicked.labels) : '';
+    throw new Error('checkin_button_not_found:' + clicked.reason + labelDump);
+  }
+
+  // Wait for the place-picker input to appear. FB has shipped multiple
+  // dialog variants — "Where are you?" composer picker, "Search for location"
+  // standalone picker. Match any visible text-input inside an open dialog.
+  let pickerReady = false;
+  let pickerDebug = null;
+  for (let i = 0; i < 50; i++) {
+    await sleep(400);
+    pickerDebug = await page.evaluate(() => {
+      const sel = 'input, textarea, [contenteditable="true"], [role="combobox"], [role="searchbox"], [role="textbox"]';
+      const inputs = Array.from(document.querySelectorAll(sel));
+      const visible = [];
+      for (const el of inputs) {
+        const r = el.getBoundingClientRect();
+        if (r.width < 100 || r.height < 10) continue;
+        const style = window.getComputedStyle(el);
+        if (style.visibility === 'hidden' || style.display === 'none') continue;
+        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+        if (aria.includes('search facebook')) continue;
+        visible.push({
+          tag: el.tagName.toLowerCase(),
+          aria: el.getAttribute('aria-label') || '',
+          placeholder: el.getAttribute('placeholder') || '',
+          type: (el.type || '').toLowerCase(),
+          role: el.getAttribute('role') || '',
+          ce: el.getAttribute('contenteditable') || '',
+        });
+      }
+      const dialogs = Array.from(document.querySelectorAll('[role="dialog"]')).map(d => ({
+        label: d.getAttribute('aria-label') || '',
+        labelledby: d.getAttribute('aria-labelledby') || '',
+        text: (d.textContent || '').slice(0, 80),
+      }));
+      return { count: visible.length, inputs: visible, dialogs };
+    }).catch(() => ({ count: 0, inputs: [], dialogs: [] }));
+    if (pickerDebug.count > 0) { pickerReady = true; break; }
+  }
+  if (!pickerReady) {
+    try { await page.screenshot({ path: '/tmp/fb-scraper-no-picker.png', fullPage: false }); } catch (_) {}
+    throw new Error('place_picker_input_not_found:' + JSON.stringify(pickerDebug || {}));
+  }
 }
 
 async function clearAndType(page, query, isFirst) {
-  // Always spam Backspace before typing. On the very first query this
-  // clears any prefilled "near me" placeholder text and reliably lands
-  // the input focus on the picker; on subsequent queries it removes the
-  // previous query.
-  for (let i = 0; i < 80; i++) {
-    await page.keyboard.press('Backspace');
-  }
-  await sleep(300);
+  // Focus the place-picker input explicitly before typing. Don't rely on
+  // residual focus from openCheckin — between queries FB may re-render
+  // the input and lose it, sending keystrokes into the post body.
+  const focused = await page.evaluate(() => {
+    const inputs = Array.from(document.querySelectorAll('input'));
+    let target = null;
+    for (const el of inputs) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 100 || r.height < 10) continue;
+      const style = window.getComputedStyle(el);
+      if (style.visibility === 'hidden' || style.display === 'none') continue;
+      const t = (el.type || '').toLowerCase();
+      if (t && t !== 'text' && t !== 'search') continue;
+      // Skip the top-of-page "Search Facebook" input (it's also visible).
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      if (aria.includes('search facebook')) continue;
+      target = el;
+      break;
+    }
+    if (!target) return false;
+    target.focus();
+    return true;
+  });
+  if (!focused) throw new Error('place_picker_input_lost');
+
+  // Select-all + delete to clear any prior query (or "near me" prefill).
+  await page.keyboard.down('Control');
+  await page.keyboard.press('KeyA');
+  await page.keyboard.up('Control');
+  await page.keyboard.press('Delete');
+  await sleep(200);
   await page.keyboard.type(query, { delay: 130 });
 }
 
@@ -189,17 +318,26 @@ function pickMatch(results, query) {
 
 async function scrapeOne(page, query, isFirst) {
   const responses = [];
+  const debugDump = process.env.FB_DEBUG_GRAPHQL === '1';
+  let dumpIdx = 0;
   const onResponse = async (resp) => {
     const url = resp.url();
     if (!url.includes('/graphql') && !url.includes('/api/graphql')) return;
     try {
       const text = await resp.text();
       if (!text) return;
-      // Match either the legacy `checkin_search_query` payload or the
-      // current `useComposerLocationPickerTypeaheadDataSourceQuery` results.
-      // Both shapes embed `entity_id`+`contextual_name` pairs we can extract.
-      if (/place_results|location_picker|checkin_search_query|"entity_id":"\d+","contextual_name"/.test(text)) {
-        responses.push({ at: Date.now(), text });
+      if (debugDump) {
+        try {
+          fs.mkdirSync('/tmp/fb-graphql', { recursive: true });
+          const fname = `/tmp/fb-graphql/${Date.now()}-${dumpIdx++}.txt`;
+          fs.writeFileSync(fname, `URL: ${url}\n\n${text.slice(0, 20000)}`);
+        } catch (_) {}
+      }
+      // Capture any GraphQL payload that mentions "place" / "location" /
+      // entity-id pairs. FB renames the doc_id constantly so a strict
+      // match misses traffic.
+      if (/place_results|location_picker|checkin_search_query|"entity_id":"\d+"|"contextual_name"|placeResults|"page_id":"\d+","name":/.test(text)) {
+        responses.push({ at: Date.now(), text, url });
       }
     } catch (_) {}
   };
@@ -245,6 +383,16 @@ async function scrapeOne(page, query, isFirst) {
     return { id: null, name: null, error: 'no_typeahead_response' };
   }
 
+  // FB rate-limited the location-typeahead endpoint for this account+IP.
+  // Every response body looks like:
+  //   {"errors":[{"message":"Rate limit exceeded","code":1675004}],...}
+  // No point continuing the batch \u2014 surface a distinct error so the
+  // caller can abort.
+  const allRateLimited = responses.every(r => /"code":1675004|Rate limit exceeded/.test(r.text));
+  if (allRateLimited) {
+    return { id: null, name: null, error: 'rate_limited' };
+  }
+
   // Use the most recent response (matches the fully-typed query).
   const last = responses[responses.length - 1];
   const results = parseEdges(last.text);
@@ -280,6 +428,26 @@ async function scrapeOne(page, query, isFirst) {
 
   fs.mkdirSync(args.userDataDir, { recursive: true });
 
+  // Wipe Chromium session-restore state so the persistent profile doesn't
+  // re-open every tab from the previous run. Also flip Preferences.exit_type
+  // to "Normal" so Chromium doesn't show the "Restore tabs" prompt.
+  try {
+    const defaultDir = `${args.userDataDir}/Default`;
+    for (const f of ['Current Tabs', 'Current Session', 'Last Tabs', 'Last Session']) {
+      try { fs.unlinkSync(`${defaultDir}/${f}`); } catch (_) {}
+    }
+    const prefsPath = `${defaultDir}/Preferences`;
+    if (fs.existsSync(prefsPath)) {
+      const raw = fs.readFileSync(prefsPath, 'utf8');
+      const prefs = JSON.parse(raw);
+      if (prefs.profile) {
+        prefs.profile.exit_type = 'Normal';
+        prefs.profile.exited_cleanly = true;
+      }
+      fs.writeFileSync(prefsPath, JSON.stringify(prefs));
+    }
+  } catch (_) {}
+
   const browser = await puppeteer.launch({
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir,
@@ -288,12 +456,21 @@ async function scrapeOne(page, query, isFirst) {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
+      '--disable-session-crashed-bubble',
+      '--no-default-browser-check',
+      '--no-first-run',
+      '--hide-crash-restore-bubble',
     ],
   });
 
   let exitCode = 0;
   try {
-    const page = (await browser.pages())[0] || (await browser.newPage());
+    const allPages = await browser.pages();
+    const page = allPages[0] || (await browser.newPage());
+    // Close any extra tabs the persistent profile restored on launch.
+    for (let i = 1; i < allPages.length; i++) {
+      try { await allPages[i].close({ runBeforeUnload: false }); } catch (_) {}
+    }
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     // Grant geolocation so FB doesn't block the place-picker on a permission

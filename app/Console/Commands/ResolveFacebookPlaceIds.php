@@ -12,7 +12,8 @@ class ResolveFacebookPlaceIds extends Command
                             {--state=Illinois : State suffix appended to each city for the FB search}
                             {--limit=0 : Max number of unresolved cities to process this run (0 = all)}
                             {--force : Re-resolve even rows that already have an fb_place_id}
-                            {--delay-ms=4500 : Delay between FB queries (ms)}';
+                            {--delay-ms=4500 : Delay between FB queries (ms)}
+                            {--headed : Run Chromium with a visible window (for debugging)}';
 
     protected $description = 'Resolve and cache Facebook Place IDs for service-area cities (used as FB post check-ins).';
 
@@ -53,19 +54,24 @@ class ResolveFacebookPlaceIds extends Command
         }
 
         $scriptPath = base_path('scripts/scrape-facebook-place.mjs');
-        $process = new Process([
+        $cmd = [
             'node',
             $scriptPath,
             '--user-data-dir=' . $userDataDir,
             '--delay-ms=' . $delayMs,
-        ]);
+        ];
+        if ((bool) $this->option('headed')) {
+            $cmd[] = '--headed';
+        }
+        $process = new Process($cmd);
         $process->setTimeout(60 * 30);
         $process->setInput(implode("\n", $queries) . "\n");
 
         $resolved = 0;
         $failed = 0;
+        $rateLimitedHits = 0;
 
-        $process->run(function ($type, $buffer) use (&$resolved, &$failed, $queryToArea) {
+        $process->run(function ($type, $buffer) use (&$resolved, &$failed, &$rateLimitedHits, $queryToArea, $process) {
             if ($type !== Process::OUT) {
                 $this->getOutput()->write("<comment>{$buffer}</comment>");
                 return;
@@ -74,7 +80,13 @@ class ResolveFacebookPlaceIds extends Command
                 $line = trim($line);
                 if ($line === '') continue;
                 $row = json_decode($line, true);
-                if (! is_array($row) || empty($row['query'])) continue;
+                if (! is_array($row)) continue;
+
+                // Setup-phase failure (openCheckin etc.) emits {query:null,error:...}.
+                if (empty($row['query'])) {
+                    $this->error('  scraper setup failed: ' . ($row['error'] ?? 'unknown'));
+                    continue;
+                }
 
                 /** @var AreaServed|null $area */
                 $area = $queryToArea[$row['query']] ?? null;
@@ -87,6 +99,19 @@ class ResolveFacebookPlaceIds extends Command
                 } else {
                     $failed++;
                     $this->line(sprintf('  <comment>×</comment> %s → %s', $row['query'], $row['error'] ?? 'unknown'));
+                    if (($row['error'] ?? '') === 'rate_limited') {
+                        $rateLimitedHits++;
+                        // Bail after 3 consecutive rate-limit hits — FB's
+                        // typeahead is throttled for this account+IP and
+                        // grinding through more queries won't recover.
+                        if ($rateLimitedHits >= 3) {
+                            $this->error('  FB typeahead rate-limited (code 1675004) — aborting batch. Try again in a few hours.');
+                            $process->stop(0);
+                            return;
+                        }
+                    } else {
+                        $rateLimitedHits = 0;
+                    }
                 }
             }
         });

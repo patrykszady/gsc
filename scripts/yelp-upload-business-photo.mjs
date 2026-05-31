@@ -663,12 +663,12 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
   if (hasOopsError) {
     await dumpPage(page, 'photos-page-oops');
     await snap(page, 'photos-page-oops');
-    console.error('[yelp] photos page returned "Oops! Something went wrong" - signalling throttle to release job for 10 min');
+    console.error('[yelp] photos page returned "Oops! Something went wrong" - signalling throttle to release job for 90s');
     // Structured signal for the PHP caller.
     process.stdout.write(JSON.stringify({
       ok: false,
       throttled: true,
-      retry_after_seconds: 600,
+      retry_after_seconds: 90,
       reason: 'photos_page_oops',
       message: 'Yelp /biz_photos/<id> returned "Oops! Something went wrong" - cooling down',
     }) + '\n');
