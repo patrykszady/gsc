@@ -620,13 +620,23 @@ class YelpBusinessService
                 $stdout = trim($process->getOutput());
                 $stderr = trim($process->getErrorOutput());
 
-                if (! $process->isSuccessful()) {
+                // Parse the success payload BEFORE checking $process->isSuccessful().
+                // Chromium teardown after a successful upload occasionally hangs and
+                // the bash wrapper / OS ends up SIGKILL'ing the subprocess group —
+                // Symfony reports "signaled with signal 9" but the upload IS done
+                // and stdout already contains {"ok":true,"photo_id":"..."}. We must
+                // not throw that away: the photo is on Yelp and we need the DB row.
+                $earlyJsonLine = $this->lastJsonLine($stdout);
+                $earlyPayload = $earlyJsonLine ? json_decode($earlyJsonLine, true) : null;
+                $earlyOk = is_array($earlyPayload) && ! empty($earlyPayload['ok']);
+
+                if (! $process->isSuccessful() && ! $earlyOk) {
                     // Exit code 3 = structured session_expired signal from the
                     // upload script. We still parse stdout JSON to confirm and
                     // capture any human-readable note for the admin UI.
                     $exit = (int) $process->getExitCode();
-                    $jsonLine = $this->lastJsonLine($stdout);
-                    $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+                    $jsonLine = $earlyJsonLine;
+                    $payload = $earlyPayload;
 
                     // Exit code 75 (EX_TEMPFAIL) = recoverable throttle signal
                     // (e.g. /biz_photos/<id> returned "Oops! Something went
@@ -683,16 +693,28 @@ class YelpBusinessService
                     return null;
                 }
 
-                $jsonLine = $this->lastJsonLine($stdout);
-                $payload = $jsonLine ? json_decode($jsonLine, true) : null;
+                $jsonLine = $earlyJsonLine;
+                $payload = $earlyPayload;
 
                 if (! is_array($payload) || empty($payload['ok'])) {
                     Log::channel('yelp')->error('Yelp biz: upload script returned no/invalid payload', [
                         'image_id' => $image->id,
+                        'exit_code' => (int) $process->getExitCode(),
                         'stdout' => $stdout,
                         'stderr' => $stderr,
                     ]);
                     return null;
+                }
+
+                // If the subprocess died via signal AFTER printing ok:true,
+                // log it loudly but proceed with the recorded success — the
+                // photo is on Yelp and we have the verified photo_id.
+                if (! $process->isSuccessful()) {
+                    Log::channel('yelp')->warning('Yelp biz: subprocess signaled after success JSON; persisting payload anyway', [
+                        'image_id' => $image->id,
+                        'exit_code' => (int) $process->getExitCode(),
+                        'photo_id' => $payload['photo_id'] ?? null,
+                    ]);
                 }
 
                 // A successful upload proves the session cookies still work.

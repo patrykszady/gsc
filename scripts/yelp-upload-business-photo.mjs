@@ -1219,7 +1219,17 @@ async function main() {
       exitCode = 1;
     }
   } finally {
-    await browser.close().catch(() => {});
+    // Cap browser teardown at 5s. Chromium occasionally hangs on .close()
+    // after a successful upload; if we await it indefinitely the bash
+    // wrapper SIGKILLs the whole pgid and Symfony Process reports
+    // "signaled with signal 9" — discarding the success JSON we already
+    // printed to stdout. Detach + race with a hard timeout so node exits
+    // cleanly with the right code; any lingering chromium will be reaped
+    // by yelp-run-locked.sh's cleanup_pgid.
+    await Promise.race([
+      browser.close().catch(() => {}),
+      new Promise((r) => setTimeout(r, 5000)),
+    ]);
     process.exit(exitCode);
   }
 }
