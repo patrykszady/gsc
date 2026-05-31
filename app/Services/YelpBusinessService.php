@@ -603,6 +603,55 @@ class YelpBusinessService
                         @fclose($teeFh);
                     }
                     return null;
+                } catch (ProcessSignaledException $e) {
+                    // Subprocess was killed by a signal (typically SIGKILL
+                    // from the bash wrapper / cleanup_pgid after chromium
+                    // teardown hung). Symfony's run() THROWS in this case
+                    // instead of returning, so we'd otherwise never reach
+                    // the success-rescue parser below. Check stdout right
+                    // here: if the upload actually completed and printed
+                    // the ok:true JSON before the kill, persist it. The
+                    // photo is on Yelp - we must not lose the photo_id.
+                    if ($teeFh) {
+                        @fclose($teeFh);
+                    }
+                    $stdoutSignaled = trim($process->getOutput());
+                    $stderrSignaled = trim($process->getErrorOutput());
+                    $jsonLineSignaled = $this->lastJsonLine($stdoutSignaled);
+                    $payloadSignaled = $jsonLineSignaled ? json_decode($jsonLineSignaled, true) : null;
+                    if (is_array($payloadSignaled) && ! empty($payloadSignaled['ok']) && ! empty($payloadSignaled['photo_id'])) {
+                        Log::channel('yelp')->warning('Yelp biz: subprocess signaled after success JSON; persisting payload anyway', [
+                            'image_id' => $image->id,
+                            'signal' => $e->getProcess()->getTermSignal(),
+                            'photo_id' => $payloadSignaled['photo_id'],
+                        ]);
+                        $this->markSessionFresh();
+                        $realPhotoId = is_string($payloadSignaled['photo_id']) && $payloadSignaled['photo_id'] !== ''
+                            ? $payloadSignaled['photo_id']
+                            : null;
+                        \App\Models\ImagePlatformUpload::record($image->id, \App\Models\ImagePlatformUpload::PLATFORM_YELP_BIZ, [
+                            'remote_id' => $realPhotoId,
+                            'caption' => $caption,
+                        ]);
+                        Cache::forget(self::inFlightCacheKey($image->id));
+                        return [
+                            'photo_id' => $image->fresh()->yelp_biz_photo_id,
+                            'photos_url' => $payloadSignaled['photos_url'] ?? null,
+                            'caption' => $caption,
+                            'verified' => (bool) ($payloadSignaled['photo_id_verified'] ?? false),
+                        ];
+                    }
+                    Log::channel('yelp')->error('Yelp biz: subprocess killed by signal with no success payload', [
+                        'image_id' => $image->id,
+                        'signal' => $e->getProcess()->getTermSignal(),
+                        'stdout_tail' => mb_substr($stdoutSignaled, -2000),
+                        'stderr_tail' => mb_substr($stderrSignaled, -2000),
+                    ]);
+                    // Clear in-flight marker - the upload either didn't
+                    // start or didn't reach success; safe to let the job
+                    // retry without manual intervention.
+                    Cache::forget(self::inFlightCacheKey($image->id));
+                    return null;
                 }
 
                 if ($teeFh) {
