@@ -163,6 +163,11 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 'force_refresh' => $this->forceRefresh,
                 'error' => $e->getMessage(),
             ]);
+            // Re-throw so Laravel marks the job as failed and runs failed().
+            // The signal-9 detection in failed() preserves the in-flight
+            // marker so the next dispatch hits the duplicate-upload guard
+            // instead of silently double-uploading to Yelp.
+            throw $e;
         }
     }
 
