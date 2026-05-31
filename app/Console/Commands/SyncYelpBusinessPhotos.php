@@ -8,6 +8,7 @@ use App\Services\YelpBusinessService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 
 class SyncYelpBusinessPhotos extends Command
 {
@@ -18,9 +19,46 @@ class SyncYelpBusinessPhotos extends Command
         {--sync : Run uploads synchronously in this process (default: queue)}
         {--show-process : Stream Yelp uploader process output (sync mode only)}
         {--watch : After dispatching, poll the DB and show a live progress bar until all queued uploads complete or timeout elapses (queue mode only)}
-        {--watch-timeout=21600 : Max seconds to watch before bailing out (default 6h)}';
+        {--watch-timeout=21600 : Max seconds to watch before bailing out (default 6h)}
+        {--purge-delayed : Before dispatching, drop any leftover delayed/queued media-sync jobs from a previous run so the worker picks up fresh dispatches immediately}';
 
     protected $description = 'Dispatch upload jobs for project images to the account-wide Yelp Business Photos gallery.';
+
+    protected function checkDelayedQueue(bool $purge): void
+    {
+        try {
+            $prefix = (string) config('database.redis.options.prefix', '');
+            $base = $prefix . 'queues:media-sync';
+            $delayedKey = $base . ':delayed';
+            $reservedKey = $base . ':reserved';
+            $delayed = (int) Redis::zcard($delayedKey);
+            $reserved = (int) Redis::zcard($reservedKey);
+            $pending = (int) Redis::llen($base);
+
+            if ($delayed === 0 && $reserved === 0 && $pending === 0) {
+                return;
+            }
+
+            if ($purge) {
+                Redis::del($delayedKey);
+                Redis::del($reservedKey);
+                Redis::del($base);
+                $this->warn(sprintf(
+                    'Purged stale media-sync queue: %d delayed, %d reserved, %d pending.',
+                    $delayed, $reserved, $pending,
+                ));
+                return;
+            }
+
+            $this->warn(sprintf(
+                'media-sync queue is not empty: %d delayed, %d reserved, %d pending. These will run BEFORE the new dispatches and may make the worker look stuck.',
+                $delayed, $reserved, $pending,
+            ));
+            $this->line('  -> rerun with --purge-delayed to drop them, or `redis-cli DEL ' . $delayedKey . '` manually.');
+        } catch (\Throwable $e) {
+            $this->line('  (could not inspect media-sync queue: ' . $e->getMessage() . ')');
+        }
+    }
 
     public function handle(YelpBusinessService $service): int
     {
@@ -28,6 +66,14 @@ class SyncYelpBusinessPhotos extends Command
             $this->error('Yelp business uploader is not configured. Set Yelp email and password in /admin/platforms.');
             return self::FAILURE;
         }
+
+        // Surface (and optionally purge) leftover jobs from a previous run.
+        // With media-sync's maxProcesses=1 supervisor, even a handful of
+        // stale Delayed jobs can starve fresh dispatches: each pops, fails
+        // fast on the in-flight guard, releases for 90s+, repeat. Operator
+        // sees "waiting Ns for worker" while the worker is actually busy
+        // chewing through zombies.
+        $this->checkDelayedQueue((bool) $this->option('purge-delayed'));
 
         $query = ProjectImage::query()
             ->whereHas('project', function ($q) {

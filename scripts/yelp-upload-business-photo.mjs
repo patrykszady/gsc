@@ -673,11 +673,11 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
   if (hasOopsError) {
     await dumpPage(page, 'photos-page-oops');
     await snap(page, 'photos-page-oops');
-    console.error('[yelp] photos page still "Oops" after in-script retries - signalling throttle to release job for 90s');
+    console.error('[yelp] photos page still "Oops" after in-script retries - signalling throttle to release job for 240s');
     process.stdout.write(JSON.stringify({
       ok: false,
       throttled: true,
-      retry_after_seconds: 90,
+      retry_after_seconds: 240,
       reason: 'photos_page_oops',
       message: 'Yelp /biz_photos/<id> returned "Oops! Something went wrong" after in-script retries - cooling down',
     }) + '\n');
