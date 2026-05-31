@@ -728,6 +728,7 @@ class YelpBusinessService
                         throw new YelpUploadThrottledException(
                             "Yelp upload throttled ({$reason}); retry in {$retryAfter}s",
                             $retryAfter,
+                            $reason,
                         );
                     }
 

@@ -18,6 +18,7 @@ class YelpUploadThrottledException extends RuntimeException
     public function __construct(
         string $message,
         public readonly int $retryAfterSeconds,
+        public readonly ?string $reason = null,
     ) {
         parent::__construct($message);
     }

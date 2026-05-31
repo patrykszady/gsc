@@ -21,6 +21,7 @@ class SyncYelpBusinessPhotos extends Command
         {--show-process : Stream Yelp uploader process output (sync mode only)}
         {--watch : After dispatching, poll the DB and show a live progress bar until all queued uploads complete or timeout elapses (queue mode only)}
         {--watch-timeout=21600 : Max seconds to watch before bailing out (default 6h)}
+        {--fail-on-oops : Fail jobs immediately on Yelp "Oops" instead of releasing for retry. Burns through the queue faster but skips images Yelp temporarily refuses}
         {--purge-delayed : Before dispatching, drop any leftover delayed/queued media-sync jobs from a previous run so the worker picks up fresh dispatches immediately}';
 
     protected $description = 'Dispatch upload jobs for project images to the account-wide Yelp Business Photos gallery.';
@@ -131,6 +132,7 @@ class SyncYelpBusinessPhotos extends Command
         $sync = (bool) $this->option('sync');
         $watch = (bool) $this->option('watch');
         $showProcess = (bool) $this->option('show-process');
+        $failOnOops = (bool) $this->option('fail-on-oops');
 
         $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 0));
         // Empirical per-image budget: ~50s upload work + min_interval buffer.
@@ -148,7 +150,7 @@ class SyncYelpBusinessPhotos extends Command
         // Process newest pending first ("the next N that need to be uploaded"),
         // and stop only when we've dispatched $limit images (not merely
         // considered $limit rows). Skipped rows do not consume the budget.
-        $query->orderByDesc('id')->each(function (ProjectImage $image) use (&$count, &$dispatchedIds, $force, $sync, $showProcess, $service, $limit) {
+        $query->orderByDesc('id')->each(function (ProjectImage $image) use (&$count, &$dispatchedIds, $force, $sync, $showProcess, $service, $limit, $failOnOops) {
             if ($limit > 0 && $count >= $limit) {
                 return false; // stop the each() iteration
             }
@@ -178,7 +180,7 @@ class SyncYelpBusinessPhotos extends Command
                 }
                 Cache::put($cacheKey, true, now()->addHours(12));
 
-                UploadProjectImageToYelpBusinessPhotos::dispatch($image->id, $force)
+                UploadProjectImageToYelpBusinessPhotos::dispatch($image->id, $force, $failOnOops)
                     ->onQueue('media-sync');
                 $this->line("  - queued image #{$image->id}");
                 $dispatchedIds[] = $image->id;
