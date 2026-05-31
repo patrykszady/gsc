@@ -131,7 +131,10 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                     'image_id' => $this->imageId,
                     'retry_after_seconds' => $e->retryAfterSeconds,
                 ]);
-                $this->release($e->retryAfterSeconds);
+                // Per-job jitter (0–30s) prevents N released jobs from all
+                // waking at the same second when a host-wide cooldown
+                // expires and stampeding the lock.
+                $this->release($e->retryAfterSeconds + random_int(0, 30));
                 return;
             } catch (YelpSessionExpiredException $e) {
                 // Persistent Chromium profile is no longer logged in. Driving

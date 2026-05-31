@@ -28,6 +28,11 @@ class YelpBusinessService
     public const SETTING_PASSWORD = 'yelp_biz_password';
     private const AUTOMATION_LOCK_KEY = 'yelp:browser-automation:lock';
     private const LAST_RUN_KEY = 'yelp:browser-automation:last-run-at';
+    // Host-wide cooldown: epoch seconds until which NO automation may run.
+    // Set when the script signals a throttle (e.g. photos_page_oops). Lets
+    // other pending jobs short-circuit BEFORE launching Chromium, which
+    // otherwise wastes ~5s per job and hammers the box pointlessly.
+    private const OOPS_COOLDOWN_KEY = 'yelp:browser-automation:cooldown-until';
     // Live status published by withAutomationLock for the operator-facing
     // sync command's progress bar. JSON: {operation, image_id, started_at}.
     private const CURRENT_OP_KEY = 'yelp:browser-automation:current';
@@ -706,10 +711,20 @@ class YelpBusinessService
                         // upload, so the in-flight "killed mid-upload" guard
                         // must not trip on the retry.
                         Cache::forget(self::inFlightCacheKey($image->id));
+                        // Host-wide cooldown: prevents the other N pending
+                        // jobs from each launching Chromium just to hit the
+                        // same throttle 5s later. Cap at retry_after_seconds
+                        // so we don't oversleep on transient blips.
+                        Cache::put(
+                            self::OOPS_COOLDOWN_KEY,
+                            time() + $retryAfter,
+                            now()->addSeconds($retryAfter + 60)
+                        );
                         Log::channel('yelp')->info('Yelp biz: upload script signalled throttle, releasing job', [
                             'image_id' => $image->id,
                             'reason' => $reason,
                             'retry_after_seconds' => $retryAfter,
+                            'cooldown_until' => date('c', time() + $retryAfter),
                         ]);
                         throw new YelpUploadThrottledException(
                             "Yelp upload throttled ({$reason}); retry in {$retryAfter}s",
@@ -824,6 +839,23 @@ class YelpBusinessService
         $lockTtl = max(60, (int) ($cfg['automation_lock_ttl_seconds'] ?? 900));
         $lockWait = max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 5));
         $minInterval = max(0, (int) ($cfg['min_interval_seconds'] ?? 600));
+
+        // 0. Host-wide script-throttle cooldown. When the Node uploader
+        //    last signalled e.g. photos_page_oops, Yelp's /biz_photos page
+        //    is unusable for ~10min. Bailing here (before lock + Chromium
+        //    launch) saves ~5s and ~800MB RSS per pending job.
+        $cooldownUntil = (int) Cache::get(self::OOPS_COOLDOWN_KEY, 0);
+        if ($cooldownUntil > time()) {
+            $retryAfter = $cooldownUntil - time();
+            Log::channel('yelp')->debug('Yelp: in host-wide cooldown, skipping', [
+                'operation' => $operation,
+                'retry_after_seconds' => $retryAfter,
+            ] + $context);
+            throw new YelpUploadThrottledException(
+                "Yelp automation cooling down; retry in {$retryAfter}s",
+                $retryAfter,
+            );
+        }
 
         // 1. Hard throttle: enforce a minimum gap between successful runs.
         //    This is the primary safeguard against server overload —

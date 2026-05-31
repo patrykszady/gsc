@@ -82,7 +82,7 @@ class UploadProjectImageToYelp implements ShouldQueue, ShouldBeUnique
                     'image_id' => $this->imageId,
                     'retry_after_seconds' => $e->retryAfterSeconds,
                 ]);
-                $this->release($e->retryAfterSeconds);
+                $this->release($e->retryAfterSeconds + random_int(0, 30));
                 return;
             }
 

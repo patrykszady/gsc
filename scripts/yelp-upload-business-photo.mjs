@@ -655,29 +655,56 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
   // (~30–45s including lock acquisition) and other queued jobs cycle
   // through hitting the same oops, so absorbing transient oops here
   // saves minutes of wall-clock wait per image.
-  const checkOops = () => page.evaluate(() =>
-    /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
-  ).catch(() => false);
+  //
+  // Detection must avoid false positives: the bare string "Oops! Something
+  // went wrong" can appear in Yelp's i18n bundle / hidden error components
+  // / footer help links on a perfectly healthy page. The page is BROKEN
+  // only when (a) the upload UI is absent AND (b) the error string appears
+  // in a prominent location (h1/h2 or a known error container). If the
+  // upload UI is present, we proceed regardless of stray "Oops" text.
+  const checkPageStatus = () => page.evaluate(() => {
+    const hasUploadUI = !!(
+      document.querySelector('input[type="file"]') ||
+      document.querySelector('input[data-testid="photo-file-input"]') ||
+      Array.from(document.querySelectorAll('button, a, [role="button"], label'))
+        .some(el => /(add|upload).*(photo|image)|photo.*(add|upload)/i.test((el.textContent || '').trim()))
+    );
+    // Only treat as oops if the error string is in a heading or an
+    // obvious error container — NOT anywhere in body.innerText.
+    const oopsRe = /Oops!\s*Something went wrong/i;
+    const errorNodes = Array.from(document.querySelectorAll('h1, h2, [data-testid*="error" i], [class*="error-page" i], [class*="ErrorPage" i]'));
+    const hasOopsHeading = errorNodes.some(el => oopsRe.test((el.textContent || '').trim()));
+    return { hasUploadUI, hasOopsHeading };
+  }).catch(() => ({ hasUploadUI: false, hasOopsHeading: false }));
 
   await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
   await sleep(2000);
-  let hasOopsError = await checkOops();
-  const oopsRetryDelays = [15000, 25000]; // total in-script budget ~40s before giving up
+  let status = await checkPageStatus();
+  let hasOopsError = !status.hasUploadUI && status.hasOopsHeading;
+  console.error(`[yelp] photos page status: uploadUI=${status.hasUploadUI} oopsHeading=${status.hasOopsHeading}`);
+  // Target: <2min total per upload. Yelp's /biz_photos/<id> often serves
+  // "Oops! Something went wrong" for ~30-90s after a recent upload. We've
+  // already paid the Chromium launch (~10s) and lock acquisition, so
+  // retrying in-script for ~80s is far cheaper than releasing the job
+  // (full Chromium teardown + relaunch + lock contention).
+  const oopsRetryDelays = [10000, 15000, 20000, 30000]; // total ~75s
   for (let i = 0; hasOopsError && i < oopsRetryDelays.length; i++) {
     console.error(`[yelp] oops page (attempt ${i + 1}/${oopsRetryDelays.length}), waiting ${oopsRetryDelays[i]}ms then reloading`);
     await sleep(oopsRetryDelays[i]);
     await page.reload({ waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
     await sleep(2000);
-    hasOopsError = await checkOops();
+    status = await checkPageStatus();
+    hasOopsError = !status.hasUploadUI && status.hasOopsHeading;
+    console.error(`[yelp] retry status: uploadUI=${status.hasUploadUI} oopsHeading=${status.hasOopsHeading}`);
   }
   if (hasOopsError) {
     await dumpPage(page, 'photos-page-oops');
     await snap(page, 'photos-page-oops');
-    console.error('[yelp] photos page still "Oops" after in-script retries - signalling throttle to release job for 240s');
+    console.error('[yelp] photos page still "Oops" after in-script retries - signalling 60s cooldown');
     process.stdout.write(JSON.stringify({
       ok: false,
       throttled: true,
-      retry_after_seconds: 240,
+      retry_after_seconds: 60,
       reason: 'photos_page_oops',
       message: 'Yelp /biz_photos/<id> returned "Oops! Something went wrong" after in-script retries - cooling down',
     }) + '\n');

@@ -266,6 +266,7 @@ class SyncYelpBusinessPhotos extends Command
                 }
             }
             $lockHeld = Cache::has('yelp:browser-automation:lock');
+            $cooldownUntil = (int) Cache::get('yelp:browser-automation:cooldown-until', 0);
 
             if ($currentData && isset($currentData['image_id'], $currentData['started_at'])) {
                 // Live: a worker is actively running the upload subprocess.
@@ -275,6 +276,8 @@ class SyncYelpBusinessPhotos extends Command
                 // Lock exists but no current-op marker — race window between
                 // lock acquisition and marker write, or stale lock.
                 $statusMsg = 'uploading';
+            } elseif ($cooldownUntil > time()) {
+                $statusMsg = sprintf('Yelp oops cooldown: %ds', $cooldownUntil - time());
             } elseif ($minInterval > 0 && $lastRunAt > 0 && (time() - $lastRunAt) < $minInterval) {
                 $statusMsg = sprintf('throttle cooldown: %ds', max(0, $minInterval - (time() - $lastRunAt)));
             } elseif ($pending > 0) {
