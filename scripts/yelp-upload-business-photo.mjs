@@ -649,28 +649,37 @@ async function uploadPhoto(page, photosUrl, photoPath, caption, timeoutMs, photo
   console.error(`[yelp] navigating to photos page: ${photosUrl}`);
 
   // Yelp's /biz_photos/<id> endpoint intermittently 500s (especially after a
-  // streak of uploads in the same session) and serves an
-  // "Oops! Something went wrong" page that contains no upload UI at all.
-  // Don't sleep here — emit a structured marker on stdout and exit so the
-  // PHP job catches `YelpUploadThrottledException` and `release()`s itself
-  // back to the queue (10 min). That frees the Horizon worker for other
-  // jobs instead of blocking it for the whole cool-down.
-  await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
-  await sleep(2000);
-  const hasOopsError = await page.evaluate(() =>
+  // streak of uploads in the same session) and serves an "Oops! Something
+  // went wrong" page. Retry in-script with short waits before bailing —
+  // releasing the job to the queue forces another full Chromium launch
+  // (~30–45s including lock acquisition) and other queued jobs cycle
+  // through hitting the same oops, so absorbing transient oops here
+  // saves minutes of wall-clock wait per image.
+  const checkOops = () => page.evaluate(() =>
     /Oops!\s*Something went wrong/i.test(document.body ? document.body.innerText : '')
   ).catch(() => false);
+
+  await page.goto(photosUrl, { waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
+  await sleep(2000);
+  let hasOopsError = await checkOops();
+  const oopsRetryDelays = [15000, 25000]; // total in-script budget ~40s before giving up
+  for (let i = 0; hasOopsError && i < oopsRetryDelays.length; i++) {
+    console.error(`[yelp] oops page (attempt ${i + 1}/${oopsRetryDelays.length}), waiting ${oopsRetryDelays[i]}ms then reloading`);
+    await sleep(oopsRetryDelays[i]);
+    await page.reload({ waitUntil: 'networkidle2', timeout: timeoutMs }).catch(() => {});
+    await sleep(2000);
+    hasOopsError = await checkOops();
+  }
   if (hasOopsError) {
     await dumpPage(page, 'photos-page-oops');
     await snap(page, 'photos-page-oops');
-    console.error('[yelp] photos page returned "Oops! Something went wrong" - signalling throttle to release job for 90s');
-    // Structured signal for the PHP caller.
+    console.error('[yelp] photos page still "Oops" after in-script retries - signalling throttle to release job for 90s');
     process.stdout.write(JSON.stringify({
       ok: false,
       throttled: true,
       retry_after_seconds: 90,
       reason: 'photos_page_oops',
-      message: 'Yelp /biz_photos/<id> returned "Oops! Something went wrong" - cooling down',
+      message: 'Yelp /biz_photos/<id> returned "Oops! Something went wrong" after in-script retries - cooling down',
     }) + '\n');
     // Exit code 75 (EX_TEMPFAIL) — distinguishes a recoverable throttle from
     // a hard failure (exit 1) so the wrapper / shell scripts can tell them apart.
