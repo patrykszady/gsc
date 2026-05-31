@@ -33,6 +33,10 @@ class YelpBusinessService
     // other pending jobs short-circuit BEFORE launching Chromium, which
     // otherwise wastes ~5s per job and hammers the box pointlessly.
     private const OOPS_COOLDOWN_KEY = 'yelp:browser-automation:cooldown-until';
+    // Counter of consecutive throttle signals from the uploader script.
+    // Reset on a successful upload; used to escalate the cooldown when
+    // Yelp's /biz_photos page is persistently broken so we stop hammering.
+    private const OOPS_STREAK_KEY = 'yelp:browser-automation:oops-streak';
     // Live status published by withAutomationLock for the operator-facing
     // sync command's progress bar. JSON: {operation, image_id, started_at}.
     private const CURRENT_OP_KEY = 'yelp:browser-automation:current';
@@ -702,29 +706,24 @@ class YelpBusinessService
                         || (is_array($payload) && ! empty($payload['throttled']));
                     if ($isThrottle) {
                         $retryAfter = is_array($payload)
-                            ? (int) ($payload['retry_after_seconds'] ?? 90)
-                            : 90;
+                            ? (int) ($payload['retry_after_seconds'] ?? 5)
+                            : 5;
                         $reason = is_array($payload)
                             ? (string) ($payload['reason'] ?? 'script_throttle')
                             : 'script_throttle';
+                        // Operator preference: do NOT block the host on Yelp
+                        // Oops; just release this single job with a short
+                        // back-off and let the next image try. Cap retries
+                        // to avoid forever-looping on a persistent Oops.
+                        $retryAfter = min(30, max(5, $retryAfter));
                         // Clean throttle exit — script never attempted the
                         // upload, so the in-flight "killed mid-upload" guard
                         // must not trip on the retry.
                         Cache::forget(self::inFlightCacheKey($image->id));
-                        // Host-wide cooldown: prevents the other N pending
-                        // jobs from each launching Chromium just to hit the
-                        // same throttle 5s later. Cap at retry_after_seconds
-                        // so we don't oversleep on transient blips.
-                        Cache::put(
-                            self::OOPS_COOLDOWN_KEY,
-                            time() + $retryAfter,
-                            now()->addSeconds($retryAfter + 60)
-                        );
                         Log::channel('yelp')->info('Yelp biz: upload script signalled throttle, releasing job', [
                             'image_id' => $image->id,
                             'reason' => $reason,
                             'retry_after_seconds' => $retryAfter,
-                            'cooldown_until' => date('c', time() + $retryAfter),
                         ]);
                         throw new YelpUploadThrottledException(
                             "Yelp upload throttled ({$reason}); retry in {$retryAfter}s",
@@ -787,6 +786,8 @@ class YelpBusinessService
 
                 // A successful upload proves the session cookies still work.
                 $this->markSessionFresh();
+                // Reset the consecutive-Oops streak: Yelp is healthy again.
+                Cache::forget(self::OOPS_STREAK_KEY);
 
                 // The script returns a real Yelp photo_id only when it
                 // successfully captured one from the upload XHR response.
@@ -861,23 +862,22 @@ class YelpBusinessService
         //    This is the primary safeguard against server overload —
         //    Chromium is heavy, so we cap real launches at one per
         //    min_interval_seconds across the entire host.
+        //    media-sync runs with maxProcesses=1, so we sleep in-process
+        //    rather than throwing; releasing back to the queue caused a
+        //    cycle where each job re-checked the throttle against a fresh
+        //    LAST_RUN_KEY after every successful upload, multiplying the
+        //    inter-upload delay by 3-4× per pending job.
         if ($minInterval > 0) {
             $lastRunAt = (int) Cache::get(self::LAST_RUN_KEY, 0);
             $elapsed = time() - $lastRunAt;
             if ($lastRunAt > 0 && $elapsed < $minInterval) {
-                $retryAfter = $minInterval - $elapsed;
-                // Debug-level: this is the expected hot-path for a queue of
-                // pending jobs. INFO/WARNING would flood the log with N lines
-                // per upload cycle (one per pending job per retry).
-                Log::channel('yelp')->debug('Yelp: throttled by min_interval_seconds', [
+                $waitSeconds = $minInterval - $elapsed;
+                Log::channel('yelp')->debug('Yelp: sleeping for min_interval_seconds', [
                     'operation' => $operation,
                     'min_interval_seconds' => $minInterval,
-                    'retry_after_seconds' => $retryAfter,
+                    'wait_seconds' => $waitSeconds,
                 ] + $context);
-                throw new YelpUploadThrottledException(
-                    "Yelp automation throttled; retry in {$retryAfter}s",
-                    $retryAfter,
-                );
+                sleep($waitSeconds);
             }
         }
 

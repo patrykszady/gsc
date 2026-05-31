@@ -23,6 +23,7 @@ class SocialMediaPosts extends Component
     public int $remainingInstagram = 0;
     public int $postedInstagram = 0;
     public int $remainingFacebook = 0;
+    public int $postedFacebook = 0;
     public int $remainingGbp = 0;
     public int $remainingYelp = 0;
     public int $uploadedYelp = 0;
@@ -39,6 +40,9 @@ class SocialMediaPosts extends Component
             ->where('status', 'published')
             ->count();
         $this->remainingFacebook = ImageSocialPost::unpostedImagesQuery('facebook')->count();
+        $this->postedFacebook = ImageSocialPost::where('platform', 'facebook')
+            ->where('status', 'published')
+            ->count();
         $this->remainingGbp = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))
             ->notUploadedTo('google_places')->count();
         $this->uploadedGbp = ProjectImage::whereHas('project', fn ($q) => $q->where('is_published', true))

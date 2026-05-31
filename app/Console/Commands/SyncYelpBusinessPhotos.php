@@ -8,6 +8,7 @@ use App\Services\YelpBusinessService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
 class SyncYelpBusinessPhotos extends Command
@@ -186,6 +187,13 @@ class SyncYelpBusinessPhotos extends Command
         });
 
         $this->info("Dispatched {$count} Yelp business-photos upload job(s).");
+        Log::channel('yelp')->info('yelp:sync-business-photos dispatched', [
+            'count' => $count,
+            'image_ids' => $dispatchedIds,
+            'sync' => $sync,
+            'force' => $force,
+            'limit' => $limit,
+        ]);
 
         if (! $sync && $watch && ! empty($dispatchedIds)) {
             $this->watchProgress($dispatchedIds, $perImageSeconds, $minInterval, (int) $this->option('watch-timeout'));
@@ -211,6 +219,13 @@ class SyncYelpBusinessPhotos extends Command
             $this->humanInterval($eta),
             $perImageSeconds,
         ));
+        Log::channel('yelp')->info('yelp:sync-business-photos watch start', [
+            'total' => $total,
+            'eta_seconds' => $eta,
+            'per_image_seconds' => $perImageSeconds,
+            'image_ids' => $imageIds,
+        ]);
+        $previousStatus = null;
 
         $bar = $this->output->createProgressBar($total);
         $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%%  done=%done% pending=%pending% failed=%failed%  elapsed=%elapsed%  status=%status%');
@@ -299,6 +314,18 @@ class SyncYelpBusinessPhotos extends Command
             }
             $bar->setMessage($statusMsg, 'status');
 
+            if ($statusMsg !== $previousStatus) {
+                Log::channel('yelp')->info('yelp:sync-business-photos progress', [
+                    'done' => $done,
+                    'pending' => $pending,
+                    'failed' => $failed,
+                    'total' => $total,
+                    'elapsed_seconds' => time() - $start,
+                    'status' => $statusMsg,
+                ]);
+                $previousStatus = $statusMsg;
+            }
+
             // Re-set position AND force display() so the elapsed/status
             // segment of the bar updates in-place on every tick even when
             // $done hasn't changed (ProgressBar skips redraw when the
@@ -325,6 +352,12 @@ class SyncYelpBusinessPhotos extends Command
                 } else {
                     $this->info("All {$total} upload(s) completed.");
                 }
+                Log::channel('yelp')->info('yelp:sync-business-photos watch finished', [
+                    'done' => $done,
+                    'failed' => $failed,
+                    'total' => $total,
+                    'elapsed_seconds' => $elapsed,
+                ]);
                 return;
             }
 
@@ -337,6 +370,14 @@ class SyncYelpBusinessPhotos extends Command
                     $pending,
                     $failed,
                 ));
+                Log::channel('yelp')->warning('yelp:sync-business-photos watch timeout', [
+                    'done' => $done,
+                    'pending' => $pending,
+                    'failed' => $failed,
+                    'total' => $total,
+                    'elapsed_seconds' => $elapsed,
+                    'max_seconds' => $maxSeconds,
+                ]);
                 return;
             }
 

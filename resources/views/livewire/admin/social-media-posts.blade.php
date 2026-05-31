@@ -40,6 +40,7 @@
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-blue-600">{{ $remainingFacebook }}</p>
             <p class="text-sm text-zinc-500">FB Remaining</p>
+            <p class="mt-1 text-xs text-zinc-400">{{ $postedFacebook }} {{ \Illuminate\Support\Str::plural('post', $postedFacebook) }} posted</p>
         </flux:card>
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-amber-600">{{ $remainingGbp }}</p>
