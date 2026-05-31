@@ -86,12 +86,11 @@ class SyncYelpBusinessPhotos extends Command
         $showProcess = (bool) $this->option('show-process');
 
         $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 0));
-        // Empirical per-image budget: ~120s upload work + min_interval buffer.
-        // Used for ETA display only — actual time can vary +/- 30s per image.
-        $perImageSeconds = 120 + $minInterval;
+        // Empirical per-image budget: ~50s upload work + min_interval buffer.
+        $perImageSeconds = 50 + $minInterval;
         if (! $sync) {
             $this->line(sprintf(
-                'Throttle: %ds buffer between successful uploads. Typical upload ~120s, so plan on ~%ds per image.',
+                'Throttle: %ds buffer between successful uploads. Typical upload ~50s, so plan on ~%ds per image.',
                 $minInterval,
                 $perImageSeconds,
             ));
