@@ -702,6 +702,10 @@ class YelpBusinessService
                         $reason = is_array($payload)
                             ? (string) ($payload['reason'] ?? 'script_throttle')
                             : 'script_throttle';
+                        // Clean throttle exit — script never attempted the
+                        // upload, so the in-flight "killed mid-upload" guard
+                        // must not trip on the retry.
+                        Cache::forget(self::inFlightCacheKey($image->id));
                         Log::channel('yelp')->info('Yelp biz: upload script signalled throttle, releasing job', [
                             'image_id' => $image->id,
                             'reason' => $reason,
