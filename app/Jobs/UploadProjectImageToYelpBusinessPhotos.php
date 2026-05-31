@@ -41,7 +41,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
     public function __construct(
         public int $imageId,
         public bool $forceRefresh = false,
-        public bool $failOnOops = false,
+        public ?bool $failOnOops = null,
     ) {}
 
     public function uniqueId(): string
@@ -124,7 +124,7 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 // hard failure for this image instead of releasing. Lets
                 // operators burn through the queue without waiting on Yelp's
                 // server-side ~10min throttle window after each success.
-                if ($this->failOnOops && $e->reason === 'photos_page_oops') {
+                if (($this->failOnOops ?? false) && $e->reason === 'photos_page_oops') {
                     Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
                     Cache::forget(YelpBusinessService::inFlightCacheKey($this->imageId));
                     Log::channel('yelp')->warning('Yelp biz: photos_page_oops, failing job (fail-on-oops mode)', [

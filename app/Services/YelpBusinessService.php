@@ -840,7 +840,7 @@ class YelpBusinessService
         $cfg = config('services.yelp.business');
         $lockTtl = max(60, (int) ($cfg['automation_lock_ttl_seconds'] ?? 900));
         $lockWait = max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 5));
-        $minInterval = max(0, (int) ($cfg['min_interval_seconds'] ?? 600));
+        $minInterval = max(0, (int) ($cfg['min_interval_seconds'] ?? 5));
 
         // 0. Host-wide script-throttle cooldown. When the Node uploader
         //    last signalled e.g. photos_page_oops, Yelp's /biz_photos page

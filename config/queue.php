@@ -68,7 +68,11 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest worker `timeout` across all supervisors.
+            // supervisor-media-sync runs Puppeteer/Chromium with timeout=360,
+            // so 90s would re-queue jobs mid-Yelp-upload and stall the queue
+            // in a release/reserve loop with zero observable progress.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 900),
             'block_for' => null,
             'after_commit' => false,
         ],

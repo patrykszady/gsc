@@ -135,11 +135,14 @@ class SyncYelpBusinessPhotos extends Command
         $failOnOops = (bool) $this->option('fail-on-oops');
 
         $minInterval = max(0, (int) config('services.yelp.business.min_interval_seconds', 0));
-        // Empirical per-image budget: ~50s upload work + min_interval buffer.
-        $perImageSeconds = 50 + $minInterval;
+        // Empirical per-image budget: ~120s typical (upload + Yelp post-upload
+        // throttle window + min_interval buffer). Yelp's /biz_photos page
+        // serves "Oops" briefly after each accepted upload; the script's
+        // in-script reload retries swallow short windows but cost ~60-90s.
+        $perImageSeconds = 120 + $minInterval;
         if (! $sync) {
             $this->line(sprintf(
-                'Throttle: %ds buffer between successful uploads. Typical upload ~50s, so plan on ~%ds per image.',
+                'Throttle: %ds buffer between successful uploads. Plan on ~%ds per image (upload + Yelp cooldown).',
                 $minInterval,
                 $perImageSeconds,
             ));
