@@ -711,19 +711,37 @@ class YelpBusinessService
                         $reason = is_array($payload)
                             ? (string) ($payload['reason'] ?? 'script_throttle')
                             : 'script_throttle';
-                        // Operator preference: do NOT block the host on Yelp
-                        // Oops; just release this single job with a short
-                        // back-off and let the next image try. Cap retries
-                        // to avoid forever-looping on a persistent Oops.
-                        $retryAfter = min(30, max(5, $retryAfter));
+                        // Set host-wide cooldown so other pending jobs
+                        // bail at the gate WITHOUT launching Chromium.
+                        // Without this, every released job re-launches
+                        // Chromium, hits Yelp Oops again, releases — a
+                        // tight ~5s/Chromium-spawn cycle for the entire
+                        // server-side throttle window.
+                        //
+                        // Escalate on consecutive oops streaks: Yelp's
+                        // server-side throttle after a successful upload
+                        // is typically ~120s but can grow to ~10min if
+                        // we keep banging on it. Streak resets on the
+                        // next successful upload.
+                        $streak = (int) Cache::get(self::OOPS_STREAK_KEY, 0) + 1;
+                        Cache::put(self::OOPS_STREAK_KEY, $streak, now()->addHour());
+                        $cooldownSeconds = min(600, 120 * $streak);
+                        if (! (bool) env('YELP_BIZ_SKIP_OOPS_COOLDOWN', false)) {
+                            Cache::put(self::OOPS_COOLDOWN_KEY, time() + $cooldownSeconds, now()->addSeconds($cooldownSeconds + 60));
+                        }
+                        // Per-job release: short jitter so jobs wake
+                        // shortly after cooldown expires; the gate will
+                        // re-throw if Yelp is still in cooldown.
+                        $retryAfter = (bool) env('YELP_BIZ_SKIP_OOPS_COOLDOWN', false) ? 5 : $cooldownSeconds;
                         // Clean throttle exit — script never attempted the
                         // upload, so the in-flight "killed mid-upload" guard
                         // must not trip on the retry.
                         Cache::forget(self::inFlightCacheKey($image->id));
-                        Log::channel('yelp')->info('Yelp biz: upload script signalled throttle, releasing job', [
+                        Log::channel('yelp')->info('Yelp biz: upload script signalled throttle, setting host cooldown', [
                             'image_id' => $image->id,
                             'reason' => $reason,
-                            'retry_after_seconds' => $retryAfter,
+                            'streak' => $streak,
+                            'cooldown_seconds' => $cooldownSeconds,
                         ]);
                         throw new YelpUploadThrottledException(
                             "Yelp upload throttled ({$reason}); retry in {$retryAfter}s",
@@ -787,8 +805,9 @@ class YelpBusinessService
 
                 // A successful upload proves the session cookies still work.
                 $this->markSessionFresh();
-                // Reset the consecutive-Oops streak: Yelp is healthy again.
+                // Reset throttle state: Yelp is healthy again.
                 Cache::forget(self::OOPS_STREAK_KEY);
+                Cache::forget(self::OOPS_COOLDOWN_KEY);
 
                 // The script returns a real Yelp photo_id only when it
                 // successfully captured one from the upload XHR response.
@@ -846,8 +865,10 @@ class YelpBusinessService
         //    last signalled e.g. photos_page_oops, Yelp's /biz_photos page
         //    is unusable for ~10min. Bailing here (before lock + Chromium
         //    launch) saves ~5s and ~800MB RSS per pending job.
+        //    Set YELP_BIZ_SKIP_OOPS_COOLDOWN=1 to bypass for diagnostics.
+        $skipCooldown = (bool) env('YELP_BIZ_SKIP_OOPS_COOLDOWN', false);
         $cooldownUntil = (int) Cache::get(self::OOPS_COOLDOWN_KEY, 0);
-        if ($cooldownUntil > time()) {
+        if (! $skipCooldown && $cooldownUntil > time()) {
             $retryAfter = $cooldownUntil - time();
             Log::channel('yelp')->debug('Yelp: in host-wide cooldown, skipping', [
                 'operation' => $operation,
