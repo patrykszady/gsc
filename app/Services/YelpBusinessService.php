@@ -974,14 +974,15 @@ class YelpBusinessService
     }
 
     /**
-     * Stable per-image marker appended to every caption. Lets a retry after
-     * the parent PHP process is SIGKILL'd recognize the just-uploaded photo
-     * on Yelp without creating a duplicate. Keep it short and visually
-     * inert (looks like a project tag).
+     * Stable per-image marker appended to every caption. Disabled: the
+     * signal-9 rescue path in uploadProjectImageToBusinessPhotos() now
+     * persists the photo_id straight from stdout, so we no longer need a
+     * visible caption anchor to recover from crashes. Returning '' makes
+     * withIdempotencyMarker() a no-op.
      */
     protected function idempotencyMarker(ProjectImage $image): string
     {
-        return ' ·#g' . $image->id;
+        return '';
     }
 
     protected function withIdempotencyMarker(string $caption, ProjectImage $image, int $limit): string
