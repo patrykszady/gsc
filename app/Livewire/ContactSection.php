@@ -714,7 +714,8 @@ class ContactSection extends Component
             ]);
 
             // Forward clean leads to hive.contractors. Spam stays local.
-            if ($status === 'pending' && config('services.hive.send_leads', true)) {
+            // Job no-ops when HIVE_API_TOKEN is missing, so no extra gate needed.
+            if ($status === 'pending') {
                 \App\Jobs\SendLeadToHive::dispatch($submission->id)
                     ->afterCommit();
             }

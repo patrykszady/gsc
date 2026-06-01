@@ -36,6 +36,11 @@ class SendLeadToHive implements ShouldQueue
 
     public function handle(HiveProjectsClient $hive): void
     {
+        // Quietly no-op if Hive isn't configured — keeps local/dev runs clean.
+        if (! config('services.hive.token') || ! config('services.hive.url')) {
+            return;
+        }
+
         $submission = ContactSubmission::query()->find($this->submissionId);
         if (! $submission) {
             return;

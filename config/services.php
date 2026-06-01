@@ -70,7 +70,6 @@ return [
         'url' => env('HIVE_API_URL', 'https://hive.contractors'),
         'token' => env('HIVE_API_TOKEN'),
         'cache_ttl' => (int) env('HIVE_API_CACHE_TTL', 21600), // 6h
-        'send_leads' => (bool) env('HIVE_SEND_LEADS', true),
     ],
 
     'resend' => [
