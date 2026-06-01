@@ -762,6 +762,7 @@
                     :primary-cta-url="$area->pageUrl('contact')"
                     secondary-cta-text="View {{ $config['label'] }} Projects"
                     :secondary-cta-url="$area->pageUrl('projects')"
+                    height-classes="h-[340px] sm:h-[420px] lg:h-[520px]"
                 />
             </div>
 

@@ -4,8 +4,8 @@
     $isImagesOnly = $mode === 'images-only';
     // First slide image for preloading
     $firstSlide = $renderedSlides[0] ?? null;
-    // Responsive sizes: use smaller images on smaller screens
-    $heroSizes = '(max-width: 640px) 480px, (max-width: 1024px) 960px, 1600px';
+    // Responsive sizes: keep hero sharp while reducing oversized downloads on mobile/tablet.
+    $heroSizes = '(max-width: 640px) 360px, (max-width: 1024px) 768px, 1280px';
     // Ensure each page has one semantic H1 even when visible headings are slide-driven.
     $srOnlyHeading = $isServiceMode
         ? ($firstSlide['heading'] ?? null)

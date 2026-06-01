@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
  */
 class SyncPageSpeedInsights extends Command
 {
+    protected const FAILED_URLS_CACHE_KEY = 'seo:psi:failed-urls';
+
     protected $signature = 'seo:psi-sync
         {--strategy=both : mobile, desktop, or both}
         {--urls=* : Override URLs (defaults to config(seo.psi_urls))}
@@ -39,22 +41,40 @@ class SyncPageSpeedInsights extends Command
         $today = now()->toDateString();
         $totalOk = 0;
         $totalFail = 0;
+        $failedUrls = [];
+        $runRows = [];
 
         foreach ($urls as $url) {
+            $urlFailed = false;
+
             foreach ($strategies as $strategy) {
                 $this->line("PSI: {$strategy} {$url}");
-                
-                try {
-                    $result = $svc->run($url, $strategy);
-                } catch (\Exception $e) {
-                    $totalFail++;
-                    $this->warn(" ↳ error: " . $e->getMessage());
-                    continue;
+
+                $result = null;
+                $error = null;
+
+                for ($attempt = 1; $attempt <= 3; $attempt++) {
+                    try {
+                        $result = $svc->run($url, $strategy);
+                        if ($result) {
+                            break;
+                        }
+                        $error = 'empty response';
+                    } catch (\Exception $e) {
+                        $error = $e->getMessage();
+                    }
+
+                    if ($attempt < 3) {
+                        $delay = 2 ** ($attempt - 1); // 1s, 2s
+                        $this->line(" ↳ retry {$attempt}/2 in {$delay}s ({$error})");
+                        sleep($delay);
+                    }
                 }
 
                 if (! $result) {
                     $totalFail++;
-                    $this->warn(" ↳ failed");
+                    $urlFailed = true;
+                    $this->warn(' ↳ failed' . ($error ? ": {$error}" : ''));
                     continue;
                 }
 
@@ -70,6 +90,12 @@ class SyncPageSpeedInsights extends Command
                 ));
 
                 if ($dry) {
+                    $runRows[] = [
+                        'url' => $url,
+                        'strategy' => $strategy,
+                        'lab_lcp_ms' => $result['lab_lcp_ms'] ?? null,
+                        'lab_cls' => $result['lab_cls'] ?? null,
+                    ];
                     continue;
                 }
 
@@ -78,10 +104,26 @@ class SyncPageSpeedInsights extends Command
                     $result,
                 );
                 $totalOk++;
+
+                $runRows[] = [
+                    'url' => $url,
+                    'strategy' => $strategy,
+                    'lab_lcp_ms' => $result['lab_lcp_ms'] ?? null,
+                    'lab_cls' => $result['lab_cls'] ?? null,
+                ];
+            }
+
+            if ($urlFailed) {
+                $failedUrls[] = $url;
             }
         }
 
+        if (! $dry) {
+            $this->persistFailedUrls($failedUrls);
+        }
+
         $this->info("Done. ok={$totalOk} failed={$totalFail}" . ($dry ? ' (dry-run)' : ''));
+        $this->printWorstPagesReport($runRows);
         
         // Return success as long as the command ran without errors.
         // Individual URL failures are logged and monitored separately;
@@ -114,14 +156,15 @@ class SyncPageSpeedInsights extends Command
 
         $base = rtrim((string) config('app.url'), '/');
         $maxUrls = max(1, (int) ($this->option('max-urls') ?: config('seo.psi_max_urls', 60)));
+        $failed = $this->loadFailedUrls($base);
 
         $pinned = (array) config('seo.psi_urls', $this->defaultUrls());
         $pinned = array_values(array_unique(array_filter($pinned, fn ($u) => is_string($u) && str_starts_with($u, $base))));
 
-        $targetDynamic = max(0, $maxUrls - count($pinned));
+        $targetDynamic = max(0, $maxUrls - count($pinned) - count($failed));
         $dynamic = $targetDynamic > 0 ? $this->topGscUrls($targetDynamic, $base) : [];
 
-        $urls = array_values(array_unique(array_merge($pinned, $dynamic)));
+        $urls = array_values(array_unique(array_merge($failed, $pinned, $dynamic)));
         if (count($urls) > $maxUrls) {
             $urls = array_slice($urls, 0, $maxUrls);
         }
@@ -186,5 +229,59 @@ class SyncPageSpeedInsights extends Command
         }
 
         return array_values(array_unique($urls));
+    }
+
+    protected function loadFailedUrls(string $base): array
+    {
+        $urls = cache()->get(self::FAILED_URLS_CACHE_KEY, []);
+        if (! is_array($urls)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($urls, fn ($u) => is_string($u) && str_starts_with($u, $base))));
+    }
+
+    protected function persistFailedUrls(array $failedUrls): void
+    {
+        if (empty($failedUrls)) {
+            cache()->forget(self::FAILED_URLS_CACHE_KEY);
+            return;
+        }
+
+        // Keep up to 200 failed URLs for 7 days; newest failures first.
+        $merged = array_values(array_unique(array_merge($failedUrls, (array) cache()->get(self::FAILED_URLS_CACHE_KEY, []))));
+        cache()->put(self::FAILED_URLS_CACHE_KEY, array_slice($merged, 0, 200), now()->addDays(7));
+    }
+
+    protected function printWorstPagesReport(array $rows): void
+    {
+        if (empty($rows)) {
+            return;
+        }
+
+        $mobile = array_values(array_filter($rows, fn ($r) => ($r['strategy'] ?? null) === 'mobile'));
+        $scope = ! empty($mobile) ? $mobile : $rows;
+
+        usort($scope, fn ($a, $b) => ((int) ($b['lab_lcp_ms'] ?? 0)) <=> ((int) ($a['lab_lcp_ms'] ?? 0)));
+        $worstLcp = array_slice($scope, 0, 5);
+
+        $clsRows = array_filter($scope, fn ($r) => isset($r['lab_cls']) && $r['lab_cls'] !== null);
+        usort($clsRows, fn ($a, $b) => ((float) ($b['lab_cls'] ?? 0)) <=> ((float) ($a['lab_cls'] ?? 0)));
+        $worstCls = array_slice($clsRows, 0, 5);
+
+        $this->newLine();
+        $this->info('Worst pages this run (mobile priority):');
+        if (! empty($worstLcp)) {
+            $this->line('  LCP:');
+            foreach ($worstLcp as $row) {
+                $this->line(sprintf('   - %sms | %s', (string) ($row['lab_lcp_ms'] ?? '?'), $row['url']));
+            }
+        }
+        if (! empty($worstCls)) {
+            $this->line('  CLS:');
+            foreach ($worstCls as $row) {
+                $this->line(sprintf('   - %s | %s', (string) ($row['lab_cls'] ?? '?'), $row['url']));
+            }
+        }
     }
 }

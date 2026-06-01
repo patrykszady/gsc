@@ -123,7 +123,7 @@
                                 size="medium"
                                 width="600"
                                 height="450"
-                                eager
+                                :eager="$loop->index < 2"
                                 class="h-full w-full transition duration-300 group-hover:scale-105"
                             />
                             @else
