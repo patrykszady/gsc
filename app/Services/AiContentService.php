@@ -19,7 +19,7 @@ class AiContentService
     public function __construct()
     {
         $this->apiKey = config('services.google.gemini_api_key', '');
-        $this->model = config('services.google.gemini_model', 'gemini-2.0-flash');
+        $this->model = config('services.google.gemini_model', 'gemini-2.5-flash');
     }
 
     /**

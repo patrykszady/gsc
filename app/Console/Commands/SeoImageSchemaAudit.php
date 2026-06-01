@@ -13,7 +13,8 @@ class SeoImageSchemaAudit extends Command
         {--sitemap= : Sitemap URL (defaults to APP_URL/sitemap.xml)}
         {--limit=300 : Max URLs to crawl from sitemap}
         {--json : Output JSON report}
-        {--only-errors : Print only pages with missing contentUrl issues}';
+        {--only-errors : Print only pages with missing contentUrl issues}
+        {--fail-on-issues : Exit non-zero when issues are found (default: exit 0 unless the audit itself failed)}';
 
     protected $description = 'Audit JSON-LD ImageObject entries and report missing/empty contentUrl fields.';
 
@@ -154,7 +155,7 @@ class SeoImageSchemaAudit extends Command
             }
         }
 
-        return $errors->isEmpty() ? self::SUCCESS : self::FAILURE;
+        return ($this->option('fail-on-issues') && $errors->isNotEmpty()) ? self::FAILURE : self::SUCCESS;
     }
 
     /**

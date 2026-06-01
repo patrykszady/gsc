@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Jobs\SendLeadToHive;
+use App\Models\ContactSubmission;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\TestimonialProjectTypeClassifier;
@@ -507,3 +509,16 @@ Artisan::command('gsc:classify-testimonials
     $this->info("Processed: {$count}");
     $this->info("Updated: {$changed}".($dryRun ? ' (dry-run)' : ''));
 })->purpose('Classify testimonial project_type via OpenAI (with fallback)');
+
+// Safety-net: sweep contact_submissions that never reached Hive (e.g. queue was down).
+// The primary path is ContactSection dispatching SendLeadToHive immediately on submit.
+Schedule::call(function () {
+    ContactSubmission::query()
+        ->where('status', 'pending')
+        ->whereNull('hive_sent_at')
+        ->whereNull('hive_send_error')
+        ->orderBy('id')
+        ->limit(50)
+        ->pluck('id')
+        ->each(fn (int $id) => SendLeadToHive::dispatch($id));
+})->name('hive:resend-leads-safety-net')->everyMinute()->withoutOverlapping();

@@ -124,7 +124,9 @@ class UploadProjectImageToYelpBusinessPhotos implements ShouldQueue, ShouldBeUni
                 // hard failure for this image instead of releasing. Lets
                 // operators burn through the queue without waiting on Yelp's
                 // server-side ~10min throttle window after each success.
-                if (($this->failOnOops ?? false) && $e->reason === 'photos_page_oops') {
+                // isset() (not ??) — older queued payloads predate this
+                // property and PHP 8 throws on ?? against uninitialized typed props.
+                if ((isset($this->failOnOops) && $this->failOnOops === true) && $e->reason === 'photos_page_oops') {
                     Cache::forget('yelp_biz_upload_queued:' . $this->imageId);
                     Cache::forget(YelpBusinessService::inFlightCacheKey($this->imageId));
                     Log::channel('yelp')->warning('Yelp biz: photos_page_oops, failing job (fail-on-oops mode)', [
