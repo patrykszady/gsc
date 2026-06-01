@@ -51,7 +51,7 @@ class SendLeadToHive implements ShouldQueue
         }
 
         $payload = [
-            'external_id' => $submission->id,
+            'external_id' => (string) $submission->id,
             'name' => $submission->name,
             'email' => $submission->email,
             'phone' => $submission->phone,
