@@ -282,8 +282,13 @@ return [
     |--------------------------------------------------------------------------
     | PageSpeed Insights URLs (seo:psi-sync)
     |--------------------------------------------------------------------------
-    | URLs to snapshot weekly with the free PSI API. Override with --urls=.
+    | Pinned URLs to snapshot with PSI. Command also auto-expands this set
+    | with top GSC pages (by 28d impressions) up to psi_max_urls.
+    |
+    | Override at runtime with --urls=... or --max-urls=...
     */
+    'psi_max_urls' => env('SEO_PSI_MAX_URLS', 60),
+
     'psi_urls' => [
         env('APP_URL', 'https://gs.construction') . '/',
         env('APP_URL', 'https://gs.construction') . '/about',
