@@ -929,7 +929,7 @@ Rules:
 
 PROMPT;
 
-        $response = $this->callGemini($prompt, $imageData);
+        $response = $this->callGeminiMultiImage($prompt, [$imageData], 1500);
 
         if ($response === null) {
             return null;
