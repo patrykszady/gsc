@@ -194,6 +194,15 @@ PROMPT;
         // Add text prompt
         $parts[] = ['text' => $prompt];
 
+        // Disable Gemini 2.5 "thinking" budget — reasoning tokens otherwise
+        // eat into maxOutputTokens and truncate JSON responses mid-string.
+        // Safe no-op on non-2.5 models (field is ignored).
+        $generationConfig = [
+            'temperature' => $temperature,
+            'maxOutputTokens' => $maxOutputTokens,
+            'thinkingConfig' => ['thinkingBudget' => 0],
+        ];
+
         try {
             $response = Http::timeout(120)
                 ->acceptJson()
@@ -203,10 +212,7 @@ PROMPT;
                             'parts' => $parts,
                         ],
                     ],
-                    'generationConfig' => [
-                        'temperature' => $temperature,
-                        'maxOutputTokens' => $maxOutputTokens,
-                    ],
+                    'generationConfig' => $generationConfig,
                 ]);
         } catch (ConnectionException $e) {
             $this->lastError = 'Connection error: ' . $e->getMessage();
@@ -929,7 +935,7 @@ Rules:
 
 PROMPT;
 
-        $response = $this->callGeminiMultiImage($prompt, [$imageData], 1500);
+        $response = $this->callGeminiMultiImage($prompt, [$imageData], 2000);
 
         if ($response === null) {
             return null;
@@ -949,6 +955,28 @@ PROMPT;
         $content = trim($content);
 
         $decoded = json_decode($content, true);
+
+        // Tolerant fallback: Gemini occasionally truncates the JSON when it
+        // hits maxOutputTokens mid-string. Pull caption/hashtags out with
+        // regex so a single truncated post doesn't abort the whole publish.
+        if (!is_array($decoded)) {
+            $caption = null;
+            $hashtags = null;
+            if (preg_match('/"caption"\s*:\s*"((?:\\\\.|[^"\\\\])*)"/s', $content, $m)) {
+                $caption = stripcslashes($m[1]);
+            } elseif (preg_match('/"caption"\s*:\s*"([^"]*)$/s', $content, $m)) {
+                $caption = stripcslashes($m[1]);
+            }
+            if (preg_match('/"hashtags"\s*:\s*"((?:\\\\.|[^"\\\\])*)"/s', $content, $m)) {
+                $hashtags = stripcslashes($m[1]);
+            } elseif (preg_match('/"hashtags"\s*:\s*"([^"]*)$/s', $content, $m)) {
+                // Drop the dangling (likely partial) last hashtag.
+                $hashtags = preg_replace('/\s*#\w*$/', '', stripcslashes($m[1]));
+            }
+            if ($caption && $hashtags) {
+                $decoded = ['caption' => $caption, 'hashtags' => $hashtags];
+            }
+        }
 
         if (!is_array($decoded) || empty($decoded['caption']) || empty($decoded['hashtags'])) {
             $this->lastError = 'Failed to parse social media JSON: ' . $content;
