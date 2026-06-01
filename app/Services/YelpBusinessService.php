@@ -325,6 +325,15 @@ class YelpBusinessService
             '--mode=check',
             '--user-data-dir=' . $userDataDir,
         ];
+        // Inject freshly-imported cookies (from the admin paste / yelp:import-cookies)
+        // into the persistent profile before probing. Without this, "Verify Login"
+        // keeps reporting NOT authenticated even after a successful import because
+        // the puppeteer profile's Default/Cookies sqlite still holds the stale
+        // session.
+        $cookiesFile = storage_path('app/yelp-cookies.json');
+        if (is_file($cookiesFile) && filesize($cookiesFile) > 0) {
+            $args[] = '--cookies-file=' . $cookiesFile;
+        }
         if (! empty($cfg['proxy'])) {
             $args[] = '--proxy=' . $cfg['proxy'];
         }
