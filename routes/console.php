@@ -256,8 +256,9 @@ Schedule::command('seo:health')
     ->appendOutputTo(storage_path('logs/seo-health.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:health failed'));
 
-// GBP: daily check for reviews >24h old without an owner reply (with email alert).
-Schedule::command('gbp:unresponded-reviews --max-age=24 --notify')
+// GBP: daily check for reviews >24h old without an owner reply.
+// Email only when a NEW needs-reply review was posted/edited in last 24h.
+Schedule::command('gbp:unresponded-reviews --max-age=24 --notify --notify-recent-hours=24')
     ->dailyAt('09:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/gbp-unresponded-reviews.log'))

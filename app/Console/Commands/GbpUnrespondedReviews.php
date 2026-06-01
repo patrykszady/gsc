@@ -25,6 +25,7 @@ class GbpUnrespondedReviews extends Command
     protected $signature = 'gbp:unresponded-reviews
         {--max-age=24 : Only flag reviews older than this many hours without a reply}
         {--notify : Send an alert email to REVIEW_ALERT_TO}
+        {--notify-recent-hours=24 : Only send email when a needs-reply review was posted/edited within this many hours}
         {--limit=20 : Max number of unresponded reviews to print}';
 
     protected $description = 'List Google reviews without owner replies older than the SLA window.';
@@ -41,6 +42,8 @@ class GbpUnrespondedReviews extends Command
 
         $maxAgeHours = (int) $this->option('max-age');
         $threshold = now()->subHours($maxAgeHours);
+        $notifyRecentHours = max(1, (int) $this->option('notify-recent-hours'));
+        $notifyRecentThreshold = now()->subHours($notifyRecentHours);
 
         $this->info("Checking reviews older than {$maxAgeHours}h without owner reply…");
 
@@ -68,11 +71,12 @@ class GbpUnrespondedReviews extends Command
             return self::SUCCESS;
         }
 
+        $allNeedsReply = [];
         $unresponded = [];
         foreach ($reviews as $r) {
             $createTime = isset($r['createTime']) ? Carbon::parse($r['createTime']) : null;
             $updateTime = isset($r['updateTime']) ? Carbon::parse($r['updateTime']) : $createTime;
-            if (! $createTime || $updateTime->isAfter($threshold)) {
+            if (! $createTime) {
                 continue;
             }
 
@@ -88,66 +92,82 @@ class GbpUnrespondedReviews extends Command
                 continue;
             }
 
-            $unresponded[] = [
+            $row = [
                 'name'      => $r['name'] ?? '',
                 'reviewer'  => $r['reviewer']['displayName'] ?? 'Anonymous',
                 'stars'     => $r['starRating'] ?? '—',
                 'age_hours' => (int) abs(now()->diffInHours($updateTime)),
                 'comment'   => trim($r['comment'] ?? ''),
             ];
+
+            $allNeedsReply[] = $row;
+
+            // Console backlog report keeps the SLA window behavior.
+            if ($updateTime->isAfter($threshold)) {
+                continue;
+            }
+
+            $unresponded[] = $row;
         }
 
         if (empty($unresponded)) {
             $this->info("✓ All reviews older than {$maxAgeHours}h have owner replies.");
-            return self::SUCCESS;
-        }
+        } else {
+            // Sort oldest first.
+            usort($unresponded, fn ($a, $b) => $b['age_hours'] <=> $a['age_hours']);
+            $unresponded = array_slice($unresponded, 0, (int) $this->option('limit'));
 
-        // Sort oldest first.
-        usort($unresponded, fn ($a, $b) => $b['age_hours'] <=> $a['age_hours']);
-        $unresponded = array_slice($unresponded, 0, (int) $this->option('limit'));
-
-        $this->warn(count($unresponded) . ' unresponded review(s):');
-        foreach ($unresponded as $u) {
-            $this->newLine();
-            $this->line("<options=bold>{$u['reviewer']}</> · {$u['stars']} · {$u['age_hours']}h ago");
-            $snippet = $u['comment'] !== ''
-                ? wordwrap(mb_substr($u['comment'], 0, 220), 78, "\n  ", true)
-                : '(no text)';
-            $this->line("  {$snippet}");
-            $this->line("  <fg=yellow>Reply via:</> php artisan tinker --execute=\"app(\\App\\Services\\GoogleBusinessProfileService::class)->replyToReview('{$u['name']}', 'YOUR REPLY')\"");
+            $this->warn(count($unresponded) . ' unresponded review(s):');
+            foreach ($unresponded as $u) {
+                $this->newLine();
+                $this->line("<options=bold>{$u['reviewer']}</> · {$u['stars']} · {$u['age_hours']}h ago");
+                $snippet = $u['comment'] !== ''
+                    ? wordwrap(mb_substr($u['comment'], 0, 220), 78, "\n  ", true)
+                    : '(no text)';
+                $this->line("  {$snippet}");
+                $this->line("  <fg=yellow>Reply via:</> php artisan tinker --execute=\"app(\\App\\Services\\GoogleBusinessProfileService::class)->replyToReview('{$u['name']}', 'YOUR REPLY')\"");
+            }
         }
 
         if ($this->option('notify')) {
-            // Only email when there is at least one NEW unresponded review
-            // since the last successful run. Otherwise the daily schedule
-            // spams the same backlog every morning (e.g. "16 unresponded"
-            // when only 2 of those 16 are actually new this cycle).
-            $seenKey = 'gbp:unresponded-reviews:notified';
-            $seen = (array) Cache::get($seenKey, []);
-            $currentNames = array_values(array_filter(array_map(
-                fn ($u) => (string) ($u['name'] ?? ''),
-                $unresponded
-            )));
-            $newNames = array_values(array_diff($currentNames, $seen));
+            // Email gate: only notify when a needs-reply review is NEW/edited
+            // within the configured recent window (default 24h).
+            $recentNeedsReply = array_values(array_filter(
+                $allNeedsReply,
+                fn ($u) => ((int) ($u['age_hours'] ?? PHP_INT_MAX)) <= $notifyRecentHours
+            ));
 
-            if (empty($newNames)) {
-                $this->info('No NEW unresponded reviews since last run; skipping email.');
+            if (empty($recentNeedsReply)) {
+                $this->info("No new needs-reply reviews in last {$notifyRecentHours}h; skipping email.");
             } else {
-                $newOnly = array_values(array_filter(
-                    $unresponded,
-                    fn ($u) => in_array((string) ($u['name'] ?? ''), $newNames, true)
-                ));
-                try {
-                    $this->sendAlertEmail($newOnly, $maxAgeHours);
-                } catch (\Exception $e) {
-                    $this->warn('Email alert failed: ' . $e->getMessage());
-                }
-            }
+                // Also de-duplicate against prior notifications in case this
+                // command is manually re-run multiple times the same day.
+                $seenKey = 'gbp:unresponded-reviews:notified-recent';
+                $seen = (array) Cache::get($seenKey, []);
+                $currentNames = array_values(array_filter(array_map(
+                    fn ($u) => (string) ($u['name'] ?? ''),
+                    $recentNeedsReply
+                )));
+                $newNames = array_values(array_diff($currentNames, $seen));
 
-            // Always refresh the seen-set to the current outstanding backlog
-            // so a review that gets replied-to (and falls out of the list)
-            // and later edited by the reviewer can re-trigger an email.
-            Cache::put($seenKey, $currentNames, now()->addDays(60));
+                if (empty($newNames)) {
+                    $this->info('No newly detected recent reviews since last notify; skipping email.');
+                } else {
+                    $newOnly = array_values(array_filter(
+                        $recentNeedsReply,
+                        fn ($u) => in_array((string) ($u['name'] ?? ''), $newNames, true)
+                    ));
+                    try {
+                        $this->sendAlertEmail($newOnly, $notifyRecentHours, true);
+                    } catch (\Exception $e) {
+                        $this->warn('Email alert failed: ' . $e->getMessage());
+                    }
+                }
+
+                // Keep only currently-recent set to allow re-alerting when
+                // brand new reviews arrive later.
+                Cache::put($seenKey, $currentNames, now()->addDays(14));
+            }
         }
 
         // Return success — the alert email (if enabled) handles the notification.
@@ -156,7 +176,7 @@ class GbpUnrespondedReviews extends Command
         return self::SUCCESS;
     }
 
-    protected function sendAlertEmail(array $unresponded, int $maxAgeHours): void
+    protected function sendAlertEmail(array $unresponded, int $hours, bool $recentMode = false): void
     {
         $to = config('mail.review_alert_to')
             ?: env('REVIEW_ALERT_TO')
@@ -179,7 +199,9 @@ class GbpUnrespondedReviews extends Command
             $message = "Google review check failed:\n\n" . $unresponded[0]['comment'];
         } else {
             $subject = "[GBP] {$count} unresponded review(s)";
-            $message = "{$count} Google review(s) older than {$maxAgeHours}h need a reply.";
+            $message = $recentMode
+                ? "{$count} NEW Google review(s) in last {$hours}h need a reply."
+                : "{$count} Google review(s) older than {$hours}h need a reply.";
         }
         
         $lines = [$message, ''];
