@@ -366,6 +366,26 @@ class SyncYelpBusinessPhotos extends Command
                 return;
             }
 
+            // Session-dead early bail. The service marks this when the
+            // upload script exits with code=session_expired; every remaining
+            // queued job will fail at the gate without launching Chromium,
+            // so there's nothing to wait for. Stop watching now and tell
+            // the operator to re-login.
+            if (Cache::has('yelp.session_dead')) {
+                $bar->finish();
+                $this->newLine(2);
+                $this->error('Yelp session is no longer authenticated — aborting watch.');
+                $this->line('Re-login via /admin/platforms (Verify Login), then re-run this command.');
+                Log::channel('yelp')->warning('yelp:sync-business-photos watch aborted: session_dead', [
+                    'done' => $done,
+                    'pending' => $pending,
+                    'failed' => $failed,
+                    'total' => $total,
+                    'elapsed_seconds' => $elapsed,
+                ]);
+                return;
+            }
+
             if ($elapsed >= $maxSeconds) {
                 $bar->finish();
                 $this->newLine(2);

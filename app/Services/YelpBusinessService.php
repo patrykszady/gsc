@@ -861,6 +861,21 @@ class YelpBusinessService
         $lockWait = max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 5));
         $minInterval = max(0, (int) ($cfg['min_interval_seconds'] ?? 5));
 
+        // 0a. Session-dead fail-fast. If a prior job already proved cookies
+        //     are gone (exit 3 / code=session_expired), every subsequent
+        //     job MUST abort immediately rather than launching Chromium and
+        //     hitting Yelp's "Oops" page (which then escalates the host-wide
+        //     cooldown to 10min and burns the rest of the queue's worker time).
+        //     Cleared by markSessionFresh()/checkSession()/Verify Login.
+        if (Cache::has('yelp.session_dead')) {
+            Log::channel('yelp')->warning('Yelp: session dead, aborting job without launching Chromium', [
+                'operation' => $operation,
+            ] + $context);
+            throw new YelpSessionExpiredException(
+                'Yelp session is not authenticated. Re-login via /admin/platforms (Verify Login).'
+            );
+        }
+
         // 0. Host-wide script-throttle cooldown. When the Node uploader
         //    last signalled e.g. photos_page_oops, Yelp's /biz_photos page
         //    is unusable for ~10min. Bailing here (before lock + Chromium
