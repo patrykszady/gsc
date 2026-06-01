@@ -40,6 +40,11 @@ class GenerateSitemap extends Command
         $routes = collect(Route::getRoutes()->getRoutes());
 
         // Define patterns to exclude from sitemap
+        // NOTE: matched as substrings against the route URI; only use here for asset/path
+        // shapes that we want broadly killed (e.g. livewire/, .map, .json). Specific
+        // redirect URIs go in $excludeExact below to avoid accidentally killing
+        // canonical pages that share a substring (e.g. 'kitchen-remodeling' would
+        // otherwise also kill '/services/kitchen-remodeling').
         $excludePatterns = [
             'admin',
             'login',
@@ -47,18 +52,10 @@ class GenerateSitemap extends Command
             'api',
             'robots.txt',
             'log-viewer',
-            'testimonials', // redirect to /reviews
-            'contact-us',   // redirect to /contact
-            'bathroom-remodeling', // root-level redirect to /services/bathroom-remodeling
-            'kitchen-remodeling',  // root-level redirect to /services/kitchen-remodeling
-            'home-remodeling',     // root-level redirect to /services/home-remodeling
-            'services/kitchens',   // old slug redirect to /services/kitchen-remodeling
-            'services/bathrooms',  // old slug redirect to /services/bathroom-remodeling
             'flux/',        // internal flux assets
             'livewire/',    // internal livewire assets
             'livewire-',    // livewire asset routes (e.g. /livewire-xxxx/livewire.js)
             '.map',         // sourcemaps
-            'up',           // health check
             'sanctum',      // sanctum routes
             // Non-HTML resources — must not appear in sitemap (Google indexes HTML pages,
             // not JSON/TXT/XML feeds; their inclusion previously caused canonical mismatches
@@ -69,12 +66,30 @@ class GenerateSitemap extends Command
             '.webmanifest',
             '.ico',
         ];
-        
+
         // Exact URIs to exclude (redirects and noindex aliases)
         $excludeExact = [
             'areas',        // alias of /areas-served (noindex)
             'locations',    // alias of /areas-served (noindex)
             's/{code}',     // short link redirects
+            'up',           // health check
+            'testimonials', // redirect to /reviews
+            'contact-us',   // redirect to /contact
+            // Root-level legacy redirects → /services/*
+            'bathroom-remodeling',
+            'kitchen-remodeling',
+            'home-remodeling',
+            'basement-remodeling',
+            'basement-finishing',
+            'home-additions',
+            'additions',
+            // /services/* legacy redirects to canonical -remodeling slugs
+            'services/kitchens',
+            'services/bathrooms',
+            'services/basements',
+            'services/basement-finishing',
+            'services/additions',
+            'services/room-additions',
             // GEO admin dashboard (auth-gated; redirects to /admin/login for crawlers)
             'geo',
             'geo/feed',

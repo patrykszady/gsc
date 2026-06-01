@@ -92,8 +92,15 @@ class MicrosoftClarityService
             return null;
         }
 
-        // API returns an array of metric groups:
-        // [ { metricName: "Traffic", information: [...] }, ... ]
+        // API returns an array of metric groups, each with rows broken out by `dimension1`.
+        // Confirmed shapes (project-live-insights, dimension1=OS):
+        //   Traffic         -> totalSessionCount, totalBotSessionCount, distinctUserCount, pagesPerSessionPercentage
+        //   EngagementTime  -> totalTime, activeTime
+        //   ScrollDepth     -> averageScrollDepth
+        //   DeadClickCount  -> subTotal (count of dead clicks for that OS)
+        //   RageClickCount  -> subTotal
+        //   QuickbackClick  -> subTotal
+        //   ExcessiveScroll, ScriptErrorCount, ErrorClickCount -> subTotal (not stored)
         $summary = [
             'date' => now()->toDateString(),
             'sessions' => 0,
@@ -106,6 +113,26 @@ class MicrosoftClarityService
             'rage_clicks' => 0,
             'quickbacks' => 0,
         ];
+
+        // Track weighted scroll depth (avg scroll depth weighted by sessions per OS).
+        $scrollWeightedSum = 0.0;
+        $scrollWeightSessions = 0;
+        // Pages-per-session is reported per-OS; use a session-weighted average.
+        $ppsWeightedSum = 0.0;
+        $ppsWeightSessions = 0;
+
+        // Index sessions per OS from the Traffic group so we can weight other groups.
+        $sessionsByOs = [];
+        foreach ($payload as $g) {
+            if (is_array($g) && strcasecmp((string) ($g['metricName'] ?? ''), 'Traffic') === 0) {
+                foreach ($g['information'] ?? [] as $r) {
+                    if (! is_array($r)) continue;
+                    $os = (string) ($r['OS'] ?? $r['Browser'] ?? '');
+                    $sessionsByOs[$os] = $this->toInt($r, ['totalSessionCount', 'sessionCount', 'sessions']);
+                }
+                break;
+            }
+        }
 
         foreach ($payload as $metricGroup) {
             if (! is_array($metricGroup)) {
@@ -122,23 +149,55 @@ class MicrosoftClarityService
                 if (! is_array($row)) {
                     continue;
                 }
+                $os = (string) ($row['OS'] ?? $row['Browser'] ?? '');
+                $rowSessions = $sessionsByOs[$os] ?? $this->toInt($row, ['totalSessionCount', 'sessionCount', 'sessions']);
 
-                // Traffic group commonly carries session/user/pageview totals.
-                if (strcasecmp($metricName, 'Traffic') === 0 || strcasecmp($metricName, 'Popular Pages') === 0) {
-                    $summary['sessions'] += $this->toInt($row, ['totalSessionCount', 'sessionCount', 'sessions']);
-                    $summary['users'] += $this->toInt($row, ['distantUserCount', 'uniqueUsers', 'users']);
-                    $summary['pageviews'] += $this->toInt($row, ['pageViews', 'totalPageViews', 'views']);
-                    $summary['scroll_depth'] = max($summary['scroll_depth'], $this->toFloat($row, ['ScrollDepth', 'scrollDepth']));
-                    $summary['active_time_seconds'] = max($summary['active_time_seconds'], $this->toInt($row, ['engagementTime', 'activeTimeSeconds', 'activeTime']));
-                    $summary['bounce_rate'] = max($summary['bounce_rate'], $this->toFloat($row, ['bounceRate', 'BounceRate']));
+                switch (true) {
+                    case strcasecmp($metricName, 'Traffic') === 0:
+                        $sessions = $this->toInt($row, ['totalSessionCount', 'sessionCount', 'sessions']);
+                        $summary['sessions'] += $sessions;
+                        $summary['users'] += $this->toInt($row, ['distinctUserCount', 'distantUserCount', 'uniqueUsers', 'users']);
+                        $pps = $this->toFloat($row, ['pagesPerSessionPercentage', 'pagesPerSession']);
+                        if ($sessions > 0 && $pps > 0) {
+                            $ppsWeightedSum += $pps * $sessions;
+                            $ppsWeightSessions += $sessions;
+                            $summary['pageviews'] += (int) round($pps * $sessions);
+                        }
+                        break;
+
+                    case strcasecmp($metricName, 'EngagementTime') === 0:
+                        // totalTime/activeTime are reported in seconds, per-OS totals.
+                        $summary['active_time_seconds'] += $this->toInt($row, ['activeTime', 'engagementTime', 'activeTimeSeconds']);
+                        break;
+
+                    case strcasecmp($metricName, 'ScrollDepth') === 0:
+                        $depth = $this->toFloat($row, ['averageScrollDepth', 'ScrollDepth', 'scrollDepth']);
+                        if ($depth > 0 && $rowSessions > 0) {
+                            $scrollWeightedSum += $depth * $rowSessions;
+                            $scrollWeightSessions += $rowSessions;
+                        }
+                        break;
+
+                    case strcasecmp($metricName, 'DeadClickCount') === 0:
+                        $summary['dead_clicks'] += $this->toInt($row, ['subTotal', 'deadClickCount', 'deadClicks']);
+                        break;
+
+                    case strcasecmp($metricName, 'RageClickCount') === 0:
+                        $summary['rage_clicks'] += $this->toInt($row, ['subTotal', 'rageClickCount', 'rageClicks']);
+                        break;
+
+                    case strcasecmp($metricName, 'QuickbackClick') === 0:
+                        $summary['quickbacks'] += $this->toInt($row, ['subTotal', 'quickbackClick', 'quickbacks']);
+                        break;
                 }
-
-                // Interaction quality metrics may come under dedicated metric groups.
-                $summary['dead_clicks'] += $this->toInt($row, ['deadClickCount', 'deadClicks']);
-                $summary['rage_clicks'] += $this->toInt($row, ['rageClickCount', 'rageClicks']);
-                $summary['quickbacks'] += $this->toInt($row, ['quickbackClick', 'quickbacks']);
             }
         }
+
+        if ($scrollWeightSessions > 0) {
+            $summary['scroll_depth'] = round($scrollWeightedSum / $scrollWeightSessions, 4);
+        }
+
+        // Bounce rate isn't exposed by project-live-insights; leave 0.0 unless future endpoint provides it.
 
         return [$summary];
     }
