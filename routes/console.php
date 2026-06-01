@@ -356,9 +356,9 @@ Schedule::command('gbp:metrics-sync --days=3 --with-keywords')
     ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
     ->when(fn () => config('services.google.business_profile.enabled'));
 
-// SEO: weekly PageSpeed Insights snapshot for key pages (mobile + desktop).
+// SEO: daily PageSpeed Insights snapshot for key pages (mobile + desktop).
 Schedule::command('seo:psi-sync')
-    ->weeklyOn(3, '04:00')
+    ->dailyAt('04:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-psi-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:psi-sync failed'));
