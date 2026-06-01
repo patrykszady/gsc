@@ -694,7 +694,7 @@ class ContactSection extends Component
     protected function storeSubmission(string $status = 'pending', ?string $spamReason = null): void
     {
         try {
-            ContactSubmission::create([
+            $submission = ContactSubmission::create([
                 'name' => $this->name,
                 'email' => $this->email,
                 'phone' => $this->phoneDigits,
@@ -712,6 +712,12 @@ class ContactSection extends Component
                 'utm_medium' => session('utm_medium') ?? request()->input('utm_medium'),
                 'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
             ]);
+
+            // Forward clean leads to hive.contractors. Spam stays local.
+            if ($status === 'pending' && config('services.hive.send_leads', true)) {
+                \App\Jobs\SendLeadToHive::dispatch($submission->id)
+                    ->afterCommit();
+            }
         } catch (\Exception $e) {
             // Don't let database failure affect form submission
             Log::channel('submissions')->error('Failed to store contact submission', ['error' => $e->getMessage()]);

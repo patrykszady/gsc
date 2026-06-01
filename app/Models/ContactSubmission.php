@@ -23,11 +23,15 @@ class ContactSubmission extends Model
         'utm_source',
         'utm_medium',
         'utm_campaign',
+        'hive_sent_at',
+        'hive_lead_id',
+        'hive_send_error',
     ];
 
     protected $casts = [
         'availability' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'hive_sent_at' => 'datetime',
     ];
 }

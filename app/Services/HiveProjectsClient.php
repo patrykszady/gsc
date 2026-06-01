@@ -131,6 +131,54 @@ class HiveProjectsClient
     }
 
     /**
+     * POST a contact-form lead to hive.contractors. Returns the Hive lead id
+     * on success, or throws RuntimeException on transient/permanent failure
+     * so the queued job can decide whether to retry.
+     *
+     * Hive endpoint: POST {HIVE_API_URL}/api/v1/leads
+     * Auth: Bearer HIVE_API_TOKEN (same token as zip-counts).
+     *
+     * Payload (mirrors Hive's Lead model fields — keep keys snake_case):
+     *   name, email, phone, address, city, message, availability (array|null),
+     *   source ("gs.construction"), referrer, ip_address, user_agent,
+     *   utm_source, utm_medium, utm_campaign, submitted_at (ISO-8601),
+     *   external_id (gsc contact_submissions.id, lets Hive dedupe).
+     */
+    public function submitLead(array $payload): int
+    {
+        if ($this->token === '' || $this->baseUrl === '') {
+            throw new RuntimeException('HIVE_API_URL or HIVE_API_TOKEN is not configured.');
+        }
+
+        try {
+            $response = Http::baseUrl($this->baseUrl)
+                ->withToken($this->token)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(10)
+                ->connectTimeout(5)
+                ->retry(2, 500, throw: false)
+                ->post('/api/v1/leads', $payload);
+        } catch (ConnectionException $e) {
+            throw new RuntimeException('Could not reach hive.contractors: ' . $e->getMessage(), 0, $e);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Hive API call failed: ' . $e->getMessage(), 0, $e);
+        }
+
+        if (! $response->successful()) {
+            $body = mb_substr((string) $response->body(), 0, 500);
+            throw new RuntimeException("Hive /api/v1/leads returned HTTP {$response->status()}: {$body}");
+        }
+
+        $id = (int) ($response->json('data.id') ?? $response->json('id') ?? 0);
+        if ($id <= 0) {
+            throw new RuntimeException('Hive /api/v1/leads accepted but returned no id: '
+                . mb_substr((string) $response->body(), 0, 300));
+        }
+        return $id;
+    }
+
+    /**
      * Fetch fresh zip counts from hive.contractors and overwrite the local table.
      * Returns the number of rows persisted. Throws on failure.
      */
