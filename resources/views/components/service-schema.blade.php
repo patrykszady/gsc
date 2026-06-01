@@ -86,25 +86,8 @@ $schema = [
     'url' => $serviceUrl,
 ];
 
-// Per-service AggregateRating: filter testimonials by project_type.
-// Cached 24h. Only emit when ≥3 reviews exist for this service type.
-$serviceReviewCount = cache()->remember(
-    "service:{$serviceKey}:review_count",
-    86400,
-    fn () => \App\Models\Testimonial::visible()
-        ->where('project_type', $serviceKey)
-        ->count()
-);
-if ($serviceReviewCount >= 3) {
-    $schema['aggregateRating'] = [
-        '@type' => 'AggregateRating',
-        'ratingValue' => '5',
-        'bestRating' => '5',
-        'worstRating' => '1',
-        'ratingCount' => $serviceReviewCount,
-        'reviewCount' => $serviceReviewCount,
-    ];
-}
+// Keep ratings on Product + LocalBusiness nodes only.
+// Service-level aggregateRating can trigger parent-node type errors in Google tooling.
 
 // City-anchored Offer with free-estimate price signal — strengthens local intent matching.
 if ($city) {
