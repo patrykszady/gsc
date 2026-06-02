@@ -48,19 +48,25 @@
     @endif
 
     {{-- Favicons.
-         IMPORTANT for Google SERP "site icon" quality:
-           • Google picks the *largest* favicon it can find. Without a 192/512
-             reference it falls back to the 32px PNG and the SERP avatar looks
-             pixelated. https://developers.google.com/search/docs/appearance/favicon-in-search
-           • The unconditional SVG (without media query) is what Google reads;
-             the media-query SVGs are for browsers only. --}}
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon-dark.svg') }}" media="(prefers-color-scheme: dark)">
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+         For Google SERP "site icon":
+           • Google picks the favicon closest to (or a multiple of) 48px square.
+             We expose 192 + 512 PNGs to keep the SERP avatar crisp.
+             https://developers.google.com/search/docs/appearance/favicon-in-search
+           • Order: largest PNG first, then SVG with `sizes="any"`, then smaller
+             PNGs and the .ico fallback for legacy clients.
+           • The dark-mode SVG is intentionally NOT advertised as `rel="icon"`
+             because crawlers (incl. Googlebot) ignore the media query and may
+             pick it, rendering an off-color icon. Browser dark-mode is handled
+             inside favicon.svg via embedded CSS / @media (prefers-color-scheme). --}}
     <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('android-chrome-192x192.png') }}">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="{{ asset('favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    {{-- Legacy `shortcut icon` is still the strongest signal Bingbot honors;
+         without it Bing sometimes fails to attach any favicon to the SERP. --}}
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     <link rel="manifest" href="{{ asset('site.webmanifest') }}">
     <meta name="theme-color" content="#1a1a1a">
