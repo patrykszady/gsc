@@ -2,9 +2,14 @@
     // Get all images for the slider
     $gbpService = app(\App\Services\GoogleBusinessProfileService::class);
     $yelpPublicSlug = config('services.yelp.business.public_biz_slug');
-    $allImages = $project->images()->orderBy('sort_order')->get();
-    $imagesData = $allImages->map(function ($img) use ($project, $gbpService, $yelpPublicSlug) {
+    $allImages = $project->images()->orderBy('sort_order')->get()->values();
+    $totalImages = $allImages->count();
+    $imagesData = $allImages->map(function ($img, $index) use ($allImages, $totalImages, $project, $gbpService, $yelpPublicSlug) {
         $imageKey = $img->slug ?: $img->id;
+        $previousImage = $totalImages > 1 ? $allImages[($index - 1 + $totalImages) % $totalImages] : null;
+        $nextImage = $totalImages > 1 ? $allImages[($index + 1) % $totalImages] : null;
+        $previousImageKey = $previousImage?->slug ?: $previousImage?->id;
+        $nextImageKey = $nextImage?->slug ?: $nextImage?->id;
 
         // Only build a public Yelp link when we have a *real* Yelp photo hash.
         // Real hashes look like "Kb6faGEhsJBT-0zCgk7CyA" (22-ish base64-url
@@ -36,6 +41,8 @@
             'caption' => $this->localizeText($img->caption),
             'isCover' => $img->is_cover,
             'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
+            'prevPageUrl' => $previousImageKey ? route('projects.image', ['project' => $project, 'image' => $previousImageKey]) : null,
+            'nextPageUrl' => $nextImageKey ? route('projects.image', ['project' => $project, 'image' => $nextImageKey]) : null,
         ];
     })->values();
     
@@ -162,14 +169,24 @@
                     <x-slot:overlays>
                         {{-- Dot indicators (bottom center, over image) --}}
                         <div class="absolute bottom-4 inset-x-0 flex justify-center gap-2 z-10" x-show="total > 1">
-                            <template x-for="(img, idx) in images" :key="img.id">
-                                <button
-                                    @click.stop="goTo(idx)"
-                                    :class="currentIndex === idx ? 'bg-white w-8' : 'bg-white/50 w-3 hover:bg-white/70'"
-                                    class="h-3 rounded-full transition-all duration-300 shadow-lg cursor-pointer"
-                                    :title="`Photo ${idx + 1}`">
-                                </button>
-                            </template>
+                            @foreach($allImages as $idx => $galleryImage)
+                                @php
+                                    $galleryImageKey = $galleryImage->slug ?: $galleryImage->id;
+                                    $galleryPageUrl = $galleryImageKey
+                                        ? route('projects.image', ['project' => $project, 'image' => $galleryImageKey])
+                                        : null;
+                                @endphp
+                                @if($galleryPageUrl)
+                                    <a
+                                        href="{{ $galleryPageUrl }}"
+                                        @click.prevent.stop="goTo({{ $idx }})"
+                                        x-bind:class="currentIndex === {{ $idx }} ? 'bg-white w-8' : 'bg-white/50 w-3 hover:bg-white/70'"
+                                        x-bind:aria-current="currentIndex === {{ $idx }} ? 'page' : null"
+                                        class="h-3 rounded-full transition-all duration-300 shadow-lg cursor-pointer"
+                                        title="Photo {{ $idx + 1 }}"
+                                    ></a>
+                                @endif
+                            @endforeach
                         </div>
 
                         {{-- Info overlay (top left of image) --}}
@@ -231,29 +248,69 @@
             </figcaption>
         </div>
 
+        <div class="mt-6 flex items-center justify-between gap-3" x-show="total > 1">
+            <a
+                x-show="current.prevPageUrl"
+                x-bind:href="current.prevPageUrl"
+                @click.prevent="prev()"
+                rel="prev"
+                class="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-sky-300 hover:text-sky-700 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-sky-500 dark:hover:text-sky-300"
+            >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Previous photo
+            </a>
+
+            <a
+                x-show="current.nextPageUrl"
+                x-bind:href="current.nextPageUrl"
+                @click.prevent="next()"
+                rel="next"
+                class="ml-auto inline-flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-sky-300 hover:text-sky-700 dark:border-zinc-700 dark:text-zinc-200 dark:hover:border-sky-500 dark:hover:text-sky-300"
+            >
+                Next photo
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
+        </div>
+
         {{-- Thumbnail Strip --}}
         <div class="mt-6" x-show="total > 1">
             <div class="flex gap-3 overflow-x-auto py-2 px-1 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800"
                  x-ref="thumbnails">
-                <template x-for="(img, idx) in images" :key="'thumb-' + img.id">
-                    <button
-                        @click="goTo(idx)"
-                        :data-index="idx"
-                        :class="currentIndex === idx 
-                            ? 'ring-2 ring-sky-500 ring-offset-2 dark:ring-offset-zinc-900' 
-                            : 'opacity-60 hover:opacity-100'"
-                        class="shrink-0 relative rounded-lg overflow-hidden transition-all duration-200 cursor-pointer"
-                        :title="`Photo ${idx + 1}`">
-                        <img 
-                            :src="img.thumbUrl" 
-                            alt="Project gallery thumbnail"
-                            :alt="`Photo ${idx + 1}`"
-                            class="w-16 h-16 sm:w-20 sm:h-20 object-cover"
-                            loading="lazy"
+                @foreach($allImages as $idx => $galleryImage)
+                    @php
+                        $galleryImageKey = $galleryImage->slug ?: $galleryImage->id;
+                        $galleryPageUrl = $galleryImageKey
+                            ? route('projects.image', ['project' => $project, 'image' => $galleryImageKey])
+                            : null;
+                        $galleryThumbUrl = $galleryImage->getWebpThumbnailUrl('thumbnail')
+                            ?: $galleryImage->getThumbnailUrl('thumbnail');
+                    @endphp
+                    @if($galleryPageUrl && $galleryThumbUrl)
+                        <a
+                            href="{{ $galleryPageUrl }}"
+                            @click.prevent="goTo({{ $idx }})"
+                            data-index="{{ $idx }}"
+                            x-bind:class="currentIndex === {{ $idx }}
+                                ? 'ring-2 ring-sky-500 ring-offset-2 dark:ring-offset-zinc-900'
+                                : 'opacity-60 hover:opacity-100'"
+                            x-bind:aria-current="currentIndex === {{ $idx }} ? 'page' : null"
+                            class="shrink-0 relative rounded-lg overflow-hidden transition-all duration-200 cursor-pointer"
+                            title="Photo {{ $idx + 1 }}"
                         >
-                        <div x-show="currentIndex === idx" class="absolute inset-0 bg-sky-500/20"></div>
-                    </button>
-                </template>
+                            <img
+                                src="{{ $galleryThumbUrl }}"
+                                alt="Photo {{ $idx + 1 }}"
+                                class="w-16 h-16 sm:w-20 sm:h-20 object-cover"
+                                loading="lazy"
+                            >
+                            <div x-show="currentIndex === {{ $idx }}" class="absolute inset-0 bg-sky-500/20"></div>
+                        </a>
+                    @endif
+                @endforeach
             </div>
         </div>
 

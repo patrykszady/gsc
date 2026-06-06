@@ -69,6 +69,8 @@
                 @foreach($paginator as $imageIndex => $image)
                     @php
                         $globalIndex = ($paginator->firstItem() - 1) + $imageIndex;
+                        $imageKey = $image->slug ?: $image->id;
+                        $imagePageUrl = $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null;
                     @endphp
                     <div
                         wire:key="photo-{{ $image->id }}"
@@ -134,6 +136,17 @@
                                 </span>
                             @endif
                         </div>
+
+                        @if($imagePageUrl)
+                            <a href="{{ $imagePageUrl }}"
+                               wire:navigate
+                               class="mt-2 inline-flex items-center gap-2 text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
+                                Open photo page
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </a>
+                        @endif
                     </div>
                 @endforeach
             </div>

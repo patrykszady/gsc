@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
+use App\Services\GoogleBusinessProfileService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Spatie\Sitemap\Sitemap;
@@ -16,7 +17,7 @@ class GenerateSitemap extends Command
 
     protected $description = 'Generate the sitemap for the website';
 
-    public function handle(): int
+    public function handle(GoogleBusinessProfileService $googleBusinessProfileService): int
     {
         $baseUrl = rtrim($this->option('url') ?: config('app.url'), '/');
         $isLocalBase = str_contains($baseUrl, '127.0.0.1') || str_contains($baseUrl, 'localhost');
@@ -35,6 +36,29 @@ class GenerateSitemap extends Command
         $sitemap = Sitemap::create();
         $urlCount = 0;
         $imageCount = 0;
+
+        $resolveImageUrl = static function ($image) use ($googleBusinessProfileService): ?string {
+            $imageUrl = $image->getAnyUrl('large');
+            if (is_string($imageUrl) && trim($imageUrl) !== '') {
+                return $imageUrl;
+            }
+
+            $googleUrl = $image->google_places_media_url;
+            if (is_string($googleUrl) && trim($googleUrl) !== '') {
+                return $googleUrl;
+            }
+
+            $mediaName = $image->google_places_media_name;
+            if (! is_string($mediaName) || trim($mediaName) === '') {
+                return null;
+            }
+
+            $googleUrl = $googleBusinessProfileService->getMediaUrlCached($mediaName);
+
+            return is_string($googleUrl) && trim($googleUrl) !== ''
+                ? $googleUrl
+                : null;
+        };
 
         // Get all registered routes
         $routes = collect(Route::getRoutes()->getRoutes());
@@ -328,7 +352,7 @@ class GenerateSitemap extends Command
             
             // Add project images to sitemap for Google Image Search
             foreach ($project->images as $image) {
-                $imageUrl = $image->getAnyUrl('large'); // Prefer WebP/thumbnail/main in that order
+                $imageUrl = $resolveImageUrl($image);
                 if (is_string($imageUrl) && trim($imageUrl) !== '') {
                     if ($needsImageRewrite) {
                         $imageUrl = str_replace($appUrl, $baseUrl, $imageUrl);
@@ -356,7 +380,7 @@ class GenerateSitemap extends Command
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority(0.5);
 
-                $photoImageUrl = $image->getAnyUrl('large');
+                $photoImageUrl = $resolveImageUrl($image);
                 if (is_string($photoImageUrl) && trim($photoImageUrl) !== '') {
                     if ($needsImageRewrite) {
                         $photoImageUrl = str_replace($appUrl, $baseUrl, $photoImageUrl);
