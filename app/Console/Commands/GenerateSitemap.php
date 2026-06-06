@@ -182,6 +182,11 @@ class GenerateSitemap extends Command
                 if ($slug === '') {
                     continue;
                 }
+                // Skip entries explicitly held out of the index (safety valve).
+                if (! empty($competitor['noindex'])) {
+                    $this->line("  Skipped compare (noindex): /compare/{$slug}");
+                    continue;
+                }
                 $sitemap->add(
                     Url::create("{$baseUrl}/compare/{$slug}")
                         ->setLastModificationDate(now())

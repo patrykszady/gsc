@@ -59,10 +59,7 @@
                     </div>
                 </div>
 
-                <div class="prose prose-zinc dark:prose-invert max-w-none text-sm
-                            prose-table:my-3 prose-th:px-2 prose-td:px-2
-                            prose-table:border prose-th:border prose-td:border
-                            prose-table:border-zinc-200 dark:prose-table:border-zinc-700">
+                <div class="seo-report max-w-none">
                     {!! $this->activeHtml !!}
                 </div>
             @else

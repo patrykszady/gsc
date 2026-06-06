@@ -213,6 +213,21 @@ Schedule::command('seo:backlinks-monitor --markdown')
     ->appendOutputTo(storage_path('logs/seo-backlinks-monitor.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:backlinks-monitor failed'));
 
+// SEO: weekly composite Local SEO health-check (0–100 per URL).
+// --min-score=0 keeps the scheduled run report-only (never fails the task).
+Schedule::command('seo:health-check --markdown --min-score=0')
+    ->weeklyOn(5, '09:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-health-check.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:health-check failed'));
+
+// SEO: weekly per-area landing-page audit (thin content + near-duplicates).
+Schedule::command('seo:area-pages-audit --markdown')
+    ->weeklyOn(5, '09:45')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-area-pages-audit.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:area-pages-audit failed'));
+
 // SEO: weekly internal-link audit — orphans + weakly linked pages.
 Schedule::command('seo:internal-link-audit --min=3')
     ->weeklyOn(1, '08:30')

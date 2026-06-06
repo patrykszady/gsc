@@ -145,23 +145,26 @@ PROMPT;
         }
 
         $prompt = <<<PROMPT
-You are an SEO copywriter for GS Construction, a home remodeling company in Chicago.
+You are an SEO and GEO (generative-engine optimization) copywriter for GS Construction,
+a licensed and insured family-owned home remodeling company serving the Chicago suburbs since 2015.
 You are looking at {$allImages->count()} photos from this project. Study ALL the images carefully.
 
-Write a compelling project description (2-3 sentences) that:
-- Describes the type of work done ({$projectType})
-- Mentions the location ({$location})
-- References specific materials, features, or details visible across ALL the project photos
-- Highlights quality craftsmanship
-- Is SEO-optimized with relevant keywords
+Write a detailed project description of 100-150 words (about 5-7 sentences) that:
+- Describes the type of work done ({$projectType}) in {$location}
+- References specific materials, fixtures, finishes, and design features visible across ALL the project photos
+- Includes concrete specifics — counts, dimensions, or measurements ONLY when they are clearly visible in the photos or are safe, generic facts (e.g. typical 4-10 week timelines, licensed since 2015). Never invent precise figures you cannot see.
+- Write all counts, quantities, and measurements as digit numerals (e.g. "3 pendant lights", "2 vanities", "since 2015"), never as spelled-out words, so the copy is dense with concrete figures
+- Weaves in at least 2-3 specific factual details per sentence so the copy reads densely informative, not vague
+- Highlights quality craftsmanship and names "GS Construction" at least once
+- Is SEO-optimized with natural local-remodeling keywords
 - Sounds professional but approachable
 
 Project title: {$project->title}{$imageContext}
 
-Return ONLY the description text, no JSON or formatting.
+Return ONLY the description text (plain prose, no headings, no JSON, no markdown).
 PROMPT;
 
-        return $this->callGeminiMultiImage($prompt, $multiImageData);
+        return $this->callGeminiMultiImage($prompt, $multiImageData, maxOutputTokens: 800);
     }
 
     /**

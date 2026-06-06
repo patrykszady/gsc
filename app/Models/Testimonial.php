@@ -117,26 +117,34 @@ class Testimonial extends Model
      */
     public function geoProfile(): array
     {
-        $type = ucfirst($this->project_type ?? 'remodel');
-        $loc  = $this->project_location ?: 'Chicago Suburbs';
+        $type   = ucfirst($this->project_type ?? 'remodel');
+        $loc    = $this->project_location ?: 'Chicago Suburbs';
+        $name   = $this->display_name ?? 'Customer';
+        $rating = $this->star_rating ?? 5;
 
         return [
             'brand'        => 'GS Construction',
-            'name'         => trim(($this->display_name ?? 'Customer') . ' — ' . $type . ' review'),
+            'name'         => trim($name . ' — ' . $type . ' review for GS Construction'),
             'description'  => $this->review_description,
             'url'          => url('/testimonials#review-' . $this->id),
-            'rating'       => $this->star_rating ?? 5,
+            'price'        => 'Contact for quote',
+            'rating'       => $rating,
             'review_count' => 1,
             'reviews'      => [[
                 'author' => $this->display_name,
-                'rating' => $this->star_rating ?? 5,
+                'rating' => $rating,
                 'body'   => $this->review_description,
                 'date'   => optional($this->review_date)->toDateString(),
             ]],
             'breadcrumb'   => [
                 ['name' => 'Home', 'url' => url('/')],
                 ['name' => 'Reviews', 'url' => url('/testimonials')],
-                ['name' => $this->display_name ?? 'Customer Review', 'url' => url('/testimonials#review-' . $this->id)],
+                ['name' => $name . ' Review', 'url' => url('/testimonials#review-' . $this->id)],
+            ],
+            'faqs'         => [
+                ['question' => "What type of project did GS Construction complete for {$name}?", 'answer' => "GS Construction completed a {$type} project for {$name} in {$loc}, IL."],
+                ['question' => "How did {$name} rate GS Construction?", 'answer' => "{$name} gave GS Construction a {$rating}-star rating for their {$type} project in {$loc}, IL."],
+                ['question' => 'Is GS Construction licensed and insured?', 'answer' => 'Yes — GS Construction is a fully licensed, bonded, and insured remodeling contractor serving the Chicago suburbs.'],
             ],
             'currency'     => 'USD',
             'in_stock'     => true,
@@ -144,6 +152,7 @@ class Testimonial extends Model
                 'Reviewer'     => $this->display_name,
                 'Project Type' => $type,
                 'Location'     => $loc,
+                'Rating'       => $rating . ' / 5',
                 'Date'         => optional($this->review_date)->toDateString(),
             ]),
         ];

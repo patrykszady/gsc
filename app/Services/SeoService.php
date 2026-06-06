@@ -534,7 +534,15 @@ class SeoService
         $name = (string) ($competitor['name'] ?? 'Competitor');
 
         $title = "Alternative to {$name} - GS Construction";
-        $description = "Comparing GS Construction with {$name}? See a factual side-by-side on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
+
+        // Prefer the competitor's unique comparison_note so each page has a
+        // distinct meta description (avoids templated/duplicate snippets).
+        $note = trim((string) ($competitor['comparison_note'] ?? ''));
+        if ($note !== '') {
+            $description = \Illuminate\Support\Str::limit($note, 158);
+        } else {
+            $description = "Comparing GS Construction with {$name}? See a factual side-by-side on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
+        }
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
@@ -544,6 +552,12 @@ class SeoService
             "{$name} reviews",
             'compare chicago remodeling contractors',
         ]);
+
+        // Safety valve: keep entries without unique, index-ready copy out of
+        // the index until they're ready (config 'noindex' => true).
+        if (! empty($competitor['noindex'])) {
+            self::seo()->markNoindex();
+        }
     }
 
     /**

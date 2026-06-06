@@ -84,3 +84,186 @@ body {
     scroll-behavior: smooth;
     overflow-x: hidden;
 }
+
+/* ---------------------------------------------------------------------------
+   SEO report viewer
+   Self-contained styling for the markdown rendered in the admin SEO Reports
+   dashboard. The Tailwind Typography (`prose`) plugin is not installed, so the
+   rendered report HTML is styled here instead. Scoped to `.seo-report`.
+--------------------------------------------------------------------------- */
+.seo-report {
+    color: #3f3f46; /* zinc-700 */
+    font-size: 0.875rem;
+    line-height: 1.6;
+    word-break: break-word;
+}
+.dark .seo-report {
+    color: #d4d4d8; /* zinc-300 */
+}
+
+/* The first H1 duplicates the report title shown in the card header — mute it. */
+.seo-report > h1:first-child {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #a1a1aa; /* zinc-400 */
+    margin: 0 0 1rem;
+}
+
+.seo-report h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #18181b; /* zinc-900 */
+    margin: 1.75rem 0 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #e4e4e7; /* zinc-200 */
+}
+.dark .seo-report h2 {
+    color: #fafafa;
+    border-bottom-color: #3f3f46; /* zinc-700 */
+}
+
+.seo-report h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #27272a; /* zinc-800 */
+    margin: 1.25rem 0 0.5rem;
+}
+.dark .seo-report h3 {
+    color: #e4e4e7;
+}
+
+.seo-report p {
+    margin: 0.65rem 0;
+}
+
+.seo-report strong {
+    font-weight: 600;
+    color: #18181b;
+}
+.dark .seo-report strong {
+    color: #fafafa;
+}
+
+.seo-report a {
+    color: #0284c7; /* sky-600 */
+    text-decoration: none;
+}
+.seo-report a:hover {
+    text-decoration: underline;
+}
+
+.seo-report ul,
+.seo-report ol {
+    margin: 0.65rem 0;
+    padding-left: 1.4rem;
+}
+.seo-report ul { list-style: disc; }
+.seo-report ol { list-style: decimal; }
+.seo-report li { margin: 0.3rem 0; }
+
+.seo-report code {
+    background: #f4f4f5; /* zinc-100 */
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.8em;
+    color: #be123c; /* rose-700 */
+}
+.dark .seo-report code {
+    background: #27272a; /* zinc-800 */
+    color: #fda4af; /* rose-300 */
+}
+
+.seo-report pre {
+    background: #18181b;
+    color: #e4e4e7;
+    border-radius: 0.5rem;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    margin: 0.85rem 0;
+}
+.seo-report pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+.seo-report blockquote {
+    border-left: 3px solid #0ea5e9; /* sky-500 */
+    background: #f0f9ff; /* sky-50 */
+    margin: 0.85rem 0;
+    padding: 0.5rem 1rem;
+    border-radius: 0 0.375rem 0.375rem 0;
+    color: #0c4a6e; /* sky-900 */
+}
+.dark .seo-report blockquote {
+    background: rgba(14, 165, 233, 0.08);
+    color: #bae6fd; /* sky-200 */
+}
+
+.seo-report hr {
+    border: 0;
+    border-top: 1px solid #e4e4e7;
+    margin: 1.5rem 0;
+}
+.dark .seo-report hr {
+    border-top-color: #3f3f46;
+}
+
+/* Tables — the core of most reports. */
+.seo-report table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.85rem 0;
+    font-size: 0.8rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+.seo-report thead th {
+    background: #f4f4f5; /* zinc-100 */
+    color: #3f3f46;
+    font-weight: 600;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid #d4d4d8; /* zinc-300 */
+    position: sticky;
+    top: 0;
+}
+.dark .seo-report thead th {
+    background: #27272a;
+    color: #e4e4e7;
+    border-bottom-color: #52525b;
+}
+.seo-report tbody td {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid #f4f4f5; /* zinc-100 */
+    vertical-align: top;
+}
+.dark .seo-report tbody td {
+    border-bottom-color: #27272a;
+}
+.seo-report tbody tr:nth-child(even) {
+    background: #fafafa; /* zinc-50 */
+}
+.dark .seo-report tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+.seo-report tbody tr:hover {
+    background: #f0f9ff; /* sky-50 */
+}
+.dark .seo-report tbody tr:hover {
+    background: rgba(14, 165, 233, 0.06);
+}
+/* GFM right-aligns numeric columns via align attr / inline style — respect it. */
+.seo-report th[align='right'],
+.seo-report td[align='right'] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.seo-report th[align='center'],
+.seo-report td[align='center'] {
+    text-align: center;
+}

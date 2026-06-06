@@ -48,7 +48,6 @@ class CompareCompetitorPage extends Component
 
         SeoService::compareCompetitor($this->competitor);
     }
-
     public function render()
     {
         $projects = Project::query()
@@ -63,6 +62,8 @@ class CompareCompetitorPage extends Component
         return view('livewire.compare-competitor-page', [
             'projects' => $projects,
             'reviewCount' => $reviewCount,
+            'faqs' => $this->buildFaqs($this->competitor),
+            'lastVerified' => (string) config('competitors.last_verified', ''),
         ]);
     }
 
@@ -92,13 +93,49 @@ class CompareCompetitorPage extends Component
         $rows = [];
         foreach ($criteria as $row) {
             $key = (string) ($row['key'] ?? '');
+            $fallback = (string) ($row['them_default'] ?? 'Varies — verify directly with the company.');
             $rows[] = [
                 'label' => (string) ($row['label'] ?? $key),
                 'us' => (string) ($row['us'] ?? ''),
-                'them' => (string) ($overrides[$key] ?? 'Varies — verify directly with the company.'),
+                'them' => (string) ($overrides[$key] ?? $fallback),
+                'why' => (string) ($row['why'] ?? ''),
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * Build a small set of unique, factual FAQs per competitor. Rendered as a
+     * visible FAQ block + FAQPage schema for long-tail "{brand} vs / alternative"
+     * intent and rich-result eligibility. Kept neutral and SEO-safe.
+     *
+     * @param array<string, mixed> $competitor
+     * @return array<int, array<string, string>>
+     */
+    protected function buildFaqs(array $competitor): array
+    {
+        $name = (string) ($competitor['name'] ?? 'this company');
+
+        $faqs = [
+            [
+                'question' => "Is GS Construction a good alternative to {$name}?",
+                'answer' => "If you want to work directly with the owners and keep control of your design and materials, GS Construction is a strong alternative to {$name}. Greg and Patryk Szady are a father-son team who run every project from the first call to the final walkthrough — there is no rotating cast of coordinators, and you can bring your own designer or architect (or be your own) and shop your own materials from our trusted material sources.",
+            ],
+            [
+                'question' => "How does GS Construction's pricing compare to {$name}?",
+                'answer' => "GS Construction gives you an itemized, transparent estimate with no labor marked up through layers of middlemen, so you can see exactly what you are paying for. Pricing on any remodel depends on scope and finishes, so the best way to compare is to request an itemized estimate from GS Construction and from {$name} and put them side by side.",
+            ],
+            [
+                'question' => "What areas does GS Construction serve?",
+                'answer' => 'GS Construction serves the northwest Chicago suburbs — including Arlington Heights, Palatine, Schaumburg, Barrington, and surrounding communities — for kitchen, bathroom, and whole-home remodels, additions, basements, exteriors, and mudrooms.',
+            ],
+            [
+                'question' => 'Can I bring my own designer or buy my own materials?',
+                'answer' => 'Yes. You can collaborate with the independent designer or architect of your choice, or design the project yourself. We point you to our trusted material sources, follow your requirements, and install the materials you purchase — your design, your decisions.',
+            ],
+        ];
+
+        return $faqs;
     }
 }

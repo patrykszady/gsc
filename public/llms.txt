@@ -1,86 +1,14 @@
-# GS Construction & Remodeling
+# llms.txt for GS Construction
 
-> Kitchen remodeling, bathroom renovations, and home remodeling in the Chicago suburbs. Family-owned with 40+ years combined experience. Serving 89+ cities in Chicagoland.
+> Family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English &amp; Polish.
 
-## About
+## Metadata
+- Site URL: https://gs.construction
+- Feed URL: https://gs.construction/ai-product-feed.json
+- Sitemap URL: https://gs.construction/ai-sitemap.xml
+- Generated At: 2026-06-06T03:52:08+00:00
 
-GS Construction & Remodeling is a family-owned home remodeling business based in Arlington Heights, Illinois. Founded in 2015 by Gregory and Patryk, the company specializes in kitchen remodeling, bathroom renovations, and whole-home remodels across the Chicago suburbs. Languages: English and Polish.
-
-- Phone: (224) 735-4200
-- Email: crew@gs.construction
-- Location: Arlington Heights, IL
-- Hours: Mon–Sat 8AM–6PM
-- Rating: 5 stars from 53+ reviews
-
-## Services
-
-- [Kitchen Remodeling](https://gs.construction/services/kitchen-remodeling): Complete kitchen renovations including cabinets, countertops, flooring, lighting, and appliance installation.
-- [Bathroom Remodeling](https://gs.construction/services/bathroom-remodeling): Full bathroom renovation including tile work, vanities, showers, bathtubs, and fixtures.
-- [Home Remodeling](https://gs.construction/services/home-remodeling): Comprehensive whole-home renovations and transformations.
-- Basement Remodeling: Basement finishing and renovation to transform unused space.
-- Home Additions: Room additions and home expansion services.
-
-## Key Pages
-
-- [Homepage](https://gs.construction/)
-- [All Projects](https://gs.construction/projects)
-- [Kitchen Projects](https://gs.construction/projects/kitchens)
-- [Bathroom Projects](https://gs.construction/projects/bathrooms)
-- [Home Remodeling Projects](https://gs.construction/projects/home-remodeling)
-- [Reviews](https://gs.construction/reviews)
-- [About Us](https://gs.construction/about)
-- [Contact](https://gs.construction/contact)
-- [Areas Served](https://gs.construction/areas-served)
-- [Full LLM Context](https://gs.construction/llms-full.txt)
-
-## Service Area
-
-89+ cities across Chicagoland including: Arlington Heights, Barrington, Buffalo Grove, Chicago, Deerfield, Des Plaines, Evanston, Glenview, Highland Park, Hoffman Estates, Lake Forest, Lake Zurich, Libertyville, Mount Prospect, Northbrook, Palatine, Park Ridge, Schaumburg, Skokie, Vernon Hills, Wheeling, Wilmette, Winnetka, and more.
-
-
-## Machine-Readable Sources
-
-For programmatic access, prefer these structured endpoints:
-
-- AI Feed (JSON, full business + services + recent projects + reviews): https://gs.construction/ai-feed.json
-- Curated Q&A for AI engines (JSON, FAQPage schema): https://gs.construction/geo/answers.json
-- Extended LLM context (Markdown): https://gs.construction/llms-full.txt
-- XML Sitemap: https://gs.construction/sitemap.xml
-
-## Structured Snapshot
-
-```json
-{
-  "@context": "https://schema.org",
-  "@type": "HomeAndConstructionBusiness",
-  "name": "GS Construction",
-  "alternateName": "GS Construction & Remodeling",
-  "url": "https://gs.construction",
-  "telephone": "+1-224-735-4200",
-  "email": "crew@gs.construction",
-  "foundingDate": "2015",
-  "address": {
-    "@type": "PostalAddress",
-    "addressLocality": "Arlington Heights",
-    "addressRegion": "IL",
-    "addressCountry": "US"
-  },
-  "areaServed": "Chicagoland (Cook, Lake, DuPage counties, IL)",
-  "knowsLanguage": ["en", "pl"],
-  "openingHours": "Mo-Sa 08:00-18:00",
-  "priceRange": "$$$$",
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "5",
-    "reviewCount": "70",
-    "bestRating": "5"
-  },
-  "makesOffer": [
-    {"@type": "Service", "name": "Kitchen Remodeling"},
-    {"@type": "Service", "name": "Bathroom Remodeling"},
-    {"@type": "Service", "name": "Home Remodeling"},
-    {"@type": "Service", "name": "Basement Remodeling"},
-    {"@type": "Service", "name": "Home Additions"}
-  ]
-}
-```
+## Core Content
+- [Home](https://gs.construction)
+- [Product Feed](https://gs.construction/ai-product-feed.json)
+- [AI Sitemap](https://gs.construction/ai-sitemap.xml)

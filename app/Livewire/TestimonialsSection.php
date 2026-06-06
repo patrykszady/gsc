@@ -215,7 +215,7 @@ class TestimonialsSection extends Component
         $imageUrl ??= $this->fallbackProjectImageUrl();
 
         // Extract city name (strip ", IL" or similar state suffix)
-        $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $testimonial->project_location);
+        $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $testimonial->project_location ?? '');
 
         return [
             'id' => $testimonial->id,

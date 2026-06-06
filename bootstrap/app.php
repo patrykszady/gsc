@@ -4,6 +4,7 @@ use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\DetectCountry;
 use App\Http\Middleware\NoIndexHeader;
+use App\Http\Middleware\NoIndexNonProduction;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\Track404Responses;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             CacheStaticAssets::class,
             CaptureUtmParameters::class,
             SecurityHeaders::class,
+            NoIndexNonProduction::class,
             \Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders::class,
         ]);
 
