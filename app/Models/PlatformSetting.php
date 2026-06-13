@@ -27,8 +27,9 @@ class PlatformSetting extends Model
         } catch (DecryptException $e) {
             // APP_KEY rotated or row written with a different key. Surface
             // the default instead of crashing the request; admin can re-save
-            // the value to re-encrypt with the current key.
-            Log::warning('PlatformSetting decryption failed; returning default.', [
+            // the value to re-encrypt with the current key. Log at debug level
+            // to avoid noise in production logs during routine rotations.
+            \Log::debug('PlatformSetting decryption failed; returning default.', [
                 'key' => $key,
                 'error' => $e->getMessage(),
             ]);

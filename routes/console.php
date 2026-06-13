@@ -15,6 +15,23 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Backward-compatible alias for legacy schedulers/cron entries.
+Artisan::command('seo:gbp-metrics-sync
+    {--days=14 : Days back to sync for daily metrics}
+    {--location= : Override location ID (default from config)}
+    {--with-keywords : Also sync monthly search keywords}
+    {--dry-run}
+', function () {
+    $this->warn('Deprecated command: use gbp:metrics-sync instead. Forwarding...');
+
+    return Artisan::call('gbp:metrics-sync', [
+        '--days' => (int) $this->option('days'),
+        '--location' => $this->option('location') ?: null,
+        '--with-keywords' => (bool) $this->option('with-keywords'),
+        '--dry-run' => (bool) $this->option('dry-run'),
+    ]);
+})->purpose('Alias for legacy seo:gbp-metrics-sync command.');
+
 // Schedule sitemap regeneration daily
 Schedule::command('sitemap:generate')->daily();
 
@@ -145,7 +162,7 @@ Schedule::command('seo:gsc-monitor --window=7 --markdown')
 
 // SEO: weekly Clarity integration health check (paired with GSC monitor window).
 Schedule::command('seo:clarity-health --markdown')
-    ->weeklyOn(2, '09:02')
+    ->dailyAt('10:10')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-clarity-health.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:clarity-health failed'));
@@ -166,49 +183,49 @@ Schedule::command('seo:competitor-schema-gap --markdown')
 
 // SEO: weekly self-audit of JSON-LD schema coverage and validity.
 Schedule::command('seo:schema-audit --limit=120 --markdown')
-    ->weeklyOn(4, '08:30')
+    ->dailyAt('08:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-schema-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:schema-audit failed'));
 
 // SEO: weekly content-decay scan (clicks/position regressions, 28-day windows).
 Schedule::command('seo:content-decay --window=28 --markdown')
-    ->weeklyOn(4, '08:45')
+    ->dailyAt('08:45')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-content-decay.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:content-decay failed'));
 
 // SEO: weekly rank-band content-gap clusters (queries ranking 8-20).
 Schedule::command('seo:content-gap --markdown')
-    ->weeklyOn(4, '09:00')
+    ->dailyAt('09:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-content-gap.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:content-gap failed'));
 
 // SEO: weekly internal-link opportunity finder (unlinked anchor mentions).
 Schedule::command('seo:internal-link-suggest --markdown')
-    ->weeklyOn(5, '08:30')
+    ->dailyAt('09:10')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-internal-link-suggest.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:internal-link-suggest failed'));
 
 // SEO: weekly Core Web Vitals per-template regression check.
 Schedule::command('seo:cwv-template --markdown')
-    ->weeklyOn(5, '08:45')
+    ->dailyAt('09:20')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-cwv-template.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:cwv-template failed'));
 
 // SEO: weekly GBP / local-SEO NAP + service parity audit.
 Schedule::command('seo:gbp-parity --markdown')
-    ->weeklyOn(5, '09:00')
+    ->dailyAt('09:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gbp-parity.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gbp-parity failed'));
 
 // SEO: weekly backlink / mention monitor (referring-host snapshot via SerpApi).
 Schedule::command('seo:backlinks-monitor --markdown')
-    ->weeklyOn(5, '09:15')
+    ->dailyAt('09:40')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-backlinks-monitor.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:backlinks-monitor failed'));
@@ -216,14 +233,14 @@ Schedule::command('seo:backlinks-monitor --markdown')
 // SEO: weekly composite Local SEO health-check (0–100 per URL).
 // --min-score=0 keeps the scheduled run report-only (never fails the task).
 Schedule::command('seo:health-check --markdown --min-score=0')
-    ->weeklyOn(5, '09:30')
+    ->dailyAt('09:50')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-health-check.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:health-check failed'));
 
 // SEO: weekly per-area landing-page audit (thin content + near-duplicates).
 Schedule::command('seo:area-pages-audit --markdown')
-    ->weeklyOn(5, '09:45')
+    ->dailyAt('10:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-area-pages-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:area-pages-audit failed'));
@@ -412,7 +429,7 @@ Schedule::command('social:post --platform=facebook --yes --random-delay=240')
     ->when(fn () => config('services.meta.enabled'));
 
 // Google Business Profile: 1 weekly post (image + Gemini-generated caption) on Mondays at 10:00 AM CT.
-// Picks a random project image not yet posted to GBP, generates SEO caption via Gemini, and creates a Local Post.
+// Queued so processing is handled by the social-media worker.
 Schedule::command('social:post --platform=google_business --queue')->weeklyOn(1, '10:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))

@@ -100,6 +100,19 @@ return [
             'also_known_as' => ['kitchenvillage', 'kitchen village chicago'],
         ],
         [
+            'slug' => 'kitchen-bath-mart',
+            'name' => 'Kitchen & Bath Mart',
+            'website' => 'https://www.kitchenandbathmart.net',
+            'location' => 'Niles and Palatine, IL',
+            'focus' => 'Kitchen and bath remodeling',
+            'comparison_note' => 'Kitchen & Bath Mart is a long-running kitchen and bath remodeling brand in the Northwest suburbs with locations in Niles and Palatine. GS Construction compares as an owner-led remodeling team where Greg and Patryk remain your direct point of contact, with flexible design options and transparent, itemized scope pricing.',
+            'them' => [
+                'project_types' => 'Kitchen and bathroom remodeling',
+                'service_area' => 'Niles, Palatine, and surrounding Chicago suburbs',
+            ],
+            'also_known_as' => ['kitchen and bath mart', 'kitchen bath mart'],
+        ],
+        [
             'slug' => '4ever-remodeling',
             'name' => '4Ever Remodeling',
             'website' => 'https://4everremodeling.com',

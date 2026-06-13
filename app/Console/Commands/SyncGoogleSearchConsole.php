@@ -21,12 +21,25 @@ class SyncGoogleSearchConsole extends Command
         {--lag-days=2 : Skip the most recent N days (GSC data lags)}
         {--site= : Override site URL (default from config)}
         {--limit=25000 : Max rows per page}
+        {--queue : Deprecated no-op alias for compatibility}
         {--dry-run}';
 
     protected $description = 'Sync Google Search Console query/page/country/device metrics';
 
     public function handle(GoogleSearchConsoleService $svc): int
     {
+        if ((bool) $this->option('queue')) {
+            $cmdLine = implode(' ', $_SERVER['argv'] ?? []);
+            logger('seo-sync')->warning('Deprecated --queue option used for seo:gsc-sync', [
+                'command_line' => $cmdLine,
+                'calling_user' => get_current_user(),
+                'pid' => getmypid(),
+                'timestamp' => now()->toIso8601String(),
+            ]);
+            $this->warn('Option --queue is deprecated and ignored for seo:gsc-sync.');
+            $this->line("Command line: {$cmdLine}");
+        }
+
         if (! $svc->isConfigured()) {
             $this->error('Search Console not configured. Run: php artisan seo:gsc-auth');
             return self::FAILURE;

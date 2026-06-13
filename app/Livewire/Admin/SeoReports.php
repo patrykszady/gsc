@@ -4,11 +4,15 @@ namespace App\Livewire\Admin;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -23,6 +27,15 @@ class SeoReports extends Component
     public ?string $active = null;
 
     public ?string $flash = null;
+
+    #[Url(as: 'range', keep: true)]
+    public int $trendDays = 14;
+
+    #[Url(as: 'metric', keep: true)]
+    public string $trendMetric = 'clicks';
+
+    #[Url(as: 'combined', keep: true)]
+    public int $trendCombined = 1;
 
     /**
      * Registry of reports rendered in the dashboard. Keys are file names
@@ -89,6 +102,16 @@ class SeoReports extends Component
         if ($report !== null && isset($this->reports[$report])) {
             $this->active = $report;
         }
+
+        if (! in_array($this->trendDays, [7, 14, 30], true)) {
+            $this->trendDays = 14;
+        }
+
+        if (! in_array($this->trendMetric, ['clicks', 'impressions'], true)) {
+            $this->trendMetric = 'clicks';
+        }
+
+        $this->trendCombined = $this->trendCombined === 1 ? 1 : 0;
     }
 
     public function open(string $key): void
@@ -112,12 +135,47 @@ class SeoReports extends Component
             $this->flash = 'Failed to regenerate: ' . $e->getMessage();
         }
         $this->active = $key;
+        Cache::forget('admin.seo-reports.health-snapshot');
+        Cache::forget($this->searchSnapshotCacheKey());
         // Bust the computed cache so the file list / body re-read from disk.
-        unset($this->files, $this->activeHtml);
+        unset($this->files, $this->reportStats, $this->healthSnapshot, $this->searchSnapshot, $this->activeHtml);
+    }
+
+    public function setTrendDays(int $days): void
+    {
+        if (! in_array($days, [7, 14, 30], true)) {
+            return;
+        }
+
+        if ($this->trendDays === $days) {
+            return;
+        }
+
+        Cache::forget($this->searchSnapshotCacheKey());
+        $this->trendDays = $days;
+        unset($this->searchSnapshot);
+    }
+
+    public function setTrendMetric(string $metric): void
+    {
+        if (! in_array($metric, ['clicks', 'impressions'], true)) {
+            return;
+        }
+
+        if ($this->trendMetric === $metric) {
+            return;
+        }
+
+        $this->trendMetric = $metric;
+    }
+
+    public function toggleTrendCombined(): void
+    {
+        $this->trendCombined = $this->trendCombined === 1 ? 0 : 1;
     }
 
     /**
-     * @return array<int, array{key:string,label:string,description:string,command:string,exists:bool,size:?int,mtime:?\Carbon\CarbonInterface,age:?string}>
+    * @return array<int, array{key:string,label:string,description:string,command:string,exists:bool,size:?int,mtime:?\Carbon\CarbonInterface,age:?string,age_hours:?int,freshness_pct:int,status:string}>
      */
     #[Computed]
     public function files(): array
@@ -130,6 +188,9 @@ class SeoReports extends Component
             $size = $exists ? $disk->size($path) : null;
             $mtimeTs = $exists ? $disk->lastModified($path) : null;
             $mtime = $mtimeTs ? Carbon::createFromTimestamp($mtimeTs) : null;
+            $ageHours = $mtime ? (int) now()->diffInHours($mtime) : null;
+            $freshnessPct = $ageHours === null ? 0 : max(0, 100 - (int) round(min($ageHours, 72) / 72 * 100));
+            $status = $ageHours === null ? 'missing' : ($ageHours <= 24 ? 'fresh' : 'stale');
             $out[] = [
                 'key' => $key,
                 'label' => $meta['label'],
@@ -139,9 +200,393 @@ class SeoReports extends Component
                 'size' => $size,
                 'mtime' => $mtime,
                 'age' => $mtime?->diffForHumans(),
+                'age_hours' => $ageHours,
+                'freshness_pct' => $freshnessPct,
+                'status' => $status,
             ];
         }
         return $out;
+    }
+
+    /**
+     * @return array{total:int,generated:int,fresh:int,stale:int,missing:int,updated_today:int,last_update:?string}
+     */
+    #[Computed]
+    public function reportStats(): array
+    {
+        $files = collect($this->files);
+        $generated = $files->where('exists', true);
+
+        return [
+            'total' => $files->count(),
+            'generated' => $generated->count(),
+            'fresh' => $files->where('status', 'fresh')->count(),
+            'stale' => $files->where('status', 'stale')->count(),
+            'missing' => $files->where('status', 'missing')->count(),
+            'updated_today' => $generated->filter(fn (array $f) => ($f['age_hours'] ?? 9999) < 24)->count(),
+            'last_update' => $generated
+                ->sortByDesc(fn (array $f) => $f['mtime']?->timestamp ?? 0)
+                ->first()['age'] ?? null,
+        ];
+    }
+
+    /**
+     * @return array{
+     *   channels:array<string,array{label:string,clicks:int,impressions:int,ctr:float,position:float,delta_clicks:float}>,
+     *   daily_clicks:array<int,array{date:string,gsc:int,bing:int,combined:int}>,
+     *   top_queries:array<int,array{query:string,clicks:int,impressions:int,ctr:float,position:float}>,
+     *   top_pages:array<int,array{page:string,clicks:int,impressions:int,ctr:float,position:float}>,
+     *   coverage:array{total:int,problem:int,forbidden:int,not_indexed:int,duplicate:int},
+     *   rankings:array{tracked:int,top3:int,top10:int,top20:int,below20:int},
+     *   action_items:array<int,string>
+     * }
+     */
+    #[Computed]
+    public function searchSnapshot(): array
+    {
+        return Cache::remember($this->searchSnapshotCacheKey(), now()->addMinutes(15), function (): array {
+            $today = Carbon::today();
+            $currStart = $today->copy()->subDays(6);
+            $prevStart = $today->copy()->subDays(13);
+            $prevEnd = $today->copy()->subDays(7);
+
+            $channels = [
+                'gsc' => [
+                    'label' => 'Google Search Console',
+                    'clicks' => 0,
+                    'impressions' => 0,
+                    'ctr' => 0.0,
+                    'position' => 0.0,
+                    'delta_clicks' => 0.0,
+                ],
+                'bing' => [
+                    'label' => 'Bing Webmaster',
+                    'clicks' => 0,
+                    'impressions' => 0,
+                    'ctr' => 0.0,
+                    'position' => 0.0,
+                    'delta_clicks' => 0.0,
+                ],
+                'gbp' => [
+                    'label' => 'Google Business Profile',
+                    'clicks' => 0,
+                    'impressions' => 0,
+                    'ctr' => 0.0,
+                    'position' => 0.0,
+                    'delta_clicks' => 0.0,
+                ],
+            ];
+
+            if (Schema::hasTable('gsc_query_metrics')) {
+                $curr = DB::table('gsc_query_metrics')
+                    ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
+                    ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                    ->first();
+
+                $prev = DB::table('gsc_query_metrics')
+                    ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
+                    ->selectRaw('SUM(clicks) as clicks')
+                    ->first();
+
+                $currClicks = (int) ($curr->clicks ?? 0);
+                $currImpressions = (int) ($curr->impressions ?? 0);
+                $channels['gsc'] = [
+                    'label' => 'Google Search Console',
+                    'clicks' => $currClicks,
+                    'impressions' => $currImpressions,
+                    'ctr' => $currImpressions > 0 ? round(($currClicks / $currImpressions) * 100, 2) : 0.0,
+                    'position' => round((float) ($curr->position ?? 0), 2),
+                    'delta_clicks' => $this->percentDelta($currClicks, (int) ($prev->clicks ?? 0)),
+                ];
+            }
+
+            if (Schema::hasTable('bing_traffic_stats')) {
+                $curr = DB::table('bing_traffic_stats')
+                    ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
+                    ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                    ->first();
+
+                $prev = DB::table('bing_traffic_stats')
+                    ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
+                    ->selectRaw('SUM(clicks) as clicks')
+                    ->first();
+
+                $currClicks = (int) ($curr->clicks ?? 0);
+                $currImpressions = (int) ($curr->impressions ?? 0);
+                $channels['bing'] = [
+                    'label' => 'Bing Webmaster',
+                    'clicks' => $currClicks,
+                    'impressions' => $currImpressions,
+                    'ctr' => $currImpressions > 0 ? round(($currClicks / $currImpressions) * 100, 2) : 0.0,
+                    'position' => round((float) ($curr->position ?? 0), 2),
+                    'delta_clicks' => $this->percentDelta($currClicks, (int) ($prev->clicks ?? 0)),
+                ];
+            }
+
+            if (Schema::hasTable('gbp_daily_metrics')) {
+                $interactionMetrics = [
+                    'WEBSITE_CLICKS',
+                    'CALL_CLICKS',
+                    'BUSINESS_DIRECTION_REQUESTS',
+                    'BUSINESS_CONVERSATIONS',
+                    'BUSINESS_BOOKINGS',
+                ];
+
+                $impressionMetrics = [
+                    'BUSINESS_IMPRESSIONS_DESKTOP_MAPS',
+                    'BUSINESS_IMPRESSIONS_DESKTOP_SEARCH',
+                    'BUSINESS_IMPRESSIONS_MOBILE_MAPS',
+                    'BUSINESS_IMPRESSIONS_MOBILE_SEARCH',
+                ];
+
+                $currClicks = (int) DB::table('gbp_daily_metrics')
+                    ->whereIn('metric', $interactionMetrics)
+                    ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
+                    ->sum('value');
+
+                $prevClicks = (int) DB::table('gbp_daily_metrics')
+                    ->whereIn('metric', $interactionMetrics)
+                    ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
+                    ->sum('value');
+
+                $currImpressions = (int) DB::table('gbp_daily_metrics')
+                    ->whereIn('metric', $impressionMetrics)
+                    ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
+                    ->sum('value');
+
+                $channels['gbp'] = [
+                    'label' => 'Google Business Profile',
+                    'clicks' => $currClicks,
+                    'impressions' => $currImpressions,
+                    'ctr' => $currImpressions > 0 ? round(($currClicks / $currImpressions) * 100, 2) : 0.0,
+                    'position' => 0.0,
+                    'delta_clicks' => $this->percentDelta($currClicks, $prevClicks),
+                ];
+            }
+
+            $dailyClicks = [];
+            for ($i = $this->trendDays - 1; $i >= 0; $i--) {
+                $day = $today->copy()->subDays($i)->toDateString();
+
+                $gscDayClicks = Schema::hasTable('gsc_query_metrics')
+                    ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('clicks')
+                    : 0;
+
+                $gscDayImpressions = Schema::hasTable('gsc_query_metrics')
+                    ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('impressions')
+                    : 0;
+
+                $bingDayClicks = Schema::hasTable('bing_traffic_stats')
+                    ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('clicks')
+                    : 0;
+
+                $bingDayImpressions = Schema::hasTable('bing_traffic_stats')
+                    ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('impressions')
+                    : 0;
+
+                $dailyClicks[] = [
+                    'date' => Carbon::parse($day)->format('M j'),
+                    'gsc_clicks' => $gscDayClicks,
+                    'bing_clicks' => $bingDayClicks,
+                    'combined_clicks' => $gscDayClicks + $bingDayClicks,
+                    'gsc_impressions' => $gscDayImpressions,
+                    'bing_impressions' => $bingDayImpressions,
+                    'combined_impressions' => $gscDayImpressions + $bingDayImpressions,
+                ];
+            }
+
+            $topQueries = Schema::hasTable('gsc_query_metrics')
+                ? DB::table('gsc_query_metrics')
+                    ->whereBetween('date', [$today->copy()->subDays(27)->toDateString(), $today->toDateString()])
+                    ->groupBy('query')
+                    ->selectRaw('query, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                    ->orderByDesc('clicks')
+                    ->limit(8)
+                    ->get()
+                    ->map(fn ($r) => [
+                        'query' => (string) $r->query,
+                        'clicks' => (int) $r->clicks,
+                        'impressions' => (int) $r->impressions,
+                        'ctr' => (int) $r->impressions > 0 ? round(((int) $r->clicks / (int) $r->impressions) * 100, 2) : 0.0,
+                        'position' => round((float) $r->position, 2),
+                    ])
+                    ->all()
+                : [];
+
+            $topPages = Schema::hasTable('gsc_query_metrics')
+                ? DB::table('gsc_query_metrics')
+                    ->whereBetween('date', [$today->copy()->subDays(27)->toDateString(), $today->toDateString()])
+                    ->groupBy('page')
+                    ->selectRaw('page, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                    ->orderByDesc('clicks')
+                    ->limit(8)
+                    ->get()
+                    ->map(fn ($r) => [
+                        'page' => (string) $r->page,
+                        'clicks' => (int) $r->clicks,
+                        'impressions' => (int) $r->impressions,
+                        'ctr' => (int) $r->impressions > 0 ? round(((int) $r->clicks / (int) $r->impressions) * 100, 2) : 0.0,
+                        'position' => round((float) $r->position, 2),
+                    ])
+                    ->all()
+                : [];
+
+            $coverage = [
+                'total' => 0,
+                'problem' => 0,
+                'forbidden' => 0,
+                'not_indexed' => 0,
+                'duplicate' => 0,
+            ];
+
+            if (Schema::hasTable('gsc_coverage_states')) {
+                $coverage['total'] = (int) DB::table('gsc_coverage_states')->count();
+                $coverage['problem'] = (int) DB::table('gsc_coverage_states')
+                    ->where(function ($q) {
+                        $q->where('verdict', '!=', 'PASS')->orWhereNull('verdict');
+                    })
+                    ->count();
+                $coverage['forbidden'] = (int) DB::table('gsc_coverage_states')
+                    ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%forbidden%'])
+                    ->count();
+                $coverage['not_indexed'] = (int) DB::table('gsc_coverage_states')
+                    ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])
+                    ->count();
+                $coverage['duplicate'] = (int) DB::table('gsc_coverage_states')
+                    ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%'])
+                    ->count();
+            }
+
+            $rankings = [
+                'tracked' => 0,
+                'top3' => 0,
+                'top10' => 0,
+                'top20' => 0,
+                'below20' => 0,
+            ];
+
+            if (Schema::hasTable('seo_rank_snapshots')) {
+                $latest = DB::table('seo_rank_snapshots as r1')
+                    ->selectRaw('r1.gsc_position as position')
+                    ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, ""))')
+                    ->get();
+
+                $rankings['tracked'] = $latest->count();
+                $rankings['top3'] = $latest->filter(fn ($r) => $r->position !== null && $r->position <= 3)->count();
+                $rankings['top10'] = $latest->filter(fn ($r) => $r->position !== null && $r->position <= 10)->count();
+                $rankings['top20'] = $latest->filter(fn ($r) => $r->position !== null && $r->position <= 20)->count();
+                $rankings['below20'] = max(0, $rankings['tracked'] - $rankings['top20']);
+            }
+
+            $actionItems = [];
+            if (($coverage['problem'] ?? 0) > 0) {
+                $actionItems[] = "{$coverage['problem']} URLs have non-pass coverage verdicts. Run `seo:reindex-problem-pages --auto` and review access/canonical states.";
+            }
+            if (($rankings['tracked'] ?? 0) > 0 && ($rankings['top10'] / max(1, $rankings['tracked'])) < 0.4) {
+                $actionItems[] = 'Less than 40% of tracked terms are in top 10. Prioritize city-service pages with high impressions and average position 8-20.';
+            }
+            if (($channels['gsc']['delta_clicks'] ?? 0) < -10) {
+                $actionItems[] = 'Google clicks are down more than 10% vs prior 7 days. Check top-loss queries and titles/meta for affected pages.';
+            }
+            if (($channels['bing']['impressions'] ?? 0) < 100) {
+                $actionItems[] = 'Bing visibility is low. Confirm `seo:bing-sync` runs daily and ensure sitemap is submitted in Bing Webmaster.';
+            }
+            if (($channels['gbp']['clicks'] ?? 0) < 20) {
+                $actionItems[] = 'GBP engagement is light. Increase GBP post cadence and add fresh geotagged project photos this week.';
+            }
+            if (empty($actionItems)) {
+                $actionItems[] = 'No urgent anomalies detected. Keep daily syncs healthy and continue shipping localized content + backlinks.';
+            }
+
+            return [
+                'channels' => $channels,
+                'daily_clicks' => $dailyClicks,
+                'top_queries' => $topQueries,
+                'top_pages' => $topPages,
+                'coverage' => $coverage,
+                'rankings' => $rankings,
+                'action_items' => $actionItems,
+            ];
+        });
+    }
+
+    /**
+     * @return array<int, array{date:string,gsc:int,bing:int,combined:int}>
+     */
+    #[Computed]
+    public function trendChartData(): array
+    {
+        $rows = $this->searchSnapshot['daily_clicks'] ?? [];
+        $suffix = $this->trendMetric === 'impressions' ? 'impressions' : 'clicks';
+
+        return collect($rows)->map(function (array $row) use ($suffix): array {
+            return [
+                'date' => (string) ($row['date'] ?? ''),
+                'gsc' => (int) ($row['gsc_' . $suffix] ?? 0),
+                'bing' => (int) ($row['bing_' . $suffix] ?? 0),
+                'combined' => (int) ($row['combined_' . $suffix] ?? 0),
+            ];
+        })->all();
+    }
+
+    /**
+     * @return array{score:int,pillars:array<int,array{name:string,score:int,color:string}>}
+     */
+    #[Computed]
+    public function healthSnapshot(): array
+    {
+        return Cache::remember('admin.seo-reports.health-snapshot', now()->addMinutes(15), function (): array {
+            try {
+                Artisan::call('seo:health --json');
+                $raw = trim(Artisan::output());
+                $data = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+
+                $pillars = collect($data['pillars'] ?? [])
+                    ->map(function (array $pillar): array {
+                        $score = (int) ($pillar['score'] ?? 0);
+
+                        return [
+                            'name' => (string) ($pillar['name'] ?? 'Unknown'),
+                            'score' => $score,
+                            'color' => $score >= 80 ? 'emerald' : ($score >= 60 ? 'amber' : 'rose'),
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
+                return [
+                    'score' => (int) ($data['score'] ?? 0),
+                    'pillars' => $pillars,
+                ];
+            } catch (\Throwable) {
+                return [
+                    'score' => 0,
+                    'pillars' => [],
+                ];
+            }
+        });
+    }
+
+    public function refreshDashboard(): void
+    {
+        Cache::forget('admin.seo-reports.health-snapshot');
+        Cache::forget($this->searchSnapshotCacheKey());
+        unset($this->files, $this->reportStats, $this->healthSnapshot, $this->searchSnapshot, $this->trendChartData);
+        $this->flash = 'Dashboard metrics refreshed.';
+    }
+
+    protected function searchSnapshotCacheKey(): string
+    {
+        return 'admin.seo-reports.search-snapshot.' . $this->trendDays;
+    }
+
+    protected function percentDelta(int $current, int $previous): float
+    {
+        if ($previous <= 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 
     #[Computed]

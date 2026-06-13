@@ -111,7 +111,10 @@ class TestimonialPage extends Component
     {
         $image = $this->avatarImage();
         if ($image) {
-            return $this->resolveImageUrl($image, 'medium');
+            $url = $this->resolveImageUrl($image, 'medium');
+            if ($url) {
+                return $url;
+            }
         }
 
         return $this->fallbackProjectImageUrl();

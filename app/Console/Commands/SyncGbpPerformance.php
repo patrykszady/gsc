@@ -18,12 +18,25 @@ class SyncGbpPerformance extends Command
         {--days=14 : Days back to sync for daily metrics}
         {--location= : Override location ID (default from config)}
         {--with-keywords : Also sync monthly search keywords}
+        {--queue : Deprecated no-op alias for compatibility}
         {--dry-run}';
 
     protected $description = 'Sync GBP Performance API daily metrics (and optionally monthly keywords)';
 
     public function handle(GoogleBusinessProfilePerformanceService $svc): int
     {
+        if ((bool) $this->option('queue')) {
+            $cmdLine = implode(' ', $_SERVER['argv'] ?? []);
+            logger('seo-sync')->warning('Deprecated --queue option used for gbp:metrics-sync', [
+                'command_line' => $cmdLine,
+                'calling_user' => get_current_user(),
+                'pid' => getmypid(),
+                'timestamp' => now()->toIso8601String(),
+            ]);
+            $this->warn('Option --queue is deprecated and ignored for gbp:metrics-sync.');
+            $this->line("Command line: {$cmdLine}");
+        }
+
         if (! $svc->isConfigured()) {
             $this->error('GBP not configured (missing OAuth or location_id).');
             return self::FAILURE;
