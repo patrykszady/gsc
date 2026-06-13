@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -25,14 +27,7 @@ class PageSpeedInsightsService
      */
     public function run(string $url, string $strategy = 'mobile'): ?array
     {
-        $params = [
-            'url' => $url,
-            'strategy' => $strategy,
-            'category' => ['performance', 'accessibility', 'best-practices', 'seo'],
-        ];
-        if ($key = config('services.google.pagespeed.api_key')) {
-            $params['key'] = $key;
-        }
+        $key = config('services.google.pagespeed.api_key');
 
         // Build query with repeated category= entries.
         $query = 'url=' . urlencode($url)
@@ -41,7 +36,35 @@ class PageSpeedInsightsService
             . ($key ? '&key=' . urlencode($key) : '');
 
         try {
-            $resp = Http::timeout(120)->retry(2, 2000)->get(self::API . '?' . $query);
+            $resp = Http::connectTimeout(15)
+                ->timeout(75)
+                ->retry(3, 2500, function (\Exception $exception) {
+                    return $exception instanceof ConnectionException;
+                })
+                ->get(self::API . '?' . $query);
+        } catch (ConnectionException $e) {
+            $error = $e->getMessage();
+            $isTimeout = str_contains(strtolower($error), 'timed out')
+                || str_contains(strtolower($error), 'curl error 28');
+
+            if ($isTimeout) {
+                $metricCount = $this->bumpHourlyMetric('psi.connection_timeout');
+                Log::warning('PSI: connection timeout', [
+                    'url' => $url,
+                    'strategy' => $strategy,
+                    'error' => $error,
+                    'metric' => 'psi.connection_timeout',
+                    'metric_count_hour' => $metricCount,
+                ]);
+                return null;
+            }
+
+            Log::warning('PSI: HTTP error', [
+                'url' => $url,
+                'strategy' => $strategy,
+                'error' => $error,
+            ]);
+            return null;
         } catch (\Exception $e) {
             Log::warning('PSI: HTTP error', [
                 'url' => $url,
@@ -102,5 +125,20 @@ class PageSpeedInsightsService
     {
         $v = data_get($audits, "{$key}.numericValue");
         return $v === null ? null : round((float) $v, 3);
+    }
+
+    protected function bumpHourlyMetric(string $metric): int
+    {
+        $bucket = now()->format('YmdH');
+        $key = "metrics:{$metric}:{$bucket}";
+
+        Cache::add($key, 0, now()->addHours(30));
+        $value = Cache::increment($key);
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return (int) Cache::get($key, 0);
     }
 }

@@ -260,7 +260,12 @@ class MetaSocialService
             $parentPayload['location_id'] = $locationId;
         }
 
-        $parentResp = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $parentPayload);
+        $parentResp = $this->createInstagramMediaWithLocationFallback(
+            (string) $igUserId,
+            (string) $token,
+            $parentPayload,
+            $locationId,
+        );
 
         if (! $parentResp->successful() || ! $parentResp->json('id')) {
             $this->lastError = [
@@ -335,23 +340,12 @@ class MetaSocialService
             $payload['location_id'] = $locationId;
         }
 
-        $containerResponse = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $payload);
-
-        // Retry without the location tag if Meta rejects the cached IG location ID.
-        if (! $containerResponse->successful() && $locationId) {
-            $errMsg = (string) ($containerResponse->json('error.message') ?? '');
-            if (stripos($errMsg, 'location') !== false) {
-                Log::warning('Meta Social: invalidating cached IG location ID', [
-                    'location_id' => $locationId,
-                    'error' => $errMsg,
-                ]);
-                \App\Models\AreaServed::where('ig_location_id', $locationId)
-                    ->update(['ig_location_id' => null]);
-
-                unset($payload['location_id']);
-                $containerResponse = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $payload);
-            }
-        }
+        $containerResponse = $this->createInstagramMediaWithLocationFallback(
+            (string) $igUserId,
+            (string) $token,
+            $payload,
+            $locationId,
+        );
 
         if (! $containerResponse->successful()) {
             $this->lastError = [
@@ -656,6 +650,68 @@ class MetaSocialService
         $this->lastError = ['message' => 'Container processing timed out'];
         Log::warning('Meta Social: Container timed out', ['container_id' => $containerId]);
         return false;
+    }
+
+    /**
+     * Create an Instagram media resource with safe fallback when a cached
+     * location ID is no longer valid.
+     *
+     * @param array<string, mixed> $payload
+     */
+    protected function createInstagramMediaWithLocationFallback(string $igUserId, string $token, array $payload, ?string $locationId): \Illuminate\Http\Client\Response
+    {
+        $response = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $payload);
+
+        if ($response->successful() || ! $locationId) {
+            return $response;
+        }
+
+        if (! $this->isInvalidInstagramLocationIdError($response)) {
+            return $response;
+        }
+
+        $metricCount = $this->bumpHourlyMetric('meta_social.stale_ig_location_id');
+
+        Log::warning('Meta Social: invalidating cached IG location ID', [
+            'location_id' => $locationId,
+            'error' => (string) ($response->json('error.message') ?? ''),
+            'metric' => 'meta_social.stale_ig_location_id',
+            'metric_count_hour' => $metricCount,
+        ]);
+
+        \App\Models\AreaServed::where('ig_location_id', $locationId)
+            ->update(['ig_location_id' => null]);
+
+        unset($payload['location_id']);
+
+        return Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $payload);
+    }
+
+    protected function isInvalidInstagramLocationIdError(\Illuminate\Http\Client\Response $response): bool
+    {
+        $errorCode = (int) ($response->json('error.code') ?? 0);
+        $errorMessage = (string) ($response->json('error.message') ?? '');
+
+        if ($errorCode !== 100) {
+            return false;
+        }
+
+        return str_contains(strtolower($errorMessage), 'not a valid location page id');
+    }
+
+    protected function bumpHourlyMetric(string $metric): int
+    {
+        $bucket = now()->format('YmdH');
+        $key = "metrics:{$metric}:{$bucket}";
+
+        Cache::add($key, 0, now()->addHours(30));
+        $value = Cache::increment($key);
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return (int) Cache::get($key, 0);
     }
 
     protected function getInstagramPermalink(string $mediaId, string $token): ?string

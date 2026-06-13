@@ -11,6 +11,16 @@
 return [
 
     /*
+     * Optional mapping for equivalent site service slugs.
+     * Used by seo:gbp-parity so canonical page slugs can map to
+     * semantically equivalent GBP service entries.
+     */
+    'slug_aliases' => [
+        'basement-remodeling' => 'basement-finishing',
+        'home-additions' => 'room-addition',
+    ],
+
+    /*
      * Source of truth for Q&A pre-seeding (`gbp:qna-checklist`).
      * Pulled from config/geo-answers.php; this is the manual override list
      * if you want different wording on GBP than on your /geo/answers.json feed.

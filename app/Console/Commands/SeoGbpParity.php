@@ -91,6 +91,7 @@ class SeoGbpParity extends Command
         // considered "covered" if their parent pillar has one.
         $gbp = (array) config('gbp-services.services', config('gbp-services', []));
         $catalog = $this->buildCatalog($gbp);
+        $slugAliases = (array) config('gbp-services.slug_aliases', []);
 
         $sitemap = $this->readSitemap($base . '/sitemap.xml');
         $siteServiceSlugs = [];
@@ -102,6 +103,10 @@ class SeoGbpParity extends Command
             }
         }
         $siteServiceSlugs = array_values(array_unique($siteServiceSlugs));
+        $siteServiceSlugsForParity = array_values(array_unique(array_map(
+            fn (string $slug) => (string) ($slugAliases[$slug] ?? $slug),
+            $siteServiceSlugs,
+        )));
 
         // Classify GBP entries: covered pillar | orphan pillar | rolled-up sub | orphan sub.
         $pillarsCovered = [];
@@ -111,11 +116,12 @@ class SeoGbpParity extends Command
         foreach ($catalog as $slug => $entry) {
             if ($entry['pillar']) {
                 in_array($slug, $siteServiceSlugs, true)
+                    || in_array($slug, $siteServiceSlugsForParity, true)
                     ? $pillarsCovered[] = $slug
                     : $pillarsMissing[] = $slug;
             } else {
                 $parent = $entry['parent'];
-                if ($parent !== null && in_array($parent, $siteServiceSlugs, true)) {
+                if ($parent !== null && (in_array($parent, $siteServiceSlugs, true) || in_array($parent, $siteServiceSlugsForParity, true))) {
                     $subsRolled[$slug] = $parent;
                 } else {
                     $subsOrphan[$slug] = $parent;
@@ -124,7 +130,7 @@ class SeoGbpParity extends Command
         }
 
         $gbpSlugs = array_keys($catalog);
-        $siteOnly = array_values(array_diff($siteServiceSlugs, $gbpSlugs));
+        $siteOnly = array_values(array_diff($siteServiceSlugsForParity, $gbpSlugs));
         foreach ($pillarsMissing as $s) $issues[] = "Pillar service '{$s}' in GBP but no /services/{$s} page";
         foreach ($subsOrphan as $slug => $parent) {
             $issues[] = $parent === null

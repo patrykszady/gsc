@@ -25,6 +25,7 @@ class SeoBacklinksMonitor extends Command
     protected $signature = 'seo:backlinks-monitor
         {--host= : Override host (defaults to APP_URL host)}
         {--pages=3 : SerpApi result pages to walk (10 results each)}
+        {--confirm-runs=2 : Consecutive missing runs required before host is marked lost}
         {--markdown : Save report to storage/app/reports/backlinks-monitor.md}';
 
     protected $description = 'Track external hosts mentioning gs.construction; surface new and lost referring domains week-over-week.';
@@ -68,11 +69,40 @@ class SeoBacklinksMonitor extends Command
         $disk = Storage::disk('local');
         $snapPath = 'seo/backlink-hosts.json';
         $previous = [];
+        $state = [];
         if ($disk->exists($snapPath)) {
-            $previous = (array) (json_decode((string) $disk->get($snapPath), true)['hosts'] ?? []);
+            $snapshot = (array) json_decode((string) $disk->get($snapPath), true);
+            $previous = (array) ($snapshot['hosts'] ?? []);
+            $state = (array) ($snapshot['state'] ?? []);
         }
+
+        foreach ($previous as $h) {
+            if (! isset($state[$h]) || ! is_array($state[$h])) {
+                $state[$h] = ['missing_runs' => 0, 'last_seen_at' => null, 'sample' => null];
+            }
+        }
+
+        $confirmRuns = max(1, (int) $this->option('confirm-runs'));
         $new = array_values(array_diff($current, $previous));
-        $lost = array_values(array_diff($previous, $current));
+        $lostCandidates = array_values(array_diff($previous, $current));
+
+        foreach ($current as $h) {
+            $state[$h] = [
+                'missing_runs' => 0,
+                'last_seen_at' => now()->toIso8601String(),
+                'sample' => $samples[$h] ?? ($state[$h]['sample'] ?? null),
+            ];
+        }
+        foreach ($lostCandidates as $h) {
+            $missing = (int) ($state[$h]['missing_runs'] ?? 0) + 1;
+            $state[$h] = [
+                'missing_runs' => $missing,
+                'last_seen_at' => $state[$h]['last_seen_at'] ?? null,
+                'sample' => $state[$h]['sample'] ?? null,
+            ];
+        }
+
+        $lost = array_values(array_filter($lostCandidates, fn (string $h) => (int) ($state[$h]['missing_runs'] ?? 0) >= $confirmRuns));
 
         $hqPatterns = (array) config('seo.backlinks.high_quality_host_patterns', []);
         $highQualityHosts = array_values(array_filter($current, function (string $host) use ($hqPatterns) {
@@ -108,6 +138,7 @@ class SeoBacklinksMonitor extends Command
             'updated_at' => now()->toIso8601String(),
             'hosts' => $current,
             'samples' => $samples,
+            'state' => $state,
         ], JSON_PRETTY_PRINT));
 
         if ($this->option('markdown')) {

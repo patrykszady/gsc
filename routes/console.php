@@ -20,14 +20,24 @@ Artisan::command('seo:gbp-metrics-sync
     {--days=14 : Days back to sync for daily metrics}
     {--location= : Override location ID (default from config)}
     {--with-keywords : Also sync monthly search keywords}
+    {--queue : Deprecated no-op alias for compatibility}
     {--dry-run}
 ', function () {
     $this->warn('Deprecated command: use gbp:metrics-sync instead. Forwarding...');
+
+    if ((bool) $this->option('queue')) {
+        logger('seo-sync')->warning('Deprecated --queue option used for seo:gbp-metrics-sync alias', [
+            'command_line' => implode(' ', $_SERVER['argv'] ?? []),
+            'timestamp' => now()->toIso8601String(),
+        ]);
+        $this->warn('Option --queue is deprecated and ignored for seo:gbp-metrics-sync.');
+    }
 
     return Artisan::call('gbp:metrics-sync', [
         '--days' => (int) $this->option('days'),
         '--location' => $this->option('location') ?: null,
         '--with-keywords' => (bool) $this->option('with-keywords'),
+        '--queue' => (bool) $this->option('queue'),
         '--dry-run' => (bool) $this->option('dry-run'),
     ]);
 })->purpose('Alias for legacy seo:gbp-metrics-sync command.');
@@ -213,6 +223,8 @@ Schedule::command('seo:internal-link-suggest --markdown')
 Schedule::command('seo:cwv-template --markdown')
     ->dailyAt('09:20')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/seo-cwv-template.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:cwv-template failed'));
 
@@ -220,6 +232,8 @@ Schedule::command('seo:cwv-template --markdown')
 Schedule::command('seo:gbp-parity --markdown')
     ->dailyAt('09:30')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/seo-gbp-parity.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gbp-parity failed'));
 
@@ -227,6 +241,8 @@ Schedule::command('seo:gbp-parity --markdown')
 Schedule::command('seo:backlinks-monitor --markdown')
     ->dailyAt('09:40')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/seo-backlinks-monitor.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:backlinks-monitor failed'));
 
