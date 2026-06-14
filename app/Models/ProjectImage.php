@@ -11,6 +11,16 @@ use Illuminate\Support\Str;
 
 class ProjectImage extends Model
 {
+    /**
+     * In-memory cache for per-platform upload rows.
+     *
+     * Do NOT store objects in $this->attributes because Eloquent will attempt
+     * to persist them on save(), producing unknown-column SQL errors.
+     *
+     * @var array<string, \App\Models\ImagePlatformUpload|null>
+     */
+    protected array $platformUploadCache = [];
+
     protected $fillable = [
         'project_id',
         'filename',
@@ -207,12 +217,13 @@ class ProjectImage extends Model
     public function platformUpload(string $platform): ?ImagePlatformUpload
     {
         $key = '__platformUpload_' . $platform;
-        if (! array_key_exists($key, $this->attributes)) {
-            $this->attributes[$key] = $this->platformUploads
+        if (! array_key_exists($key, $this->platformUploadCache)) {
+            $this->platformUploadCache[$key] = $this->relationLoaded('platformUploads')
                 ? $this->platformUploads->firstWhere('platform', $platform)
                 : $this->platformUploads()->where('platform', $platform)->first();
         }
-        return $this->attributes[$key];
+
+        return $this->platformUploadCache[$key];
     }
 
     // ------------------------------------------------------------------

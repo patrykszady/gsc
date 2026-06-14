@@ -226,9 +226,15 @@ class UpdateGbpProfile extends Command
 
     protected function updateCategories(GoogleBusinessProfileService $service, bool $dryRun): int
     {
+        $primaryCategory = (string) (config('gbp-services.categories.primary') ?: self::PRIMARY_CATEGORY);
+        $additionalCategories = array_values(array_filter(
+            (array) config('gbp-services.categories.additional', self::ADDITIONAL_CATEGORIES),
+            fn ($value) => is_string($value) && $value !== ''
+        ));
+
         $this->info('Categories to set:');
-        $this->line('  Primary: ' . self::PRIMARY_CATEGORY);
-        foreach (self::ADDITIONAL_CATEGORIES as $cat) {
+        $this->line('  Primary: ' . $primaryCategory);
+        foreach ($additionalCategories as $cat) {
             $this->line('  Additional: ' . $cat);
         }
 
@@ -240,7 +246,7 @@ class UpdateGbpProfile extends Command
 
         $this->info('Updating GBP categories...');
 
-        $result = $service->updateCategories(self::PRIMARY_CATEGORY, self::ADDITIONAL_CATEGORIES);
+        $result = $service->updateCategories($primaryCategory, $additionalCategories);
 
         if (! $result) {
             $error = $service->getLastError();

@@ -11,6 +11,23 @@
 return [
 
     /*
+     * GBP category IDs (gcid format) used by
+     * `google-business-profile:update-profile --categories`.
+     *
+     * Content-focused default for this site:
+     * - Primary: kitchen_remodeler (largest service/page depth)
+     * - Additional: bathroom_remodeler, remodeler, general_contractor
+     */
+    'categories' => [
+        'primary' => 'gcid:kitchen_remodeler',
+        'additional' => [
+            'gcid:bathroom_remodeler',
+            'gcid:remodeler',
+            'gcid:general_contractor',
+        ],
+    ],
+
+    /*
      * Optional mapping for equivalent site service slugs.
      * Used by seo:gbp-parity so canonical page slugs can map to
      * semantically equivalent GBP service entries.
