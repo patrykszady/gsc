@@ -52,30 +52,29 @@ return [
      * Max 20 entries. Format: "Name, IL, USA".
      */
     'service_areas' => [
-        // Counties (broad coverage, 1 slot each)
-        'Cook County, IL, USA',
-        'Lake County, IL, USA',
+        // Core city + priority suburbs (curated market focus)
         'Chicago, IL, USA',
-        'Glenview, IL, USA',
-
-        // Key individual cities (home/office city first)
         'Prospect Heights, IL, USA',
         'Arlington Heights, IL, USA',
         'Palatine, IL, USA',
         'Mount Prospect, IL, USA',
+        'Kenilworth, IL, USA',
+        'Hoffman Estates, IL, USA',
+
+        // Northwest / North suburbs
         'Barrington, IL, USA',
         'Lake Zurich, IL, USA',
+        'Buffalo Grove, IL, USA',
         'Northbrook, IL, USA',
-        'Hoffman Estates, IL, USA',
+        'Glenview, IL, USA',
         'Winnetka, IL, USA',
+        'Wilmette, IL, USA',
+        'Glencoe, IL, USA',
+        'Highland Park, IL, USA',
+        'Lake Forest, IL, USA',
         'Inverness, IL, USA',
         'Long Grove, IL, USA',
-        'Wilmette, IL, USA',
-        'Lake Forest, IL, USA',
         'Deerfield, IL, USA',
-        'Highland Park, IL, USA',
-        'Glencoe, IL, USA',
-        'Winnetka, IL, USA',
     ],
 
     /*
