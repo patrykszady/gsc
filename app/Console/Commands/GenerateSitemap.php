@@ -235,6 +235,10 @@ class GenerateSitemap extends Command
         $areaLastmod = $latestProjectDate ? \Carbon\Carbon::parse($latestProjectDate) : now();
 
         foreach ($areas as $area) {
+            // Honest per-city lastmod: most recent of the area row itself and any
+            // project completed in this city (falls back to the global date).
+            $thisAreaLastmod = $area->lastmod() ?? $areaLastmod;
+
             // Standard area pages
             foreach ($areaPages as $page) {
                 $uri = $page ? "areas-served/{$area->slug}/{$page}" : "areas-served/{$area->slug}";
@@ -242,7 +246,7 @@ class GenerateSitemap extends Command
                 
                 $sitemap->add(
                     Url::create("{$baseUrl}/{$uri}")
-                        ->setLastModificationDate($areaLastmod)
+                        ->setLastModificationDate($thisAreaLastmod)
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority($priority)
                 );
@@ -257,7 +261,7 @@ class GenerateSitemap extends Command
                     
                     $sitemap->add(
                         Url::create("{$baseUrl}/{$uri}")
-                            ->setLastModificationDate($areaLastmod)
+                            ->setLastModificationDate($thisAreaLastmod)
                             ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                             ->setPriority(0.8) // High priority for local service keywords
                     );

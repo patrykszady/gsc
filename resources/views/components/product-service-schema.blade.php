@@ -32,6 +32,7 @@
         'home-remodeling'     => 'home-remodel',
         'basement-remodeling' => 'basement',
         'home-additions'      => 'addition',
+        'mudroom-remodeling'  => 'mudroom',
     ];
     $projectType = $typeMap[$serviceSlug] ?? 'kitchen';
 
@@ -71,6 +72,13 @@
             'image'       => 'images/services/home-additions-hero.jpg',
             'lowPrice'    => '60000',
             'highPrice'   => '275000',
+        ],
+        'mudroom-remodeling' => [
+            'name'        => 'Mudroom & Laundry Remodeling',
+            'description' => 'Custom mudroom and laundry room remodels: built-in lockers, benches, cubbies, drop zones, durable tile floors, utility sinks, and combined laundry/mudroom layouts.',
+            'image'       => 'images/services/mudroom-hero.jpg',
+            'lowPrice'    => '8000',
+            'highPrice'   => '25000',
         ],
     ];
     $c = $copy[$serviceSlug] ?? $copy['kitchen-remodeling'];

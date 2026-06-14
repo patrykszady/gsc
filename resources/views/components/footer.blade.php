@@ -70,9 +70,6 @@
                             <li>
                                 <a href="/service-area" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Service Area by ZIP</a>
                             </li>
-                            <li>
-                                <a href="/compare" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Compare Contractors</a>
-                            </li>
                         </ul>
                     </div>
 
@@ -128,8 +125,12 @@
                             </li>
                             <li>
                                 <a href="/contact" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Contact Greg & Patryk</a>
+                            </li>                            <li>
+                                <a href="/jobs" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Careers &amp; Partners</a>
                             </li>
-                            {{-- Socials Dropdown --}}
+                            <li>
+                                <a href="/compare" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Compare Contractors</a>
+                            </li>                            {{-- Socials Dropdown --}}
                             <li>
                                 <flux:dropdown position="top">
                                     <flux:button variant="ghost" size="sm" icon:trailing="chevron-up" class="!px-0 !py-2 !text-gray-600 hover:!text-gray-900 dark:!text-gray-400 dark:hover:!text-gray-300">

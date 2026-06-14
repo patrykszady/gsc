@@ -105,6 +105,77 @@ class AreaServed extends Model
     }
 
     /**
+     * Published projects whose free-text location resolves to this area's city.
+     * Matching mirrors ProjectObserver::normalizeCity() — the leading token before
+     * the first comma/period — so "Arlington Heights, IL", "Arlington Heights" and
+     * "Chicago. IL" all match correctly without substring false-positives.
+     * Cached 6h. Used to surface genuinely local project photos on the area page
+     * and to compute an honest per-city sitemap lastmod.
+     *
+     * @return Collection<int, \App\Models\Project>
+     */
+    public function localProjects(int $limit = 12): Collection
+    {
+        $city = trim((string) $this->city);
+        if ($city === '') {
+            return new Collection;
+        }
+
+        $key = "area:{$this->id}:local_projects:{$limit}";
+
+        return cache()->remember($key, 21600, function () use ($city, $limit) {
+            $needle = mb_strtolower($city);
+
+            return Project::query()
+                ->where('is_published', true)
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->with('images')
+                ->latest('updated_at')
+                ->get()
+                ->filter(function (Project $project) use ($needle): bool {
+                    $parts = preg_split('/[,.]/', (string) $project->location) ?: [];
+                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
+                    return $token === $needle;
+                })
+                ->take($limit)
+                ->values();
+        });
+    }
+
+    /**
+     * One representative image per local project (cover first, else first image),
+     * for the area-page project slider. Empty when the city has no local projects.
+     *
+     * @return Collection<int, \App\Models\ProjectImage>
+     */
+    public function localProjectImages(int $limit = 6): Collection
+    {
+        return $this->localProjects()
+            ->map(fn (Project $project) => $project->images->firstWhere('is_cover', true) ?? $project->images->first())
+            ->filter()
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * Honest last-modified date for this area's sitemap entry: the most recent of
+     * the area row itself and any project completed in this city. Falls back to
+     * now() only when there is no local signal at all.
+     */
+    public function lastmod(): \Illuminate\Support\Carbon
+    {
+        $localMax = $this->localProjects()->max('updated_at');
+
+        $dates = collect([$this->updated_at, $localMax])->filter();
+
+        return $dates->isNotEmpty()
+            ? \Illuminate\Support\Carbon::parse($dates->max())
+            : now();
+    }
+
+    /**
      * Return the unique postal/ZIP codes served in this area, derived from
      * hive.contractors project data synced into hive_project_zip_counts.
      * Cached for 24h. Used for LocalBusiness `serviceArea` schema.

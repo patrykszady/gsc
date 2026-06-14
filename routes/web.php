@@ -17,6 +17,7 @@ use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
 use App\Livewire\CompareCompetitorPage;
 use App\Livewire\CompareIndexPage;
+use App\Livewire\JobsPage;
 use App\Livewire\ProjectImagePage;
 use App\Livewire\ProjectPage;
 use App\Livewire\ServiceAreaIndex;
@@ -88,6 +89,15 @@ Route::get('/contact', function () {
     SeoService::contact();
     return view('contact');
 })->name('contact');
+
+// Careers & trade partnerships (email-only inquiry form).
+Route::get('/jobs', JobsPage::class)->name('jobs.index');
+Route::redirect('/careers', '/jobs', 301);
+Route::redirect('/job', '/jobs', 301);
+Route::redirect('/employment', '/jobs', 301);
+Route::redirect('/partners', '/jobs', 301);
+Route::redirect('/partnership', '/jobs', 301);
+Route::redirect('/partnerships', '/jobs', 301);
 
 Route::get('/projects', function () {
     SeoService::projects(null, request('type'));
@@ -225,8 +235,14 @@ Route::get('/services/basement-remodeling', ServicePage::class)
 Route::get('/services/home-additions', ServicePage::class)
     ->defaults('service', 'home-additions')
     ->name('services.additions');
+Route::get('/services/mudroom-remodeling', ServicePage::class)
+    ->defaults('service', 'mudroom-remodeling')
+    ->name('services.mudroom');
 
 // 301 redirects from old short service URLs
+Route::redirect('/services/mudroom', '/services/mudroom-remodeling', 301);
+Route::redirect('/services/mudrooms', '/services/mudroom-remodeling', 301);
+Route::redirect('/services/laundry-room', '/services/mudroom-remodeling', 301);
 Route::redirect('/services/kitchens', '/services/kitchen-remodeling', 301);
 Route::redirect('/services/bathrooms', '/services/bathroom-remodeling', 301);
 Route::redirect('/services/basements', '/services/basement-remodeling', 301);

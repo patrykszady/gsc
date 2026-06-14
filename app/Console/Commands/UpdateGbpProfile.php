@@ -18,31 +18,18 @@ class UpdateGbpProfile extends Command
     protected $description = 'Update GBP profile: service areas and business categories.';
 
     /**
-     * If the API rejects all areas (max 20), fall back to the 20 closest
-     * cities to Prospect Heights by distance.
+     * Office coordinates (Prospect Heights, IL 60070). Service areas are chosen
+     * by physical proximity to this point — Google caps service areas at 20 and
+     * ranks service-area businesses primarily by distance.
      */
-    protected const FALLBACK_CITIES = [
-        'Prospect Heights',
-        'Mount Prospect',
-        'Arlington Heights',
-        'Wheeling',
-        'Buffalo Grove',
-        'Rolling Meadows',
-        'Palatine',
-        'Des Plaines',
-        'Riverwoods',
-        'Northbrook',
-        'Elk Grove Village',
-        'Long Grove',
-        'Deerfield',
-        'Lincolnshire',
-        'Park Ridge',
-        'Kildeer',
-        'Rosemont',
-        'Glenview',
-        'Hoffman Estates',
-        'Inverness',
-    ];
+    protected const OFFICE_LAT = 42.0953;
+
+    protected const OFFICE_LNG = -87.9376;
+
+    /**
+     * Google's hard limit on the number of service areas per location.
+     */
+    protected const MAX_SERVICE_AREAS = 20;
 
     /**
      * GBP category IDs (gcid format).
@@ -162,14 +149,30 @@ class UpdateGbpProfile extends Command
 
     protected function updateServiceAreas(GoogleBusinessProfileService $service, bool $dryRun): int
     {
-        // Use all areas served from the database
-        $allCities = AreaServed::orderBy('city')->pluck('city')
-            ->map(fn (string $city) => "{$city}, IL, USA")
-            ->toArray();
+        // Prefer the curated list (counties + key cities) from config; fall back
+        // to the 20 cities physically closest to the office when it's empty.
+        $configured = array_values(array_filter(array_map(
+            'trim',
+            (array) config('gbp-services.service_areas', [])
+        )));
 
-        $cities = $allCities;
+        if (! empty($configured)) {
+            $cities = array_slice($configured, 0, self::MAX_SERVICE_AREAS);
+            $source = 'config/gbp-services.php';
+        } else {
+            $cities = $this->closestCities(self::MAX_SERVICE_AREAS)
+                ->map(fn (AreaServed $a) => "{$a->city}, IL, USA")
+                ->all();
+            $source = 'closest to office';
+        }
 
-        $this->info('Service areas to set (' . count($cities) . '):');
+        if (empty($cities)) {
+            $this->error('No service areas available. Set config gbp-services.service_areas or run `php artisan gbp:geocode-areas`.');
+
+            return self::FAILURE;
+        }
+
+        $this->info('Service areas to set (' . count($cities) . ", {$source}):");
         foreach ($cities as $i => $city) {
             $this->line('  ' . ($i + 1) . '. ' . $city);
         }
@@ -184,22 +187,6 @@ class UpdateGbpProfile extends Command
 
         $result = $service->updateServiceArea($cities);
 
-        // If all cities failed (likely 20-area limit), retry with fallback list
-        if (! $result && count($cities) > 20) {
-            $this->warn('Failed with all ' . count($cities) . ' cities. Retrying with 20 closest to Prospect Heights...');
-
-            $cities = collect(self::FALLBACK_CITIES)
-                ->map(fn (string $city) => "{$city}, IL, USA")
-                ->toArray();
-
-            $this->info('Fallback service areas (' . count($cities) . '):');
-            foreach ($cities as $i => $city) {
-                $this->line('  ' . ($i + 1) . '. ' . $city);
-            }
-
-            $result = $service->updateServiceArea($cities);
-        }
-
         if (! $result) {
             $error = $service->getLastError();
             $this->error('Failed to update service areas: ' . ($error['message'] ?? 'Unknown error'));
@@ -213,6 +200,28 @@ class UpdateGbpProfile extends Command
         $this->info('Service areas updated successfully (' . count($cities) . ' cities).');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The N AreaServed cities physically closest to the office, ordered by
+     * Haversine distance. Areas without coordinates are skipped.
+     *
+     * @return \Illuminate\Support\Collection<int, AreaServed>
+     */
+    protected function closestCities(int $limit): \Illuminate\Support\Collection
+    {
+        $haversine = '(3959 * acos(cos(radians(?)) * cos(radians(latitude)) '
+            . '* cos(radians(longitude) - radians(?)) '
+            . '+ sin(radians(?)) * sin(radians(latitude))))';
+
+        return AreaServed::query()
+            ->select('*')
+            ->selectRaw("{$haversine} AS distance_miles", [self::OFFICE_LAT, self::OFFICE_LNG, self::OFFICE_LAT])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->orderBy('distance_miles')
+            ->limit($limit)
+            ->get();
     }
 
     protected function updateCategories(GoogleBusinessProfileService $service, bool $dryRun): int

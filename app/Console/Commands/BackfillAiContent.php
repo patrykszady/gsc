@@ -34,8 +34,10 @@ class BackfillAiContent extends Command
             return self::FAILURE;
         }
 
-        if (!config('services.google.gemini_api_key')) {
-            $this->error('Google Gemini API key not configured. Set GOOGLE_GEMINI_API_KEY in .env');
+        $hasGemini = (bool) config('services.google.gemini_api_key');
+
+        if ($doProjects && ! $hasGemini) {
+            $this->error('Google Gemini API key not configured. Project description backfill requires GOOGLE_GEMINI_API_KEY.');
             return self::FAILURE;
         }
 
@@ -57,7 +59,7 @@ class BackfillAiContent extends Command
 
         if ($doImages) {
             $this->info('Processing images...');
-            $imageResults = $this->processImages($service, $overwrite, $dryRun, $useQueue, $limit, $projectId);
+            $imageResults = $this->processImages($service, $overwrite, $dryRun, $useQueue, $limit, $projectId, $hasGemini);
             $results = array_merge($results, $imageResults);
         }
 
@@ -91,7 +93,8 @@ class BackfillAiContent extends Command
         bool $dryRun,
         bool $useQueue,
         ?int $limit,
-        ?int $projectId
+        ?int $projectId,
+        bool $hasGemini
     ): array {
         $query = ProjectImage::query()
             ->with('project')
@@ -190,6 +193,27 @@ class BackfillAiContent extends Command
                 continue;
             }
 
+            if (! $hasGemini) {
+                $updateData = $this->buildDeterministicImageFallbackUpdates($image, $overwrite);
+
+                if (! empty($updateData)) {
+                    $image->updateQuietly($updateData);
+                    $updated++;
+                }
+
+                if (empty($image->slug)) {
+                    $image->slug = $image->generateSlug();
+                    $image->saveQuietly();
+                }
+
+                if ($this->output->isVeryVerbose()) {
+                    $this->newLine();
+                    $this->line("    Deterministic backfill: Image #{$image->id} ({$image->project->title})");
+                }
+
+                continue;
+            }
+
             // Synchronous processing
             $content = $service->generateImageContent($image);
 
@@ -258,6 +282,35 @@ class BackfillAiContent extends Command
         $this->newLine();
 
         return ['images' => $updated, 'failed' => $failed, 'queued' => $queued];
+    }
+
+    /**
+     * Build a deterministic fallback payload for existing images when Gemini
+     * is unavailable. Uses the model's own SEO accessors so we still persist
+     * useful text for Search Console, sitemap, and sharing metadata.
+     *
+     * @return array<string, string>
+     */
+    protected function buildDeterministicImageFallbackUpdates(ProjectImage $image, bool $overwrite): array
+    {
+        $updateData = [];
+        $seoAlt = trim((string) $image->seo_alt_text);
+        $seoCaption = trim((string) $image->seo_caption);
+
+        if ($overwrite || empty($image->alt_text)) {
+            $updateData['alt_text'] = $seoAlt;
+        }
+
+        $rawSeoAltText = $image->getRawOriginal('seo_alt_text');
+        if ($overwrite || empty($rawSeoAltText)) {
+            $updateData['seo_alt_text'] = $seoAlt;
+        }
+
+        if ($overwrite || empty($image->caption)) {
+            $updateData['caption'] = $seoCaption;
+        }
+
+        return array_filter($updateData, fn ($value) => is_string($value) && trim($value) !== '');
     }
 
     protected function processProjects(

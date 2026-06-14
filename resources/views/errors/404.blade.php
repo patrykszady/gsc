@@ -33,6 +33,25 @@
                    class="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-base font-semibold text-zinc-800 shadow-sm hover:bg-sky-50 hover:border-sky-300 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 dark:hover:bg-zinc-700">
                     Home Remodeling
                 </a>
+                <a href="{{ route('services.basement') }}" wire:navigate
+                   class="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-base font-semibold text-zinc-800 shadow-sm hover:bg-sky-50 hover:border-sky-300 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 dark:hover:bg-zinc-700">
+                    Basement Remodeling
+                </a>
+                <a href="{{ route('services.additions') }}" wire:navigate
+                   class="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-base font-semibold text-zinc-800 shadow-sm hover:bg-sky-50 hover:border-sky-300 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 dark:hover:bg-zinc-700">
+                    Home Additions
+                </a>
+                <a href="{{ route('services.mudroom') }}" wire:navigate
+                   class="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-base font-semibold text-zinc-800 shadow-sm hover:bg-sky-50 hover:border-sky-300 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 dark:hover:bg-zinc-700">
+                    Mudroom &amp; Laundry
+                </a>
+            </div>
+
+            <div class="mt-4">
+                <a href="{{ route('services.index') }}" wire:navigate
+                   class="text-sm font-semibold text-sky-600 hover:underline dark:text-sky-400">
+                    View all services →
+                </a>
             </div>
 
             <div class="mt-10 flex flex-wrap justify-center gap-3">

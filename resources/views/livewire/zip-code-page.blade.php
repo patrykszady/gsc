@@ -21,8 +21,8 @@
             'telephone' => '+1-224-735-4200',
             'email' => 'crew@gs.construction',
             'priceRange' => '$$$',
-            'image' => asset('images/logo.svg'),
-            'logo' => asset('images/logo.svg'),
+            'image' => (\App\Models\ProjectImage::curatedCover()?->url) ?: asset('images/greg-patryk.jpg'),
+            'logo' => asset('android-chrome-512x512.png'),
             'address' => [
                 '@type' => 'PostalAddress',
                 'addressLocality' => $city,

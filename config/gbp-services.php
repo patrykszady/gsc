@@ -21,6 +21,47 @@ return [
     ],
 
     /*
+     * Service areas pushed to GBP by `google-business-profile:update-profile --service-areas`.
+     *
+     * Google caps service areas at 20 and does NOT support a radius. Each entry
+     * must be a named place (city, county, or region) that resolves to a Google
+     * Place ID. A COUNTY (administrative_area_level_2) covers every town inside
+     * it while using only ONE of the 20 slots — the closest thing to a "radius".
+     *
+     * Strategy: a few counties for broad reach + key individual cities (always
+     * list the home city explicitly). Leave this array EMPTY to fall back to the
+     * 20 cities physically closest to the office (from the AreaServed table).
+     *
+     * Max 20 entries. Format: "Name, IL, USA".
+     */
+    'service_areas' => [
+        // Counties (broad coverage, 1 slot each)
+        'Cook County, IL, USA',
+        'Lake County, IL, USA',
+        'Chicago, IL, USA',
+        'Glenview, IL, USA',
+
+        // Key individual cities (home/office city first)
+        'Prospect Heights, IL, USA',
+        'Arlington Heights, IL, USA',
+        'Palatine, IL, USA',
+        'Mount Prospect, IL, USA',
+        'Barrington, IL, USA',
+        'Lake Zurich, IL, USA',
+        'Northbrook, IL, USA',
+        'Hoffman Estates, IL, USA',
+        'Winnetka, IL, USA',
+        'Inverness, IL, USA',
+        'Long Grove, IL, USA',
+        'Wilmette, IL, USA',
+        'Lake Forest, IL, USA',
+        'Deerfield, IL, USA',
+        'Highland Park, IL, USA',
+        'Glencoe, IL, USA',
+        'Winnetka, IL, USA',
+    ],
+
+    /*
      * Source of truth for Q&A pre-seeding (`gbp:qna-checklist`).
      * Pulled from config/geo-answers.php; this is the manual override list
      * if you want different wording on GBP than on your /geo/answers.json feed.

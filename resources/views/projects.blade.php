@@ -3,9 +3,27 @@
     metaDescription="Browse our portfolio of kitchen, bathroom, and home remodeling projects. See the quality craftsmanship of GS Construction in the Chicagoland area."
 >
     {{-- Breadcrumb Schema --}}
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Projects'],
-    ]" />
+    @php
+        // On /projects/{type} filter pages, deepen the trail to
+        // Home › Projects › {Type} so Google can render a category breadcrumb
+        // (the route merges the internal type into request('type')).
+        $projectTypeCrumb = [
+            'kitchen'      => ['label' => 'Kitchens',        'slug' => 'kitchens'],
+            'bathroom'     => ['label' => 'Bathrooms',       'slug' => 'bathrooms'],
+            'home-remodel' => ['label' => 'Home Remodeling', 'slug' => 'home-remodeling'],
+        ];
+        $activeType = request('type');
+        $activeCrumb = $projectTypeCrumb[$activeType] ?? null;
+
+        $projectsCrumbs = [];
+        if ($activeCrumb) {
+            $projectsCrumbs[] = ['name' => 'Projects', 'url' => route('projects.index')];
+            $projectsCrumbs[] = ['name' => $activeCrumb['label']];
+        } else {
+            $projectsCrumbs[] = ['name' => 'Projects'];
+        }
+    @endphp
+    <x-breadcrumb-schema :items="$projectsCrumbs" />
 
     {{-- Visual Breadcrumb --}}
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
@@ -15,11 +33,23 @@
                     <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
                 </li>
                 <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                     </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Projects</span>
+                    @if($activeCrumb)
+                        <a href="{{ route('projects.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Projects</a>
+                    @else
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">Projects</span>
+                    @endif
                 </li>
+                @if($activeCrumb)
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $activeCrumb['label'] }}</span>
+                </li>
+                @endif
             </ol>
         </nav>
     </div>

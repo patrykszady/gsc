@@ -14,10 +14,12 @@ return [
         ['label' => 'Bathrooms', 'href' => '/services/bathroom-remodeling', 'bold' => false],
         ['label' => 'Basements', 'href' => '/services/basement-remodeling', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Additions', 'href' => '/services/home-additions', 'bold' => false, 'moreOnly' => true],
+        ['label' => 'Mudrooms', 'href' => '/services/mudroom-remodeling', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Projects', 'href' => '/projects', 'bold' => false],
         ['label' => 'Services', 'href' => '/services', 'bold' => false],
         ['label' => 'About', 'href' => '/about', 'bold' => false],
         ['label' => 'Reviews', 'href' => '/reviews', 'bold' => true],
+        ['label' => 'Careers', 'href' => '/jobs', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Contact', 'href' => '/contact', 'bold' => false],
     ],
 ];

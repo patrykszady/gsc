@@ -84,6 +84,15 @@
     '@type'           => 'LocalBusiness',
     '@id'             => url($area->url) . '#city-reviews',
     'name'            => 'GS Construction',
+    // Service-area business: single real HQ address. The city this node is
+    // about is conveyed via areaServed below, not a fabricated local address.
+    'address'         => [
+        '@type'           => 'PostalAddress',
+        'addressLocality' => 'Prospect Heights',
+        'addressRegion'   => 'IL',
+        'postalCode'      => '60070',
+        'addressCountry'  => 'US',
+    ],
     'areaServed'      => ['@type' => 'City', 'name' => $cityName.', IL'],
     'aggregateRating' => $aggregate,
     'review'          => $reviews,

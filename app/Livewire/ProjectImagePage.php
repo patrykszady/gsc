@@ -112,10 +112,10 @@ class ProjectImagePage extends Component
         // Get location-aware text
         $location = $this->project->location;
         
-        $title = $this->localizeText($this->image->alt_text) 
+        $title = $this->localizeText($this->image->seo_alt_text) 
             ?: "{$this->project->title} - Photo {$this->currentPosition}";
         
-        $description = $this->localizeText($this->image->caption) 
+        $description = $this->localizeText($this->image->seo_caption) 
             ?: "View photo {$this->currentPosition} of {$this->totalImages} from {$this->project->title}. "
                . ($location ? "Located in {$location}. " : '')
                . "Professional remodeling by GS Construction.";
@@ -154,7 +154,7 @@ class ProjectImagePage extends Component
             'contentUrl' => $imageUrl,
             'thumbnail' => $this->image->getThumbnailUrl('thumb'),
             'representativeOfPage' => (bool) $this->image->is_cover,
-            'caption' => $this->image->caption ?? $this->image->alt_text,
+            'caption' => $this->image->seo_caption,
         ];
         if ($googleUrl) {
             $schema['sameAs'] = $googleUrl;

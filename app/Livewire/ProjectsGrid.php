@@ -27,6 +27,8 @@ class ProjectsGrid extends Component
 
     public bool $hideFilters = false;
 
+    public bool $hideWhenEmpty = false;
+
     public bool $showPagination = true;
 
     public bool $responsivePerPage = false;
@@ -90,12 +92,21 @@ class ProjectsGrid extends Component
             $requestedPage
         );
 
-        $projectTypes = Project::query()
+        // Curated, service-aligned filter list shown in a fixed, sensible order.
+        // Every category GS Construction offers a service page for is shown, even
+        // when no projects of that type are posted yet (the empty state then links
+        // to the matching service page instead of showing a dead end).
+        $curatedOrder = ['kitchen', 'bathroom', 'home-remodel', 'basement', 'addition', 'mudroom'];
+        $existingTypes = Project::query()
             ->where('is_published', true)
             ->distinct()
             ->pluck('project_type')
             ->filter()
-            ->sort()
+            ->all();
+
+        $projectTypes = collect($curatedOrder)
+            ->merge($existingTypes)
+            ->unique()
             ->values();
 
         return view('livewire.projects-grid', [

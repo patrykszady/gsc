@@ -1187,10 +1187,12 @@ class GoogleBusinessProfileService
         $data = $response->json();
         $results = $data['results'] ?? [];
 
-        // Find the first result that is a locality or similar region type
+        // Find the first result that is a city- or county-level region.
+        // administrative_area_level_2 = county (one slot covers all its towns),
+        // which is how we approximate a service "radius" within Google's 20-area cap.
         foreach ($results as $result) {
             $types = $result['types'] ?? [];
-            if (array_intersect($types, ['locality', 'administrative_area_level_3', 'sublocality', 'postal_town'])) {
+            if (array_intersect($types, ['locality', 'administrative_area_level_3', 'administrative_area_level_2', 'sublocality', 'postal_town'])) {
                 return $result['place_id'] ?? null;
             }
         }

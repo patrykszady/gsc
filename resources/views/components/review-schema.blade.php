@@ -103,6 +103,15 @@ $schema = [
     '@id' => 'https://gs.construction/#business',
     'name' => 'GS Construction',
     'url' => 'https://gs.construction',
+    // Service-area business: single real HQ address (no storefront per city).
+    // Per-city relevance is expressed via areaServed/serviceArea elsewhere.
+    'address' => [
+        '@type' => 'PostalAddress',
+        'addressLocality' => 'Prospect Heights',
+        'addressRegion' => 'IL',
+        'postalCode' => '60070',
+        'addressCountry' => 'US',
+    ],
     'review' => $reviews,
 ];
 @endphp

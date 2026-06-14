@@ -120,6 +120,53 @@ class ProjectImage extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * Curated cover-image pool used by EVERY site slider and for social/share
+     * + schema images: the cover photos of FEATURED, published projects.
+     *
+     * Falls back to cover photos of any published project (optionally of the
+     * same $type) only when no featured cover exists, so sliders never render
+     * empty or stock imagery when real project work is available. Mark more
+     * projects as "featured" in the admin to fully curate what sliders show.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, self>
+     */
+    public static function curatedCovers(?string $type = null, int $limit = 12): \Illuminate\Database\Eloquent\Collection
+    {
+        $build = function (bool $featuredOnly) use ($type, $limit) {
+            return static::query()
+                ->where('is_cover', true)
+                ->whereHas('project', function ($q) use ($featuredOnly, $type) {
+                    $q->where('is_published', true);
+                    if ($featuredOnly) {
+                        $q->where('is_featured', true);
+                    }
+                    if ($type) {
+                        $q->where('project_type', $type);
+                    }
+                })
+                ->with('project')
+                ->inRandomOrder()
+                ->limit($limit)
+                ->get();
+        };
+
+        $featured = $build(true);
+
+        return $featured->isNotEmpty() ? $featured : $build(false);
+    }
+
+    /**
+     * Single curated cover image (featured project preferred). Convenience
+     * wrapper around curatedCovers() for share/OG/schema single-image needs.
+     */
+    public static function curatedCover(?string $type = null, ?int $excludeId = null): ?self
+    {
+        return static::curatedCovers($type, 12)
+            ->when($excludeId !== null, fn ($c) => $c->where('id', '!=', $excludeId))
+            ->first();
+    }
+
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class)->withTimestamps();
@@ -290,29 +337,58 @@ class ProjectImage extends Model
      */
     public function getSeoAltTextAttribute(): string
     {
-        // Check if alt_text looks like a filename (contains underscores or file extension patterns)
-        $hasDescriptiveAlt = $this->alt_text 
-            && !preg_match('/^[_A-Za-z0-9]+$/', $this->alt_text)
-            && !preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $this->alt_text);
-
-        if ($hasDescriptiveAlt) {
+        if ($this->alt_text && $this->looksDescriptive($this->alt_text)) {
             return $this->alt_text;
         }
 
-        // Generate descriptive alt text from project info
+        return $this->buildFallbackSeoText();
+    }
+
+    /**
+     * SEO-friendly caption for image pages, galleries, and sitemap metadata.
+     */
+    public function getSeoCaptionAttribute(): string
+    {
+        if ($this->caption && $this->looksDescriptive($this->caption)) {
+            return $this->caption;
+        }
+
         $project = $this->project;
-        if (!$project) {
+        if (! $project) {
+            return 'Home remodeling project photo by GS Construction.';
+        }
+
+        $projectType = ucfirst(str_replace('-', ' ', $project->project_type ?? 'remodeling'));
+        $location = $project->location ? " in {$project->location}" : '';
+        $featured = $this->is_cover ? ' featured image' : '';
+
+        return "{$projectType} project{$featured}{$location} by GS Construction.";
+    }
+
+    protected function buildFallbackSeoText(): string
+    {
+        $project = $this->project;
+        if (! $project) {
             return 'Home remodeling project photo by GS Construction';
         }
 
         $projectType = ucfirst(str_replace('-', ' ', $project->project_type ?? 'remodeling'));
         $location = $project->location ? " in {$project->location}" : '';
-        
+
         if ($this->is_cover) {
             return "{$projectType} project{$location} - featured image by GS Construction";
         }
 
         return "{$projectType} project{$location} by GS Construction";
+    }
+
+    protected function looksDescriptive(?string $value): bool
+    {
+        $value = trim((string) $value);
+
+        return $value !== ''
+            && ! preg_match('/^[_A-Za-z0-9]+$/', $value)
+            && ! preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $value);
     }
 
     /**

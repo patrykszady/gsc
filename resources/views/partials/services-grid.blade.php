@@ -41,19 +41,61 @@
                 'Complete home renovations',
             ],
         ],
+        [
+            'slug' => 'basement-remodeling',
+            'urlSlug' => 'basement-remodeling',
+            'title' => 'Basement Remodeling',
+            'projectType' => 'basement',
+            'description' => 'Turn an unfinished or dated basement into comfortable, code-compliant living space. From family rooms and home theaters to guest suites, wet bars, and basement bathrooms – we finish lower levels your family will actually use.',
+            'gradient' => 'from-amber-500 to-orange-600',
+            'features' => [
+                'Family rooms, theaters & rec spaces',
+                'Guest bedrooms & basement bathrooms',
+                'Code-compliant electrical & plumbing',
+            ],
+        ],
+        [
+            'slug' => 'home-additions',
+            'urlSlug' => 'home-additions',
+            'title' => 'Home Additions',
+            'projectType' => 'addition',
+            'description' => 'Expand your home with seamless additions designed to match your existing layout. From sunrooms and master suites to second-story additions – we add square footage that blends naturally with your home.',
+            'gradient' => 'from-rose-500 to-pink-600',
+            'features' => [
+                'Room additions & bump-outs',
+                'Sunrooms & four-season rooms',
+                'Master suite & second-story additions',
+            ],
+        ],
+        [
+            'slug' => 'mudroom-remodeling',
+            'urlSlug' => 'mudroom-remodeling',
+            'title' => 'Mudroom & Laundry',
+            'projectType' => 'mudroom',
+            'description' => 'Tame the daily clutter with a custom mudroom or laundry/mudroom combo. Built-in lockers, benches, cubbies, drop zones, durable tile floors, and utility sinks – designed around how your family actually moves through your home.',
+            'gradient' => 'from-teal-500 to-cyan-600',
+            'features' => [
+                'Built-in lockers, benches & cubbies',
+                'Combined laundry/mudroom layouts',
+                'Durable tile floors & utility sinks',
+            ],
+        ],
     ];
 
     // Helper to get cover image with thumbnail
-    $getCoverImageData = function ($projectType) {
+    $gridCity = isset($area) ? $area->city : null;
+    $getCoverImageData = function ($projectType) use ($gridCity) {
         $fallbacks = [
             'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
             'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
             'home-remodel' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
+            'mudroom' => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
         ];
         $fallbackThumbs = [
             'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=50&q=30',
             'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=50&q=30',
             'home-remodel' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=50&q=30',
+            'mudroom' => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=50&q=30',
         ];
 
         $image = ProjectImage::query()
@@ -68,6 +110,19 @@
                 'thumb' => $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb'),
                 'alt' => $image->seo_alt_text,
             ];
+        }
+
+        // Basement & additions have no real project photos yet — use curated,
+        // honestly-labelled "representative" imagery instead of borrowing covers.
+        if (\App\Support\ServiceImages::has($projectType)) {
+            $curated = \App\Support\ServiceImages::first($projectType, $gridCity);
+            if ($curated) {
+                return [
+                    'url' => $curated['url'],
+                    'thumb' => $curated['url'],
+                    'alt' => $curated['alt'],
+                ];
+            }
         }
 
         return [

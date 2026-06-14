@@ -171,50 +171,100 @@ class SeoHealth extends Command
     /** Local rankings: % of tracked queries ranking in top 10 across both engines. */
     protected function scoreLocalRankings(): array
     {
-        if (! Schema::hasTable('seo_rank_snapshots')) {
+        $queryScore = null;
+        $total = 0;
+        $top3 = 0;
+        $top10 = 0;
+        $top20 = 0;
+
+        if (Schema::hasTable('seo_rank_snapshots')) {
+            // Latest snapshot per (engine, query, location).
+            $latestPerQuery = DB::table('seo_rank_snapshots as r1')
+                ->select('r1.engine', 'r1.gsc_position as position')
+                ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, ""))')
+                ->get();
+
+            if (! $latestPerQuery->isEmpty()) {
+                $total = $latestPerQuery->count();
+                $top3  = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 3)->count();
+                $top10 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 10)->count();
+                $top20 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 20)->count();
+
+                // Weighted score: top-3 worth 100, top-10 worth 60, top-20 worth 20.
+                $queryScore = (int) round(
+                    ($top3 * 100 + ($top10 - $top3) * 60 + ($top20 - $top10) * 20) / $total
+                );
+            }
+        }
+
+        // All-pages visibility (last 28 days) from Search Console page metrics.
+        $pageScore = null;
+        $pagesTracked = 0;
+        $pagesTop3 = 0;
+        $pagesTop10 = 0;
+        $pagesTop20 = 0;
+
+        if (Schema::hasTable('gsc_query_metrics')) {
+            $from = now()->subDays(27)->toDateString();
+            $to = now()->toDateString();
+
+            $perPage = DB::table('gsc_query_metrics')
+                ->whereBetween('date', [$from, $to])
+                ->whereNotNull('page')
+                ->where('page', '!=', '')
+                ->selectRaw('page, SUM(impressions) as impressions, CASE WHEN SUM(impressions) > 0 THEN SUM(position * impressions) / SUM(impressions) ELSE AVG(position) END as avg_position')
+                ->groupBy('page')
+                ->havingRaw('SUM(impressions) > 0')
+                ->get();
+
+            if (! $perPage->isEmpty()) {
+                $pagesTracked = $perPage->count();
+                $pagesTop3 = $perPage->filter(fn ($r) => $r->avg_position !== null && (float) $r->avg_position <= 3.0)->count();
+                $pagesTop10 = $perPage->filter(fn ($r) => $r->avg_position !== null && (float) $r->avg_position <= 10.0)->count();
+                $pagesTop20 = $perPage->filter(fn ($r) => $r->avg_position !== null && (float) $r->avg_position <= 20.0)->count();
+
+                $pageScore = (int) round(
+                    ($pagesTop3 * 100 + ($pagesTop10 - $pagesTop3) * 60 + ($pagesTop20 - $pagesTop10) * 20) / $pagesTracked
+                );
+            }
+        }
+
+        if ($queryScore === null && $pageScore === null) {
             return [
                 'name' => 'Local rankings',
                 'score' => 0,
-                'metrics' => ['status' => 'seo_rank_snapshots table missing — run rank tracker first'],
-                'fix' => 'php artisan seo:track-rankings --engine=both',
+                'metrics' => ['status' => 'no rank snapshots and no GSC page metrics yet'],
+                'fix' => 'Run: php artisan seo:track-rankings --engine=both and ensure seo:gsc-sync is scheduled.',
             ];
         }
 
-        // Latest snapshot per (engine, query, location).
-        $latestPerQuery = DB::table('seo_rank_snapshots as r1')
-            ->select('r1.engine', 'r1.gsc_position as position')
-            ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, ""))')
-            ->get();
+        $score = match (true) {
+            $queryScore !== null && $pageScore !== null => (int) round(($queryScore * 0.6) + ($pageScore * 0.4)),
+            $queryScore !== null => (int) $queryScore,
+            default => (int) $pageScore,
+        };
 
-        if ($latestPerQuery->isEmpty()) {
-            return [
-                'name' => 'Local rankings',
-                'score' => 0,
-                'metrics' => ['status' => 'no rank snapshots yet'],
-                'fix' => 'php artisan seo:track-rankings --engine=both',
-            ];
+        $metrics = [];
+        if ($queryScore !== null && $total > 0) {
+            $metrics['queries_tracked'] = $total;
+            $metrics['top_3'] = "{$top3} (" . (int) round($top3 / $total * 100) . '%)';
+            $metrics['top_10'] = "{$top10} (" . (int) round($top10 / $total * 100) . '%)';
+            $metrics['top_20'] = "{$top20} (" . (int) round($top20 / $total * 100) . '%)';
+            $metrics['query_tracker_score'] = $queryScore;
         }
-
-        $total = $latestPerQuery->count();
-        $top3  = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 3)->count();
-        $top10 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 10)->count();
-        $top20 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 20)->count();
-
-        // Weighted score: top-3 worth 100, top-10 worth 60, top-20 worth 20.
-        $score = (int) round(
-            ($top3 * 100 + ($top10 - $top3) * 60 + ($top20 - $top10) * 20) / $total
-        );
+        if ($pageScore !== null && $pagesTracked > 0) {
+            $metrics['pages_tracked_28d'] = $pagesTracked;
+            $metrics['pages_top_3_28d'] = "{$pagesTop3} (" . (int) round($pagesTop3 / $pagesTracked * 100) . '%)';
+            $metrics['pages_top_10_28d'] = "{$pagesTop10} (" . (int) round($pagesTop10 / $pagesTracked * 100) . '%)';
+            $metrics['pages_top_20_28d'] = "{$pagesTop20} (" . (int) round($pagesTop20 / $pagesTracked * 100) . '%)';
+            $metrics['all_pages_score_28d'] = $pageScore;
+        }
 
         return [
             'name' => 'Local rankings',
             'score' => $score,
-            'metrics' => [
-                'queries_tracked' => $total,
-                'top_3'  => "{$top3} (" . (int) round($top3 / $total * 100) . '%)',
-                'top_10' => "{$top10} (" . (int) round($top10 / $total * 100) . '%)',
-                'top_20' => "{$top20} (" . (int) round($top20 / $total * 100) . '%)',
-            ],
-            'fix' => $top10 < $total * 0.3
+            'metrics' => $metrics,
+            'fix' => (($queryScore !== null && $top10 < $total * 0.3) || ($pageScore !== null && $pagesTop10 < $pagesTracked * 0.3))
                 ? 'Low local visibility outside HQ. Focus on per-city backlinks, real reviews mentioning city names, and GBP service-area expansion.'
                 : null,
         ];

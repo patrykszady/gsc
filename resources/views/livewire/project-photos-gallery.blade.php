@@ -13,8 +13,8 @@
                 'url' => $img->getThumbnailUrl('large'),
                 'webpUrl' => $img->getWebpThumbnailUrl('large'),
                 'originalUrl' => $img->url,
-                'alt' => $img->alt_text ?: $img->seo_alt_text,
-                'caption' => $img->caption,
+                'alt' => $img->seo_alt_text,
+                'caption' => $img->seo_caption,
                 'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
             ];
         })) }},
@@ -97,7 +97,7 @@
                                 }
                             "
                             @click.outside="showCaption = false; lastInputWasTouch = false"
-                            class="group relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer"
+                            class="group relative aspect-4/3 overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer"
                         >
                             <x-lqip-image
                                 :image="$image"
@@ -116,7 +116,7 @@
                                 x-transition:leave="transition ease-in duration-150"
                                 x-transition:leave-start="opacity-100"
                                 x-transition:leave-end="opacity-0"
-                                class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4"
+                                class="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent flex flex-col justify-end p-4"
                             >
                                 @if($image->caption)
                                     <p class="text-sm text-white leading-relaxed line-clamp-3">{{ $image->caption }}</p>

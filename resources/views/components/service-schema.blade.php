@@ -53,6 +53,18 @@ $serviceTypes = [
         'serviceType' => 'Basement Finishing',
         'category' => 'Home Improvement',
     ],
+    'home-additions' => [
+        'name' => 'Home Additions',
+        'description' => 'Design-build home addition services including room additions, master suite additions, sunrooms, and second-story expansions matched to your existing home.',
+        'serviceType' => 'Home Addition',
+        'category' => 'Home Improvement',
+    ],
+    'mudroom-remodeling' => [
+        'name' => 'Mudroom & Laundry Remodeling',
+        'description' => 'Custom mudroom and laundry room remodeling including built-in lockers, benches, cubbies, drop zones, durable tile flooring, utility sinks, and combined laundry/mudroom layouts.',
+        'serviceType' => 'Mudroom Remodeling',
+        'category' => 'Home Improvement',
+    ],
 ];
 
 $serviceKey = $service['projectType'] ?? 'kitchen';
@@ -60,6 +72,8 @@ $serviceSlug = match($serviceKey) {
     'kitchen' => 'kitchen-remodeling',
     'bathroom' => 'bathroom-remodeling',
     'home-remodel' => 'home-remodeling',
+    'addition' => 'home-additions',
+    'mudroom' => 'mudroom-remodeling',
     default => 'basement-remodeling',
 };
 

@@ -265,6 +265,10 @@ class SeoSchemaAudit extends Command
         };
 
         $hasType = fn (string $t) => $typeStr === $t || str_contains($typeStr, $t);
+        // Exact-type match (no substring). Needed for types whose names are
+        // substrings of other valid types, e.g. "HowTo" vs "HowToStep"/"HowToTool".
+        $typeTokens = array_map('trim', explode(',', $typeStr));
+        $isType = fn (string $t) => in_array($t, $typeTokens, true);
 
         if ($hasType('FAQPage')) {
             if (empty($data['mainEntity']) || ! is_array($data['mainEntity'])) {
@@ -291,7 +295,7 @@ class SeoSchemaAudit extends Command
         if ($hasType('AggregateRating')) {
             $check(['ratingValue', 'reviewCount']);
         }
-        if ($hasType('HowTo')) {
+        if ($isType('HowTo')) {
             $check(['name', 'step']);
         }
         if ($hasType('VideoObject')) {

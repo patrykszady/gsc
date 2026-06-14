@@ -37,8 +37,8 @@
                     : null),
             'yelpUrl' => $yelpUrl,
             'instagramUrl' => $img->instagram_url,
-            'alt' => $this->localizeText($img->alt_text ?: $img->seo_alt_text),
-            'caption' => $this->localizeText($img->caption),
+            'alt' => $this->localizeText($img->seo_alt_text),
+            'caption' => $this->localizeText($img->seo_caption),
             'isCover' => $img->is_cover,
             'pageUrl' => $imageKey ? route('projects.image', ['project' => $project, 'image' => $imageKey]) : null,
             'prevPageUrl' => $previousImageKey ? route('projects.image', ['project' => $project, 'image' => $previousImageKey]) : null,
@@ -102,11 +102,21 @@
 
     {{-- Breadcrumb Schema --}}
     @php
+        $photoTypeCrumb = [
+            'kitchen'      => ['label' => 'Kitchens',        'type' => 'kitchen'],
+            'bathroom'     => ['label' => 'Bathrooms',       'type' => 'bathroom'],
+            'home-remodel' => ['label' => 'Home Remodeling', 'type' => 'home-remodel'],
+        ];
+        $photoCrumb = $photoTypeCrumb[$project->project_type] ?? null;
+
         $breadcrumbItems = [
             ['name' => 'Projects', 'url' => route('projects.index')],
-            ['name' => $project->title, 'url' => route('projects.show', $project)],
-            ['name' => 'Photos'],
         ];
+        if ($photoCrumb) {
+            $breadcrumbItems[] = ['name' => $photoCrumb['label'], 'url' => route('projects.index', ['type' => $photoCrumb['type']])];
+        }
+        $breadcrumbItems[] = ['name' => $project->title, 'url' => route('projects.show', $project)];
+        $breadcrumbItems[] = ['name' => 'Photos'];
     @endphp
     <x-breadcrumb-schema :items="$breadcrumbItems" />
 
@@ -123,6 +133,14 @@
                     </svg>
                     <a href="{{ route('projects.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Projects</a>
                 </li>
+                @if($photoCrumb)
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                    <a href="{{ route('projects.index', ['type' => $photoCrumb['type']]) }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">{{ $photoCrumb['label'] }}</a>
+                </li>
+                @endif
                 <li class="flex items-center">
                     <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />

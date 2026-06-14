@@ -161,6 +161,33 @@ class ServicePage extends Component
                     ['question' => 'Will the addition match my existing home?', 'answer' => 'Absolutely. Our design team specs matching siding, brick, roofing, windows, and trim so the addition reads as part of the original home. Interior transitions are also planned to flow naturally with existing finishes.'],
                 ],
             ],
+            'mudroom-remodeling' => [
+                'title' => 'Mudroom & Laundry Remodeling',
+                'heroTitle' => 'Mudroom & Laundry Room Remodeling Contractors',
+                'heroSubtitle' => 'Custom drop zones, built-in lockers, benches, and combined laundry/mudroom spaces',
+                'projectType' => 'mudroom',
+                'description' => 'Tame the daily clutter with a custom mudroom and laundry room from GS Construction. From built-in lockers, benches, and cubbies to combined laundry/mudroom drop zones with durable tile, smart storage, and utility sinks, we design hardworking entry spaces that keep coats, shoes, backpacks, and laundry organized — built to fit your home and how your family actually moves through it.',
+                'features' => [
+                    ['title' => 'Built-In Lockers & Cubbies', 'description' => 'Custom cabinetry, open lockers, hooks, and bench seating sized to your space.'],
+                    ['title' => 'Laundry Room Combos', 'description' => 'Combined mudroom/laundry layouts with cabinets, folding counters, and utility sinks.'],
+                    ['title' => 'Durable, Easy-Clean Finishes', 'description' => 'Porcelain and patterned tile floors, wainscoting, and scrubbable paint built for daily wear.'],
+                    ['title' => 'Smart Storage & Drop Zones', 'description' => 'Charging stations, mail organizers, pet stations, and shoe storage for busy entryways.'],
+                ],
+                'process' => [
+                    ['step' => 1, 'title' => 'Consultation', 'description' => 'We review your entry/laundry space, traffic flow, and storage needs.'],
+                    ['step' => 2, 'title' => 'Design', 'description' => 'We plan custom cabinetry, bench/locker layout, finishes, and any plumbing/electrical.'],
+                    ['step' => 3, 'title' => 'Build', 'description' => 'Carpentry, tile, cabinetry, paint, and fixtures — installed by our in-house crew.'],
+                    ['step' => 4, 'title' => 'Enjoy', 'description' => 'A clutter-free, hardworking mudroom and laundry space your whole family will use.'],
+                ],
+                'ctaHeading' => 'Ready for a Clutter-Free Entryway?',
+                'faqs' => [
+                    ['question' => 'How much does a mudroom remodel cost?', 'answer' => 'Most mudroom projects in the Chicago suburbs run $8,000–$25,000+ depending on the size of the space, the amount of custom cabinetry and built-in lockers, flooring, and whether laundry or plumbing work is included. GS Construction provides a free, itemized estimate.'],
+                    ['question' => 'Can you combine my mudroom and laundry room?', 'answer' => 'Yes — combined mudroom/laundry rooms are one of our most popular requests. We plan cabinetry, folding counters, hanging space, utility sinks, and drop zones so the room handles both laundry and everyday entry clutter.'],
+                    ['question' => 'How long does a mudroom remodel take?', 'answer' => 'A typical mudroom or laundry/mudroom remodel takes 2–5 weeks depending on custom cabinetry lead times, tile work, and any plumbing or electrical changes. We give you a clear schedule before we start.'],
+                    ['question' => 'Do you build custom lockers and benches?', 'answer' => 'Yes. We build custom lockers, cubbies, bench seating, hooks, and cabinetry sized to your space and family — including pet stations, shoe storage, and charging drop zones.'],
+                    ['question' => 'Do mudroom projects need permits?', 'answer' => 'Simple built-ins and finishes usually do not, but adding or relocating plumbing (utility sink, washer) or electrical circuits typically requires permits. GS Construction handles any required permitting and inspections for you.'],
+                ],
+            ],
         ];
 
         return $services[$service] ?? abort(404);

@@ -73,18 +73,9 @@ class SeoService
             $title = $domainConfig['title_prefix'];
             $description = $domainConfig['description'];
         } elseif ($city) {
-            // City landing page. Lead with the city name + the dominant local query intent.
-            // GSC data (May 2026) shows the highest-impression queries for these pages are
-            // "{city} home remodeling" / "{city} home remodeler" / "kitchen renovation
-            // contractor {city}" — the previous "Kitchen & Bath" framing missed "home
-            // remodeling" and "contractor" intent entirely. New title leads with the
-            // contractor noun (matches "remodeling contractor {city}") and covers both
-            // kitchen and home remodeling. Keep under ~62 chars before " | GS Construction".
-            $reviewCount = self::getReviewCountLabel();
-            $reviewNum = self::getReviewCountNumeric();
-            $badge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated';
-            $title = "{$city} Remodeling Contractor — Kitchen, Bath & Home • {$badge}";
-            $description = "{$city}, IL remodeling contractor for kitchen, bathroom & whole-home renovations. {$reviewCount} 5-star reviews, 40+ yrs experience, licensed & insured. Free in-home estimate — (224) 735-4200.";
+            $meta = self::buildAreaHomeMeta($area);
+            $title = $meta['title'];
+            $description = $meta['description'];
         } else {
             // Lead with brand on the homepage so Google adopts "GS Construction"
             // as the site name (https://developers.google.com/search/docs/appearance/site-names)
@@ -230,6 +221,29 @@ class SeoService
     }
 
     /**
+     * Set SEO tags for the careers / partnerships (jobs) page.
+     */
+    public static function jobs(): void
+    {
+        $title = 'Careers & Trade Partnerships';
+        $description = 'Join GS Construction or partner with us. We hire bilingual tradesmen and team up with subcontractors, designers, architects, showrooms, countertop & cabinet suppliers across Chicagoland.';
+
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
+
+        self::seo()->keywords([
+            'construction jobs Chicago suburbs',
+            'remodeling careers',
+            'bilingual tradesmen jobs',
+            'subcontractor opportunities',
+            'trade partners',
+            'countertop supplier partnership',
+            'cabinet supplier partnership',
+            'interior designer collaboration',
+            'architect collaboration',
+        ]);
+    }
+
+    /**
      * Set SEO tags for areas served index page.
      */
     public static function areasServed(): void
@@ -355,6 +369,12 @@ class SeoService
                 'description' => 'Home additions in Chicago\'s NW suburbs: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom addition', 'second story addition', 'home addition contractors', 'addition builders near me', 'general contractor additions'],
             ],
+            'mudroom-remodeling' => [
+                'label' => 'Mudroom & Laundry Remodeling',
+                'title' => "Chicago Suburbs Mudroom & Laundry Remodeling — {$reviewBadge}",
+                'description' => 'Custom mudroom & laundry room remodeling in Chicago\'s NW suburbs: built-in lockers, benches, cubbies, drop zones & laundry combos. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['mudroom remodel', 'mudroom builders', 'custom mudroom', 'laundry room remodel', 'mudroom lockers', 'laundry mudroom combo', 'mudroom remodeling near me'],
+            ],
         ];
 
         $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'title' => 'Remodeling Services', 'description' => 'Expert remodeling services.', 'keywords' => []];
@@ -370,6 +390,7 @@ class SeoService
             'home-remodeling' => 'home-remodel',
             'basement-remodeling' => 'basement',
             'home-additions' => 'addition',
+            'mudroom-remodeling' => 'mudroom',
             default => null,
         };
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
@@ -385,63 +406,11 @@ class SeoService
      */
     public static function areaService(AreaServed $area, string $serviceType): void
     {
+        $meta = self::buildAreaServiceMeta($area, $serviceType);
+        $service = $meta['service'];
+        $title = $meta['title'];
+        $description = $meta['description'];
         $city = $area->city;
-        
-        $services = [
-            'kitchen-remodeling' => [
-                'label' => 'Kitchen Remodeling',
-                'shortLabel' => 'Kitchen',
-                'titleTemplate' => '%s Kitchen Remodeling — %s',
-                'descriptionTemplate' => '%s, IL kitchen remodeling: custom cabinets, quartz & granite countertops, IKEA installs, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
-                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors', 'kitchen remodelers'],
-            ],
-            'bathroom-remodeling' => [
-                'label' => 'Bathroom Remodeling',
-                'shortLabel' => 'Bathroom',
-                'titleTemplate' => '%s Bathroom Remodeling — %s',
-                'descriptionTemplate' => '%s, IL bathroom remodeling: walk-in showers, tub-to-shower conversions, tile & vanities, full renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
-                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors', 'bathroom remodelers'],
-            ],
-            'home-remodeling' => [
-                'label' => 'Home Remodeling',
-                'shortLabel' => 'Home',
-                'titleTemplate' => '%s Whole-Home Remodeling — %s',
-                'descriptionTemplate' => '%s, IL whole-home remodeling: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
-                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors', 'home remodelers'],
-            ],
-            'basement-remodeling' => [
-                'label' => 'Basement Remodeling',
-                'shortLabel' => 'Basement',
-                'titleTemplate' => '%s Basement Finishing — %s',
-                'descriptionTemplate' => '%s, IL basement finishing & remodeling: home theaters, guest suites, rec rooms, wet bars, egress windows. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
-                'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodelers', 'basement contractors'],
-            ],
-            'home-additions' => [
-                'label' => 'Home Additions',
-                'shortLabel' => 'Addition',
-                'titleTemplate' => '%s Home Additions — %s',
-                'descriptionTemplate' => '%s, IL home additions: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
-                'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom', 'second story addition', 'addition contractors', 'addition builders'],
-            ],
-        ];
-
-        $reviewNum = self::getReviewCountNumeric();
-        $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated Local';
-
-        $service = $services[$serviceType] ?? [
-            'label' => 'Remodeling',
-            'shortLabel' => 'Remodeling',
-            'titleTemplate' => 'Remodeling in %s, IL',
-            'descriptionTemplate' => 'Expert remodeling services in %s. Local contractors with 40+ years experience.',
-            'keywords' => [],
-        ];
-        
-        // Primary keyword targeting: "{City} {Service} Remodeling — {N★ Reviews}"
-        $title = sprintf($service['titleTemplate'], $city, $reviewBadge);
-
-        // Enhanced description with review count, CTA and city targeting
-        $reviewCount = self::getReviewCountLabel();
-        $description = sprintf($service['descriptionTemplate'], $city, $reviewCount);
 
         // Get a relevant cover image for this service type
         $projectType = match ($serviceType) {
@@ -483,6 +452,423 @@ class SeoService
             ]
         );
         self::seo()->keywords($areaKeywords);
+    }
+
+    /**
+     * Build deterministic title/description for area home pages.
+     *
+     * @return array{title:string, description:string}
+     */
+    public static function buildAreaHomeMeta(AreaServed $area): array
+    {
+        $city = $area->city;
+        $reviewCount = self::getReviewCountLabel();
+        $seed = abs(crc32((string) ($area->slug ?: $city)));
+        $variant = $seed % 8;
+        $geoSnippet = self::buildAreaGeoSnippet($area, false);
+        $context = self::buildAreaTitleContext($area, $seed);
+
+        $intentPhrases = [
+            'Kitchen, Bath & Whole-Home',
+            'Design-Build Remodeling Team',
+            'Kitchen, Bathroom & Basement',
+            'Remodeling with Permit-Ready Planning',
+            'Scope, Schedule & Build Coordination',
+            'From Planning Through Final Walkthrough',
+            'Family-Led Remodeling Project Delivery',
+            'Kitchens, Baths, Basements & Additions',
+            'Licensed Remodeling for Older Homes',
+            'Practical Renovation Planning & Build',
+            'Full-Service Home Renovation Crew',
+            'Kitchen, Bath & Basement Specialists',
+            'Whole-Home Upgrades Done Right',
+            'Remodeling Built Around Your Routine',
+        ];
+        $trustPhrases = [
+            "{$reviewCount} 5-Star Reviews",
+            'Licensed & Insured',
+            'Local Family Team',
+            'Transparent Scope & Timeline',
+            'Detailed Estimate Planning',
+            '40+ Years Combined Experience',
+            'Consistent Project Communication',
+            'Clear Proposal and Scope Review',
+            'On-Time, On-Budget Delivery',
+            'No-Pressure Free Estimates',
+            'One Dedicated Project Lead',
+            'Trusted by Local Homeowners',
+        ];
+
+        $intent = $intentPhrases[($seed >> 3) % count($intentPhrases)];
+        $trust = $trustPhrases[($seed >> 5) % count($trustPhrases)];
+
+        $baseVariants = [
+            "{$city} Home Remodeling Contractor",
+            "{$city} Remodeling Contractor",
+            "{$city} Kitchen & Bathroom Remodeler",
+            "{$city} Remodeling Company",
+            "{$city} Home Renovation Contractor",
+            "{$city} Remodeler",
+            "{$city} Home Remodeling Team",
+            "{$city} Remodeling Experts",
+        ];
+        $modifierPool = array_values(array_unique(array_merge(
+            [$context, $intent, $trust],
+            $intentPhrases,
+            $trustPhrases,
+            self::compactTitleModifiers(),
+        )));
+        $title = self::composeTitleWithinBudget($baseVariants[$variant], $modifierPool, $seed);
+
+        $descriptionVariants = [
+            "Home remodeling in {$city}, IL for kitchen, bathroom, basement, and additions. {$reviewCount} 5-star reviews. Licensed & insured with free in-home estimates.",
+            "{$city}, IL remodeling contractor for kitchen, bathroom, and whole-home renovations. Family-owned team, clear scope planning, and free consultations.",
+            "Kitchen and bathroom remodeling plus full home renovation in {$city}, IL. {$reviewCount} 5-star reviews, 40+ years combined experience, and no-pressure estimates.",
+            "{$city} remodeling services for kitchens, bathrooms, basements, and home additions. Licensed, insured, and trusted by local homeowners with {$reviewCount} 5-star reviews.",
+            "Need a remodeling contractor in {$city}, IL? We deliver kitchen, bathroom, and whole-home renovation with transparent scope, timeline, and estimate planning.",
+            "Planning a renovation in {$city}, IL? Our family-led crew handles kitchens, baths, basements, and additions with one point of contact from estimate to final walkthrough.",
+            "Remodeling {$city}, IL homes since the basics matter: detailed scope, realistic timelines, and clean job sites. {$reviewCount} 5-star reviews, licensed and insured.",
+            "From quick kitchen and bath updates to whole-home renovations, {$city}, IL homeowners trust our {$reviewCount} 5-star rated, licensed, and insured remodeling team.",
+        ];
+
+        $description = $descriptionVariants[$seed % count($descriptionVariants)];
+        if ($geoSnippet !== '') {
+            $description .= ' ' . $geoSnippet;
+        }
+
+        return [
+            'title' => $title,
+            'description' => \Illuminate\Support\Str::limit($description, 320, ''),
+        ];
+    }
+
+    /**
+     * Build deterministic title/description + service config for area service pages.
+     *
+     * @return array{title:string, description:string, service:array{label:string, shortLabel:string, titleTemplate:string, descriptionTemplate:string, keywords:array<int,string>}}
+     */
+    public static function buildAreaServiceMeta(AreaServed $area, string $serviceType): array
+    {
+        $city = $area->city;
+
+        $services = [
+            'kitchen-remodeling' => [
+                'label' => 'Kitchen Remodeling',
+                'shortLabel' => 'Kitchen',
+                'titleTemplate' => '%s Kitchen Remodeling — %s',
+                'descriptionTemplate' => '%s, IL kitchen remodeling: custom cabinets, quartz & granite countertops, IKEA installs, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen contractors', 'kitchen remodelers'],
+            ],
+            'bathroom-remodeling' => [
+                'label' => 'Bathroom Remodeling',
+                'shortLabel' => 'Bathroom',
+                'titleTemplate' => '%s Bathroom Remodeling — %s',
+                'descriptionTemplate' => '%s, IL bathroom remodeling: walk-in showers, tub-to-shower conversions, tile & vanities, full renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom contractors', 'bathroom remodelers'],
+            ],
+            'home-remodeling' => [
+                'label' => 'Home Remodeling',
+                'shortLabel' => 'Home',
+                'titleTemplate' => '%s Whole-Home Remodeling — %s',
+                'descriptionTemplate' => '%s, IL whole-home remodeling: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'general contractors', 'home remodelers'],
+            ],
+            'basement-remodeling' => [
+                'label' => 'Basement Remodeling',
+                'shortLabel' => 'Basement',
+                'titleTemplate' => '%s Basement Finishing — %s',
+                'descriptionTemplate' => '%s, IL basement finishing & remodeling: home theaters, guest suites, rec rooms, wet bars, egress windows. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodelers', 'basement contractors'],
+            ],
+            'home-additions' => [
+                'label' => 'Home Additions',
+                'shortLabel' => 'Addition',
+                'titleTemplate' => '%s Home Additions — %s',
+                'descriptionTemplate' => '%s, IL home additions: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom', 'second story addition', 'addition contractors', 'addition builders'],
+            ],
+        ];
+
+        $service = $services[$serviceType] ?? [
+            'label' => 'Remodeling',
+            'shortLabel' => 'Remodeling',
+            'titleTemplate' => 'Remodeling in %s, IL',
+            'descriptionTemplate' => 'Expert remodeling services in %s. Local contractors with 40+ years experience.',
+            'keywords' => [],
+        ];
+
+        $seed = abs(crc32($area->slug . '|' . $serviceType));
+        $reviewNum = self::getReviewCountNumeric();
+        $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated Local';
+        $reviewCount = self::getReviewCountLabel();
+        $geoSnippet = self::buildAreaGeoSnippet($area, true);
+        $context = self::buildAreaTitleContext($area, $seed);
+        $trustPhrases = [
+            $reviewBadge,
+            'Licensed & Insured',
+            'Family-Led Project Team',
+            'Detailed Scope & Timeline',
+            'Permit-Aware Planning',
+            'Transparent Proposal Process',
+            'Clear Weekly Communication',
+            'Local Design-Build Crew',
+        ];
+        $serviceIntents = [
+            'kitchen-remodeling' => [
+                'Custom Layout & Cabinet Planning',
+                'Cabinets, Counters & Lighting Upgrades',
+                'Functional Storage and Workflow Design',
+                'Design-Led Kitchen Renovation',
+                'Open-Concept Kitchen Updates',
+                'Permit-Ready Kitchen Construction',
+            ],
+            'bathroom-remodeling' => [
+                'Shower, Tile & Vanity Renovation',
+                'Layout, Waterproofing & Fixture Planning',
+                'Accessible Bathroom Upgrade Options',
+                'Design-Led Bathroom Renovation',
+                'Tub-to-Shower Conversion Planning',
+                'Permit-Ready Bathroom Construction',
+            ],
+            'home-remodeling' => [
+                'Whole-Home Planning and Phased Delivery',
+                'Open Layout, Kitchen and Bath Integration',
+                'Older-Home Renovation Expertise',
+                'End-to-End Design and Build Coordination',
+                'Permit-Aware Whole-Home Upgrades',
+                'Renovation Planning with Clear Milestones',
+            ],
+            'basement-remodeling' => [
+                'Layout, Egress and Utility Coordination',
+                'Basement Finishing with Code-Aware Planning',
+                'Rec Room, Guest Suite and Wet Bar Builds',
+                'Storage and Living Space Optimization',
+                'Moisture-Aware Basement Renovation Planning',
+                'Permit-Ready Basement Buildout',
+            ],
+            'home-additions' => [
+                'Room Additions with Structural Planning',
+                'Master Suite and Expansion Buildouts',
+                'Second-Story and Rear Addition Planning',
+                'Permit-Ready Addition Construction',
+                'Layout, Structural and Utility Coordination',
+                'Space Expansion with Design-Build Delivery',
+            ],
+        ];
+
+        $serviceIntents['kitchen-remodeling'] = array_merge($serviceIntents['kitchen-remodeling'], [
+            'Two-Tone Cabinet and Island Builds',
+            'Pantry, Lighting and Appliance Planning',
+            'Quartz and Granite Countertop Upgrades',
+        ]);
+        $serviceIntents['bathroom-remodeling'] = array_merge($serviceIntents['bathroom-remodeling'], [
+            'Curbless Shower and Niche Detailing',
+            'Double-Vanity and Storage Planning',
+            'Heated Floor and Lighting Upgrades',
+        ]);
+        $serviceIntents['home-remodeling'] = array_merge($serviceIntents['home-remodeling'], [
+            'Load-Bearing Wall and Layout Changes',
+            'Multi-Room Renovation Sequencing',
+            'Whole-Home Finish and Fixture Planning',
+        ]);
+        $serviceIntents['basement-remodeling'] = array_merge($serviceIntents['basement-remodeling'], [
+            'Home Theater and Wet Bar Builds',
+            'Egress Window and Code Compliance',
+            'Guest Suite and Bathroom Additions',
+        ]);
+        $serviceIntents['home-additions'] = array_merge($serviceIntents['home-additions'], [
+            'Foundation, Framing and Roof Tie-Ins',
+            'Sunroom and Four-Season Room Builds',
+            'Bump-Out and Garage Conversion Planning',
+        ]);
+
+        $intentPool = $serviceIntents[$serviceType] ?? ['Local Remodeling Planning and Build'];
+        $intent = $intentPool[($seed >> 3) % count($intentPool)];
+        $trust = $trustPhrases[($seed >> 5) % count($trustPhrases)];
+        $shortLabel = $service['shortLabel'];
+        $label = $service['label'];
+
+        $baseVariants = [
+            "{$city} {$label}",
+            "{$city} {$label} Contractor",
+            "{$city} {$shortLabel} Renovation",
+            "{$city} {$label} Experts",
+            "{$city} {$shortLabel} Remodeler",
+            "{$city} {$label} Team",
+        ];
+        $modifierPool = array_values(array_unique(array_merge(
+            [$context, $intent, $trust],
+            $intentPool,
+            $trustPhrases,
+            self::compactTitleModifiers(),
+        )));
+        $title = self::composeTitleWithinBudget($baseVariants[$seed % count($baseVariants)], $modifierPool, $seed >> 3);
+
+        $descriptionOpeners = [
+            'kitchen-remodeling' => [
+                "%s, IL kitchen remodeling: custom cabinets, quartz & granite countertops, IKEA installs, and full gut renovations.",
+                "Remodeling your %s, IL kitchen? We plan layouts, cabinets, counters, lighting, and appliances around how you actually cook and gather.",
+                "%s, IL kitchen renovations from refreshed cabinets and counters to full open-concept gut remodels, handled by one dedicated project lead.",
+            ],
+            'bathroom-remodeling' => [
+                "%s, IL bathroom remodeling: walk-in showers, tub-to-shower conversions, tile, vanities, and full renovations.",
+                "Updating a %s, IL bathroom? We handle waterproofing, tile, fixtures, vanities, and accessible layouts with clean, careful workmanship.",
+                "%s, IL bathroom renovations from quick refreshes to full gut remodels with curbless showers, double vanities, and heated floors.",
+            ],
+            'home-remodeling' => [
+                "%s, IL whole-home remodeling: room additions, open floor plans, kitchens, baths, and basements.",
+                "Renovating a whole %s, IL home? We sequence multi-room projects, manage layout changes, and keep one point of contact throughout.",
+                "%s, IL whole-home renovations that coordinate kitchens, baths, basements, and additions into one clear, scheduled build.",
+            ],
+            'basement-remodeling' => [
+                "%s, IL basement finishing & remodeling: home theaters, guest suites, rec rooms, wet bars, and egress windows.",
+                "Finishing a %s, IL basement? We handle egress, moisture, layout, and utilities to turn unused space into comfortable living areas.",
+                "%s, IL basement remodels with code-aware planning for rec rooms, guest suites, bathrooms, and wet bars.",
+            ],
+            'home-additions' => [
+                "%s, IL home additions: room additions, master suite additions, sunrooms, and second-story expansions.",
+                "Adding space to your %s, IL home? We plan structural, framing, and utility work for room additions, suites, and bump-outs.",
+                "%s, IL home additions from sunrooms and bump-outs to full second-story expansions, planned and permitted end to end.",
+            ],
+        ];
+        $openerPool = $descriptionOpeners[$serviceType] ?? [$service['descriptionTemplate']];
+        $opener = sprintf($openerPool[($seed >> 7) % count($openerPool)], $city);
+        $closer = " {$reviewCount} 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.";
+        $description = $opener . $closer;
+        if ($geoSnippet !== '') {
+            $description .= ' ' . $geoSnippet;
+        }
+        $description = \Illuminate\Support\Str::limit($description, 320, '');
+
+        return [
+            'title' => $title,
+            'description' => $description,
+            'service' => $service,
+        ];
+    }
+
+    protected static function buildAreaGeoSnippet(AreaServed $area, bool $includeZip): string
+    {
+        $parts = [];
+
+        if (filled($area->landmarks)) {
+            $parts[] = 'Local coverage includes ' . \Illuminate\Support\Str::limit((string) $area->landmarks, 90);
+        }
+
+        if ($includeZip) {
+            $zips = array_slice($area->postalCodes(), 0, 3);
+            if (! empty($zips)) {
+                $parts[] = 'Common ZIP coverage: ' . implode(', ', $zips) . '.';
+            }
+        }
+
+        // Fallback: guarantee every snippet carries a unique local token by
+        // naming the nearest served city when no landmarks/ZIPs are available.
+        if (empty($parts)) {
+            $nearby = $area->nearestCities(2)
+                ->pluck('city')
+                ->filter()
+                ->take(2)
+                ->implode(' and ');
+            if ($nearby !== '') {
+                $parts[] = "Also serving nearby {$nearby}.";
+            }
+        }
+
+        return trim(implode(' ', $parts));
+    }
+
+    protected static function composeTitleWithinBudget(string $base, array $modifiers, int $seed, int $maxLen = 62): string
+    {
+        $base = trim($base);
+        $modifiers = array_values(array_unique(array_filter(array_map('trim', $modifiers), fn ($m) => $m !== '')));
+
+        // Keep only modifiers that fit the SERP display budget, then choose
+        // deterministically across the full fitting set so uniqueness is spread
+        // rather than clustering on the first short phrase that fits.
+        $fitting = array_values(array_filter(
+            $modifiers,
+            fn ($m) => mb_strlen($base . ' | ' . $m) <= $maxLen
+        ));
+
+        if (empty($fitting)) {
+            return $base;
+        }
+
+        return $base . ' | ' . $fitting[$seed % count($fitting)];
+    }
+
+    /**
+     * Short, broadly-applicable title modifiers (<= ~20 chars) that fit even
+     * long city + service bases, widening the deterministic choice set so
+     * titles stay unique within the SERP length budget.
+     *
+     * @return array<int, string>
+     */
+    protected static function compactTitleModifiers(): array
+    {
+        return [
+            'Licensed & Insured',
+            'Family-Owned',
+            '5-Star Rated',
+            'Free Estimates',
+            'Local Pros',
+            'Insured Crew',
+            'Warranty-Backed',
+            'Fixed-Price Quotes',
+            'Clean Job Sites',
+            'On-Schedule Builds',
+            'No-Pressure Quotes',
+            '40+ Years Experience',
+            'Trusted Local Team',
+            'Free In-Home Quote',
+        ];
+    }
+
+    protected static function buildAreaTitleContext(AreaServed $area, int $seed): string
+    {
+        $nearbyCity = $area->nearestCities(1)->first()?->city;
+        if (is_string($nearbyCity) && $nearbyCity !== '') {
+            return "Near {$nearbyCity}";
+        }
+
+        $landmark = self::buildLandmarkTitleToken((string) ($area->landmarks ?? ''));
+        if ($landmark !== '') {
+            return "Near {$landmark}";
+        }
+
+        $permitTokens = [
+            'Permit-Aware Planning',
+            'Code-Conscious Renovation',
+            'Planning Through Final Walkthrough',
+            'Detailed Scope and Milestone Planning',
+            'Design-Build Coordination',
+            'Schedule-Driven Project Delivery',
+            'Transparent Project Planning',
+            'Local Remodel Process Expertise',
+        ];
+
+        return $permitTokens[$seed % count($permitTokens)];
+    }
+
+    protected static function buildLandmarkTitleToken(string $landmarks): string
+    {
+        if ($landmarks === '') {
+            return '';
+        }
+
+        $candidate = trim((string) preg_split('/[.;,|]/', $landmarks)[0]);
+        if ($candidate === '') {
+            return '';
+        }
+
+        $candidate = Str::of($candidate)
+            ->replaceMatches('/\s+/', ' ')
+            ->trim()
+            ->title()
+            ->toString();
+
+        return Str::limit($candidate, 28, '');
     }
 
     /**
@@ -607,20 +993,28 @@ class SeoService
      */
     protected static function getCoverImageForType(string $projectType): ?string
     {
+        // Prefer the cover image of a FEATURED project (kept deterministic via
+        // orderBy id so the OG/share image is stable for caching/previews),
+        // then fall back to any published project's cover of this type.
         $image = \App\Models\ProjectImage::query()
             ->where('is_cover', true)
-            ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('project_type', $projectType))
+            ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('is_featured', true)->where('project_type', $projectType))
             ->orderBy('id')
-            ->first();
+            ->first()
+            ?? \App\Models\ProjectImage::query()
+                ->where('is_cover', true)
+                ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('project_type', $projectType))
+                ->orderBy('id')
+                ->first();
 
         if ($image?->url) {
             return $image->url;
         }
 
         if (in_array($projectType, ['basement', 'addition'], true)) {
-            $aiUrl = app(AiContentService::class)->chooseServiceFallbackImageUrl($projectType);
-            if (is_string($aiUrl) && $aiUrl !== '') {
-                return $aiUrl;
+            $curated = \App\Support\ServiceImages::firstUrl($projectType);
+            if (is_string($curated) && $curated !== '') {
+                return $curated;
             }
         }
 

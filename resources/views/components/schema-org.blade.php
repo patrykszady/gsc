@@ -1,9 +1,32 @@
 @php
 use App\Models\Testimonial;
 use App\Models\AreaServed;
+use App\Models\ProjectImage;
 
 $reviewCount = Testimonial::count();
 $areas = AreaServed::pluck('city')->toArray();
+
+// Curated gallery for the LocalBusiness entity image. Google frequently sources
+// the SERP result thumbnail from the business `image` — actual remodeling photos
+// from our FEATURED projects represent the company far better than the logo or
+// owner headshot. Provide several (Google accepts an array and may choose the
+// best per query/format). Cached 1h; falls back to the owner photo only when no
+// project covers exist at all.
+$businessImages = cache()->remember('schema:business_images', 3600, function () {
+    return ProjectImage::curatedCovers(null, 6)
+        ->map(fn ($img) => $img->url)
+        ->filter()
+        ->values()
+        ->all();
+});
+if (empty($businessImages)) {
+    $businessImages = [asset('images/greg-patryk.jpg')];
+}
+
+// Raster logo for Organization/logo structured data. Google's logo guidelines
+// require a crawlable raster (PNG/JPG) — an SVG can be ignored — so we point the
+// machine-readable logo at the PNG app icon while the UI still uses the SVG.
+$logoPng = asset('android-chrome-512x512.png');
 
 // Get featured testimonials for embedding in LocalBusiness schema
 // Google requires reviews to be nested in the parent entity, not standalone
@@ -41,27 +64,26 @@ $localBusiness = [
     'url' => 'https://gs.construction',
     'logo' => [
         '@type' => 'ImageObject',
-        'url' => asset('images/logo.svg'),
-        'contentUrl' => asset('images/logo.svg'),
+        'url' => $logoPng,
+        'contentUrl' => $logoPng,
     ],
-    'image' => [
+    'image' => array_map(fn ($url) => [
         '@type' => 'ImageObject',
-        'url' => asset('images/greg-patryk.jpg'),
-        'contentUrl' => asset('images/greg-patryk.jpg'),
-        'width' => 1200,
-        'height' => 800,
+        'url' => $url,
+        'contentUrl' => $url,
         'caption' => 'GS Construction — Kitchen & Bathroom Remodeling in Chicago Suburbs',
-    ],
+    ], $businessImages),
     'telephone' => '+1-224-735-4200',
     'email' => 'crew@gs.construction',
     'foundingDate' => '2015',
     'foundingLocation' => [
         '@type' => 'Place',
-        'name' => 'Arlington Heights, IL',
+        'name' => 'Prospect Heights, IL',
         'address' => [
             '@type' => 'PostalAddress',
-            'addressLocality' => 'Arlington Heights',
+            'addressLocality' => 'Prospect Heights',
             'addressRegion' => 'IL',
+            'postalCode' => '60070',
             'addressCountry' => 'US',
         ],
     ],
@@ -90,14 +112,15 @@ $localBusiness = [
     ])),
     'address' => [
         '@type' => 'PostalAddress',
-        'addressLocality' => 'Arlington Heights',
+        'addressLocality' => 'Prospect Heights',
         'addressRegion' => 'IL',
+        'postalCode' => '60070',
         'addressCountry' => 'US',
     ],
     'geo' => [
         '@type' => 'GeoCoordinates',
-        'latitude' => 42.0884,
-        'longitude' => -87.9806,
+        'latitude' => 42.0953,
+        'longitude' => -87.9376,
     ],
     'areaServed' => array_map(fn($city) => [
         '@type' => 'City',
@@ -229,8 +252,8 @@ $organization = [
     'logo' => [
         '@type' => 'ImageObject',
         '@id' => 'https://gs.construction/#logo',
-        'url' => asset('images/logo.svg'),
-        'contentUrl' => asset('images/logo.svg'),
+        'url' => $logoPng,
+        'contentUrl' => $logoPng,
         'caption' => 'GS Construction',
     ],
     'image' => ['@id' => 'https://gs.construction/#logo'],

@@ -4,7 +4,6 @@ namespace App\Livewire;
 
 use App\Models\Project;
 use App\Models\ProjectImage;
-use App\Services\AiContentService;
 use App\Services\SeoService;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -46,9 +45,9 @@ class ServicesPage extends Component
         }
 
         if (in_array($projectType, ['basement', 'addition'], true)) {
-            $aiUrl = app(AiContentService::class)->chooseServiceFallbackImageUrl($projectType);
-            if (is_string($aiUrl) && $aiUrl !== '') {
-                return $aiUrl;
+            $curated = \App\Support\ServiceImages::firstUrl($projectType);
+            if (is_string($curated) && $curated !== '') {
+                return $curated;
             }
         }
 
@@ -133,6 +132,19 @@ class ServicesPage extends Component
                     'Room & master suite additions',
                     'Sunrooms & four-season rooms',
                     'Second-story expansions',
+                ],
+            ],
+            [
+                'slug' => 'mudroom-remodeling',
+                'title' => 'Mudroom & Laundry',
+                'projectType' => 'mudroom',
+                'description' => 'Tame the daily clutter with a custom mudroom or laundry/mudroom combo. Built-in lockers, benches, cubbies, drop zones, durable tile floors, and utility sinks — designed around how your family actually moves through your home.',
+                'image' => $this->getCoverImageForType('mudroom'),
+                'gradient' => 'from-teal-500 to-cyan-600',
+                'features' => [
+                    'Built-in lockers, benches & cubbies',
+                    'Combined laundry/mudroom layouts',
+                    'Durable tile floors & utility sinks',
                 ],
             ],
         ];

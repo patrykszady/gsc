@@ -29,6 +29,9 @@
         'kitchen-remodeling' => [35000, 120000],
         'bathroom-remodeling' => [18000, 60000],
         'home-remodeling' => [50000, 250000],
+        'basement-remodeling' => [25000, 90000],
+        'home-additions' => [60000, 275000],
+        'mudroom-remodeling' => [8000, 25000],
         default => [25000, 100000],
     };
 

@@ -13,14 +13,18 @@ $services = [
     'kitchen-remodeling' => ['name' => 'Kitchen Remodeling', 'route' => 'services.kitchen'],
     'bathroom-remodeling' => ['name' => 'Bathroom Remodeling', 'route' => 'services.bathroom'],
     'home-remodeling' => ['name' => 'Home Remodeling', 'route' => 'services.home'],
+    'basement-remodeling' => ['name' => 'Basement Remodeling', 'route' => 'services.basement'],
+    'home-additions' => ['name' => 'Home Additions', 'route' => 'services.additions'],
+    'mudroom-remodeling' => ['name' => 'Mudroom & Laundry', 'route' => 'services.mudroom'],
 ];
 
 // Filter out current service
-$otherServices = collect($services)->filter(fn($s, $key) => $key !== $currentService)->take(3);
+$otherServices = collect($services)->filter(fn($s, $key) => $key !== $currentService);
 
 // Get related projects if not provided
 if ($projects->isEmpty()) {
     $projects = Project::where('is_published', true)
+    ->with(['images' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
         ->orderBy('is_featured', 'desc')
         ->orderBy('completed_at', 'desc')
         ->take(4)
@@ -64,15 +68,23 @@ if ($projects->isEmpty()) {
                 </h3>
                 <ul class="mt-4 space-y-3">
                     @foreach($projects->take(2) as $project)
+                    @php
+                        $recentImage = $project->images->first();
+                        $recentImageUrl = $recentImage
+                            ? ($recentImage->getWebpThumbnailUrl('thumb')
+                                ?? $recentImage->getThumbnailUrl('thumb')
+                                ?? $recentImage->url)
+                            : null;
+                    @endphp
                     <li>
                         <a 
                             href="{{ route('projects.index', ['type' => $project->project_type]) }}"
                             wire:navigate
                             class="group relative z-10 flex items-center gap-3 text-zinc-600 transition hover:text-sky-600 dark:text-zinc-400 dark:hover:text-sky-400"
                         >
-                            @if($project->images->first())
+                            @if(is_string($recentImageUrl) && $recentImageUrl !== '')
                             <img 
-                                src="{{ $project->images->first()->getThumbnailUrl('thumb') }}" 
+                                src="{{ $recentImageUrl }}" 
                                 alt="{{ $project->title }}"
                                 width="40"
                                 height="40"

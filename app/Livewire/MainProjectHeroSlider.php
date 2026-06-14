@@ -4,7 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Models\ProjectImage;
-use App\Services\AiContentService;
+use App\Support\ServiceImages;
 use Livewire\Component;
 
 class MainProjectHeroSlider extends Component
@@ -29,12 +29,9 @@ class MainProjectHeroSlider extends Component
 
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
-        $query = ProjectImage::query()
-            ->where('is_cover', true)
-            ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-            ->when($excludeImageId, fn ($q) => $q->where('id', '!=', $excludeImageId));
-
-        return $query->with('project')->inRandomOrder()->first();
+        // Sliders only surface featured images from featured projects (with a
+        // graceful fallback to any published cover when none are featured).
+        return ProjectImage::curatedCover($projectType, $excludeImageId);
     }
 
     protected function randomCoverUrlForType(string $projectType, ?int $excludeImageId = null): ?string
@@ -60,12 +57,9 @@ class MainProjectHeroSlider extends Component
     {
         $fallback = $this->getFallbackForType($type);
 
-        $images = ProjectImage::query()
-            ->where('is_cover', true)
-            ->whereHas('project', fn ($q) => $q->published()->ofType($type))
-            ->inRandomOrder()
-            ->limit($count)
-            ->get()
+        // Featured projects' cover images first; pads with stock only if the
+        // curated pool is smaller than the requested slide count.
+        $images = ProjectImage::curatedCovers($type, $count)
             ->map(fn ($image) => $this->buildImageData($image))
             ->toArray();
 
@@ -115,10 +109,27 @@ class MainProjectHeroSlider extends Component
     }
 
     /**
-     * Build fallback image data (Unsplash images support URL params for sizing).
+     * Build fallback image data. Unsplash URLs support query-param sizing;
+     * self-hosted curated service images (basement/addition) are served at a
+     * single size and get an honest "representative" alt.
      */
-    protected function buildFallbackImageData(string $url): array
+    protected function buildFallbackImageData(string $url, ?string $alt = null): array
     {
+        $city = $this->area?->city;
+
+        // Self-hosted curated service stock image: one size, honest alt.
+        if (str_contains($url, '/images/services/')) {
+            return [
+                'url' => $url,
+                'hero' => $url,
+                'medium' => $url,
+                'small' => $url,
+                'thumb' => $url,
+                'alt' => $alt ?? ServiceImages::altForUrl($url, $city) ?? 'Home remodeling project by GS Construction',
+                'srcset' => '',
+            ];
+        }
+
         // For Unsplash, we can use URL params for different sizes
         $thumbUrl = str_replace(['w=1920', 'q=80'], ['w=50', 'q=30'], $url);
         $smallUrl = str_replace(['w=1920', 'q=80'], ['w=300', 'q=75'], $url);
@@ -131,7 +142,7 @@ class MainProjectHeroSlider extends Component
             'medium' => $mediumUrl,
             'small' => $smallUrl,
             'thumb' => $thumbUrl,
-            'alt' => 'Home remodeling project by GS Construction',
+            'alt' => $alt ?? 'Home remodeling project by GS Construction',
             'srcset' => "{$smallUrl} 300w, {$mediumUrl} 600w, {$heroUrl} 1200w, {$url} 1920w",
         ];
     }
@@ -140,10 +151,13 @@ class MainProjectHeroSlider extends Component
     {
         $type = strtolower(trim($type));
 
+        // Basement & additions have no real project photos yet — use curated,
+        // self-hosted "representative" stock that actually depicts the work
+        // (never borrow an unrelated kitchen/bath cover).
         if (in_array($type, ['basement', 'addition'], true)) {
-            $aiUrl = app(AiContentService::class)->chooseServiceFallbackImageUrl($type);
-            if (is_string($aiUrl) && $aiUrl !== '') {
-                return $aiUrl;
+            $curated = ServiceImages::randomUrl($type);
+            if ($curated !== null) {
+                return $curated;
             }
         }
 

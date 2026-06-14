@@ -45,6 +45,18 @@ Artisan::command('seo:gbp-metrics-sync
 // Schedule sitemap regeneration daily
 Schedule::command('sitemap:generate')->daily();
 
+// GEO/AI: regenerate AI-crawler feeds daily so llms.txt, llms-full.txt and the
+// product feed stay fresh for ChatGPT/Gemini/Perplexity crawlers as content changes.
+Schedule::command('geo:llms-txt')->dailyAt('01:40')
+    ->appendOutputTo(storage_path('logs/geo-feeds.log'))
+    ->onFailure(fn () => logger()->error('Scheduled geo:llms-txt failed'));
+Schedule::command('geo:llms-txt --full')->dailyAt('01:42')
+    ->appendOutputTo(storage_path('logs/geo-feeds.log'))
+    ->onFailure(fn () => logger()->error('Scheduled geo:llms-txt --full failed'));
+Schedule::command('geo:feed')->dailyAt('01:44')
+    ->appendOutputTo(storage_path('logs/geo-feeds.log'))
+    ->onFailure(fn () => logger()->error('Scheduled geo:feed failed'));
+
 // Hive (hive.contractors) project zip-counts sync — feeds the homepage map
 Schedule::command('hive:sync')->dailyAt('02:00')
     ->appendOutputTo(storage_path('logs/schedule.log'))

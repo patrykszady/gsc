@@ -11,6 +11,8 @@
                 'kitchen-remodeling' => 'Kitchen Remodeling',
                 'bathroom-remodeling' => 'Bathroom Remodeling',
                 'home-remodeling' => 'Home Remodeling',
+                'basement-remodeling' => 'Basement Remodeling',
+                'home-additions' => 'Home Additions',
             ];
             $breadcrumbItems[] = ['name' => 'Services', 'url' => $area->pageUrl('services')];
             $breadcrumbItems[] = ['name' => $serviceNames[$service] ?? ucfirst($service)];
@@ -68,7 +70,7 @@
                             <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
                         </svg>
                         @php
-                            $serviceLabels = ['kitchen-remodeling' => 'Kitchens', 'bathroom-remodeling' => 'Bathrooms', 'home-remodeling' => 'Home Remodeling'];
+                            $serviceLabels = ['kitchen-remodeling' => 'Kitchens', 'bathroom-remodeling' => 'Bathrooms', 'home-remodeling' => 'Home Remodeling', 'basement-remodeling' => 'Basements', 'home-additions' => 'Additions'];
                         @endphp
                         <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $serviceLabels[$service] ?? ucfirst($service) }}</span>
                     </li>
@@ -88,6 +90,66 @@
         @case('home')
             {{-- Area Home Page --}}
             @php
+                $toneIndex = abs(crc32($area->slug)) % 3;
+                $focusSets = [
+                    ['kitchen remodeling', 'bathroom remodeling', 'home remodeling'],
+                    ['home renovation', 'kitchen renovation', 'bathroom renovation'],
+                    ['remodeling contractor', 'kitchen and bath remodeling', 'whole-home remodeling'],
+                ];
+                $focus = $focusSets[$toneIndex];
+
+                $nearbyFaqCities = $area->nearestCities(2)->pluck('city')->implode(' and ');
+                $homePostalCodes = array_values(array_slice($area->postalCodes(), 0, 10));
+                $landmarkLine = filled($area->landmarks)
+                    ? 'Local focus: ' . \Illuminate\Support\Str::limit((string) $area->landmarks, 140)
+                    : null;
+                $permitLine = filled($area->permit_notes)
+                    ? 'Permit note: ' . \Illuminate\Support\Str::limit((string) $area->permit_notes, 120)
+                    : null;
+
+                $headings = [
+                    $area->city . ' Home Remodeling Contractor',
+                    $area->city . ' Remodeling Contractor for Kitchen, Bath & Home',
+                    $area->city . ' Kitchen, Bathroom & Home Renovation Team',
+                ];
+                $subheadings = [
+                    'Professional remodeling services for ' . $area->city . ' homeowners.',
+                    'Family-run remodeling for kitchens, bathrooms, and whole-home projects in ' . $area->city . '.',
+                    'Plan and build your next remodel in ' . $area->city . ' with clear scope, timeline, and pricing.',
+                ];
+                $intentIntros = [
+                    "Homeowners in {$area->city} search most for {$focus[0]}, {$focus[1]}, and {$focus[2]}. Use the links below to jump directly to the exact service page you need.",
+                    "This page is structured around real {$area->city} search intent: {$focus[0]}, {$focus[1]}, and {$focus[2]}.",
+                    "If you're comparing {$focus[0]} and {$focus[1]} in {$area->city}, start with the service links below for scope, timeline, and project examples.",
+                ];
+
+                $homeFaqs = [
+                    ['question' => "What remodeling services do you offer in {$area->city}?", 'answer' => "We provide kitchen remodeling, bathroom remodeling, basement finishing, home additions, and full home renovation services in {$area->city}, IL."],
+                    ['question' => "Do you provide free estimates in {$area->city}?", 'answer' => "Yes. We offer free in-home consultations and written estimates with clear scope, timeline, and pricing guidance for {$area->city} homeowners."],
+                    ['question' => "Are you licensed and insured for {$area->city} projects?", 'answer' => "Yes. GS Construction is licensed and insured, and we manage local permitting and code-compliance steps required for your remodel."],
+                ];
+
+                if ($nearbyFaqCities !== '') {
+                    $homeFaqs[] = [
+                        'question' => "Do you also work near {$area->city}?",
+                        'answer' => "Yes. In addition to {$area->city}, we frequently serve nearby communities such as {$nearbyFaqCities}.",
+                    ];
+                }
+
+                if ($permitLine !== null) {
+                    $homeFaqs[] = [
+                        'question' => "Do you handle permitting in {$area->city}?",
+                        'answer' => "Yes. We coordinate permit steps and inspections required for remodeling projects in {$area->city}. {$permitLine}",
+                    ];
+                }
+
+                $homeSeo = [
+                    'heading' => $headings[$toneIndex],
+                    'subheading' => $subheadings[$toneIndex],
+                    'intent_intro' => trim($intentIntros[$toneIndex] . ' ' . ($landmarkLine ?? '')),
+                    'faqs' => $homeFaqs,
+                ];
+
                 $homeSlides = [
                     [
                         'title' => 'Kitchens',
@@ -117,8 +179,8 @@
                 <livewire:main-project-hero-slider 
                     :slides="$homeSlides"
                     :area="$area"
-                    heading="{{ $area->city }} Kitchen & Bathroom Remodeling"
-                    subheading="Professional remodeling services for {{ $area->city }} homeowners"
+                    heading="{{ $homeSeo['heading'] }}"
+                    subheading="{{ $homeSeo['subheading'] }}"
                     secondary-cta-text="Schedule Free Consult"
                     :secondary-cta-url="$area->pageUrl('contact')"
                 />
@@ -126,22 +188,48 @@
 
             <x-city-reviews-badge :area="$area" />
 
+            <section class="bg-zinc-50 py-8 dark:bg-zinc-800/40">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
+                        Remodeling Services Homeowners Search for in {{ $area->city }}
+                    </h2>
+                    <p class="mt-2 max-w-4xl text-sm text-zinc-600 dark:text-zinc-300">
+                        {{ $homeSeo['intent_intro'] }}
+                    </p>
+                    <div class="mt-5 flex flex-wrap gap-3">
+                        <a href="{{ $area->serviceUrl('kitchen-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Kitchen Remodeling Contractor</a>
+                        <a href="{{ $area->serviceUrl('bathroom-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Bathroom Remodeling</a>
+                        <a href="{{ $area->serviceUrl('home-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Home Remodeling</a>
+                        <a href="{{ $area->serviceUrl('basement-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Basement Remodeling</a>
+                        <a href="{{ $area->serviceUrl('home-additions') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Home Additions</a>
+                    </div>
+                    @if(!empty($homePostalCodes))
+                        <div class="mt-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">ZIP codes we commonly serve near {{ $area->city }}</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach($homePostalCodes as $zip)
+                                    <a href="{{ url('/service-area/' . $zip) }}" wire:navigate class="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600">{{ $zip }}</a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </section>
+
             {{-- Unique per-city content (renders only when populated in DB).
                  Provides genuine differentiation between area pages — critical to
                  avoid Google's "duplicate content / thin local lander" penalty. --}}
             @if($area->hasUniqueContent() || filled($area->landmarks) || filled($area->permit_notes))
             @php
-                // Random project image slider for the city section (left column).
-                // Mirror layout of the about-section (text/right) — image lives on the LEFT here.
-                $citySliderImages = \App\Models\ProjectImage::query()
-                    ->whereHas('project')
-                    ->select('project_images.*')
-                    ->join(
-                        \DB::raw('(SELECT MIN(id) as min_id FROM project_images GROUP BY project_id ORDER BY RAND() LIMIT 6) as unique_projects_city'),
-                        'project_images.id', '=', 'unique_projects_city.min_id'
-                    )
-                    ->inRandomOrder()
-                    ->get();
+                // Prefer genuinely local project photos (projects whose location
+                // resolves to this city) — a strong "real local work" signal for
+                // both Google and AI Overviews. Fall back to cover photos of our
+                // featured projects when this city has no matched projects yet.
+                $citySliderImages = $area->localProjectImages(6);
+                $hasLocalProjects = $citySliderImages->isNotEmpty();
+                if (! $hasLocalProjects) {
+                    $citySliderImages = \App\Models\ProjectImage::curatedCovers(null, 6);
+                }
             @endphp
             <section class="overflow-hidden bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} remodeling">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -227,6 +315,11 @@
                                     @endif
                                 </div>
                             @endif
+                            @if($hasLocalProjects)
+                                <p class="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                                    Recent remodeling projects we completed in {{ $area->city }}, IL.
+                                </p>
+                            @endif
                         </div>
 
                         {{-- RIGHT: city copy --}}
@@ -311,6 +404,10 @@
             @endif
 
             <livewire:contact-section :area="$area" />
+
+            @if(!empty($homeSeo['faqs']))
+                <x-faq-section :faqs="$homeSeo['faqs']" :heading="'Remodeling FAQ in ' . $area->city" />
+            @endif
             @break
 
         @case('contact')
@@ -729,6 +826,65 @@
                         ->take(6)
                         ->get();
                 }
+
+                $serviceTone = abs(crc32($area->slug . '|' . $config['urlSlug'])) % 3;
+                $nearbyList = $nearbyAreas->take(3)->pluck('city')->implode(', ');
+                $servicePostalCodes = array_values(array_slice($area->postalCodes(), 0, 10));
+                $landmarkSnippet = filled($area->landmarks)
+                    ? \Illuminate\Support\Str::limit((string) $area->landmarks, 140)
+                    : null;
+                $permitSnippet = filled($area->permit_notes)
+                    ? \Illuminate\Support\Str::limit((string) $area->permit_notes, 120)
+                    : null;
+
+                $descriptionTail = match ($serviceTone) {
+                    0 => "This {$area->city} page focuses on practical planning, realistic budgets, and finish decisions for {$config['label']} projects.",
+                    1 => "Homeowners in {$area->city} typically compare timeline, scope, and permit implications first; this page addresses those points directly.",
+                    default => "For {$config['label']} in {$area->city}, we prioritize clear scope, clean jobsite execution, and transparent milestone planning.",
+                };
+
+                if ($landmarkSnippet) {
+                    $descriptionTail .= ' Local context: ' . $landmarkSnippet . '.';
+                }
+                $config['description'] .= ' ' . $descriptionTail;
+
+                $config['contentSections'] = [
+                    [
+                        'heading' => "Planning {$config['label']} in {$area->city}",
+                        'body' => "Most {$area->city} projects start with scope alignment: what to renovate now, what to phase later, and which finishes deliver the highest daily impact. We build plans around your home layout, timeline, and budget priorities.",
+                    ],
+                    [
+                        'heading' => "Execution and permitting in {$area->city}",
+                        'body' => trim("We handle sequencing, trade coordination, and code-compliance requirements for {$config['label']} projects in {$area->city}. " . ($permitSnippet ? 'Permit context: ' . $permitSnippet . '.' : 'Permit requirements are reviewed before construction starts.')),
+                    ],
+                ];
+
+                if ($nearbyList !== '') {
+                    $config['contentSections'][] = [
+                        'heading' => "Nearby service coverage from {$area->city}",
+                        'body' => "In addition to {$area->city}, we regularly complete {$config['label']} projects in nearby communities including {$nearbyList}. This helps keep crews, vendors, and scheduling logistics efficient across the area.",
+                    ];
+                }
+
+                $dynamicFaqs = [
+                    [
+                        'question' => "How do you scope {$config['label']} projects in {$area->city}?",
+                        'answer' => "We begin with an in-home consultation, define must-have vs. optional scope, and provide a phased plan when needed so {$area->city} homeowners can move forward with confidence.",
+                    ],
+                    [
+                        'question' => "Can you coordinate design and build decisions for {$area->city} projects?",
+                        'answer' => "Yes. We help align layout, material, and sequencing decisions early so your {$config['label']} project in {$area->city} moves efficiently from planning to final walkthrough.",
+                    ],
+                ];
+
+                if ($nearbyList !== '') {
+                    $dynamicFaqs[] = [
+                        'question' => "Do you serve areas near {$area->city} for {$config['label']}?",
+                        'answer' => "Yes. We also support {$config['label']} projects in nearby communities such as {$nearbyList}.",
+                    ];
+                }
+
+                $config['faqs'] = array_merge($config['faqs'], $dynamicFaqs);
             @endphp
             
             {{-- Service Schema for rich results --}}
@@ -741,6 +897,7 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <livewire:main-project-hero-slider 
                     :project-type="$config['projectType']"
+                    :area="$area"
                     :slides="[
                         [
                             'heading' => $config['heading'],
@@ -780,6 +937,32 @@
                  are interpolated per (city, service) so each URL has unique prose. --}}
             @include('partials.area-unique-content', ['area' => $area, 'context' => $config['urlSlug']])
 
+            <section class="bg-zinc-50 py-8 dark:bg-zinc-800/40">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $config['label'] }} Coverage Around {{ $area->city }}</h2>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">We provide {{ strtolower($config['label']) }} in {{ $area->city }} and nearby communities to keep schedules, crews, and permitting coordination efficient.</p>
+
+                    @if(!empty($servicePostalCodes))
+                        <div class="mt-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Local ZIP coverage</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach($servicePostalCodes as $zip)
+                                    <a href="{{ url('/service-area/' . $zip) }}" wire:navigate class="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $zip }}</a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="mt-4 flex flex-wrap gap-3">
+                        @foreach($nearbyAreas->take(6) as $nearbyArea)
+                            <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate class="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">
+                                {{ $config['label'] }} in {{ $nearbyArea->city }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </section>
+
             {{-- Long-Form Content Sections (SEO depth) --}}
             @if(!empty($config['contentSections']))
             <section class="bg-white py-16 sm:py-20 dark:bg-zinc-900">
@@ -806,7 +989,7 @@
             </div>
 
             {{-- Projects for this service type --}}
-            <livewire:projects-grid :area="$area" :type="$config['projectType']" />
+            <livewire:projects-grid :area="$area" :type="$config['projectType']" :hide-filters="true" :hide-when-empty="true" />
 
             {{-- Testimonials --}}
             <livewire:testimonials-section :area="$area" />
@@ -821,7 +1004,13 @@
                         More Remodeling Services in {{ $area->city }}
                     </h2>
                     <div class="flex flex-wrap gap-3">
-                        @foreach(['kitchen-remodeling' => 'Kitchen Remodeling', 'bathroom-remodeling' => 'Bathroom Remodeling', 'home-remodeling' => 'Home Remodeling'] as $slug => $label)
+                        @foreach([
+                            'kitchen-remodeling' => 'Kitchen Remodeling',
+                            'bathroom-remodeling' => 'Bathroom Remodeling',
+                            'home-remodeling' => 'Home Remodeling',
+                            'basement-remodeling' => 'Basement Remodeling',
+                            'home-additions' => 'Home Additions',
+                        ] as $slug => $label)
                             @if($config['urlSlug'] !== $slug)
                             <a href="{{ $area->serviceUrl($slug) }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
                                 {{ $area->city }} {{ $label }}

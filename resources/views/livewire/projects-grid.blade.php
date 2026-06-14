@@ -1,3 +1,18 @@
+@php
+    // Service-aligned labels + matching service-page routes for filter buttons
+    // and the empty state (so a type with no posted projects links to its service).
+    $filterMeta = [
+        'kitchen' => ['label' => 'Kitchen', 'route' => 'services.kitchen'],
+        'bathroom' => ['label' => 'Bathroom', 'route' => 'services.bathroom'],
+        'home-remodel' => ['label' => 'Home Remodeling', 'route' => 'services.home'],
+        'basement' => ['label' => 'Basement', 'route' => 'services.basement'],
+        'addition' => ['label' => 'Additions', 'route' => 'services.additions'],
+        'mudroom' => ['label' => 'Mudroom & Laundry', 'route' => 'services.mudroom'],
+    ];
+@endphp
+@if($hideWhenEmpty && $type && $projects->isEmpty())
+    <div wire:key="projects-grid-hidden"></div>
+@else
 <div
     class="relative isolate bg-white pt-2 pb-8 sm:pt-4 sm:pb-12 dark:bg-zinc-900"
     @if($responsivePerPage)
@@ -22,6 +37,9 @@
                     'kitchen' => 'Kitchen',
                     'bathroom' => 'Bathroom',
                     'home-remodel' => 'Home Remodeling',
+                    'basement' => 'Basement',
+                    'addition' => 'Additions',
+                    'mudroom' => 'Mudroom & Laundry',
                 ];
                 $typeLabel = $type ? ($typeLabels[$type] ?? ucfirst($type)) : null;
             @endphp
@@ -86,7 +104,7 @@
                 wire:click="filterByType('{{ $projectType }}')"
                 class="rounded-full px-4 py-2 text-sm font-medium transition {{ $type === $projectType ? 'bg-sky-700 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}"
             >
-                {{ ucfirst($projectType) }}
+                {{ $filterMeta[$projectType]['label'] ?? ucfirst($projectType) }}
             </button>
             @endforeach
         </div>
@@ -99,8 +117,23 @@
             class="relative"
         >
             @if($projects->isEmpty())
+                @php $emptyService = $type ? ($filterMeta[$type] ?? null) : null; @endphp
                 <div class="mt-10 py-12 text-center">
-                    <p class="text-lg text-zinc-500 dark:text-zinc-400">No projects found.</p>
+                    @if($emptyService && \Illuminate\Support\Facades\Route::has($emptyService['route']))
+                        <p class="text-lg text-zinc-500 dark:text-zinc-400">
+                            We haven't posted {{ strtolower($emptyService['label']) }} projects online yet — but it's one of our services.
+                        </p>
+                        <a
+                            href="{{ route($emptyService['route']) }}"
+                            wire:navigate
+                            class="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800"
+                        >
+                            Explore our {{ $emptyService['label'] }} services
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </a>
+                    @else
+                        <p class="text-lg text-zinc-500 dark:text-zinc-400">No projects found.</p>
+                    @endif
                 </div>
             @else
                 <div
@@ -175,6 +208,7 @@
         @endif
     </div>
 </div>
+@endif
 
 @script
 <script>
