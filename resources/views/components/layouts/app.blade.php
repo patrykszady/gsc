@@ -270,7 +270,11 @@
                         label: (label || '').toString().substring(0, 255),
                         page_path: window.location.pathname,
                         referrer: document.referrer ? document.referrer.substring(0, 255) : null,
-                        session_id: sessionId
+                        session_id: sessionId,
+                        // Tell the server whether client-side GA already fired this
+                        // event, so it only mirrors to GA4 when gtag is absent
+                        // (non-US / ad-blocked) — avoids double counting.
+                        gtag_active: (typeof gtag !== 'undefined')
                     })
                 }).catch(function () {});
             } catch (e) {}

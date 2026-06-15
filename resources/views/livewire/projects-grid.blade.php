@@ -9,10 +9,17 @@
         'addition' => ['label' => 'Additions', 'route' => 'services.additions'],
         'mudroom' => ['label' => 'Mudroom & Laundry', 'route' => 'services.mudroom'],
     ];
+
+    // When this is true we render an (otherwise empty) root element. The root
+    // tag must NOT be wrapped in an @if/@else, because Livewire injects
+    // <!--[if BLOCK]--> morph markers before the conditional body. In the
+    // "hidden" branch that comment ends up on the same line as the <div>,
+    // which breaks Livewire's root-tag detection regex and throws
+    // RootTagMissingFromViewException. A single static root avoids that.
+    $projectsGridHidden = $hideWhenEmpty && $type && $projects->isEmpty();
 @endphp
-@if($hideWhenEmpty && $type && $projects->isEmpty())
-    <div wire:key="projects-grid-hidden"></div>
-@else
+<div>
+@unless($projectsGridHidden)
 <div
     class="relative isolate bg-white pt-2 pb-8 sm:pt-4 sm:pb-12 dark:bg-zinc-900"
     @if($responsivePerPage)
@@ -208,7 +215,8 @@
         @endif
     </div>
 </div>
-@endif
+@endunless
+</div>
 
 @script
 <script>
