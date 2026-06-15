@@ -248,6 +248,34 @@
             window.getEngagementTime = function() { return engagementTime; };
         })();
         
+        // First-party analytics: send phone/email/form/CTA events to our own
+        // /admin dashboard so we capture conversions even when GA is blocked or
+        // the visitor is outside the US (GA only loads for US visitors).
+        window.trackServerEvent = function(type, label) {
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.content;
+                if (!token) return;
+                let sessionId = null;
+                try { sessionId = sessionStorage.getItem('gs_session'); } catch (e) {}
+                fetch('{{ route('track-event') }}', {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        label: (label || '').toString().substring(0, 255),
+                        page_path: window.location.pathname,
+                        referrer: document.referrer ? document.referrer.substring(0, 255) : null,
+                        session_id: sessionId
+                    })
+                }).catch(function () {});
+            } catch (e) {}
+        };
+
         // Track CTA button clicks with GA4 + local fallback
         window.trackCTA = function(buttonText, buttonLocation) {
             const eventData = {
@@ -259,6 +287,7 @@
             };
             console.log('[GA Event] cta_click', eventData);
             window.trackEventLocal('cta_click', eventData);
+            window.trackServerEvent('cta_click', buttonText);
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'cta_click', eventData);
             }
@@ -308,6 +337,7 @@
                     page_path: window.location.pathname
                 };
                 window.trackEventLocal('contact_click', eventData);
+                window.trackServerEvent(isPhone ? 'phone_click' : 'email_click', eventData.contact_value);
                 if (typeof gtag !== 'undefined') {
                     gtag('event', isPhone ? 'phone_call' : 'email_click', eventData);
                     
@@ -412,8 +442,35 @@
                         });
                     }
                 });
+
+                // Track careers / partnership form submissions
+                Livewire.on('job-application-submitted', () => {
+                    const eventData = {
+                        form_name: 'careers_partnership',
+                        page_path: window.location.pathname,
+                        currency: 'USD',
+                        value: 50
+                    };
+                    console.log('[GA Event] generate_lead (careers)', eventData);
+                    if (typeof gtag !== 'undefined') {
+                        gtag('event', 'generate_lead', eventData);
+                        gtag('event', 'sign_up', { method: 'careers_form' });
+                    }
+                });
             });
         </script>
     @endif
+
+    {{-- First-party form-submission tracking (all visitors, even when GA is off) --}}
+    <script>
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('contact-form-submitted', () => {
+                if (window.trackServerEvent) window.trackServerEvent('form_submit', 'contact');
+            });
+            Livewire.on('job-application-submitted', () => {
+                if (window.trackServerEvent) window.trackServerEvent('form_submit', 'careers_partnership');
+            });
+        });
+    </script>
 </body>
 </html>

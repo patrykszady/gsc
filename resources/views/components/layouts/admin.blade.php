@@ -62,6 +62,10 @@
             <flux:sidebar.item icon="chart-bar" href="{{ route('admin.seo-reports.index') }}" :current="request()->routeIs('admin.seo-reports.*')">
                 SEO Reports
             </flux:sidebar.item>
+
+            <flux:sidebar.item icon="presentation-chart-line" href="{{ route('admin.analytics.index') }}" :current="request()->routeIs('admin.analytics.*')">
+                Analytics
+            </flux:sidebar.item>
         </flux:sidebar.nav>
 
         <flux:sidebar.spacer />

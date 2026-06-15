@@ -133,6 +133,7 @@ class JobsPage extends Component
         ]);
 
         session()->flash('success', "Thanks for reaching out! We'll review your information and get back to you soon.");
+        $this->dispatch('job-application-submitted');
         $this->resetForm();
     }
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AiFeedController;
 use App\Http\Controllers\GeoAnswersController;
+use App\Http\Controllers\TrackEventController;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\PlatformsSettings;
 use App\Livewire\Admin\Login;
@@ -63,6 +64,9 @@ Route::get('/faq', fn () => response('Gone', 410))->name('gone.faq');
 // AI / GEO: structured feed for ChatGPT, Perplexity, Google AI Overviews, Claude.
 Route::get('/ai-feed.json', AiFeedController::class)->name('ai-feed');
 Route::get('/geo/answers.json', GeoAnswersController::class)->name('geo.answers');
+
+// First-party analytics ingest (phone/email/form/CTA events). Public, rate-limited.
+Route::post('/track', TrackEventController::class)->name('track-event');
 
 // Reviews (canonical). Old /testimonials URLs 301 → /reviews for SEO/GEO.
 // "reviews" matches schema.org/Review, has ~10× search volume vs "testimonials",
@@ -283,6 +287,9 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
     
     // Contact Submissions / Leads
     Route::get('/leads', ContactSubmissions::class)->name('leads.index');
+
+    // First-party analytics (phone/email/form click tracking)
+    Route::get('/analytics', \App\Livewire\Admin\SiteAnalytics::class)->name('analytics.index');
 
     // Testimonials / Reviews
     Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');
