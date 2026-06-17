@@ -80,7 +80,7 @@ class SeoService
             // Lead with brand on the homepage so Google adopts "GS Construction"
             // as the site name (https://developers.google.com/search/docs/appearance/site-names)
             $title = 'GS Construction — Kitchen & Bathroom Remodeling, Chicagoland';
-            $description = 'GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs. 40+ years experience, 5-star rated, free estimates.';
+            $description = 'GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs. 40+ years, 5-star rated, free estimates.';
         }
 
         // Use a hero project image for home page OG sharing
@@ -210,7 +210,7 @@ class SeoService
         // Keep under 70 chars with suffix
         $title = $city
             ? "Free {$city} Remodeling Estimate"
-            : 'Get a Free Remodeling Quote';
+            : 'Get a Free Chicagoland Remodeling Estimate';
         
         $description = $city
             ? "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call (224) 735-4200 or schedule online. Same-week consultations available!"
@@ -225,8 +225,10 @@ class SeoService
      */
     public static function jobs(): void
     {
-        $title = 'Careers & Trade Partnerships';
-        $description = 'Join GS Construction or partner with us. We hire bilingual tradesmen and team up with subcontractors, designers, architects, showrooms, countertop & cabinet suppliers across Chicagoland.';
+        // Title 30–60 chars; description 70–160 chars (avoid '&' so the
+        // HTML-encoded '&amp;' does not inflate the rendered length).
+        $title = 'Careers & Trade Partnerships in Chicagoland';
+        $description = 'Join GS Construction or partner with us. We hire bilingual tradesmen and work with subcontractors, designers, architects and suppliers across Chicagoland.';
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
@@ -265,15 +267,17 @@ class SeoService
     {
         $city = $area?->city;
         
-        // Keep titles under 70 chars (with " | GS Construction" suffix = 18 chars)
-        // Max page title: ~52 chars for longest city names (17 chars)
+        // Keep the rendered <title> within 30–60 chars even for the longest
+        // city names ("Arlington Heights" = 17) and the description within
+        // 70–160 chars. Use "and" instead of "&" so the HTML-encoded "&amp;"
+        // does not push the measured length over budget.
         $title = $city
-            ? "{$city} Remodeling Services — Kitchen, Bath & Whole-Home"
+            ? "{$city} Remodeling Services — Kitchen & Bath"
             : 'Kitchen, Bathroom & Home Remodeling Services';
         
         $reviewCount = self::getReviewCountLabel();
         $description = $city
-            ? "Kitchen, bathroom & whole-home remodeling in {$city}, IL. {$reviewCount} 5-star reviews, 40+ yrs experience, licensed & insured. Free in-home estimate — call (224) 735-4200."
+            ? "Kitchen, bath and whole-home remodeling in {$city}, IL. {$reviewCount} 5-star reviews, licensed and insured. Free in-home estimate — call (224) 735-4200."
             : 'Kitchen remodeling, bathroom renovations & home remodeling in Chicago suburbs. Top-rated local contractors serving Palatine, Arlington Heights & more.';
 
         // Get a kitchen image as the default for services overview
@@ -919,13 +923,15 @@ class SeoService
     {
         $name = (string) ($competitor['name'] ?? 'Competitor');
 
-        $title = "Alternative to {$name} - GS Construction";
+        // Format keeps the title within 30–60 chars for every competitor name
+        // (brand is carried via siteName); "Chicagoland" reinforces local SEO.
+        $title = "{$name} Alternatives in Chicagoland";
 
         // Prefer the competitor's unique comparison_note so each page has a
         // distinct meta description (avoids templated/duplicate snippets).
         $note = trim((string) ($competitor['comparison_note'] ?? ''));
         if ($note !== '') {
-            $description = \Illuminate\Support\Str::limit($note, 158);
+            $description = \Illuminate\Support\Str::limit($note, 155);
         } else {
             $description = "Comparing GS Construction with {$name}? See a factual side-by-side on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
         }

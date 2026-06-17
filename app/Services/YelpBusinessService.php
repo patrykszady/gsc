@@ -369,7 +369,6 @@ class YelpBusinessService
         // "session expired" until the 12h TTL elapses.
         if ($authed) {
             Cache::forget('yelp.session_dead');
-            Log::channel('yelp')->info('Yelp: checkSession authed=true, cleared session_dead flag');
         } else {
             $this->markSessionDead('checkSession reported not authenticated');
         }

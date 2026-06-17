@@ -62,6 +62,8 @@ class SyncMicrosoftClarity extends Command
                     'dead_clicks' => $r['dead_clicks'],
                     'rage_clicks' => $r['rage_clicks'],
                     'quickbacks' => $r['quickbacks'],
+                    'script_errors' => $r['script_errors'] ?? 0,
+                    'error_clicks' => $r['error_clicks'] ?? 0,
                 ]
             );
             $upserts++;

@@ -107,4 +107,29 @@
         collapsed
     />
 
+    {{-- Explore (server-rendered internal links). The sections above are lazy
+         Livewire components that don't appear in the initial HTML, so this gives
+         crawlers a set of contextual links on first load. --}}
+    <section aria-label="Explore GS Construction" class="border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-slate-900/50">
+        <div class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+            <h2 class="text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Explore Our Remodeling Services
+            </h2>
+            <div class="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3">
+                <a href="/services/kitchen-remodeling" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">Kitchen Remodeling</a>
+                <a href="/services/bathroom-remodeling" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">Bathroom Remodeling</a>
+                <a href="/services/basement-remodeling" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">Basement Remodeling</a>
+                <a href="/services/home-additions" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">Home Additions</a>
+                <a href="/services/home-remodeling" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">Whole-Home Remodeling</a>
+                <a href="/services" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">All Services</a>
+            </div>
+            <div class="mx-auto mt-4 flex max-w-4xl flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
+                <a href="/projects" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">Recent Projects</a>
+                <a href="/about" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">About Us</a>
+                <a href="/reviews" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">Reviews</a>
+                <a href="/contact" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">Free Estimate</a>
+            </div>
+        </div>
+    </section>
+
 </x-layouts.app>

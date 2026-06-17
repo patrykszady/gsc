@@ -146,6 +146,18 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Front-end JavaScript errors captured by the client beacon
+        // (window.onerror / unhandledrejection -> POST /client-error).
+        // The Microsoft Clarity API only exposes an error *count*, never the
+        // message or stack — this channel preserves the actual error text.
+        'client_errors' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/client-errors.log'),
+            'level' => 'debug',
+            'days' => 30,
+            'replace_placeholders' => false,
+        ],
+
     ],
 
 ];

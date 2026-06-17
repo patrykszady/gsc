@@ -159,12 +159,20 @@
             setTimeout(() => {
                 const oldPrev = this.previousSlide;
                 this.previousSlide = null;
-                // Refresh the image that just went out of view
-                $wire.refreshBackgroundImage(oldPrev).then(newUrl => {
-                    if (newUrl) {
-                        this.backgrounds[oldPrev].url = newUrl;
-                    }
-                });
+                // Nothing to refresh if there was no outgoing slide.
+                if (oldPrev === null || oldPrev === undefined) {
+                    return;
+                }
+                // $wire returns undefined (not a Promise) if the component has
+                // been torn down (e.g. after wire:navigate). Guard the .then().
+                const result = $wire.refreshBackgroundImage(oldPrev);
+                if (result && typeof result.then === 'function') {
+                    result.then(newUrl => {
+                        if (newUrl && this.backgrounds[oldPrev]) {
+                            this.backgrounds[oldPrev].url = newUrl;
+                        }
+                    }).catch(() => {});
+                }
             }, 550);
         }
     }"

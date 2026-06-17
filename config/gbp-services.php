@@ -29,12 +29,17 @@ return [
 
     /*
      * Optional mapping for equivalent site service slugs.
-     * Used by seo:gbp-parity so canonical page slugs can map to
-     * semantically equivalent GBP service entries.
+     * Used by seo:gbp-parity to normalize legacy / 301-redirect slugs that may
+     * still surface in the sitemap onto the canonical slug that matches a GBP
+     * service entry. Keys are the legacy slug; values are the canonical slug.
      */
     'slug_aliases' => [
-        'basement-remodeling' => 'basement-finishing',
-        'home-additions' => 'room-addition',
+        'basement-finishing' => 'basement-remodeling',
+        'room-addition'      => 'home-additions',
+        'room-additions'     => 'home-additions',
+        'mudroom'            => 'mudroom-remodeling',
+        'mudrooms'           => 'mudroom-remodeling',
+        'laundry-room'       => 'mudroom-remodeling',
     ],
 
     /*

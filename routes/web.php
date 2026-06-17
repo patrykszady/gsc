@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AiFeedController;
+use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\GeoAnswersController;
 use App\Http\Controllers\TrackEventController;
 use App\Livewire\Admin\Dashboard;
@@ -67,6 +68,12 @@ Route::get('/geo/answers.json', GeoAnswersController::class)->name('geo.answers'
 
 // First-party analytics ingest (phone/email/form/CTA events). Public, rate-limited.
 Route::post('/track', TrackEventController::class)->name('track-event');
+
+// Front-end JavaScript error beacon (window.onerror / unhandledrejection).
+// Throttled to absorb error storms without flooding the log channel.
+Route::post('/client-error', ClientErrorController::class)
+    ->middleware('throttle:30,1')
+    ->name('client-error');
 
 // Reviews (canonical). Old /testimonials URLs 301 → /reviews for SEO/GEO.
 // "reviews" matches schema.org/Review, has ~10× search volume vs "testimonials",
@@ -290,6 +297,9 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
 
     // First-party analytics (phone/email/form click tracking)
     Route::get('/analytics', \App\Livewire\Admin\SiteAnalytics::class)->name('analytics.index');
+
+    // Client-side JavaScript errors captured from real visitors
+    Route::get('/js-errors', \App\Livewire\Admin\ClientErrors::class)->name('js-errors.index');
 
     // Testimonials / Reviews
     Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');

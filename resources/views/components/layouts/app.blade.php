@@ -96,6 +96,71 @@
     {{-- Dynamic head content (preload links, etc.) --}}
     @stack('head')
 
+    {{-- Client-side JavaScript error beacon. Registered at parse time (not
+         deferred) so it captures errors during Alpine/Livewire hydration. The
+         Microsoft Clarity API only exposes an aggregate error COUNT, never the
+         message or stack — this forwards the actual error text to the
+         `client_errors` log channel (viewable in /log-viewer). --}}
+    <script>
+        (function () {
+            var endpoint = '{{ route('client-error') }}';
+            var seen = {};
+            var sent = 0;
+            var MAX_PER_PAGE = 10;
+
+            function report(kind, data) {
+                try {
+                    if (sent >= MAX_PER_PAGE) return;
+                    var sig = kind + '|' + (data.message || '') + '|' + (data.source || '') + '|' + (data.line || '');
+                    if (seen[sig]) return; // de-dupe storms (e.g. loops)
+                    seen[sig] = true;
+                    sent++;
+
+                    var token = document.querySelector('meta[name="csrf-token"]');
+                    token = token ? token.content : null;
+                    if (!token) return;
+
+                    fetch(endpoint, {
+                        method: 'POST',
+                        keepalive: true,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            kind: kind,
+                            message: (data.message || 'Unknown error').toString().substring(0, 500),
+                            source: data.source ? data.source.toString().substring(0, 255) : null,
+                            line: data.line || null,
+                            column: data.column || null,
+                            stack: data.stack ? data.stack.toString().substring(0, 2000) : null,
+                            page_path: window.location.pathname
+                        })
+                    }).catch(function () {});
+                } catch (e) { /* never let the reporter throw */ }
+            }
+
+            window.addEventListener('error', function (e) {
+                report('error', {
+                    message: e.message,
+                    source: e.filename,
+                    line: e.lineno,
+                    column: e.colno,
+                    stack: e.error && e.error.stack ? e.error.stack : null
+                });
+            });
+
+            window.addEventListener('unhandledrejection', function (e) {
+                var reason = e.reason;
+                report('promise', {
+                    message: (reason && reason.message) ? reason.message : String(reason),
+                    stack: (reason && reason.stack) ? reason.stack : null
+                });
+            });
+        })();
+    </script>
+
     {{-- Google Maps bootstrap: set up importLibrary immediately in <head> so it's ready
          before Alpine initializes, and pre-warm both libraries so download starts at
          parse time (not at scroll-to-map time). No render-blocking cost — the API

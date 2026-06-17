@@ -60,7 +60,11 @@ return [
     */
     'feed' => [
         'enabled'       => true,
-        'route'         => '/ai-product-feed.json',
+        // Point AI crawlers (llms.txt) at the rich, hand-rolled feed served by
+        // App\Http\Controllers\AiFeedController (projects, reviews, service-area
+        // matrix). The vendor's /ai-product-feed.json generator produces an
+        // empty feed for this site, so it is intentionally not advertised.
+        'route'         => '/ai-feed.json',
         'sitemap_route' => '/ai-sitemap.xml',
         'cache_ttl'     => 900,
         'per_page'      => 100,

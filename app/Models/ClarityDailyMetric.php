@@ -20,6 +20,8 @@ class ClarityDailyMetric extends Model
         'dead_clicks',
         'rage_clicks',
         'quickbacks',
+        'script_errors',
+        'error_clicks',
     ];
 
     protected $casts = [
@@ -33,5 +35,7 @@ class ClarityDailyMetric extends Model
         'dead_clicks' => 'integer',
         'rage_clicks' => 'integer',
         'quickbacks' => 'integer',
+        'script_errors' => 'integer',
+        'error_clicks' => 'integer',
     ];
 }

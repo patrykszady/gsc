@@ -100,7 +100,7 @@ class MicrosoftClarityService
         //   DeadClickCount  -> subTotal (count of dead clicks for that OS)
         //   RageClickCount  -> subTotal
         //   QuickbackClick  -> subTotal
-        //   ExcessiveScroll, ScriptErrorCount, ErrorClickCount -> subTotal (not stored)
+        //   ExcessiveScroll, ScriptErrorCount, ErrorClickCount -> subTotal
         $summary = [
             'date' => now()->toDateString(),
             'sessions' => 0,
@@ -112,6 +112,8 @@ class MicrosoftClarityService
             'dead_clicks' => 0,
             'rage_clicks' => 0,
             'quickbacks' => 0,
+            'script_errors' => 0,
+            'error_clicks' => 0,
         ];
 
         // Track weighted scroll depth (avg scroll depth weighted by sessions per OS).
@@ -188,6 +190,14 @@ class MicrosoftClarityService
 
                     case strcasecmp($metricName, 'QuickbackClick') === 0:
                         $summary['quickbacks'] += $this->toInt($row, ['subTotal', 'quickbackClick', 'quickbacks']);
+                        break;
+
+                    case strcasecmp($metricName, 'ScriptErrorCount') === 0:
+                        $summary['script_errors'] += $this->toInt($row, ['subTotal', 'scriptErrorCount', 'scriptErrors']);
+                        break;
+
+                    case strcasecmp($metricName, 'ErrorClickCount') === 0:
+                        $summary['error_clicks'] += $this->toInt($row, ['subTotal', 'errorClickCount', 'errorClicks']);
                         break;
                 }
             }

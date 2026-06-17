@@ -62,7 +62,19 @@ class SeoClarityHealth extends Command
                 'dead_clicks' => $latest->dead_clicks,
                 'rage_clicks' => $latest->rage_clicks,
                 'quickbacks' => $latest->quickbacks,
+                'script_errors' => $latest->script_errors,
+                'error_clicks' => $latest->error_clicks,
             ], JSON_UNESCAPED_SLASHES));
+        }
+
+        // JS error spike detection. Clarity's API gives a count only (no message
+        // or stack — see ClientErrorController for that). Compare the latest
+        // day's errors-per-session rate against the trailing baseline so a
+        // regression (e.g. a broken deploy) is flagged proactively.
+        $spike = $this->detectScriptErrorSpike($projectId, $latest);
+        if ($spike !== null) {
+            $this->newLine();
+            $this->error('⚠ JS error spike: ' . $spike['summary']);
         }
 
         if (! $apiReachable && $apiError) {
@@ -77,6 +89,7 @@ class SeoClarityHealth extends Command
                 rowsCount: $rowsCount,
                 latest: $latest,
                 apiError: $apiError,
+                spike: $spike,
             );
 
             Storage::disk('local')->put('reports/clarity-health.md', $md);
@@ -87,7 +100,77 @@ class SeoClarityHealth extends Command
             return self::FAILURE;
         }
 
+        // Non-zero exit on a confirmed spike so the scheduler's onFailure hook
+        // logs it (matches seo:gsc-critical-health behaviour).
+        if ($spike !== null) {
+            return self::FAILURE;
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Compare the latest day's JS-error-per-session rate against a trailing
+     * baseline. Returns null when there is no spike (or insufficient data).
+     *
+     * @return array{summary:string,latest_rate:float,baseline_rate:float,errors:int}|null
+     */
+    protected function detectScriptErrorSpike(string $projectId, ?ClarityDailyMetric $latest): ?array
+    {
+        if (! $latest || (int) $latest->sessions <= 0) {
+            return null;
+        }
+
+        // Need at least a handful of errors before alerting — tiny counts on
+        // low-traffic days are noise, not regressions.
+        $errors = (int) $latest->script_errors;
+        if ($errors < 5) {
+            return null;
+        }
+
+        // Trailing baseline: up to 14 prior days, excluding the latest row.
+        $baselineRows = ClarityDailyMetric::query()
+            ->where('project_id', $projectId)
+            ->where('date', '<', $latest->date)
+            ->orderByDesc('date')
+            ->limit(14)
+            ->get(['sessions', 'script_errors']);
+
+        if ($baselineRows->count() < 3) {
+            return null; // not enough history to judge
+        }
+
+        $baseSessions = (int) $baselineRows->sum('sessions');
+        $baseErrors = (int) $baselineRows->sum('script_errors');
+        if ($baseSessions <= 0) {
+            return null;
+        }
+
+        $latestRate = $errors / max((int) $latest->sessions, 1);
+        $baselineRate = $baseErrors / $baseSessions;
+
+        // Alert when the latest rate is at least 2x the baseline. Use a small
+        // floor so a baseline of ~0 still requires a meaningful absolute rate.
+        $threshold = max($baselineRate * 2, 0.05);
+        if ($latestRate < $threshold) {
+            return null;
+        }
+
+        $summary = sprintf(
+            '%d errors across %d sessions (%.1f%% of sessions) vs baseline %.1f%% — %s.',
+            $errors,
+            (int) $latest->sessions,
+            $latestRate * 100,
+            $baselineRate * 100,
+            $baselineRate > 0 ? sprintf('%.1fx', $latestRate / $baselineRate) : 'new (no prior errors)',
+        );
+
+        return [
+            'summary' => $summary,
+            'latest_rate' => round($latestRate, 4),
+            'baseline_rate' => round($baselineRate, 4),
+            'errors' => $errors,
+        ];
     }
 
     protected function buildMarkdown(
@@ -97,6 +180,7 @@ class SeoClarityHealth extends Command
         int $rowsCount,
         ?ClarityDailyMetric $latest,
         ?string $apiError,
+        ?array $spike = null,
     ): string {
         $lines = [];
         $lines[] = '# Clarity health';
@@ -127,6 +211,20 @@ class SeoClarityHealth extends Command
             $lines[] = '| dead clicks | ' . (int) $latest->dead_clicks . ' |';
             $lines[] = '| rage clicks | ' . (int) $latest->rage_clicks . ' |';
             $lines[] = '| quickbacks | ' . (int) $latest->quickbacks . ' |';
+            $lines[] = '| script errors | ' . (int) $latest->script_errors . ' |';
+            $lines[] = '| error clicks | ' . (int) $latest->error_clicks . ' |';
+        }
+
+        if ($spike !== null) {
+            $lines[] = '';
+            $lines[] = '## ⚠ JavaScript error spike';
+            $lines[] = '';
+            $lines[] = '- ' . $spike['summary'];
+            $lines[] = '- Latest rate: ' . ($spike['latest_rate'] * 100) . '% of sessions';
+            $lines[] = '- Baseline rate: ' . ($spike['baseline_rate'] * 100) . '% of sessions';
+            $lines[] = '';
+            $lines[] = 'Clarity reports counts only. See `storage/logs/client-errors-*.log`'
+                . ' (via /log-viewer) for the actual messages and stack traces.';
         }
 
         if (! $apiReachable && $apiError) {

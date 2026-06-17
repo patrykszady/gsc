@@ -66,6 +66,10 @@
             <flux:sidebar.item icon="presentation-chart-line" href="{{ route('admin.analytics.index') }}" :current="request()->routeIs('admin.analytics.*')">
                 Analytics
             </flux:sidebar.item>
+
+            <flux:sidebar.item icon="bug-ant" href="{{ route('admin.js-errors.index') }}" :current="request()->routeIs('admin.js-errors.*')">
+                JS Errors
+            </flux:sidebar.item>
         </flux:sidebar.nav>
 
         <flux:sidebar.spacer />

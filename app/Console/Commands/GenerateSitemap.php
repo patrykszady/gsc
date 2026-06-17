@@ -131,6 +131,21 @@ class GenerateSitemap extends Command
             if (str_contains($uri, '{')) {
                 return false;
             }
+
+            // Skip ALL 301 redirect routes (Route::redirect uses RedirectController).
+            // Listing redirect sources in the sitemap triggers Google "Page with
+            // redirect" coverage errors. This auto-excludes every current and
+            // future redirect without maintaining a manual list.
+            if (str_contains($route->getActionName(), 'RedirectController')) {
+                return false;
+            }
+
+            // Skip intentionally-gone (410) routes, flagged by a `gone.*` name.
+            // Submitting 410 URLs causes "Submitted URL not found" coverage errors.
+            $routeName = (string) $route->getName();
+            if ($routeName !== '' && str_starts_with($routeName, 'gone.')) {
+                return false;
+            }
             
             // Skip exact matches (redirects)
             if (in_array($uri, $excludeExact)) {

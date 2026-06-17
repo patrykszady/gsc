@@ -4,10 +4,10 @@
 
 ## Extended Metadata
 - Site URL: https://gs.construction
-- Feed URL: https://gs.construction/ai-product-feed.json
+- Feed URL: https://gs.construction/ai-feed.json
 - Sitemap URL: https://gs.construction/ai-sitemap.xml
-- Generated At: 2026-06-14T04:38:39+00:00
+- Generated At: 2026-06-17T01:16:19+00:00
 
 ## All Products
 Explore our full catalog of AI-optimized products.
-https://gs.construction/ai-product-feed.json
+https://gs.construction/ai-feed.json

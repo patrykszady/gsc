@@ -53,9 +53,11 @@ Schedule::command('geo:llms-txt')->dailyAt('01:40')
 Schedule::command('geo:llms-txt --full')->dailyAt('01:42')
     ->appendOutputTo(storage_path('logs/geo-feeds.log'))
     ->onFailure(fn () => logger()->error('Scheduled geo:llms-txt --full failed'));
-Schedule::command('geo:feed')->dailyAt('01:44')
-    ->appendOutputTo(storage_path('logs/geo-feeds.log'))
-    ->onFailure(fn () => logger()->error('Scheduled geo:feed failed'));
+// NOTE: `geo:feed` (vendor ProductFeedGenerator) is intentionally NOT scheduled.
+// It produced an empty /ai-product-feed.json for this site. The rich AI feed is
+// served dynamically by App\Http\Controllers\AiFeedController at /ai-feed.json
+// (linked from llms.txt via config('geo.feed.route')). Running geo:feed would
+// write an empty static public/ai-feed.json that shadows the dynamic route.
 
 // Hive (hive.contractors) project zip-counts sync — feeds the homepage map
 Schedule::command('hive:sync')->dailyAt('02:00')
@@ -366,12 +368,15 @@ Schedule::command('seo:gsc-inspect-bulk --limit=150 --markdown')
     ->when(fn () => config('services.google.search_console.enabled'));
 
 // SEO: daily sitemap submission-status check (errors, warnings, stale lastDownloaded).
-Schedule::command('seo:gsc-sitemap-status --markdown')
+$seoAlertEmail = (string) env('SEO_ALERT_EMAIL', '');
+$sitemapStatus = Schedule::command('seo:gsc-sitemap-status --markdown')
     ->dailyAt('05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-sitemap-status.log'))
-    ->emailOutputOnFailure((string) env('SEO_ALERT_EMAIL', ''))
     ->when(fn () => config('services.google.search_console.enabled'));
+if ($seoAlertEmail !== '') {
+    $sitemapStatus->emailOutputOnFailure($seoAlertEmail);
+}
 
 // SEO: weekly canonical-conflict report + auto re-warm (Google chose different canonical).
 Schedule::command('seo:gsc-canonical-conflicts --warm --markdown')
@@ -380,12 +385,14 @@ Schedule::command('seo:gsc-canonical-conflicts --warm --markdown')
     ->appendOutputTo(storage_path('logs/seo-gsc-canonical-conflicts.log'));
 
 // SEO: daily critical-page health canary (manual-action / security-issue proxy).
-Schedule::command('seo:gsc-critical-health --markdown')
+$criticalHealth = Schedule::command('seo:gsc-critical-health --markdown')
     ->dailyAt('05:45')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-critical-health.log'))
-    ->emailOutputOnFailure((string) env('SEO_ALERT_EMAIL', ''))
     ->when(fn () => config('services.google.search_console.enabled'));
+if ($seoAlertEmail !== '') {
+    $criticalHealth->emailOutputOnFailure($seoAlertEmail);
+}
 
 // SEO: weekly crawl-budget staleness report (derived from URL Inspection lastCrawlTime).
 Schedule::command('seo:gsc-crawl-budget --markdown')

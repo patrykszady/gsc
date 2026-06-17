@@ -240,7 +240,7 @@
                     :srcset="slide.srcset || ''"
                     sizes="{{ $heroSizes }}"
                     alt="GS Construction remodeling project"
-                    :alt="slide.imageAlt || slide.heading || slide.alt"
+                    :alt="slide.imageAlt || slide.heading || slide.alt || 'GS Construction remodeling project'"
                     width="1600"
                     height="900"
                     loading="lazy"

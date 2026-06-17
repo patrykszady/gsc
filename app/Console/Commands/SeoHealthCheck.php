@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Storage;
  *   - Meta description 70–160   : 15
  *   - Exactly one <h1>          : 10
  *   - Image alt coverage ≥ 90%  : 15
- *   - Internal-link count 3–40  : 10
+ *   - Internal-link count 3–80  : 10
  *   - JSON-LD present           : 15
  *   - Word count > 300          : 10
  *   - <link rel="canonical">    : 10
@@ -125,6 +125,12 @@ class SeoHealthCheck extends Command
 
         $html = (string) $resp->body();
 
+        // Content HTML = page with global chrome (header/nav/footer) stripped.
+        // The shared layout adds the logo (decorative alt="") and ~130 nav/
+        // footer links on every page; counting those would unfairly tank the
+        // image-alt and internal-link metrics. Measure the unique page body.
+        $contentHtml = preg_replace('#<(header|nav|footer)\b[^>]*>.*?</\1>#is', ' ', $html) ?? $html;
+
         // Title
         preg_match('#<title[^>]*>(.*?)</title>#is', $html, $m);
         $title = trim(html_entity_decode($m[1] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
@@ -147,11 +153,17 @@ class SeoHealthCheck extends Command
         if ($ok) $score += 10;
         $breakdown['h1'] = ['ok' => $ok, 'note' => "{$h1Count} H1" . ($ok ? '' : ' (want exactly 1)')];
 
-        // Image alt coverage
-        $imgs = preg_match_all('#<img\b[^>]*>#i', $html, $im) ? $im[0] : [];
-        $imgTotal = count($imgs);
+        // Image alt coverage (content images only; chrome logos excluded)
+        $imgs = preg_match_all('#<img\b[^>]*>#i', $contentHtml, $im) ? $im[0] : [];
+        $imgTotal = 0;
         $withAlt = 0;
         foreach ($imgs as $tag) {
+            // Decorative images (aria-hidden="true") correctly use empty alt and
+            // must not count against coverage — e.g. blur-up LQIP placeholders.
+            if (preg_match('#\baria-hidden=["\']true["\']#i', $tag)) {
+                continue;
+            }
+            $imgTotal++;
             // alt="..." with non-empty content
             if (preg_match('#\balt=["\']([^"\']*)["\']#i', $tag, $am) && trim($am[1]) !== '') {
                 $withAlt++;
@@ -165,8 +177,11 @@ class SeoHealthCheck extends Command
             'note' => $imgTotal === 0 ? 'no images' : sprintf('%d/%d (%d%%)', $withAlt, $imgTotal, (int) round($coverage * 100)),
         ];
 
-        // Internal links
-        $links = preg_match_all('#<a\b[^>]*href=["\']([^"\']+)["\']#i', $html, $lm) ? $lm[1] : [];
+        // Internal links — count links in the MAIN content only. Global
+        // header/nav/footer regions add ~130 boilerplate links on every page,
+        // which would otherwise blow past any sane ceiling. Use the chrome-
+        // stripped $contentHtml so the metric reflects real interlinking.
+        $links = preg_match_all('#<a\b[^>]*href=["\']([^"\']+)["\']#i', $contentHtml, $lm) ? $lm[1] : [];
         $internal = 0;
         foreach ($links as $href) {
             if ($href === '' || $href[0] === '#') continue;
@@ -178,9 +193,9 @@ class SeoHealthCheck extends Command
                 $internal++;
             }
         }
-        $ok = $internal >= 3 && $internal <= 40;
+        $ok = $internal >= 3 && $internal <= 80;
         if ($ok) $score += 10;
-        $breakdown['internal_links'] = ['ok' => $ok, 'note' => "{$internal} internal" . ($ok ? '' : ' (target 3–40)')];
+        $breakdown['internal_links'] = ['ok' => $ok, 'note' => "{$internal} internal" . ($ok ? '' : ' (target 3–80)')];
 
         // JSON-LD
         $jsonLdCount = preg_match_all('#<script[^>]+type=["\']application/ld\+json["\']#i', $html);

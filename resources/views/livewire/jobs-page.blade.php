@@ -276,4 +276,31 @@
             <a href="mailto:crew@gs.construction" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">crew@gs.construction</a>.
         </p>
     </section>
+
+    {{-- Get to know our work (internal links) --}}
+    <section class="border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-slate-900/50">
+        <div class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+            <h2 class="text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Get to know GS Construction
+            </h2>
+            <p class="mx-auto mt-3 max-w-2xl text-center text-sm/6 text-gray-600 dark:text-gray-300">
+                See the kind of remodeling work you'd be a part of across Chicagoland.
+            </p>
+            <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <a href="/services" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white p-5 text-center font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">
+                    Our Remodeling Services
+                </a>
+                <a href="/projects" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white p-5 text-center font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">
+                    Recent Projects
+                </a>
+                <a href="/about" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white p-5 text-center font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">
+                    About Our Company
+                </a>
+                <a href="/contact" wire:navigate.hover class="rounded-xl border border-gray-200 bg-white p-5 text-center font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">
+                    Contact Us
+                </a>
+            </div>
+        </div>
+    </section>
 </div>
+

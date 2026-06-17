@@ -4,11 +4,11 @@
 
 ## Metadata
 - Site URL: https://gs.construction
-- Feed URL: https://gs.construction/ai-product-feed.json
+- Feed URL: https://gs.construction/ai-feed.json
 - Sitemap URL: https://gs.construction/ai-sitemap.xml
-- Generated At: 2026-06-14T04:38:39+00:00
+- Generated At: 2026-06-17T01:16:05+00:00
 
 ## Core Content
 - [Home](https://gs.construction)
-- [Product Feed](https://gs.construction/ai-product-feed.json)
+- [Product Feed](https://gs.construction/ai-feed.json)
 - [AI Sitemap](https://gs.construction/ai-sitemap.xml)
