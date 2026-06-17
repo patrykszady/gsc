@@ -37,6 +37,27 @@ class SeoReports extends Component
     #[Url(as: 'combined', keep: true)]
     public int $trendCombined = 1;
 
+    #[Url(as: 'tspan', keep: true)]
+    public int $topDays = 28;
+
+    #[Url(as: 'qsort', keep: true)]
+    public string $topQueriesSort = 'clicks';
+
+    #[Url(as: 'qdir', keep: true)]
+    public string $topQueriesDir = 'desc';
+
+    #[Url(as: 'psort', keep: true)]
+    public string $topPagesSort = 'clicks';
+
+    #[Url(as: 'pdir', keep: true)]
+    public string $topPagesDir = 'desc';
+
+    /** @var array<int,int> */
+    protected array $topDayOptions = [7, 28, 90];
+
+    /** @var array<int,string> */
+    protected array $sortableColumns = ['clicks', 'impressions', 'ctr', 'position'];
+
     /**
      * Registry of reports rendered in the dashboard. Keys are file names
      * (without extension) under storage/app/reports/; each value provides
@@ -112,6 +133,21 @@ class SeoReports extends Component
         }
 
         $this->trendCombined = $this->trendCombined === 1 ? 1 : 0;
+
+        if (! in_array($this->topDays, $this->topDayOptions, true)) {
+            $this->topDays = 28;
+        }
+
+        if (! in_array($this->topQueriesSort, ['query', ...$this->sortableColumns], true)) {
+            $this->topQueriesSort = 'clicks';
+        }
+
+        if (! in_array($this->topPagesSort, ['page', ...$this->sortableColumns], true)) {
+            $this->topPagesSort = 'clicks';
+        }
+
+        $this->topQueriesDir = $this->topQueriesDir === 'asc' ? 'asc' : 'desc';
+        $this->topPagesDir = $this->topPagesDir === 'asc' ? 'asc' : 'desc';
     }
 
     public function open(string $key): void
@@ -174,6 +210,49 @@ class SeoReports extends Component
         $this->trendCombined = $this->trendCombined === 1 ? 0 : 1;
     }
 
+    public function setTopDays(int $days): void
+    {
+        if (! in_array($days, $this->topDayOptions, true) || $this->topDays === $days) {
+            return;
+        }
+
+        $this->topDays = $days;
+        unset($this->topQueries, $this->topPages);
+    }
+
+    public function sortTopQueries(string $column): void
+    {
+        if (! in_array($column, ['query', ...$this->sortableColumns], true)) {
+            return;
+        }
+
+        if ($this->topQueriesSort === $column) {
+            $this->topQueriesDir = $this->topQueriesDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->topQueriesSort = $column;
+            // Text column defaults to A→Z; numeric columns default to highest first.
+            $this->topQueriesDir = $column === 'query' ? 'asc' : 'desc';
+        }
+
+        unset($this->topQueries);
+    }
+
+    public function sortTopPages(string $column): void
+    {
+        if (! in_array($column, ['page', ...$this->sortableColumns], true)) {
+            return;
+        }
+
+        if ($this->topPagesSort === $column) {
+            $this->topPagesDir = $this->topPagesDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->topPagesSort = $column;
+            $this->topPagesDir = $column === 'page' ? 'asc' : 'desc';
+        }
+
+        unset($this->topPages);
+    }
+
     /**
     * @return array<int, array{key:string,label:string,description:string,command:string,exists:bool,size:?int,mtime:?\Carbon\CarbonInterface,age:?string,age_hours:?int,freshness_pct:int,status:string}>
      */
@@ -234,8 +313,6 @@ class SeoReports extends Component
      * @return array{
      *   channels:array<string,array{label:string,clicks:int,impressions:int,ctr:float,position:float,delta_clicks:float}>,
      *   daily_clicks:array<int,array{date:string,gsc:int,bing:int,combined:int}>,
-     *   top_queries:array<int,array{query:string,clicks:int,impressions:int,ctr:float,position:float}>,
-     *   top_pages:array<int,array{page:string,clicks:int,impressions:int,ctr:float,position:float}>,
      *   coverage:array{total:int,problem:int,forbidden:int,not_indexed:int,duplicate:int},
      *   rankings:array{tracked:int,top3:int,top10:int,top20:int,below20:int},
      *   action_items:array<int,string>
@@ -278,12 +355,19 @@ class SeoReports extends Component
             ];
 
             if (Schema::hasTable('gsc_query_metrics')) {
-                $curr = DB::table('gsc_query_metrics')
+                // Prefer true site-wide daily totals (date-dimension sync) which
+                // include anonymized-query clicks the query-dimension table drops.
+                $hasDailyTotals = Schema::hasTable('gsc_daily_totals')
+                    && DB::table('gsc_daily_totals')->whereBetween('date', [$prevStart->toDateString(), $today->toDateString()])->exists();
+
+                $totalsTable = $hasDailyTotals ? 'gsc_daily_totals' : 'gsc_query_metrics';
+
+                $curr = DB::table($totalsTable)
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
                     ->first();
 
-                $prev = DB::table('gsc_query_metrics')
+                $prev = DB::table($totalsTable)
                     ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks')
                     ->first();
@@ -301,12 +385,25 @@ class SeoReports extends Component
             }
 
             if (Schema::hasTable('bing_traffic_stats')) {
-                $curr = DB::table('bing_traffic_stats')
+                // Position only exists in the per-query table; daily totals lack it.
+                $positionRow = DB::table('bing_traffic_stats')
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
-                    ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
+                    ->selectRaw('AVG(position) as position')
                     ->first();
 
-                $prev = DB::table('bing_traffic_stats')
+                // Prefer true site-wide daily totals (GetRankAndTrafficStats)
+                // which include anonymized traffic the query table drops.
+                $hasBingDailyTotals = Schema::hasTable('bing_daily_totals')
+                    && DB::table('bing_daily_totals')->whereBetween('date', [$prevStart->toDateString(), $today->toDateString()])->exists();
+
+                $bingTotalsTable = $hasBingDailyTotals ? 'bing_daily_totals' : 'bing_traffic_stats';
+
+                $curr = DB::table($bingTotalsTable)
+                    ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
+                    ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions')
+                    ->first();
+
+                $prev = DB::table($bingTotalsTable)
                     ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks')
                     ->first();
@@ -318,7 +415,7 @@ class SeoReports extends Component
                     'clicks' => $currClicks,
                     'impressions' => $currImpressions,
                     'ctr' => $currImpressions > 0 ? round(($currClicks / $currImpressions) * 100, 2) : 0.0,
-                    'position' => round((float) ($curr->position ?? 0), 2),
+                    'position' => round((float) ($positionRow->position ?? 0), 2),
                     'delta_clicks' => $this->percentDelta($currClicks, (int) ($prev->clicks ?? 0)),
                 ];
             }
@@ -365,24 +462,47 @@ class SeoReports extends Component
             }
 
             $dailyClicks = [];
+            $hasDailyTotalsTable = Schema::hasTable('gsc_daily_totals');
+            $hasBingDailyTotalsTable = Schema::hasTable('bing_daily_totals');
             for ($i = $this->trendDays - 1; $i >= 0; $i--) {
                 $day = $today->copy()->subDays($i)->toDateString();
 
-                $gscDayClicks = Schema::hasTable('gsc_query_metrics')
-                    ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('clicks')
-                    : 0;
+                // Prefer true daily totals; fall back to query-metric sums for
+                // any day not yet captured by the date-dimension sync.
+                $dailyTotal = $hasDailyTotalsTable
+                    ? DB::table('gsc_daily_totals')->whereDate('date', $day)->first()
+                    : null;
 
-                $gscDayImpressions = Schema::hasTable('gsc_query_metrics')
-                    ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('impressions')
-                    : 0;
+                if ($dailyTotal) {
+                    $gscDayClicks = (int) $dailyTotal->clicks;
+                    $gscDayImpressions = (int) $dailyTotal->impressions;
+                } else {
+                    $gscDayClicks = Schema::hasTable('gsc_query_metrics')
+                        ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('clicks')
+                        : 0;
 
-                $bingDayClicks = Schema::hasTable('bing_traffic_stats')
-                    ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('clicks')
-                    : 0;
+                    $gscDayImpressions = Schema::hasTable('gsc_query_metrics')
+                        ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('impressions')
+                        : 0;
+                }
 
-                $bingDayImpressions = Schema::hasTable('bing_traffic_stats')
-                    ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('impressions')
-                    : 0;
+                // Prefer true Bing daily totals; fall back to query-stat sums.
+                $bingDailyTotal = $hasBingDailyTotalsTable
+                    ? DB::table('bing_daily_totals')->whereDate('date', $day)->first()
+                    : null;
+
+                if ($bingDailyTotal) {
+                    $bingDayClicks = (int) $bingDailyTotal->clicks;
+                    $bingDayImpressions = (int) $bingDailyTotal->impressions;
+                } else {
+                    $bingDayClicks = Schema::hasTable('bing_traffic_stats')
+                        ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('clicks')
+                        : 0;
+
+                    $bingDayImpressions = Schema::hasTable('bing_traffic_stats')
+                        ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('impressions')
+                        : 0;
+                }
 
                 $dailyClicks[] = [
                     'date' => Carbon::parse($day)->format('M j'),
@@ -394,42 +514,6 @@ class SeoReports extends Component
                     'combined_impressions' => $gscDayImpressions + $bingDayImpressions,
                 ];
             }
-
-            $topQueries = Schema::hasTable('gsc_query_metrics')
-                ? DB::table('gsc_query_metrics')
-                    ->whereBetween('date', [$today->copy()->subDays(27)->toDateString(), $today->toDateString()])
-                    ->groupBy('query')
-                    ->selectRaw('query, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
-                    ->orderByDesc('clicks')
-                    ->limit(8)
-                    ->get()
-                    ->map(fn ($r) => [
-                        'query' => (string) $r->query,
-                        'clicks' => (int) $r->clicks,
-                        'impressions' => (int) $r->impressions,
-                        'ctr' => (int) $r->impressions > 0 ? round(((int) $r->clicks / (int) $r->impressions) * 100, 2) : 0.0,
-                        'position' => round((float) $r->position, 2),
-                    ])
-                    ->all()
-                : [];
-
-            $topPages = Schema::hasTable('gsc_query_metrics')
-                ? DB::table('gsc_query_metrics')
-                    ->whereBetween('date', [$today->copy()->subDays(27)->toDateString(), $today->toDateString()])
-                    ->groupBy('page')
-                    ->selectRaw('page, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
-                    ->orderByDesc('clicks')
-                    ->limit(8)
-                    ->get()
-                    ->map(fn ($r) => [
-                        'page' => (string) $r->page,
-                        'clicks' => (int) $r->clicks,
-                        'impressions' => (int) $r->impressions,
-                        'ctr' => (int) $r->impressions > 0 ? round(((int) $r->clicks / (int) $r->impressions) * 100, 2) : 0.0,
-                        'position' => round((float) $r->position, 2),
-                    ])
-                    ->all()
-                : [];
 
             $coverage = [
                 'total' => 0,
@@ -501,8 +585,6 @@ class SeoReports extends Component
             return [
                 'channels' => $channels,
                 'daily_clicks' => $dailyClicks,
-                'top_queries' => $topQueries,
-                'top_pages' => $topPages,
                 'coverage' => $coverage,
                 'rankings' => $rankings,
                 'action_items' => $actionItems,
@@ -527,6 +609,67 @@ class SeoReports extends Component
                 'combined' => (int) ($row['combined_' . $suffix] ?? 0),
             ];
         })->all();
+    }
+
+    /**
+     * @return array<int,array{query:string,clicks:int,impressions:int,ctr:float,position:float}>
+     */
+    #[Computed]
+    public function topQueries(): array
+    {
+        return $this->topRows('query', $this->topQueriesSort, $this->topQueriesDir);
+    }
+
+    /**
+     * @return array<int,array{page:string,clicks:int,impressions:int,ctr:float,position:float}>
+     */
+    #[Computed]
+    public function topPages(): array
+    {
+        return $this->topRows('page', $this->topPagesSort, $this->topPagesDir);
+    }
+
+    /**
+     * Aggregate GSC query metrics grouped by the given dimension over the
+     * selected day span, ordered by the chosen sortable column.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    protected function topRows(string $dimension, string $sort, string $direction): array
+    {
+        if (! Schema::hasTable('gsc_query_metrics')) {
+            return [];
+        }
+
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        $orderExpressions = [
+            'clicks' => 'SUM(clicks)',
+            'impressions' => 'SUM(impressions)',
+            'position' => 'AVG(position)',
+            'ctr' => 'CASE WHEN SUM(impressions) > 0 THEN SUM(clicks) / SUM(impressions) ELSE 0 END',
+            $dimension => $dimension,
+        ];
+
+        $orderBy = $orderExpressions[$sort] ?? 'SUM(clicks)';
+        $start = Carbon::today()->subDays(max(1, $this->topDays) - 1)->toDateString();
+        $end = Carbon::today()->toDateString();
+
+        return DB::table('gsc_query_metrics')
+            ->whereBetween('date', [$start, $end])
+            ->groupBy($dimension)
+            ->selectRaw("{$dimension} as dim, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position")
+            ->orderByRaw("{$orderBy} {$direction}")
+            ->limit(10)
+            ->get()
+            ->map(fn ($r) => [
+                $dimension => (string) $r->dim,
+                'clicks' => (int) $r->clicks,
+                'impressions' => (int) $r->impressions,
+                'ctr' => (int) $r->impressions > 0 ? round(((int) $r->clicks / (int) $r->impressions) * 100, 2) : 0.0,
+                'position' => round((float) $r->position, 2),
+            ])
+            ->all();
     }
 
     /**

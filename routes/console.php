@@ -400,11 +400,16 @@ Schedule::command('seo:gsc-crawl-budget --markdown')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-crawl-budget.log'));
 
-// SEO: daily Google Search Console sync (free, official API).
-// GSC data lags ~2 days, so we always pull the last 7-day window and upsert.
+// SEO: Google Search Console sync (free, official API).
+// GSC data lags ~2 days at the source, so the freshest day Google returns is
+// always ~2 days old regardless of how often we sync. We still pull every few
+// hours so a newly-published day (and late-arriving revisions to recent days)
+// lands on /admin within hours instead of waiting for a once-daily run. The
+// upsert is keyed on dim_hash, so re-running is idempotent.
 Schedule::command('seo:gsc-sync --days=7')
-    ->dailyAt('05:00')
+    ->everyThreeHours()
     ->timezone('America/Chicago')
+    ->withoutOverlapping(60) // a full paginated pull can take a couple minutes
     ->appendOutputTo(storage_path('logs/seo-gsc-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-sync failed'))
     ->when(fn () => config('services.google.search_console.enabled'));
@@ -463,12 +468,14 @@ Schedule::command('social:post --platform=facebook --yes --random-delay=240')
     ->onFailure(fn () => logger()->error('Scheduled Facebook daily post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
-// Google Business Profile: 1 weekly post (image + Gemini-generated caption) on Mondays at 10:00 AM CT.
-// Queued so processing is handled by the social-media worker.
-Schedule::command('social:post --platform=google_business --queue')->weeklyOn(1, '10:00')
+// Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
+// on Mondays & Thursdays at 10:00 AM CT. Queued so processing is handled by the
+// social-media worker (goes through AI caption generation — never a direct API
+// publish). Cadence raised from weekly to lift GBP freshness/engagement signals.
+Schedule::command('social:post --platform=google_business --queue')->cron('0 10 * * 1,4')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled GBP weekly post failed'))
+    ->onFailure(fn () => logger()->error('Scheduled GBP post failed'))
     ->when(fn () => config('services.google.business_profile.enabled'));
 
 // Social Media: weekly health check

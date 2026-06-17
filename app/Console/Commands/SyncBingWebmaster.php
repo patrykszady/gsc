@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\BingDailyTotal;
 use App\Models\BingTrafficStat;
 use App\Services\BingWebmasterService;
 use Illuminate\Console\Command;
@@ -60,6 +61,40 @@ class SyncBingWebmaster extends Command
             $upserts++;
         }
         $this->info("Upserted {$upserts} rows.");
+
+        // Also capture true site-wide daily totals. GetQueryStats omits
+        // anonymized/aggregated query traffic, so its per-day sums under-report
+        // vs the Bing dashboard. GetRankAndTrafficStats returns real daily
+        // figures, which /admin/seo-reports uses for headline + trend.
+        $this->syncDailyTotals($svc);
+
         return self::SUCCESS;
+    }
+
+    protected function syncDailyTotals(BingWebmasterService $svc): void
+    {
+        $rows = $svc->fetchRankAndTrafficStats();
+        if ($rows === null) {
+            $this->warn('Daily-totals fetch failed (GetRankAndTrafficStats).');
+            return;
+        }
+
+        $written = 0;
+        foreach ($rows as $r) {
+            $impressions = (int) $r['impressions'];
+            $clicks = (int) $r['clicks'];
+
+            BingDailyTotal::updateOrCreate(
+                ['date' => $r['date'], 'site_url' => mb_substr((string) $r['site_url'], 0, 191)],
+                [
+                    'clicks' => $clicks,
+                    'impressions' => $impressions,
+                    'ctr' => $impressions > 0 ? round($clicks / $impressions, 5) : 0,
+                ],
+            );
+            $written++;
+        }
+
+        $this->info("Daily totals upserted: {$written} day(s).");
     }
 }

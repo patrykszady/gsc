@@ -129,6 +129,40 @@
                 <a href="/reviews" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">Reviews</a>
                 <a href="/contact" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">Free Estimate</a>
             </div>
+
+            {{-- Featured service areas: direct homepage links to priority city
+                 hubs (high impressions, currently ranking page 2). Passes
+                 homepage authority to help them climb into the top 10. --}}
+            @php
+                $featuredAreas = [
+                    'arlington-heights' => 'Arlington Heights',
+                    'schaumburg' => 'Schaumburg',
+                    'mount-prospect' => 'Mount Prospect',
+                    'evanston' => 'Evanston',
+                    'glenview' => 'Glenview',
+                    'winnetka' => 'Winnetka',
+                    'wilmette' => 'Wilmette',
+                    'glencoe' => 'Glencoe',
+                    'kenilworth' => 'Kenilworth',
+                    'northbrook' => 'Northbrook',
+                    'hoffman-estates' => 'Hoffman Estates',
+                    'orland-park' => 'Orland Park',
+                    'palos-park' => 'Palos Park',
+                    'hawthorn-woods' => 'Hawthorn Woods',
+                ];
+            @endphp
+            <h2 class="mt-12 text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                Remodeling Across Chicagoland
+            </h2>
+            <p class="mx-auto mt-2 max-w-2xl text-center text-sm text-gray-600 dark:text-gray-400">
+                Local kitchen, bathroom &amp; home remodeling in the communities we serve most.
+            </p>
+            <div class="mx-auto mt-6 flex max-w-4xl flex-wrap justify-center gap-2">
+                @foreach ($featuredAreas as $slug => $city)
+                    <a href="/areas-served/{{ $slug }}" wire:navigate.hover class="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:border-sky-300 hover:text-sky-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-sky-400">{{ $city }}</a>
+                @endforeach
+                <a href="/areas-served" wire:navigate.hover class="rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">All 89+ Areas →</a>
+            </div>
         </div>
     </section>
 

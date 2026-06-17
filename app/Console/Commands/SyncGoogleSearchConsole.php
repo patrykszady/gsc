@@ -127,6 +127,65 @@ class SyncGoogleSearchConsole extends Command
         } while (isset($count) && $count >= $limit);
 
         $this->info("Done. Inserted={$totalInserted} Updated={$totalUpdated}" . ($dry ? ' (dry-run)' : ''));
+
+        // Also capture true site-wide daily totals. The query-dimension pull
+        // above silently drops clicks/impressions from anonymized queries, so
+        // its per-day sums under-report vs the GSC UI. A date-only query
+        // returns the real totals, which /admin/seo-reports uses for headline
+        // numbers and the daily trend.
+        $this->syncDailyTotals($svc, $siteUrl, $start, $end, $dry);
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Upsert true daily totals from a date-dimension-only query.
+     */
+    protected function syncDailyTotals(
+        GoogleSearchConsoleService $svc,
+        string $siteUrl,
+        Carbon $start,
+        Carbon $end,
+        bool $dry,
+    ): void {
+        $rows = $svc->querySearchAnalytics(
+            siteUrl: $siteUrl,
+            startDate: $start->toDateString(),
+            endDate: $end->toDateString(),
+            dimensions: ['date'],
+            rowLimit: 1000,
+            startRow: 0,
+        );
+
+        if ($rows === null) {
+            $this->warn('Daily-totals query failed: ' . json_encode($svc->getLastError()));
+            return;
+        }
+
+        $written = 0;
+        foreach ($rows as $r) {
+            $date = $r['keys'][0] ?? null;
+            if (! $date) {
+                continue;
+            }
+
+            if ($dry) {
+                $written++;
+                continue;
+            }
+
+            \App\Models\GscDailyTotal::updateOrCreate(
+                ['date' => $date, 'site_url' => mb_substr($siteUrl, 0, 191)],
+                [
+                    'clicks' => (int) ($r['clicks'] ?? 0),
+                    'impressions' => (int) ($r['impressions'] ?? 0),
+                    'ctr' => round((float) ($r['ctr'] ?? 0), 5),
+                    'position' => round((float) ($r['position'] ?? 0), 2),
+                ]
+            );
+            $written++;
+        }
+
+        $this->info("Daily totals upserted: {$written} day(s)" . ($dry ? ' (dry-run)' : ''));
     }
 }

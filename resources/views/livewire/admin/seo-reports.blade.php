@@ -85,7 +85,7 @@
             <div class="mb-4 flex items-center justify-between">
                 <flux:heading size="md">Search Click Trend ({{ $trendDays }} days)</flux:heading>
                 <div class="flex flex-wrap items-center gap-2">
-                    <flux:text class="text-xs text-zinc-500">GSC + Bing ({{ $trendUnitLabel }})</flux:text>
+                    <flux:text class="text-xs text-zinc-500">Google + Bing ({{ $trendUnitLabel }})</flux:text>
                     <div class="flex items-center gap-1">
                         <flux:button
                             size="xs"
@@ -147,10 +147,25 @@
                             <flux:chart.line field="combined" class="text-violet-500" />
                         @endif
                     </flux:chart.svg>
+
+                    <flux:chart.tooltip>
+                        <flux:chart.tooltip.heading field="date" />
+                        <flux:chart.tooltip.value field="gsc" :label="'Google ' . $trendUnitLabel">
+                            <span class="size-2.5 rounded-full bg-sky-500"></span>
+                        </flux:chart.tooltip.value>
+                        <flux:chart.tooltip.value field="bing" :label="'Bing ' . $trendUnitLabel">
+                            <span class="size-2.5 rounded-full bg-emerald-500"></span>
+                        </flux:chart.tooltip.value>
+                        @if ($trendCombined === 1)
+                            <flux:chart.tooltip.value field="combined" :label="'Combined ' . $trendUnitLabel">
+                                <span class="size-2.5 rounded-full bg-violet-500"></span>
+                            </flux:chart.tooltip.value>
+                        @endif
+                    </flux:chart.tooltip>
                 </flux:chart.viewport>
 
                 <div class="mt-2 flex flex-wrap items-center gap-2 px-1">
-                    <flux:chart.legend :label="'GSC ' . $trendUnitLabel" class="p-1 text-xs text-zinc-500">
+                    <flux:chart.legend :label="'Google ' . $trendUnitLabel" class="p-1 text-xs text-zinc-500">
                         <flux:chart.legend.indicator class="bg-sky-500" />
                     </flux:chart.legend>
                     <flux:chart.legend :label="'Bing ' . $trendUnitLabel" class="p-1 text-xs text-zinc-500">
@@ -182,23 +197,55 @@
 
     <div class="mb-6 grid min-w-0 gap-6 xl:grid-cols-3">
         <flux:card class="min-w-0 overflow-hidden p-5 xl:col-span-2">
-            <div class="mb-4 flex items-center justify-between">
-                <flux:heading size="md">Top Queries (Last 28 Days)</flux:heading>
-                <flux:text class="text-xs text-zinc-500">From Search Console</flux:text>
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <flux:heading size="md">Top Queries (Last {{ $topDays }} Days)</flux:heading>
+                <div class="flex flex-wrap items-center gap-2">
+                    <flux:text class="text-xs text-zinc-500">From Search Console</flux:text>
+                    <div class="flex items-center gap-1">
+                        @foreach ([7, 28, 90] as $days)
+                            <flux:button
+                                size="xs"
+                                variant="ghost"
+                                wire:click="setTopDays({{ $days }})"
+                                class="{{ $topDays === $days ? 'bg-sky-100! text-sky-800! dark:bg-sky-900/30! dark:text-sky-200!' : '' }}"
+                            >
+                                {{ $days }}d
+                            </flux:button>
+                        @endforeach
+                    </div>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="text-left text-xs uppercase tracking-wide text-zinc-500">
                         <tr>
-                            <th class="pb-2 pr-2">Query</th>
-                            <th class="pb-2 pr-2 text-right">Clicks</th>
-                            <th class="pb-2 pr-2 text-right">Impr.</th>
-                            <th class="pb-2 pr-2 text-right">CTR</th>
-                            <th class="pb-2 text-right">Pos</th>
+                            @php
+                                $qcols = [
+                                    'query' => ['label' => 'Query', 'align' => 'left'],
+                                    'clicks' => ['label' => 'Clicks', 'align' => 'right'],
+                                    'impressions' => ['label' => 'Impr.', 'align' => 'right'],
+                                    'ctr' => ['label' => 'CTR', 'align' => 'right'],
+                                    'position' => ['label' => 'Pos', 'align' => 'right'],
+                                ];
+                            @endphp
+                            @foreach ($qcols as $col => $meta)
+                                <th class="pb-2 {{ $loop->last ? '' : 'pr-2' }} {{ $meta['align'] === 'right' ? 'text-right' : '' }}">
+                                    <button
+                                        type="button"
+                                        wire:click="sortTopQueries('{{ $col }}')"
+                                        class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-zinc-700 dark:hover:text-zinc-200 {{ $meta['align'] === 'right' ? 'flex-row-reverse' : '' }} {{ $topQueriesSort === $col ? 'text-zinc-700 dark:text-zinc-200' : '' }}"
+                                    >
+                                        <span>{{ $meta['label'] }}</span>
+                                        @if ($topQueriesSort === $col)
+                                            <span aria-hidden="true">{{ $topQueriesDir === 'asc' ? '↑' : '↓' }}</span>
+                                        @endif
+                                    </button>
+                                </th>
+                            @endforeach
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        @forelse ($snapshot['top_queries'] as $q)
+                        @forelse ($this->topQueries as $q)
                             <tr>
                                 <td class="max-w-65 py-2 pr-2 align-top font-medium text-zinc-800 dark:text-zinc-100">
                                     <span class="line-clamp-2">{{ $q['query'] }}</span>
@@ -248,23 +295,55 @@
 
     <div class="mb-6 grid min-w-0 gap-6 xl:grid-cols-3">
         <flux:card class="min-w-0 overflow-hidden p-5 xl:col-span-2">
-            <div class="mb-4 flex items-center justify-between">
-                <flux:heading size="md">Top Pages (Last 28 Days)</flux:heading>
-                <flux:text class="text-xs text-zinc-500">Landing pages by clicks</flux:text>
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <flux:heading size="md">Top Pages (Last {{ $topDays }} Days)</flux:heading>
+                <div class="flex flex-wrap items-center gap-2">
+                    <flux:text class="text-xs text-zinc-500">Landing pages</flux:text>
+                    <div class="flex items-center gap-1">
+                        @foreach ([7, 28, 90] as $days)
+                            <flux:button
+                                size="xs"
+                                variant="ghost"
+                                wire:click="setTopDays({{ $days }})"
+                                class="{{ $topDays === $days ? 'bg-sky-100! text-sky-800! dark:bg-sky-900/30! dark:text-sky-200!' : '' }}"
+                            >
+                                {{ $days }}d
+                            </flux:button>
+                        @endforeach
+                    </div>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead class="text-left text-xs uppercase tracking-wide text-zinc-500">
                         <tr>
-                            <th class="pb-2 pr-2">Page</th>
-                            <th class="pb-2 pr-2 text-right">Clicks</th>
-                            <th class="pb-2 pr-2 text-right">Impr.</th>
-                            <th class="pb-2 pr-2 text-right">CTR</th>
-                            <th class="pb-2 text-right">Pos</th>
+                            @php
+                                $pcols = [
+                                    'page' => ['label' => 'Page', 'align' => 'left'],
+                                    'clicks' => ['label' => 'Clicks', 'align' => 'right'],
+                                    'impressions' => ['label' => 'Impr.', 'align' => 'right'],
+                                    'ctr' => ['label' => 'CTR', 'align' => 'right'],
+                                    'position' => ['label' => 'Pos', 'align' => 'right'],
+                                ];
+                            @endphp
+                            @foreach ($pcols as $col => $meta)
+                                <th class="pb-2 {{ $loop->last ? '' : 'pr-2' }} {{ $meta['align'] === 'right' ? 'text-right' : '' }}">
+                                    <button
+                                        type="button"
+                                        wire:click="sortTopPages('{{ $col }}')"
+                                        class="inline-flex items-center gap-1 uppercase tracking-wide hover:text-zinc-700 dark:hover:text-zinc-200 {{ $meta['align'] === 'right' ? 'flex-row-reverse' : '' }} {{ $topPagesSort === $col ? 'text-zinc-700 dark:text-zinc-200' : '' }}"
+                                    >
+                                        <span>{{ $meta['label'] }}</span>
+                                        @if ($topPagesSort === $col)
+                                            <span aria-hidden="true">{{ $topPagesDir === 'asc' ? '↑' : '↓' }}</span>
+                                        @endif
+                                    </button>
+                                </th>
+                            @endforeach
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        @forelse ($snapshot['top_pages'] as $p)
+                        @forelse ($this->topPages as $p)
                             <tr>
                                 <td class="max-w-70 py-2 pr-2 align-top font-medium text-zinc-800 dark:text-zinc-100">
                                     <span class="line-clamp-2">{{ $p['page'] }}</span>
