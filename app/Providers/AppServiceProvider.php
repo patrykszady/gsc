@@ -12,12 +12,14 @@ use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
+use Opcodes\LogViewer\Facades\LogViewer;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -54,9 +56,21 @@ class AppServiceProvider extends ServiceProvider
         ProjectImage::observe(ProjectImageObserver::class);
 
         // Restrict Log Viewer access to specific admin emails only
-        Gate::define('viewLogViewer', function ($user) {
-            $allowedEmails = array_filter(array_map('trim', explode(',', env('LOG_VIEWER_ALLOWED_EMAILS', 'patryk@gs.construction'))));
+        $allowedEmails = array_filter(array_map('trim', explode(',', env('LOG_VIEWER_ALLOWED_EMAILS', 'patryk@gs.construction'))));
 
+        LogViewer::auth(function (Request $request) use ($allowedEmails) {
+            $productionToken = trim((string) env('LOG_VIEWER_PRODUCTION_TOKEN', ''));
+
+            if ($productionToken !== '' && hash_equals($productionToken, (string) $request->bearerToken())) {
+                return true;
+            }
+
+            $user = $request->user();
+
+            return $user && in_array($user->email, $allowedEmails, true);
+        });
+
+        Gate::define('viewLogViewer', function ($user) {
             return $user && in_array($user->email, $allowedEmails, true);
         });
 
