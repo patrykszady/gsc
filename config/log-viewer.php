@@ -22,6 +22,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Log Viewer access control (cache-safe).
+    |--------------------------------------------------------------------------
+    | These are read via config() inside AppServiceProvider so they keep
+    | working when the app runs `config:cache` (where env() returns null).
+    |
+    */
+
+    'allowed_emails' => env('LOG_VIEWER_ALLOWED_EMAILS', 'patryk@gs.construction'),
+
+    'production_token' => env('LOG_VIEWER_PRODUCTION_TOKEN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Log Viewer Domain
     |--------------------------------------------------------------------------
     | You may change the domain where Log Viewer should be active.

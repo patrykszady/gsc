@@ -55,11 +55,12 @@ class AppServiceProvider extends ServiceProvider
         Project::observe(ProjectObserver::class);
         ProjectImage::observe(ProjectImageObserver::class);
 
-        // Restrict Log Viewer access to specific admin emails only
-        $allowedEmails = array_filter(array_map('trim', explode(',', env('LOG_VIEWER_ALLOWED_EMAILS', 'patryk@gs.construction'))));
+        // Restrict Log Viewer access to specific admin emails only.
+        // Read via config() (not env()) so it keeps working under config:cache.
+        $allowedEmails = array_filter(array_map('trim', explode(',', (string) config('log-viewer.allowed_emails', 'patryk@gs.construction'))));
 
         LogViewer::auth(function (Request $request) use ($allowedEmails) {
-            $productionToken = trim((string) env('LOG_VIEWER_PRODUCTION_TOKEN', ''));
+            $productionToken = trim((string) config('log-viewer.production_token', ''));
 
             if ($productionToken !== '' && hash_equals($productionToken, (string) $request->bearerToken())) {
                 return true;
