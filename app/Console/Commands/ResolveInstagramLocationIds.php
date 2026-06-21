@@ -86,8 +86,16 @@ class ResolveInstagramLocationIds extends Command
                     $resolved++;
                     $this->line(sprintf('  <info>✓</info> %s → %s (%s)', $row['query'], $row['id'], $row['name'] ?? ''));
                 } else {
+                    // No valid Facebook Place ID for this city. When re-resolving
+                    // (--force), clear any stale cached value so we stop tagging
+                    // posts with an ID the Graph API rejects.
+                    if ($force && $area->ig_location_id !== null) {
+                        $area->update(['ig_location_id' => null]);
+                        $this->line(sprintf('  <comment>×</comment> %s → %s (cleared stale ID)', $row['query'], $row['error'] ?? 'unknown'));
+                    } else {
+                        $this->line(sprintf('  <comment>×</comment> %s → %s', $row['query'], $row['error'] ?? 'unknown'));
+                    }
                     $failed++;
-                    $this->line(sprintf('  <comment>×</comment> %s → %s', $row['query'], $row['error'] ?? 'unknown'));
                 }
             }
         });

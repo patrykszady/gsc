@@ -48,6 +48,14 @@
 {!! json_encode($zipSchema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) !!}
     </script>
 
+    {{-- Product schema for the services surfaced on this ZIP page — city-scoped
+         when we have a matching area — so long-tail "{service} {zip}" / "{service}
+         in {city}" queries are eligible for review-star + offer rich results.
+         Slugs mirror the visible "services available in {city}" list below. --}}
+    @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'] as $zipServiceSlug)
+        <x-product-service-schema :service-slug="$zipServiceSlug" :area="$area" />
+    @endforeach
+
     {{-- Visual breadcrumb --}}
     <div class="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
         <nav class="flex text-sm" aria-label="Breadcrumb">

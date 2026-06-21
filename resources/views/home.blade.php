@@ -2,7 +2,41 @@
     title="Remodeling Contractors"
     metaDescription="Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area."
 >
-    {{-- Note: LCP preload is handled by the hero slider component itself --}}
+    {{-- ItemList (summary-page carousel) for the remodeling services linked in the
+         "Explore Our Remodeling Services" section below. Each ListItem points at a
+         /services/{slug} detail page that carries full Product markup, making the
+         homepage's service set eligible for Google carousel treatment. The page's
+         HomeAndConstructionBusiness node already supplies AggregateRating/Review. --}}
+    @php
+        $homeServiceList = [
+            'kitchen-remodeling'  => 'Kitchen Remodeling',
+            'bathroom-remodeling' => 'Bathroom Remodeling',
+            'basement-remodeling' => 'Basement Remodeling',
+            'home-additions'      => 'Home Additions',
+            'home-remodeling'     => 'Whole-Home Remodeling',
+            'mudroom-remodeling'  => 'Mudroom & Laundry Remodeling',
+        ];
+        $homeServiceItems = [];
+        $homeServicePos = 0;
+        foreach ($homeServiceList as $homeServiceSlug => $homeServiceName) {
+            $homeServiceItems[] = [
+                '@type'    => 'ListItem',
+                'position' => ++$homeServicePos,
+                'url'      => url('/services/' . $homeServiceSlug),
+                'name'     => $homeServiceName,
+            ];
+        }
+        $homeServiceItemList = [
+            '@context'        => 'https://schema.org',
+            '@type'           => 'ItemList',
+            '@id'             => url('/') . '#services-list',
+            'name'            => 'Remodeling Services — GS Construction',
+            'itemListOrder'   => 'https://schema.org/ItemListOrderAscending',
+            'numberOfItems'   => count($homeServiceItems),
+            'itemListElement' => $homeServiceItems,
+        ];
+    @endphp
+    <script type="application/ld+json">{!! json_encode($homeServiceItemList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
 
     {{-- Voice / AI: 'About this business' speakable summary (visible to humans, --}}
     {{-- emphasized for voice assistants, AI Overviews, and ChatGPT browse). --}}

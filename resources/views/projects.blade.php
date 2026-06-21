@@ -25,6 +25,46 @@
     @endphp
     <x-breadcrumb-schema :items="$projectsCrumbs" />
 
+    {{-- ItemList (summary-page carousel) of the projects in this portfolio view.
+         Scoped to the active /projects/{type} filter when present. Each ListItem
+         points at a /projects/{slug} detail page, which carries full Article +
+         ImageObject markup — making the portfolio eligible for Google carousel
+         treatment. Ordered deterministically (featured first, then newest) so the
+         markup is stable across the grid's randomized, paginated card order. --}}
+    @php
+        $projectListQuery = \App\Models\Project::query()
+            ->where('is_published', true)
+            ->when($activeType, fn ($q) => $q->where('project_type', $activeType))
+            ->orderByDesc('is_featured')
+            ->orderByDesc('completed_at')
+            ->limit(30);
+        $projectListRows = $projectListQuery->get(['slug', 'title']);
+
+        if ($projectListRows->isNotEmpty()) {
+            $projectListItems = [];
+            foreach ($projectListRows as $i => $projectRow) {
+                $projectListItems[] = [
+                    '@type'    => 'ListItem',
+                    'position' => $i + 1,
+                    'url'      => url('/projects/' . $projectRow->slug),
+                    'name'     => $projectRow->title,
+                ];
+            }
+            $projectItemList = [
+                '@context'        => 'https://schema.org',
+                '@type'           => 'ItemList',
+                '@id'             => url()->current() . '#project-list',
+                'name'            => ($activeCrumb['label'] ?? 'Remodeling') . ' Projects — GS Construction',
+                'itemListOrder'   => 'https://schema.org/ItemListOrderDescending',
+                'numberOfItems'   => count($projectListItems),
+                'itemListElement' => $projectListItems,
+            ];
+        }
+    @endphp
+    @if(!empty($projectItemList))
+        <script type="application/ld+json">{!! json_encode($projectItemList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    @endif
+
     {{-- Visual Breadcrumb --}}
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">

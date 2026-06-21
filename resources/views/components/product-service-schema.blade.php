@@ -87,26 +87,58 @@
     $name  = $city ? "{$c['name']} in {$city}, IL" : "{$c['name']} — Chicago Suburbs";
     $url   = $area ? $area->serviceUrl($serviceSlug) : url("/services/{$serviceSlug}");
 
-    // Pull aggregate + top reviews for this project_type. Cache 6h.
-    $cacheKey = "product_schema:reviews:{$projectType}";
-    $data = Cache::remember($cacheKey, 21600, function () use ($projectType) {
-        $q = Testimonial::query()
-            ->visible()
-            ->where('project_type', $projectType);
-        $count = (clone $q)->count();
-        $avg   = (float) ((clone $q)->avg('star_rating') ?: 5.0);
-        $items = (clone $q)
-            ->whereNotNull('review_description')
-            ->where('review_description', '!=', '')
-            ->orderByDesc('review_date')
-            ->limit(5)
-            ->get(['id', 'reviewer_name', 'star_rating', 'review_description', 'review_date', 'created_at']);
+    // Keep the AggregateOffer "fresh": a rolling 1-year window so Google never
+    // treats the price range as an expired offer. validFrom is pinned to today.
+    $validFrom       = now()->toDateString();
+    $priceValidUntil = now()->addYear()->toDateString();
+
+    // Reusable closure: aggregate + top reviews for an optional project_type.
+    $pullReviews = function (?string $type) {
+        $q = Testimonial::query()->visible();
+        if ($type !== null) {
+            $q->where('project_type', $type);
+        }
         return [
-            'count' => $count,
-            'avg'   => round($avg, 1),
-            'items' => $items,
+            'count' => (clone $q)->count(),
+            'avg'   => round((float) ((clone $q)->avg('star_rating') ?: 5.0), 1),
+            'items' => (clone $q)
+                ->whereNotNull('review_description')
+                ->where('review_description', '!=', '')
+                ->orderByDesc('review_date')
+                ->limit(5)
+                ->get(['id', 'reviewer_name', 'star_rating', 'review_description', 'review_date', 'created_at']),
         ];
-    });
+    };
+
+    // Service-specific reviews (cache 6h).
+    $serviceData = Cache::remember("product_schema:reviews:{$projectType}", 21600, fn () => $pullReviews($projectType));
+
+    // Company-wide fallback. Thin service buckets (e.g. basement, additions,
+    // mudroom) have <3 service-specific reviews and would otherwise emit a
+    // Product node WITHOUT aggregateRating/review — which Google flags as
+    // "Missing field aggregateRating / review". GS Construction is a single
+    // contractor, so its overall review pool legitimately backs each service
+    // Product when service-specific reviews are sparse.
+    $companyData = Cache::remember('product_schema:reviews:_company', 21600, fn () => $pullReviews(null));
+
+    // Use the service-specific aggregate only when it has enough volume to be
+    // meaningful; otherwise fall back to the company-wide rating.
+    $minServiceReviews = 3;
+    $useService = ($serviceData['count'] ?? 0) >= $minServiceReviews;
+
+    // Lead with service-specific testimonials, then top up from the company
+    // pool (deduped) so the node always carries at least one review.
+    $reviewItems = collect($serviceData['items'])
+        ->concat($companyData['items'])
+        ->unique('id')
+        ->take(5)
+        ->values();
+
+    $data = [
+        'count' => $useService ? $serviceData['count'] : $companyData['count'],
+        'avg'   => $useService ? $serviceData['avg']   : $companyData['avg'],
+        'items' => $reviewItems,
+    ];
 
     $schema = [
         '@context'    => 'https://schema.org',
@@ -124,6 +156,27 @@
         'manufacturer' => [
             '@id' => 'https://gs.construction/#business',
         ],
+        // Truthful, on-page differentiators (stated across /projects FAQ, ZIP
+        // pages, and the workmanship-warranty HowTo). Surfaced as structured
+        // attributes so Google + AI Overviews can cite them. NOT fabricated
+        // retail attributes (gtin/mpn/sku) — this is a service, not a SKU.
+        'slogan' => 'Quality remodeling, family-owned since 2015.',
+        'award'  => '5-star rated on Google, Yelp & Houzz',
+        'audience' => [
+            '@type'          => 'Audience',
+            'audienceType'   => 'Residential homeowners',
+            'geographicArea' => [
+                '@type' => 'AdministrativeArea',
+                'name'  => $city ? "{$city}, IL" : 'Chicagoland',
+            ],
+        ],
+        'additionalProperty' => [
+            ['@type' => 'PropertyValue', 'name' => 'Licensed, bonded & insured', 'value' => 'Yes'],
+            ['@type' => 'PropertyValue', 'name' => 'Free in-home estimate',      'value' => 'Yes'],
+            ['@type' => 'PropertyValue', 'name' => 'Written workmanship warranty', 'value' => 'Yes'],
+            ['@type' => 'PropertyValue', 'name' => 'Experience',                  'value' => '40+ years combined'],
+            ['@type' => 'PropertyValue', 'name' => 'Family-owned',                'value' => 'Yes'],
+        ],
         'offers' => [
             '@type'         => 'AggregateOffer',
             'priceCurrency' => 'USD',
@@ -131,6 +184,10 @@
             'highPrice'     => $c['highPrice'],
             'offerCount'    => '1',
             'availability'  => 'https://schema.org/InStock',
+            // Accurately marks this as a service-provision offer (GoodRelations).
+            'businessFunction' => 'http://purl.org/goodrelations/v1#ProvideService',
+            'validFrom'        => $validFrom,
+            'priceValidUntil'  => $priceValidUntil,
             'url'           => $url,
             'seller'        => ['@id' => 'https://gs.construction/#business'],
             'areaServed'    => $city
@@ -139,7 +196,7 @@
         ],
     ];
 
-    if (($data['count'] ?? 0) >= 3) {
+    if (($data['count'] ?? 0) >= 1 && $data['items']->isNotEmpty()) {
         $schema['aggregateRating'] = [
             '@type'       => 'AggregateRating',
             'ratingValue' => (string) $data['avg'],

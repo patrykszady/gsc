@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    {{-- Polyfill requestIdleCallback for Safari/iOS (< 17.4) so inline and bundled
+         scripts don't throw "Can't find variable: requestIdleCallback". Must run
+         before any other script. --}}
+    <script>
+        window.requestIdleCallback = window.requestIdleCallback || function (cb) {
+            var start = Date.now();
+            return setTimeout(function () {
+                cb({ didTimeout: false, timeRemaining: function () { return Math.max(0, 50 - (Date.now() - start)); } });
+            }, 1);
+        };
+        window.cancelIdleCallback = window.cancelIdleCallback || function (id) { clearTimeout(id); };
+    </script>
+
     {{-- SEO: title, description, canonical, robots, OG, Twitter, JSON-LD (ralphjsmit/laravel-seo) --}}
     @php($__seoBuilder = app(\App\Support\SEO\SEOBuilder::class))
     {!! seo($__seoBuilder->build()) !!}

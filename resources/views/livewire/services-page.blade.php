@@ -4,6 +4,38 @@
         ['name' => 'Services'],
     ]" />
 
+    {{-- Product Schema per service — emits review-star / offer rich-result markup
+         for every service we provide on the /services index, not just the detail
+         pages. Each node's @id points at its canonical /services/{slug}#product. --}}
+    @foreach ($this->services as $service)
+        <x-product-service-schema :service-slug="$service['slug']" />
+    @endforeach
+
+    {{-- ItemList (summary-page carousel pattern) — groups the service Products so
+         Google can treat /services as a carousel. Each ListItem points at the
+         /services/{slug} detail page where the full Product node lives. --}}
+    @php
+        $serviceListItems = [];
+        foreach ($this->services as $i => $service) {
+            $serviceListItems[] = [
+                '@type'    => 'ListItem',
+                'position' => $i + 1,
+                'url'      => url("/services/{$service['slug']}"),
+                'name'     => $service['title'],
+            ];
+        }
+        $serviceItemList = [
+            '@context'        => 'https://schema.org',
+            '@type'           => 'ItemList',
+            '@id'             => url('/services') . '#service-list',
+            'name'            => 'Remodeling Services — GS Construction',
+            'itemListOrder'   => 'https://schema.org/ItemListOrderAscending',
+            'numberOfItems'   => count($serviceListItems),
+            'itemListElement' => $serviceListItems,
+        ];
+    @endphp
+    <script type="application/ld+json">{!! json_encode($serviceItemList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+
     {{-- Visual Breadcrumb --}}
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">

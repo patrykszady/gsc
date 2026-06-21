@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -39,7 +40,15 @@ class PageSpeedInsightsService
             $resp = Http::connectTimeout(15)
                 ->timeout(75)
                 ->retry(3, 2500, function (\Exception $exception) {
-                    return $exception instanceof ConnectionException;
+                    // Retry on connection drops and on transient PSI 5xx
+                    // responses — Google's Lighthouse analysis frequently
+                    // returns a 500 that succeeds on a subsequent attempt.
+                    if ($exception instanceof ConnectionException) {
+                        return true;
+                    }
+
+                    return $exception instanceof RequestException
+                        && $exception->response->serverError();
                 })
                 ->get(self::API . '?' . $query);
         } catch (ConnectionException $e) {

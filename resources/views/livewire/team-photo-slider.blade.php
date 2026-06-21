@@ -1,3 +1,9 @@
+{{-- Livewire root stays free of x-data. Hosting Alpine state on the Livewire
+     root element causes transient "<var> is not defined" errors during wire
+     morphs (e.g. the refreshBackgroundImage round-trip in next()), because
+     Alpine re-evaluates child bindings before the root scope is re-bound.
+     An inner wrapper owns the Alpine scope so morphs never disturb it. --}}
+<div>
 <div
     x-data="{
         currentSlide: 0,
@@ -303,4 +309,5 @@
             ></button>
         </template>
     </div>
+</div>
 </div>

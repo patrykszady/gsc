@@ -699,6 +699,42 @@ class MetaSocialService
         return str_contains(strtolower($errorMessage), 'not a valid location page id');
     }
 
+    /**
+     * Check whether a cached location_id is usable as an Instagram Graph API
+     * media location tag. The Graph /media endpoint only accepts a Facebook
+     * Page place ID; Instagram location PKs are rejected. We read the node
+     * directly and treat it as valid only when it resolves to a place/page
+     * (has a `location` field or `category`), which mirrors what /media accepts.
+     *
+     * @return bool true when the ID resolves to a valid place page
+     */
+    public function isUsableInstagramLocationId(string $locationId): bool
+    {
+        $locationId = trim($locationId);
+        if ($locationId === '') {
+            return false;
+        }
+
+        $creds = $this->getCredentials();
+        $token = $creds['token'];
+        if (! $token) {
+            return false;
+        }
+
+        $resp = Http::timeout(20)->get(self::GRAPH_BASE . "/{$locationId}", [
+            'fields' => 'id,name,location,category',
+            'access_token' => $token,
+        ]);
+
+        if (! $resp->successful() || $resp->json('error')) {
+            return false;
+        }
+
+        // A real place page exposes a location object or a category; an IG
+        // location PK either errors or returns a node without these.
+        return $resp->json('location') !== null || $resp->json('category') !== null;
+    }
+
     protected function bumpHourlyMetric(string $metric): int
     {
         $bucket = now()->format('YmdH');

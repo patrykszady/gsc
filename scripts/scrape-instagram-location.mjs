@@ -11,6 +11,13 @@
  *   {"query":"Palatine, IL","id":"108424509199446","name":"Palatine, Illinois"}
  *   {"query":"...","id":null,"error":"no_result"}
  *
+ * IMPORTANT: "id" is the location's facebook_places_id (a Facebook Page place
+ * ID), NOT the Instagram location pk. The Instagram Graph API /media endpoint's
+ * location_id parameter only accepts the Facebook Page place ID — an IG pk is
+ * rejected with "(#100) Param location_id is not a valid location page ID". When
+ * a matched location has no facebook_places_id we return id=null rather than
+ * caching an unusable pk.
+ *
  * Usage:
  *   echo "Palatine, IL\nBarrington, IL" | \
  *     node scripts/scrape-instagram-location.mjs \
@@ -111,10 +118,14 @@ async function scrapeOne(page, query) {
     return { id: null, name: null, error: 'no_match' };
   }
 
-  const id = best.location && best.location.pk ? String(best.location.pk) : null;
-  const name = (best.location && best.location.name) || best.title || null;
+  // The Graph publish API needs the Facebook Page place ID, not the IG pk.
+  const loc = best.location || {};
+  const fbPlaceId = loc.facebook_places_id ? String(loc.facebook_places_id) : null;
+  const name = loc.name || best.title || null;
 
-  return id ? { id, name, error: null } : { id: null, name: null, error: 'no_pk' };
+  return fbPlaceId
+    ? { id: fbPlaceId, name, error: null }
+    : { id: null, name, error: 'no_fb_place_id' };
 }
 
 (async () => {

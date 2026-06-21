@@ -22,9 +22,11 @@ class SeoCwvTemplate extends Command
 {
     protected $signature = 'seo:cwv-template
         {--window=7 : Days in each comparison window}
-        {--lcp-regress=150 : Flag templates whose p75 LCP grew by >=N ms}
+        {--lcp-regress=150 : Flag templates whose p75 LCP grew by >=N ms (field/CrUX-backed)}
+        {--lab-lcp-regress=500 : LCP threshold (ms) for lab-only buckets; lab mobile LCP is synthetic and noisy}
         {--inp-regress=40 : Flag templates whose p75 INP grew by >=N ms}
         {--cls-regress=0.02 : Flag templates whose p75 CLS grew by >=N}
+        {--min-samples=5 : Require at least N samples in BOTH windows before flagging a regression}
         {--markdown : Save report to storage/app/reports/cwv-template.md}';
 
     protected $description = 'Aggregate Core Web Vitals per page template and surface week-over-week regressions.';
@@ -44,6 +46,7 @@ class SeoCwvTemplate extends Command
 
         $rows = [];
         $alerts = [];
+        $minSamples = max(1, (int) $this->option('min-samples'));
         foreach ($recent as $key => $r) {
             [$template, $strategy] = explode('|', $key, 2);
             $p = $prior[$key] ?? null;
@@ -60,8 +63,22 @@ class SeoCwvTemplate extends Command
                 'perf' => $r['perf'], 'perfΔ' => $perfΔ,
             ];
 
-            if ($lcpΔ !== null && $lcpΔ >= (int) $this->option('lcp-regress')) {
-                $alerts[] = "{$template} [{$strategy}] LCP +{$lcpΔ} ms";
+            // Only flag regressions backed by enough data in BOTH windows; a
+            // p75 derived from a handful of samples (e.g. when PSI gaps shrink a
+            // bucket) swings wildly and produces false alerts.
+            $enoughSamples = $r['samples'] >= $minSamples && $p && $p['samples'] >= $minSamples;
+            if (! $enoughSamples) {
+                continue;
+            }
+
+            // Lab-only LCP (no CrUX field data) is synthetic and noisy, so it
+            // uses a more tolerant threshold than real-user field LCP.
+            $lcpThreshold = ($r['lcp_field'] ?? false)
+                ? (int) $this->option('lcp-regress')
+                : (int) $this->option('lab-lcp-regress');
+            if ($lcpΔ !== null && $lcpΔ >= $lcpThreshold) {
+                $src = ($r['lcp_field'] ?? false) ? 'field' : 'lab';
+                $alerts[] = "{$template} [{$strategy}] LCP +{$lcpΔ} ms ({$src})";
             }
             if ($inpΔ !== null && $inpΔ >= (int) $this->option('inp-regress')) {
                 $alerts[] = "{$template} [{$strategy}] INP +{$inpΔ} ms";
@@ -106,6 +123,7 @@ class SeoCwvTemplate extends Command
             $buckets[$key][] = [
                 // Prefer field (CrUX) when present, fall back to lab LCP.
                 'lcp' => $r->field_lcp_ms ?? $r->lab_lcp_ms,
+                'lcp_is_field' => $r->field_lcp_ms !== null,
                 'inp' => $r->field_inp_ms,
                 'cls' => $r->field_cls !== null ? (float) $r->field_cls : null,
                 'perf' => $r->performance,
@@ -114,8 +132,12 @@ class SeoCwvTemplate extends Command
 
         $out = [];
         foreach ($buckets as $key => $list) {
+            $fieldLcp = count(array_filter(array_column($list, 'lcp_is_field')));
             $out[$key] = [
                 'samples' => count($list),
+                // LCP is "field-backed" only when CrUX data exists; otherwise the
+                // value is synthetic Lighthouse lab LCP, which is far noisier.
+                'lcp_field' => $fieldLcp > 0,
                 'lcp'  => $this->p75Int(array_column($list, 'lcp')),
                 'inp'  => $this->p75Int(array_column($list, 'inp')),
                 'cls'  => $this->p75Float(array_column($list, 'cls')),

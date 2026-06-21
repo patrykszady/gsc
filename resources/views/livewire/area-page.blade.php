@@ -188,6 +188,15 @@
 
             <x-city-reviews-badge :area="$area" />
 
+            {{-- City-scoped Product schema for the services linked below — makes this
+                 primary local landing page eligible for review-star / offer rich
+                 results on "{service} {city}" searches. @id points at each canonical
+                 /areas-served/{area}/services/{slug} detail page. Mirrors the visible
+                 service links in the section that follows. --}}
+            @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'] as $areaHomeServiceSlug)
+                <x-product-service-schema :service-slug="$areaHomeServiceSlug" :area="$area" />
+            @endforeach
+
             <section class="bg-zinc-50 py-8 dark:bg-zinc-800/40">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -677,6 +686,14 @@
                     :secondary-cta-url="$area->pageUrl('projects')"
                 />
             </div>
+
+            {{-- City-scoped Product schema for every service in the grid below — this
+                 area services listing page becomes eligible for review-star / offer
+                 rich results on "{service} {city}" searches. @id points at each
+                 canonical /areas-served/{area}/services/{slug} detail page. --}}
+            @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions', 'mudroom-remodeling'] as $areaServicesSlug)
+                <x-product-service-schema :service-slug="$areaServicesSlug" :area="$area" />
+            @endforeach
 
             {{-- Services Grid --}}
             @include('partials.services-grid', ['area' => $area])

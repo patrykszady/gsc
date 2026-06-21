@@ -120,6 +120,43 @@
     @endphp
     <x-breadcrumb-schema :items="$breadcrumbItems" />
 
+    {{-- ImageObject for the actual photo on this page — strengthens Google Images
+         understanding with contentUrl, caption, creator, and credit/copyright.
+         These are GS Construction's own project photos, so we assert authorship
+         without a licensable-image claim (no false license metadata). --}}
+    @php
+        $photoUrl = $image->webp_url ?: $image->url;
+        if ($photoUrl) {
+            $photoName = $image->seo_alt_text ?: $image->alt_text ?: ($project->title . ' — remodeling photo');
+            $imageObjectSchema = [
+                '@context'          => 'https://schema.org',
+                '@type'             => 'ImageObject',
+                '@id'               => url()->current() . '#primaryimage',
+                'contentUrl'        => $photoUrl,
+                'url'               => $photoUrl,
+                'name'              => $photoName,
+                'caption'           => $image->seo_caption ?: $photoName,
+                'representativeOfPage' => true,
+                'creator'           => ['@id' => 'https://gs.construction/#organization'],
+                'creditText'        => 'GS Construction',
+                'copyrightNotice'   => '© ' . now()->year . ' GS Construction',
+                'license'           => 'https://gs.construction/',
+                'acquireLicensePage' => url('/contact'),
+                'isPartOf'          => ['@id' => route('projects.show', $project) . '#webpage'],
+            ];
+            if (!empty($image->width) && !empty($image->height)) {
+                $imageObjectSchema['width'] = (int) $image->width;
+                $imageObjectSchema['height'] = (int) $image->height;
+            }
+            if ($image->created_at) {
+                $imageObjectSchema['uploadDate'] = $image->created_at->toDateString();
+            }
+        }
+    @endphp
+    @if(!empty($imageObjectSchema))
+        <script type="application/ld+json">{!! json_encode($imageObjectSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    @endif
+
     {{-- Visual Breadcrumb --}}
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">

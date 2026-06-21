@@ -36,6 +36,7 @@ class SeoGscMonitor extends Command
         {--min-impr-drop=50 : Minimum % impression drop to flag}
         {--min-prior-clicks=10 : Skip queries with fewer than N clicks in the prior window}
         {--min-prior-impr=100 : Skip pages with fewer than N impressions in the prior window}
+        {--min-prior-impr-query=10 : Skip queries with fewer than N impressions in the prior window for position-drop / lost-top20 (filters long-tail churn)}
         {--limit=25 : Max rows per section}
         {--markdown : Save report to storage/app/reports/gsc-monitor.md}';
 
@@ -50,6 +51,7 @@ class SeoGscMonitor extends Command
         $minImprDrop = (float) $this->option('min-impr-drop');
         $minPriorClicks = (int) $this->option('min-prior-clicks');
         $minPriorImpr = (int) $this->option('min-prior-impr');
+        $minPriorImprQuery = (int) $this->option('min-prior-impr-query');
         $limit = max(1, (int) $this->option('limit'));
 
         $currentEnd = Carbon::today()->subDays($lag);
@@ -75,11 +77,11 @@ class SeoGscMonitor extends Command
         $currentByPage = $this->aggregate('page', $currentStart, $currentEnd);
         $priorByPage = $this->aggregate('page', $priorStart, $priorEnd);
 
-        $positionDrops = $this->positionDrops($currentByQuery, $priorByQuery, $minPosDrop, $limit);
+        $positionDrops = $this->positionDrops($currentByQuery, $priorByQuery, $minPosDrop, $minPriorImprQuery, $limit);
         $clickDrops = $this->clickDrops($currentByQuery, $priorByQuery, $minClickDrop, $minPriorClicks, $limit);
         $imprDrops = $this->imprDrops($currentByPage, $priorByPage, $minImprDrop, $minPriorImpr, $limit);
         $newTop10 = $this->newTop10($currentByQuery, $priorByQuery, $limit);
-        $lostTop20 = $this->lostTop20($currentByQuery, $priorByQuery, $limit);
+        $lostTop20 = $this->lostTop20($currentByQuery, $priorByQuery, $minPriorImprQuery, $limit);
 
         $this->renderSection('Position drops (≥ ' . $minPosDrop . ' slots, prior pos ≤ 20)', $positionDrops, [
             'Query', 'Prior pos', 'Current pos', 'Δ', 'Prior clicks', 'Current clicks',
@@ -150,11 +152,17 @@ class SeoGscMonitor extends Command
      * @param array<string, array{impr:int,clicks:int,pos:float}> $prior
      * @return array<int, array<string, mixed>>
      */
-    protected function positionDrops(array $cur, array $prior, float $minDrop, int $limit): array
+    protected function positionDrops(array $cur, array $prior, float $minDrop, int $minPriorImpr, int $limit): array
     {
         $out = [];
         foreach ($prior as $key => $p) {
             if ($p['pos'] <= 0 || $p['pos'] > 20) {
+                continue;
+            }
+            // Require meaningful prior volume; otherwise a single-impression
+            // long-tail query that bobs in and out of the top-20 looks like a
+            // huge "drop" (pos 1 → 100) and floods the report with noise.
+            if ($p['impr'] < $minPriorImpr) {
                 continue;
             }
             $c = $cur[$key] ?? ['impr' => 0, 'clicks' => 0, 'pos' => 0.0];
@@ -258,11 +266,15 @@ class SeoGscMonitor extends Command
     /**
      * @return array<int, array<string, mixed>>
      */
-    protected function lostTop20(array $cur, array $prior, int $limit): array
+    protected function lostTop20(array $cur, array $prior, int $minPriorImpr, int $limit): array
     {
         $out = [];
         foreach ($prior as $key => $p) {
             if ($p['pos'] <= 0 || $p['pos'] > 20) {
+                continue;
+            }
+            // Same long-tail volume floor as positionDrops.
+            if ($p['impr'] < $minPriorImpr) {
                 continue;
             }
             $c = $cur[$key] ?? null;

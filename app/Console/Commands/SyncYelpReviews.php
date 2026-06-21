@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Testimonial;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 
@@ -192,6 +193,9 @@ class SyncYelpReviews extends Command
 
             $response = Http::timeout(30)
                 ->acceptJson()
+                // Retry transient network/timeout blips (cURL 28) so a single
+                // hiccup doesn't abort the scheduled review sync.
+                ->retry(3, 2000, fn ($exception) => $exception instanceof ConnectionException)
                 ->get('https://serpapi.com/search.json', [
                     'engine' => 'yelp_reviews',
                     'place_id' => $placeId,
@@ -291,6 +295,7 @@ class SyncYelpReviews extends Command
 
         $response = Http::timeout(30)
             ->acceptJson()
+            ->retry(3, 2000, fn ($exception) => $exception instanceof ConnectionException)
             ->get('https://serpapi.com/search.json', [
                 'engine' => 'yelp_search',
                 'find_desc' => $query,

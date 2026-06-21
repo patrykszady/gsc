@@ -110,6 +110,34 @@ $localBusiness = [
         '40+ years combined remodeling experience',
         '5-star rated on Google, Yelp, and Houzz',
     ])),
+    // Topical-authority signals. Google's entity/Knowledge-Graph layer and AI
+    // Overviews use knowsAbout to understand WHAT this business is expert in.
+    // Every item maps to a real service or capability we deliver.
+    'knowsAbout' => [
+        'Kitchen Remodeling',
+        'Bathroom Remodeling',
+        'Whole-Home Remodeling',
+        'Basement Finishing',
+        'Home Additions',
+        'Mudroom & Laundry Remodeling',
+        'Custom Cabinetry',
+        'Countertop Installation',
+        'Tile Installation',
+        'Aging-in-Place & Accessibility Remodeling',
+        'Design-Build Construction',
+        'Home Renovation Permits',
+    ],
+    // Truthful, on-page credential (stated on /projects FAQ and ZIP pages):
+    // "fully licensed, bonded, and insured." Modeled as a contractor license.
+    'hasCredential' => [
+        '@type' => 'EducationalOccupationalCredential',
+        'credentialCategory' => 'license',
+        'name' => 'Licensed, Bonded & Insured General Contractor',
+        'recognizedBy' => [
+            '@type' => 'GovernmentOrganization',
+            'name' => 'State of Illinois',
+        ],
+    ],
     'address' => [
         '@type' => 'PostalAddress',
         'addressLocality' => 'Prospect Heights',
@@ -237,6 +265,22 @@ $localBusiness = [
                     'serviceType' => 'Home Addition',
                 ],
             ],
+            [
+                '@type' => 'Offer',
+                'itemOffered' => [
+                    '@type' => 'Service',
+                    'name' => 'Mudroom & Laundry Remodeling',
+                    'description' => 'Custom mudroom and laundry room remodels: built-in lockers, benches, cubbies, drop zones, durable tile floors, and combined laundry/mudroom layouts.',
+                    'url' => url('/services/mudroom-remodeling'),
+                    'provider' => ['@id' => 'https://gs.construction/#business'],
+                    'areaServed' => [
+                        '@type' => 'State',
+                        'name' => 'Illinois',
+                        'addressCountry' => 'US',
+                    ],
+                    'serviceType' => 'Mudroom Remodeling',
+                ],
+            ],
         ],
     ],
 ];
@@ -319,9 +363,28 @@ $__pageData = $__seoBuilderInstance->build();
 $pageImage = $__pageData->image ?: asset('android-chrome-512x512.png');
 $pageTitle = $__pageData->title ?: 'GS Construction';
 
+// Specialize the WebPage @type by route so Google understands the page's role
+// (AboutPage / ContactPage / CollectionPage all have dedicated semantics).
+// Falls back to the generic WebPage for everything else.
+$__path = trim(request()->path(), '/');
+$webPageType = match (true) {
+    $__path === 'about'        => 'AboutPage',
+    $__path === 'contact'      => 'ContactPage',
+    in_array($__path, [
+        'services',
+        'reviews',
+        'areas-served',
+        'projects',
+        'projects/kitchens',
+        'projects/bathrooms',
+        'projects/home-remodeling',
+    ], true)                   => 'CollectionPage',
+    default                    => 'WebPage',
+};
+
 $speakable = [
     '@context' => 'https://schema.org',
-    '@type' => 'WebPage',
+    '@type' => $webPageType,
     '@id' => url()->current() . '#webpage',
     'url' => url()->current(),
     'name' => $pageTitle,

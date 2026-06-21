@@ -12,6 +12,38 @@
         ['name' => $pageLabel],
     ]" />
 
+    {{-- ItemList (summary-page carousel) of every city hub we serve. Each ListItem
+         points at a /areas-served/{slug} page that carries per-city LocalBusiness +
+         Product markup, making the directory eligible for Google carousel treatment.
+         Emitted only on the canonical /areas-served route (the /areas and /locations
+         aliases are noindex + canonicalized to /areas-served). --}}
+    @if($currentRoute === 'areas-served')
+        @php
+            $areaListItems = [];
+            $areaListPos = 0;
+            foreach ($groupedAreas as $areaLetterGroup) {
+                foreach ($areaLetterGroup as $areaHub) {
+                    $areaListItems[] = [
+                        '@type'    => 'ListItem',
+                        'position' => ++$areaListPos,
+                        'url'      => $areaHub->url,
+                        'name'     => $areaHub->city . ', IL',
+                    ];
+                }
+            }
+            $areaItemList = [
+                '@context'        => 'https://schema.org',
+                '@type'           => 'ItemList',
+                '@id'             => url('/areas-served') . '#area-list',
+                'name'            => 'Chicagoland Service Areas — GS Construction',
+                'itemListOrder'   => 'https://schema.org/ItemListOrderAscending',
+                'numberOfItems'   => count($areaListItems),
+                'itemListElement' => $areaListItems,
+            ];
+        @endphp
+        <script type="application/ld+json">{!! json_encode($areaItemList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+    @endif
+
     {{-- Visual Breadcrumb Navigation --}}
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <nav class="flex" aria-label="Breadcrumb">

@@ -96,8 +96,31 @@ class SeoClarityHealth extends Command
             $this->info('Saved: storage/app/private/reports/clarity-health.md');
         }
 
-        if (! $isConfigured || ! $apiReachable) {
+        // A completely unconfigured integration is a real setup problem.
+        if (! $isConfigured) {
             return self::FAILURE;
+        }
+
+        // The meaningful failure is STALE stored data — that means the daily
+        // sync pipeline is actually broken. Clarity's Data Export API has a very
+        // small daily request quota that the 08:32 sync usually consumes, so the
+        // health check's own live call at 10:10 often returns a rate-limit error
+        // even when the integration is perfectly healthy. Treat an unreachable
+        // live API as a hard failure ONLY when stored data is also stale;
+        // otherwise it is noise and was producing a false-positive daily error.
+        $staleThresholdDays = 3;
+        $isStale = $latest === null
+            || $latest->date === null
+            || $latest->date->lt(now()->subDays($staleThresholdDays)->startOfDay());
+
+        if ($isStale) {
+            $this->error('Clarity data is stale (latest: ' . ($latestDate ?? 'none') . ') — sync pipeline may be broken.');
+
+            return self::FAILURE;
+        }
+
+        if (! $apiReachable) {
+            $this->warn('Clarity live API unreachable at health-check time, but stored data is fresh (likely the daily export quota). Not treating as a failure.');
         }
 
         // Non-zero exit on a confirmed spike so the scheduler's onFailure hook

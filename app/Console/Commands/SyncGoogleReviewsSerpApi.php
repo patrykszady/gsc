@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Testimonial;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -258,8 +259,23 @@ class SyncGoogleReviewsSerpApi extends Command
                 $params['next_page_token'] = $nextPageToken;
             }
 
-            $response = Http::timeout(30)->acceptJson()
-                ->get('https://serpapi.com/search.json', $params);
+            try {
+                $response = Http::timeout(30)->acceptJson()
+                    // Retry transient network/timeout blips (cURL 28) so a single
+                    // hiccup doesn't fail the whole scheduled review sync. HTTP
+                    // error responses are not thrown here and fall through to the
+                    // existing ! successful() handling below.
+                    ->retry(3, 2000, fn ($exception) => $exception instanceof ConnectionException)
+                    ->get('https://serpapi.com/search.json', $params);
+            } catch (ConnectionException $e) {
+                // SerpApi was unreachable for the whole retry window (sustained
+                // upstream outage / timeout). Review sync is non-critical, so
+                // degrade to a warning and return whatever pages we already have
+                // instead of letting the exception crash the scheduled command
+                // (which produced a daily ERROR + "review sync failed" alert).
+                $this->warn('SerpApi unreachable after retries on page '.($page + 1).': '.$e->getMessage());
+                break;
+            }
 
             if (! $response->successful()) {
                 $this->warn('SerpApi request failed (HTTP '.$response->status().') on page '.($page + 1).'.');
