@@ -58,7 +58,7 @@ class ContactSection extends Component
     public array $timeSelections = [];
 
     // Toggle for showing consultation scheduling options
-    public bool $showConsultationOptions = false;
+    public bool $showConsultationOptions = true;
 
     public function placeholder(): string
     {
@@ -94,6 +94,7 @@ class ContactSection extends Component
     public function mount(): void
     {
         $this->formLoadedAt = time();
+        $this->showConsultationOptions = true;
     }
 
     public function updatedPhone(?string $value): void

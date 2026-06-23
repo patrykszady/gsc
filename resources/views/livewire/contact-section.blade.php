@@ -1,8 +1,8 @@
 <section class="relative bg-white dark:bg-gray-900">
-    <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
+    <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2 lg:items-start">
         {{-- Left Column: Image, Heading, Contact Info --}}
-        <div class="relative px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
-            <div class="mx-auto max-w-xl lg:sticky lg:top-8 lg:mx-0 lg:max-w-lg">
+        <div class="relative px-6 py-8 sm:py-10 lg:px-8 lg:py-12 lg:sticky lg:top-0 lg:self-start">
+            <div class="mx-auto max-w-xl lg:mx-0 lg:max-w-lg">
                 
 
                 {{-- Greg & Patryk Team Photo Slider --}}
@@ -66,7 +66,7 @@
         <form wire:submit="submit" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
             <div
                 x-data="{ expanded: $wire.entangle('showConsultationOptions') }"
-                :class="expanded ? 'mx-auto max-w-xl lg:mr-0 lg:max-w-lg' : 'mx-auto max-w-xl lg:mr-0 lg:max-w-lg lg:sticky lg:top-8'"
+                class="mx-auto max-w-xl lg:mr-0 lg:max-w-lg"
             >
                 {{-- Rate limit error --}}
                 @error('form') 
@@ -168,9 +168,6 @@
                             </span>
                             <span>Schedule A Free Consultation</span>
                         </button>
-                        <p class="mt-1 pl-8 text-sm text-zinc-600 dark:text-zinc-400">
-                            Open to enter your address and pick available dates.
-                        </p>
                     </div>
 
                     {{-- Collapsible Consultation Options --}}
@@ -549,7 +546,8 @@
                                     window.turnstile.render(this.$refs.turnstileWidget, {
                                         sitekey: '{{ $turnstileSiteKey }}',
                                         theme: 'auto',
-                                        size: '{{ $isUSVisitor ? 'invisible' : 'flexible' }}',
+                                        size: 'flexible',
+                                        appearance: '{{ $isUSVisitor ? 'interaction-only' : 'always' }}',
                                         callback: (token) => {
                                             @this.set('turnstileToken', token);
                                         },

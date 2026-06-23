@@ -190,6 +190,60 @@ class AreaServed extends Model
     }
 
     /**
+     * Get areas with their project/testimonial counts, sorted by total count descending.
+     * Used on homepage to display "most-served" cities with counts.
+     * 
+     * @param int $limit Number of areas to return
+     * @return Collection<int, AreaServed>
+     */
+    public static function withProjectCounts(int $limit = 14): Collection
+    {
+        $areas = static::all();
+        
+        $areasWithCounts = $areas->map(function (AreaServed $area) {
+            $city = trim((string) $area->city);
+            if ($city === '') {
+                return null;
+            }
+            
+            $needle = mb_strtolower($city);
+            
+            // Count projects in this city
+            $projectCount = Project::query()
+                ->where('is_published', true)
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->get()
+                ->filter(function (Project $project) use ($needle): bool {
+                    $parts = preg_split('/[,.]/', (string) $project->location) ?: [];
+                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+                    return $token === $needle;
+                })
+                ->count();
+            
+            // Count testimonials in this city
+            $testimonialCount = Testimonial::query()
+                ->where('is_hidden', false)
+                ->get()
+                ->filter(function (Testimonial $t) use ($needle): bool {
+                    $parts = preg_split('/[,.]/', (string) $t->project_location) ?: [];
+                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+                    return $token === $needle;
+                })
+                ->count();
+            
+            $area->project_count = $projectCount + $testimonialCount;
+            return $area;
+        })
+        ->filter()
+        ->sortByDesc('project_count')
+        ->take($limit)
+        ->values();
+        
+        return $areasWithCounts;
+    }
+
+    /**
      * Per-record SEO data fed to ralphjsmit/laravel-seo.
      */
     public function getDynamicSEOData(): SEOData

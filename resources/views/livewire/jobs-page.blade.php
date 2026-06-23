@@ -245,7 +245,8 @@
                                 window.turnstile.render(this.$refs.turnstileWidget, {
                                     sitekey: '{{ $turnstileSiteKey }}',
                                     theme: 'auto',
-                                    size: '{{ $isUSVisitor ? 'invisible' : 'flexible' }}',
+                                    size: 'flexible',
+                                    appearance: '{{ $isUSVisitor ? 'interaction-only' : 'always' }}',
                                     callback: (token) => { @this.set('turnstileToken', token); },
                                     'expired-callback': () => { @this.set('turnstileToken', ''); },
                                     'error-callback': () => { @this.set('turnstileToken', ''); }

@@ -124,7 +124,16 @@
             function report(kind, data) {
                 try {
                     if (sent >= MAX_PER_PAGE) return;
-                    var sig = kind + '|' + (data.message || '') + '|' + (data.source || '') + '|' + (data.line || '');
+                    var msg = (data.message || '').toString();
+                    // Drop un-actionable noise: the browser sanitizes cross-origin
+                    // script errors to "Script error." with no source/stack, and a
+                    // rejected promise or thrown plain object stringifies to
+                    // "[object Object]". Neither can be diagnosed or fixed, so they
+                    // only pollute the dashboard.
+                    if (!msg) return;
+                    if (msg === 'Script error.' && !data.source) return;
+                    if (msg.indexOf('[object Object]') !== -1) return;
+                    var sig = kind + '|' + msg + '|' + (data.source || '') + '|' + (data.line || '');
                     if (seen[sig]) return; // de-dupe storms (e.g. loops)
                     seen[sig] = true;
                     sent++;

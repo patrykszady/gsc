@@ -242,7 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Observe links with wire:navigate for prefetching
     document.addEventListener('mouseover', (e) => {
-        const link = e.target.closest('a[wire\\:navigate], a[wire\\:navigate\\.hover]');
+        const target = e.target;
+        if (!target || typeof target.closest !== 'function') return;
+        const link = target.closest('a[wire\\:navigate], a[wire\\:navigate\\.hover]');
         if (!link) return;
 
         // Prefetch images from the linked page's data if available
@@ -256,7 +258,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Smooth scroll for in-page anchors
     document.addEventListener('click', (e) => {
-        const link = e.target.closest('a[href^="#"]');
+        const evtTarget = e.target;
+        if (!evtTarget || typeof evtTarget.closest !== 'function') return;
+        const link = evtTarget.closest('a[href^="#"]');
         if (!link) return;
 
         const href = link.getAttribute('href');

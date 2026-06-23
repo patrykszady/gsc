@@ -92,9 +92,46 @@
                         default => 'Areas We Serve',
                     };
 
+                    // Full service list derived from nav links so it auto-updates,
+                    // while preserving explicit phrases like "home remodeling".
+                    $phraseBySlug = [
+                        'kitchen-remodeling' => 'kitchen remodeling',
+                        'bathroom-remodeling' => 'bathroom remodeling',
+                        'basement-remodeling' => 'basement remodeling',
+                        'home-additions' => 'home additions',
+                        'mudroom-remodeling' => 'mudroom remodeling',
+                        'home-remodeling' => 'home remodeling',
+                    ];
+
+                    $servicePhrases = collect(config('nav.links'))
+                        ->filter(fn ($l) => str_starts_with($l['href'] ?? '', '/services/'))
+                        ->map(function ($link) use ($phraseBySlug) {
+                            $slug = trim((string) \Illuminate\Support\Str::after((string) ($link['href'] ?? ''), '/services/'), '/');
+
+                            if (isset($phraseBySlug[$slug])) {
+                                return $phraseBySlug[$slug];
+                            }
+
+                            $base = \Illuminate\Support\Str::lower(\Illuminate\Support\Str::singular((string) ($link['label'] ?? 'service')));
+
+                            return str_contains($base, 'addition') ? 'home additions' : ($base . ' remodeling');
+                        })
+                        ->filter()
+                        ->values();
+
+                    if (! $servicePhrases->contains('home remodeling')) {
+                        $servicePhrases->push('home remodeling');
+                    }
+
+                    $servicePhrases = $servicePhrases->unique()->values();
+
+                    $serviceList = $servicePhrases->count() > 1
+                        ? $servicePhrases->slice(0, -1)->implode(', ') . ', and ' . $servicePhrases->last()
+                        : (string) $servicePhrases->first();
+
                     $heroDescription = match ($currentRoute) {
-                        'areas' => 'Providing expert kitchen remodels, bathroom renovations, and home remodeling services across Chicagoland, Northwest Suburbs, and the North Shore.',
-                        default => 'Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional kitchen remodels, bathroom renovations, and home remodeling services.',
+                        'areas' => "Providing expert {$serviceList} services across Chicagoland, Northwest Suburbs, and the North Shore.",
+                        default => "Serving homeowners throughout Chicagoland, Northwest Suburbs, and the North Shore with professional {$serviceList} services.",
                     };
                 @endphp
 

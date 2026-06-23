@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+use App\Models\Project;
+use App\Models\Testimonial;
 #[Layout('components.layouts.app')]
 class AreaPage extends Component
 {
@@ -18,12 +20,44 @@ class AreaPage extends Component
     
     public ?string $service = null;
 
+    public int $projectCount = 0;
     public function mount(AreaServed $area, ?string $page = null, ?string $service = null): void
     {
         $this->area = $area;
         $this->page = $page ?? 'home';
         $this->service = $service;
 
+        // Calculate project count for this area (same logic as ZIP code page)
+        $city = trim((string) $area->city);
+        if ($city !== '') {
+            $needle = mb_strtolower($city);
+            
+            // Count projects in this city
+            $projectCount = Project::query()
+                ->where('is_published', true)
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->get()
+                ->filter(function (Project $project) use ($needle): bool {
+                    $parts = preg_split('/[,.]/', (string) $project->location) ?: [];
+                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+                    return $token === $needle;
+                })
+                ->count();
+            
+            // Count testimonials in this city
+            $testimonialCount = Testimonial::query()
+                ->where('is_hidden', false)
+                ->get()
+                ->filter(function (Testimonial $t) use ($needle): bool {
+                    $parts = preg_split('/[,.]/', (string) $t->project_location) ?: [];
+                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+                    return $token === $needle;
+                })
+                ->count();
+            
+            $this->projectCount = $projectCount + $testimonialCount;
+        }
         // Share area with all views (for navbar, footer, etc.)
         View::share('currentArea', $area);
 
@@ -31,11 +65,6 @@ class AreaPage extends Component
         if ($this->page === 'service' && $this->service) {
             // Map URL slugs to internal service types
             $serviceMap = [
-                'kitchen-remodeling' => 'kitchen-remodeling',
-                'bathroom-remodeling' => 'bathroom-remodeling',
-                'home-remodeling' => 'home-remodeling',
-                'basement-remodeling' => 'basement-remodeling',
-                'home-additions' => 'home-additions',
             ];
             $serviceType = $serviceMap[$this->service] ?? abort(404);
             SeoService::areaService($area, $serviceType);
@@ -66,6 +95,7 @@ class AreaPage extends Component
             'area' => $this->area,
             'page' => $this->page,
             'service' => $this->service,
+                    'projectCount' => $this->projectCount,
         ]);
     }
 }

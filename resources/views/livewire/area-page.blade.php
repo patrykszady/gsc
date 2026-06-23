@@ -91,12 +91,43 @@
             {{-- Area Home Page --}}
             @php
                 $toneIndex = abs(crc32($area->slug)) % 3;
-                $focusSets = [
-                    ['kitchen remodeling', 'bathroom remodeling', 'home remodeling'],
-                    ['home renovation', 'kitchen renovation', 'bathroom renovation'],
-                    ['remodeling contractor', 'kitchen and bath remodeling', 'whole-home remodeling'],
+
+                // Full service list derived from nav links so it auto-updates,
+                // while preserving explicit phrases like "home remodeling".
+                $phraseBySlug = [
+                    'kitchen-remodeling' => 'kitchen remodeling',
+                    'bathroom-remodeling' => 'bathroom remodeling',
+                    'basement-remodeling' => 'basement remodeling',
+                    'home-additions' => 'home additions',
+                    'mudroom-remodeling' => 'mudroom remodeling',
+                    'home-remodeling' => 'home remodeling',
                 ];
-                $focus = $focusSets[$toneIndex];
+
+                $servicePhrases = collect(config('nav.links'))
+                    ->filter(fn ($l) => str_starts_with($l['href'] ?? '', '/services/'))
+                    ->map(function ($link) use ($phraseBySlug) {
+                        $slug = trim((string) \Illuminate\Support\Str::after((string) ($link['href'] ?? ''), '/services/'), '/');
+
+                        if (isset($phraseBySlug[$slug])) {
+                            return $phraseBySlug[$slug];
+                        }
+
+                        $base = \Illuminate\Support\Str::lower(\Illuminate\Support\Str::singular((string) ($link['label'] ?? 'service')));
+
+                        return str_contains($base, 'addition') ? 'home additions' : ($base . ' remodeling');
+                    })
+                    ->filter()
+                    ->values();
+
+                if (! $servicePhrases->contains('home remodeling')) {
+                    $servicePhrases->push('home remodeling');
+                }
+
+                $servicePhrases = $servicePhrases->unique()->values();
+
+                $serviceList = $servicePhrases->count() > 1
+                    ? $servicePhrases->slice(0, -1)->implode(', ') . ', and ' . $servicePhrases->last()
+                    : (string) $servicePhrases->first();
 
                 $nearbyFaqCities = $area->nearestCities(2)->pluck('city')->implode(' and ');
                 $homePostalCodes = array_values(array_slice($area->postalCodes(), 0, 10));
@@ -118,9 +149,9 @@
                     'Plan and build your next remodel in ' . $area->city . ' with clear scope, timeline, and pricing.',
                 ];
                 $intentIntros = [
-                    "Homeowners in {$area->city} search most for {$focus[0]}, {$focus[1]}, and {$focus[2]}. Use the links below to jump directly to the exact service page you need.",
-                    "This page is structured around real {$area->city} search intent: {$focus[0]}, {$focus[1]}, and {$focus[2]}.",
-                    "If you're comparing {$focus[0]} and {$focus[1]} in {$area->city}, start with the service links below for scope, timeline, and project examples.",
+                    "Homeowners in {$area->city} search most for {$serviceList}. Use the links below to jump directly to the exact service page you need.",
+                    "This page is structured around real {$area->city} search intent: {$serviceList}.",
+                    "If you're planning {$serviceList} in {$area->city}, start with the service links below for scope, timeline, and project examples.",
                 ];
 
                 $homeFaqs = [
@@ -188,6 +219,16 @@
 
             <x-city-reviews-badge :area="$area" />
 
+            {{-- Project count statement similar to ZIP code pages --}}
+            @if ($projectCount > 0)
+                <section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                    <div class="rounded-lg bg-sky-50 px-6 py-4 dark:bg-sky-900/20">
+                        <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            We've completed <strong>{{ $projectCount }}</strong> projects in and around {{ $area->city }}.
+                        </p>
+                    </div>
+                </section>
+            @endif
             {{-- City-scoped Product schema for the services linked below — makes this
                  primary local landing page eligible for review-star / offer rich
                  results on "{service} {city}" searches. @id points at each canonical

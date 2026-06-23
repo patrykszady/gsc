@@ -68,6 +68,12 @@ Schedule::command('hive:sync')->dailyAt('02:00')
 Schedule::command('socials:check --quiet-on-success')->weekly()
     ->appendOutputTo(storage_path('logs/socials-check.log'));
 
+// Weekly cleanup of stale front-end JS errors (/admin/js-errors). Resolves rows
+// not seen in 30+ days so the dashboard reflects only active regressions.
+Schedule::command('js-errors:resolve --stale=30 --force')->weekly()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled js-errors:resolve failed'));
+
 // Google Business Profile: health check + daily media sync
 Schedule::command('google-business-profile:health')->daily()
     ->appendOutputTo(storage_path('logs/schedule.log'));
