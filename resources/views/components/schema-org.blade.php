@@ -64,6 +64,7 @@ $localBusiness = [
     'url' => 'https://gs.construction',
     'logo' => [
         '@type' => 'ImageObject',
+        '@id' => 'https://gs.construction/#logo',
         'url' => $logoPng,
         'contentUrl' => $logoPng,
     ],
@@ -341,7 +342,7 @@ $website = [
     'name' => 'GS Construction',
     'alternateName' => 'GS Construction & Remodeling',
     'url' => 'https://gs.construction/',
-    'publisher' => ['@id' => 'https://gs.construction/#organization'],
+    'publisher' => ['@id' => 'https://gs.construction/#business'],
     'image' => ['@id' => 'https://gs.construction/#logo'],
     'inLanguage' => 'en-US',
     'potentialAction' => [

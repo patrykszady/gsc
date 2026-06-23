@@ -249,8 +249,8 @@ class AreaServed extends Model
     public function getDynamicSEOData(): SEOData
     {
         return new SEOData(
-            title:        "Kitchen, Bathroom & Home Remodeling in {$this->city}, IL | GS Construction",
-            description:  "Trusted family-owned remodeling contractor serving {$this->city}, IL. Free in-home estimates for kitchen, bathroom, and whole-home renovations. 40+ years experience.",
+            title:        "{$this->city} Home Remodeling, Kitchen & Bath | GS Construction",
+            description:  "Family-owned remodeling contractor serving {$this->city}, IL. Kitchen, bathroom & whole-home renovations with free in-home estimates. 40+ years of experience.",
             url:          url('/areas-served/' . $this->slug),
             type:         'website',
             locale:       'en_US',
