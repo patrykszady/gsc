@@ -21,6 +21,11 @@ class ContactSubmissions extends Component
     #[Url]
     public string $dateFilter = 'all'; // all, today, week, month
 
+    #[Url]
+    public string $statusFilter = 'all'; // all, real, spam
+
+    public ?int $viewingId = null;
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -31,9 +36,41 @@ class ContactSubmissions extends Component
         $this->resetPage();
     }
 
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function convertToReal(int $id): void
+    {
+        $lead = ContactSubmission::find($id);
+        if ($lead && $lead->isSpam()) {
+            $lead->markAsReal();
+            session()->flash('status', "Lead from {$lead->name} converted, sent to Hive, and similar senders will no longer be flagged.");
+        }
+        $this->modal('lead-detail')->close();
+    }
+
+    public function markSpam(int $id): void
+    {
+        $lead = ContactSubmission::find($id);
+        if ($lead && ! $lead->isSpam()) {
+            $lead->markAsSpam();
+            session()->flash('status', "Lead from {$lead->name} marked as spam; similar senders will be blocked going forward.");
+        }
+        $this->modal('lead-detail')->close();
+    }
+
+    public function view(int $id): void
+    {
+        $this->viewingId = $id;
+        $this->modal('lead-detail')->show();
+    }
+
     public function delete(int $id): void
     {
         ContactSubmission::find($id)?->delete();
+        $this->modal('lead-detail')->close();
     }
 
     public function render()
@@ -56,12 +93,17 @@ class ContactSubmissions extends Component
             ->when($this->dateFilter === 'week', fn ($q) => $q->where('created_at', '>=', now()->subWeek()))
             ->when($this->dateFilter === 'month', fn ($q) => $q->where('created_at', '>=', now()->subMonth()));
 
+        // Status filter (real = anything not flagged spam)
+        $query->when($this->statusFilter === 'real', fn ($q) => $q->where('status', '!=', 'spam'))
+            ->when($this->statusFilter === 'spam', fn ($q) => $q->where('status', 'spam'));
+
         // Stats
         $stats = [
             'total' => ContactSubmission::count(),
             'today' => ContactSubmission::whereDate('created_at', today())->count(),
             'week' => ContactSubmission::where('created_at', '>=', now()->subWeek())->count(),
             'month' => ContactSubmission::where('created_at', '>=', now()->subMonth())->count(),
+            'spam' => ContactSubmission::where('status', 'spam')->count(),
         ];
 
         // Top cities
@@ -85,6 +127,7 @@ class ContactSubmissions extends Component
             'stats' => $stats,
             'topCities' => $topCities,
             'utmSources' => $utmSources,
+            'viewing' => $this->viewingId ? ContactSubmission::find($this->viewingId) : null,
         ]);
     }
 }

@@ -14,6 +14,34 @@ use Livewire\Component;
 #[Title('Dashboard')]
 class Dashboard extends Component
 {
+    public ?int $viewingId = null;
+
+    public function view(int $id): void
+    {
+        $this->viewingId = $id;
+        $this->modal('lead-detail')->show();
+    }
+
+    public function convertToReal(int $id): void
+    {
+        $lead = ContactSubmission::find($id);
+        if ($lead && $lead->isSpam()) {
+            $lead->markAsReal();
+            session()->flash('status', "Lead from {$lead->name} converted, sent to Hive, and similar senders will no longer be flagged.");
+        }
+        $this->modal('lead-detail')->close();
+    }
+
+    public function markSpam(int $id): void
+    {
+        $lead = ContactSubmission::find($id);
+        if ($lead && ! $lead->isSpam()) {
+            $lead->markAsSpam();
+            session()->flash('status', "Lead from {$lead->name} marked as spam; similar senders will be blocked going forward.");
+        }
+        $this->modal('lead-detail')->close();
+    }
+
     public function render()
     {
         return view('livewire.admin.dashboard', [
@@ -29,6 +57,7 @@ class Dashboard extends Component
                 ->take(5)
                 ->get(),
             'recentLeads' => ContactSubmission::latest()->take(5)->get(),
+            'viewing' => $this->viewingId ? ContactSubmission::find($this->viewingId) : null,
         ]);
     }
 }

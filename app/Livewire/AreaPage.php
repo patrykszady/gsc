@@ -63,8 +63,15 @@ class AreaPage extends Component
 
         // Set SEO based on page type
         if ($this->page === 'service' && $this->service) {
-            // Map URL slugs to internal service types
+            // Whitelist the supported service spokes (mirrors the route's
+            // ->where() constraint). An unknown slug 404s instead of rendering
+            // a fallback page.
             $serviceMap = [
+                'kitchen-remodeling' => 'kitchen-remodeling',
+                'bathroom-remodeling' => 'bathroom-remodeling',
+                'home-remodeling' => 'home-remodeling',
+                'basement-remodeling' => 'basement-remodeling',
+                'home-additions' => 'home-additions',
             ];
             $serviceType = $serviceMap[$this->service] ?? abort(404);
             SeoService::areaService($area, $serviceType);

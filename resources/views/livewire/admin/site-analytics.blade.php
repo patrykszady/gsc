@@ -177,8 +177,8 @@
                                 </flux:table.cell>
                                 <flux:table.cell>
                                     <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ $event->created_at->format('M j, Y') }}
-                                        <div class="text-xs">{{ $event->created_at->format('g:i A') }}</div>
+                                        {{ $event->created_at->timezone('America/Chicago')->format('M j, Y') }}
+                                        <div class="text-xs">{{ $event->created_at->timezone('America/Chicago')->format('g:i A') }} CT</div>
                                     </div>
                                 </flux:table.cell>
                             </flux:table.row>

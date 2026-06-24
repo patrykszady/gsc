@@ -103,11 +103,15 @@
                 View All →
             </flux:button>
         </div>
+        @if(session('status'))
+            <flux:callout variant="success" icon="check-circle" class="mb-4" heading="{{ session('status') }}" />
+        @endif
         <flux:card class="overflow-hidden !p-0">
             <flux:table>
                 <flux:table.columns>
                     <flux:table.column>Contact</flux:table.column>
                     <flux:table.column>City</flux:table.column>
+                    <flux:table.column>Status</flux:table.column>
                     <flux:table.column>When</flux:table.column>
                     <flux:table.column></flux:table.column>
                 </flux:table.columns>
@@ -123,13 +127,48 @@
                             <flux:table.cell class="text-zinc-600 dark:text-zinc-300">
                                 {{ $lead->city ?? '—' }}
                             </flux:table.cell>
+                            <flux:table.cell>
+                                @if($lead->isSpam())
+                                    <flux:badge color="red" size="sm" title="{{ $lead->spam_reason }}">Spam</flux:badge>
+                                @else
+                                    <flux:badge color="green" size="sm">Real</flux:badge>
+                                    @if($lead->wasSentToHive())
+                                        <flux:badge color="sky" size="sm" class="ml-1">Hive</flux:badge>
+                                    @endif
+                                @endif
+                            </flux:table.cell>
                             <flux:table.cell class="text-zinc-500 dark:text-zinc-400">
                                 {{ $lead->created_at->diffForHumans() }}
                             </flux:table.cell>
                             <flux:table.cell>
-                                <div class="flex gap-2">
-                                    <flux:button href="mailto:{{ $lead->email }}" size="sm" variant="ghost" icon="envelope" />
-                                    <flux:button href="tel:{{ $lead->phone }}" size="sm" variant="ghost" icon="phone" />
+                                <div class="flex items-center justify-end gap-2">
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        icon="eye"
+                                        wire:click="view({{ $lead->id }})"
+                                    >
+                                        Read
+                                    </flux:button>
+                                    @if($lead->isSpam())
+                                        <flux:button
+                                            size="sm"
+                                            variant="primary"
+                                            icon="arrow-up-right"
+                                            wire:click="convertToReal({{ $lead->id }})"
+                                            wire:confirm="Convert this spam submission to a real lead and send it to the Hive dashboard?"
+                                        >
+                                            Convert to Real
+                                        </flux:button>
+                                    @else
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="shield-exclamation"
+                                            wire:click="markSpam({{ $lead->id }})"
+                                            wire:confirm="Mark this lead as spam?"
+                                        />
+                                    @endif
                                 </div>
                             </flux:table.cell>
                         </flux:table.row>
@@ -200,4 +239,85 @@
             </flux:card>
         @endif
     </div>
+
+    {{-- Lead detail modal --}}
+    <flux:modal name="lead-detail" class="md:w-[32rem]">
+        @if($viewing)
+            <div class="space-y-6">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <flux:heading size="lg">{{ $viewing->name }}</flux:heading>
+                        <flux:subheading>
+                            {{ $viewing->created_at->timezone('America/Chicago')->format('M j, Y g:i A') }} CT
+                        </flux:subheading>
+                    </div>
+                    @if($viewing->isSpam())
+                        <flux:badge color="red" title="{{ $viewing->spam_reason }}">Spam</flux:badge>
+                    @else
+                        <flux:badge color="green">Real</flux:badge>
+                    @endif
+                </div>
+
+                <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-zinc-500">Email</div>
+                        <div class="text-zinc-700 dark:text-zinc-300">{{ $viewing->email ?: '—' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-zinc-500">Phone</div>
+                        <div class="text-zinc-700 dark:text-zinc-300">{{ $viewing->phone ?: '—' }}</div>
+                    </div>
+                    @if($viewing->city || $viewing->address)
+                        <div class="sm:col-span-2">
+                            <div class="text-xs uppercase tracking-wide text-zinc-500">Location</div>
+                            <div class="text-zinc-700 dark:text-zinc-300">{{ collect([$viewing->city, $viewing->address])->filter()->implode(' — ') ?: '—' }}</div>
+                        </div>
+                    @endif
+                    @if($viewing->spam_reason)
+                        <div class="sm:col-span-2">
+                            <div class="text-xs uppercase tracking-wide text-zinc-500">Flagged reason</div>
+                            <div class="text-zinc-700 dark:text-zinc-300">{{ $viewing->spam_reason }}</div>
+                        </div>
+                    @endif
+                </div>
+
+                <div>
+                    <div class="mb-1 text-xs uppercase tracking-wide text-zinc-500">Message</div>
+                    <div class="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg bg-zinc-50 p-3 text-sm text-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-200">{{ $viewing->message ?: '—' }}</div>
+                </div>
+
+                @if($viewing->availability)
+                    <div>
+                        <div class="mb-1 text-xs uppercase tracking-wide text-zinc-500">Availability</div>
+                        <div class="text-sm text-zinc-700 dark:text-zinc-300">{{ is_array($viewing->availability) ? implode(', ', \Illuminate\Support\Arr::flatten($viewing->availability)) : $viewing->availability }}</div>
+                    </div>
+                @endif
+
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <flux:modal.close>
+                        <flux:button variant="ghost">Close</flux:button>
+                    </flux:modal.close>
+                    @if($viewing->isSpam())
+                        <flux:button
+                            variant="primary"
+                            icon="arrow-up-right"
+                            wire:click="convertToReal({{ $viewing->id }})"
+                            wire:confirm="Convert this submission to a real lead, send it to Hive, and stop flagging similar senders?"
+                        >
+                            Convert to Real
+                        </flux:button>
+                    @else
+                        <flux:button
+                            variant="danger"
+                            icon="shield-exclamation"
+                            wire:click="markSpam({{ $viewing->id }})"
+                            wire:confirm="Mark this lead as spam and block similar senders going forward?"
+                        >
+                            Mark as Spam
+                        </flux:button>
+                    @endif
+                </div>
+            </div>
+        @endif
+    </flux:modal>
 </div>

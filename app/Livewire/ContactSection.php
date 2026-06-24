@@ -269,6 +269,12 @@ class ContactSection extends Component
      */
     protected function detectSpam(): ?string
     {
+        // Learned deny rules win first: senders an operator previously flagged as
+        // spam are blocked outright (self-healing block list).
+        if (\App\Models\LeadFilterRule::matchDeny($this->email, $this->phoneDigits, request()->ip())) {
+            return 'blocklisted';
+        }
+
         // 0. Turnstile verification (if enabled)
         // For non-US traffic, token is required and must verify.
         // For US traffic, we still allow graceful fallback for ad blockers.
@@ -300,6 +306,12 @@ class ContactSection extends Component
         $timeTaken = time() - $this->formLoadedAt;
         if ($timeTaken < 3) {
             return 'submitted_too_fast';
+        }
+
+        // Learned allow rules: a sender an operator previously converted to a real
+        // lead is trusted, so skip the content heuristics below (self-healing).
+        if (\App\Models\LeadFilterRule::isAllowed($this->email, $this->phoneDigits, request()->ip())) {
+            return null;
         }
 
         // 3. Gibberish detection - only check message (names can be foreign with unusual patterns)

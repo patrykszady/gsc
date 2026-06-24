@@ -16,6 +16,9 @@ class SiteAnalytics extends Component
 {
     use WithPagination;
 
+    /** All analytics times are presented in Central Time (Chicago). */
+    protected const TZ = 'America/Chicago';
+
     #[Url]
     public string $dateFilter = 'week'; // today, week, month, all
 
@@ -34,10 +37,12 @@ class SiteAnalytics extends Component
 
     protected function dateBoundary(): ?Carbon
     {
+        // Boundaries are computed against the Chicago wall clock, then converted
+        // to UTC so they compare correctly against UTC-stored created_at values.
         return match ($this->dateFilter) {
-            'today' => today(),
-            'week' => now()->subWeek(),
-            'month' => now()->subMonth(),
+            'today' => Carbon::now(self::TZ)->startOfDay()->utc(),
+            'week' => Carbon::now(self::TZ)->subWeek()->utc(),
+            'month' => Carbon::now(self::TZ)->subMonth()->utc(),
             default => null,
         };
     }
@@ -47,8 +52,7 @@ class SiteAnalytics extends Component
         $boundary = $this->dateBoundary();
 
         return $query
-            ->when($this->dateFilter === 'today', fn ($q) => $q->whereDate('created_at', today()))
-            ->when($boundary && $this->dateFilter !== 'today', fn ($q) => $q->where('created_at', '>=', $boundary))
+            ->when($boundary, fn ($q) => $q->where('created_at', '>=', $boundary))
             ->when($this->typeFilter !== 'all', fn ($q) => $q->where('type', $this->typeFilter));
     }
 
@@ -82,15 +86,16 @@ class SiteAnalytics extends Component
             ->pluck('count', 'page_path');
 
         // Daily trend for the last 14 days (independent of filters for context).
+        // Group by the Chicago calendar day in PHP so DST transitions stay correct
+        // (CONVERT_TZ would require the MySQL named-timezone tables to be loaded).
         $trend = TrackedEvent::query()
-            ->where('created_at', '>=', now()->subDays(13)->startOfDay())
-            ->selectRaw('DATE(created_at) as day, COUNT(*) as count')
-            ->groupBy('day')
-            ->orderBy('day')
-            ->pluck('count', 'day');
+            ->where('created_at', '>=', Carbon::now(self::TZ)->subDays(13)->startOfDay()->utc())
+            ->get(['created_at'])
+            ->groupBy(fn ($e) => $e->created_at->timezone(self::TZ)->toDateString())
+            ->map->count();
 
         $days = collect(range(0, 13))->map(function ($i) use ($trend) {
-            $date = now()->subDays(13 - $i)->toDateString();
+            $date = Carbon::now(self::TZ)->subDays(13 - $i)->toDateString();
             return [
                 'label' => Carbon::parse($date)->format('M j'),
                 'count' => (int) ($trend[$date] ?? 0),

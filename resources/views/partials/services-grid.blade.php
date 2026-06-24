@@ -166,7 +166,7 @@
                         </ul>
                         <div class="mt-6 lg:mt-8">
                             <a 
-                                href="{{ isset($area) ? $area->serviceUrl($service['urlSlug']) : '/services/' . $service['slug'] }}" 
+                                href="{{ (isset($area) && in_array($service['urlSlug'], ['kitchen-remodeling','bathroom-remodeling','home-remodeling','basement-remodeling','home-additions'], true)) ? $area->serviceUrl($service['urlSlug']) : '/services/' . $service['slug'] }}" 
                                 wire:navigate
                                 aria-label="Learn more about {{ $service['title'] }}"
                                 class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 lg:px-6 lg:py-3"

@@ -136,7 +136,27 @@
             'home-remodeling' => 'home-remodeling',
         ];
         $serviceSlug = $serviceSlugMap[$service] ?? null;
-        $allAreas = $serviceSlug ? \App\Models\AreaServed::orderBy('city')->get() : collect();
+
+        // Lead with our highest GSC search-demand suburbs (striking distance for
+        // "{service} {city}" queries, e.g. Schaumburg / Deer Park kitchen), then
+        // the rest alphabetically. Surfacing them first gives those spokes the
+        // most prominent internal link on every service hub page.
+        $priorityCitySlugs = [
+            'schaumburg', 'deer-park', 'barrington', 'glenview', 'northbrook',
+            'arlington-heights', 'winnetka', 'wilmette', 'kenilworth', 'glencoe',
+            'evanston', 'mount-prospect', 'orland-park', 'lake-bluff',
+        ];
+        $allAreas = collect();
+        if ($serviceSlug) {
+            $areas = \App\Models\AreaServed::orderBy('city')->get();
+            $priorityAreas = $areas
+                ->filter(fn ($a) => in_array($a->slug, $priorityCitySlugs, true))
+                ->sortBy(fn ($a) => array_search($a->slug, $priorityCitySlugs))
+                ->values();
+            $allAreas = $priorityAreas->concat(
+                $areas->reject(fn ($a) => in_array($a->slug, $priorityCitySlugs, true))
+            )->values();
+        }
     @endphp
     @if($allAreas->isNotEmpty())
     <section class="bg-zinc-50 py-12 dark:bg-zinc-800/50">

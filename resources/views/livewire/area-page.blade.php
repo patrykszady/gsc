@@ -537,6 +537,8 @@
             <livewire:map-section :area="$area" />
 
             <livewire:testimonials-section :area="$area" :show-header="false" />
+
+            @include('partials.area-service-links', ['area' => $area])
             @break
 
         @case('projects')
@@ -556,6 +558,8 @@
                 secondary-cta-text="About Us"
                 :secondary-cta-url="$area->pageUrl('about')"
             />
+
+            @include('partials.area-service-links', ['area' => $area])
             @break
 
         @case('about')
@@ -694,6 +698,8 @@
                     :secondaryHref="$area->pageUrl('projects')"
                 />
             </main>
+
+            @include('partials.area-service-links', ['area' => $area])
             @break
 
         @case('services')

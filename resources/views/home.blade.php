@@ -165,10 +165,31 @@
             </div>
 
             {{-- Featured service areas: direct homepage links to priority city
-                 hubs sorted by actual project count. Passes homepage authority
-                 to help them climb into the top 10. --}}
+                 hubs. Leads with our highest search-demand markets (GSC: high
+                 impressions at positions 7-12, i.e. striking distance) so the
+                 homepage passes authority to the pages most likely to climb into
+                 the top 5, then fills the rest with our busiest project hubs. --}}
             @php
-                $featuredAreas = \App\Models\AreaServed::withProjectCounts(14);
+                $prioritySlugs = [
+                    'kenilworth', 'winnetka', 'wilmette', 'schaumburg', 'glenview',
+                    'glencoe', 'evanston', 'arlington-heights', 'northbrook',
+                    'barrington', 'deer-park', 'mount-prospect', 'orland-park', 'lake-bluff',
+                ];
+
+                $priorityAreas = \App\Models\AreaServed::whereIn('slug', $prioritySlugs)
+                    ->get()
+                    ->sortBy(fn ($a) => array_search($a->slug, $prioritySlugs))
+                    ->values();
+
+                // Fill remaining chips with the busiest project hubs not already shown.
+                $featuredAreas = $priorityAreas
+                    ->concat(
+                        \App\Models\AreaServed::withProjectCounts(20)
+                            ->reject(fn ($a) => in_array($a->slug, $prioritySlugs, true))
+                    )
+                    ->unique('slug')
+                    ->take(18)
+                    ->values();
             @endphp
             <h2 class="mt-12 text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                 Cities and Suburbs We Commonly Serve Near Chicago
