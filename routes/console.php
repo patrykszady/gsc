@@ -450,8 +450,9 @@ Schedule::command('seo:bing-sync')
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
     ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
 
-// Instagram: 1 post per day in the 4-7 PM CT engagement window.
-// Random delay 0-180 min on top of 16:00 → actual post lands between 4 PM and 7 PM.
+// Social posts alternate every other day in Chicago time:
+// Instagram on odd-numbered days, Facebook on even-numbered days.
+// The random delay keeps the exact publish minute less predictable.
 // Uses --via=puppeteer so the post is also location-tagged via the IG web UI
 // (Graph API can't tag location without App Review).
 Schedule::command('social:post --platform=instagram --via=puppeteer --yes --random-delay=180')
@@ -461,10 +462,10 @@ Schedule::command('social:post --platform=instagram --via=puppeteer --yes --rand
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Instagram daily post failed'))
-    ->when(fn () => config('services.meta.enabled'));
+    ->when(fn () => config('services.meta.enabled') && now('America/Chicago')->dayOfYear % 2 === 1);
 
-// Facebook: 1 post per day in the 10 AM - 2 PM CT engagement window.
-// Random delay 0-240 min on top of 10:00 → actual post lands between 10 AM and 2 PM.
+// Facebook uses the opposite calendar-day gate from Instagram.
+// Random delay spreads the post time across the late morning/afternoon window.
 Schedule::command('social:post --platform=facebook --yes --random-delay=240')
     ->dailyAt('10:00')
     ->timezone('America/Chicago')
@@ -472,7 +473,7 @@ Schedule::command('social:post --platform=facebook --yes --random-delay=240')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Facebook daily post failed'))
-    ->when(fn () => config('services.meta.enabled'));
+    ->when(fn () => config('services.meta.enabled') && now('America/Chicago')->dayOfYear % 2 === 0);
 
 // Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
 // on Mondays & Thursdays at 10:00 AM CT. Queued so processing is handled by the
