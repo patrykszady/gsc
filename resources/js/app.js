@@ -266,11 +266,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const href = link.getAttribute('href');
         if (!href || href.length < 2) return;
 
-        const target = document.querySelector(href);
-        if (!target) return;
+        const scrollTarget = document.querySelector(href);
+        if (!scrollTarget) return;
 
         e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
         history.replaceState(null, '', href);
     });
 });

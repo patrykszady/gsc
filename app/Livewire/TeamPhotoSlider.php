@@ -21,6 +21,11 @@ class TeamPhotoSlider extends Component
             return null;
         }
 
+        // Avoid a DOM morph on each refresh call. The slider updates Alpine
+        // state client-side using the returned URL, and morphing can briefly
+        // evaluate bindings before Alpine scope is re-attached.
+        $this->skipRender();
+
         // Get a new random image, excluding current ones
         $excludeIds = collect($this->backgroundImages)
             ->pluck('id')

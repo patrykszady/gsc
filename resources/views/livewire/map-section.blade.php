@@ -25,19 +25,31 @@
                     async loadMap() {
                         if (this.mapModuleLoaded) return;
                         this.mapModuleLoaded = true;
-                        const { createProjectZipMap } = await window.loadProjectZipMap();
-                        Object.assign(this, createProjectZipMap(this.zipPoints, this.maxCount, this.mapCenter));
-                        await this.initMap();
-                        // Kick tile rendering on multiple frames — the clip-path container
-                        // can confuse Google Maps' visibility detection.
-                        if (this.map) {
-                            const kick = () => {
-                                google.maps.event.trigger(this.map, 'resize');
-                                this.map.setCenter(this.mapCenter);
-                            };
-                            requestAnimationFrame(kick);
-                            setTimeout(kick, 300);
-                            setTimeout(kick, 1000);
+                        try {
+                            // Guard bots/adblock/content filters where app.js never exposes
+                            // window.loadProjectZipMap; skip gracefully instead of throwing.
+                            if (typeof window.loadProjectZipMap !== 'function') {
+                                this.mapModuleLoaded = false;
+                                return;
+                            }
+
+                            const { createProjectZipMap } = await window.loadProjectZipMap();
+                            Object.assign(this, createProjectZipMap(this.zipPoints, this.maxCount, this.mapCenter));
+                            await this.initMap();
+
+                            // Kick tile rendering on multiple frames — the clip-path container
+                            // can confuse Google Maps' visibility detection.
+                            if (this.map) {
+                                const kick = () => {
+                                    google.maps.event.trigger(this.map, 'resize');
+                                    this.map.setCenter(this.mapCenter);
+                                };
+                                requestAnimationFrame(kick);
+                                setTimeout(kick, 300);
+                                setTimeout(kick, 1000);
+                            }
+                        } catch (_) {
+                            this.mapModuleLoaded = false;
                         }
                     },
                     activateMap() {
