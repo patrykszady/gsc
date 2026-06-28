@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\GscQueryMetric;
 use App\Models\OAuthToken;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -26,9 +27,6 @@ class SeoTitleAudit extends Command
 
     public function handle(): int
     {
-        $token = $this->fetchAccessToken();
-        if (! $token) return self::FAILURE;
-
         $site = (string) ($this->option('site') ?: config('seo.search_console.site_url'));
         $days = max(1, (int) $this->option('days'));
         $minImpr = (int) $this->option('min-impr');
@@ -36,34 +34,32 @@ class SeoTitleAudit extends Command
         $maxPos = (float) $this->option('max-pos');
         $limit = (int) $this->option('limit');
 
+        $token = $this->fetchAccessToken();
+
         $end = Carbon::now()->subDays(2)->toDateString();
         $start = Carbon::now()->subDays(2 + $days)->toDateString();
 
-        $url = sprintf('https://www.googleapis.com/webmasters/v3/sites/%s/searchAnalytics/query', rawurlencode($site));
-        $resp = Http::withToken($token)->timeout(60)->post($url, [
-            'startDate' => $start,
-            'endDate' => $end,
-            'dimensions' => ['page'],
-            'rowLimit' => 5000,
-            'dataState' => 'all',
-        ]);
-        if (! $resp->successful()) {
-            $this->error('GSC fetch failed: ' . $resp->body());
-            return self::FAILURE;
-        }
-
-        $rows = $resp->json()['rows'] ?? [];
-
         $candidates = [];
-        foreach ($rows as $r) {
-            $page = $r['keys'][0] ?? '';
-            $impr = (int) ($r['impressions'] ?? 0);
-            $clk = (int) ($r['clicks'] ?? 0);
-            $pos = (float) ($r['position'] ?? 999);
-            $ctr = $impr ? ($clk / $impr) * 100 : 0;
-            if ($impr >= $minImpr && $pos <= $maxPos && $ctr < $maxCtr) {
-                $candidates[] = compact('page', 'impr', 'clk', 'pos', 'ctr');
+        if ($token) {
+            $url = sprintf('https://www.googleapis.com/webmasters/v3/sites/%s/searchAnalytics/query', rawurlencode($site));
+            $resp = Http::withToken($token)->timeout(60)->post($url, [
+                'startDate' => $start,
+                'endDate' => $end,
+                'dimensions' => ['page'],
+                'rowLimit' => 5000,
+                'dataState' => 'all',
+            ]);
+
+            if (! $resp->successful()) {
+                $this->error('GSC fetch failed: ' . $resp->body());
+                return self::FAILURE;
             }
+
+            $rows = $resp->json()['rows'] ?? [];
+            $candidates = $this->buildCandidatesFromRows($rows, $minImpr, $maxCtr, $maxPos);
+        } else {
+            $this->warn('Falling back to local gsc_query_metrics cache (reauth with: php artisan seo:gsc-auth).');
+            $candidates = $this->buildCandidatesFromStoredMetrics($site, $start, $end, $minImpr, $maxCtr, $maxPos);
         }
 
         // Sort by greatest opportunity: impressions × (target_ctr - actual_ctr).
@@ -102,14 +98,14 @@ class SeoTitleAudit extends Command
     {
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
-            $this->error('No Search Console OAuth token. Run: php artisan search-console:auth');
+            $this->error('No Search Console OAuth token. Run: php artisan seo:gsc-auth');
             return null;
         }
         if ($row->hasValidAccessToken()) return $row->access_token;
 
         $resp = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
-            'client_id' => config('services.google.business_profile.client_id'),
-            'client_secret' => config('services.google.business_profile.client_secret'),
+            'client_id' => config('services.google.search_console.client_id'),
+            'client_secret' => config('services.google.search_console.client_secret'),
             'refresh_token' => $row->refresh_token,
             'grant_type' => 'refresh_token',
         ]);
@@ -119,5 +115,71 @@ class SeoTitleAudit extends Command
         $row->access_token_expires_at = now()->addSeconds(((int) ($d['expires_in'] ?? 3600)) - 120);
         $row->save();
         return $row->access_token;
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $rows
+     * @return array<int,array{page:string,impr:int,clk:int,pos:float,ctr:float}>
+     */
+    protected function buildCandidatesFromRows(array $rows, int $minImpr, float $maxCtr, float $maxPos): array
+    {
+        $candidates = [];
+        foreach ($rows as $r) {
+            $page = (string) ($r['keys'][0] ?? '');
+            $impr = (int) ($r['impressions'] ?? 0);
+            $clk = (int) ($r['clicks'] ?? 0);
+            $pos = (float) ($r['position'] ?? 999);
+            $ctr = $impr ? ($clk / $impr) * 100 : 0;
+            if ($page !== '' && $impr >= $minImpr && $pos <= $maxPos && $ctr < $maxCtr) {
+                $candidates[] = compact('page', 'impr', 'clk', 'pos', 'ctr');
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @return array<int,array{page:string,impr:int,clk:int,pos:float,ctr:float}>
+     */
+    protected function buildCandidatesFromStoredMetrics(string $site, string $start, string $end, int $minImpr, float $maxCtr, float $maxPos): array
+    {
+        $query = GscQueryMetric::query()
+            ->selectRaw('page, SUM(impressions) as impr, SUM(clicks) as clk, AVG(position) as pos')
+            ->whereBetween('date', [$start, $end])
+            ->whereNotNull('page')
+            ->where('page', '!=', '')
+            ->groupBy('page');
+
+        if ($site !== '') {
+            $query->where('site_url', $site);
+        }
+
+        $rows = $query->get();
+
+        if ($rows->isEmpty() && $site !== '') {
+            $this->warn('No cached rows for configured site_url; retrying across all cached sites.');
+            $rows = GscQueryMetric::query()
+                ->selectRaw('page, SUM(impressions) as impr, SUM(clicks) as clk, AVG(position) as pos')
+                ->whereBetween('date', [$start, $end])
+                ->whereNotNull('page')
+                ->where('page', '!=', '')
+                ->groupBy('page')
+                ->get();
+        }
+
+        $candidates = [];
+        foreach ($rows as $row) {
+            $page = (string) $row->page;
+            $impr = (int) $row->impr;
+            $clk = (int) $row->clk;
+            $pos = (float) $row->pos;
+            $ctr = $impr ? ($clk / $impr) * 100 : 0;
+
+            if ($impr >= $minImpr && $pos <= $maxPos && $ctr < $maxCtr) {
+                $candidates[] = compact('page', 'impr', 'clk', 'pos', 'ctr');
+            }
+        }
+
+        return $candidates;
     }
 }

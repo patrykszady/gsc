@@ -66,6 +66,8 @@ Schedule::command('hive:sync')->dailyAt('02:00')
 
 // Weekly health check of social/sameAs URLs
 Schedule::command('socials:check --quiet-on-success')->weekly()
+    ->onOneServer()
+    ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/socials-check.log'));
 
 // Weekly cleanup of stale front-end JS errors (/admin/js-errors). Resolves rows
@@ -215,6 +217,8 @@ Schedule::command('seo:competitor-schema-gap --markdown')
 Schedule::command('seo:schema-audit --limit=120 --markdown')
     ->dailyAt('08:30')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(45)
     ->appendOutputTo(storage_path('logs/seo-schema-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:schema-audit failed'));
 
@@ -222,6 +226,8 @@ Schedule::command('seo:schema-audit --limit=120 --markdown')
 Schedule::command('seo:content-decay --window=28 --markdown')
     ->dailyAt('08:45')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(45)
     ->appendOutputTo(storage_path('logs/seo-content-decay.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:content-decay failed'));
 
@@ -323,6 +329,13 @@ Schedule::command('seo:health')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-health.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:health failed'));
+
+// SEO: daily markdown snapshot for /admin/seo-reports.
+Schedule::command('seo:health --markdown')
+    ->dailyAt('09:35')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-health.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:health --markdown failed'));
 
 // GBP: daily check for reviews >24h old without an owner reply.
 // Email only when a NEW needs-reply review was posted/edited in last 24h.
@@ -450,40 +463,75 @@ Schedule::command('seo:bing-sync')
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
     ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
 
-// Social posts alternate every other day in Chicago time:
-// Instagram on odd-numbered days, Facebook on even-numbered days.
+// Social uploads run every other day in Chicago time (not daily).
 // The random delay keeps the exact publish minute less predictable.
 // Uses --via=puppeteer so the post is also location-tagged via the IG web UI
 // (Graph API can't tag location without App Review).
 Schedule::command('social:post --platform=instagram --via=puppeteer --yes --random-delay=180')
-    ->dailyAt('16:00')
+    ->cron('0 16 */2 * *')
     ->timezone('America/Chicago')
     ->withoutOverlapping(60 * 4) // command can sleep up to 3h + run ~1m, give it 4h
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Instagram daily post failed'))
-    ->when(fn () => config('services.meta.enabled') && now('America/Chicago')->dayOfYear % 2 === 1);
+    ->onFailure(fn () => logger()->error('Scheduled Instagram every-other-day post failed'))
+    ->when(fn () => config('services.meta.enabled'));
 
-// Facebook uses the opposite calendar-day gate from Instagram.
+// Facebook follows the same every-other-day cadence.
 // Random delay spreads the post time across the late morning/afternoon window.
 Schedule::command('social:post --platform=facebook --yes --random-delay=240')
-    ->dailyAt('10:00')
+    ->cron('0 10 */2 * *')
     ->timezone('America/Chicago')
     ->withoutOverlapping(60 * 5) // command can sleep up to 4h + run ~1m, give it 5h
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Facebook daily post failed'))
-    ->when(fn () => config('services.meta.enabled') && now('America/Chicago')->dayOfYear % 2 === 0);
+    ->onFailure(fn () => logger()->error('Scheduled Facebook every-other-day post failed'))
+    ->when(fn () => config('services.meta.enabled'));
 
-// Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
-// on Mondays & Thursdays at 10:00 AM CT. Queued so processing is handled by the
+// Google Business Profile: three-times-weekly posts (image + Gemini-generated caption)
+// on Mondays, Wednesdays, and Fridays at 10:00 AM CT. Queued so processing is handled by the
 // social-media worker (goes through AI caption generation — never a direct API
 // publish). Cadence raised from weekly to lift GBP freshness/engagement signals.
-Schedule::command('social:post --platform=google_business --queue')->cron('0 10 * * 1,4')
+Schedule::command('social:post --platform=google_business --queue')->cron('0 10 * * 1,3,5')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP post failed'))
     ->when(fn () => config('services.google.business_profile.enabled'));
+
+// GBP safety-net: if cadence slips (no published GBP post in 6+ days), queue
+// one catch-up post daily. This avoids long dry spells when a cron window is
+// missed, while still deferring to the normal Mon/Thu cadence when healthy.
+Schedule::call(function (): void {
+    if (! config('services.google.business_profile.enabled')) {
+        return;
+    }
+
+    $lastPublishedAt = \App\Models\ImageSocialPost::query()
+        ->where('platform', 'google_business')
+        ->where('status', 'published')
+        ->max('published_at');
+
+    if ($lastPublishedAt !== null && \Illuminate\Support\Carbon::parse($lastPublishedAt)->greaterThanOrEqualTo(now()->subDays(6))) {
+        return;
+    }
+
+    \Illuminate\Support\Facades\Artisan::call('social:post', [
+        '--platform' => 'google_business',
+        '--queue' => true,
+    ]);
+
+    logger()->warning('GBP safety-net queued catch-up post', [
+        'last_published_at' => $lastPublishedAt,
+    ]);
+})
+    ->dailyAt('10:20')
+    ->timezone('America/Chicago')
+    ->name('gbp-safety-net-catchup-post')
+    ->onOneServer()
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled GBP safety-net post failed'));
 
 // Social Media: weekly health check
 Schedule::command('social:health')->weeklyOn(1, '09:00') // Monday 9 AM

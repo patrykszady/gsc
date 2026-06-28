@@ -31,8 +31,8 @@ trait UsesSearchConsoleApi
         }
 
         $resp = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
-            'client_id' => config('services.google.business_profile.client_id'),
-            'client_secret' => config('services.google.business_profile.client_secret'),
+            'client_id' => config('services.google.search_console.client_id'),
+            'client_secret' => config('services.google.search_console.client_secret'),
             'refresh_token' => $row->refresh_token,
             'grant_type' => 'refresh_token',
         ]);

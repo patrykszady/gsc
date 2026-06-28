@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
 class PlatformSetting extends Model
 {
@@ -27,12 +26,15 @@ class PlatformSetting extends Model
         } catch (DecryptException $e) {
             // APP_KEY rotated or row written with a different key. Surface
             // the default instead of crashing the request; admin can re-save
-            // the value to re-encrypt with the current key. Log at debug level
-            // to avoid noise in production logs during routine rotations.
-            \Log::debug('PlatformSetting decryption failed; returning default.', [
+            // the value to re-encrypt with the current key. Remove unreadable
+            // rows so future requests do not repeatedly log/decrypt-fail.
+            static::whereKey($row->getKey())->delete();
+
+            \Log::notice('PlatformSetting decryption failed; corrupted value was purged.', [
                 'key' => $key,
                 'error' => $e->getMessage(),
             ]);
+
             return $default;
         }
     }

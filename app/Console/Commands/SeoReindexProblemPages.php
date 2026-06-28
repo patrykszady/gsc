@@ -78,7 +78,10 @@ class SeoReindexProblemPages extends Command
     protected function detectProblemUrls(): array
     {
         $token = $this->fetchAccessToken();
-        if (! $token) return [];
+        if (! $token) {
+            $this->warn('Falling back to cached GSC coverage states (token unavailable).');
+            return $this->cachedProblemUrls();
+        }
 
         $site = (string) ($this->option('site') ?: config('seo.search_console.site_url'));
         $base = str_starts_with($site, 'sc-domain:')
@@ -120,7 +123,44 @@ class SeoReindexProblemPages extends Command
             }
         }
 
-        return $problems;
+        if (! empty($problems)) {
+            return $problems;
+        }
+
+        $cached = $this->cachedProblemUrls();
+        if (! empty($cached)) {
+            $this->warn('Live inspection returned no problem URLs; using cached problem states.');
+        }
+
+        return $cached;
+    }
+
+    /**
+     * Use persisted inspection results when live URL Inspection cannot run.
+     *
+     * @return array<int,string>
+     */
+    protected function cachedProblemUrls(): array
+    {
+        $rows = GscCoverageState::query()
+            ->where('inspected_at', '>=', now()->subDays(45))
+            ->where(function ($q): void {
+                $q->where('verdict', '!=', 'PASS')
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%forbidden%'])
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%'])
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%']);
+            })
+            ->orderByDesc('inspected_at')
+            ->limit(120)
+            ->pluck('url')
+            ->filter()
+            ->values()
+            ->all();
+
+        $this->line('  cached problem URLs: ' . count($rows));
+
+        return $rows;
     }
 
     /**
@@ -176,14 +216,14 @@ class SeoReindexProblemPages extends Command
     {
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
-            $this->error('No Search Console OAuth token. Run: php artisan search-console:auth');
+            $this->error('No Search Console OAuth token. Run: php artisan seo:gsc-auth');
             return null;
         }
         if ($row->hasValidAccessToken()) return $row->access_token;
 
         $resp = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
-            'client_id' => config('services.google.business_profile.client_id'),
-            'client_secret' => config('services.google.business_profile.client_secret'),
+            'client_id' => config('services.google.search_console.client_id'),
+            'client_secret' => config('services.google.search_console.client_secret'),
             'refresh_token' => $row->refresh_token,
             'grant_type' => 'refresh_token',
         ]);

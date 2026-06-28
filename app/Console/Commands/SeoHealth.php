@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Unified SEO health dashboard.
@@ -29,6 +30,7 @@ class SeoHealth extends Command
 {
     protected $signature = 'seo:health
         {--json : Output JSON only}
+        {--markdown : Save markdown report to storage/app/reports/health.md}
         {--quiet-on-pass : Exit silently when score >= 90}';
 
     protected $description = 'Unified local-SEO health dashboard (score 0-100 across five pillars).';
@@ -56,6 +58,10 @@ class SeoHealth extends Command
 
         if ($this->option('quiet-on-pass') && $total >= 90) {
             return self::SUCCESS;
+        }
+
+        if ($this->option('markdown')) {
+            $this->saveMarkdown($total, $pillars);
         }
 
         $this->renderReport($total, $pillars);
@@ -342,6 +348,35 @@ class SeoHealth extends Command
             }
             $this->newLine();
         }
+    }
+
+    protected function saveMarkdown(int $total, array $pillars): void
+    {
+        $md = "# SEO Health\n\n";
+        $md .= 'Run: ' . now()->toIso8601String() . "\n\n";
+        $md .= "Overall score: **{$total}/100** ({$this->grade($total)})\n\n";
+        $md .= "| Pillar | Score |\n|---|---:|\n";
+
+        foreach ($pillars as $pillar) {
+            $md .= '| ' . $pillar['name'] . ' | ' . (int) $pillar['score'] . " |\n";
+        }
+
+        foreach ($pillars as $pillar) {
+            $md .= "\n## {$pillar['name']} ({$pillar['score']}/100)\n\n";
+            foreach (($pillar['metrics'] ?? []) as $key => $value) {
+                $md .= '- ' . $key . ': ' . $value . "\n";
+            }
+            if (! empty($pillar['fix'])) {
+                $md .= '- Recommended fix: ' . $pillar['fix'] . "\n";
+            }
+            if (! empty($pillar['notes']) && is_array($pillar['notes'])) {
+                foreach ($pillar['notes'] as $note) {
+                    $md .= '- Note: ' . $note . "\n";
+                }
+            }
+        }
+
+        Storage::disk('local')->put('reports/health.md', $md);
     }
 
     protected function grade(int $s): string

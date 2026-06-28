@@ -4,6 +4,20 @@ use Opcodes\LogViewer\Enums\SortingMethod;
 use Opcodes\LogViewer\Enums\SortingOrder;
 use Opcodes\LogViewer\Enums\Theme;
 
+$appHost = parse_url((string) config('app.url', ''), PHP_URL_HOST);
+$appPort = parse_url((string) config('app.url', ''), PHP_URL_PORT);
+$appHostWithPort = is_string($appHost) && $appHost !== ''
+    ? ($appPort ? $appHost . ':' . $appPort : $appHost)
+    : null;
+
+$defaultStatefulDomains = array_values(array_unique(array_filter([
+    $appHostWithPort,
+    '127.0.0.1:8000',
+    'localhost:8000',
+    '127.0.0.1:8003',
+    'localhost:8003',
+])));
+
 return [
 
     /*
@@ -127,7 +141,9 @@ return [
         \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class,
     ],
 
-    'api_stateful_domains' => env('LOG_VIEWER_API_STATEFUL_DOMAINS') ? explode(',', env('LOG_VIEWER_API_STATEFUL_DOMAINS')) : null,
+    'api_stateful_domains' => env('LOG_VIEWER_API_STATEFUL_DOMAINS')
+        ? array_filter(array_map('trim', explode(',', env('LOG_VIEWER_API_STATEFUL_DOMAINS'))))
+        : $defaultStatefulDomains,
 
     /*
     |--------------------------------------------------------------------------

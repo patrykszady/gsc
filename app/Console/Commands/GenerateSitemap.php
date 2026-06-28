@@ -38,14 +38,27 @@ class GenerateSitemap extends Command
         $imageCount = 0;
 
         $resolveImageUrl = static function ($image) use ($googleBusinessProfileService): ?string {
-            $imageUrl = $image->getAnyUrl('large');
-            if (is_string($imageUrl) && trim($imageUrl) !== '') {
-                return $imageUrl;
+            // Prefer canonical full-size originals for image indexing quality.
+            // Thumbnail URLs can still be crawled, but originals are a stronger
+            // signal for Google Image metadata/indexing.
+            $preferred = [
+                $image->webp_url ?? null,
+                $image->url ?? null,
+            ];
+            foreach ($preferred as $candidate) {
+                if (is_string($candidate) && trim($candidate) !== '') {
+                    return $candidate;
+                }
             }
 
             $googleUrl = $image->google_places_media_url;
             if (is_string($googleUrl) && trim($googleUrl) !== '') {
                 return $googleUrl;
+            }
+
+            $imageUrl = $image->getAnyUrl('large');
+            if (is_string($imageUrl) && trim($imageUrl) !== '') {
+                return $imageUrl;
             }
 
             $mediaName = $image->google_places_media_name;

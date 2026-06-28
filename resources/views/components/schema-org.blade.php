@@ -294,13 +294,8 @@ $organization = [
     'name' => 'GS Construction',
     'alternateName' => 'GS Construction & Remodeling',
     'url' => 'https://gs.construction',
-    'logo' => [
-        '@type' => 'ImageObject',
-        '@id' => 'https://gs.construction/#logo',
-        'url' => $logoPng,
-        'contentUrl' => $logoPng,
-        'caption' => 'GS Construction',
-    ],
+    // Reuse canonical logo entity defined in LocalBusiness schema above.
+    'logo' => ['@id' => 'https://gs.construction/#logo'],
     'image' => ['@id' => 'https://gs.construction/#logo'],
     'sameAs' => array_filter([
         config('socials.facebook.url'),

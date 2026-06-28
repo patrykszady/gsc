@@ -190,14 +190,14 @@
     <div class="relative aspect-[4/3] w-full bg-zinc-200 dark:bg-zinc-700">
         {{-- Intro Phase: greg-patryk with LQIP --}}
         <div
-            x-show="introPhase"
+            x-show="typeof introPhase !== 'undefined' && introPhase"
             x-transition:leave="transition-all duration-500 ease-out"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-110"
             class="absolute inset-0 z-20"
         >
             {{-- Blur placeholder (only shown when full image is loading) --}}
-            <picture x-cloak x-show="showIntroBlur && !introLoaded">
+            <picture x-cloak x-show="typeof showIntroBlur !== 'undefined' && typeof introLoaded !== 'undefined' && showIntroBlur && !introLoaded">
                 <source srcset="{{ asset('images/greg-patryk-thumb.webp') }}" type="image/webp">
                 <img
                     x-ref="introThumb"
@@ -208,7 +208,7 @@
                     height="400"
                     fetchpriority="high"
                     @load="introThumbLoaded = true"
-                    :class="introThumbLoaded ? 'opacity-100' : 'opacity-0'"
+                    :class="(typeof introThumbLoaded !== 'undefined' && introThumbLoaded) ? 'opacity-100' : 'opacity-0'"
                     class="h-full w-full object-cover object-bottom blur-md"
                 />
             </picture>
@@ -224,16 +224,16 @@
                     fetchpriority="high"
                     decoding="async"
                     @load="introLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk.webp') }}', true); startIntroTimer()"
-                    :class="introWasCached ? 'opacity-100' : (introLoaded ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
+                    :class="(typeof introWasCached !== 'undefined' && introWasCached) ? 'opacity-100' : ((typeof introLoaded !== 'undefined' && introLoaded) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                     class="absolute inset-0 h-full w-full object-cover object-bottom"
                 />
             </picture>
         </div>
 
         {{-- Sliding Phase: Background images - current fades in over previous --}}
-        <template x-for="(bg, index) in backgrounds" :key="index">
+        <template x-for="(bg, index) in (Array.isArray(backgrounds) ? backgrounds : [])" :key="index">
             <div
-                x-show="!introPhase && (currentSlide === index || previousSlide === index)"
+                x-show="(typeof introPhase !== 'undefined' && !introPhase) && (currentSlide === index || previousSlide === index)"
                 :style="{ zIndex: currentSlide === index ? 10 : 5 }"
                 class="absolute inset-0"
             >
@@ -284,7 +284,7 @@
                     decoding="async"
                     @load="noBgLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk-no-background.webp') }}', true); tryEndIntro()"
                     class="h-auto max-h-full w-auto max-w-full opacity-0 transition-opacity duration-500"
-                    :class="(!introPhase && noBgLoaded) && 'opacity-100'"
+                    :class="(typeof introPhase !== 'undefined' && typeof noBgLoaded !== 'undefined' && !introPhase && noBgLoaded) && 'opacity-100'"
                     style="filter: drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white) drop-shadow(2px 0 0 white) drop-shadow(-2px 0 0 white) drop-shadow(0 2px 0 white) drop-shadow(0 -2px 0 white);"
                 />
             </picture>
@@ -294,13 +294,13 @@
     {{-- Dot Indicators (sliding phase only) --}}
     <div 
         x-cloak
-        x-show="!introPhase"
+        x-show="typeof introPhase !== 'undefined' && !introPhase"
         x-transition:enter="transition-opacity duration-500"
         x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100"
         class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2"
     >
-        <template x-for="(bg, index) in backgrounds" :key="'dot-' + index">
+        <template x-for="(bg, index) in (Array.isArray(backgrounds) ? backgrounds : [])" :key="'dot-' + index">
             <button
                 @click="currentSlide = index"
                 :class="currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white/75'"

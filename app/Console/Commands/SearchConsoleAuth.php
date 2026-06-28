@@ -13,7 +13,7 @@ class SearchConsoleAuth extends Command
     protected $signature = 'search-console:auth
         {--code= : Authorization code returned by Google after consent}';
 
-    protected $description = 'OAuth flow for Google Search Console (webmasters.readonly). Reuses the GBP OAuth client.';
+    protected $description = 'OAuth flow for Google Search Console (webmasters.readonly).';
 
     protected const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
     protected const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -22,11 +22,11 @@ class SearchConsoleAuth extends Command
 
     public function handle(): int
     {
-        $clientId = config('services.google.business_profile.client_id');
-        $clientSecret = config('services.google.business_profile.client_secret');
+        $clientId = config('services.google.search_console.client_id');
+        $clientSecret = config('services.google.search_console.client_secret');
 
         if (! $clientId || ! $clientSecret) {
-            $this->error('GOOGLE_BUSINESS_PROFILE_CLIENT_ID/SECRET must be set (we reuse the same OAuth client).');
+            $this->error('GOOGLE_SEARCH_CONSOLE_CLIENT_ID/SECRET must be set.');
             return self::FAILURE;
         }
 

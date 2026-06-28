@@ -108,8 +108,13 @@ class SeoReports extends Component
         ],
         'health-check' => [
             'label' => 'Local SEO health-check',
-            'command' => 'seo:health-check --markdown',
+            'command' => 'seo:health-check --markdown --min-score=0',
             'description' => 'Composite 0–100 score per URL across title, meta, H1, alt, links, schema, canonical, word count.',
+        ],
+        'health' => [
+            'label' => 'SEO health',
+            'command' => 'seo:health --markdown',
+            'description' => 'Unified 0–100 SEO pillar dashboard with freshness, rankings, GBP and on-page signals.',
         ],
         'clarity-health' => [
             'label' => 'Clarity health',

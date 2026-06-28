@@ -99,6 +99,37 @@
 
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- Flux injects CSS rules via insertRule(). Older browsers (e.g. Chrome 79)
+         can throw on @layer rules and break component bootstrapping. For legacy
+         engines only, swallow that specific parse failure so the page remains
+         functional. --}}
+    <script>
+        (function () {
+            if ('CSSLayerBlockRule' in window) return;
+            if (!window.CSSStyleSheet || !CSSStyleSheet.prototype) return;
+            if (typeof CSSStyleSheet.prototype.insertRule !== 'function') return;
+
+            var originalInsertRule = CSSStyleSheet.prototype.insertRule;
+
+            CSSStyleSheet.prototype.insertRule = function (rule, index) {
+                try {
+                    return originalInsertRule.call(this, rule, index);
+                } catch (error) {
+                    var isLayerRule = typeof rule === 'string' && rule.indexOf('@layer') !== -1;
+                    var message = error && error.message ? String(error.message) : '';
+                    var isKnownLegacyParseError = message.indexOf('Failed to parse the rule') !== -1;
+
+                    if (isLayerRule && isKnownLegacyParseError) {
+                        return -1;
+                    }
+
+                    throw error;
+                }
+            };
+        })();
+    </script>
+
     @fluxAppearance
 
     {{-- Initialize image cache for LQIP (must be before any components) --}}
@@ -133,6 +164,10 @@
                     if (!msg) return;
                     if (msg === 'Script error.' && !data.source) return;
                     if (msg.indexOf('[object Object]') !== -1) return;
+                    if (
+                        msg.indexOf("Failed to execute 'insertRule' on 'CSSStyleSheet'") !== -1
+                        && msg.indexOf('@layer base') !== -1
+                    ) return;
                     var sig = kind + '|' + msg + '|' + (data.source || '') + '|' + (data.line || '');
                     if (seen[sig]) return; // de-dupe storms (e.g. loops)
                     seen[sig] = true;

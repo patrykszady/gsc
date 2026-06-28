@@ -100,6 +100,9 @@ class ZipCodePage extends Component
                 . "Free in-home estimates from a family-owned, licensed contractor. "
                 . ($this->projectCount > 0 ? "{$this->projectCount} completed projects nearby." : ''));
 
+        $title = \Illuminate\Support\Str::limit($title, 60, '');
+        $description = \Illuminate\Support\Str::limit(trim((string) preg_replace('/\s+/u', ' ', $description)), 160, '');
+
         app(SEOBuilder::class)
             ->title($title)
             ->description($description)

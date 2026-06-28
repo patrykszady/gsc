@@ -58,13 +58,23 @@ class PageSpeedInsightsService
 
             if ($isTimeout) {
                 $metricCount = $this->bumpHourlyMetric('psi.connection_timeout');
-                Log::warning('PSI: connection timeout', [
+                $context = [
                     'url' => $url,
                     'strategy' => $strategy,
                     'error' => $error,
                     'metric' => 'psi.connection_timeout',
                     'metric_count_hour' => $metricCount,
-                ]);
+                ];
+
+                // Keep early timeout visibility, then downshift to debug to
+                // avoid drowning actionable production warnings.
+                $shouldWarn = $metricCount <= 3 || in_array($metricCount, [10, 25, 50], true);
+                if ($shouldWarn) {
+                    Log::warning('PSI: connection timeout', $context);
+                } else {
+                    Log::debug('PSI: connection timeout', $context);
+                }
+
                 return null;
             }
 

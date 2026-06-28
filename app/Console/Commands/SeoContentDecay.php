@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\GscQueryMetric;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -92,10 +93,17 @@ class SeoContentDecay extends Command
         }
 
         if ($clickDecay->isNotEmpty() || $posDecay->isNotEmpty()) {
-            logger()->warning('seo:content-decay found regressions', [
+            $summary = [
                 'click_drops' => $clickDecay->count(),
                 'pos_regressions' => $posDecay->count(),
-            ]);
+            ];
+
+            $cacheKey = 'seo:content-decay:warn:' . now()->format('Ymd') . ':' . md5(json_encode($summary));
+            if (Cache::add($cacheKey, true, now()->addHours(30))) {
+                logger()->warning('seo:content-decay found regressions', $summary);
+            } else {
+                logger()->info('seo:content-decay repeated regressions suppressed', $summary);
+            }
         }
 
         return self::SUCCESS;

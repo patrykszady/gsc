@@ -60,6 +60,10 @@ class AppServiceProvider extends ServiceProvider
         $allowedEmails = array_filter(array_map('trim', explode(',', (string) config('log-viewer.allowed_emails', 'patryk@gs.construction'))));
 
         LogViewer::auth(function (Request $request) use ($allowedEmails) {
+            if (app()->environment(['local', 'testing'])) {
+                return true;
+            }
+
             $productionToken = trim((string) config('log-viewer.production_token', ''));
 
             if ($productionToken !== '' && hash_equals($productionToken, (string) $request->bearerToken())) {
@@ -72,6 +76,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::define('viewLogViewer', function ($user) {
+            if (app()->environment(['local', 'testing'])) {
+                return true;
+            }
+
             return $user && in_array($user->email, $allowedEmails, true);
         });
 

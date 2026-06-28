@@ -507,14 +507,14 @@ class SeoService
         $trust = $trustPhrases[($seed >> 5) % count($trustPhrases)];
 
         $baseVariants = [
-            "{$city} Home Remodeling Contractor",
+            "Home Remodeling in {$city}, IL",
+            "{$city}, IL Home Remodeling",
+            "Kitchen & Bathroom Remodeling in {$city}",
             "{$city} Remodeling Contractor",
-            "{$city} Kitchen & Bathroom Remodeler",
-            "{$city} Remodeling Company",
-            "{$city} Home Renovation Contractor",
-            "{$city} Remodeler",
-            "{$city} Home Remodeling Team",
-            "{$city} Remodeling Experts",
+            "{$city} Home Renovation Company",
+            "Remodeling Services in {$city}, IL",
+            "{$city} Kitchen, Bath & Basement Remodeling",
+            "Top-Rated Remodeler in {$city}, IL",
         ];
         $modifierPool = array_values(array_unique(array_merge(
             [$context, $intent, $trust],
@@ -525,14 +525,14 @@ class SeoService
         $title = self::composeTitleWithinBudget($baseVariants[$variant], $modifierPool, $seed);
 
         $descriptionVariants = [
-            "Home remodeling in {$city}, IL for kitchen, bathroom, basement, and additions. {$reviewCount} 5-star reviews. Licensed & insured with free in-home estimates.",
-            "{$city}, IL remodeling contractor for kitchen, bathroom, and whole-home renovations. Family-owned team, clear scope planning, and free consultations.",
-            "Kitchen and bathroom remodeling plus full home renovation in {$city}, IL. {$reviewCount} 5-star reviews, 40+ years combined experience, and no-pressure estimates.",
-            "{$city} remodeling services for kitchens, bathrooms, basements, and home additions. Licensed, insured, and trusted by local homeowners with {$reviewCount} 5-star reviews.",
-            "Need a remodeling contractor in {$city}, IL? We deliver kitchen, bathroom, and whole-home renovation with transparent scope, timeline, and estimate planning.",
-            "Planning a renovation in {$city}, IL? Our family-led crew handles kitchens, baths, basements, and additions with one point of contact from estimate to final walkthrough.",
-            "Remodeling {$city}, IL homes since the basics matter: detailed scope, realistic timelines, and clean job sites. {$reviewCount} 5-star reviews, licensed and insured.",
-            "From quick kitchen and bath updates to whole-home renovations, {$city}, IL homeowners trust our {$reviewCount} 5-star rated, licensed, and insured remodeling team.",
+            "Top-rated home remodeling in {$city}, IL for kitchens, bathrooms, basements and additions. {$reviewCount} 5-star reviews. Licensed and insured. Free in-home estimate.",
+            "Looking for a {$city}, IL remodeler? We handle kitchen, bathroom and whole-home renovations with clear pricing, timelines and one dedicated project lead.",
+            "{$city} homeowners choose us for kitchen, bath and full-home remodeling. {$reviewCount} 5-star reviews, permit-aware planning and free in-home consultations.",
+            "Kitchen, bathroom and basement remodeling in {$city}, IL with transparent scope, clean job sites and reliable schedules. Free estimate: (224) 735-4200.",
+            "Need remodeling in {$city}, IL? Our family-led team delivers design-build kitchen, bath and home renovation with weekly updates and no-pressure quotes.",
+            "{$city}, IL remodeling contractor for kitchens, bathrooms, basements and additions. {$reviewCount} 5-star reviews and free in-home estimate appointments.",
+            "From quick kitchen updates to full-home renovations, {$city}, IL homeowners trust our licensed, insured remodeling team for quality craftsmanship.",
+            "Plan your {$city}, IL renovation with a local team focused on scope clarity, schedule confidence and beautiful kitchen, bath and basement results.",
         ];
 
         $description = $descriptionVariants[$seed % count($descriptionVariants)];
@@ -542,7 +542,7 @@ class SeoService
 
         return [
             'title' => $title,
-            'description' => \Illuminate\Support\Str::limit($description, 320, ''),
+            'description' => \Illuminate\Support\Str::limit($description, 160, ''),
         ];
     }
 
@@ -693,12 +693,12 @@ class SeoService
         $label = $service['label'];
 
         $baseVariants = [
-            "{$city} {$label}",
-            "{$city} {$label} Contractor",
-            "{$city} {$shortLabel} Renovation",
-            "{$city} {$label} Experts",
+            "{$label} in {$city}, IL",
+            "{$city}, IL {$label}",
             "{$city} {$shortLabel} Remodeler",
-            "{$city} {$label} Team",
+            "{$shortLabel} Renovation in {$city}",
+            "{$city} {$label} Contractor",
+            "Top-Rated {$shortLabel} Remodeling in {$city}",
         ];
         $modifierPool = array_values(array_unique(array_merge(
             [$context, $intent, $trust],
@@ -710,39 +710,39 @@ class SeoService
 
         $descriptionOpeners = [
             'kitchen-remodeling' => [
-                "%s, IL kitchen remodeling: custom cabinets, quartz & granite countertops, IKEA installs, and full gut renovations.",
-                "Remodeling your %s, IL kitchen? We plan layouts, cabinets, counters, lighting, and appliances around how you actually cook and gather.",
-                "%s, IL kitchen renovations from refreshed cabinets and counters to full open-concept gut remodels, handled by one dedicated project lead.",
+                "Kitchen remodeling in %s, IL with custom cabinets, quartz counters, islands and full layout redesigns.",
+                "Need a %s, IL kitchen remodeler? We plan cabinets, counters, lighting and workflow for real everyday use.",
+                "%s, IL kitchen renovations from refresh projects to full open-concept rebuilds with design-build coordination.",
             ],
             'bathroom-remodeling' => [
-                "%s, IL bathroom remodeling: walk-in showers, tub-to-shower conversions, tile, vanities, and full renovations.",
-                "Updating a %s, IL bathroom? We handle waterproofing, tile, fixtures, vanities, and accessible layouts with clean, careful workmanship.",
-                "%s, IL bathroom renovations from quick refreshes to full gut remodels with curbless showers, double vanities, and heated floors.",
+                "Bathroom remodeling in %s, IL with walk-in showers, tile, vanities and full renovation options.",
+                "Planning a %s, IL bathroom renovation? We handle waterproofing, fixtures, layout and finish details end to end.",
+                "%s, IL bathroom remodels from quick refreshes to full gut projects with shower and storage upgrades.",
             ],
             'home-remodeling' => [
-                "%s, IL whole-home remodeling: room additions, open floor plans, kitchens, baths, and basements.",
-                "Renovating a whole %s, IL home? We sequence multi-room projects, manage layout changes, and keep one point of contact throughout.",
-                "%s, IL whole-home renovations that coordinate kitchens, baths, basements, and additions into one clear, scheduled build.",
+                "Whole-home remodeling in %s, IL including layout changes, kitchens, baths, basements and additions.",
+                "Renovating a %s, IL home? We sequence multi-room projects with one dedicated project lead and clear milestones.",
+                "%s, IL full-home renovations planned for budget, timeline and cohesive design across every room.",
             ],
             'basement-remodeling' => [
-                "%s, IL basement finishing & remodeling: home theaters, guest suites, rec rooms, wet bars, and egress windows.",
-                "Finishing a %s, IL basement? We handle egress, moisture, layout, and utilities to turn unused space into comfortable living areas.",
-                "%s, IL basement remodels with code-aware planning for rec rooms, guest suites, bathrooms, and wet bars.",
+                "Basement remodeling in %s, IL for rec rooms, guest suites, bathrooms, wet bars and egress-ready layouts.",
+                "Finishing a %s, IL basement? We coordinate moisture control, utilities and code-aware layout planning.",
+                "%s, IL basement renovations that convert unused space into durable, comfortable living areas.",
             ],
             'home-additions' => [
-                "%s, IL home additions: room additions, master suite additions, sunrooms, and second-story expansions.",
-                "Adding space to your %s, IL home? We plan structural, framing, and utility work for room additions, suites, and bump-outs.",
-                "%s, IL home additions from sunrooms and bump-outs to full second-story expansions, planned and permitted end to end.",
+                "Home additions in %s, IL including room additions, suites, sunrooms and second-story expansions.",
+                "Adding space to your %s, IL home? We handle structural, framing, utility and permit planning from day one.",
+                "%s, IL additions from bump-outs to full expansions, designed and built with a single project team.",
             ],
         ];
         $openerPool = $descriptionOpeners[$serviceType] ?? [$service['descriptionTemplate']];
         $opener = sprintf($openerPool[($seed >> 7) % count($openerPool)], $city);
-        $closer = " {$reviewCount} 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.";
+        $closer = " {$reviewCount} 5-star reviews. Licensed and insured. Free in-home estimate: (224) 735-4200.";
         $description = $opener . $closer;
         if ($geoSnippet !== '') {
             $description .= ' ' . $geoSnippet;
         }
-        $description = \Illuminate\Support\Str::limit($description, 320, '');
+        $description = \Illuminate\Support\Str::limit($description, 160, '');
 
         return [
             'title' => $title,
@@ -957,6 +957,9 @@ class SeoService
      */
     protected static function setTags(string $title, string $description, ?string $image = null): void
     {
+        $title = self::normalizeMetaText($title, 60);
+        $description = self::normalizeMetaText($description, 150);
+
         // Canonical: strip noisy params (utm_*, gclid, fbclid, pagination) so
         // each indexable URL maps to one clean canonical regardless of source.
         $canonical = self::buildCleanCanonical();
@@ -974,6 +977,22 @@ class SeoService
 
         // Apply domain-specific SEO enhancements (keywords, canonical)
         self::applyDomainEnhancements();
+    }
+
+    protected static function normalizeMetaText(string $value, int $max): string
+    {
+        $text = trim((string) preg_replace('/\s+/u', ' ', $value));
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+
+        $cut = mb_substr($text, 0, $max);
+        $lastSpace = mb_strrpos($cut, ' ');
+        if ($lastSpace !== false && $lastSpace > (int) ($max * 0.7)) {
+            $cut = mb_substr($cut, 0, $lastSpace);
+        }
+
+        return rtrim($cut, " \t\n\r\0\x0B,;:-&");
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -66,7 +67,9 @@ class SeoSchemaAudit extends Command
             }
 
             $types = [];
-            $fullDefIds = []; // only nodes that are full definitions (have @id + @type + other props)
+            // only nodes that are full definitions (have @id + @type + other props)
+            // keyed as @id => list of canonical payload fingerprints.
+            $fullDefFingerprints = [];
             $urlErrors = [];
             $urlIssues = [];
             foreach ($blocks as $raw) {
@@ -76,7 +79,7 @@ class SeoSchemaAudit extends Command
                     continue;
                 }
                 $this->collectTypes($data, $types);
-                $this->collectFullDefinitionIds($data, $fullDefIds);
+                $this->collectFullDefinitions($data, $fullDefFingerprints);
                 $this->validateNode($data, $urlIssues);
             }
 
@@ -86,8 +89,15 @@ class SeoSchemaAudit extends Command
             if (! empty($urlIssues)) {
                 $validationIssues[$url] = array_values(array_unique($urlIssues));
             }
-            // Only flag IDs that are FULL-DEFINED more than once. Bare {"@id":"..."} references are valid JSON-LD.
-            $dupIds = array_keys(array_filter(array_count_values($fullDefIds), fn ($n) => $n > 1));
+            // Flag @id only when it is FULL-DEFINED multiple times with
+            // DIFFERENT payloads. Identical repeats are harmless duplicates and
+            // not actionable.
+            $dupIds = [];
+            foreach ($fullDefFingerprints as $id => $fingerprints) {
+                if (count(array_unique($fingerprints)) > 1) {
+                    $dupIds[] = $id;
+                }
+            }
             if (! empty($dupIds)) {
                 $duplicateIds[$url] = $dupIds;
             }
@@ -114,12 +124,19 @@ class SeoSchemaAudit extends Command
 
         $hasProblems = ! empty($missingSchema) || ! empty($parseErrors) || ! empty($validationIssues) || ! empty($duplicateIds);
         if ($hasProblems) {
-            logger()->warning('seo:schema-audit found issues', [
+            $summary = [
                 'missing_schema' => count($missingSchema),
                 'parse_errors' => count($parseErrors),
                 'validation_issues' => count($validationIssues),
                 'duplicate_ids' => count($duplicateIds),
-            ]);
+            ];
+            $cacheKey = 'seo:schema-audit:warn:' . now()->format('Ymd') . ':' . md5(json_encode($summary));
+
+            if (Cache::add($cacheKey, true, now()->addHours(30))) {
+                logger()->warning('seo:schema-audit found issues', $summary);
+            } else {
+                logger()->info('seo:schema-audit repeated issues suppressed', $summary);
+            }
         }
 
         return self::SUCCESS;
@@ -220,20 +237,54 @@ class SeoSchemaAudit extends Command
      * @param array<string, mixed>|array<int, mixed> $data
      * @param array<int, string> $bag
      */
-    protected function collectFullDefinitionIds(array $data, array &$bag): void
+    protected function collectFullDefinitions(array $data, array &$bag): void
     {
         if (
             isset($data['@id'], $data['@type'])
             && is_string($data['@id'])
             && count($data) > 2
         ) {
-            $bag[] = $data['@id'];
+            $types = (array) $data['@type'];
+            $isImageObject = in_array('ImageObject', $types, true);
+
+            // Logo/image entities are commonly re-declared across compatible
+            // schema fragments and are generally non-actionable for this
+            // audit. Focus duplicate-id warnings on higher-risk entities.
+            if (! $isImageObject) {
+                $canonical = $this->canonicalize($data);
+                $bag[$data['@id']][] = md5(json_encode($canonical));
+            }
         }
         foreach ($data as $v) {
             if (is_array($v)) {
-                $this->collectFullDefinitionIds($v, $bag);
+                $this->collectFullDefinitions($v, $bag);
             }
         }
+    }
+
+    /**
+     * Canonicalize a JSON-LD node for stable hashing.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function canonicalize($value)
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (array_is_list($value)) {
+            return array_map(fn ($item) => $this->canonicalize($item), $value);
+        }
+
+        ksort($value);
+
+        foreach ($value as $k => $v) {
+            $value[$k] = $this->canonicalize($v);
+        }
+
+        return $value;
     }
 
     /**

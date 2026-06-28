@@ -24,6 +24,9 @@ class ServiceAreaIndex extends Component
         $description = 'GS Construction serves ' . $this->totalZips
             . ' ZIP codes across Chicagoland. Find your ZIP for kitchen, bathroom and home remodeling near you.';
 
+        $title = \Illuminate\Support\Str::limit($title, 60, '');
+        $description = \Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', $description) ?? $description, 160, '');
+
         app(SEOBuilder::class)
             ->title($title)
             ->description($description)
