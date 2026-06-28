@@ -319,6 +319,7 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
 
     // SEO weekly reports dashboard
     Route::get('/seo-reports/{report?}', \App\Livewire\Admin\SeoReports::class)->name('seo-reports.index');
+    Route::get('/gsc-errors', \App\Livewire\Admin\GscErrors::class)->name('gsc-errors.index');
     Route::get('/platforms/gbp/callback', function (\Illuminate\Http\Request $request) {
         $code = $request->query('code');
         if (! $code) {

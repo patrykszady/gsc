@@ -102,8 +102,6 @@
             'count' => (clone $q)->count(),
             'avg'   => round((float) ((clone $q)->avg('star_rating') ?: 5.0), 1),
             'items' => (clone $q)
-                ->whereNotNull('review_description')
-                ->where('review_description', '!=', '')
                 ->orderByDesc('review_date')
                 ->limit(5)
                 ->get(['id', 'reviewer_name', 'star_rating', 'review_description', 'review_date', 'created_at']),
@@ -208,7 +206,7 @@
 
         $schema['review'] = collect($data['items'])->map(function ($t) {
             // Per Google: nested Review under Product MUST NOT have itemReviewed.
-            return [
+            $review = [
                 '@type'        => 'Review',
                 'reviewRating' => [
                     '@type'       => 'Rating',
@@ -220,9 +218,15 @@
                     '@type' => 'Person',
                     'name'  => trim((string) ($t->reviewer_name ?? 'Verified Customer')) ?: 'Verified Customer',
                 ],
-                'reviewBody'    => \Illuminate\Support\Str::limit((string) $t->review_description, 500),
                 'datePublished' => optional($t->review_date ?? $t->created_at)->toDateString(),
             ];
+
+            $body = trim((string) ($t->review_description ?? ''));
+            if ($body !== '') {
+                $review['reviewBody'] = \Illuminate\Support\Str::limit($body, 500);
+            }
+
+            return $review;
         })->values()->all();
     }
 @endphp

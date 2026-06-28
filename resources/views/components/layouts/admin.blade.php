@@ -63,6 +63,10 @@
                 SEO Reports
             </flux:sidebar.item>
 
+            <flux:sidebar.item icon="exclamation-triangle" href="{{ route('admin.gsc-errors.index') }}" :current="request()->routeIs('admin.gsc-errors.*')">
+                GSC Errors
+            </flux:sidebar.item>
+
             <flux:sidebar.item icon="presentation-chart-line" href="{{ route('admin.analytics.index') }}" :current="request()->routeIs('admin.analytics.*')">
                 Analytics
             </flux:sidebar.item>

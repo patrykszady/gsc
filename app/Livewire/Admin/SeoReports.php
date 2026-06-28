@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\GscCoverageState;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -719,8 +720,137 @@ class SeoReports extends Component
     {
         Cache::forget('admin.seo-reports.health-snapshot');
         Cache::forget($this->searchSnapshotCacheKey());
-        unset($this->files, $this->reportStats, $this->healthSnapshot, $this->searchSnapshot, $this->trendChartData);
+        unset($this->files, $this->reportStats, $this->healthSnapshot, $this->searchSnapshot, $this->trendChartData, $this->gscErrorSnapshot);
         $this->flash = 'Dashboard metrics refreshed.';
+    }
+
+    /**
+     * @return array{
+     *   available:bool,
+     *   totals:array{tracked:int,problem:int,pass:int},
+     *   buckets:array<int,array{label:string,count:int}>,
+     *   latest_inspected:?string,
+     *   rows:array<int,array{url:string,path:string,issue:string,verdict:string,coverage_state:string,page_fetch_state:string,last_crawl_time:?string,inspected_at:?string,last_changed_at:?string,consecutive_failures:int}>
+     * }
+     */
+    #[Computed]
+    public function gscErrorSnapshot(): array
+    {
+        if (! Schema::hasTable('gsc_coverage_states')) {
+            return [
+                'available' => false,
+                'totals' => ['tracked' => 0, 'problem' => 0, 'pass' => 0],
+                'buckets' => [],
+                'latest_inspected' => null,
+                'rows' => [],
+            ];
+        }
+
+        $tracked = (int) GscCoverageState::query()->count();
+
+        $problemQuery = GscCoverageState::query()
+            ->where(function ($q) {
+                $q->where('verdict', '!=', 'PASS')
+                    ->orWhereNull('verdict')
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%forbidden%'])
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%'])
+                    ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%']);
+            });
+
+        $problem = (int) (clone $problemQuery)->count();
+
+        $bucketSpecs = [
+            'Blocked (robots/forbidden)' => ['%forbidden%', '%blocked by robots.txt%'],
+            'Not indexed' => ['%not indexed%'],
+            'Duplicate/canonical' => ['%duplicate%', '%canonical%'],
+            'Soft 404' => ['%soft 404%'],
+            'Crawl/fetch errors' => ['%not found%', '%server error%', '%redirect error%'],
+        ];
+
+        $buckets = [];
+        foreach ($bucketSpecs as $label => $patterns) {
+            $count = (int) GscCoverageState::query()
+                ->where(function ($q) use ($patterns) {
+                    foreach ($patterns as $pattern) {
+                        $q->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', [$pattern])
+                            ->orWhereRaw('LOWER(COALESCE(page_fetch_state, "")) like ?', [$pattern]);
+                    }
+                })
+                ->count();
+
+            $buckets[] = ['label' => $label, 'count' => $count];
+        }
+
+        $rows = (clone $problemQuery)
+            ->orderByRaw('COALESCE(last_changed_at, inspected_at) DESC')
+            ->limit(25)
+            ->get([
+                'url',
+                'verdict',
+                'coverage_state',
+                'page_fetch_state',
+                'last_crawl_time',
+                'inspected_at',
+                'last_changed_at',
+                'consecutive_failures',
+            ])
+            ->map(function (GscCoverageState $row): array {
+                $path = parse_url((string) $row->url, PHP_URL_PATH) ?: '/';
+                return [
+                    'url' => (string) $row->url,
+                    'path' => (string) $path,
+                    'issue' => $this->classifyGscIssue((string) $row->coverage_state, (string) $row->page_fetch_state, (string) $row->verdict),
+                    'verdict' => (string) ($row->verdict ?? 'UNKNOWN'),
+                    'coverage_state' => (string) ($row->coverage_state ?? ''),
+                    'page_fetch_state' => (string) ($row->page_fetch_state ?? ''),
+                    'last_crawl_time' => $row->last_crawl_time?->toDateString(),
+                    'inspected_at' => $row->inspected_at?->diffForHumans(),
+                    'last_changed_at' => $row->last_changed_at?->diffForHumans(),
+                    'consecutive_failures' => (int) ($row->consecutive_failures ?? 0),
+                ];
+            })
+            ->all();
+
+        $latestInspected = GscCoverageState::query()->max('inspected_at');
+
+        return [
+            'available' => true,
+            'totals' => [
+                'tracked' => $tracked,
+                'problem' => $problem,
+                'pass' => max(0, $tracked - $problem),
+            ],
+            'buckets' => $buckets,
+            'latest_inspected' => $latestInspected ? Carbon::parse((string) $latestInspected)->diffForHumans() : null,
+            'rows' => $rows,
+        ];
+    }
+
+    protected function classifyGscIssue(string $coverageState, string $pageFetchState, string $verdict): string
+    {
+        $text = strtolower(trim($coverageState . ' ' . $pageFetchState));
+
+        if ($text === '' && strtoupper($verdict) === 'PASS') {
+            return 'Indexed';
+        }
+        if (str_contains($text, 'forbidden') || str_contains($text, 'robots')) {
+            return 'Blocked';
+        }
+        if (str_contains($text, 'not indexed')) {
+            return 'Not indexed';
+        }
+        if (str_contains($text, 'duplicate') || str_contains($text, 'canonical')) {
+            return 'Duplicate/canonical';
+        }
+        if (str_contains($text, 'soft 404')) {
+            return 'Soft 404';
+        }
+        if (str_contains($text, 'server') || str_contains($text, 'not found') || str_contains($text, 'redirect')) {
+            return 'Fetch error';
+        }
+
+        return strtoupper($verdict) === 'PASS' ? 'Indexed' : 'Other';
     }
 
     protected function searchSnapshotCacheKey(): string

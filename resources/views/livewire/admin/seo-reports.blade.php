@@ -41,6 +41,7 @@
 
     @php
         $snapshot = $this->searchSnapshot;
+        $gscErrors = $this->gscErrorSnapshot;
         $rankTracked = max(1, $snapshot['rankings']['tracked'] ?? 1);
         $trendUnitLabel = $trendMetric === 'impressions' ? 'impressions' : 'clicks';
     @endphp
@@ -375,6 +376,79 @@
     </div>
 
     <div class="mb-6 grid min-w-0 gap-6 lg:grid-cols-2">
+        <flux:card class="min-w-0 overflow-hidden p-5 lg:col-span-2">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <flux:heading size="md">GSC Errors (URL Inspection)</flux:heading>
+                <flux:text class="text-xs text-zinc-500">
+                    Latest inspection: {{ $gscErrors['latest_inspected'] ?? 'never' }}
+                </flux:text>
+            </div>
+
+            @if (! $gscErrors['available'])
+                <flux:text class="text-sm text-zinc-500">No GSC inspection table found yet. Run <code>php artisan seo:gsc-inspect-bulk --markdown</code> to populate it.</flux:text>
+            @else
+                <div class="mb-4 grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/70">
+                        <flux:text class="text-xs uppercase tracking-wide text-zinc-500">Tracked URLs</flux:text>
+                        <div class="mt-1 text-xl font-semibold text-zinc-900 dark:text-white">{{ number_format($gscErrors['totals']['tracked']) }}</div>
+                    </div>
+                    <div class="rounded-lg bg-rose-50 p-3 dark:bg-rose-900/20">
+                        <flux:text class="text-xs uppercase tracking-wide text-rose-600">Problem URLs</flux:text>
+                        <div class="mt-1 text-xl font-semibold text-rose-700 dark:text-rose-300">{{ number_format($gscErrors['totals']['problem']) }}</div>
+                    </div>
+                    <div class="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-900/20">
+                        <flux:text class="text-xs uppercase tracking-wide text-emerald-600">Pass URLs</flux:text>
+                        <div class="mt-1 text-xl font-semibold text-emerald-700 dark:text-emerald-300">{{ number_format($gscErrors['totals']['pass']) }}</div>
+                    </div>
+                </div>
+
+                <div class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                    @foreach ($gscErrors['buckets'] as $bucket)
+                        <div class="rounded-lg border border-zinc-200 p-2.5 text-sm dark:border-zinc-700">
+                            <div class="truncate text-zinc-500">{{ $bucket['label'] }}</div>
+                            <div class="mt-1 font-semibold text-zinc-900 dark:text-white">{{ number_format($bucket['count']) }}</div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left text-xs uppercase tracking-wide text-zinc-500">
+                            <tr>
+                                <th class="pb-2 pr-2">URL</th>
+                                <th class="pb-2 pr-2">Issue</th>
+                                <th class="pb-2 pr-2">Verdict</th>
+                                <th class="pb-2 pr-2">Coverage State</th>
+                                <th class="pb-2 pr-2">Last Crawl</th>
+                                <th class="pb-2">Changed</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @forelse ($gscErrors['rows'] as $row)
+                                <tr>
+                                    <td class="max-w-72 py-2 pr-2 align-top">
+                                        <a href="{{ $row['url'] }}" target="_blank" rel="noopener" class="font-medium text-sky-700 hover:underline dark:text-sky-300">
+                                            <span class="line-clamp-2">{{ $row['path'] }}</span>
+                                        </a>
+                                        @if ($row['consecutive_failures'] > 0)
+                                            <div class="mt-1 text-xs text-rose-600">Fails: {{ $row['consecutive_failures'] }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pr-2">{{ $row['issue'] }}</td>
+                                    <td class="py-2 pr-2">{{ $row['verdict'] }}</td>
+                                    <td class="max-w-72 py-2 pr-2"><span class="line-clamp-2">{{ $row['coverage_state'] ?: '—' }}</span></td>
+                                    <td class="py-2 pr-2">{{ $row['last_crawl_time'] ?? '—' }}</td>
+                                    <td class="py-2">{{ $row['last_changed_at'] ?? $row['inspected_at'] ?? '—' }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="py-3 text-zinc-500">No current GSC issues detected.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </flux:card>
+
         <flux:card class="min-w-0 overflow-hidden p-5">
             <div class="mb-4 flex items-center justify-between">
                 <flux:heading size="md">SEO Pillars</flux:heading>

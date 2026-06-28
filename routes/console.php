@@ -376,11 +376,11 @@ Schedule::command('seo:cloudflare-403-audit --markdown')
     ->appendOutputTo(storage_path('logs/seo-cloudflare-403-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:cloudflare-403-audit failed'));
 
-// SEO: bulk URL Inspection sweep across sitemap (~150/run, stale-first). Populates
-// gsc_coverage_states proactively so canonical-conflict and crawl-budget reports
-// have current data without waiting for problem URLs to surface reactively.
-Schedule::command('seo:gsc-inspect-bulk --limit=150 --markdown')
-    ->weeklyOn(3, '04:00')
+// SEO: nightly full-sitemap URL Inspection sweep. One run/day keeps us under
+// the ~2,000 calls/day URL Inspection quota while keeping coverage +
+// enhancements/shopping signals fresh in admin.
+Schedule::command('seo:gsc-inspect-bulk --limit=0 --markdown')
+    ->dailyAt('04:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-inspect-bulk.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-inspect-bulk failed'))

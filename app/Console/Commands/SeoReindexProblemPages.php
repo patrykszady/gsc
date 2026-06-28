@@ -10,6 +10,7 @@ use App\Services\IndexNowService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Push the current GSC "problem" URLs back through IndexNow + warm Cloudflare cache so the next
@@ -19,6 +20,12 @@ use Illuminate\Support\Facades\Http;
  */
 class SeoReindexProblemPages extends Command
 {
+    /** @var array<int,string> */
+    protected array $excludedGone410 = [];
+
+    /** @var array<int,string> */
+    protected array $excludedNotInSitemap = [];
+
     protected $signature = 'seo:reindex-problem-pages
         {--urls=* : Specific URLs to resubmit (skips auto-detection)}
         {--auto : Pull problem URLs from latest GSC inspection of priority pages}
@@ -29,6 +36,9 @@ class SeoReindexProblemPages extends Command
 
     public function handle(IndexNowService $indexNow): int
     {
+        $this->excludedGone410 = [];
+        $this->excludedNotInSitemap = [];
+
         $urls = (array) $this->option('urls');
 
         if (empty($urls) && $this->option('auto')) {
@@ -46,25 +56,47 @@ class SeoReindexProblemPages extends Command
 
         if ($this->option('dry-run')) {
             $this->warn('Dry run. Nothing submitted.');
+            $this->writeRunReport($urls, [], true, null);
             return self::SUCCESS;
         }
 
-        // Warm the URL so the next bot crawl serves a fresh 200 (busts CF cache too).
+        // Warm URLs so the next bot crawl serves a fresh response. Skip intentionally
+        // removed 410 pages so they are not repeatedly re-submitted to IndexNow.
+        $submitUrls = [];
         foreach ($urls as $u) {
             $resp = Http::timeout(20)->withHeaders([
                 'User-Agent' => 'GSConstruction-SEO-Warmer/1.0',
                 'Cache-Control' => 'no-cache',
             ])->get($u);
             $this->line(sprintf('  warm  %3d  %s', $resp->status(), $u));
+
+            if ($resp->status() === 410) {
+                $this->line('  skip 410  ' . $u);
+                $this->excludedGone410[] = $u;
+                $this->markGone($u);
+                continue;
+            }
+
+            $submitUrls[] = $u;
+        }
+
+        $submitUrls = array_values(array_unique($submitUrls));
+        if (empty($submitUrls)) {
+            $this->warn('No URLs left to submit after warm/410 filtering.');
+            $this->writeRunReport($urls, [], false, true);
+            return self::SUCCESS;
         }
 
         if (! $indexNow->isEnabled()) {
             $this->warn('IndexNow disabled in config; skipping submit.');
+            $this->writeRunReport($urls, $submitUrls, false, null);
             return self::SUCCESS;
         }
 
-        $ok = $indexNow->submitBatch($urls);
+        $ok = $indexNow->submitBatch($submitUrls);
         $ok ? $this->info('IndexNow batch accepted.') : $this->error('IndexNow batch failed (check logs).');
+
+        $this->writeRunReport($urls, $submitUrls, false, $ok);
 
         return $ok ? self::SUCCESS : self::FAILURE;
     }
@@ -151,6 +183,7 @@ class SeoReindexProblemPages extends Command
                     ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%'])
                     ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%']);
             })
+            ->whereRaw('LOWER(COALESCE(page_fetch_state, "")) not like ?', ['%gone_410%'])
             ->orderByDesc('inspected_at')
             ->limit(120)
             ->pluck('url')
@@ -158,9 +191,119 @@ class SeoReindexProblemPages extends Command
             ->values()
             ->all();
 
+        $rows = $this->filterToCurrentSitemap($rows);
+
         $this->line('  cached problem URLs: ' . count($rows));
 
         return $rows;
+    }
+
+    /**
+     * Keep only URLs still present in the current sitemap so stale removed URLs
+     * (e.g. intentional 410 routes) do not get re-submitted forever.
+     *
+     * @param array<int,string> $urls
+     * @return array<int,string>
+     */
+    protected function filterToCurrentSitemap(array $urls): array
+    {
+        $path = public_path('sitemap.xml');
+        if (! is_file($path)) {
+            return $urls;
+        }
+
+        $xml = @simplexml_load_string((string) file_get_contents($path));
+        if (! $xml || ! isset($xml->url)) {
+            return $urls;
+        }
+
+        $inSitemap = [];
+        foreach ($xml->url as $node) {
+            $loc = trim((string) ($node->loc ?? ''));
+            if ($loc !== '') {
+                $inSitemap[$loc] = true;
+            }
+        }
+
+        $kept = [];
+        foreach ($urls as $u) {
+            if (isset($inSitemap[$u])) {
+                $kept[] = $u;
+            } else {
+                $this->excludedNotInSitemap[] = $u;
+            }
+        }
+
+        return array_values($kept);
+    }
+
+    protected function markGone(string $url): void
+    {
+        GscCoverageState::query()
+            ->where('url', $url)
+            ->update([
+                'page_fetch_state' => 'GONE_410',
+                'last_changed_at' => now(),
+            ]);
+    }
+
+    /**
+     * @param array<int,string> $detectedUrls
+     * @param array<int,string> $submittedUrls
+     */
+    protected function writeRunReport(array $detectedUrls, array $submittedUrls, bool $dryRun, ?bool $indexNowAccepted): void
+    {
+        $lines = [];
+        $lines[] = '# Reindex Problem URLs — Last Run';
+        $lines[] = '';
+        $lines[] = '- Generated: ' . now()->toIso8601String();
+        $lines[] = '- Mode: ' . ($dryRun ? 'dry-run' : 'live');
+        $lines[] = '- Auto detection: ' . ($this->option('auto') ? 'yes' : 'no');
+        $lines[] = '- Detected URLs: **' . count($detectedUrls) . '**';
+        $lines[] = '- Submitted URLs: **' . count($submittedUrls) . '**';
+        $lines[] = '- Excluded (410): **' . count($this->excludedGone410) . '**';
+        $lines[] = '- Excluded (not in sitemap): **' . count($this->excludedNotInSitemap) . '**';
+        if ($indexNowAccepted !== null) {
+            $lines[] = '- IndexNow accepted: **' . ($indexNowAccepted ? 'yes' : 'no') . '**';
+        }
+        $lines[] = '';
+
+        $lines[] = '## Submitted URLs';
+        $lines[] = '';
+        if (empty($submittedUrls)) {
+            $lines[] = '_None_';
+        } else {
+            foreach ($submittedUrls as $u) {
+                $lines[] = '- ' . $u;
+            }
+        }
+        $lines[] = '';
+
+        $lines[] = '## Excluded URLs (410 Gone)';
+        $lines[] = '';
+        if (empty($this->excludedGone410)) {
+            $lines[] = '_None_';
+        } else {
+            foreach (array_values(array_unique($this->excludedGone410)) as $u) {
+                $lines[] = '- ' . $u;
+            }
+        }
+        $lines[] = '';
+
+        $lines[] = '## Excluded URLs (not in sitemap)';
+        $lines[] = '';
+        if (empty($this->excludedNotInSitemap)) {
+            $lines[] = '_None_';
+        } else {
+            foreach (array_values(array_unique($this->excludedNotInSitemap)) as $u) {
+                $lines[] = '- ' . $u;
+            }
+        }
+        $lines[] = '';
+
+        $relativePath = 'reports/reindex-problem-pages-last.md';
+        Storage::disk('local')->put($relativePath, implode("\n", $lines));
+        $this->line('Wrote report: ' . Storage::disk('local')->path($relativePath));
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Console\Commands\Concerns\UsesSearchConsoleApi;
 use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
+use App\Models\GscRichResultIssue;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -17,14 +18,14 @@ use Illuminate\Support\Facades\Storage;
  * a markdown summary highlighting verdict changes since last run.
  *
  * Quota: the URL Inspection API is limited to ~2,000 calls/day per property. We default to
- * 150 URLs/run and stagger calls 250ms apart.
+ * all sitemap URLs (or --limit override) and stagger calls 250ms apart.
  */
 class SeoGscInspectBulk extends Command
 {
     use UsesSearchConsoleApi;
 
     protected $signature = 'seo:gsc-inspect-bulk
-        {--limit=150 : Maximum URLs to inspect this run}
+        {--limit=0 : Maximum URLs to inspect this run (0 = all sitemap URLs)}
         {--sitemap= : Path to sitemap XML (default public/sitemap.xml)}
         {--strategy=stale : URL selection: stale|random|all}
         {--site= : GSC site URL override}
@@ -45,12 +46,18 @@ class SeoGscInspectBulk extends Command
         }
         $this->info(sprintf('Loaded %d sitemap URLs.', count($urls)));
 
-        $urls = $this->prioritize($urls, (string) $this->option('strategy'), (int) $this->option('limit'));
+        $limit = (int) $this->option('limit');
+        if ($limit <= 0) {
+            $limit = count($urls);
+        }
+
+        $urls = $this->prioritize($urls, (string) $this->option('strategy'), $limit);
         $this->info(sprintf('Inspecting %d URLs (strategy=%s).', count($urls), $this->option('strategy')));
 
         $changes = [];
         $failures = 0;
         $inspected = 0;
+        $richIssues = 0;
 
         foreach ($urls as $u) {
             usleep(250_000);
@@ -68,15 +75,19 @@ class SeoGscInspectBulk extends Command
                 continue;
             }
             $inspected++;
-            $r = $resp->json()['inspectionResult']['indexStatusResult'] ?? [];
-            $change = $this->persist($u, $r);
-            if ($change) $changes[] = $change;
+            $inspection = $resp->json()['inspectionResult'] ?? [];
+            $r = $inspection['indexStatusResult'] ?? [];
+            $change = $this->persist($u, $r, $inspection['richResultsResult'] ?? []);
+            if (($change['changed'] ?? false) === true) {
+                $changes[] = $change;
+            }
+            $richIssues += (int) ($change['rich_issue_count'] ?? 0);
             $verdict = $r['verdict'] ?? '?';
             $coverage = $r['coverageState'] ?? '?';
             $this->line(sprintf('  %-7s %-45s %s', $verdict, substr($coverage, 0, 45), $u));
         }
 
-        $this->info(sprintf('Done. inspected=%d failures=%d changes=%d', $inspected, $failures, count($changes)));
+        $this->info(sprintf('Done. inspected=%d failures=%d changes=%d rich_issues=%d', $inspected, $failures, count($changes), $richIssues));
 
         if ($this->option('markdown')) {
             $this->writeReport($inspected, $failures, $changes);
@@ -132,7 +143,7 @@ class SeoGscInspectBulk extends Command
      * @param array<string,mixed> $r
      * @return array<string,mixed>|null
      */
-    protected function persist(string $url, array $r): ?array
+    protected function persist(string $url, array $r, array $richResults): array
     {
         $verdict = $r['verdict'] ?? null;
         $coverage = $r['coverageState'] ?? null;
@@ -168,7 +179,19 @@ class SeoGscInspectBulk extends Command
             ]
         );
 
-        if (! $changed) return null;
+        $richIssueCount = $this->persistRichResults($url, $richResults);
+
+        if (! $changed) {
+            return [
+                'url' => $url,
+                'prev_verdict' => $existing?->verdict,
+                'verdict' => $verdict,
+                'prev_coverage' => $existing?->coverage_state,
+                'coverage' => $coverage,
+                'rich_issue_count' => $richIssueCount,
+                'changed' => false,
+            ];
+        }
 
         GscCoverageStateHistory::create([
             'url' => $url,
@@ -184,7 +207,65 @@ class SeoGscInspectBulk extends Command
             'verdict' => $verdict,
             'prev_coverage' => $existing?->coverage_state,
             'coverage' => $coverage,
+            'rich_issue_count' => $richIssueCount,
+            'changed' => true,
         ];
+    }
+
+    /**
+     * Persist current rich-result issues for a URL from URL Inspection response.
+     *
+     * @param array<string,mixed> $richResults
+     */
+    protected function persistRichResults(string $url, array $richResults): int
+    {
+        GscRichResultIssue::query()->where('url', $url)->delete();
+
+        $items = $richResults['detectedItems'] ?? [];
+        if (! is_array($items) || empty($items)) {
+            return 0;
+        }
+
+        $rows = [];
+        $inspectedAt = now();
+        $verdict = is_string($richResults['verdict'] ?? null) ? (string) $richResults['verdict'] : null;
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $type = (string) ($item['richResultType'] ?? $item['detectedItemType'] ?? 'Unknown');
+
+            $issues = $item['issues'] ?? [];
+            if (! is_array($issues) || empty($issues)) {
+                continue;
+            }
+
+            foreach ($issues as $issue) {
+                if (! is_array($issue)) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'url' => $url,
+                    'rich_result_type' => $type,
+                    'issue_severity' => (string) ($issue['severity'] ?? 'UNKNOWN'),
+                    'issue_type' => (string) ($issue['issueType'] ?? $issue['issueMessage'] ?? 'unknown_issue'),
+                    'issue_message' => (string) ($issue['issueMessage'] ?? $issue['issueType'] ?? 'Unknown issue'),
+                    'verdict' => $verdict,
+                    'inspected_at' => $inspectedAt,
+                    'created_at' => $inspectedAt,
+                    'updated_at' => $inspectedAt,
+                ];
+            }
+        }
+
+        if (! empty($rows)) {
+            GscRichResultIssue::query()->insert($rows);
+        }
+
+        return count($rows);
     }
 
     /**
