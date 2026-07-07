@@ -74,7 +74,10 @@ class PublishToSocialMediaJob implements ShouldQueue
     {
         $productionUrl = config('services.google.business_profile.production_url', 'https://gs.construction');
         $thumbnails = $image->thumbnails ?? [];
-        $path = $thumbnails['large'] ?? $thumbnails['hero'] ?? $image->path;
+        // GBP posts render in a 4:3 frame — prefer the 4:3 'gbp' crop so the
+        // image fills edge-to-edge instead of being letterboxed. Fall back to
+        // the 16:9 'large' (or original) for images not yet backfilled.
+        $path = $thumbnails['gbp'] ?? $thumbnails['large'] ?? $thumbnails['hero'] ?? $image->path;
         $relativePath = 'storage/' . ltrim($path, '/');
 
         return rtrim($productionUrl, '/') . '/' . $relativePath;

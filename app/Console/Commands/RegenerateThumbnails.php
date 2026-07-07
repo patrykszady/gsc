@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class RegenerateThumbnails extends Command
 {
     protected $signature = 'images:regenerate-thumbnails 
-                            {--size= : Specific size to regenerate (thumb, small, medium, hero, large)}
+                            {--size= : Specific size to regenerate (thumb, small, medium, hero, large, instagram)}
                             {--missing : Only generate missing thumbnails}';
 
     protected $description = 'Regenerate thumbnails for all project images';

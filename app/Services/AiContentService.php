@@ -901,6 +901,23 @@ PROMPT;
         $projectContext = $this->buildProjectContext($project);
         $cityOnly = trim(explode(',', (string) $project->location)[0]) ?: 'Chicago';
 
+        // Randomise the opening angle so captions don't all start the same way
+        // (Gemini defaults to "Step into..." over and over). A fresh angle per
+        // call + higher temperature keeps each post distinct.
+        $openingAngles = [
+            'lead with the single most striking visual detail you can see (a material, colour, texture, or fixture)',
+            'open with the feeling or mood the finished space creates',
+            'start with a short, punchy question that pulls the reader in',
+            'begin by naming the room and the city, then the standout design choice',
+            'lead with the transformation — what this space became',
+            'open on a craftsmanship angle: the details that set this work apart',
+            'start with the everyday lifestyle benefit for the homeowner',
+            'lead with a confident one-line statement about the result',
+            'open with a specific number or dimension if one is visually implied (island size, ceiling height, etc.)',
+            'start mid-scene, describing the light or the first thing the eye lands on',
+        ];
+        $angle = $openingAngles[array_rand($openingAngles)];
+
         $prompt = <<<PROMPT
 You are a social media manager for GS Construction, a premium home remodeling company based in Chicago.
 Analyze this project photo and generate an engaging Instagram/Facebook post.
@@ -912,7 +929,8 @@ Existing AI description of this image: {$image->caption}
 
 Generate a JSON object with these keys:
 1. "caption": An engaging social media caption (2-4 sentences). Requirements:
-   - Start with something eye-catching (emoji optional, but keep it professional)
+   - Opening angle for THIS caption: {$angle}. Vary the first few words every time.
+   - Do NOT begin with any of these overused templates: "Step into", "Step inside", "Welcome to", "Transform your", "Imagine", "Discover". Never open two posts the same way.
    - Describe what's shown in the photo with specific details (materials, colors, design choices)
    - Mention the city ({$cityOnly}) naturally — use the CITY NAME ONLY, never the state abbreviation (no ", IL", no "Illinois")
    - Keep it concise — no "link in bio", no "DM us", no CTA sentence. Let the work speak for itself.
@@ -938,7 +956,8 @@ Rules:
 
 PROMPT;
 
-        $response = $this->callGeminiMultiImage($prompt, [$imageData], 2000);
+        // Higher temperature widens word choice so openings/phrasing vary.
+        $response = $this->callGeminiMultiImage($prompt, [$imageData], 2000, 0.95);
 
         if ($response === null) {
             return null;

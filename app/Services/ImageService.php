@@ -62,6 +62,13 @@ class ImageService
         // Generate thumbnails (now also creates WebP versions)
         $thumbnails = $this->generateThumbnails($file, $basePath, $filename);
 
+        // Full-size 4:3 crop for Google Business Profile posts (GBP renders in a
+        // 4:3 frame; a 16:9 image gets black side bars). Native resolution, not
+        // a downscaled thumbnail.
+        if ($gbpPath = $this->generateGbpImage($file, $basePath, $filename)) {
+            $thumbnails['gbp'] = $gbpPath;
+        }
+
         // Create database record
         $attributes = [
             'project_id' => $project->id,
@@ -151,6 +158,85 @@ class ImageService
         }
 
         return $thumbnails;
+    }
+
+    /**
+     * Compute the largest 4:3 crop dimensions that fit inside a source of the
+     * given size, without upscaling. Landscape source → full height, cropped
+     * width; portrait/near-square source → full width, cropped height.
+     *
+     * @return array{0:int,1:int} [width, height]
+     */
+    protected function fourThreeDimensions(int $width, int $height): array
+    {
+        $ratio = 4 / 3;
+
+        if ($width / $height >= $ratio) {
+            return [(int) round($height * $ratio), $height];
+        }
+
+        return [$width, (int) round($width / $ratio)];
+    }
+
+    /**
+     * Generate a full-resolution 4:3 crop for Google Business Profile posts.
+     * $source may be an UploadedFile, a file path, or raw image bytes (anything
+     * Intervention's Image::read accepts). Returns the stored path or null.
+     */
+    protected function generateGbpImage($source, string $basePath, string $filename): ?string
+    {
+        try {
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+            $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+
+            $img = Image::read($source);
+
+            // Cap at maxWidth like the main image; never upscale.
+            if ($img->width() > $this->maxWidth) {
+                $img->scale(width: $this->maxWidth);
+            }
+
+            [$w, $h] = $this->fourThreeDimensions($img->width(), $img->height());
+            $img->cover($w, $h); // crop to 4:3 at native resolution
+
+            $gbpPath = "{$basePath}/{$nameWithoutExt}_gbp.{$extension}";
+            Storage::disk('public')->put($gbpPath, $this->encodeImage($img, $extension));
+
+            return $gbpPath;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Backfill the full-size 4:3 GBP crop for an existing image, recording the
+     * path under thumbnails['gbp']. Returns the path or null.
+     */
+    public function generateGbpImageFor(ProjectImage $image, bool $onlyMissing = false): ?string
+    {
+        $thumbnails = $image->thumbnails ?? [];
+
+        if ($onlyMissing && ! empty($thumbnails['gbp']) && Storage::disk('public')->exists($thumbnails['gbp'])) {
+            return $thumbnails['gbp'];
+        }
+
+        $originalPath = $image->path;
+        if (! $originalPath || ! Storage::disk('public')->exists($originalPath)) {
+            return null;
+        }
+
+        $path = $this->generateGbpImage(
+            Storage::disk('public')->get($originalPath),
+            dirname($originalPath),
+            basename($originalPath),
+        );
+
+        if ($path) {
+            $thumbnails['gbp'] = $path;
+            $image->update(['thumbnails' => $thumbnails]);
+        }
+
+        return $path;
     }
 
     protected function encodeImage($image, string $extension): string

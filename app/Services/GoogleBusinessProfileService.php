@@ -655,6 +655,90 @@ class GoogleBusinessProfileService
         return $response->json('localPosts', []);
     }
 
+    /**
+     * List ALL local posts on the GBP listing (auto-paginating).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listAllLocalPosts(int $pageSize = 100): array
+    {
+        if (! $this->isConfigured()) {
+            return [];
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return [];
+        }
+
+        $url = $this->locationBaseUrl() . '/localPosts';
+        $all = [];
+        $pageToken = null;
+
+        do {
+            $params = ['pageSize' => $pageSize];
+            if ($pageToken) {
+                $params['pageToken'] = $pageToken;
+            }
+
+            $response = Http::withToken($accessToken)->timeout(30)->get($url, $params);
+            if (! $response->successful()) {
+                $this->lastError = [
+                    'message' => 'List local posts failed',
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ];
+                break;
+            }
+
+            $all = array_merge($all, $response->json('localPosts', []));
+            $pageToken = $response->json('nextPageToken');
+        } while ($pageToken);
+
+        return $all;
+    }
+
+    /**
+     * Delete a single local post ("update") from the GBP listing.
+     *
+     * @param string $postName Full resource name: accounts/{a}/locations/{l}/localPosts/{p}
+     */
+    public function deleteLocalPost(string $postName): bool
+    {
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return false;
+        }
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->delete(self::MEDIA_API_BASE . "/{$postName}");
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Delete local post failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::warning('GBP: Failed to delete local post', [
+                'post_name' => $postName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return false;
+        }
+
+        $this->lastError = null;
+        Log::info('GBP: Deleted local post', ['post_name' => $postName]);
+
+        return true;
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Reviews                                                            */
     /* ------------------------------------------------------------------ */
