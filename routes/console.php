@@ -516,10 +516,20 @@ Schedule::call(function (): void {
         return;
     }
 
-    \Illuminate\Support\Facades\Artisan::call('social:post', [
+    $exitCode = \Illuminate\Support\Facades\Artisan::call('social:post', [
         '--platform' => 'google_business',
         '--queue' => true,
     ]);
+
+    if ($exitCode !== 0) {
+        logger()->error('GBP safety-net could not queue catch-up post', [
+            'last_published_at' => $lastPublishedAt,
+            'exit_code' => $exitCode,
+            'output' => trim(\Illuminate\Support\Facades\Artisan::output()),
+        ]);
+
+        return;
+    }
 
     logger()->warning('GBP safety-net queued catch-up post', [
         'last_published_at' => $lastPublishedAt,

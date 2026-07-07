@@ -61,10 +61,21 @@ class SeoGscInspectBulk extends Command
 
         foreach ($urls as $u) {
             usleep(250_000);
-            $resp = Http::withToken($token)->timeout(30)->post(
-                'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
-                ['inspectionUrl' => $u, 'siteUrl' => $site]
-            );
+            try {
+                $resp = Http::withToken($token)
+                    ->timeout(30)
+                    ->retry(2, 2000, fn ($e) => $e instanceof \Illuminate\Http\Client\ConnectionException, throw: false)
+                    ->post(
+                    'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
+                    ['inspectionUrl' => $u, 'siteUrl' => $site]
+                );
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                // A transient network timeout must not abort the whole sweep.
+                $failures++;
+                $this->line(sprintf('  err   net  %s (%s)', $u, $e->getMessage()));
+
+                continue;
+            }
             if (! $resp->successful()) {
                 $failures++;
                 $this->line(sprintf('  err   %3d  %s', $resp->status(), $u));

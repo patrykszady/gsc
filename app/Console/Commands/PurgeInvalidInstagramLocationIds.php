@@ -37,7 +37,7 @@ class PurgeInvalidInstagramLocationIds extends Command
         $areas = AreaServed::query()
             ->whereNotNull('ig_location_id')
             ->orderBy('city')
-            ->get(['id', 'city', 'ig_location_id']);
+            ->get(['id', 'city', 'slug', 'ig_location_id']);
 
         if ($areas->isEmpty()) {
             $this->info('No cached Instagram location IDs to check.');

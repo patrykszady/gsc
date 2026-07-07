@@ -34,6 +34,17 @@ class AreaServedObserver
         }
 
         try {
+            // Commands that load partial models (e.g. get(['id', ...]) without
+            // 'slug') fire this observer with an unroutable model — reload the
+            // slug instead of failing URL generation.
+            if (! $area->slug) {
+                $area->slug = AreaServed::whereKey($area->id)->value('slug');
+            }
+
+            if (! $area->slug) {
+                return;
+            }
+
             $urls = [
                 route('areas.show', $area),
                 route('areas.index'),

@@ -85,11 +85,24 @@ class PageSpeedInsightsService
             ]);
             return null;
         } catch (\Exception $e) {
-            Log::warning('PSI: HTTP error', [
+            // Same throttling as connection timeouts — PSI's Lighthouse backend
+            // regularly 400/500s on pages that are fine (often Cloudflare
+            // challenging Google's fetcher), so cap the hourly warning volume.
+            $metricCount = $this->bumpHourlyMetric('psi.http_error');
+            $context = [
                 'url' => $url,
                 'strategy' => $strategy,
                 'error' => $e->getMessage(),
-            ]);
+                'metric' => 'psi.http_error',
+                'metric_count_hour' => $metricCount,
+            ];
+
+            if ($metricCount <= 3 || in_array($metricCount, [10, 25, 50], true)) {
+                Log::warning('PSI: HTTP error', $context);
+            } else {
+                Log::debug('PSI: HTTP error', $context);
+            }
+
             return null;
         }
 

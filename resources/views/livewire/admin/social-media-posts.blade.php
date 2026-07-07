@@ -3,9 +3,35 @@
         <flux:heading size="xl">Social Media</flux:heading>
 
         @if($isConfigured)
-            <flux:button wire:click="postNow" icon="paper-airplane" variant="primary">
-                Post Now
-            </flux:button>
+            <flux:dropdown position="bottom" align="end">
+                <flux:button icon="paper-airplane" icon:trailing="chevron-down" variant="primary">
+                    Post Now
+                </flux:button>
+
+                <flux:menu>
+                    <flux:menu.item wire:click="postNow('all')" icon="paper-airplane">
+                        All platforms
+                    </flux:menu.item>
+
+                    <flux:menu.separator />
+
+                    @if($igConfigured)
+                        <flux:menu.item wire:click="postNow('instagram')" icon="camera">
+                            Instagram
+                        </flux:menu.item>
+                    @endif
+                    @if($fbConfigured)
+                        <flux:menu.item wire:click="postNow('facebook')" icon="hand-thumb-up">
+                            Facebook
+                        </flux:menu.item>
+                    @endif
+                    @if($gbpConfigured)
+                        <flux:menu.item wire:click="postNow('google_business')" icon="map-pin">
+                            Google Business
+                        </flux:menu.item>
+                    @endif
+                </flux:menu>
+            </flux:dropdown>
         @endif
     </div>
 
@@ -36,17 +62,32 @@
             <p class="text-2xl font-bold text-pink-600">{{ $remainingInstagram }}</p>
             <p class="text-sm text-zinc-500">IG Remaining</p>
             <p class="mt-1 text-xs text-zinc-400">{{ $postedInstagram }} {{ \Illuminate\Support\Str::plural('post', $postedInstagram) }} posted</p>
+            @if($igConfigured)
+                <flux:button wire:click="postNow('instagram')" icon="paper-airplane" size="xs" variant="subtle" class="mt-3 w-full">
+                    Post Now
+                </flux:button>
+            @endif
         </flux:card>
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-blue-600">{{ $remainingFacebook }}</p>
             <p class="text-sm text-zinc-500">FB Remaining</p>
             <p class="mt-1 text-xs text-zinc-400">{{ $postedFacebook }} {{ \Illuminate\Support\Str::plural('post', $postedFacebook) }} posted</p>
+            @if($fbConfigured)
+                <flux:button wire:click="postNow('facebook')" icon="paper-airplane" size="xs" variant="subtle" class="mt-3 w-full">
+                    Post Now
+                </flux:button>
+            @endif
         </flux:card>
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-amber-600">{{ $remainingGbp }}</p>
             <p class="text-sm text-zinc-500">GBP Remaining</p>
             <p class="mt-1 text-xs text-zinc-400">{{ $postedGbp }} {{ \Illuminate\Support\Str::plural('post', $postedGbp) }} posted</p>
             <p class="mt-1 text-xs text-zinc-400">{{ $uploadedGbp }} {{ \Illuminate\Support\Str::plural('image', $uploadedGbp) }} uploaded</p>
+            @if($gbpConfigured)
+                <flux:button wire:click="postNow('google_business')" icon="paper-airplane" size="xs" variant="subtle" class="mt-3 w-full">
+                    Post Now
+                </flux:button>
+            @endif
         </flux:card>
         <flux:card class="text-center">
             <p class="text-2xl font-bold text-red-600">{{ $remainingYelp }}</p>

@@ -18,6 +18,12 @@ class SocialMediaPosts extends Component
 {
     private const SOCIAL_PLATFORMS = ['instagram', 'google', 'facebook', 'yelp', 'houzz', 'angi'];
 
+    private const PLATFORM_LABELS = [
+        'instagram' => 'Instagram',
+        'facebook' => 'Facebook',
+        'google_business' => 'Google Business',
+    ];
+
     public string $platformFilter = '';
     public string $statusFilter = '';
     public int $remainingInstagram = 0;
@@ -114,7 +120,9 @@ class SocialMediaPosts extends Component
         }
 
         if (empty($platforms)) {
-            session()->flash('error', 'No platforms configured. Add META_* variables to .env first.');
+            $label = $platform === 'all' ? 'No platform is' : self::PLATFORM_LABELS[$platform] ?? $platform;
+            $label .= $platform === 'all' ? '' : ' is not';
+            session()->flash('error', "{$label} connected. Reconnect it under Platforms.");
             return;
         }
 
@@ -127,7 +135,9 @@ class SocialMediaPosts extends Component
         }
 
         PublishToSocialMediaJob::dispatch($image, $platforms)->onQueue('social-media');
-        session()->flash('success', "Queued post for \"{$image->project->title}\" image #{$image->id}.");
+
+        $names = implode(', ', array_map(fn ($p) => self::PLATFORM_LABELS[$p] ?? $p, $platforms));
+        session()->flash('success', "Queued {$names} post for \"{$image->project->title}\" image #{$image->id}. It publishes via the social-media worker within a minute or two.");
     }
 
     public function render()
@@ -143,9 +153,11 @@ class SocialMediaPosts extends Component
             $query->where('status', $this->statusFilter);
         }
 
-        $isConfigured = app(MetaSocialService::class)->isInstagramConfigured()
-            || app(MetaSocialService::class)->isFacebookConfigured()
-            || app(GoogleBusinessProfileService::class)->isConfigured();
+        $metaService = app(MetaSocialService::class);
+        $igConfigured = $metaService->isInstagramConfigured();
+        $fbConfigured = $metaService->isFacebookConfigured();
+        $gbpConfigured = app(GoogleBusinessProfileService::class)->isConfigured();
+        $isConfigured = $igConfigured || $fbConfigured || $gbpConfigured;
 
         $remainingImages = collect();
         $remainingPlatformLabels = [
@@ -210,6 +222,9 @@ class SocialMediaPosts extends Component
                 ? $yelpImages->get()
                 : null,
             'isConfigured' => $isConfigured,
+            'igConfigured' => $igConfigured,
+            'fbConfigured' => $fbConfigured,
+            'gbpConfigured' => $gbpConfigured,
             'totalEligible' => $totalEligible,
         ]);
     }
