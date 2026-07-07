@@ -148,7 +148,7 @@
     @keydown.right.window="if (hasMultipleSlides && isVisible) { next(); stopAutoplay(); startAutoplay(); }"
     class="relative w-full overflow-hidden rounded-2xl"
 >
-    @if(!$isImagesOnly && filled($srOnlyHeading))
+    @if(!$isImagesOnly && !$suppressH1 && filled($srOnlyHeading))
     <h1 class="sr-only">{{ $srOnlyHeading }}{{ $citySuffix }}</h1>
     @endif
 

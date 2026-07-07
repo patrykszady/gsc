@@ -59,8 +59,9 @@ Route::get('/', function () {
 })->name('home');
 
 // Gone-for-good URLs. Returning 410 (instead of 404) tells Google to deindex faster.
-// /faq was indexed in the past but the page was removed; this stops it cluttering coverage reports.
-Route::get('/faq', fn () => response('Gone', 410))->name('gone.faq');
+// Real FAQ page: curated Q&A (shared with the /geo/answers.json GEO feed),
+// rendered with FAQ schema for rich results + AI-engine citation.
+Route::get('/faq', fn () => view('faq'))->name('faq');
 
 // AI / GEO: structured feed for ChatGPT, Perplexity, Google AI Overviews, Claude.
 Route::get('/ai-feed.json', AiFeedController::class)->name('ai-feed');
@@ -84,6 +85,18 @@ Route::get('/reviews', function () {
 })->name('reviews.index');
 
 Route::get('/reviews/{testimonial}', TestimonialPage::class)->name('reviews.show');
+
+// Shareable review shortlink. Text or email gs.construction/review to happy
+// customers and it drops them straight onto the Google write-review form —
+// review volume + recency is the single biggest local-pack ranking lever.
+Route::get('/review', function () {
+    $placeId = (string) config('services.google.business_profile.place_id');
+    $target = $placeId !== ''
+        ? 'https://search.google.com/local/writereview?placeid=' . urlencode($placeId)
+        : 'https://www.google.com/maps/search/?api=1&query=' . urlencode('GS Construction Remodeling');
+
+    return redirect()->away($target, 302);
+})->name('review.write');
 
 // 301 redirects from legacy /testimonials URLs (preserves link equity).
 Route::redirect('/testimonials', '/reviews', 301)->name('testimonials.index');
@@ -153,7 +166,12 @@ Route::get('/api/project-images', function () {
 })->name('api.project-images');
 
 Route::get('/projects/{project}', ProjectPage::class)->name('projects.show');
-Route::get('/projects/{project}/photos/{image}', ProjectImagePage::class)->name('projects.image');
+// Scope {image} to its parent {project} so photo slugs that are duplicated
+// across projects resolve to the image under THIS project (an unscoped bind
+// picks the first same-slug image globally and 404s on the project mismatch).
+Route::get('/projects/{project}/photos/{image:slug}', ProjectImagePage::class)
+    ->scopeBindings()
+    ->name('projects.image');
 
 Route::get('/services', ServicesPage::class)->name('services.index');
 
@@ -266,6 +284,11 @@ Route::redirect('/home-additions', '/services/home-additions', 301);
 Route::redirect('/additions', '/services/home-additions', 301);
 
 // Comparison / "alternative to" landing pages
+// Non-branded homeowner guide: captures "how to choose / what to look for"
+// research intent and feeds AI engines, without competitor-brand dependency.
+Route::get('/how-to-choose-a-remodeling-contractor', fn () => view('how-to-choose'))
+    ->name('guide.choose-contractor');
+
 Route::get('/compare', CompareIndexPage::class)->name('compare.index');
 Route::get('/compare/{slug}', CompareCompetitorPage::class)
     ->where('slug', '[a-z0-9\-]+')

@@ -207,7 +207,7 @@
                     width="300"
                     height="400"
                     fetchpriority="high"
-                    @load="introThumbLoaded = true"
+                    @load="if (typeof introThumbLoaded !== 'undefined') introThumbLoaded = true"
                     :class="(typeof introThumbLoaded !== 'undefined' && introThumbLoaded) ? 'opacity-100' : 'opacity-0'"
                     class="h-full w-full object-cover object-bottom blur-md"
                 />
@@ -223,7 +223,7 @@
                     height="1600"
                     fetchpriority="high"
                     decoding="async"
-                    @load="introLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk.webp') }}', true); startIntroTimer()"
+                    @load="if (typeof introLoaded !== 'undefined') { introLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk.webp') }}', true); startIntroTimer(); }"
                     :class="(typeof introWasCached !== 'undefined' && introWasCached) ? 'opacity-100' : ((typeof introLoaded !== 'undefined' && introLoaded) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                     class="absolute inset-0 h-full w-full object-cover object-bottom"
                 />
@@ -231,7 +231,7 @@
         </div>
 
         {{-- Sliding Phase: Background images - current fades in over previous --}}
-        <template x-for="(bg, index) in (Array.isArray(backgrounds) ? backgrounds : [])" :key="index">
+        <template x-for="(bg, index) in (typeof backgrounds !== 'undefined' && Array.isArray(backgrounds) ? backgrounds : [])" :key="index">
             <div
                 x-show="(typeof introPhase !== 'undefined' && !introPhase) && (currentSlide === index || previousSlide === index)"
                 :style="{ zIndex: currentSlide === index ? 10 : 5 }"
@@ -252,7 +252,7 @@
                     decoding="async"
                     class="h-full w-full object-cover"
                     :class="currentSlide === index ? 'opacity-100 transition-opacity duration-500' : 'opacity-100'"
-                    @load="bgLoaded.includes(index) || bgLoaded.push(index)"
+                    @load="if (typeof bgLoaded !== 'undefined') { bgLoaded.includes(index) || bgLoaded.push(index); }"
                 />
             </div>
         </template>
@@ -282,7 +282,7 @@
                     height="1000"
                     loading="eager"
                     decoding="async"
-                    @load="noBgLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk-no-background.webp') }}', true); tryEndIntro()"
+                    @load="if (typeof noBgLoaded !== 'undefined') { noBgLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk-no-background.webp') }}', true); tryEndIntro(); }"
                     class="h-auto max-h-full w-auto max-w-full opacity-0 transition-opacity duration-500"
                     :class="(typeof introPhase !== 'undefined' && typeof noBgLoaded !== 'undefined' && !introPhase && noBgLoaded) && 'opacity-100'"
                     style="filter: drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white) drop-shadow(2px 0 0 white) drop-shadow(-2px 0 0 white) drop-shadow(0 2px 0 white) drop-shadow(0 -2px 0 white);"
@@ -300,7 +300,7 @@
         x-transition:enter-end="opacity-100"
         class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2"
     >
-        <template x-for="(bg, index) in (Array.isArray(backgrounds) ? backgrounds : [])" :key="'dot-' + index">
+        <template x-for="(bg, index) in (typeof backgrounds !== 'undefined' && Array.isArray(backgrounds) ? backgrounds : [])" :key="'dot-' + index">
             <button
                 @click="currentSlide = index"
                 :class="currentSlide === index ? 'bg-white' : 'bg-white/50 hover:bg-white/75'"

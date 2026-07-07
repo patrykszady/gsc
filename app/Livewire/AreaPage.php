@@ -94,6 +94,15 @@ class AreaPage extends Component
                 ->url(url('/' . ltrim($canonicalPath, '/')))
                 ->markNoindex();
         }
+
+        // Keep thin, near-duplicate area spokes out of the index. Cities without
+        // real local proof (a project or review) and pure nav variants
+        // (contact/about/services) are noindexed so Google's quality budget
+        // concentrates on the pages that can actually rank. See AreaSeoPolicy.
+        $policyPage = $this->page === 'service' ? 'service' : $this->page;
+        if (! \App\Support\SEO\AreaSeoPolicy::shouldIndex($area, $policyPage, $this->service)) {
+            app(SEOBuilder::class)->markNoindex();
+        }
     }
 
     public function render()

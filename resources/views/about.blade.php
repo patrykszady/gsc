@@ -206,7 +206,29 @@
             </dl>
         </div>
 
-        <x-cta-section 
+        {{-- Internal link into the comparison content so it isn't orphaned:
+             a real link from a crawled, authoritative page lets /compare (and its
+             11 competitor pages) be discovered, gain authority, and be AI-cited. --}}
+        <div class="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+            <div class="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-700 dark:bg-zinc-800/40 sm:p-8">
+                <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">How we compare to other Chicago remodelers</h2>
+                <p class="mt-2 max-w-3xl text-zinc-600 dark:text-zinc-300">
+                    Getting other quotes? We keep factual, side-by-side comparisons with the region's
+                    larger design-build firms — service area, approach, materials and communication —
+                    plus a plain-English guide to choosing a contractor, so you can decide with clear information.
+                </p>
+                <div class="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+                    <a href="{{ route('compare.index') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">
+                        See how GS Construction compares →
+                    </a>
+                    <a href="{{ url('/how-to-choose-a-remodeling-contractor') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">
+                        How to choose a remodeling contractor →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <x-cta-section
             heading="Ready to Transform Your Home?"
             description="Let's discuss your project. Schedule a free consultation and see why Chicagoland homeowners trust GS Construction."
             primaryText="Schedule Free Consultation"

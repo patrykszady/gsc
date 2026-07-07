@@ -886,6 +886,137 @@ class SeoReports extends Component
         return (string) $converter->convert($md);
     }
 
+    /**
+     * Live "why did impressions move" diagnostic: impressions trend, the peak
+     * vs. current KPIs, the area pages losing the most impressions, index
+     * coverage, and how aggressively the area sprawl is being pruned. Computed
+     * from the GSC tables so it stays current instead of a static snapshot.
+     *
+     * @return array<string,mixed>
+     */
+    #[Computed]
+    public function diagnostic(): array
+    {
+        return Cache::remember('seo_reports_diagnostic', now()->addMinutes(15), function (): array {
+            $maxDate = \App\Models\GscDailyTotal::max('date');
+            if (! $maxDate) {
+                return ['available' => false];
+            }
+
+            $end = Carbon::parse($maxDate)->startOfDay();
+            $start = (clone $end)->subDays(27);
+
+            $rows = \App\Models\GscDailyTotal::whereBetween('date', [$start->toDateString(), $end->toDateString()])
+                ->orderBy('date')
+                ->get(['date', 'impressions', 'clicks', 'position']);
+
+            $recentCut = (clone $end)->subDays(6);          // last 7 days
+            $priorLo = (clone $end)->subDays(13);
+            $priorHi = (clone $end)->subDays(7);            // the 7 days before that
+
+            $recent = $rows->filter(fn ($r) => Carbon::parse($r->date)->gte($recentCut));
+            $prior = $rows->filter(fn ($r) => Carbon::parse($r->date)->betweenIncluded($priorLo, $priorHi));
+            $avg = fn ($c, $f) => $c->count() ? (int) round($c->avg($f)) : 0;
+            $peakRow = $rows->sortByDesc('impressions')->first();
+
+            // Non-brand CTR across the window (brand terms flatter the average).
+            $nb = DB::table('gsc_query_metrics')
+                ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+                ->where('query', 'not like', '%gs construction%')
+                ->where('query', 'not like', '%gs builder%')
+                ->selectRaw('SUM(impressions) imp, SUM(clicks) clk')
+                ->first();
+            $nbCtr = ($nb && $nb->imp > 0) ? round(($nb->clk / $nb->imp) * 100, 3) : 0.0;
+
+            // Area pages losing the most impressions, recent 7d vs prior 7d.
+            $aggPage = fn ($from, $to) => DB::table('gsc_query_metrics')
+                ->whereBetween('date', [$from, $to])
+                ->where('page', 'like', '%/areas-served/%')
+                ->selectRaw('page, SUM(impressions) imp')
+                ->groupBy('page')->pluck('imp', 'page');
+            $pa = $aggPage($priorLo->toDateString(), $priorHi->toDateString());
+            $pb = $aggPage($recentCut->toDateString(), $end->toDateString());
+            $losers = collect($pa->keys())->merge($pb->keys())->unique()
+                ->map(function ($p) use ($pa, $pb) {
+                    $prior = (int) ($pa[$p] ?? 0);
+                    $now = (int) ($pb[$p] ?? 0);
+
+                    return [
+                        'path' => parse_url($p, PHP_URL_PATH) ?: $p,
+                        'prior' => $prior,
+                        'recent' => $now,
+                        'drop' => $prior - $now,
+                    ];
+                })
+                ->filter(fn ($r) => $r['drop'] > 0)
+                ->sortByDesc('drop')->take(6)->values()->all();
+
+            // Index coverage buckets.
+            $cov = GscCoverageState::selectRaw('coverage_state, COUNT(*) c')
+                ->groupBy('coverage_state')->pluck('c', 'coverage_state');
+            $bucket = fn ($needle) => (int) collect($cov)->filter(
+                fn ($c, $state) => str_contains(mb_strtolower((string) $state), $needle)
+            )->sum();
+            $coverage = [
+                'indexed' => $bucket('indexed') - $bucket('not indexed'),
+                'not_indexed' => $bucket('not indexed'),
+                'not_found' => $bucket('not found'),
+                'discovered' => $bucket('discovered') + $bucket('unknown'),
+                'total' => (int) $cov->sum(),
+            ];
+
+            // How hard the area sprawl is being pruned (mirrors the sitemap).
+            $areas = \App\Models\AreaServed::all();
+            $areaPageTypes = ['home', 'contact', 'testimonials', 'projects', 'about', 'services'];
+            $areaServices = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
+            $indexable = 0;
+            $total = 0;
+            foreach ($areas as $area) {
+                foreach ($areaPageTypes as $pg) {
+                    $total++;
+                    if (\App\Support\SEO\AreaSeoPolicy::shouldIndex($area, $pg)) {
+                        $indexable++;
+                    }
+                }
+                foreach ($areaServices as $svc) {
+                    $total++;
+                    if (\App\Support\SEO\AreaSeoPolicy::shouldIndex($area, 'service', $svc)) {
+                        $indexable++;
+                    }
+                }
+            }
+
+            return [
+                'available' => true,
+                'window' => $start->format('M j') . ' – ' . $end->format('M j, Y'),
+                'kpis' => [
+                    'peak_impr' => (int) ($peakRow->impressions ?? 0),
+                    'peak_date' => $peakRow ? Carbon::parse($peakRow->date)->format('M j') : null,
+                    'current_impr' => $avg($recent, 'impressions'),
+                    'peak_pos' => $prior->count() ? round($prior->avg('position'), 1) : null,
+                    'current_pos' => $recent->count() ? round($recent->avg('position'), 1) : null,
+                    'nonbrand_ctr' => $nbCtr,
+                    'nonbrand_clicks' => (int) ($nb->clk ?? 0),
+                    'nonbrand_impr' => (int) ($nb->imp ?? 0),
+                ],
+                'losers' => $losers,
+                'coverage' => $coverage,
+                'pruning' => [
+                    'indexable' => $indexable,
+                    'total' => $total,
+                    'priority_cities' => count(\App\Support\SEO\AreaSeoPolicy::priorityCities()),
+                    'total_cities' => $areas->count(),
+                ],
+                'recommendations' => [
+                    ['t' => 'Win the local pack, not organic #10', 'd' => 'For “[city] remodeling” the Maps 3-pack takes the clicks. Push GBP: review volume & recency, replies, categories, service areas, weekly posts.', 'p' => 'now'],
+                    ['t' => 'Deepen the priority city pages', 'd' => 'Local testimonials, pricing guidance, city FAQs and project galleries on the cities that have real work. Depth on a few beats templates on many.', 'p' => 'now'],
+                    ['t' => 'Fix titles & H1 consistency', 'd' => 'Drop weak suffixes; lead with rating / review count / free estimate. Give area pages a visible, area-matched H1 (today it is an sr-only mismatch).', 'p' => 'next'],
+                    ['t' => 'Restore a real FAQ for GEO', 'd' => '/faq is 410’d — yet Q&A is exactly what AI Overviews, ChatGPT and Perplexity cite. Rebuild with FAQ schema; keep llms.txt fresh.', 'p' => 'next'],
+                ],
+            ];
+        });
+    }
+
     public function render()
     {
         return view('livewire.admin.seo-reports');

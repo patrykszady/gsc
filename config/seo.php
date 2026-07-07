@@ -15,7 +15,7 @@ return [
     /**
      * Use this setting to specify the site name that will be used in OpenGraph tags.
      */
-    'site_name' => 'GS Construction',
+    'site_name' => 'GS Construction & Remodeling',
 
     /**
      * Canonical business phone (E.164 or human-readable). Used by seo:gbp-parity

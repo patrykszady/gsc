@@ -267,11 +267,17 @@ class GenerateSitemap extends Command
             // project completed in this city (falls back to the global date).
             $thisAreaLastmod = $area->lastmod() ?? $areaLastmod;
 
-            // Standard area pages
+            // Standard area pages — only sitemap the variants the index policy
+            // keeps (never advertise a URL we noindex; see AreaSeoPolicy).
             foreach ($areaPages as $page) {
+                $policyPage = $page === '' ? 'home' : $page;
+                if (! \App\Support\SEO\AreaSeoPolicy::shouldIndex($area, $policyPage)) {
+                    continue;
+                }
+
                 $uri = $page ? "areas-served/{$area->slug}/{$page}" : "areas-served/{$area->slug}";
                 $priority = $page === '' ? 0.7 : 0.6; // Area home pages slightly higher
-                
+
                 $sitemap->add(
                     Url::create("{$baseUrl}/{$uri}")
                         ->setLastModificationDate($thisAreaLastmod)
@@ -281,12 +287,16 @@ class GenerateSitemap extends Command
                 $urlCount++;
                 $areaCount++;
             }
-            
-            // Area-specific service pages (high priority for local SEO)
+
+            // Area-specific service pages — only for cities with real local proof.
             if ($includeAreaServicePages) {
                 foreach ($areaServicePages as $servicePage) {
+                    if (! \App\Support\SEO\AreaSeoPolicy::shouldIndex($area, 'service', $servicePage)) {
+                        continue;
+                    }
+
                     $uri = "areas-served/{$area->slug}/services/{$servicePage}";
-                    
+
                     $sitemap->add(
                         Url::create("{$baseUrl}/{$uri}")
                             ->setLastModificationDate($thisAreaLastmod)

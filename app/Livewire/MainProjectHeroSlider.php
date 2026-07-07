@@ -26,6 +26,9 @@ class MainProjectHeroSlider extends Component
     public int $autoplayInterval = 5000; // Autoplay interval in ms
     public bool $imagesOnly = false;
     public array $customSlides = [];
+    // When the page already renders its own visible H1 (e.g. area pages), skip
+    // the slider's sr-only H1 so the page has exactly one, matched heading.
+    public bool $suppressH1 = false;
 
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {

@@ -39,6 +39,113 @@
         </flux:card>
     </div>
 
+    {{-- ── Impressions Diagnostic (live from GSC tables) ───────────────── --}}
+    @php $diag = $this->diagnostic; @endphp
+    @if (($diag['available'] ?? false))
+        @php
+            $k = $diag['kpis'];
+            $posWorse = ($k['current_pos'] ?? 0) > ($k['peak_pos'] ?? 0);
+            $lmax = max(1, collect($diag['losers'])->max('prior') ?: 1);
+            $cov = $diag['coverage'];
+            $covCards = [
+                ['n' => $cov['indexed'], 'l' => 'Indexed', 'c' => 'text-emerald-600 dark:text-emerald-400'],
+                ['n' => $cov['not_indexed'], 'l' => 'Crawled, not indexed', 'c' => 'text-amber-600 dark:text-amber-400'],
+                ['n' => $cov['not_found'], 'l' => 'Not found (404)', 'c' => 'text-red-600 dark:text-red-400'],
+                ['n' => $cov['discovered'], 'l' => 'Discovered / unknown', 'c' => 'text-sky-600 dark:text-sky-400'],
+            ];
+        @endphp
+
+        <flux:card class="mb-6 p-5">
+            <div class="mb-4">
+                <flux:heading size="lg">Impressions Diagnostic</flux:heading>
+                <flux:text class="text-sm text-zinc-500">Why search visibility moved · {{ $diag['window'] }} · live from Search Console</flux:text>
+            </div>
+
+            {{-- KPI tiles --}}
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="text-xs uppercase tracking-wide text-zinc-500">Impressions / day</div>
+                    <div class="mt-1 flex items-baseline gap-2">
+                        <span class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ number_format($k['current_impr']) }}</span>
+                        <span class="text-sm font-medium text-red-500">← {{ number_format($k['peak_impr']) }}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-zinc-500">7-day avg vs {{ $k['peak_date'] }} peak</div>
+                </div>
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="text-xs uppercase tracking-wide text-zinc-500">Avg position</div>
+                    <div class="mt-1 flex items-baseline gap-2">
+                        <span class="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ $k['current_pos'] ?? '—' }}</span>
+                        <span class="text-sm font-medium {{ $posWorse ? 'text-red-500' : 'text-emerald-500' }}">← {{ $k['peak_pos'] ?? '—' }}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-zinc-500">{{ $posWorse ? 'Ranking slipped' : 'Holding' }} (lower is better)</div>
+                </div>
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="text-xs uppercase tracking-wide text-zinc-500">Non-brand CTR</div>
+                    <div class="mt-1 text-2xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">{{ $k['nonbrand_ctr'] }}%</div>
+                    <div class="mt-1 text-xs text-zinc-500 tabular-nums">{{ number_format($k['nonbrand_clicks']) }} clicks / {{ number_format($k['nonbrand_impr']) }} impr</div>
+                </div>
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="text-xs uppercase tracking-wide text-zinc-500">Area URLs indexable</div>
+                    <div class="mt-1 flex items-baseline gap-2">
+                        <span class="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{{ number_format($diag['pruning']['indexable']) }}</span>
+                        <span class="text-sm font-medium text-zinc-400">/ {{ number_format($diag['pruning']['total']) }}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-zinc-500">{{ $diag['pruning']['priority_cities'] }}/{{ $diag['pruning']['total_cities'] }} cities have real proof</div>
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                {{-- Biggest losers --}}
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <flux:text class="text-sm font-medium">Area pages losing impressions <span class="text-zinc-400">(7d vs prior 7d)</span></flux:text>
+                    <div class="mt-3 space-y-2">
+                        @forelse ($diag['losers'] as $l)
+                            <div class="flex items-center gap-3">
+                                <div class="w-32 shrink-0 truncate text-xs text-zinc-600 dark:text-zinc-300" title="{{ $l['path'] }}">{{ str_replace('/areas-served/', '', $l['path']) }}</div>
+                                <div class="relative h-4 flex-1 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+                                    <div class="absolute inset-y-0 left-0 rounded bg-sky-500/70" style="width: {{ round($l['prior'] / $lmax * 100, 1) }}%"></div>
+                                </div>
+                                <div class="w-24 shrink-0 text-right text-[11px] tabular-nums text-zinc-500">{{ number_format($l['prior']) }}→{{ $l['recent'] }}</div>
+                            </div>
+                        @empty
+                            <flux:text class="text-xs text-zinc-500">No area-page losses in the current window.</flux:text>
+                        @endforelse
+                    </div>
+                </div>
+
+                {{-- Coverage --}}
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <flux:text class="text-sm font-medium">Index coverage <span class="text-zinc-400 tabular-nums">({{ number_format($cov['total']) }} URLs)</span></flux:text>
+                    <div class="mt-3 grid grid-cols-2 gap-3">
+                        @foreach ($covCards as $cc)
+                            <div class="rounded-md bg-zinc-50 p-3 dark:bg-zinc-800/50">
+                                <div class="text-xl font-semibold tabular-nums {{ $cc['c'] }}">{{ number_format($cc['n']) }}</div>
+                                <div class="text-xs text-zinc-500">{{ $cc['l'] }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="mt-3 text-xs text-zinc-500">Most “not indexed” are thin area spokes — now pruned from the sitemap.</div>
+                </div>
+            </div>
+
+            {{-- Recommendations --}}
+            <div class="mt-4">
+                <flux:text class="text-sm font-medium">Where the clicks come from next</flux:text>
+                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                    @foreach ($diag['recommendations'] as $rec)
+                        <div class="flex gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                            <span class="mt-0.5 inline-flex h-fit shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide {{ $rec['p'] === 'now' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' }}">{{ $rec['p'] === 'now' ? 'Do now' : 'Next' }}</span>
+                            <div>
+                                <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $rec['t'] }}</div>
+                                <div class="mt-0.5 text-xs text-zinc-500">{{ $rec['d'] }}</div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </flux:card>
+    @endif
+
     @php
         $snapshot = $this->searchSnapshot;
         $gscErrors = $this->gscErrorSnapshot;

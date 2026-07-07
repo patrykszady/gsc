@@ -207,9 +207,19 @@
             @endphp
             
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <livewire:main-project-hero-slider 
+                {{-- Visible, area-matched H1: leads with the city + full remodeling
+                     scope so the page's primary heading matches its title and intent
+                     (was an sr-only, kitchen-only heading). --}}
+                <div class="mb-5">
+                    <p class="text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">Remodeling contractor in {{ $area->city }}, IL</p>
+                    <h1 class="mt-1 font-heading text-3xl font-bold tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">
+                        {{ $area->city }} kitchen, bathroom &amp; whole-home remodeling
+                    </h1>
+                </div>
+                <livewire:main-project-hero-slider
                     :slides="$homeSlides"
                     :area="$area"
+                    :suppress-h1="true"
                     heading="{{ $homeSeo['heading'] }}"
                     subheading="{{ $homeSeo['subheading'] }}"
                     secondary-cta-text="Schedule Free Consult"
@@ -226,6 +236,43 @@
                         <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                             We've completed <strong>{{ $projectCount }}</strong> projects in and around {{ $area->city }}.
                         </p>
+                    </div>
+                </section>
+            @endif
+
+            {{-- Real local proof: linked cards to actual completed projects in this
+                 city. Renders only when we have matched local projects (the priority
+                 cities), giving genuine internal links + anchor text to project detail
+                 pages rather than templated filler. --}}
+            @php $cityProjects = $area->localProjects(6); @endphp
+            @if($cityProjects->isNotEmpty())
+                <section class="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8" aria-label="Projects completed in {{ $area->city }}">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
+                        Remodeling projects we've completed in {{ $area->city }}, IL
+                    </h2>
+                    <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                        @foreach($cityProjects as $cityProject)
+                            <a href="{{ route('projects.show', $cityProject) }}" wire:navigate
+                               class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+                                <div class="relative aspect-[4/3] overflow-hidden">
+                                    @if($cityProject->images->first())
+                                        <x-lqip-image
+                                            :image="$cityProject->images->first()"
+                                            size="medium" width="600" height="450"
+                                            :alt="$cityProject->title . ' — remodeling project in ' . $area->city . ', IL'"
+                                            class="h-full w-full transition duration-300 group-hover:scale-105" />
+                                    @endif
+                                    @if($cityProject->project_type)
+                                        <div class="absolute right-3 top-3">
+                                            <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">{{ ucfirst($cityProject->project_type) }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="p-3">
+                                    <p class="line-clamp-1 text-sm font-medium text-zinc-800 group-hover:text-sky-700 dark:text-zinc-200 dark:group-hover:text-sky-400">{{ $cityProject->title }}</p>
+                                </div>
+                            </a>
+                        @endforeach
                     </div>
                 </section>
             @endif
@@ -265,6 +312,11 @@
                     @endif
                 </div>
             </section>
+
+            {{-- High-intent pricing guidance (targets “[service] cost {city}” queries
+                 and is heavily cited by AI Overviews). Ranges mirror the approved
+                 figures in config/geo-answers.php + /faq. --}}
+            <x-area-pricing-guide :area="$area" />
 
             {{-- Unique per-city content (renders only when populated in DB).
                  Provides genuine differentiation between area pages — critical to

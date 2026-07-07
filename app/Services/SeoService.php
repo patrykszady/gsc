@@ -971,7 +971,7 @@ class SeoService
             ->canonical($canonical)
             ->url($canonical)
             ->image($ogImage)
-            ->siteName('GS Construction')
+            ->siteName('GS Construction & Remodeling')
             ->locale('en_US')
             ->type('website');
 
