@@ -69,10 +69,24 @@ class SeoGscCrawlBudget extends Command
             $this->writeReport($total, $fresh, $staleCount, $verystaleCount, $never, $worst, $stale, $verystale);
         }
 
-        // Non-zero exit when more than 25% of coverage is stale — signals real crawl-budget issue.
-        return ($staleCount + $verystaleCount + $never) > ($total * 0.25)
-            ? self::FAILURE
-            : self::SUCCESS;
+        // More than 25% stale coverage signals a crawl-budget issue. Log it as a
+        // warning (like the other seo:* monitors) rather than exiting non-zero —
+        // the scheduler turned the old FAILURE exit into a weekly ERROR with a
+        // full stack trace, which read like a crash instead of a metric. Note the
+        // ratio includes intentionally-noindexed URLs Google will rightly stop
+        // crawling, so it runs structurally high after the area-page pruning.
+        $staleTotal = $staleCount + $verystaleCount + $never;
+        if ($staleTotal > ($total * 0.25)) {
+            $pct = round($staleTotal / max(1, $total) * 100);
+            $this->warn("Stale coverage above threshold: {$pct}% ({$staleTotal}/{$total}).");
+            \Illuminate\Support\Facades\Log::warning('seo:gsc-crawl-budget stale coverage above threshold', [
+                'stale' => $staleTotal,
+                'total' => $total,
+                'percent' => $pct,
+            ]);
+        }
+
+        return self::SUCCESS;
     }
 
     /**

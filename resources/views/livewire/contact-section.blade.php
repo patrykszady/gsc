@@ -63,7 +63,7 @@
         </div>
 
         {{-- Right Column: Contact Form --}}
-        <form wire:submit="submit" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
+        <form wire:submit="submit" autocomplete="on" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
             <div
                 x-data="{ expanded: $wire.entangle('showConsultationOptions') }"
                 class="mx-auto max-w-xl lg:mr-0 lg:max-w-lg"
@@ -75,10 +75,15 @@
                     </div>
                 @enderror
 
-                {{-- Honeypot field - hidden from humans, bots will fill it --}}
+                {{-- Honeypot field - hidden from humans, bots will fill it.
+                     Named 'fax_number' (not 'website'/'url') so Chrome's address
+                     autofill never maps a profile value onto it — with the old
+                     name, picking an autofill suggestion could silently fill the
+                     trap and flag a real lead as spam. data-1p-ignore/lpignore
+                     keep password managers away from it too. --}}
                 <div class="absolute -left-[9999px] opacity-0" aria-hidden="true" tabindex="-1">
-                    <label for="website">Website</label>
-                    <input type="text" wire:model="website" id="website" name="website" autocomplete="off" tabindex="-1" />
+                    <label for="fax_number">Fax number</label>
+                    <input type="text" wire:model="website" id="fax_number" name="fax_number" autocomplete="off" tabindex="-1" data-1p-ignore data-lpignore="true" />
                 </div>
 
                 <div class="grid grid-cols-1 gap-x-8 gap-y-3">
@@ -118,13 +123,26 @@
                     <div>
                         <label for="phone" class="block text-sm/6 font-semibold text-gray-900 dark:text-white">Cell Phone</label>
                         <div class="mt-1.5">
-                            <flux:input 
-                                wire:model.blur="phone" 
-                                id="phone" 
-                                type="tel" 
+                            {{-- The error lands on phoneDigits (derived from this masked
+                                 input), so Flux can't infer the invalid state from
+                                 wire:model="phone" — pass it explicitly. --}}
+                            {{-- Normalize pasted numbers BEFORE the mask sees them:
+                                 "+1 224 999 3880" would otherwise shift through the mask
+                                 as "(122) 499-9388" and silently drop the last digit. --}}
+                            <flux:input
+                                wire:model.blur="phone"
+                                id="phone"
+                                type="tel"
                                 autocomplete="tel"
                                 mask="(999) 999-9999"
                                 placeholder="(555) 123-4567"
+                                :invalid="$errors->has('phoneDigits')"
+                                @paste.prevent="
+                                    let d = ($event.clipboardData.getData('text') || '').replace(/\D+/g, '');
+                                    if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+                                    $event.target.value = d;
+                                    $event.target.dispatchEvent(new Event('input', { bubbles: true }));
+                                "
                                 class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
                             />
                         </div>
@@ -226,7 +244,9 @@
                                         .filter(s => s.placePrediction)
                                         .map(s => ({
                                             placeId: s.placePrediction.placeId,
-                                            description: s.placePrediction.text.text,
+                                            // Drop the trailing country so suggestions read
+                                            // '…, Prospect Heights, IL' instead of '…, IL, USA'
+                                            description: s.placePrediction.text.text.replace(/,\s*(USA|United States)$/i, ''),
                                             mainText: s.placePrediction.mainText?.text || '',
                                             secondaryText: s.placePrediction.secondaryText?.text || ''
                                         }))
@@ -245,11 +265,30 @@
                                     this.open = false;
                                 }
                             },
-                            selectPrediction(prediction) {
-                                this.query = prediction.description;
+                            async selectPrediction(prediction) {
                                 this.predictions = [];
                                 this.open = false;
                                 this.selectedIndex = -1;
+                                // Prefer '400 North Wheeling Road, Prospect Heights, IL 60070'
+                                // over the raw prediction text, which ends in ', USA' and
+                                // lacks a ZIP. Fall back to the stripped prediction text if
+                                // the details lookup fails.
+                                this.query = prediction.description.replace(/,\s*(USA|United States)$/i, '');
+                                try {
+                                    const resp = await fetch('https://places.googleapis.com/v1/places/' + prediction.placeId, {
+                                        headers: {
+                                            'X-Goog-Api-Key': @js(config('services.google.places_api_key')),
+                                            'X-Goog-FieldMask': 'addressComponents',
+                                        },
+                                    });
+                                    const data = await resp.json();
+                                    const zip = (data.addressComponents || []).find(c => (c.types || []).includes('postal_code'))?.longText;
+                                    if (zip && !this.query.includes(zip)) {
+                                        this.query = this.query + ' ' + zip;
+                                    }
+                                } catch (e) {
+                                    console.warn('ZIP lookup failed:', e);
+                                }
                             },
                             handleKeydown(e) {
                                 if (!this.open) return;
@@ -272,15 +311,18 @@
                     >
                         <label for="address-input" class="block text-sm/6 font-semibold text-gray-900 dark:text-white">Project Address</label>
                         <div class="mt-1.5">
-                            <flux:input 
+                            {{-- Bound via Alpine x-model (not wire:model), so Flux can't
+                                 infer the invalid state from the error bag — pass it explicitly. --}}
+                            <flux:input
                                 x-model="query"
                                 @input.debounce.300ms="search()"
                                 @keydown="handleKeydown($event)"
                                 @focus="if (predictions.length) open = true"
-                                id="address-input" 
-                                type="text" 
+                                id="address-input"
+                                type="text"
                                 autocomplete="off"
                                 placeholder="Start typing your address..."
+                                :invalid="$errors->has('address')"
                                 class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
                             />
                         </div>

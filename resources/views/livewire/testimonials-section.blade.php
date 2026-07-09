@@ -286,25 +286,29 @@
                     </figure>
 
                     @if($hasMultiple)
-                    {{-- Mobile arrows --}}
-                    <button
-                        wire:click="prevTestimonial"
-                        class="absolute -left-2 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-gray-400 transition hover:text-gray-600 dark:text-white/60 dark:hover:text-white lg:hidden"
-                        aria-label="Previous testimonial"
-                    >
-                        <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                        </svg>
-                    </button>
-                    <button
-                        wire:click="nextTestimonial"
-                        class="absolute -right-2 top-1/2 z-10 -translate-y-1/2 cursor-pointer p-2 text-gray-400 transition hover:text-gray-600 dark:text-white/60 dark:hover:text-white lg:hidden"
-                        aria-label="Next testimonial"
-                    >
-                        <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
-                    </button>
+                    {{-- Mobile arrows: in-flow below the content (the old absolute,
+                         vertically-centered pair overlapped the quote text on
+                         narrow screens). Swiping still works too. --}}
+                    <div class="mt-5 flex items-center justify-center gap-4 lg:hidden">
+                        <button
+                            wire:click="prevTestimonial"
+                            class="cursor-pointer rounded-full border border-zinc-200 p-2.5 text-gray-500 transition hover:bg-zinc-50 hover:text-gray-700 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Previous testimonial"
+                        >
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                            </svg>
+                        </button>
+                        <button
+                            wire:click="nextTestimonial"
+                            class="cursor-pointer rounded-full border border-zinc-200 p-2.5 text-gray-500 transition hover:bg-zinc-50 hover:text-gray-700 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
+                            aria-label="Next testimonial"
+                        >
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                            </svg>
+                        </button>
+                    </div>
                     @endif
                 </div>
             </div>

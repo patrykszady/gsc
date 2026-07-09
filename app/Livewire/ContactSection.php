@@ -26,11 +26,13 @@ class ContactSection extends Component
     // Masked phone input (e.g. "(555) 123-4567")
     public string $phone = '';
 
-    // Digits-only phone for validation / processing
-    #[Validate('required|numeric|digits:10')]
+    // Digits-only phone for validation / processing. US area codes start with
+    // 2-9, so a leading 0/1 means the number was mangled (e.g. a "+1" prefix
+    // truncated by the input mask) — reject it so the user re-checks.
+    #[Validate('required|numeric|digits:10|regex:/^[2-9]/', as: 'phone', message: ['regex' => 'The phone number looks incomplete — please re-enter it without the +1 country code.'])]
     public string $phoneDigits = '';
 
-    #[Validate('nullable|string|max:500')]
+    #[Validate('required|string|min:8|max:500', as: 'project address')]
     public string $address = '';
 
     #[Validate('required|min:10|max:2000')]
@@ -99,7 +101,33 @@ class ContactSection extends Component
 
     public function updatedPhone(?string $value): void
     {
-        $this->phoneDigits = preg_replace('/\D+/', '', $value ?? '');
+        $this->phoneDigits = $this->normalizePhoneDigits($value);
+
+        // Reflect the normalized number back into the masked field so a
+        // "+1 224 999 3880" entry displays as "(224) 999-3880".
+        if (strlen($this->phoneDigits) === 10) {
+            $this->phone = sprintf(
+                '(%s) %s-%s',
+                substr($this->phoneDigits, 0, 3),
+                substr($this->phoneDigits, 3, 3),
+                substr($this->phoneDigits, 6),
+            );
+        }
+    }
+
+    /**
+     * Digits-only phone, with the US country code stripped: "+1 224 999 3880"
+     * and "12249993880" both normalize to "2249993880".
+     */
+    protected function normalizePhoneDigits(?string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value ?? '');
+
+        if (strlen($digits) === 11 && str_starts_with($digits, '1')) {
+            $digits = substr($digits, 1);
+        }
+
+        return $digits;
     }
 
     public function selectDateForTimes(string $date): void
@@ -117,7 +145,12 @@ class ContactSection extends Component
         if ($idx !== false) {
             unset($this->timeSelections[$date][$idx]);
             $this->timeSelections[$date] = array_values($this->timeSelections[$date]);
+        } elseif ($time === 'Anytime') {
+            // 'Anytime' covers the whole day — drop the redundant specific slots.
+            $this->timeSelections[$date] = ['Anytime'];
         } else {
+            // A specific slot replaces a previous 'Anytime' pick.
+            $this->timeSelections[$date] = array_values(array_diff($this->timeSelections[$date], ['Anytime']));
             $this->timeSelections[$date][] = $time;
         }
 
@@ -183,7 +216,7 @@ class ContactSection extends Component
     public function submit(): void
     {
         // Ensure digits-only phone is always in sync (covers defer/blur updates)
-        $this->phoneDigits = preg_replace('/\D+/', '', $this->phone);
+        $this->phoneDigits = $this->normalizePhoneDigits($this->phone);
 
         // VALIDATION FIRST - always show real validation errors to users
         $this->validate();
@@ -749,8 +782,8 @@ class ContactSection extends Component
         $minSelectableDate = now()->addDay()->format('Y-m-d');
         $maxSelectableDate = now()->addMonthNoOverflow()->endOfMonth()->format('Y-m-d');
         
-        // Available time slots (2-hour windows)
-        $times = ['8-10 AM', '10-12 PM', '12-2 PM', '2-4 PM', '4-6 PM'];
+        // Available time slots (2-hour windows), plus a whole-day option
+        $times = ['Anytime', '8-10 AM', '10-12 PM', '12-2 PM', '2-4 PM', '4-6 PM'];
         
         return view('livewire.contact-section', [
             'areasServed' => $areasServed,

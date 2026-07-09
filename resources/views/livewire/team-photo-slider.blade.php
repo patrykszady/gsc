@@ -262,21 +262,22 @@
         {{-- Foreground: Greg & Patryk no-background (always loads, visible in sliding phase) --}}
         <div class="absolute inset-x-0 bottom-0 z-30 flex justify-center" wire:ignore>
             <picture>
-                {{-- Small WebP for mobile (under 640px) --}}
-                <source 
-                    media="(max-width: 639px)" 
-                    srcset="{{ asset('images/greg-patryk-no-background-small.webp') }}" 
+                {{-- Small WebP for mobile (under 640px). 800px wide = 2x DPR at
+                     ~400 CSS px, so it stays sharp on retina phones. --}}
+                <source
+                    media="(max-width: 639px)"
+                    srcset="{{ asset('images/greg-patryk-no-background-small.webp?v=20260709') }}"
                     type="image/webp"
                 >
                 {{-- Full WebP for desktop --}}
-                <source 
-                    srcset="{{ asset('images/greg-patryk-no-background.webp') }}" 
+                <source
+                    srcset="{{ asset('images/greg-patryk-no-background.webp?v=20260709') }}"
                     type="image/webp"
                 >
                 {{-- PNG fallback --}}
                 <img
                     x-ref="noBgImg"
-                    src="{{ asset('images/greg-patryk-no-background.png') }}"
+                    src="{{ asset('images/greg-patryk-no-background.png?v=20260709') }}"
                     alt="Gregory and Patryk - GS Construction"
                     width="800"
                     height="1000"

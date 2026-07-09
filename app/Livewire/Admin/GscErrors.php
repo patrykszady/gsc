@@ -58,10 +58,9 @@ class GscErrors extends Component
     public function refreshInBackground(): void
     {
         try {
-            Artisan::queue('seo:gsc-inspect-bulk', [
-                '--limit' => 0,
-                '--markdown' => true,
-            ]);
+            // Dedicated job (not Artisan::queue) so the long sweep gets its own
+            // timeout instead of the worker's 60s default. See RunGscInspectBulkJob.
+            \App\Jobs\RunGscInspectBulkJob::dispatch();
 
             $this->flash = 'Queued full sitemap inspection in background. Data will update as the job writes new results.';
         } catch (\Throwable $e) {
