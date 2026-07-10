@@ -2,13 +2,51 @@
 
 > Family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English &amp; Polish.
 
+## About
+GS Construction is a licensed, bonded and insured remodeling contractor based in Prospect Heights, IL, operating since 2015 with 40+ years of combined experience. Family-owned, 5-star rated on Google, Yelp and Houzz. Free in-home estimates. Languages: English, Polish.
+
+## Services
+- Kitchen remodeling — cabinets, countertops, islands, flooring, lighting
+- Bathroom remodeling — tile, vanities, showers, tubs, accessibility
+- Whole-home remodeling & renovations
+- Basement finishing
+- Home additions
+- Mudroom & laundry remodeling
+- Custom cabinetry, countertop & tile installation
+
+## Typical price ranges (Chicago suburbs, materials + labor)
+- Kitchen remodel: $35,000–$80,000+
+- Bathroom remodel: $15,000–$60,000
+- Basement finishing: $45,000–$150,000
+- Home addition: $60,000–$350,000+
+
+## Service area
+Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority cities: Palatine, Inverness, Arlington Heights, Hoffman Estates, Chicago, Western Springs, Lake Zurich, Barrington, Long Grove, Prospect Heights, Mount Prospect, Glencoe, Vernon Hills, Wheeling, Rolling Meadows, Evanston, Buffalo Grove, Kildeer.
+
+## Why GS Construction
+- Family-owned; one dedicated project lead per job (no rotating crews)
+- Fixed, transparent pricing and clear timelines up front
+- Licensed, bonded & insured; pulls all required permits
+- 5-star rated with a large portfolio of completed local remodels
+- English & Polish speaking
+
+## Key pages
+- [Services](https://gs.construction/services)
+- [Project portfolio](https://gs.construction/projects)
+- [Reviews](https://gs.construction/reviews)
+- [FAQ](https://gs.construction/faq)
+- [How to choose a remodeling contractor](https://gs.construction/how-to-choose-a-remodeling-contractor)
+- [Areas served](https://gs.construction/areas-served)
+- [Contact & free estimate](https://gs.construction/contact)
+
+## Contact
+- Phone: +1-224-735-4200
+- Email: crew@gs.construction
+- Website: https://gs.construction
+- Google Maps: https://www.google.com/maps/place/?q=place_id:ChIJ1VmJQHm5D4gRZDQlQNkLz2A
+
 ## Metadata
-- Site URL: https://gs.construction
+- Full version: https://gs.construction/llms-full.txt
 - Feed URL: https://gs.construction/ai-feed.json
 - Sitemap URL: https://gs.construction/ai-sitemap.xml
-- Generated At: 2026-06-17T01:16:05+00:00
-
-## Core Content
-- [Home](https://gs.construction)
-- [Product Feed](https://gs.construction/ai-feed.json)
-- [AI Sitemap](https://gs.construction/ai-sitemap.xml)
+- Generated At: 2026-07-10T20:35:26+00:00

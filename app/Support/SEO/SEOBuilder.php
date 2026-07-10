@@ -105,9 +105,14 @@ class SEOBuilder
             }
         }
 
+        // Path-keyed override (Autopilot) wins over the programmatic builder
+        // title — area pages set their title via SeoService without binding a
+        // model, so this is the only override channel that reaches them.
+        $pathOverride = \App\Models\SeoPathOverride::forPath(request()->path());
+
         $data = new SEOData(
-            title:             $this->title          ?? $base?->title,
-            description:       $this->description    ?? $base?->description,
+            title:             ($pathOverride['title'] ?? null) ?: ($this->title ?? $base?->title),
+            description:       ($pathOverride['description'] ?? null) ?: ($this->description ?? $base?->description),
             author:            $this->author         ?? $base?->author,
             image:             $this->image          ?? $base?->image,
             url:               $this->url            ?? $base?->url,

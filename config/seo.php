@@ -298,4 +298,19 @@ return [
         env('APP_URL', 'https://gs.construction') . '/areas-served/lake-zurich',
         env('APP_URL', 'https://gs.construction') . '/contact',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | SEO Autopilot
+    |--------------------------------------------------------------------------
+    |
+    | Self-improving loop (seo:autopilot). When auto_publish_landing_pages is
+    | true, Autopilot-generated landing pages go LIVE immediately; when false
+    | (default) they are created as drafts for one-click review in
+    | /admin/landing-pages before publishing. Leave false until you trust the
+    | generated content.
+    */
+    'autopilot' => [
+        'auto_publish_landing_pages' => env('SEO_AUTOPILOT_AUTO_PUBLISH', false),
+    ],
 ];

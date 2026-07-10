@@ -1249,6 +1249,15 @@ class GoogleBusinessProfileService
      * Returns a place ID of type "locality" or "administrative_area_level_3"
      * (i.e. a region/city), or null if not found.
      */
+    /**
+     * Public wrapper so commands can preview place-ID resolution for a service
+     * area (town or county) before writing to the live profile.
+     */
+    public function resolveServiceAreaPlaceId(string $name): ?string
+    {
+        return $this->resolveGeocodePlaceId($name);
+    }
+
     protected function resolveGeocodePlaceId(string $address): ?string
     {
         $apiKey = config('services.google.places_api_key');
@@ -1258,6 +1267,15 @@ class GoogleBusinessProfileService
             return null;
         }
 
+        // Primary: Places API (New) Text Search. This is the API actually enabled
+        // on our Cloud project (the classic Geocoding API returns REQUEST_DENIED),
+        // and it resolves both towns and counties to the same Place IDs GBP wants.
+        $placeId = $this->resolvePlaceIdViaTextSearch($address, $apiKey);
+        if ($placeId) {
+            return $placeId;
+        }
+
+        // Fallback: classic Geocoding API (used if it's ever enabled on the key).
         $response = Http::timeout(10)
             ->get('https://maps.googleapis.com/maps/api/geocode/json', [
                 'address' => $address,
@@ -1268,12 +1286,10 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $data = $response->json();
-        $results = $data['results'] ?? [];
+        $results = $response->json()['results'] ?? [];
 
-        // Find the first result that is a city- or county-level region.
-        // administrative_area_level_2 = county (one slot covers all its towns),
-        // which is how we approximate a service "radius" within Google's 20-area cap.
+        // Prefer a city- or county-level region (administrative_area_level_2 =
+        // county, one slot covering all its towns).
         foreach ($results as $result) {
             $types = $result['types'] ?? [];
             if (array_intersect($types, ['locality', 'administrative_area_level_3', 'administrative_area_level_2', 'sublocality', 'postal_town'])) {
@@ -1281,8 +1297,34 @@ class GoogleBusinessProfileService
             }
         }
 
-        // Fall back to first result if it has a place_id
         return $results[0]['place_id'] ?? null;
+    }
+
+    /**
+     * Resolve a place name (town or county) to a Google Place ID via the
+     * Places API (New) Text Search endpoint. Returns the same ChIJ… Place IDs
+     * the Business Profile serviceArea API expects.
+     */
+    protected function resolvePlaceIdViaTextSearch(string $query, string $apiKey): ?string
+    {
+        $response = Http::withHeaders([
+            'X-Goog-Api-Key' => $apiKey,
+            'X-Goog-FieldMask' => 'places.id,places.formattedAddress',
+        ])->timeout(10)->post('https://places.googleapis.com/v1/places:searchText', [
+            'textQuery' => $query,
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('GBP: Places text search failed', [
+                'query' => $query,
+                'status' => $response->status(),
+                'body' => mb_substr($response->body(), 0, 300),
+            ]);
+
+            return null;
+        }
+
+        return $response->json('places.0.id');
     }
 
     /**

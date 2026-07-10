@@ -294,6 +294,11 @@ Route::get('/compare/{slug}', CompareCompetitorPage::class)
     ->where('slug', '[a-z0-9\-]+')
     ->name('compare.show');
 
+// Demand-driven programmatic landing pages (Autopilot-generated, proof-gated).
+Route::get('/remodeling/{slug}', \App\Livewire\LandingPageShow::class)
+    ->where('slug', '[a-z0-9\-]+')
+    ->name('landing.show');
+
 // Admin auth
 Route::get('/admin/login', Login::class)->name('admin.login')->middleware(['guest', 'noindex']);
 Route::post('/admin/logout', function () {
@@ -342,6 +347,8 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
 
     // SEO weekly reports dashboard
     Route::get('/seo-reports/{report?}', \App\Livewire\Admin\SeoReports::class)->name('seo-reports.index');
+    Route::get('/autopilot', \App\Livewire\Admin\SeoAutopilotPanel::class)->name('autopilot.index');
+    Route::get('/landing-pages', \App\Livewire\Admin\LandingPages::class)->name('landing-pages.index');
     Route::get('/gsc-errors', \App\Livewire\Admin\GscErrors::class)->name('gsc-errors.index');
     Route::get('/platforms/gbp/callback', function (\Illuminate\Http\Request $request) {
         $code = $request->query('code');

@@ -287,6 +287,19 @@ Schedule::command('seo:area-pages-audit --markdown')
     ->appendOutputTo(storage_path('logs/seo-area-pages-audit.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:area-pages-audit failed'));
 
+// SEO: self-improving autopilot. Runs AFTER the analysis commands above have
+// refreshed their signals for the day. It measures previously-applied actions
+// (auto-reverting regressions), synthesizes a fresh scored ledger from GSC +
+// coverage data, then auto-applies the top safe/reversible fixes (title/meta
+// path overrides, reindex pings, llms.txt regen). Everything it does is
+// baselined and revertible; GBP + body-copy changes stay as admin proposals.
+// Runs on the queue-free scheduler process so it isn't bound by worker timeouts.
+Schedule::command('seo:autopilot --markdown --max=25')
+    ->dailyAt('10:40')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-autopilot.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:autopilot failed'));
+
 // SEO: weekly internal-link audit — orphans + weakly linked pages.
 Schedule::command('seo:internal-link-audit --min=3')
     ->weeklyOn(1, '08:30')
@@ -487,21 +500,39 @@ Schedule::command('social:post --platform=facebook --yes --random-delay=240')
     ->onFailure(fn () => logger()->error('Scheduled Facebook every-other-day post failed'))
     ->when(fn () => config('services.meta.enabled'));
 
-// Google Business Profile: three-times-weekly posts (image + Gemini-generated caption)
-// on Mondays, Wednesdays, and Fridays at 10:00 AM CT. Queued so processing is handled by the
-// social-media worker (goes through AI caption generation — never a direct API
-// publish). Cadence raised from weekly to lift GBP freshness/engagement signals.
-Schedule::command('social:post --platform=google_business --queue')->cron('0 10 * * 1,3,5')
+// Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
+// on TWO RANDOM days each week rather than fixed weekdays, so the cadence looks
+// natural instead of clockwork. Queued so processing runs on the social-media
+// worker (AI caption generation — never a direct API publish). The command runs
+// daily at 09:30 CT but the ->when() gate only lets it through on the two days
+// chosen for the current ISO week; --random-delay then spreads the actual post
+// time across a ~4h window (posts land ~09:30–13:30 CT).
+Schedule::command('social:post --platform=google_business --queue --random-delay=240')
+    ->dailyAt('09:30')
     ->timezone('America/Chicago')
     ->onOneServer()
     ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP post failed'))
-    ->when(fn () => config('services.google.business_profile.enabled'));
+    ->when(function (): bool {
+        if (! config('services.google.business_profile.enabled')) {
+            return false;
+        }
+
+        // Two distinct weekdays per ISO week, deterministically seeded by the
+        // week number: stable within the week, but different (and unpredictable)
+        // week to week. This is what makes it "2× a week on random days".
+        $now = now('America/Chicago');
+        $randomizer = new \Random\Randomizer(new \Random\Engine\Mt19937(crc32($now->format('o-W'))));
+        $chosenDays = array_slice($randomizer->shuffleArray(range(1, 7)), 0, 2);
+
+        return in_array($now->dayOfWeekIso, $chosenDays, true);
+    });
 
 // GBP safety-net: if cadence slips (no published GBP post in 6+ days), queue
-// one catch-up post daily. This avoids long dry spells when a cron window is
-// missed, while still deferring to the normal Mon/Thu cadence when healthy.
+// one catch-up post daily. This avoids long dry spells — e.g. when the two
+// random days land far apart across a week boundary — while deferring to the
+// normal 2×/week random cadence when healthy.
 Schedule::call(function (): void {
     if (! config('services.google.business_profile.enabled')) {
         return;

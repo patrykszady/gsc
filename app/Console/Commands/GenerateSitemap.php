@@ -112,6 +112,7 @@ class GenerateSitemap extends Command
             'up',           // health check
             'testimonials', // redirect to /reviews
             'contact-us',   // redirect to /contact
+            'review',       // 302 shortlink → Google write-a-review (no HTML/schema)
             // Root-level legacy redirects → /services/*
             'bathroom-remodeling',
             'kitchen-remodeling',
@@ -247,6 +248,27 @@ class GenerateSitemap extends Command
                 );
                 $urlCount++;
                 $this->line("  Added compare: /compare/{$slug}");
+            }
+        }
+
+        // Add demand-driven landing pages — only published pages that clear the
+        // proof gate (shouldIndex). Draft or thin pages are never sitemapped.
+        $landingPages = \App\Models\LandingPage::published()->get();
+        if ($landingPages->isNotEmpty()) {
+            $this->info('Adding landing pages to sitemap...');
+            foreach ($landingPages as $lp) {
+                if (! $lp->shouldIndex()) {
+                    $this->line("  Skipped landing (not indexable): /remodeling/{$lp->slug}");
+                    continue;
+                }
+                $sitemap->add(
+                    Url::create("{$baseUrl}/remodeling/{$lp->slug}")
+                        ->setLastModificationDate($lp->updated_at ?? now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
+                        ->setPriority(0.7)
+                );
+                $urlCount++;
+                $this->line("  Added landing: /remodeling/{$lp->slug}");
             }
         }
 

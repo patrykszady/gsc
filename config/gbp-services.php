@@ -52,34 +52,45 @@ return [
      *
      * Strategy: a few counties for broad reach + key individual cities (always
      * list the home city explicitly). Leave this array EMPTY to fall back to the
-     * 20 cities physically closest to the office (from the AreaServed table).
-     *
      * Max 20 entries. Format: "Name, IL, USA".
+     *
+     * Curation (2026-07): weighted toward the North Shore, where Search Console
+     * shows the strongest demand (Kenilworth/Winnetka/Wilmette/Glencoe each pull
+     * 1.8k–3.5k impressions/28d) yet we were under-listed, plus the most populous
+     * NW suburbs near the Prospect Heights office. Every town sits in Cook or Lake
+     * County, so the two counties are covered by specific high-value towns rather
+     * than spending scarce slots on broad county entries. Dropped low-demand
+     * Chicago (urban, no GBP demand), Hoffman Estates, Barrington, Lake Zurich,
+     * Inverness, Long Grove; added Evanston, Skokie, Schaumburg, Des Plaines,
+     * Deer Park, Lake Bluff.
      */
     'service_areas' => [
-        // Core city + priority suburbs (curated market focus)
-        'Chicago, IL, USA',
-        'Prospect Heights, IL, USA',
-        'Arlington Heights, IL, USA',
-        'Palatine, IL, USA',
-        'Mount Prospect, IL, USA',
-        'Kenilworth, IL, USA',
-        'Hoffman Estates, IL, USA',
+        // County-wide umbrella coverage
+        'Cook County, IL, USA',
+        'Lake County, IL, USA',
 
-        // Northwest / North suburbs
-        'Barrington, IL, USA',
-        'Lake Zurich, IL, USA',
-        'Buffalo Grove, IL, USA',
-        'Northbrook, IL, USA',
-        'Glenview, IL, USA',
-        'Winnetka, IL, USA',
+        // North Shore (affluent core) — highest GBP demand, listed explicitly
+        // for emphasis even though they fall inside the counties above
         'Wilmette, IL, USA',
+        'Winnetka, IL, USA',
+        'Kenilworth, IL, USA',
         'Glencoe, IL, USA',
         'Highland Park, IL, USA',
+        'Northbrook, IL, USA',
+        'Glenview, IL, USA',
+        'Deerfield, IL, USA',
         'Lake Forest, IL, USA',
+        'Lake Bluff, IL, USA',
+
+        // Northwest suburbs (near the Prospect Heights office)
+        'Prospect Heights, IL, USA',
+        'Arlington Heights, IL, USA',
+        'Mount Prospect, IL, USA',
+        'Palatine, IL, USA',
+        'Lake Zurich, IL, USA',
+        'Barrington, IL, USA',
         'Inverness, IL, USA',
         'Long Grove, IL, USA',
-        'Deerfield, IL, USA',
     ],
 
     /*

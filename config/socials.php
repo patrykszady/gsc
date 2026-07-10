@@ -7,7 +7,12 @@ return [
         'icon' => 'images/socials/instagram.svg',
     ],
     'google' => [
-        'url' => 'https://www.google.com/search?q=GS+Construction+chicago',
+        // Canonical Google Maps place URL (built from the verified GBP place_id)
+        // rather than a search query. A stable place URL is a far stronger
+        // `sameAs` entity signal — it resolves Google's Knowledge Graph to THIS
+        // business, which helps branded search ("gs construction") and disambiguates
+        // us from other GS Constructions. Also used for the Google social link.
+        'url' => 'https://www.google.com/maps/place/?q=place_id:' . env('GOOGLE_BUSINESS_PROFILE_PLACE_ID', 'ChIJ1VmJQHm5D4gRZDQlQNkLz2A'),
         'label' => 'Google',
         'icon' => 'images/socials/google.svg',
     ],

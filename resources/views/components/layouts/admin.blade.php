@@ -63,6 +63,14 @@
                 SEO Reports
             </flux:sidebar.item>
 
+            <flux:sidebar.item icon="sparkles" href="{{ route('admin.autopilot.index') }}" :current="request()->routeIs('admin.autopilot.*')">
+                SEO Autopilot
+            </flux:sidebar.item>
+
+            <flux:sidebar.item icon="document-plus" href="{{ route('admin.landing-pages.index') }}" :current="request()->routeIs('admin.landing-pages.*')">
+                Landing Pages
+            </flux:sidebar.item>
+
             <flux:sidebar.item icon="exclamation-triangle" href="{{ route('admin.gsc-errors.index') }}" :current="request()->routeIs('admin.gsc-errors.*')">
                 GSC Errors
             </flux:sidebar.item>

@@ -200,7 +200,7 @@
                         <div
                             x-data="{
                                 open: false,
-                                query: @entangle('address'),
+                                query: $wire.entangle('address'),
                                 predictions: [],
                                 selectedIndex: -1,
                                 placesReady: false,
@@ -369,8 +369,8 @@
                     {{-- Availability Scheduler --}}
                     <div
                         x-data="{
-                            activeDate: @entangle('selectedDateForTimes'),
-                            timeSelections: @entangle('timeSelections'),
+                            activeDate: $wire.entangle('selectedDateForTimes'),
+                            timeSelections: $wire.entangle('timeSelections'),
                             times: @js($times),
                             parseDateFromAriaLabel(label) {
                                 const raw = (label || '').trim();
