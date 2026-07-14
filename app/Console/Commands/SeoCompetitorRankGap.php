@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
  * Competitor rank-share gap analysis.
  *
  * For each seed query (city + service combinations from AreaServed × the
- * service slugs we publish), pull the top-N organic SERP via SerpApi and
+ * service slugs we publish), pull the top-N organic SERP via Brave Search and
  * record:
  *
  *   - our best position on gs.construction (or "not in top N")
@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
  * Then aggregate per-competitor: count of queries where they appear AND we
  * either don't appear or rank worse. That's the actionable gap.
  *
- * SerpApi cost: 1 search per seed query. The default --max-queries=20
+ * Search cost: 1 search per seed query. The default --max-queries=20
  * cap keeps weekly runs to < 100/month (well inside the free tier).
  */
 class SeoCompetitorRankGap extends Command
@@ -31,18 +31,17 @@ class SeoCompetitorRankGap extends Command
         {--services=kitchen-remodeling,bathroom-remodeling,home-remodeling,basement-remodeling,home-additions : CSV of service slugs to test}
         {--cities= : CSV of city names (defaults to first --max-cities AreaServed)}
         {--max-cities=4 : When --cities is empty, use this many top AreaServed rows}
-        {--max-queries=20 : Hard cap on total SerpApi calls}
-        {--top=20 : SerpApi result depth}
-        {--location=Illinois, United States : SerpApi location string}
+        {--max-queries=20 : Hard cap on total search calls}
+        {--top=20 : Result depth}
+        {--location=Illinois, United States : Legacy location hint (unused; queries carry city names)}
         {--markdown : Save report to storage/app/reports/competitor-rank-gap.md}';
 
-    protected $description = 'Find queries where configured competitors outrank gs.construction (SerpApi-based).';
+    protected $description = 'Find queries where configured competitors outrank gs.construction (Brave Search).';
 
     public function handle(): int
     {
-        $apiKey = (string) config('services.serpapi.api_key', '');
-        if ($apiKey === '') {
-            $this->error('SERPAPI_API_KEY is not set.');
+        if (! app(\App\Services\BraveSearchService::class)->isConfigured()) {
+            $this->error('BRAVE_SEARCH_API_KEY is not set.');
             return self::FAILURE;
         }
 
@@ -69,7 +68,7 @@ class SeoCompetitorRankGap extends Command
             $queries = array_slice($queries, 0, $cap);
         }
 
-        $this->info('Running ' . count($queries) . ' SerpApi searches against ' . $competitors->count() . ' competitors.');
+        $this->info('Running ' . count($queries) . ' Brave searches against ' . $competitors->count() . ' competitors.');
 
         $top = (int) $this->option('top');
         $location = (string) $this->option('location');
@@ -82,9 +81,9 @@ class SeoCompetitorRankGap extends Command
         }
 
         foreach ($queries as $q) {
-            $results = $this->fetchSerp($apiKey, $q, $location, $top);
+            $results = $this->fetchSerp($q, $location, $top);
             if ($results === null) {
-                $this->warn("  SerpApi failed for: {$q}");
+                $this->warn("  Search failed for: {$q}");
                 continue;
             }
 
@@ -169,32 +168,20 @@ class SeoCompetitorRankGap extends Command
     /**
      * @return array<int, array{title:string,link:string,host:string}>|null
      */
-    protected function fetchSerp(string $apiKey, string $query, string $location, int $top): ?array
+    protected function fetchSerp(string $query, string $location, int $top): ?array
     {
-        try {
-            $resp = Http::timeout(40)->get('https://serpapi.com/search.json', [
-                'engine' => 'google',
-                'q' => $query,
-                'hl' => 'en',
-                'gl' => 'us',
-                'location' => $location,
-                'num' => max(10, $top),
-                'api_key' => $apiKey,
-            ]);
-        } catch (\Throwable $e) {
-            return null;
-        }
+        // No location targeting — the seed
+        // queries already carry city names, which localizes results enough
+        // for gap detection; positions are Brave's, a visibility proxy.
+        $rows = app(\App\Services\BraveSearchService::class)
+            ->organicResults($query, max(10, $top));
 
-        if (! $resp->successful()) {
-            return null;
-        }
-        $json = $resp->json();
-        if (! empty($json['error'])) {
+        if ($rows === null) {
             return null;
         }
 
         $out = [];
-        foreach (($json['organic_results'] ?? []) as $row) {
+        foreach ($rows as $row) {
             $link = (string) ($row['link'] ?? '');
             $host = $link !== '' ? (string) parse_url($link, PHP_URL_HOST) : '';
             if ($host === '') {

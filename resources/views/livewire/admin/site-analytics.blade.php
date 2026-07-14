@@ -81,26 +81,82 @@
 
     {{-- Trend + Top Pages --}}
     <div class="mb-8 grid gap-4 lg:grid-cols-3">
-        <flux:card class="lg:col-span-2">
-            <flux:heading size="sm" class="mb-4">Events — Last 14 Days</flux:heading>
-            <div class="flex h-40 items-end gap-1.5">
-                @foreach($days as $day)
-                    <div class="flex flex-1 flex-col items-center gap-1">
-                        <div class="flex w-full flex-1 items-end">
-                            <div
-                                class="w-full rounded-t bg-sky-500/80 transition-all hover:bg-sky-500 dark:bg-sky-400/70"
-                                style="height: {{ $day['count'] > 0 ? max(4, round($day['count'] / $trendMax * 100)) : 0 }}%"
-                                title="{{ $day['label'] }}: {{ $day['count'] }} events"
-                            ></div>
-                        </div>
-                        <span class="text-[10px] text-zinc-400">{{ $day['count'] }}</span>
-                    </div>
-                @endforeach
+        <flux:card class="min-w-0 overflow-hidden lg:col-span-2">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <flux:heading size="sm">Events — Last {{ $trendDays }} Days</flux:heading>
+                <div class="flex items-center gap-1">
+                    @foreach (\App\Livewire\Admin\SiteAnalytics::TREND_SPANS as $span)
+                        <flux:button
+                            size="xs"
+                            variant="ghost"
+                            wire:click="setTrendDays({{ $span }})"
+                            class="{{ $trendDays === $span ? 'bg-sky-100! text-sky-800! dark:bg-sky-900/30! dark:text-sky-200!' : '' }}"
+                        >
+                            {{ $span }}d
+                        </flux:button>
+                    @endforeach
+                </div>
             </div>
-            <div class="mt-2 flex justify-between text-[10px] text-zinc-400">
-                <span>{{ $days->first()['label'] }}</span>
-                <span>{{ $days->last()['label'] }}</span>
-            </div>
+            <flux:chart :value="$trendChartData" wire:key="events-trend-{{ $trendDays }}" class="min-w-0">
+                <flux:chart.viewport class="h-56">
+                    <flux:chart.svg gutter="18 8 26 8">
+                        <flux:chart.axis axis="x" field="date">
+                            <flux:chart.axis.tick />
+                            <flux:chart.axis.line />
+                        </flux:chart.axis>
+
+                        <flux:chart.axis axis="y">
+                            <flux:chart.axis.grid />
+                            <flux:chart.axis.tick />
+                        </flux:chart.axis>
+
+                        <flux:chart.cursor />
+
+                        <flux:chart.line field="phone" class="text-green-500" />
+                        <flux:chart.line field="email" class="text-sky-500" />
+                        <flux:chart.line field="form" class="text-purple-500" />
+                        <flux:chart.line field="cta" class="text-amber-500" />
+                        <flux:chart.line field="total" class="text-zinc-400" />
+                    </flux:chart.svg>
+
+                    <flux:chart.tooltip>
+                        <flux:chart.tooltip.heading field="date" />
+                        <flux:chart.tooltip.value field="phone" label="Phone Clicks">
+                            <span class="size-2.5 rounded-full bg-green-500"></span>
+                        </flux:chart.tooltip.value>
+                        <flux:chart.tooltip.value field="email" label="Email Clicks">
+                            <span class="size-2.5 rounded-full bg-sky-500"></span>
+                        </flux:chart.tooltip.value>
+                        <flux:chart.tooltip.value field="form" label="Form Submissions">
+                            <span class="size-2.5 rounded-full bg-purple-500"></span>
+                        </flux:chart.tooltip.value>
+                        <flux:chart.tooltip.value field="cta" label="CTA Clicks">
+                            <span class="size-2.5 rounded-full bg-amber-500"></span>
+                        </flux:chart.tooltip.value>
+                        <flux:chart.tooltip.value field="total" label="Total">
+                            <span class="size-2.5 rounded-full bg-zinc-400"></span>
+                        </flux:chart.tooltip.value>
+                    </flux:chart.tooltip>
+                </flux:chart.viewport>
+
+                <div class="mt-2 flex flex-wrap items-center gap-2 px-1">
+                    <flux:chart.legend label="Phone" class="p-1 text-xs text-zinc-500">
+                        <flux:chart.legend.indicator class="bg-green-500" />
+                    </flux:chart.legend>
+                    <flux:chart.legend label="Email" class="p-1 text-xs text-zinc-500">
+                        <flux:chart.legend.indicator class="bg-sky-500" />
+                    </flux:chart.legend>
+                    <flux:chart.legend label="Form" class="p-1 text-xs text-zinc-500">
+                        <flux:chart.legend.indicator class="bg-purple-500" />
+                    </flux:chart.legend>
+                    <flux:chart.legend label="CTA" class="p-1 text-xs text-zinc-500">
+                        <flux:chart.legend.indicator class="bg-amber-500" />
+                    </flux:chart.legend>
+                    <flux:chart.legend label="Total" class="p-1 text-xs text-zinc-500">
+                        <flux:chart.legend.indicator class="bg-zinc-400" />
+                    </flux:chart.legend>
+                </div>
+            </flux:chart>
         </flux:card>
 
         <flux:card>

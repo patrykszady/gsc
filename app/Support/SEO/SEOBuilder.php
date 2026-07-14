@@ -76,6 +76,27 @@ class SEOBuilder
         return $this;
     }
 
+    /**
+     * Fallback setters: apply only when nothing set them programmatically.
+     * Used by the layout for static views that pass title/metaDescription as
+     * component props — a Livewire #[Title] or SeoService call always wins.
+     */
+    public function fallbackTitle(?string $v): self
+    {
+        if ($this->title === null && $v) {
+            $this->title = $v;
+        }
+        return $this;
+    }
+
+    public function fallbackDescription(?string $v): self
+    {
+        if ($this->description === null && $v) {
+            $this->description = $v;
+        }
+        return $this;
+    }
+
     public function markNoindex(): self
     {
         $this->robots = 'noindex,follow';

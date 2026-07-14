@@ -25,6 +25,28 @@ class SiteAnalytics extends Component
     #[Url]
     public string $typeFilter = 'all';
 
+    #[Url(as: 'trend', keep: true)]
+    public int $trendDays = 14;
+
+    /** @var array<int,int> */
+    public const TREND_SPANS = [7, 14, 28, 90];
+
+    public function mount(): void
+    {
+        if (! in_array($this->trendDays, self::TREND_SPANS, true)) {
+            $this->trendDays = 14;
+        }
+    }
+
+    public function setTrendDays(int $days): void
+    {
+        if (! in_array($days, self::TREND_SPANS, true)) {
+            return;
+        }
+
+        $this->trendDays = $days;
+    }
+
     public function updatedDateFilter(): void
     {
         $this->resetPage();
@@ -85,30 +107,44 @@ class SiteAnalytics extends Component
             ->limit(8)
             ->pluck('count', 'page_path');
 
-        // Daily trend for the last 14 days (independent of filters for context).
-        // Group by the Chicago calendar day in PHP so DST transitions stay correct
-        // (CONVERT_TZ would require the MySQL named-timezone tables to be loaded).
-        $trend = TrackedEvent::query()
-            ->where('created_at', '>=', Carbon::now(self::TZ)->subDays(13)->startOfDay()->utc())
-            ->get(['created_at'])
-            ->groupBy(fn ($e) => $e->created_at->timezone(self::TZ)->toDateString())
-            ->map->count();
-
-        $days = collect(range(0, 13))->map(function ($i) use ($trend) {
-            $date = Carbon::now(self::TZ)->subDays(13 - $i)->toDateString();
-            return [
-                'label' => Carbon::parse($date)->format('M j'),
-                'count' => (int) ($trend[$date] ?? 0),
-            ];
-        });
-        $trendMax = max(1, $days->max('count'));
-
         return view('livewire.admin.site-analytics', [
             'events' => $events,
             'stats' => $stats,
             'topPages' => $topPages,
-            'days' => $days,
-            'trendMax' => $trendMax,
+            'trendChartData' => $this->trendChartData(),
         ]);
+    }
+
+    /**
+     * Daily per-type event counts for the selected trend span (independent of
+     * the table filters, for context). Grouped by the Chicago calendar day in
+     * PHP so DST transitions stay correct (CONVERT_TZ would require the MySQL
+     * named-timezone tables to be loaded).
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    protected function trendChartData(): array
+    {
+        $span = $this->trendDays;
+
+        $byDay = TrackedEvent::query()
+            ->where('created_at', '>=', Carbon::now(self::TZ)->subDays($span - 1)->startOfDay()->utc())
+            ->get(['created_at', 'type'])
+            ->groupBy(fn ($e) => $e->created_at->timezone(self::TZ)->toDateString());
+
+        return collect(range($span - 1, 0))->map(function ($ago) use ($byDay) {
+            $date = Carbon::now(self::TZ)->subDays($ago)->toDateString();
+            $events = $byDay[$date] ?? collect();
+            $types = $events->countBy('type');
+
+            return [
+                'date' => Carbon::parse($date)->format('M j'),
+                'phone' => (int) ($types[TrackedEvent::TYPE_PHONE_CLICK] ?? 0),
+                'email' => (int) ($types[TrackedEvent::TYPE_EMAIL_CLICK] ?? 0),
+                'form' => (int) ($types[TrackedEvent::TYPE_FORM_SUBMIT] ?? 0),
+                'cta' => (int) ($types[TrackedEvent::TYPE_CTA_CLICK] ?? 0),
+                'total' => $events->count(),
+            ];
+        })->values()->all();
     }
 }

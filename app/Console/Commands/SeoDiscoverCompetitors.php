@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Competitor discovery via SerpApi.
+ * Competitor discovery via Brave Search.
  *
  * Runs first-page Google searches for each area we serve, using query
  * templates such as "{city} kitchen remodeling", "{city} bathroom remodeling"
@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * on. The output is a prioritized list of real local competitors worth adding
  * to config/competitors.php — already-configured ones are flagged as "known".
  *
- * SerpApi cost: 1 search per (area × template). 87 areas × 3 templates = 261
+ * Search cost: 1 search per (area × template). 87 areas × 3 templates = 261
  * searches for a full sweep, so use --max-queries / --max-areas to stay within
  * your plan. A weekly partial sweep keeps the candidate list fresh cheaply.
  */
@@ -30,14 +30,14 @@ class SeoDiscoverCompetitors extends Command
         {--templates=}
         {--areas= : CSV of city names (defaults to all AreaServed up to --max-areas)}
         {--max-areas=0 : Cap number of areas (0 = all)}
-        {--max-queries=60 : Hard cap on total SerpApi calls}
+        {--max-queries=60 : Hard cap on total search calls}
         {--top=10 : Page-one result depth to scan}
         {--min-appearances=2 : Only report domains seen on this many area-SERPs}
         {--exclude= : Extra CSV of hosts to exclude (substring match)}
-        {--location=Illinois, United States : SerpApi location string}
+        {--location=Illinois, United States : Legacy location hint (unused; queries carry city names)}
         {--markdown : Save report to storage/app/reports/competitor-discovery.md}';
 
-    protected $description = 'Discover local remodeling competitors that rank on Google page one across the areas we serve (SerpApi-based).';
+    protected $description = 'Discover local remodeling competitors that rank on Google page one across the areas we serve (Brave Search).';
 
     /**
      * Directories, aggregators, marketplaces, media and big-box hosts that are
@@ -63,9 +63,8 @@ class SeoDiscoverCompetitors extends Command
 
     public function handle(): int
     {
-        $apiKey = (string) config('services.serpapi.api_key', '');
-        if ($apiKey === '') {
-            $this->error('SERPAPI_API_KEY (or SERPAPI_KEY) is not set.');
+        if (! app(\App\Services\BraveSearchService::class)->isConfigured()) {
+            $this->error('BRAVE_SEARCH_API_KEY is not set.');
             return self::FAILURE;
         }
 
@@ -99,7 +98,7 @@ class SeoDiscoverCompetitors extends Command
         }
 
         $this->info(sprintf(
-            'Running %d SerpApi searches (%d areas × %d templates, capped at %d).',
+            'Running %d Brave searches (%d areas × %d templates, capped at %d).',
             count($queries), count($areas), count($templates), $maxQueries
         ));
 
@@ -109,10 +108,10 @@ class SeoDiscoverCompetitors extends Command
         $failed = 0;
 
         foreach ($queries as $item) {
-            $results = $this->fetchSerp($apiKey, $item['q'], $location, $top);
+            $results = $this->fetchSerp($item['q'], $location, $top);
             if ($results === null) {
                 $failed++;
-                $this->warn('  SerpApi failed for: ' . $item['q']);
+                $this->warn('  Search failed for: ' . $item['q']);
                 usleep(250000);
                 continue;
             }
@@ -271,32 +270,19 @@ class SeoDiscoverCompetitors extends Command
     /**
      * @return array<int, array{title:string,link:string,host:string}>|null
      */
-    protected function fetchSerp(string $apiKey, string $query, string $location, int $top): ?array
+    protected function fetchSerp(string $query, string $location, int $top): ?array
     {
-        try {
-            $resp = Http::timeout(40)->get('https://serpapi.com/search.json', [
-                'engine' => 'google',
-                'q' => $query,
-                'hl' => 'en',
-                'gl' => 'us',
-                'location' => $location,
-                'num' => max(10, $top),
-                'api_key' => $apiKey,
-            ]);
-        } catch (\Throwable $e) {
-            return null;
-        }
+        // Discovery queries embed the city
+        // name, which localizes results well enough to surface competitors.
+        $rows = app(\App\Services\BraveSearchService::class)
+            ->organicResults($query, max(10, $top));
 
-        if (! $resp->successful()) {
-            return null;
-        }
-        $json = $resp->json();
-        if (! empty($json['error'])) {
+        if ($rows === null) {
             return null;
         }
 
         $out = [];
-        foreach (($json['organic_results'] ?? []) as $row) {
+        foreach ($rows as $row) {
             $link = (string) ($row['link'] ?? '');
             $host = $link !== '' ? (string) parse_url($link, PHP_URL_HOST) : '';
             if ($host === '') {

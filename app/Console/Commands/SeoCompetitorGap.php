@@ -11,7 +11,7 @@ class SeoCompetitorGap extends Command
     protected $signature = 'seo:competitor-gap
         {--queries= : Comma-separated queries. If omitted, uses default local service queries}
         {--top=5 : Number of top organic competitors per query}
-        {--location=Illinois, United States : SerpApi location string}
+        {--location=Illinois, United States : Legacy location hint (unused; queries carry city names)}
         {--markdown : Save markdown report to storage/app/reports/competitor-gap.md}';
 
     protected $description = 'Analyze top SERP competitors for local remodeling queries and output compliant content/link gap briefs (no copied text).';
@@ -35,9 +35,8 @@ class SeoCompetitorGap extends Command
 
     public function handle(): int
     {
-        $apiKey = (string) config('services.serpapi.api_key', '');
-        if ($apiKey === '') {
-            $this->error('SERPAPI_API_KEY (or SERPAPI_KEY) is not set.');
+        if (! app(\App\Services\BraveSearchService::class)->isConfigured()) {
+            $this->error('BRAVE_SEARCH_API_KEY is not set.');
             return self::FAILURE;
         }
 
@@ -54,7 +53,7 @@ class SeoCompetitorGap extends Command
         $reportRows = [];
 
         foreach ($queries as $query) {
-            $results = $this->fetchSerp($apiKey, $query, $location, $top);
+            $results = $this->fetchSerp($query, $location, $top);
             if (empty($results)) {
                 $reportRows[] = [
                     'query' => $query,
@@ -144,29 +143,19 @@ class SeoCompetitorGap extends Command
     /**
      * @return array<int, array{title:string,link:string,snippet:string,host:string}>
      */
-    protected function fetchSerp(string $apiKey, string $query, string $location, int $top): array
+    protected function fetchSerp(string $query, string $location, int $top): array
     {
-        $response = Http::timeout(40)->get('https://serpapi.com/search.json', [
-            'engine' => 'google',
-            'q' => $query,
-            'hl' => 'en',
-            'gl' => 'us',
-            'location' => $location,
-            'num' => max(10, $top + 4),
-            'api_key' => $apiKey,
-        ]);
+        // The seed queries carry city names,
+        // which localizes results well enough for content-gap briefs.
+        $rows = app(\App\Services\BraveSearchService::class)
+            ->organicResults($query, max(10, $top + 4));
 
-        if (! $response->successful()) {
-            return [];
-        }
-
-        $json = $response->json();
-        if (! empty($json['error'])) {
+        if ($rows === null) {
             return [];
         }
 
         $out = [];
-        foreach (($json['organic_results'] ?? []) as $row) {
+        foreach ($rows as $row) {
             $link = (string) ($row['link'] ?? '');
             $host = $link !== '' ? (string) parse_url($link, PHP_URL_HOST) : '';
             if ($host === '' || str_contains($host, 'gs.construction')) {

@@ -133,6 +133,24 @@
                             </li>
                             <li>
                                 <a href="/how-to-choose-a-remodeling-contractor" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">How to Choose a Contractor</a>
+                            </li>
+                            <li>
+                                <a href="/trades" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Our Trade Partners</a>
+                            </li>
+                            <li>
+                                <a href="/process" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Our Process</a>
+                            </li>
+                            <li>
+                                <a href="/costs" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Remodeling Costs</a>
+                            </li>
+                            <li>
+                                <a href="/insurance-claims" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Insurance Claim Repairs</a>
+                            </li>
+                            <li>
+                                <a href="/warranty" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Warranty</a>
+                            </li>
+                            <li>
+                                <a href="/financing" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Financing</a>
                             </li>                            {{-- Socials Dropdown --}}
                             <li>
                                 <flux:dropdown position="top">
@@ -155,6 +173,30 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        {{-- Trade Partners strip --}}
+        <div class="mt-10 border-t border-gray-900/10 pt-8 dark:border-white/10">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <h3 class="shrink-0 text-sm/6 font-semibold text-gray-900 dark:text-white">
+                    <a href="/trades" wire:navigate.hover class="hover:text-sky-700 dark:hover:text-sky-400">Trade Partners</a>
+                </h3>
+                <a href="/jobs" wire:navigate.hover
+                   class="order-last shrink-0 text-sm/6 font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 sm:order-0">
+                    Are you a trade? Partner with GS Construction →
+                </a>
+            </div>
+            <ul class="mt-3 flex flex-wrap gap-x-5 gap-y-1">
+                @foreach((array) config('trades.trades', []) as $footerTrade)
+                    @continue(empty($footerTrade['slug']))
+                    <li>
+                        <a href="{{ route('trades.show', ['slug' => $footerTrade['slug']]) }}" wire:navigate.hover
+                           class="inline-block py-1 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                            {{ $footerTrade['short'] }}
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
         </div>
 
         {{-- Bottom Section - Compact --}}

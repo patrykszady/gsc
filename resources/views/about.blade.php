@@ -166,6 +166,153 @@
         <!-- Greg & Patryk Section -->
         <livewire:about-section variant="team" :area="$area ?? null" />
 
+        <!-- The story: two decades side by side -->
+        <div class="mx-auto mt-16 max-w-7xl px-6 lg:px-8">
+            <div class="mx-auto max-w-2xl lg:mx-0">
+                <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Our Story</p>
+                <h2 class="font-heading mt-2 text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+                    Two decades side by side
+                </h2>
+                <p class="mt-6 text-lg/8 text-zinc-600 dark:text-zinc-300">
+                    GS Construction wasn't started — it grew. Long before there was a company name,
+                    there was a father installing custom cabinets in New York City and a son showing
+                    up on Saturdays to help when money was tight. More than twenty years later,
+                    they're still on the same jobs.
+                </p>
+            </div>
+            <ol class="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+                <li class="relative rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Chapter one · New York City</p>
+                    <h3 class="mt-2 font-heading text-xl font-bold text-zinc-900 dark:text-white">The Saturday crew</h3>
+                    <p class="mt-2 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                        Gregory built his reputation installing custom cabinetry in New York City —
+                        exacting work where a sixteenth of an inch shows. When money was tight,
+                        Patryk worked Saturdays alongside his dad. That's where the standard was set:
+                        measure carefully, finish cleanly, stand behind it.
+                    </p>
+                </li>
+                <li class="relative rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Chapter two · Chicagoland</p>
+                    <h3 class="mt-2 font-heading text-xl font-bold text-zinc-900 dark:text-white">The foreman years</h3>
+                    <p class="mt-2 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                        In the Chicago area, Gregory spent years as a foreman — running crews,
+                        sequencing trades, and learning who actually shows up and does it right.
+                        That's where today's <a href="{{ route('trades.index') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">trade-partner bench</a>
+                        comes from: not a directory, a network built job by job.
+                    </p>
+                </li>
+                <li class="relative rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Chapter three · 2015</p>
+                    <h3 class="mt-2 font-heading text-xl font-bold text-zinc-900 dark:text-white">GS Construction</h3>
+                    <p class="mt-2 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                        Father and son made it official: a family remodeling company serving the
+                        North Shore and northwest suburbs. Over two decades of working together,
+                        300+ projects, and 70+ five-star reviews later, one thing hasn't changed —
+                        one of them is on your job, personally.
+                    </p>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Individual cards: Greg & Patryk -->
+        <div class="mx-auto mt-16 max-w-7xl px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                {{-- Gregory --}}
+                <div class="flex flex-col rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div class="flex items-center gap-4">
+                        <img src="{{ asset('images/greg-avatar.webp') }}" alt="Gregory, founder of GS Construction"
+                             width="320" height="320" loading="lazy"
+                             class="size-16 shrink-0 rounded-full object-cover ring-2 ring-sky-600/80">
+                        <div>
+                            <h3 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white">Gregory</h3>
+                            <p class="text-sm font-medium text-sky-600 dark:text-sky-400">Founder · Master craftsman · The network</p>
+                        </div>
+                    </div>
+                    <p class="mt-5 text-base/7 text-zinc-600 dark:text-zinc-300">
+                        A businessman by history and a carpenter at heart. Gregory's hands learned the
+                        trade on custom cabinet installations in New York City, and his leadership was
+                        forged over years as a foreman on Chicago-area jobs — where craft alone isn't
+                        enough, and you learn to run a site, read a crew, and hold a standard.
+                    </p>
+                    <ul class="mt-6 space-y-3">
+                        <li class="flex gap-3 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                            <svg class="mt-1 h-4 w-4 flex-none text-sky-600 dark:text-sky-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            <span><strong class="text-zinc-900 dark:text-white">Cabinet-grade standards.</strong> When your career starts with custom cabinetry in NYC, "close enough" never enters the vocabulary — and it shows in every trim line and tile course.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                            <svg class="mt-1 h-4 w-4 flex-none text-sky-600 dark:text-sky-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            <span><strong class="text-zinc-900 dark:text-white">A foreman's eye.</strong> Years running Chicago-area crews means he sees problems before they cost you money — framing that's off, rough-in that won't pass, sequencing that wastes a week.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                            <svg class="mt-1 h-4 w-4 flex-none text-sky-600 dark:text-sky-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            <span><strong class="text-zinc-900 dark:text-white">The network.</strong> Decades in the trades built a deep bench of electricians, plumbers, tile setters, and masons who answer his calls first — <a href="{{ route('trades.index') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">the partners behind every GS project</a>.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                {{-- Patryk --}}
+                <div class="flex flex-col rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                    <div class="flex items-center gap-4">
+                        <img src="{{ asset('images/patryk-avatar.webp') }}" alt="Patryk, co-founder of GS Construction"
+                             width="320" height="320" loading="lazy"
+                             class="size-16 shrink-0 rounded-full object-cover ring-2 ring-sky-600/80">
+                        <div>
+                            <h3 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white">Patryk</h3>
+                            <p class="text-sm font-medium text-sky-600 dark:text-sky-400">Co-founder · Project manager · The logistics</p>
+                        </div>
+                    </div>
+                    <p class="mt-5 text-base/7 text-zinc-600 dark:text-zinc-300">
+                        Patryk's apprenticeship started on those NYC Saturdays — and after two decades
+                        working beside Gregory, he knows the craft from the tools up. What he brings on
+                        top of it is logistics: the systems, scheduling, and communication that keep a
+                        remodel moving when the inevitable surprises show up.
+                    </p>
+                    <ul class="mt-6 space-y-3">
+                        <li class="flex gap-3 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                            <svg class="mt-1 h-4 w-4 flex-none text-sky-600 dark:text-sky-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            <span><strong class="text-zinc-900 dark:text-white">Setbacks are the job.</strong> Discontinued tile, a surprise behind the drywall, a trade delayed a day — every project has them. Patryk's job is having the next move ready so the schedule bends instead of breaking.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                            <svg class="mt-1 h-4 w-4 flex-none text-sky-600 dark:text-sky-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            <span><strong class="text-zinc-900 dark:text-white">Always upgrading the system.</strong> Selection deadlines, trade sequencing, client updates — he's constantly refining how GS runs projects, because a smoother process is the difference between 8 weeks and 12.</span>
+                        </li>
+                        <li class="flex gap-3 text-sm/6 text-zinc-600 dark:text-zinc-400">
+                            <svg class="mt-1 h-4 w-4 flex-none text-sky-600 dark:text-sky-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            <span><strong class="text-zinc-900 dark:text-white">Design to walkthrough.</strong> He manages design, planning, and client relationships — so the person who scoped your project is the same one answering your texts during it.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- How they complete each other -->
+        <div class="mx-auto mt-16 max-w-7xl px-6 lg:px-8">
+            <div class="rounded-2xl bg-sky-600 px-8 py-10 sm:px-10">
+                <div class="mx-auto max-w-2xl lg:mx-0">
+                    <h2 class="font-heading text-3xl font-bold tracking-tight text-white">Why the pairing works</h2>
+                    <p class="mt-4 text-lg/8 text-sky-100">
+                        Most remodels fail in one of two ways: the craft is good but the project drags,
+                        or the schedule holds but the finish disappoints. A father who thinks in
+                        sixteenths and a son who thinks in sequences cover both.
+                    </p>
+                </div>
+                <dl class="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3">
+                    <div>
+                        <dt class="font-semibold text-white">Craft ↔ Coordination</dt>
+                        <dd class="mt-1 text-sm/6 text-sky-100/90">Gregory holds the finish standard on site; Patryk holds the schedule around it. Neither gets sacrificed for the other.</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-white">Network ↔ Systems</dt>
+                        <dd class="mt-1 text-sm/6 text-sky-100/90">Gregory's decades-deep trade relationships get the right crews; Patryk's logistics get them there in the right order, ready to work.</dd>
+                    </div>
+                    <div>
+                        <dt class="font-semibold text-white">Experience ↔ Iteration</dt>
+                        <dd class="mt-1 text-sm/6 text-sky-100/90">Forty-plus combined years of knowing what works, paired with a constant push to run the next project better than the last.</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
         <!-- Values section -->
         <div class="mx-auto mt-10 max-w-7xl px-6 sm:mt-12 lg:px-8">
             <div class="mx-auto max-w-2xl lg:mx-0">
@@ -178,30 +325,30 @@
                     @endif
                 </p>
             </div>
-            <dl class="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-10 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
-                <div>
+            <dl class="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 text-base/7 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <dt class="font-semibold text-zinc-900 dark:text-white">Quality Craftsmanship</dt>
-                    <dd class="mt-1 text-zinc-600 dark:text-zinc-400">We never cut corners. Every joint, every finish, every detail matters. Our reputation is built on work that stands the test of time.</dd>
+                    <dd class="mt-1 text-sm/6 text-zinc-600 dark:text-zinc-400">We never cut corners. Every joint, every finish, every detail matters. Our reputation is built on work that stands the test of time.</dd>
                 </div>
-                <div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <dt class="font-semibold text-zinc-900 dark:text-white">Transparent Communication</dt>
-                    <dd class="mt-1 text-zinc-600 dark:text-zinc-400">No surprises, no hidden costs. We keep you informed at every stage, so you always know exactly what's happening with your project.</dd>
+                    <dd class="mt-1 text-sm/6 text-zinc-600 dark:text-zinc-400">No surprises, no hidden costs. We keep you informed at every stage, so you always know exactly what's happening with your project.</dd>
                 </div>
-                <div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <dt class="font-semibold text-zinc-900 dark:text-white">Respect for Your Home</dt>
-                    <dd class="mt-1 text-zinc-600 dark:text-zinc-400">We treat your home like our own. That means protecting your belongings, cleaning up daily, and minimizing disruption to your life.</dd>
+                    <dd class="mt-1 text-sm/6 text-zinc-600 dark:text-zinc-400">We treat your home like our own. That means protecting your belongings, cleaning up daily, and minimizing disruption to your life.</dd>
                 </div>
-                <div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <dt class="font-semibold text-zinc-900 dark:text-white">Personal Involvement</dt>
-                    <dd class="mt-1 text-zinc-600 dark:text-zinc-400">Gregory or Patryk is on-site for every {{ isset($area) ? $area->city : '' }} project. You'll always have a direct line to the owners, not a middleman.</dd>
+                    <dd class="mt-1 text-sm/6 text-zinc-600 dark:text-zinc-400">Gregory or Patryk is on-site for every {{ isset($area) ? $area->city : '' }} project. You'll always have a direct line to the owners, not a middleman.</dd>
                 </div>
-                <div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <dt class="font-semibold text-zinc-900 dark:text-white">Honest Pricing</dt>
-                    <dd class="mt-1 text-zinc-600 dark:text-zinc-400">We provide detailed, upfront quotes. If something changes, we discuss it with you first. No surprise invoices, ever.</dd>
+                    <dd class="mt-1 text-sm/6 text-zinc-600 dark:text-zinc-400">We provide detailed, upfront quotes. If something changes, we discuss it with you first. No surprise invoices, ever.</dd>
                 </div>
-                <div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <dt class="font-semibold text-zinc-900 dark:text-white">Community First</dt>
-                    <dd class="mt-1 text-zinc-600 dark:text-zinc-400">We're your neighbors. We live and work in the communities we serve, and we take pride in making {{ isset($area) ? $area->city : 'Chicagoland' }} homes beautiful.</dd>
+                    <dd class="mt-1 text-sm/6 text-zinc-600 dark:text-zinc-400">We're your neighbors. We live and work in the communities we serve, and we take pride in making {{ isset($area) ? $area->city : 'Chicagoland' }} homes beautiful.</dd>
                 </div>
             </dl>
         </div>
@@ -229,6 +376,7 @@
         </div>
 
         <x-cta-section
+            variant="blue"
             heading="Ready to Transform Your Home?"
             description="Let's discuss your project. Schedule a free consultation and see why Chicagoland homeowners trust GS Construction."
             primaryText="Schedule Free Consultation"

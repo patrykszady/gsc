@@ -217,6 +217,31 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
     ->where('page', 'contact|testimonials|projects|about|services')
     ->name('areas.page');
 
+// Per-municipality lead service line replacement guides. Data comes from the
+// official-source research stored in storage/app/lead-service-lines.json
+// (App\Support\LeadLineInfo); areas without verified official info render
+// generic Illinois-law content and are noindexed.
+Route::get('/areas-served/{area}/lead-pipe-replacement', function (string $area) {
+    $model = \App\Models\AreaServed::where('slug', $area)->firstOrFail();
+    $info = \App\Support\LeadLineInfo::forSlug($area);
+
+    $seo = app(\App\Support\SEO\SEOBuilder::class);
+    $seo->title("Lead Pipe Replacement in {$model->city}, IL — Who Pays & How It Works")
+        ->description(\Illuminate\Support\Str::limit(
+            ($info['found_official_info'] ?? false) && ! empty($info['cost_coverage']) && ! preg_match('/not published/i', (string) $info['cost_coverage'])
+                ? "{$model->city} lead service line replacement: {$info['cost_coverage']} How to check your line, apply, and what remodelers should know."
+                : "Lead water service line replacement in {$model->city}, IL — how to check your line, what Illinois law requires, and how replacement gets coordinated during a remodel.",
+            158
+        ))
+        ->canonical(url("/areas-served/{$area}/lead-pipe-replacement"));
+
+    if (! \App\Support\LeadLineInfo::hasOfficialInfo($area)) {
+        $seo->markNoindex();
+    }
+
+    return view('lead-line-page', ['area' => $model, 'info' => $info]);
+})->name('areas.lead-line');
+
 // Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchen-remodeling)
 Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
     ->defaults('page', 'service')
@@ -293,6 +318,38 @@ Route::get('/compare', CompareIndexPage::class)->name('compare.index');
 Route::get('/compare/{slug}', CompareCompetitorPage::class)
     ->where('slug', '[a-z0-9\-]+')
     ->name('compare.show');
+
+// Trust/money pages: financing guidance, written warranty, named process.
+// Static views — title/meta set via layout props, FAQ schema on each.
+Route::get('/financing', fn () => view('financing'))->name('financing');
+Route::get('/warranty', fn () => view('warranty'))->name('warranty');
+Route::get('/process', fn () => view('process'))->name('process');
+
+// Cost-guide hub: year-stamped pricing pages from the same published ranges
+// as geo-answers.php (see config/remodel-costs.php).
+Route::get('/costs', fn () => view('costs-index'))->name('costs.index');
+Route::get('/costs/{slug}', function (string $slug) {
+    $guide = collect(config('remodel-costs.guides', []))->firstWhere('slug', $slug);
+    abort_unless($guide && config('remodel-costs.enabled', true), 404);
+
+    return view('cost-page', ['guide' => $guide]);
+})->where('slug', '[a-z0-9\-]+')->name('costs.show');
+
+// Insurance-claim repair cluster: damage-type rebuild guides
+// (see config/insurance-claims.php — GC rebuild positioning, never public adjusting).
+Route::get('/insurance-claims', fn () => view('insurance-claims-index'))->name('insurance-claims.index');
+Route::get('/insurance-claims/{slug}', function (string $slug) {
+    $claim = collect(config('insurance-claims.claims', []))->firstWhere('slug', $slug);
+    abort_unless($claim && config('insurance-claims.enabled', true), 404);
+
+    return view('insurance-claim-page', ['claim' => $claim]);
+})->where('slug', '[a-z0-9\-]+')->name('insurance-claims.show');
+
+// Trade-partner pages: how GS (as GC) works with its licensed/vetted trades.
+Route::get('/trades', \App\Livewire\TradesIndexPage::class)->name('trades.index');
+Route::get('/trades/{slug}', \App\Livewire\TradePage::class)
+    ->where('slug', '[a-z0-9\-]+')
+    ->name('trades.show');
 
 // Demand-driven programmatic landing pages (Autopilot-generated, proof-gated).
 Route::get('/remodeling/{slug}', \App\Livewire\LandingPageShow::class)

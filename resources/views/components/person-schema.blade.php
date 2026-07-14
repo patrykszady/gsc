@@ -11,7 +11,7 @@ $people = [
         'name' => 'Gregory',
         'givenName' => 'Gregory',
         'jobTitle' => 'Founder & Master Remodeling Contractor',
-        'description' => 'Co-founder of GS Construction with 40+ years of combined experience in kitchen, bathroom, and whole-home remodeling in the Chicago suburbs.',
+        'description' => 'Co-founder of GS Construction. A carpenter at heart who built his reputation on custom cabinet installations in New York City, then spent years as a construction foreman in the Chicago area — where he built the deep trade network behind every GS project.',
         'image' => [
             '@type' => 'ImageObject',
             'url' => asset('images/greg-patryk.jpg'),
@@ -27,7 +27,9 @@ $people = [
             'Home Remodeling',
             'Basement Finishing',
             'Custom Cabinetry',
+            'Custom Cabinet Installation',
             'Tile Installation',
+            'Construction Crew Management',
         ],
         'knowsLanguage' => ['English', 'Polish'],
         'workLocation' => [
@@ -48,7 +50,7 @@ $people = [
         'name' => 'Patryk',
         'givenName' => 'Patryk',
         'jobTitle' => 'Co-Founder & Project Manager',
-        'description' => 'Co-founder of GS Construction. Manages design, planning, and client relationships for kitchen and bathroom remodeling projects across the Chicago suburbs.',
+        'description' => 'Co-founder of GS Construction. Started working alongside his father Gregory on New York City cabinet installations and has worked with him for over two decades. Leads project logistics, design, planning, and client relationships — keeping remodels moving through the setbacks every construction project brings.',
         'image' => [
             '@type' => 'ImageObject',
             'url' => asset('images/greg-patryk.jpg'),
@@ -62,6 +64,8 @@ $people = [
             'Kitchen Design',
             'Bathroom Design',
             'Project Management',
+            'Construction Logistics',
+            'Construction Scheduling',
             'Home Renovation Planning',
         ],
         'knowsLanguage' => ['English', 'Polish'],

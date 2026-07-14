@@ -95,7 +95,7 @@ class SeoReports extends Component
         'backlinks-monitor' => [
             'label' => 'Backlinks / mentions',
             'command' => 'seo:backlinks-monitor --markdown',
-            'description' => 'New and lost referring hosts (via SerpApi).',
+            'description' => 'New and lost referring hosts (via Brave Search).',
         ],
         'schema-audit' => [
             'label' => 'Schema audit',

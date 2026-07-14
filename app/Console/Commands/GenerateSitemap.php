@@ -251,6 +251,69 @@ class GenerateSitemap extends Command
             }
         }
 
+        // Add cost-guide pages (the /costs hub is a parameterless route and is
+        // picked up with the other static routes above).
+        $costGuides = (array) config('remodel-costs.guides', []);
+        if ((bool) config('remodel-costs.enabled', true) && ! empty($costGuides)) {
+            $this->info('Adding cost-guide pages to sitemap...');
+            foreach ($costGuides as $guide) {
+                $slug = (string) ($guide['slug'] ?? '');
+                if ($slug === '') {
+                    continue;
+                }
+                $sitemap->add(
+                    Url::create("{$baseUrl}/costs/{$slug}")
+                        ->setLastModificationDate(now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.7)
+                );
+                $urlCount++;
+                $this->line("  Added cost guide: /costs/{$slug}");
+            }
+        }
+
+        // Add insurance-claim repair pages (the /insurance-claims hub is a
+        // parameterless route and is picked up with the static routes above).
+        $claimPages = (array) config('insurance-claims.claims', []);
+        if ((bool) config('insurance-claims.enabled', true) && ! empty($claimPages)) {
+            $this->info('Adding insurance-claim pages to sitemap...');
+            foreach ($claimPages as $claimPage) {
+                $slug = (string) ($claimPage['slug'] ?? '');
+                if ($slug === '') {
+                    continue;
+                }
+                $sitemap->add(
+                    Url::create("{$baseUrl}/insurance-claims/{$slug}")
+                        ->setLastModificationDate(now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.7)
+                );
+                $urlCount++;
+                $this->line("  Added insurance claim: /insurance-claims/{$slug}");
+            }
+        }
+
+        // Add trade-partner pages (the /trades hub is a parameterless route and
+        // is picked up with the other static routes above).
+        $trades = (array) config('trades.trades', []);
+        if ((bool) config('trades.enabled', true) && ! empty($trades)) {
+            $this->info('Adding trade-partner pages to sitemap...');
+            foreach ($trades as $trade) {
+                $slug = (string) ($trade['slug'] ?? '');
+                if ($slug === '') {
+                    continue;
+                }
+                $sitemap->add(
+                    Url::create("{$baseUrl}/trades/{$slug}")
+                        ->setLastModificationDate(now())
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.6)
+                );
+                $urlCount++;
+                $this->line("  Added trade: /trades/{$slug}");
+            }
+        }
+
         // Add demand-driven landing pages — only published pages that clear the
         // proof gate (shouldIndex). Draft or thin pages are never sitemapped.
         $landingPages = \App\Models\LandingPage::published()->get();
@@ -308,6 +371,18 @@ class GenerateSitemap extends Command
                 );
                 $urlCount++;
                 $areaCount++;
+            }
+
+            // Lead service line replacement guide — only when official municipal
+            // info was verified for this town (otherwise the page is noindexed).
+            if (\App\Support\LeadLineInfo::hasOfficialInfo($area->slug)) {
+                $sitemap->add(
+                    Url::create("{$baseUrl}/areas-served/{$area->slug}/lead-pipe-replacement")
+                        ->setLastModificationDate($thisAreaLastmod)
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.6)
+                );
+                $urlCount++;
             }
 
             // Area-specific service pages — only for cities with real local proof.

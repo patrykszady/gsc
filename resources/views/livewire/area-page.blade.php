@@ -318,6 +318,42 @@
                  figures in config/geo-answers.php + /faq. --}}
             <x-area-pricing-guide :area="$area" />
 
+            {{-- Lead service line replacement (per-municipality program guide).
+                 Summary comes from official-source research; the detail page is
+                 noindexed until official info is verified for this town.
+                 NOTE: keep this comment free of Blade directive words and keep the
+                 summary logic in the PHP block below (not inline conditionals) —
+                 the compiler extracts PHP blocks before stripping comments, so a
+                 directive word inside a comment swallows everything to the next
+                 comment closer. --}}
+            @php
+                $leadInfo = \App\Support\LeadLineInfo::forSlug($area->slug);
+                $leadHasCoverage = ($leadInfo['found_official_info'] ?? false)
+                    && ! empty($leadInfo['cost_coverage'])
+                    && ! preg_match('/not published/i', (string) $leadInfo['cost_coverage']);
+                $leadSummary = $leadHasCoverage
+                    ? \Illuminate\Support\Str::limit($leadInfo['cost_coverage'], 180) . ' Illinois law requires replacement over time — see how the program works, how to check your own line, and what it means mid-remodel.'
+                    : 'Illinois law requires every water system to inventory and replace lead service lines — and many suburbs cover part or all of the cost. See how to check your ' . $area->city . ' line and what it means mid-remodel.';
+            @endphp
+            <section class="mx-auto mt-10 max-w-5xl px-4 sm:px-6 lg:px-8">
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h2 class="font-heading text-xl font-bold text-zinc-900 dark:text-white">
+                                Lead water pipe replacement in {{ $area->city }}
+                            </h2>
+                            <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                                {{ $leadSummary }}
+                            </p>
+                        </div>
+                        <a href="{{ route('areas.lead-line', ['area' => $area->slug]) }}" wire:navigate
+                           class="shrink-0 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500">
+                            {{ $area->city }} lead pipe guide →
+                        </a>
+                    </div>
+                </div>
+            </section>
+
             {{-- Unique per-city content (renders only when populated in DB).
                  Provides genuine differentiation between area pages — critical to
                  avoid Google's "duplicate content / thin local lander" penalty. --}}

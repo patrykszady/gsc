@@ -9,9 +9,9 @@ return new class extends Migration {
     {
         Schema::create('seo_rank_snapshots', function (Blueprint $table) {
             $table->id();
-            $table->string('engine', 32);              // google | google_maps
+            $table->string('engine', 32);              // gsc (current) | google | google_maps (legacy)
             $table->string('query');                   // search term
-            $table->string('location')->nullable();    // SerpApi `location` or "ll" coords
+            $table->string('location')->nullable();    // legacy location string / "ll" coords
             $table->string('city_slug')->nullable();   // links to areas_served if applicable
             $table->unsignedSmallInteger('gsc_position')->nullable(); // null = not in result set
             $table->string('gsc_match_title')->nullable();            // which listing matched (e.g. "Greg's Bathroom Remodeling Contractors")

@@ -1,42 +1,8 @@
 <?php
 
-// Compose the IPRoyal residential proxy URL from discrete env pieces. Used by
-// both `services.scraper.proxy` and `services.yelp.business.proxy` (the Yelp
-// services overwrite `session-placeholder` per launch via
-// forceUniqueProxySession()). Returns null when not configured.
-$composeIproyalProxy = static function (): ?string {
-    if ($override = env('SCRAPER_PROXY_URL')) {
-        return (string) $override;
-    }
-    $user = (string) env('IPROYAL_USERNAME', '');
-    $pass = (string) env('IPROYAL_PASSWORD', '');
-    $host = (string) env('IPROYAL_HOST', 'geo.iproyal.com');
-    $port = (string) env('IPROYAL_PORT', '12321');
-    if ($user === '' || $pass === '' || $host === '') return null;
-    $flags = [];
-    if ($c = env('IPROYAL_COUNTRY'))    $flags[] = 'country-' . $c;
-    if ($city = env('IPROYAL_CITY'))    $flags[] = 'city-' . $city;
-    if (env('IPROYAL_STREAMING', true)) $flags[] = 'streaming-1';
-    $flags[] = 'session-placeholder';
-    $flags[] = 'lifetime-' . env('IPROYAL_LIFETIME', '30m');
-    return sprintf('http://%s:%s_%s@%s:%s', $user, $pass, implode('_', $flags), $host, $port);
-};
-
-// IPRoyal ISP (static) proxies. IPROYAL_ISP_POOL is a comma/newline-separated
-// list of `host:port` pairs (or full URLs). Username/password are shared.
-$composeIproyalIspPool = static function (): array {
-    $raw  = (string) env('IPROYAL_ISP_POOL', '');
-    $user = (string) env('IPROYAL_ISP_USERNAME', '');
-    $pass = (string) env('IPROYAL_ISP_PASSWORD', '');
-    if ($raw === '' || $user === '' || $pass === '') return [];
-    $items = array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $raw)) ?: []));
-    $out = [];
-    foreach ($items as $item) {
-        if (str_contains($item, '://')) { $out[] = $item; continue; }
-        $out[] = sprintf('http://%s:%s@%s', $user, $pass, $item);
-    }
-    return $out;
-};
+// IPRoyal proxy composers removed 2026-07 — subscription cancelled. The
+// 2captcha rotating residential proxy below is the sole proxy source
+// (IPROYAL_* env vars are dead and can be deleted from .env).
 
 // 2captcha residential proxy (rotating). Single endpoint, rotates exit IP per
 // request unless `-session-X` is appended to the username.
@@ -243,14 +209,17 @@ return [
         'api_key' => env('TWOCAPTCHA_API_KEY'),
     ],
 
-    'serpapi' => [
-        'api_key' => env('SERPAPI_API_KEY', env('SERPAPI_KEY')),
-        'yelp_place_id' => env('SERPAPI_YELP_PLACE_ID'),
-        'google_data_id' => env('SERPAPI_GOOGLE_DATA_ID'),
+    // Brave Search API — SERP data for competitor/backlink discovery.
+    // Free tier (~2k queries/mo, 1 req/s) covers the scheduled cadences.
+    'brave' => [
+        'api_key' => env('BRAVE_SEARCH_API_KEY'),
     ],
 
+    // IPRoyal is unsubscribed — generic scraping now uses the 2captcha
+    // rotating residential proxy (same one the Yelp stack prefers).
+    // SCRAPER_PROXY_URL still overrides everything when set.
     'scraper' => [
-        'proxy' => $composeIproyalProxy(),
+        'proxy' => env('SCRAPER_PROXY_URL') ?: $compose2captchaProxy(),
     ],
 
     'yelp' => [
@@ -295,28 +264,24 @@ return [
             // list of URLs. When multiple are provided, one is picked at
             // random per process — gives us automatic fallback between
             // dedicated ISP IPs without a code change when one gets flagged.
-            'proxy' => (function () use ($composeIproyalProxy, $composeIproyalIspPool, $compose2captchaProxy) {
+            // IPRoyal fallbacks removed (subscription cancelled) — 2captcha
+            // rotating residential is the sole proxy unless YELP_BIZ_PROXY
+            // explicitly overrides.
+            'proxy' => (function () use ($compose2captchaProxy) {
                 $raw = (string) env('YELP_BIZ_PROXY', '');
                 if ($raw !== '') {
                     $list = array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $raw)) ?: []));
                     if (count($list) > 0) return $list[array_rand($list)];
                 }
-                if ($p = $compose2captchaProxy()) return $p;
-                $isp = $composeIproyalIspPool();
-                if (count($isp) > 0) return $isp[array_rand($isp)];
-                return $composeIproyalProxy();
+                return $compose2captchaProxy();
             })(),
             // Full list (debug / admin UI display).
-            'proxy_pool' => (function () use ($composeIproyalProxy, $composeIproyalIspPool, $compose2captchaProxy) {
+            'proxy_pool' => (function () use ($compose2captchaProxy) {
                 $raw = (string) env('YELP_BIZ_PROXY', '');
                 if ($raw !== '') {
                     return array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $raw)) ?: []));
                 }
-                $pool = [];
-                if ($p = $compose2captchaProxy()) $pool[] = $p;
-                $pool = array_merge($pool, $composeIproyalIspPool());
-                if ($p = $composeIproyalProxy()) $pool[] = $p;
-                return $pool;
+                return array_values(array_filter([$compose2captchaProxy()]));
             })(),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
             'biz_photos_url' => env('YELP_BIZ_PHOTOS_URL'),

@@ -80,7 +80,7 @@ class SeoService
             // Lead with brand on the homepage so Google adopts "GS Construction"
             // as the site name (https://developers.google.com/search/docs/appearance/site-names)
             $title = 'GS Construction — Kitchen & Bathroom Remodeling, Chicagoland';
-            $description = 'GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs. 40+ years, 5-star rated, free estimates.';
+            $description = 'Family-owned kitchen, bathroom & whole-home remodeling in Chicago\'s suburbs. 40+ yrs combined experience, 5-star rated. Free estimates.';
         }
 
         // Use a hero project image for home page OG sharing
@@ -341,35 +341,37 @@ class SeoService
         
         $reviewNum = self::getReviewCountNumeric();
         $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated';
+        // Short badge for titles that also carry the experience hook (keeps <= 60 chars).
+        $reviewShort = $reviewNum ? "{$reviewNum}★" : 'Top-Rated';
 
         $services = [
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
-                'title' => "Chicago Suburbs Kitchen Remodeling — {$reviewBadge} & 40 Yrs",
+                'title' => "Chicago Suburbs Kitchen Remodeling — {$reviewShort} · 40+ Yrs Combined",
                 'description' => 'Custom kitchen remodeling in Chicago\'s NW suburbs: cabinets, quartz & granite countertops, IKEA installs, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen remodeling near me', 'kitchen contractors chicago', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
-                'title' => "Chicago Suburbs Bathroom Remodeling — {$reviewBadge} & 40 Yrs",
+                'title' => "Chicago Suburbs Bathroom Remodeling — {$reviewShort} · 40+ Yrs Combined",
                 'description' => 'Bathroom remodeling in Chicago\'s NW suburbs: walk-in showers, tub-to-shower conversions, tile & vanities, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom remodeling near me', 'bathroom contractors chicago', 'bathroom remodelers'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
-                'title' => "Chicago Suburbs Whole-Home Remodeling — {$reviewBadge} & 40 Yrs",
+                'title' => "Chicago Suburbs Whole-Home Remodeling — {$reviewShort} · 40+ Yrs Combined",
                 'description' => 'Whole-home remodeling in Chicago\'s NW suburbs: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'home remodeling near me', 'general contractors chicago'],
             ],
             'basement-remodeling' => [
                 'label' => 'Basement Remodeling',
-                'title' => "Chicago Suburbs Basement Finishing — {$reviewBadge} & 40 Yrs",
+                'title' => "Chicago Suburbs Basement Finishing — {$reviewShort} · 40+ Yrs Combined",
                 'description' => 'Basement finishing & remodeling in Chicago\'s NW suburbs: home theaters, guest suites, rec rooms, wet bars. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel', 'basement remodeling near me'],
             ],
             'home-additions' => [
                 'label' => 'Home Additions',
-                'title' => "Chicago Suburbs Home Additions — {$reviewBadge} & 40 Yrs",
+                'title' => "Chicago Suburbs Home Additions — {$reviewShort} · 40+ Yrs Combined",
                 'description' => 'Home additions in Chicago\'s NW suburbs: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom addition', 'second story addition', 'home addition contractors', 'addition builders near me', 'general contractor additions'],
             ],
@@ -909,6 +911,49 @@ class SeoService
             'remodeling contractor alternatives',
             'kitchen remodeling alternatives chicago',
         ]);
+    }
+
+    /**
+     * Set SEO tags for the trade-partners hub page (/trades).
+     */
+    public static function tradesIndex(): void
+    {
+        $title = 'Our Trade Partners | Licensed, Vetted Remodeling Trades';
+        $description = 'Meet the skilled trades behind every GS Construction remodel — licensed electricians, plumbers, finish carpenters, tile setters and more. One contract, one project lead, vetted crews.';
+
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
+
+        self::seo()->keywords([
+            'remodeling trade partners chicago suburbs',
+            'licensed electrician kitchen remodel',
+            'licensed plumber bathroom remodel',
+            'general contractor subcontractors vetted',
+        ]);
+    }
+
+    /**
+     * Set SEO tags for a single trade-partner page (/trades/{slug}).
+     *
+     * @param array<string,mixed> $trade One entry from config('trades.trades')
+     */
+    public static function trade(array $trade): void
+    {
+        $name = (string) ($trade['name'] ?? 'Trade Partners');
+
+        $title = "{$name} for Home Remodels | GS Construction";
+        $description = (string) ($trade['summary'] ?? '');
+        if ($description === '') {
+            $description = "How GS Construction works with {$name} on kitchen, bathroom, and whole-home remodels across the Chicago suburbs — vetted, insured, and supervised by one project lead.";
+        } else {
+            $description = "{$name} on GS Construction remodels: {$description}";
+        }
+
+        self::setTags($title, $description, asset('images/greg-patryk.jpg'));
+
+        self::seo()->keywords(array_filter([
+            strtolower($name) . ' remodeling chicago suburbs',
+            strtolower((string) ($trade['short'] ?? '')) . ' contractor north shore',
+        ]));
     }
 
     /**

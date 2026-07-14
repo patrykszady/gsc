@@ -1,3 +1,4 @@
+@props(['title' => null, 'metaDescription' => null])
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -19,7 +20,10 @@
     </script>
 
     {{-- SEO: title, description, canonical, robots, OG, Twitter, JSON-LD (ralphjsmit/laravel-seo) --}}
-    @php($__seoBuilder = app(\App\Support\SEO\SEOBuilder::class))
+    {{-- Static views may pass title/metaDescription as layout props. They are
+         FALLBACKS only: Livewire #[Title] also arrives via $title, so anything
+         set programmatically (SeoService/SEOBuilder) must keep precedence. --}}
+    @php($__seoBuilder = app(\App\Support\SEO\SEOBuilder::class)->fallbackTitle($title)->fallbackDescription($metaDescription))
     {!! seo($__seoBuilder->build()) !!}
     @if($__kw = $__seoBuilder->keywordList())
         <meta name="keywords" content="{{ implode(', ', $__kw) }}">

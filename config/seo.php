@@ -129,12 +129,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Rank tracker (SerpApi)
+    | Rank tracker (Search Console data)
     |--------------------------------------------------------------------------
     |
     | Used by `seo:track-rankings` to monitor where GS Construction appears
-    | on Google + Google Maps for the queries that matter most. Snapshots are
-    | persisted in `seo_rank_snapshots` so we can chart movement over time.
+    | on Google for the queries that matter most, derived from synced
+    | gsc_query_metrics. Snapshots are persisted in `seo_rank_snapshots`
+    | so we can chart movement over time.
     |
     | Patterns are matched (case-insensitive) against listing titles / domain
     | hosts to identify "us" — covers GBP name variants and the website host.
@@ -163,7 +164,8 @@ return [
             'chicagoland_remodeling'  => ['chicagoland remodeling'],
         ],
 
-        // Google web SERPs — uses SerpApi engine=google with `location` string.
+        // Google web queries. `location`/`ll` fields are legacy metadata kept
+        // for reference; the GSC engine matches on the query text alone.
         'web_queries' => [
             // Arlington Heights (HQ)
             ['q' => 'kitchen remodeling Arlington Heights IL',  'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
@@ -204,7 +206,8 @@ return [
             ['q' => 'room addition contractor Arlington Heights IL', 'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],
         ],
 
-        // Google Maps — uses SerpApi engine=google_maps with `ll` lat/lng.
+        // Google Maps queries (legacy — map-pack visibility now comes from
+        // gbp:metrics-sync; kept for reference/history).
         // ll format: @<lat>,<lng>,<zoom>z
         'maps_queries' => [
             ['q' => 'kitchen remodeling',         'll' => '@42.0884,-87.9806,12z', 'city_slug' => 'arlington-heights'],

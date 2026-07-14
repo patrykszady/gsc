@@ -96,6 +96,24 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- The trades we partner with (links to /trades pages) --}}
+        <p class="mx-auto mt-14 max-w-2xl text-center text-sm/6 text-gray-600 dark:text-gray-300">
+            Every trade below is part of how we deliver — see how we work with each, then reach out.
+        </p>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach((array) config('trades.trades', []) as $jobsTrade)
+                @continue(empty($jobsTrade['slug']))
+                <a href="{{ route('trades.show', ['slug' => $jobsTrade['slug']]) }}" wire:navigate.hover
+                   class="rounded-xl border border-gray-200 bg-white p-5 text-center font-semibold text-gray-900 shadow-sm transition hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white">
+                    {{ $jobsTrade['name'] }}
+                </a>
+            @endforeach
+            <a href="{{ route('trades.index') }}" wire:navigate.hover
+               class="rounded-xl border border-sky-200 bg-sky-50 p-5 text-center font-semibold text-sky-700 shadow-sm transition hover:shadow-md dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-400">
+                All Trade Partners →
+            </a>
+        </div>
     </section>
 
     {{-- Why work with us --}}

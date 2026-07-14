@@ -124,29 +124,28 @@ Schedule::command('testimonials:sync-houzz-reviews --browser-scrape --only-new')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Houzz review sync failed'));
 
-// Yelp: check for new reviews weekly (create-only; skip existing)
+// Yelp: check for new reviews weekly (create-only; skip existing).
+// Scrapes the public review feed / stealth browser through the 2captcha
+// residential proxy.
 Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:00')
     ->timezone('America/Chicago')
+    ->onOneServer()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'))
-    ->when(fn () => filled(config('services.serpapi.api_key')));
+    ->onFailure(fn () => logger()->error('Scheduled Yelp review sync failed'));
 
 // Yelp business photos: uploaded on-demand by ProjectImageObserver when a
 // new image is added (mirrors GBP flow). No scheduled batch needed.
 
-// Google: probe daily via free Places API; only call SerpApi when review count changes.
-Schedule::command('testimonials:sync-google-reviews-serpapi --only-new')
-    ->dailyAt('07:15')
-    ->timezone('America/Chicago')
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Google (SerpApi) review sync failed'))
-    ->when(fn () => filled(config('services.serpapi.api_key')))
-    ->when(fn () => filled(config('services.serpapi.google_data_id')) || filled(config('services.google.business_profile.place_id')));
+// Google reviews are synced by google-business-profile:sync-reviews
+// (official GBP API, 06:00 daily above) directly into testimonials.
 
-// SEO: weekly rank snapshot (Google + Google Maps) for tracked queries.
-Schedule::command('seo:track-rankings --engine=both')
+// SEO: weekly rank snapshot from Search Console data. GSC gives real Google
+// positions for queries with impressions; map-pack visibility is covered by
+// gbp:metrics-sync.
+Schedule::command('seo:track-rankings')
     ->weeklyOn(1, '08:00') // Mondays 08:00 CT
     ->timezone('America/Chicago')
+    ->onOneServer()
     ->appendOutputTo(storage_path('logs/seo-rankings.log'))
     ->onFailure(fn () => logger()->error('Scheduled SEO rank tracker failed'));
 
@@ -263,7 +262,7 @@ Schedule::command('seo:gbp-parity --markdown')
     ->appendOutputTo(storage_path('logs/seo-gbp-parity.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gbp-parity failed'));
 
-// SEO: weekly backlink / mention monitor (referring-host snapshot via SerpApi).
+// SEO: weekly backlink / mention monitor (referring-host snapshot via Brave Search).
 Schedule::command('seo:backlinks-monitor --markdown')
     ->dailyAt('09:40')
     ->timezone('America/Chicago')
@@ -297,6 +296,8 @@ Schedule::command('seo:area-pages-audit --markdown')
 Schedule::command('seo:autopilot --markdown --max=25')
     ->dailyAt('10:40')
     ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/seo-autopilot.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:autopilot failed'));
 

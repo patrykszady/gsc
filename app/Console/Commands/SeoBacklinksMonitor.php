@@ -12,19 +12,19 @@ use Illuminate\Support\Facades\Storage;
  * Real backlink indexes (Ahrefs/Majestic) cost money and Google's `link:`
  * operator is gone. The next-best free-ish proxy:
  *
- *   1. SerpApi search for `"<bare-host>" -site:<host>` — every external page
+ *   1. Brave search for `"<bare-host>" -site:<host>` — every external page
  *      that mentions our domain. Filter out social-only mentions if desired.
  *   2. Compare today's set of referring hosts against the previously-saved
  *      snapshot in storage/app/seo/backlink-hosts.json. Surface NEW and LOST
  *      hosts week-over-week.
  *
- * Costs 1 SerpApi search per run (≈4/month at weekly cadence).
+ * Costs 1 search per run (≈4/month at weekly cadence).
  */
 class SeoBacklinksMonitor extends Command
 {
     protected $signature = 'seo:backlinks-monitor
         {--host= : Override host (defaults to APP_URL host)}
-        {--pages=3 : SerpApi result pages to walk (10 results each)}
+        {--pages=3 : Search result pages to walk (10 results each)}
         {--confirm-runs=2 : Consecutive missing runs required before host is marked lost}
         {--markdown : Save report to storage/app/reports/backlinks-monitor.md}';
 
@@ -32,21 +32,20 @@ class SeoBacklinksMonitor extends Command
 
     public function handle(): int
     {
-        $apiKey = (string) config('services.serpapi.api_key', '');
-        if ($apiKey === '') {
-            $this->error('SERPAPI_API_KEY not set.');
+        if (! app(\App\Services\BraveSearchService::class)->isConfigured()) {
+            $this->error('BRAVE_SEARCH_API_KEY not set.');
             return self::FAILURE;
         }
 
         $host = $this->normalizeHost((string) ($this->option('host') ?: parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'gs.construction'));
         $pages = max(1, (int) $this->option('pages'));
-        $this->info("Searching mentions of {$host} across {$pages} SerpApi page(s)…");
+        $this->info("Searching mentions of {$host} across {$pages} Brave page(s)…");
 
         $foundHosts = [];
         $samples = []; // host => sample URL
         for ($p = 0; $p < $pages; $p++) {
             $start = $p * 10;
-            $results = $this->fetchSerp($apiKey, "\"{$host}\" -site:{$host}", $start);
+            $results = $this->fetchSerp("\"{$host}\" -site:{$host}", $start);
             if ($results === null) {
                 $this->warn("  page {$p} failed");
                 break;
@@ -154,25 +153,13 @@ class SeoBacklinksMonitor extends Command
     /**
      * @return array<int, array<string, mixed>>|null
      */
-    protected function fetchSerp(string $apiKey, string $query, int $start): ?array
+    protected function fetchSerp(string $query, int $start): ?array
     {
-        try {
-            $resp = Http::timeout(40)->get('https://serpapi.com/search.json', [
-                'engine' => 'google',
-                'q' => $query,
-                'start' => $start,
-                'num' => 10,
-                'hl' => 'en',
-                'gl' => 'us',
-                'api_key' => $apiKey,
-            ]);
-        } catch (\Throwable) {
-            return null;
-        }
-        if (! $resp->successful()) return null;
-        $j = $resp->json();
-        if (! empty($j['error'])) return null;
-        return (array) ($j['organic_results'] ?? []);
+        // Brave pages are 20 results wide, so
+        // the caller's 10-per-page $start values map onto overlapping pages —
+        // harmless here because hosts are deduped into a set.
+        return app(\App\Services\BraveSearchService::class)
+            ->organicResults($query, 20, $start);
     }
 
     protected function normalizeHost(string $h): string

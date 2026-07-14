@@ -607,23 +607,34 @@ class SeoAutopilotService
         $fingerprint = $attrs['fingerprint'];
         $existing = SeoAction::where('fingerprint', $fingerprint)->first();
 
-        if ($existing) {
-            // Only refresh still-open proposals; never disturb applied/measured
-            // or human-decided (skipped/reverted) rows.
-            if ($existing->status === SeoAction::STATUS_PROPOSED) {
-                $existing->fill([
-                    'title' => $attrs['title'],
-                    'hypothesis' => $attrs['hypothesis'],
-                    'payload' => $attrs['payload'],
-                    'impact_score' => $attrs['impact_score'],
-                ])->save();
+        if (! $existing) {
+            try {
+                SeoAction::create($attrs);
+
+                return 1;
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Unique-key race: a concurrent run inserted the same fingerprint
+                // between our check and create (production briefly ran the
+                // scheduler twice). Fall through and treat it as existing.
+                $existing = SeoAction::where('fingerprint', $fingerprint)->first();
+                if (! $existing) {
+                    throw $e;
+                }
             }
-            return 0;
         }
 
-        SeoAction::create($attrs);
+        // Only refresh still-open proposals; never disturb applied/measured
+        // or human-decided (skipped/reverted) rows.
+        if ($existing->status === SeoAction::STATUS_PROPOSED) {
+            $existing->fill([
+                'title' => $attrs['title'],
+                'hypothesis' => $attrs['hypothesis'],
+                'payload' => $attrs['payload'],
+                'impact_score' => $attrs['impact_score'],
+            ])->save();
+        }
 
-        return 1;
+        return 0;
     }
 
     private function judge(float $before, float $after, string $metric, array $sample): string

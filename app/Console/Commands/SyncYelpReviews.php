@@ -12,43 +12,21 @@ class SyncYelpReviews extends Command
 {
     protected $signature = 'testimonials:sync-yelp-reviews
         {--url= : Yelp business page URL (defaults to config)}
-        {--place-id= : Yelp place_id for SerpApi Yelp Reviews API}
-        {--max-pages=10 : Maximum number of SerpApi pages to fetch}
-        {--per-page=49 : Reviews per page (max 49)}
+        {--max-pages=10 : Maximum review-feed pages to fetch (10 reviews per page)}
         {--only-new : Only create new reviews; skip updating already matched reviews}
         {--dry-run : Show what would change without writing to DB}';
 
-    protected $description = 'Sync Yelp reviews via SerpApi Yelp Reviews API, match existing testimonials, and create/update records.';
+    protected $description = 'Sync Yelp reviews by reading the public review feed through the residential proxy, match existing testimonials, and create/update records.';
 
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
         $maxPages = max(1, (int) $this->option('max-pages'));
-        $perPage = max(1, min(49, (int) $this->option('per-page')));
         $onlyNew = (bool) $this->option('only-new');
         $pageUrl = (string) ($this->option('url') ?: config('socials.yelp.url', 'https://www.yelp.com/biz/gs-construction-chicago-2'));
-        $apiKey = (string) config('services.serpapi.api_key', '');
 
-        if ($apiKey === '') {
-            $this->error('SERPAPI_API_KEY (or SERPAPI_KEY) is not set.');
-
-            return self::FAILURE;
-        }
-
-        $placeId = trim((string) ($this->option('place-id') ?: config('services.serpapi.yelp_place_id', '')));
-        if ($placeId === '') {
-            $this->line('Resolving Yelp place_id from business URL...');
-            $placeId = $this->resolvePlaceIdFromBusinessUrl($pageUrl, $apiKey) ?? '';
-        }
-
-        if ($placeId === '') {
-            $this->error('Could not resolve Yelp place_id. Provide --place-id or set SERPAPI_YELP_PLACE_ID.');
-
-            return self::FAILURE;
-        }
-
-        $this->info('Fetching Yelp reviews from SerpApi...');
-        $reviews = $this->fetchWithSerpApi($placeId, $apiKey, $maxPages, $perPage, $pageUrl);
+        $this->info('Fetching Yelp reviews via the review feed…');
+        $reviews = $this->fetchFromYelp($pageUrl, $maxPages);
         $this->info('Fetched '.count($reviews).' review(s).');
 
         if (empty($reviews)) {
@@ -181,48 +159,52 @@ class SyncYelpReviews extends Command
     }
 
     /**
+     * Fetch reviews from Yelp's public review-feed JSON endpoint (the same one
+     * the Yelp frontend paginates with), routed through the residential proxy
+     * used by the rest of the Yelp stack. Falls back to the JSON-LD embedded
+     * in the business page when the feed is blocked.
+     *
      * @return array<int, array<string, mixed>>
      */
-    private function fetchWithSerpApi(string $placeId, string $apiKey, int $maxPages, int $perPage, string $businessUrl): array
+    private function fetchFromYelp(string $businessUrl, int $maxPages): array
     {
+        $path = (string) parse_url($businessUrl, PHP_URL_PATH);
+        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
+        $slug = $segments[1] ?? null;
+
+        if (! $slug) {
+            $this->error('Could not extract Yelp business slug from URL: '.$businessUrl);
+
+            return [];
+        }
+
         $all = [];
         $seenKeys = [];
 
         for ($page = 0; $page < $maxPages; $page++) {
-            $start = $page * $perPage;
+            $start = $page * 10; // review_feed pages are fixed at 10
 
-            $response = Http::timeout(30)
-                ->acceptJson()
-                // Retry transient network/timeout blips (cURL 28) so a single
-                // hiccup doesn't abort the scheduled review sync.
-                ->retry(3, 2000, fn ($exception) => $exception instanceof ConnectionException)
-                ->get('https://serpapi.com/search.json', [
-                    'engine' => 'yelp_reviews',
-                    'place_id' => $placeId,
-                    'start' => $start,
-                    'num' => $perPage,
-                    'api_key' => $apiKey,
-                    'sortby' => 'date_desc',
-                ]);
+            try {
+                $response = $this->yelpHttp($businessUrl)
+                    ->get("https://www.yelp.com/biz/{$slug}/review_feed", [
+                        'rl' => 'en',
+                        'q' => '',
+                        'sort_by' => 'date_desc',
+                        'start' => $start,
+                    ]);
+            } catch (\Throwable $e) {
+                $this->warn('Yelp review feed request failed: '.$e->getMessage());
+                break;
+            }
 
             if (! $response->successful()) {
-                $this->warn('SerpApi request failed (HTTP '.$response->status().') on page '.($page + 1).'.');
+                // 403 here is DataDome — the browser scraper below handles it.
+                $this->warn('Yelp review feed HTTP '.$response->status().' on page '.($page + 1).'.');
                 break;
             }
 
-            $json = $response->json();
-            if (! is_array($json)) {
-                $this->warn('Unexpected SerpApi response payload on page '.($page + 1).'.');
-                break;
-            }
-
-            if (! empty($json['error']) && is_string($json['error'])) {
-                $this->warn('SerpApi error: '.$json['error']);
-                break;
-            }
-
-            $reviews = $json['reviews'] ?? [];
-            if (! is_array($reviews) || empty($reviews)) {
+            $reviews = (array) $response->json('reviews', []);
+            if (empty($reviews)) {
                 break;
             }
 
@@ -231,12 +213,13 @@ class SyncYelpReviews extends Command
                     continue;
                 }
 
-                $name = trim((string) data_get($review, 'user.name', ''));
-                $description = trim((string) data_get($review, 'comment.text', ''));
-                $dateRaw = trim((string) data_get($review, 'date', ''));
+                $name = trim((string) data_get($review, 'user.markupDisplayName', data_get($review, 'user.displayName', '')));
+                $description = $this->cleanReviewHtml((string) data_get($review, 'comment.text', ''));
+                $dateRaw = trim((string) data_get($review, 'localizedDate', ''));
                 $rating = data_get($review, 'rating');
                 $rating = is_numeric($rating) ? (int) $rating : null;
-                $reviewUrl = $this->extractReviewUrl($review, $businessUrl);
+                $reviewId = (string) data_get($review, 'id', '');
+                $reviewUrl = $reviewId !== '' ? rtrim($businessUrl, '/').'?hrid='.urlencode($reviewId) : null;
 
                 if ($name === '' || $description === '') {
                     continue;
@@ -257,94 +240,157 @@ class SyncYelpReviews extends Command
                 ];
             }
 
-            if (count($reviews) < $perPage) {
+            if (count($reviews) < 10) {
                 break;
+            }
+
+            usleep(1_500_000); // pace page requests like a human scroller
+        }
+
+        if (! empty($all)) {
+            return $all;
+        }
+
+        // Primary heavy path: the stealth Puppeteer scraper
+        // (scripts/scrape-yelp-reviews.mjs) — solves DataDome via 2captcha and
+        // paginates the visible review list like a real browser.
+        $this->line('Plain HTTP blocked — launching browser scraper…');
+        $all = $this->runBrowserScraper($businessUrl, $maxPages);
+        if (! empty($all)) {
+            return $all;
+        }
+
+        $this->warn('Browser scraper returned nothing — falling back to business-page JSON-LD.');
+
+        return $this->fetchFromJsonLd($businessUrl);
+    }
+
+    /**
+     * Run scripts/scrape-yelp-reviews.mjs (stealth Puppeteer + DataDome/2captcha
+     * handling, same stack as the Yelp photo uploads) and decode its JSON output.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function runBrowserScraper(string $businessUrl, int $maxPages): array
+    {
+        $script = base_path('scripts/scrape-yelp-reviews.mjs');
+        if (! is_file($script)) {
+            $this->warn('scripts/scrape-yelp-reviews.mjs not found.');
+
+            return [];
+        }
+
+        $cmd = ['node', $script, '--url='.$businessUrl, '--max-pages='.$maxPages, '--timeout-ms=180000'];
+        if ($proxy = (string) (config('services.yelp.business.proxy') ?: config('services.scraper.proxy') ?: '')) {
+            $cmd[] = '--proxy='.$proxy;
+        }
+        if ($captchaKey = (string) config('services.twocaptcha.api_key', '')) {
+            $cmd[] = '--twocaptcha-key='.$captchaKey;
+        }
+
+        $realHome = (string) (getenv('HOME') ?: '/home/'.get_current_user());
+        $process = new \Symfony\Component\Process\Process($cmd, base_path(), [
+            'HOME' => $realHome,
+            'PUPPETEER_CACHE_DIR' => (string) (config('services.yelp.business.puppeteer_cache_dir') ?: $realHome.'/.cache/puppeteer'),
+        ], null, 300);
+
+        try {
+            $process->run();
+        } catch (\Throwable $e) {
+            $this->warn('Browser scraper failed to run: '.$e->getMessage());
+
+            return [];
+        }
+
+        if (! $process->isSuccessful()) {
+            $this->warn('Browser scraper exited '.$process->getExitCode().': '.mb_substr(trim($process->getErrorOutput()), -300));
+
+            return [];
+        }
+
+        $json = json_decode(trim($process->getOutput()), true);
+
+        return is_array($json) ? (array) ($json['reviews'] ?? []) : [];
+    }
+
+    /**
+     * Fallback: parse the schema.org JSON-LD block Yelp embeds on the business
+     * page. Yields fewer reviews (typically the visible page) and no review
+     * URLs, but keeps the sync alive if the feed endpoint is blocked.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchFromJsonLd(string $businessUrl): array
+    {
+        $response = $this->yelpHttp($businessUrl, acceptJson: false)->get($businessUrl);
+        if (! $response->successful()) {
+            $this->warn('Yelp business page HTTP '.$response->status().'.');
+
+            return [];
+        }
+
+        if (! preg_match_all('/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/si', (string) $response->body(), $m)) {
+            return [];
+        }
+
+        $all = [];
+        foreach ($m[1] as $blob) {
+            $json = json_decode(html_entity_decode($blob, ENT_QUOTES | ENT_HTML5), true);
+            if (! is_array($json)) {
+                continue;
+            }
+            foreach ((array) data_get($json, 'review', []) as $review) {
+                $name = trim((string) data_get($review, 'author.name', data_get($review, 'author', '')));
+                $description = trim((string) data_get($review, 'description', ''));
+                if ($name === '' || $description === '') {
+                    continue;
+                }
+                $all[] = [
+                    'reviewer_name' => $name,
+                    'review_description' => $description,
+                    'review_date_raw' => trim((string) data_get($review, 'datePublished', '')),
+                    'star_rating' => (int) data_get($review, 'reviewRating.ratingValue', 0) ?: null,
+                    'url' => null,
+                ];
             }
         }
 
         return $all;
     }
 
-    private function extractReviewUrl(array $review, string $businessUrl): ?string
+    /**
+     * HTTP client tuned for Yelp: residential proxy (2captcha rotating — the
+     * same source the Yelp photo stack uses), browser-like headers, and retry
+     * on transient connection blips.
+     */
+    private function yelpHttp(string $businessUrl, bool $acceptJson = true): \Illuminate\Http\Client\PendingRequest
     {
-        $candidate = data_get($review, 'link');
-        if (is_string($candidate) && str_contains($candidate, 'yelp.com')) {
-            return $candidate;
-        }
+        $proxy = (string) (config('services.yelp.business.proxy') ?: config('services.scraper.proxy') ?: '');
 
-        $reviewId = data_get($review, 'review_id');
-        if (is_string($reviewId) && $reviewId !== '') {
-            return rtrim($businessUrl, '/').'?hrid='.urlencode($reviewId);
-        }
-
-        return null;
-    }
-
-    private function resolvePlaceIdFromBusinessUrl(string $businessUrl, string $apiKey): ?string
-    {
-        $path = (string) parse_url($businessUrl, PHP_URL_PATH);
-        $segments = array_values(array_filter(explode('/', trim($path, '/'))));
-        $slug = $segments[1] ?? null;
-
-        if (! $slug) {
-            return null;
-        }
-
-        $query = preg_replace('/-\d+$/', '', $slug) ?? $slug;
-        $query = str_replace('-', ' ', $query);
-
-        $response = Http::timeout(30)
-            ->acceptJson()
-            ->retry(3, 2000, fn ($exception) => $exception instanceof ConnectionException)
-            ->get('https://serpapi.com/search.json', [
-                'engine' => 'yelp_search',
-                'find_desc' => $query,
-                'api_key' => $apiKey,
+        $client = Http::timeout(45)
+            ->retry(3, 2000, fn ($exception) => $exception instanceof ConnectionException, throw: false)
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept' => $acceptJson ? 'application/json, text/plain, */*' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language' => 'en-US,en;q=0.9',
+                'Referer' => $businessUrl,
+                'X-Requested-With' => $acceptJson ? 'XMLHttpRequest' : '',
             ]);
 
-        if (! $response->successful()) {
-            return null;
+        if ($proxy !== '') {
+            $client = $client->withOptions(['proxy' => $proxy]);
         }
 
-        $json = $response->json();
-        if (! is_array($json)) {
-            return null;
-        }
+        return $client;
+    }
 
-        $results = $json['organic_results'] ?? [];
-        if (! is_array($results)) {
-            return null;
-        }
+    /** Strip the HTML Yelp embeds in comment.text (<br>, encoded entities). */
+    private function cleanReviewHtml(string $html): string
+    {
+        $text = str_ireplace(['<br>', '<br/>', '<br />'], "\n", $html);
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5);
 
-        $targetPath = '/'.trim((string) parse_url($businessUrl, PHP_URL_PATH), '/');
-
-        foreach ($results as $result) {
-            if (! is_array($result)) {
-                continue;
-            }
-
-            $resultLink = data_get($result, 'link');
-            if (! is_string($resultLink) || $resultLink === '') {
-                continue;
-            }
-
-            $resultPath = '/'.trim((string) parse_url($resultLink, PHP_URL_PATH), '/');
-            if ($resultPath !== $targetPath) {
-                continue;
-            }
-
-            $placeIds = data_get($result, 'place_ids', []);
-            if (is_array($placeIds) && ! empty($placeIds) && is_string($placeIds[0])) {
-                return $placeIds[0];
-            }
-
-            $singlePlaceId = data_get($result, 'place_id');
-            if (is_string($singlePlaceId) && $singlePlaceId !== '') {
-                return $singlePlaceId;
-            }
-        }
-
-        return null;
+        return trim(preg_replace('/\n{3,}/', "\n\n", $text) ?? $text);
     }
 
     /**
@@ -411,7 +457,7 @@ class SyncYelpReviews extends Command
         $existingDescription = (string) $testimonial->review_description;
         $incomingDescription = (string) $payload['review_description'];
 
-        // SerpApi is the source of truth for review content.
+        // Yelp is the source of truth for review content.
         if (trim($incomingDescription) !== '' && trim($existingDescription) !== trim($incomingDescription)) {
             $update['review_description'] = $incomingDescription;
         }
