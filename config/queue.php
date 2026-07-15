@@ -72,7 +72,10 @@ return [
             // supervisor-media-sync runs Puppeteer/Chromium with timeout=360,
             // so 90s would re-queue jobs mid-Yelp-upload and stall the queue
             // in a release/reserve loop with zero observable progress.
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 900),
+            // Must exceed the longest job timeout on any redis queue, or Redis
+            // re-serves a still-running job to another worker and it dies with
+            // MaxAttemptsExceeded. Longest: RunGscInspectBulkJob at 3600s.
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 3700),
             'block_for' => null,
             'after_commit' => false,
         ],
