@@ -6,7 +6,7 @@ puppeteer.use(StealthPlugin());
 
 function parseArgs(argv) {
   const args = {
-    url: 'https://www.yelp.com/biz/gs-construction-chicago-2',
+    url: 'https://www.yelp.com/biz/gs-construction-prospect-heights',
     timeoutMs: 120000,
     maxPages: 10,
     headless: true,

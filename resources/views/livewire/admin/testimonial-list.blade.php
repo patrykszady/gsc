@@ -1,9 +1,17 @@
 <div>
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <flux:heading size="xl">Reviews</flux:heading>
-        <flux:button href="{{ route('admin.testimonials.create') }}" icon="plus">
-            New Review
-        </flux:button>
+        <div class="flex flex-wrap items-center gap-2">
+            <flux:button wire:click="syncGoogleReviews" wire:loading.attr="disabled" variant="ghost" icon="arrow-path">
+                Sync Google
+            </flux:button>
+            <flux:button wire:click="syncYelpReviews" wire:loading.attr="disabled" variant="ghost" icon="arrow-path">
+                Sync Yelp
+            </flux:button>
+            <flux:button href="{{ route('admin.testimonials.create') }}" icon="plus">
+                New Review
+            </flux:button>
+        </div>
     </div>
 
     {{-- Filters --}}

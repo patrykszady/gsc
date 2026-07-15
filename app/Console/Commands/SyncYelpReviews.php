@@ -23,7 +23,7 @@ class SyncYelpReviews extends Command
         $dryRun = (bool) $this->option('dry-run');
         $maxPages = max(1, (int) $this->option('max-pages'));
         $onlyNew = (bool) $this->option('only-new');
-        $pageUrl = (string) ($this->option('url') ?: config('socials.yelp.url', 'https://www.yelp.com/biz/gs-construction-chicago-2'));
+        $pageUrl = (string) ($this->option('url') ?: config('socials.yelp.url', 'https://www.yelp.com/biz/gs-construction-prospect-heights'));
 
         $this->info('Fetching Yelp reviews via the review feed…');
         $reviews = $this->fetchFromYelp($pageUrl, $maxPages);

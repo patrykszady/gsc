@@ -195,6 +195,13 @@
     ];
 
     if (($data['count'] ?? 0) >= 1 && $data['items']->isNotEmpty()) {
+        // Signal to the layout-level <x-schema-org /> that this page already
+        // carries a rated entity: Google shows review stars only when a page
+        // has ONE unambiguous rated item, so the sitewide business node then
+        // omits its (self-serving, policy-ignored) aggregateRating/review.
+        // Works because slot/page content always renders before the layout.
+        app()->instance('schema.page_rating_emitted', true);
+
         $schema['aggregateRating'] = [
             '@type'       => 'AggregateRating',
             'ratingValue' => (string) $data['avg'],

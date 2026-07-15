@@ -145,6 +145,70 @@ class AreaServed extends Model
     }
 
     /**
+     * Visible testimonials whose free-text project_location resolves to this
+     * area's city, using the same leading-token match as localProjects().
+     * Cached 6h. Used for the per-town proof block on area pages.
+     *
+     * @return Collection<int, \App\Models\Testimonial>
+     */
+    public function localTestimonials(int $limit = 3): Collection
+    {
+        $city = trim((string) $this->city);
+        if ($city === '') {
+            return new Collection;
+        }
+
+        $key = "area:{$this->id}:local_testimonials:{$limit}";
+
+        return cache()->remember($key, 21600, function () use ($city, $limit) {
+            $needle = mb_strtolower($city);
+
+            return Testimonial::visible()
+                ->whereNotNull('project_location')
+                ->latest('review_date')
+                ->get()
+                ->filter(function (Testimonial $testimonial) use ($needle): bool {
+                    $parts = preg_split('/[,.]/', (string) $testimonial->project_location) ?: [];
+                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
+                    return $token === $needle;
+                })
+                ->take($limit)
+                ->values();
+        });
+    }
+
+    /**
+     * Fallback proof for towns with no reviews of their own: testimonials from
+     * the geographically nearest served towns, honestly labeled by their real
+     * town on the area page (never presented as reviews from this city).
+     *
+     * @return Collection<int, \App\Models\Testimonial>
+     */
+    public function nearbyTestimonials(int $limit = 3): Collection
+    {
+        $key = "area:{$this->id}:nearby_testimonials:{$limit}";
+
+        return cache()->remember($key, 21600, function () use ($limit) {
+            $collected = new Collection;
+
+            foreach ($this->nearestCities(10) as $nearby) {
+                foreach ($nearby->localTestimonials($limit) as $testimonial) {
+                    if ($collected->count() >= $limit) {
+                        return $collected->values();
+                    }
+
+                    if (! $collected->contains('id', $testimonial->id)) {
+                        $collected->push($testimonial);
+                    }
+                }
+            }
+
+            return $collected->values();
+        });
+    }
+
+    /**
      * One representative image per local project (cover first, else first image),
      * for the area-page project slider. Empty when the city has no local projects.
      *

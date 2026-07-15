@@ -57,6 +57,26 @@
                             <flux:input wire:model="completed_month" type="month" />
                             <flux:error name="completed_month" />
                         </flux:field>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:field>
+                                <flux:label>Client Name</flux:label>
+                                <flux:input wire:model="client_name" placeholder="Homeowner name (private)" />
+                                <flux:error name="client_name" />
+                            </flux:field>
+
+                            <flux:field>
+                                <flux:label>Client Email</flux:label>
+                                <flux:input wire:model="client_email" type="email" placeholder="For the review-request email" />
+                                <flux:description>
+                                    Never shown publicly. When set and the project is completed, a Google review request is emailed once automatically.
+                                    @if($this->project?->review_request_sent_at)
+                                        <span class="font-medium text-green-600 dark:text-green-400">Review request sent {{ $this->project->review_request_sent_at->timezone('America/Chicago')->format('M j, Y') }}.</span>
+                                    @endif
+                                </flux:description>
+                                <flux:error name="client_email" />
+                            </flux:field>
+                        </div>
                     </div>
                 </flux:card>
 

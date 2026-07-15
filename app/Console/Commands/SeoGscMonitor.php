@@ -108,12 +108,28 @@ class SeoGscMonitor extends Command
 
         $hasRegressions = ! empty($positionDrops) || ! empty($clickDrops) || ! empty($imprDrops) || ! empty($lostTop20);
         if ($hasRegressions) {
-            logger()->warning('seo:gsc-monitor: regressions detected', [
+            // Position churn on queries that have never earned a click is
+            // normal long-tail noise (avg position swings wildly at 1-2
+            // impressions/day) — log it as info, not a warning. A WARNING
+            // means something that actually had clicks or page impressions
+            // regressed and deserves a human look.
+            $clickBearing = collect($positionDrops)->where('prior_clicks', '>', 0)->count()
+                + collect($lostTop20)->where('prior_clicks', '>', 0)->count();
+            $meaningful = $clickBearing > 0 || ! empty($clickDrops) || ! empty($imprDrops);
+
+            $context = [
                 'position_drops' => count($positionDrops),
                 'click_drops' => count($clickDrops),
                 'impr_drops' => count($imprDrops),
                 'lost_top20' => count($lostTop20),
-            ]);
+                'click_bearing_drops' => $clickBearing,
+            ];
+
+            if ($meaningful) {
+                logger()->warning('seo:gsc-monitor: regressions detected', $context);
+            } else {
+                logger()->info('seo:gsc-monitor: zero-click position churn only (no click-bearing regressions)', $context);
+            }
         }
 
         return self::SUCCESS;

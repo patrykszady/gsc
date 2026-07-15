@@ -124,9 +124,26 @@ class SeoClarityHealth extends Command
         }
 
         // Non-zero exit on a confirmed spike so the scheduler's onFailure hook
-        // logs it (matches seo:gsc-critical-health behaviour).
+        // logs it (matches seo:gsc-critical-health behaviour) — but only when
+        // our own error beacon corroborates it. Clarity counts ALL script
+        // errors including cross-origin ones (Cloudflare challenge scripts,
+        // tag managers) that the beacon deliberately drops as un-actionable;
+        // a spike with zero beacon-captured errors is third-party noise, not
+        // a broken deploy (confirmed 2026-07-14: 48% spike, all CF challenge
+        // noise, site JS clean under a rendered-browser audit).
         if ($spike !== null) {
-            return self::FAILURE;
+            $beaconErrors = \App\Models\ClientError::where('last_seen_at', '>=', now()->subHours(36))->count();
+
+            if ($beaconErrors > 0) {
+                $this->error("Beacon corroborates the spike ({$beaconErrors} client errors in 36h) — treating as a real regression.");
+
+                return self::FAILURE;
+            }
+
+            $this->warn('Spike NOT corroborated by the on-site error beacon (0 client errors in 36h) — almost certainly cross-origin/third-party noise. Not failing.');
+            logger()->warning('seo:clarity-health: JS error spike without beacon corroboration (third-party noise)', [
+                'spike' => $spike['summary'],
+            ]);
         }
 
         return self::SUCCESS;

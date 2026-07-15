@@ -155,16 +155,10 @@
         ], $zipCodes);
     }
 
-    if ($areaReviewCount >= 3) {
-        $schema['aggregateRating'] = [
-            '@type' => 'AggregateRating',
-            'ratingValue' => '5',
-            'bestRating' => '5',
-            'worstRating' => '1',
-            'ratingCount' => $areaReviewCount,
-            'reviewCount' => $areaReviewCount,
-        ];
-    }
+    // Intentionally NO aggregateRating on this node: self-serving LocalBusiness
+    // ratings are ignored for stars (2019 policy), and area pages already emit
+    // rated Product nodes — a page needs ONE unambiguous rated entity to be
+    // eligible for review stars.
 @endphp
 
 <script type="application/ld+json">

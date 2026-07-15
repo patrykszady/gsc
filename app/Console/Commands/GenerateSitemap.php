@@ -293,6 +293,31 @@ class GenerateSitemap extends Command
             }
         }
 
+        // Add building-permit guide pages (the /permits hub is a parameterless
+        // route and is picked up with the static routes above).
+        $permitGuides = \App\Support\PermitGuideInfo::all();
+        if (! empty($permitGuides)) {
+            $this->info('Adding permit-guide pages to sitemap...');
+            foreach ($permitGuides as $slug => $permitGuide) {
+                $slug = (string) $slug;
+                if ($slug === '') {
+                    continue;
+                }
+                $researchedAt = (string) ($permitGuide['researched_at'] ?? '');
+                $lastMod = $researchedAt !== ''
+                    ? \Illuminate\Support\Carbon::parse($researchedAt)
+                    : now();
+                $sitemap->add(
+                    Url::create("{$baseUrl}/permits/{$slug}")
+                        ->setLastModificationDate($lastMod)
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.7)
+                );
+                $urlCount++;
+                $this->line("  Added permit guide: /permits/{$slug}");
+            }
+        }
+
         // Add trade-partner pages (the /trades hub is a parameterless route and
         // is picked up with the other static routes above).
         $trades = (array) config('trades.trades', []);

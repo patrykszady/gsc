@@ -21,6 +21,9 @@ class Project extends Model
         'description',
         'project_type',
         'location',
+        'client_name',
+        'client_email',
+        'review_request_sent_at',
         'completed_at',
         'is_featured',
         'is_published',
@@ -30,6 +33,7 @@ class Project extends Model
 
     protected $casts = [
         'completed_at' => 'date',
+        'review_request_sent_at' => 'datetime',
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
     ];
@@ -225,7 +229,12 @@ class Project extends Model
      */
     public function getReviewRequestUrl(): ?string
     {
+        // The writereview deep link opens the review dialog directly, unlike
+        // the Maps place URL, which lands on the listing.
+        $placeId = config('services.google.business_profile.place_id');
+
         $destination = config('services.google.review_request_url')
+            ?: ($placeId ? 'https://search.google.com/local/writereview?placeid=' . $placeId : null)
             ?: config('socials.google.url');
 
         if (! $destination) {

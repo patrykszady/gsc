@@ -37,7 +37,7 @@ $people = [
             'name' => 'Chicago Suburbs, IL',
             'address' => [
                 '@type' => 'PostalAddress',
-                'addressLocality' => 'Arlington Heights',
+                'addressLocality' => 'Prospect Heights',
                 'addressRegion' => 'IL',
                 'addressCountry' => 'US',
             ],
@@ -74,7 +74,7 @@ $people = [
             'name' => 'Chicago Suburbs, IL',
             'address' => [
                 '@type' => 'PostalAddress',
-                'addressLocality' => 'Arlington Heights',
+                'addressLocality' => 'Prospect Heights',
                 'addressRegion' => 'IL',
                 'addressCountry' => 'US',
             ],

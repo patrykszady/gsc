@@ -94,7 +94,10 @@
         'addressCountry'  => 'US',
     ],
     'areaServed'      => ['@type' => 'City', 'name' => $cityName.', IL'],
-    'aggregateRating' => $aggregate,
+    // No aggregateRating here: self-serving LocalBusiness ratings are ignored
+    // for stars (2019 policy) and would compete with the page's rated Product
+    // nodes — the only entities eligible to render stars. Reviews stay for
+    // E-E-A-T / AI-answer surfaces; the visible badge still shows the average.
     'review'          => $reviews,
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
 </script>

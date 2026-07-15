@@ -171,17 +171,6 @@ $localBusiness = [
         config('socials.yelp.url'),
         config('socials.angi.url'),
     ]),
-    'aggregateRating' => [
-        '@type' => 'AggregateRating',
-        'ratingValue' => '5',
-        'bestRating' => '5',
-        'worstRating' => '1',
-        'ratingCount' => $reviewCount,
-        'reviewCount' => $reviewCount,
-    ],
-    // Reviews must be nested inside the LocalBusiness, not standalone
-    // Standalone Review with itemReviewed is invalid for rich results
-    'review' => $reviews,
     'hasOfferCatalog' => [
         '@type' => 'OfferCatalog',
         'name' => 'Home Remodeling Services',
@@ -285,6 +274,26 @@ $localBusiness = [
         ],
     ],
 ];
+
+// Google shows review stars only for pages with ONE unambiguous rated entity,
+// and ignores self-serving LocalBusiness ratings outright (2019 policy). So on
+// pages that emit a rated Product node (service/area pages via
+// <x-product-service-schema>), the business node stays rating-free and the
+// Product carries the stars. Everywhere else the business rating is kept for
+// completeness/AI-answer surfaces.
+if (! app()->bound('schema.page_rating_emitted')) {
+    $localBusiness['aggregateRating'] = [
+        '@type' => 'AggregateRating',
+        'ratingValue' => '5',
+        'bestRating' => '5',
+        'worstRating' => '1',
+        'ratingCount' => $reviewCount,
+        'reviewCount' => $reviewCount,
+    ];
+    // Reviews must be nested inside the LocalBusiness, not standalone —
+    // standalone Review with itemReviewed is invalid for rich results.
+    $localBusiness['review'] = $reviews;
+}
 
 // Organization schema
 $organization = [

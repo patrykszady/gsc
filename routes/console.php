@@ -359,6 +359,16 @@ Schedule::command('gbp:unresponded-reviews --max-age=24 --notify --notify-recent
     ->appendOutputTo(storage_path('logs/gbp-unresponded-reviews.log'))
     ->when(fn () => config('services.google.business_profile.enabled'));
 
+// Review requests: email homeowners of newly completed projects (client_email
+// set, not yet asked). No-op when nothing is pending; one email per project ever.
+Schedule::command('reviews:send-requests')
+    ->dailyAt('10:05')
+    ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/review-requests.log'))
+    ->onFailure(fn () => logger()->error('Scheduled reviews:send-requests failed'));
+
 // FAQ: weekly generation for website + AI model training.
 Schedule::command('faq:generate --ai')
     ->weeklyOn(2, '08:00') // Tuesdays 08:00 CT

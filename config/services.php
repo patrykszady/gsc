@@ -70,6 +70,10 @@ return [
         'measurement_api_secret' => env('GOOGLE_MEASUREMENT_API_SECRET'), // GA4 Measurement Protocol API Secret
         'gemini_api_key' => env('GOOGLE_GEMINI_API_KEY'),
         'gemini_model' => env('GOOGLE_GEMINI_MODEL', 'gemini-2.5-flash'),
+        // Optional override for the review-request destination. When unset,
+        // Project::getReviewRequestUrl() builds the writereview deep link from
+        // business_profile.place_id.
+        'review_request_url' => env('GOOGLE_REVIEW_REQUEST_URL'),
         'business_profile' => [
             'enabled' => env('GOOGLE_BUSINESS_PROFILE_ENABLED', false),
             'client_id' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID'),

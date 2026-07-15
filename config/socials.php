@@ -22,7 +22,7 @@ return [
         'icon' => 'images/socials/facebook.svg',
     ],
     'yelp' => [
-        'url' => 'https://www.yelp.com/biz/gs-construction-chicago-2',
+        'url' => 'https://www.yelp.com/biz/gs-construction-prospect-heights',
         'label' => 'Yelp',
         'icon' => 'images/socials/yelp.svg',
     ],

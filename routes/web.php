@@ -335,6 +335,16 @@ Route::get('/costs/{slug}', function (string $slug) {
     return view('cost-page', ['guide' => $guide]);
 })->where('slug', '[a-z0-9\-]+')->name('costs.show');
 
+// Building-permit guide cluster: per-town permit guides from researched
+// official-source data (see app/Support/PermitGuideInfo.php).
+Route::get('/permits', fn () => view('permits-index'))->name('permits.index');
+Route::get('/permits/{slug}', function (string $slug) {
+    $guide = \App\Support\PermitGuideInfo::forSlug($slug);
+    abort_unless((bool) $guide, 404);
+
+    return view('permit-guide-page', ['slug' => $slug, 'guide' => $guide]);
+})->where('slug', '[a-z0-9\-]+')->name('permits.show');
+
 // Insurance-claim repair cluster: damage-type rebuild guides
 // (see config/insurance-claims.php — GC rebuild positioning, never public adjusting).
 Route::get('/insurance-claims', fn () => view('insurance-claims-index'))->name('insurance-claims.index');

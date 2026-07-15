@@ -112,7 +112,7 @@
                 'instagram' => ['label' => 'Instagram', 'placeholder' => 'https://www.instagram.com/gs.construction.co/'],
                 'google' => ['label' => 'Google', 'placeholder' => 'https://www.google.com/search?q=GS+Construction+chicago'],
                 'facebook' => ['label' => 'Facebook', 'placeholder' => 'https://www.facebook.com/gs.construction.chi'],
-                'yelp' => ['label' => 'Yelp', 'placeholder' => 'https://www.yelp.com/biz/gs-construction-chicago-2'],
+                'yelp' => ['label' => 'Yelp', 'placeholder' => 'https://www.yelp.com/biz/gs-construction-prospect-heights'],
                 'houzz' => ['label' => 'Houzz', 'placeholder' => 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575'],
                 'angi' => ['label' => 'Angi', 'placeholder' => 'https://www.angi.com/companylist/us/il/chicagoland/gs-construction-and-remodeling-reviews-11400361.htm'],
             ];

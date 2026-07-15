@@ -55,6 +55,27 @@ class TestimonialList extends Component
         session()->flash('success', 'Review deleted successfully.');
     }
 
+    /**
+     * Queue the Yelp review scrape (same command the Monday scheduler runs).
+     * Queued because the stealth-browser/DataDome path can take 5+ minutes.
+     */
+    public function syncYelpReviews(): void
+    {
+        \Illuminate\Support\Facades\Artisan::queue('testimonials:sync-yelp-reviews', ['--only-new' => true])
+            ->onQueue('social-media');
+
+        session()->flash('success', 'Yelp sync queued — new reviews will appear here within a few minutes. Check storage/logs for details.');
+    }
+
+    /** Queue the Google (GBP API) review sync — usually completes in seconds. */
+    public function syncGoogleReviews(): void
+    {
+        \Illuminate\Support\Facades\Artisan::queue('google-business-profile:sync-reviews')
+            ->onQueue('social-media');
+
+        session()->flash('success', 'Google review sync queued — refresh shortly.');
+    }
+
     public function render()
     {
         $query = Testimonial::query();
