@@ -93,16 +93,24 @@ class SeoContentDecay extends Command
         }
 
         if ($clickDecay->isNotEmpty() || $posDecay->isNotEmpty()) {
+            // A 1-2 click page dropping to 0 is statistical noise, not decay —
+            // count only drops from a meaningful click base toward the WARNING
+            // level (the full list still lands in the report either way).
+            $meaningfulClickDrops = $clickDecay->where('p_clicks', '>=', 5)->count();
+
             $summary = [
                 'click_drops' => $clickDecay->count(),
+                'meaningful_click_drops' => $meaningfulClickDrops,
                 'pos_regressions' => $posDecay->count(),
             ];
 
             $cacheKey = 'seo:content-decay:warn:' . now()->format('Ymd') . ':' . md5(json_encode($summary));
-            if (Cache::add($cacheKey, true, now()->addHours(30))) {
+            if (! Cache::add($cacheKey, true, now()->addHours(30))) {
+                logger()->info('seo:content-decay repeated regressions suppressed', $summary);
+            } elseif ($meaningfulClickDrops > 0) {
                 logger()->warning('seo:content-decay found regressions', $summary);
             } else {
-                logger()->info('seo:content-decay repeated regressions suppressed', $summary);
+                logger()->info('seo:content-decay: low-volume churn only (no page lost 5+ clicks)', $summary);
             }
         }
 

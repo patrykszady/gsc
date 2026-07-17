@@ -44,63 +44,63 @@
         />
     </section>
 
-    {{-- About Section --}}
-    {{-- <section class="py-16 sm:py-24">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-3xl text-center">
-                <h2 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
-                    Expert {{ $data['title'] }} Services
-                </h2>
-                <p class="mt-6 text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-                    {{ $data['description'] }}
-                </p>
-            </div>
+    {{-- About: the authored per-service intro (was commented out for months —
+         it and the sections below are the page's only substantive unique copy,
+         so they must render, not just feed schema). --}}
+    <section class="py-12 sm:py-16">
+        <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+            <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+                Expert {{ $data['title'] }} Services
+            </h2>
+            <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-300">
+                {{ $data['description'] }}
+            </p>
         </div>
-    </section> --}}
+    </section>
 
-    {{-- Features Section --}}
-    {{-- <section class="bg-zinc-50 py-16 sm:py-24 dark:bg-zinc-800/50">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
+    {{-- Features --}}
+    @if(!empty($data['features']))
+        <section class="bg-zinc-50 py-12 sm:py-16 dark:bg-zinc-800/50">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
                     What We Offer
                 </h2>
+                <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach($data['features'] as $feature)
+                        <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+                            <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $feature['title'] }}</h3>
+                            <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $feature['description'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
             </div>
-            <div class="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach($data['features'] as $feature)
-                    <div class="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700">
-                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $feature['title'] }}</h3>
-                        <p class="mt-4 text-sm text-zinc-600 dark:text-zinc-400">{{ $feature['description'] }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section> --}}
+        </section>
+    @endif
 
-    {{-- Process Section --}}
-    {{-- <section class="py-16 sm:py-24">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
+    {{-- Process --}}
+    @if(!empty($data['process']))
+        <section class="py-12 sm:py-16">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
                     Our Process
                 </h2>
-                <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-400">
+                <p class="mt-2 text-base text-zinc-600 dark:text-zinc-400">
                     From initial consultation to final walkthrough, here's what to expect.
                 </p>
-            </div>
-            <div class="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach($data['process'] as $step)
-                    <div class="relative">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-sky-600 text-xl font-bold text-white">
-                            {{ $step['step'] }}
+                <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    @foreach($data['process'] as $step)
+                        <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+                            <div class="flex size-10 items-center justify-center rounded-full bg-sky-50 text-lg font-bold text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
+                                {{ $step['step'] }}
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">{{ $step['title'] }}</h3>
+                            <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $step['description'] }}</p>
                         </div>
-                        <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">{{ $step['title'] }}</h3>
-                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $step['description'] }}</p>
-                    </div>
-                @endforeach
+                    @endforeach
+                </div>
             </div>
-        </div>
-    </section> --}}
+        </section>
+    @endif
 
     {{-- Projects Section --}}
     @if($projects->isNotEmpty())
@@ -130,10 +130,14 @@
 
     {{-- Service by City — hub-to-spoke internal linking for local SEO --}}
     @php
+        // Canonical spoke slugs (the legacy 'kitchens'/'bathrooms' aliases 301
+        // to these — linking canonically saves the redirect hop).
         $serviceSlugMap = [
-            'kitchen-remodeling' => 'kitchens',
-            'bathroom-remodeling' => 'bathrooms',
+            'kitchen-remodeling' => 'kitchen-remodeling',
+            'bathroom-remodeling' => 'bathroom-remodeling',
             'home-remodeling' => 'home-remodeling',
+            'home-additions' => 'home-additions',
+            'basement-remodeling' => 'basement-remodeling',
         ];
         $serviceSlug = $serviceSlugMap[$service] ?? null;
 

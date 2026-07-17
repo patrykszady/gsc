@@ -70,6 +70,66 @@
                 </li>
             @endforeach
         </ul>
+        {{-- How to choose — evergreen guidance that makes this hub a resource, not just a link list --}}
+        <section class="mx-auto mt-16 max-w-4xl">
+            <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">
+                How to compare remodeling contractors in the Chicago suburbs
+            </h2>
+            <p class="mt-3 text-zinc-600 dark:text-zinc-300">
+                Websites and showrooms can look alike. These are the questions that actually separate contractors —
+                ask every company the same ones and compare the answers side by side.
+            </p>
+            <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Who actually does the work?</h3>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        Many firms sell the job, then subcontract every trade. Ask who performs each trade, who supervises
+                        them on site each day, and whose warranty covers the finished work — one company's, or five subs'.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Is the estimate itemized?</h3>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        A single lump-sum number hides markups and makes bids impossible to compare. Insist on an itemized
+                        scope, then compare line by line. Our <a href="{{ route('costs.index') }}" wire:navigate class="font-medium text-sky-700 underline dark:text-sky-400">cost guides</a>
+                        show what typical projects run in this area.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Who pulls the permits?</h3>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        Unpermitted work can stall a home sale and void insurance. Confirm the contractor pulls the permit
+                        under their own registration and schedules every inspection — our
+                        <a href="{{ route('permits.index') }}" wire:navigate class="font-medium text-sky-700 underline dark:text-sky-400">village permit guides</a>
+                        cover what each suburb requires.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 class="text-base font-semibold text-zinc-900 dark:text-white">How will you communicate?</h3>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        Ask whether you get a live portal showing the schedule, change orders, and balances — or occasional
+                        phone calls. Then ask who your day-to-day contact is, and whether that person changes once the
+                        contract is signed.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Are the reviews independent?</h3>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        Testimonials on a company's own site are easy to curate. Look for consistent reviews across Google,
+                        Houzz, Yelp, and Angi — and read the recent ones, not just the average. See
+                        <a href="{{ route('reviews.index') }}" wire:navigate class="font-medium text-sky-700 underline dark:text-sky-400">our reviews</a> with names and towns.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                    <h3 class="text-base font-semibold text-zinc-900 dark:text-white">Can you keep design control?</h3>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        Design-build firms often require a design retainer and steer material choices to their showroom.
+                        If you want your own designer, architect, or materials, confirm up front that the contractor will
+                        build to your plans without a package upcharge.
+                    </p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <div class="mt-12">

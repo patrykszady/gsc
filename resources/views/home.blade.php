@@ -125,6 +125,65 @@
     {{-- Testimonials Section (lazy loaded - below fold) --}}
     <livewire:testimonials-section lazy />
 
+    {{-- Recent projects: server-rendered so the homepage passes crawlable,
+         town-keyword links to case-study pages ("{Service} in {Town}" headings
+         are proof + geo-keyword in one element). --}}
+    @php
+        $homeProjects = \App\Models\Project::query()
+            ->where('is_published', true)
+            ->with(['images' => fn ($q) => $q->orderByDesc('is_cover')->orderBy('sort_order')->limit(1)])
+            ->orderByDesc('is_featured')
+            ->latest('completed_at')
+            ->take(6)
+            ->get();
+        $homeProjectTypeLabels = [
+            'kitchen' => 'Kitchen Remodel',
+            'bathroom' => 'Bathroom Remodel',
+            'home-remodel' => 'Home Remodel',
+            'basement' => 'Basement Remodel',
+            'addition' => 'Home Addition',
+            'mudroom' => 'Mudroom Remodel',
+        ];
+    @endphp
+    @if($homeProjects->isNotEmpty())
+        <section class="mx-auto max-w-7xl px-6 py-12 lg:px-8" aria-label="Recent remodeling projects">
+            <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+                Recent projects across Chicago's suburbs
+            </h2>
+            <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                @foreach($homeProjects as $homeProject)
+                    @php
+                        $hpTown = trim((string) (preg_split('/[,.]/', (string) $homeProject->location)[0] ?? ''));
+                        $hpLabel = $homeProjectTypeLabels[$homeProject->project_type] ?? 'Remodeling Project';
+                    @endphp
+                    <a href="{{ route('projects.show', $homeProject) }}" wire:navigate
+                       class="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+                        <div class="relative aspect-[4/3] overflow-hidden">
+                            @if($homeProject->images->first())
+                                <x-lqip-image
+                                    :image="$homeProject->images->first()"
+                                    size="medium" width="600" height="450"
+                                    :alt="$hpLabel . ($hpTown !== '' ? ' in ' . $hpTown . ', IL' : '') . ' — ' . $homeProject->title"
+                                    class="h-full w-full transition duration-300 group-hover:scale-105" />
+                            @endif
+                        </div>
+                        <div class="p-4">
+                            <h3 class="text-sm font-semibold text-zinc-900 group-hover:text-sky-700 dark:text-white dark:group-hover:text-sky-400">
+                                {{ $hpLabel }}{{ $hpTown !== '' ? ' in ' . $hpTown : '' }}
+                            </h3>
+                            <p class="mt-0.5 line-clamp-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $homeProject->title }}</p>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+            <p class="mt-6 text-sm">
+                <a href="{{ route('projects.index') }}" wire:navigate class="font-medium text-sky-700 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300">
+                    Browse all completed projects &rarr;
+                </a>
+            </p>
+        </section>
+    @endif
+
     {{-- Static Map Section (parallax with bg-fixed) - hidden for now --}}
     {{-- <livewire:static-map-section lazy /> --}}
     

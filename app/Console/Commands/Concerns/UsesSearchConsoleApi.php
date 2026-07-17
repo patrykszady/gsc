@@ -19,14 +19,19 @@ trait UsesSearchConsoleApi
     /**
      * Refresh and return a Search Console access token, or null if OAuth is not set up.
      */
-    protected function gscAccessToken(): ?string
+    /**
+     * @param bool $forceRefresh Skip the stored token even if unexpired — for
+     *                           long-running sweeps that get a 401 mid-run
+     *                           because the token aged out after fetch.
+     */
+    protected function gscAccessToken(bool $forceRefresh = false): ?string
     {
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
             $this->error('No Search Console OAuth token. Run: php artisan seo:gsc-auth');
             return null;
         }
-        if ($row->hasValidAccessToken()) {
+        if (! $forceRefresh && $row->hasValidAccessToken()) {
             return $row->access_token;
         }
 

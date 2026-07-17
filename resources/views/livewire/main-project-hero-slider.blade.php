@@ -1,5 +1,4 @@
 @php
-    $citySuffix = $area ? ' in ' . $area->city : '';
     $isServiceMode = $mode === 'service';
     $isImagesOnly = $mode === 'images-only';
     // First slide image for preloading
@@ -10,6 +9,12 @@
     $srOnlyHeading = $isServiceMode
         ? ($firstSlide['heading'] ?? null)
         : ($firstSlide['title'] ?? $firstSlide['heading'] ?? null);
+    // Only localize the H1 when the heading doesn't already name the city —
+    // service-page headings are "{City} {Service}", so blindly appending
+    // produced "{City} {Service} in {City}" on every town-service page.
+    $citySuffix = ($area && $srOnlyHeading && ! str_contains(mb_strtolower($srOnlyHeading), mb_strtolower($area->city)))
+        ? ' in ' . $area->city
+        : '';
 @endphp
 
 {{-- Preload the LCP image (first slide) for faster rendering with responsive srcset --}}

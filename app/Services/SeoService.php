@@ -340,38 +340,39 @@ class SeoService
     {
         
         $reviewNum = self::getReviewCountNumeric();
-        $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated';
+        // "72★" reads as a 72-star rating in SERPs — spell out "Reviews" instead.
+        $reviewBadge = $reviewNum ? "{$reviewNum} Reviews" : 'Top-Rated';
         // Short badge for titles that also carry the experience hook (keeps <= 60 chars).
-        $reviewShort = $reviewNum ? "{$reviewNum}★" : 'Top-Rated';
+        $reviewShort = $reviewNum ? "{$reviewNum} Reviews" : 'Top-Rated';
 
         $services = [
             'kitchen-remodeling' => [
                 'label' => 'Kitchen Remodeling',
-                'title' => "Chicago Suburbs Kitchen Remodeling — {$reviewShort} · 40+ Yrs Combined",
+                'title' => "Chicago Suburbs Kitchen Remodeling — {$reviewShort} · 40+ Yrs",
                 'description' => 'Custom kitchen remodeling in Chicago\'s NW suburbs: cabinets, quartz & granite countertops, IKEA installs, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['kitchen remodel', 'kitchen renovation', 'kitchen cabinets', 'kitchen countertops', 'kitchen remodeling near me', 'kitchen contractors chicago', 'kitchen remodelers'],
             ],
             'bathroom-remodeling' => [
                 'label' => 'Bathroom Remodeling',
-                'title' => "Chicago Suburbs Bathroom Remodeling — {$reviewShort} · 40+ Yrs Combined",
+                'title' => "Chicago Suburbs Bathroom Remodeling — {$reviewShort} · 40+ Yrs",
                 'description' => 'Bathroom remodeling in Chicago\'s NW suburbs: walk-in showers, tub-to-shower conversions, tile & vanities, full gut renovations. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['bathroom remodel', 'bathroom renovation', 'shower remodel', 'bathroom tile', 'bathroom remodeling near me', 'bathroom contractors chicago', 'bathroom remodelers'],
             ],
             'home-remodeling' => [
                 'label' => 'Home Remodeling',
-                'title' => "Chicago Suburbs Whole-Home Remodeling — {$reviewShort} · 40+ Yrs Combined",
+                'title' => "Chicago Suburbs Whole-Home Remodeling — {$reviewShort} · 40+ Yrs",
                 'description' => 'Whole-home remodeling in Chicago\'s NW suburbs: room additions, open floor plans, kitchens, baths & basements. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home renovation', 'whole home remodel', 'house renovation', 'interior remodeling', 'home remodeling near me', 'general contractors chicago'],
             ],
             'basement-remodeling' => [
                 'label' => 'Basement Remodeling',
-                'title' => "Chicago Suburbs Basement Finishing — {$reviewShort} · 40+ Yrs Combined",
+                'title' => "Chicago Suburbs Basement Finishing — {$reviewShort} · 40+ Yrs",
                 'description' => 'Basement finishing & remodeling in Chicago\'s NW suburbs: home theaters, guest suites, rec rooms, wet bars. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['basement finishing', 'basement renovation', 'finished basement', 'basement remodel', 'basement remodeling near me'],
             ],
             'home-additions' => [
                 'label' => 'Home Additions',
-                'title' => "Chicago Suburbs Home Additions — {$reviewShort} · 40+ Yrs Combined",
+                'title' => "Chicago Suburbs Home Additions — {$reviewShort} · 40+ Yrs",
                 'description' => 'Home additions in Chicago\'s NW suburbs: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom addition', 'second story addition', 'home addition contractors', 'addition builders near me', 'general contractor additions'],
             ],
@@ -739,12 +740,28 @@ class SeoService
         ];
         $openerPool = $descriptionOpeners[$serviceType] ?? [$service['descriptionTemplate']];
         $opener = sprintf($openerPool[($seed >> 7) % count($openerPool)], $city);
-        $closer = " {$reviewCount} 5-star reviews. Licensed and insured. Free in-home estimate: (224) 735-4200.";
+        // Price hints mirror config/remodel-costs.php — searchers click numbers,
+        // so keep them early enough to survive the 160-char snippet cut.
+        $costHints = [
+            'kitchen-remodeling' => 'Most kitchens run $35k–$80k+.',
+            'bathroom-remodeling' => 'Most baths run $15k–$60k+.',
+            'basement-remodeling' => 'Most build-outs run $45k–$90k.',
+            'home-additions' => 'Additions run $60k–$350k+.',
+        ];
+        $costHint = $costHints[$serviceType] ?? '';
+        $closer = ($costHint !== '' ? " {$costHint}" : '')
+            . " {$reviewCount} 5-star reviews. Licensed and insured. Free in-home estimate: (224) 735-4200.";
         $description = $opener . $closer;
         if ($geoSnippet !== '') {
             $description .= ' ' . $geoSnippet;
         }
-        $description = \Illuminate\Support\Str::limit($description, 160, '');
+        // Trim to the last full sentence within 160 chars — a snippet that ends
+        // mid-phrase reads as broken in the SERP.
+        if (mb_strlen($description) > 160) {
+            $cut = mb_substr($description, 0, 160);
+            $lastStop = mb_strrpos($cut, '.');
+            $description = ($lastStop !== false && $lastStop > 80) ? mb_substr($cut, 0, $lastStop + 1) : $cut;
+        }
 
         return [
             'title' => $title,
@@ -1032,6 +1049,14 @@ class SeoService
         }
 
         $cut = mb_substr($text, 0, $max);
+
+        // Prefer ending on a full sentence — a snippet cut mid-phrase reads as
+        // broken in the SERP. Fall back to a word boundary.
+        $lastStop = mb_strrpos($cut, '.');
+        if ($lastStop !== false && $lastStop > (int) ($max * 0.6)) {
+            return rtrim(mb_substr($cut, 0, $lastStop + 1));
+        }
+
         $lastSpace = mb_strrpos($cut, ' ');
         if ($lastSpace !== false && $lastSpace > (int) ($max * 0.7)) {
             $cut = mb_substr($cut, 0, $lastSpace);

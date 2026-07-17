@@ -181,25 +181,27 @@
                     'faqs' => $homeFaqs,
                 ];
 
+                // Slides deep-link the per-town service spokes (not the generic
+                // services hub) — stronger anchors and one less hop.
                 $homeSlides = [
                     [
                         'title' => 'Kitchens',
                         'button' => 'Kitchen Remodeling',
-                        'link' => $area->pageUrl('services'),
+                        'link' => $area->serviceUrl('kitchen-remodeling'),
                         'projectType' => 'kitchen',
                         'alt' => "Kitchen remodeling services in {$area->city}",
                     ],
                     [
                         'title' => 'Bathrooms',
                         'button' => 'Bathroom Remodeling',
-                        'link' => $area->pageUrl('services'),
+                        'link' => $area->serviceUrl('bathroom-remodeling'),
                         'projectType' => 'bathroom',
                         'alt' => "Bathroom remodeling services in {$area->city}",
                     ],
                     [
                         'title' => 'Home Remodels',
                         'button' => 'Home Remodeling',
-                        'link' => $area->pageUrl('services'),
+                        'link' => $area->serviceUrl('home-remodeling'),
                         'projectType' => 'home-remodel',
                         'alt' => "Whole home remodeling services in {$area->city}",
                     ],
@@ -244,22 +246,36 @@
                  city. Renders only when we have matched local projects (the priority
                  cities), giving genuine internal links + anchor text to project detail
                  pages rather than templated filler. --}}
-            @php $cityProjects = $area->localProjects(6); @endphp
+            @php
+                $cityProjects = $area->localProjects(6);
+                $projectsAreLocal = $cityProjects->isNotEmpty();
+                if (! $projectsAreLocal) {
+                    $cityProjects = $area->nearbyProjects(6);
+                }
+                $projectsHeading = $projectsAreLocal
+                    ? "Remodeling projects we've completed in {$area->city}, IL"
+                    : "Remodeling projects we've completed near {$area->city}, IL";
+            @endphp
             @if($cityProjects->isNotEmpty())
-                <section class="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8" aria-label="Projects completed in {{ $area->city }}">
+                <section class="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8" aria-label="Projects completed {{ $projectsAreLocal ? 'in' : 'near' }} {{ $area->city }}">
                     <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
-                        Remodeling projects we've completed in {{ $area->city }}, IL
+                        {{ $projectsHeading }}
                     </h2>
                     <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
                         @foreach($cityProjects as $cityProject)
                             <a href="{{ route('projects.show', $cityProject) }}" wire:navigate
                                class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+                                @php
+                                    $cardTown = $projectsAreLocal
+                                        ? $area->city
+                                        : trim((string) (preg_split('/[,.]/', (string) $cityProject->location)[0] ?? ''));
+                                @endphp
                                 <div class="relative aspect-[4/3] overflow-hidden">
                                     @if($cityProject->images->first())
                                         <x-lqip-image
                                             :image="$cityProject->images->first()"
                                             size="medium" width="600" height="450"
-                                            :alt="$cityProject->title . ' — remodeling project in ' . $area->city . ', IL'"
+                                            :alt="$cityProject->title . ' — remodeling project in ' . ($cardTown ?: $area->city) . ', IL'"
                                             class="h-full w-full transition duration-300 group-hover:scale-105" />
                                     @endif
                                     @if($cityProject->project_type)
@@ -270,54 +286,16 @@
                                 </div>
                                 <div class="p-3">
                                     <p class="line-clamp-1 text-sm font-medium text-zinc-800 group-hover:text-sky-700 dark:text-zinc-200 dark:group-hover:text-sky-400">{{ $cityProject->title }}</p>
+                                    @if(! $projectsAreLocal && $cardTown !== '')
+                                        <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ $cardTown }}, IL</p>
+                                    @endif
                                 </div>
                             </a>
                         @endforeach
                     </div>
                 </section>
             @endif
-            {{-- Per-town review quotes: real reviews from this town when we have
-                 them, otherwise reviews from the nearest served towns — always
-                 labeled with the reviewer's actual town, never passed off as
-                 local. Computed up front and rendered flat. --}}
-            @php
-                $townQuotes = $area->localTestimonials(3);
-                $quotesAreLocal = $townQuotes->isNotEmpty();
-                if (! $quotesAreLocal) {
-                    $townQuotes = $area->nearbyTestimonials(3);
-                }
-                $quotesHeading = $quotesAreLocal
-                    ? "What {$area->city} homeowners say"
-                    : "What homeowners near {$area->city} say";
-            @endphp
-            @if($townQuotes->isNotEmpty())
-                <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" aria-label="Homeowner reviews near {{ $area->city }}">
-                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $quotesHeading }}</h2>
-                    <div class="mt-5 grid gap-4 sm:grid-cols-3">
-                        @foreach($townQuotes as $quote)
-                            <figure class="flex flex-col rounded-2xl bg-white p-5 shadow-md ring-1 ring-zinc-900/5 dark:bg-zinc-800/75 dark:ring-white/10">
-                                <div class="flex items-center gap-0.5 text-amber-400" aria-label="{{ $quote->star_rating ?? 5 }} out of 5 stars">
-                                    @foreach(range(1, (int) ($quote->star_rating ?? 5)) as $star)
-                                        <svg class="size-4 fill-current" viewBox="0 0 20 20" aria-hidden="true"><path d="M9.05 2.93c.3-.92 1.6-.92 1.9 0l1.28 3.95a1 1 0 0 0 .95.69h4.15c.97 0 1.37 1.24.59 1.81l-3.36 2.44a1 1 0 0 0-.36 1.12l1.28 3.95c.3.92-.75 1.69-1.54 1.12l-3.36-2.44a1 1 0 0 0-1.17 0l-3.36 2.44c-.78.57-1.84-.2-1.54-1.12l1.28-3.95a1 1 0 0 0-.36-1.12L2.08 9.38c-.78-.57-.38-1.81.6-1.81h4.14a1 1 0 0 0 .95-.69l1.28-3.95Z"/></svg>
-                                    @endforeach
-                                </div>
-                                <blockquote class="mt-3 flex-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-                                    &ldquo;{{ \Illuminate\Support\Str::limit(trim((string) $quote->review_description), 240) }}&rdquo;
-                                </blockquote>
-                                <figcaption class="mt-4 text-sm">
-                                    <span class="font-medium text-zinc-900 dark:text-white">{{ $quote->display_name }}</span>
-                                    <span class="text-zinc-500 dark:text-zinc-400"> — {{ $quote->project_location }}</span>
-                                </figcaption>
-                            </figure>
-                        @endforeach
-                    </div>
-                    <p class="mt-4 text-sm">
-                        <a href="{{ route('areas.page', [$area, 'testimonials']) }}" wire:navigate class="font-medium text-sky-700 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300">
-                            Read more homeowner reviews near {{ $area->city }} &rarr;
-                        </a>
-                    </p>
-                </section>
-            @endif
+            @include('livewire.partials.town-review-quotes')
             {{-- City-scoped Product schema for the services linked below — makes this
                  primary local landing page eligible for review-star / offer rich
                  results on "{service} {city}" searches. @id points at each canonical
@@ -1190,6 +1168,36 @@
 
             {{-- Projects for this service type --}}
             <livewire:projects-grid :area="$area" :type="$config['projectType']" :hide-filters="true" :hide-when-empty="true" />
+
+            {{-- Town-attributed review quotes (real reviewer towns, never faked) --}}
+            @include('livewire.partials.town-review-quotes')
+
+            {{-- Cost-guide cross-link: pairs the money page with its matching
+                 cost guide the way searchers actually navigate (service ↔ cost). --}}
+            @php
+                $costGuideSlug = [
+                    'kitchen-remodeling' => 'kitchen-remodel-cost',
+                    'bathroom-remodeling' => 'bathroom-remodel-cost',
+                    'basement-remodeling' => 'basement-finishing-cost',
+                    'home-additions' => 'home-addition-cost',
+                ][$service] ?? null;
+                $permitGuideUrl = \App\Support\PermitGuideInfo::forSlug($area->slug) !== null
+                    ? route('permits.show', ['slug' => $area->slug])
+                    : route('permits.index');
+            @endphp
+            @if($costGuideSlug)
+                <div class="mx-auto max-w-7xl px-4 pb-2 sm:px-6 lg:px-8">
+                    <div class="rounded-2xl border border-sky-200 bg-sky-50 p-5 dark:border-sky-500/20 dark:bg-sky-500/5">
+                        <p class="text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                            <span class="font-semibold text-zinc-900 dark:text-white">Budgeting first?</span>
+                            See real {{ now()->year }} price ranges in our
+                            <a href="{{ route('costs.show', ['slug' => $costGuideSlug]) }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">{{ strtolower($config['label'] ?? 'remodeling') }} cost guide</a>
+                            — and what your {{ $area->city }} permit will add in our
+                            <a href="{{ $permitGuideUrl }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">permit guide</a>.
+                        </p>
+                    </div>
+                </div>
+            @endif
 
             {{-- Testimonials --}}
             <livewire:testimonials-section :area="$area" />

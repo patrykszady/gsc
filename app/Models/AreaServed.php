@@ -192,7 +192,7 @@ class AreaServed extends Model
         return cache()->remember($key, 21600, function () use ($limit) {
             $collected = new Collection;
 
-            foreach ($this->nearestCities(10) as $nearby) {
+            foreach ($this->nearestCities(40) as $nearby) {
                 foreach ($nearby->localTestimonials($limit) as $testimonial) {
                     if ($collected->count() >= $limit) {
                         return $collected->values();
@@ -200,6 +200,37 @@ class AreaServed extends Model
 
                     if (! $collected->contains('id', $testimonial->id)) {
                         $collected->push($testimonial);
+                    }
+                }
+            }
+
+            return $collected->values();
+        });
+    }
+
+    /**
+     * Fallback proof for towns with no completed projects of their own:
+     * published projects from the geographically nearest served towns (every
+     * high-demand town has real projects within ~12 miles). Cards must label
+     * each project with its real town — never presented as work in this city.
+     *
+     * @return Collection<int, \App\Models\Project>
+     */
+    public function nearbyProjects(int $limit = 6): Collection
+    {
+        $key = "area:{$this->id}:nearby_projects:{$limit}";
+
+        return cache()->remember($key, 21600, function () use ($limit) {
+            $collected = new Collection;
+
+            foreach ($this->nearestCities(40) as $nearby) {
+                foreach ($nearby->localProjects($limit) as $project) {
+                    if ($collected->count() >= $limit) {
+                        return $collected->values();
+                    }
+
+                    if (! $collected->contains('id', $project->id)) {
+                        $collected->push($project);
                     }
                 }
             }

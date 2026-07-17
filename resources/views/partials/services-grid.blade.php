@@ -149,7 +149,7 @@
                     </div>
                     <div class="p-6 lg:p-8">
                         <h2 class="text-xl font-bold text-zinc-900 lg:text-2xl dark:text-white">
-                            {{ $service['title'] }}
+                            {{ $service['title'] }}{{ isset($area) ? ' in ' . $area->city : '' }}
                         </h2>
                         <p class="mt-3 text-sm leading-6 text-zinc-600 lg:mt-4 lg:text-base lg:leading-7 dark:text-zinc-400">
                             {{ $service['description'] }}

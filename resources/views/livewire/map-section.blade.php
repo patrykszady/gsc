@@ -1,4 +1,19 @@
 <div>
+    {{-- Crawlable proof line above the JS-only bubble map (area pages only). --}}
+    @if(!empty($proofStats) && $proofStats['nearby'] > 0 && $area)
+        <div class="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
+                Completed projects around {{ $area->city }}
+            </h2>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                GS Construction crews have completed
+                <strong class="font-semibold text-zinc-900 dark:text-white">{{ number_format($proofStats['nearby']) }} {{ \Illuminate\Support\Str::plural('project', $proofStats['nearby']) }} within {{ $proofStats['radius'] }} miles of {{ $area->city }}</strong>
+                — part of {{ number_format($proofStats['total']) }} completed projects across
+                {{ $proofStats['zips'] }} Chicago-area ZIP codes. The map below shows real
+                project density from our records, not a service-area claim.
+            </p>
+        </div>
+    @endif
     {{-- Project Map Section - Uses clip-path to create bg-fixed effect with fixed map --}}
     <section class="relative {{ $heightClasses }}" style="clip-path: inset(0);">
         @if(!config('services.google.places_api_key'))

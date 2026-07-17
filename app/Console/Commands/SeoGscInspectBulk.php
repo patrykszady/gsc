@@ -59,16 +59,36 @@ class SeoGscInspectBulk extends Command
         $inspected = 0;
         $richIssues = 0;
 
-        foreach ($urls as $u) {
-            usleep(250_000);
-            try {
-                $resp = Http::withToken($token)
-                    ->timeout(30)
-                    ->retry(2, 2000, fn ($e) => $e instanceof \Illuminate\Http\Client\ConnectionException, throw: false)
-                    ->post(
+        $inspect = function (string $u) use (&$token, $site) {
+            return Http::withToken($token)
+                ->timeout(30)
+                ->retry(2, 2000, fn ($e) => $e instanceof \Illuminate\Http\Client\ConnectionException, throw: false)
+                ->post(
                     'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
                     ['inspectionUrl' => $u, 'siteUrl' => $site]
                 );
+        };
+        $lastTokenRefresh = null;
+
+        foreach ($urls as $u) {
+            usleep(250_000);
+            try {
+                $resp = $inspect($u);
+
+                // A full sweep outlives the ~1h access token: refresh in place
+                // on 401 and retry the same URL instead of failing the tail of
+                // the run. Rate-limited so a genuinely broken credential can't
+                // hammer the token endpoint.
+                if ($resp->status() === 401
+                    && ($lastTokenRefresh === null || $lastTokenRefresh->diffInMinutes(now()) >= 5)) {
+                    $lastTokenRefresh = now();
+                    $this->warn('  access token expired mid-sweep — refreshing…');
+                    $fresh = $this->gscAccessToken(forceRefresh: true);
+                    if ($fresh) {
+                        $token = $fresh;
+                        $resp = $inspect($u);
+                    }
+                }
             } catch (\Illuminate\Http\Client\ConnectionException $e) {
                 // A transient network timeout must not abort the whole sweep.
                 $failures++;

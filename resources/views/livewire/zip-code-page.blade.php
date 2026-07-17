@@ -70,12 +70,37 @@
     </div>
 
     {{-- Hero --}}
-    <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p class="text-sm font-semibold uppercase tracking-wide text-sky-600">Service area</p>
-        <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-            Home Remodeling in {{ $city }}, IL &mdash; ZIP {{ $zip }}
-        </h1>
-        <p class="mt-4 max-w-3xl text-lg text-gray-600 dark:text-gray-300">
+    {{-- Visual hero (project slider + overlay), matching /permits and /trades --}}
+    <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="relative overflow-hidden rounded-2xl">
+            <livewire:main-project-hero-slider
+                :images-only="true"
+                height-classes="h-[300px] sm:h-[380px] lg:h-[440px]"
+                :slides="[
+                    ['projectType' => 'kitchen'],
+                    ['projectType' => 'bathroom'],
+                    ['projectType' => 'home-remodel'],
+                ]"
+                :key="'zip-hero-' . $zip"
+            />
+            <div class="pointer-events-none absolute inset-0 z-10 flex items-end bg-linear-to-t from-black/80 via-black/40 to-transparent pb-10 sm:pb-12 lg:pb-14">
+                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
+                    <p class="text-sm font-semibold uppercase tracking-wide text-sky-300">Service area</p>
+                    <h1 class="mt-1 font-heading text-3xl font-bold text-white text-shadow-lg sm:text-4xl lg:text-5xl">
+                        Home Remodeling in {{ $city }}, IL &mdash; ZIP {{ $zip }}
+                    </h1>
+                    @if ($hiveZipCount > 0)
+                        <p class="mt-2 max-w-2xl text-base text-white/90 text-shadow-sm sm:text-lg">
+                            {{ number_format($hiveZipCount) }} {{ \Illuminate\Support\Str::plural('project', $hiveZipCount) }} completed in this ZIP — family-owned, licensed &amp; insured.
+                        </p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <p class="max-w-3xl text-lg text-gray-600 dark:text-gray-300">
             @if ($zipIntro)
                 {{ $zipIntro }}
             @else
@@ -85,8 +110,6 @@
             @endif
             @if ($projectCount > 0)
                 We've completed <strong>{{ $projectCount }}</strong> projects in and around this ZIP.
-            @else
-                We serve in and around the <strong>{{ $zip }}</strong> ZIP code area.
             @endif
         </p>
 
@@ -106,7 +129,36 @@
                 </a>
             @endif
         </div>
+
+        {{-- Why homeowners here choose GS --}}
+        <div class="mt-10 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                <p class="text-base font-semibold text-gray-900 dark:text-white">One contract, one project lead</p>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Greg &amp; Patryk run every job with licensed trade partners under GS supervision — see <a href="{{ route('process') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">how the process works</a>.</p>
+            </div>
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                <p class="text-base font-semibold text-gray-900 dark:text-white">Permits handled for you</p>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Application, village registration, and every inspection through final sign-off — on every {{ $city }} project.</p>
+            </div>
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+                <p class="text-base font-semibold text-gray-900 dark:text-white">Written warranty</p>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Workmanship stands behind every remodel — read the <a href="{{ route('warranty') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">GS warranty</a>.</p>
+            </div>
+        </div>
     </section>
+
+    {{-- Per-ZIP completed-project proof (exact Hive count for this ZIP) --}}
+    @if ($hiveZipCount > 0)
+        <section class="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
+            <div class="rounded-2xl border border-sky-200 bg-sky-50 p-6 dark:border-sky-500/20 dark:bg-sky-500/5">
+                <p class="text-base leading-7 text-zinc-700 dark:text-zinc-300">
+                    <strong class="font-semibold text-zinc-900 dark:text-white">GS Construction crews have completed {{ number_format($hiveZipCount) }} {{ \Illuminate\Support\Str::plural('project', $hiveZipCount) }} in ZIP {{ $zip }} alone</strong>
+                    — real jobs from our project records, not a service-area claim. The map at the bottom of
+                    this page shows how that work spreads across {{ $city }} and the surrounding ZIP codes.
+                </p>
+            </div>
+        </section>
+    @endif
 
     {{-- Services in this ZIP --}}
     <section class="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
@@ -119,6 +171,8 @@
                     ['slug' => 'kitchen-remodeling', 'label' => "Kitchen Remodeling in {$city}"],
                     ['slug' => 'bathroom-remodeling', 'label' => "Bathroom Remodeling in {$city}"],
                     ['slug' => 'home-remodeling', 'label' => "Whole-Home Remodeling in {$city}"],
+                    ['slug' => 'basement-remodeling', 'label' => "Basement Remodeling in {$city}"],
+                    ['slug' => 'home-additions', 'label' => "Home Additions in {$city}"],
                 ];
             @endphp
             @foreach ($services as $svc)
@@ -189,6 +243,77 @@
         </section>
     @endif
 
+    {{-- Town-attributed review quotes (real reviewer towns, honest nearby fallback) --}}
+    @if ($area)
+        @include('livewire.partials.town-review-quotes')
+    @endif
+
+    {{-- Homeowner guides for this ZIP's town: permits, lead lines, costs --}}
+    @if ($area)
+        @php
+            $zipPermitGuide = \App\Support\PermitGuideInfo::forSlug($area->slug) !== null;
+        @endphp
+        <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" aria-label="Homeowner guides for {{ $city }}">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $city }} homeowner guides</h2>
+            <div class="mt-5 grid gap-4 sm:grid-cols-3">
+                <a href="{{ $zipPermitGuide ? route('permits.show', ['slug' => $area->slug]) : route('permits.index') }}" wire:navigate
+                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                    <p class="text-base font-semibold text-gray-900 dark:text-white">Building permits in {{ $city }}</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Who needs one, fees, review times &amp; inspections — from official village sources.</p>
+                </a>
+                <a href="{{ route('areas.lead-line', ['area' => $area->slug]) }}" wire:navigate
+                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                    <p class="text-base font-semibold text-gray-900 dark:text-white">Lead pipe replacement in {{ $city }}</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Who pays, how to check your line, and what it means mid-remodel.</p>
+                </a>
+                <a href="{{ route('costs.index') }}" wire:navigate
+                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                    <p class="text-base font-semibold text-gray-900 dark:text-white">What remodeling really costs</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Real {{ now()->year }} price ranges for kitchens, baths, basements &amp; additions.</p>
+                </a>
+            </div>
+        </section>
+    @endif
+
+    {{-- ZIP FAQ (visible + FAQPage schema) --}}
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <x-faq-section
+            heading="Remodeling in {{ $zip }} — common questions"
+            :collapsed="false"
+            :faqs="[
+                ['question' => 'Do you serve ZIP code ' . $zip . '?', 'answer' => 'Yes — ' . $city . ' (' . $zip . ') is part of GS Construction\'s core service area' . ($hiveZipCount > 0 ? ', where our crews have completed ' . $hiveZipCount . ' ' . \Illuminate\Support\Str::plural('project', $hiveZipCount) . ' to date' : '') . '. We provide free in-home estimates throughout the area.'],
+                ['question' => 'Who pulls the building permit for a remodel in ' . $city . '?', 'answer' => 'We do. GS Construction prepares the drawings and application, registers with the village where required, and schedules every inspection through final sign-off on all ' . $city . ' projects.'],
+                ['question' => 'What remodeling services do you offer in ' . $zip . '?', 'answer' => 'Kitchen remodeling, bathroom remodeling, basement finishing, home additions, and whole-home renovations — one contract and one project lead, with licensed trade partners under GS supervision.'],
+                ['question' => 'How do I get a quote for a project in ' . $city . '?', 'answer' => 'Request a free in-home estimate — we visit the home, discuss the scope, and deliver an itemized quote. There is no charge and no pressure at any point.'],
+            ]"
+        />
+    </div>
+
+    {{-- Nearby served ZIPs with their own completed-project counts --}}
+    @if (!empty($nearbyZips))
+        <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" aria-label="Nearby ZIP codes we serve">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Nearby ZIP codes we serve</h2>
+            <div class="mt-4 flex flex-wrap gap-2">
+                @foreach ($nearbyZips as $nz)
+                    <a href="{{ url('/service-area/' . $nz['zip']) }}" wire:navigate
+                       class="rounded-lg bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm ring-1 ring-zinc-200 hover:bg-sky-50 hover:text-sky-700 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-700">
+                        {{ $nz['zip'] }} · {{ $nz['count'] }} {{ \Illuminate\Support\Str::plural('project', $nz['count']) }}
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     {{-- Shared custom project ZIP map used across the site --}}
     <livewire:map-section :area="$area" />
+
+    <x-cta-section
+        variant="blue"
+        heading="Remodeling in {{ $zip }}? Let's talk."
+        description="Free in-home estimate with an itemized scope — permits, drawings, and inspections handled by us on every {{ $city }} project."
+        primaryText="Get Free Quote"
+        :primaryHref="route('contact')"
+        secondaryText="View Our Work"
+        :secondaryHref="route('projects.index')"
+    />
 </div>
