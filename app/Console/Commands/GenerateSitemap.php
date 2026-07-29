@@ -101,6 +101,7 @@ class GenerateSitemap extends Command
             '.txt',
             '.json',
             '.xml',
+            '.atom',        // WebSub updates feed — a feed, not an HTML page
             '.webmanifest',
             '.ico',
         ];
@@ -217,15 +218,25 @@ class GenerateSitemap extends Command
             // exactly or Google flags the sitemap URL as not-indexed (canonical mismatch).
             $fullUrl = $isHome ? $baseUrl : "{$baseUrl}/{$uri}";
 
+            // No lastmod for static routes: stamping now() on every daily
+            // regen is lastmod-spam, and Google's response to untrustworthy
+            // lastmod is ignoring it SITE-WIDE — which would also discard the
+            // honest timestamps on area/project pages that drive recrawls.
+            // Omitting is Google's documented preference over guessing.
             $sitemap->add(
                 Url::create($fullUrl)
-                    ->setLastModificationDate(now())
                     ->setChangeFrequency($changeFreq)
                     ->setPriority($priority)
             );
             $urlCount++;
             $this->line("  Added static: /{$uri}");
         }
+
+        // Config-driven page groups get their config file's real mtime — it
+        // changes exactly when their content changes (deploys).
+        $configMtime = fn (string $file) => \Illuminate\Support\Carbon::createFromTimestamp(
+            @filemtime(config_path($file)) ?: time()
+        );
 
         // Add competitor comparison pages
         $competitors = (array) config('competitors.competitors', []);
@@ -243,7 +254,7 @@ class GenerateSitemap extends Command
                 }
                 $sitemap->add(
                     Url::create("{$baseUrl}/compare/{$slug}")
-                        ->setLastModificationDate(now())
+                        ->setLastModificationDate($configMtime('competitors.php'))
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority(0.6)
                 );
@@ -264,7 +275,7 @@ class GenerateSitemap extends Command
                 }
                 $sitemap->add(
                     Url::create("{$baseUrl}/costs/{$slug}")
-                        ->setLastModificationDate(now())
+                        ->setLastModificationDate($configMtime('remodel-costs.php'))
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority(0.7)
                 );
@@ -285,7 +296,7 @@ class GenerateSitemap extends Command
                 }
                 $sitemap->add(
                     Url::create("{$baseUrl}/insurance-claims/{$slug}")
-                        ->setLastModificationDate(now())
+                        ->setLastModificationDate($configMtime('insurance-claims.php'))
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority(0.7)
                 );
@@ -331,7 +342,7 @@ class GenerateSitemap extends Command
                 }
                 $sitemap->add(
                     Url::create("{$baseUrl}/trades/{$slug}")
-                        ->setLastModificationDate(now())
+                        ->setLastModificationDate($configMtime('trades.php'))
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority(0.6)
                 );
@@ -442,7 +453,6 @@ class GenerateSitemap extends Command
         $zipMap = app(\App\Services\ZipCodeService::class)->getZipMap();
         $sitemap->add(
             Url::create("{$baseUrl}/service-area")
-                ->setLastModificationDate(now())
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                 ->setPriority(0.6)
         );
@@ -490,10 +500,13 @@ class GenerateSitemap extends Command
             'projects/bathrooms' => 0.8,
             'projects/home-remodeling' => 0.8,
         ];
+        // Filter pages change when their newest project changes — use that,
+        // not now(): honest lastmod is what makes Google trust the sitemap.
+        $latestProjectUpdate = Project::where('is_published', true)->max('updated_at');
         foreach ($projectTypePages as $uri => $priority) {
             $sitemap->add(
                 Url::create("{$baseUrl}/{$uri}")
-                    ->setLastModificationDate(now())
+                    ->setLastModificationDate($latestProjectUpdate ? \Illuminate\Support\Carbon::parse($latestProjectUpdate) : now())
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                     ->setPriority($priority)
             );

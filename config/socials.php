@@ -15,6 +15,8 @@ return [
         'url' => 'https://www.google.com/maps/place/?q=place_id:' . env('GOOGLE_BUSINESS_PROFILE_PLACE_ID', 'ChIJ1VmJQHm5D4gRZDQlQNkLz2A'),
         'label' => 'Google',
         'icon' => 'images/socials/google.svg',
+        // Carries public reviews — listed in the footer's Review Profiles row.
+        'review' => true,
     ],
     'facebook' => [
         'url' => 'https://www.facebook.com/gs.construction.chi',
@@ -25,15 +27,21 @@ return [
         'url' => 'https://www.yelp.com/biz/gs-construction-prospect-heights',
         'label' => 'Yelp',
         'icon' => 'images/socials/yelp.svg',
+        // Carries public reviews — listed in the footer's Review Profiles row.
+        'review' => true,
     ],
     'houzz' => [
         'url' => 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575',
         'label' => 'Houzz',
         'icon' => 'images/socials/houzz.svg',
+        // Carries public reviews — listed in the footer's Review Profiles row.
+        'review' => true,
     ],
     'angi' => [
         'url' => 'https://www.angi.com/companylist/us/il/chicagoland/gs-construction-and-remodeling-reviews-11400361.htm',
         'label' => 'Angi',
         'icon' => 'images/socials/angi.svg',
+        // Carries public reviews — listed in the footer's Review Profiles row.
+        'review' => true,
     ],
 ];

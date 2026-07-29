@@ -1,50 +1,17 @@
 <div class="bg-white pb-20 dark:bg-gray-950 lg:pb-0">
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Compare Contractors', 'url' => route('compare.index')],
-        ['name' => 'GS Construction vs ' . ($competitor['name'] ?? '')],
+    <x-breadcrumbs :items="[
+        ['label' => 'Compare', 'url' => route('compare.index')],
+        ['label' => 'GS Construction vs ' . ($competitor['name'] ?? '')],
     ]" />
-
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li><a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a></li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <a href="{{ route('compare.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Compare</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">GS Construction vs {{ $competitor['name'] }}</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
 
     <div class="mx-auto max-w-3xl px-6 pt-2 text-center lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternative to {{ $competitor['name'] }}</p>
     </div>
 
-    <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-2xl">
-            <livewire:main-project-hero-slider
-                :images-only="true"
-                height-classes="h-[340px] sm:h-[420px] lg:h-[500px]"
-                :slides="[
-                    ['projectType' => 'kitchen'],
-                    ['projectType' => 'bathroom'],
-                    ['projectType' => 'home-remodel'],
-                ]"
-                :key="'compare-hero-'.$competitor['slug']"
-            />
-            <div class="pointer-events-none absolute inset-0 z-10 flex items-end bg-linear-to-t from-black/80 via-black/40 to-transparent pb-12 sm:pb-16 lg:pb-20">
-                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
-                    <h1 class="font-heading text-4xl font-bold text-white text-shadow-lg sm:text-5xl lg:text-6xl">
-                        GS Construction vs {{ $competitor['name'] }}
-                    </h1>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-page-hero
+        title="GS Construction vs {{ $competitor['name'] }}"
+        :key-suffix="'compare-' . $competitor['slug']"
+    />
 
     {{-- Trust signals --}}
     <div class="mx-auto mt-6 max-w-5xl px-6 lg:px-8">
@@ -133,20 +100,7 @@
         </section>
         @endif
 
-        {{-- Mid-page CTA --}}
-        <div class="mt-12 rounded-2xl bg-sky-50 px-6 py-6 text-center ring-1 ring-sky-100 dark:bg-sky-950/40 dark:ring-sky-900 sm:flex sm:items-center sm:justify-between sm:text-left">
-            <p class="font-heading text-lg font-semibold text-zinc-900 dark:text-white">
-                Want a second opinion before you decide?
-            </p>
-            <div class="mt-4 flex flex-wrap items-center justify-center gap-3 sm:mt-0">
-                <a href="/contact" wire:navigate class="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500">
-                    Get a free estimate
-                </a>
-                <a href="tel:2247354200" class="rounded-md px-4 py-2 text-sm font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-white dark:text-sky-300 dark:ring-sky-700">
-                    Call (224) 735-4200
-                </a>
-            </div>
-        </div>
+        <x-mid-cta />
 
         <section class="mt-12">
             <h2 class="font-heading text-2xl font-semibold text-zinc-900 dark:text-white">The GS Construction difference</h2>

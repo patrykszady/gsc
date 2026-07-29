@@ -1,6 +1,6 @@
 @php($guides = collect(config('remodel-costs.guides', [])))
 <x-layouts.app
-    :title="'Remodeling Costs in Chicago\'s Suburbs (' . now()->year . ' Guide) | GS Construction'"
+    :title="'Remodeling Costs — Chicago Suburbs ' . now()->year . ' | GS Construction'"
     metaDescription="Real published price ranges for kitchen, bathroom, basement, and home-addition remodels in the Chicago suburbs — from a contractor that puts its numbers in writing."
 >
     <x-breadcrumb-schema :items="[

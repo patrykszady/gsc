@@ -1,6 +1,6 @@
 @php($guides = collect(\App\Support\PermitGuideInfo::all()))
 <x-layouts.app
-    title="Building Permit Guides for Chicago's NW Suburbs & North Shore | GS Construction"
+    title="Building Permit Guides — Chicago Suburbs | GS Construction"
     metaDescription="Town-by-town building permit guides for remodeling in Chicago's northwest suburbs and North Shore — who needs a permit, fees, review times, inspections, and contractor registration, from official village sources."
 >
     <x-breadcrumb-schema :items="[
@@ -12,31 +12,11 @@
     </div>
 
     {{-- Hero --}}
-    <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-2xl">
-            <livewire:main-project-hero-slider
-                :images-only="true"
-                height-classes="h-[340px] sm:h-[420px] lg:h-[500px]"
-                :slides="[
-                    ['projectType' => 'kitchen'],
-                    ['projectType' => 'bathroom'],
-                    ['projectType' => 'home-remodel'],
-                ]"
-                :key="'permits-index-hero'"
-            />
-            <div class="pointer-events-none absolute inset-0 z-10 flex items-end bg-linear-to-t from-black/80 via-black/40 to-transparent pb-12 sm:pb-16 lg:pb-20">
-                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
-                    <h1 class="font-heading text-4xl font-bold text-white text-shadow-lg sm:text-5xl lg:text-6xl">
-                        Building permits, town by town
-                    </h1>
-                    <p class="mt-3 max-w-2xl text-lg text-white/90 text-shadow-sm">
-                        What your village requires, what it costs, and how long review takes —
-                        from official municipal sources.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-page-hero
+        title="Building permits, town by town"
+        subtitle="What your village requires, what it costs, and how long review takes — from official municipal sources."
+        key-suffix="permits-index"
+    />
 
     <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 lg:px-8">
         <p class="speakable text-base leading-7 text-zinc-600 dark:text-zinc-300">

@@ -53,32 +53,19 @@
     </div>
 
     {{-- Hero slider with overlay heading + CTA --}}
-    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-2xl">
-            <livewire:main-project-hero-slider
-                :images-only="true"
-                height-classes="h-[360px] sm:h-[460px] lg:h-[540px]"
-                :slides="[
-                    ['projectType' => 'kitchen'],
-                    ['projectType' => 'bathroom'],
-                    ['projectType' => 'home-remodel'],
-                ]"
-                :key="'guide-choose-hero'"
-            />
-            <div class="pointer-events-none absolute inset-0 z-10 flex items-end bg-linear-to-t from-black/80 via-black/40 to-transparent pb-8 sm:pb-12 lg:pb-16">
-                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
-                    <p class="text-sm font-semibold uppercase tracking-wide text-sky-300">Homeowner guide</p>
-                    <h1 class="mt-2 max-w-4xl font-heading text-3xl font-bold text-balance text-white text-shadow-lg sm:text-4xl lg:text-5xl">
-                        How to choose a remodeling contractor in the Chicago suburbs
-                    </h1>
-                    <a href="{{ url('/contact') }}" wire:navigate
-                       class="pointer-events-auto mt-5 inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500">
-                        Get a free estimate
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-page-hero
+        key-suffix="how-to-choose"
+        height-classes="h-[360px] sm:h-[460px] lg:h-[540px]"
+    >
+        <p class="text-sm font-semibold uppercase tracking-wide text-sky-300">Homeowner guide</p>
+        <h1 class="mt-2 max-w-4xl font-heading text-3xl font-bold text-balance text-white text-shadow-lg sm:text-4xl lg:text-5xl">
+            How to choose a remodeling contractor in the Chicago suburbs
+        </h1>
+        <a href="{{ url('/contact') }}" wire:navigate
+           class="pointer-events-auto mt-5 inline-flex items-center gap-2 rounded-lg bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500">
+            Get a free estimate
+        </a>
+    </x-page-hero>
 
     {{-- Trust signals --}}
     <div class="mx-auto mt-6 max-w-5xl px-6 lg:px-8">

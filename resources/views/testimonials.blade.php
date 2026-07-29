@@ -49,4 +49,15 @@
     <livewire:map-section />
 
     <livewire:testimonials-section :show-header="false" />
+
+    {{-- Highest-intent visitors on the site read reviews — give them the ask. --}}
+    <x-cta-section
+        variant="blue"
+        heading="Join our happy homeowners"
+        description="Read enough? Get a free, no-pressure estimate from Greg & Patryk — the same two people every review above talks about."
+        primaryText="Request a free estimate"
+        primaryHref="/contact"
+        secondaryText="Call (224) 735-4200"
+        secondaryHref="tel:2247354200"
+    />
 </x-layouts.app>

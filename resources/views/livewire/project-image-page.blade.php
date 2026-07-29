@@ -198,6 +198,12 @@
 
     {{-- Main Content --}}
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {{-- Page H1: the photo's descriptive name. The template had NO h1 —
+             the only page family on the site without one. --}}
+        <h1 class="mb-4 font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+            {{ $image->seo_alt_text ?: ($image->alt_text ?: $project->title . ' — Photo ' . $currentPosition) }}
+        </h1>
+
         {{-- Header with navigation --}}
         <div class="flex items-center justify-between mb-6">
             <div>

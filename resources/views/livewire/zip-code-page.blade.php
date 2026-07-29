@@ -70,34 +70,20 @@
     </div>
 
     {{-- Hero --}}
-    {{-- Visual hero (project slider + overlay), matching /permits and /trades --}}
-    <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-2xl">
-            <livewire:main-project-hero-slider
-                :images-only="true"
-                height-classes="h-[300px] sm:h-[380px] lg:h-[440px]"
-                :slides="[
-                    ['projectType' => 'kitchen'],
-                    ['projectType' => 'bathroom'],
-                    ['projectType' => 'home-remodel'],
-                ]"
-                :key="'zip-hero-' . $zip"
-            />
-            <div class="pointer-events-none absolute inset-0 z-10 flex items-end bg-linear-to-t from-black/80 via-black/40 to-transparent pb-10 sm:pb-12 lg:pb-14">
-                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
-                    <p class="text-sm font-semibold uppercase tracking-wide text-sky-300">Service area</p>
-                    <h1 class="mt-1 font-heading text-3xl font-bold text-white text-shadow-lg sm:text-4xl lg:text-5xl">
-                        Home Remodeling in {{ $city }}, IL &mdash; ZIP {{ $zip }}
-                    </h1>
-                    @if ($hiveZipCount > 0)
-                        <p class="mt-2 max-w-2xl text-base text-white/90 text-shadow-sm sm:text-lg">
-                            {{ number_format($hiveZipCount) }} {{ \Illuminate\Support\Str::plural('project', $hiveZipCount) }} completed in this ZIP — family-owned, licensed &amp; insured.
-                        </p>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-page-hero
+        :key-suffix="'zip-' . $zip"
+        height-classes="h-[300px] sm:h-[380px] lg:h-[440px]"
+    >
+        <p class="text-sm font-semibold uppercase tracking-wide text-sky-300">Service area</p>
+        <h1 class="mt-1 font-heading text-3xl font-bold text-white text-shadow-lg sm:text-4xl lg:text-5xl">
+            Home Remodeling in {{ $city }}, IL &mdash; ZIP {{ $zip }}
+        </h1>
+        @if ($hiveZipCount > 0)
+            <p class="mt-2 max-w-2xl text-base text-white/90 text-shadow-sm sm:text-lg">
+                {{ number_format($hiveZipCount) }} {{ \Illuminate\Support\Str::plural('project', $hiveZipCount) }} completed in this ZIP &mdash; family-owned, licensed &amp; insured.
+            </p>
+        @endif
+    </x-page-hero>
 
     <section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <p class="max-w-3xl text-lg text-gray-600 dark:text-gray-300">

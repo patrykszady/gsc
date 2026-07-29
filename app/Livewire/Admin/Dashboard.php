@@ -42,9 +42,56 @@ class Dashboard extends Component
         $this->modal('lead-detail')->close();
     }
 
+    /**
+     * Snapshot of the self-driving SEO machinery for the landing page: is it
+     * running, what did it do, what's waiting on a human. Every source is
+     * guarded — a missing table degrades one number, never the dashboard.
+     *
+     * @return array{open:int,applied_week:int,measuring:int,next_outcome:?string,problems:int,advisories:int,urgent:array<int,string>,engine_at:?string,healed:int}
+     */
+    protected function automationSnapshot(): array
+    {
+        $out = ['open' => 0, 'applied_week' => 0, 'measuring' => 0, 'next_outcome' => null,
+            'problems' => 0, 'advisories' => 0, 'urgent' => [], 'engine_at' => null, 'healed' => 0];
+
+        try {
+            $out['open'] = (int) \App\Models\SeoAction::where('status', \App\Models\SeoAction::STATUS_PROPOSED)->count();
+            $out['applied_week'] = (int) \App\Models\SeoAction::where('applied_at', '>=', now()->subDays(7))->count();
+            $out['measuring'] = (int) \App\Models\SeoAction::whereNotNull('applied_at')->whereNull('measured_at')->count();
+            $due = \App\Models\SeoAction::whereNull('measured_at')->whereNotNull('measure_after')->min('measure_after');
+            $out['next_outcome'] = $due ? 'in ' . \Illuminate\Support\Carbon::parse($due)->diffForHumans(null, true) : null;
+            $out['advisories'] = (int) \App\Models\SeoAction::where('risk', \App\Models\SeoAction::RISK_REVIEW)
+                ->where('status', \App\Models\SeoAction::STATUS_PROPOSED)->count();
+        } catch (\Throwable $e) {
+        }
+
+        try {
+            $out['problems'] = (int) \App\Models\GscCoverageState::where(
+                fn ($q) => $q->where('verdict', '!=', 'PASS')->orWhereNull('verdict')
+            )->count();
+        } catch (\Throwable $e) {
+        }
+
+        try {
+            $engine = \App\Services\Seo\RecommendationEngine::latest();
+            if ($engine) {
+                $out['engine_at'] = \Illuminate\Support\Carbon::parse($engine['generated_at'])->diffForHumans();
+                $out['healed'] = count($engine['healed'] ?? []);
+                $out['urgent'] = array_values(array_filter(
+                    $engine['action_items'] ?? [],
+                    fn ($i) => str_starts_with($i, 'URGENT')
+                ));
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return $out;
+    }
+
     public function render()
     {
         return view('livewire.admin.dashboard', [
+            'automation' => $this->automationSnapshot(),
             'projectCount' => Project::count(),
             'publishedCount' => Project::published()->count(),
             'imageCount' => ProjectImage::count(),

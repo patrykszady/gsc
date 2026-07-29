@@ -120,13 +120,24 @@ class ProjectImagePage extends Component
         // Get location-aware text
         $location = $this->project->location;
         
-        $title = $this->localizeText($this->image->seo_alt_text) 
-            ?: "{$this->project->title} - Photo {$this->currentPosition}";
-        
-        $description = $this->localizeText($this->image->seo_caption) 
+        // These fields feed SEOBuilder directly (not SeoService::setTags), so
+        // clamp here: alt-text titles ran to 125+ chars and captions to 286 —
+        // both far past what Google displays, and both got rewritten in SERPs.
+        $title = \Illuminate\Support\Str::limit(
+            $this->localizeText($this->image->seo_alt_text)
+                ?: "{$this->project->title} - Photo {$this->currentPosition}",
+            60,
+            ''
+        );
+
+        $description = $this->localizeText($this->image->seo_caption)
             ?: "View photo {$this->currentPosition} of {$this->totalImages} from {$this->project->title}. "
                . ($location ? "Located in {$location}. " : '')
                . "Professional remodeling by GS Construction.";
+        $description = \Illuminate\Support\Str::limit(trim($description), 160, '');
+        if (($cut = mb_strrpos($description, '.')) !== false && $cut > 96) {
+            $description = mb_substr($description, 0, $cut + 1);
+        }
 
         $imageUrl = $this->image->getAnyUrl('large');
         $googleUrl = $this->image->google_places_media_url;

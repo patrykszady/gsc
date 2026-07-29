@@ -73,6 +73,13 @@ class AreaForm extends Component
         $this->area->fill($data);
         $this->area->save();
 
+        // Coordless areas are invisible to the coverage map and get no local
+        // proof stats — queue the geocoder (it only touches rows missing
+        // coords) so the gap closes itself within a minute.
+        if ($this->area->latitude === null || $this->area->longitude === null) {
+            \App\Jobs\RunSeoChannelSyncJob::dispatch('gbp:geocode-areas');
+        }
+
         // Ensure HasSEO row exists immediately so the admin override panel renders.
         if ($isNew && method_exists($this->area, 'addSEO')) {
             $this->area->refresh();

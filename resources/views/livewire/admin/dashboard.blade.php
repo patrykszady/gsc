@@ -1,6 +1,47 @@
 <div>
     <flux:heading size="xl" class="mb-6">Dashboard</flux:heading>
 
+    {{-- Automation status: the self-driving SEO machinery at a glance --}}
+    @if(($automation['urgent'] ?? []) !== [])
+        @foreach($automation['urgent'] as $u)
+            <flux:callout variant="danger" class="mb-4">{{ $u }}</flux:callout>
+        @endforeach
+    @endif
+    <flux:card class="mb-8">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <flux:heading size="md">SEO automation</flux:heading>
+            <flux:text class="text-xs text-zinc-500">
+                @if($automation['engine_at'])
+                    Engine refreshed {{ $automation['engine_at'] }}@if($automation['healed'] > 0) · self-healed {{ $automation['healed'] }} pipeline(s)@endif
+                @else
+                    Engine has not run yet
+                @endif
+            </flux:text>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <a href="{{ route('admin.autopilot.index') }}" wire:navigate class="rounded-lg bg-zinc-50 p-3 transition hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800">
+                <div class="text-2xl font-bold text-zinc-900 dark:text-white">{{ number_format($automation['applied_week']) }}</div>
+                <div class="text-xs text-zinc-500">Fixes applied this week</div>
+            </a>
+            <a href="{{ route('admin.autopilot.index') }}" wire:navigate class="rounded-lg bg-zinc-50 p-3 transition hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800">
+                <div class="text-2xl font-bold text-zinc-900 dark:text-white">{{ number_format($automation['measuring']) }}</div>
+                <div class="text-xs text-zinc-500">Measuring{{ $automation['next_outcome'] ? ' · first outcome ' . $automation['next_outcome'] : '' }}</div>
+            </a>
+            <a href="{{ route('admin.autopilot.index') }}?tab=open" wire:navigate class="rounded-lg bg-zinc-50 p-3 transition hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800">
+                <div class="text-2xl font-bold text-zinc-900 dark:text-white">{{ number_format($automation['open']) }}</div>
+                <div class="text-xs text-zinc-500">Queued (auto-applies daily)</div>
+            </a>
+            <a href="{{ route('admin.gsc-errors.index') }}" wire:navigate class="rounded-lg bg-zinc-50 p-3 transition hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800">
+                <div class="text-2xl font-bold {{ $automation['problems'] > 0 ? 'text-amber-600' : 'text-emerald-600' }}">{{ number_format($automation['problems']) }}</div>
+                <div class="text-xs text-zinc-500">Index problem URLs</div>
+            </a>
+            <a href="{{ route('admin.autopilot.index') }}?tab=open" wire:navigate class="rounded-lg bg-zinc-50 p-3 transition hover:bg-zinc-100 dark:bg-zinc-800/60 dark:hover:bg-zinc-800">
+                <div class="text-2xl font-bold {{ $automation['advisories'] > 0 ? 'text-amber-600' : 'text-emerald-600' }}">{{ number_format($automation['advisories']) }}</div>
+                <div class="text-xs text-zinc-500">Advisories needing you</div>
+            </a>
+        </div>
+    </flux:card>
+
     {{-- Stats Grid --}}
     <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <flux:card>

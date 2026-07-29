@@ -19,27 +19,10 @@
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">The Team Behind Every Remodel</p>
     </div>
 
-    <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-2xl">
-            <livewire:main-project-hero-slider
-                :images-only="true"
-                height-classes="h-[340px] sm:h-[420px] lg:h-[500px]"
-                :slides="[
-                    ['projectType' => 'kitchen'],
-                    ['projectType' => 'bathroom'],
-                    ['projectType' => 'home-remodel'],
-                ]"
-                :key="'trades-index-hero'"
-            />
-            <div class="pointer-events-none absolute inset-0 z-10 flex items-end bg-linear-to-t from-black/80 via-black/40 to-transparent pb-12 sm:pb-16 lg:pb-20">
-                <div class="mx-auto w-full max-w-7xl px-6 lg:px-8">
-                    <h1 class="font-heading text-4xl font-bold text-white text-shadow-lg sm:text-5xl lg:text-6xl">
-                        The skilled trades behind every GS remodel
-                    </h1>
-                </div>
-            </div>
-        </div>
-    </div>
+    <x-page-hero
+        title="The skilled trades behind every GS remodel"
+        key-suffix="trades-index"
+    />
 
     <main class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">

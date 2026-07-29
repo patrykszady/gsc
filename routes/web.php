@@ -327,6 +327,42 @@ Route::get('/process', fn () => view('process'))->name('process');
 
 // Cost-guide hub: year-stamped pricing pages from the same published ranges
 // as geo-answers.php (see config/remodel-costs.php).
+// WebSub-enabled Atom feed of recently updated pages — the legitimate "push"
+// channel to Google: on content changes we ping the hub, subscribed crawlers
+// fetch this feed within minutes and discover the changed URLs.
+Route::get('/feed/updates.atom', function () {
+    $entries = collect()
+        ->concat(\App\Models\AreaServed::orderByDesc('updated_at')->limit(30)->get()
+            ->map(fn ($a) => ['url' => url('/areas-served/' . $a->slug), 'title' => $a->city . ' Remodeling — GS Construction', 'updated' => $a->updated_at]))
+        ->concat(\App\Models\Project::where('is_published', true)->orderByDesc('updated_at')->limit(30)->get()
+            ->map(fn ($p) => ['url' => url('/projects/' . $p->slug), 'title' => $p->title, 'updated' => $p->updated_at]))
+        ->filter(fn ($e) => $e['updated'] !== null)
+        ->sortByDesc('updated')
+        ->take(40)
+        ->values();
+
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
+        . '<feed xmlns="http://www.w3.org/2005/Atom">' . "\n"
+        . '  <title>GS Construction — Recently Updated Pages</title>' . "\n"
+        . '  <id>' . url('/feed/updates.atom') . '</id>' . "\n"
+        . '  <link rel="self" href="' . url('/feed/updates.atom') . '"/>' . "\n"
+        . '  <link rel="hub" href="https://pubsubhubbub.appspot.com/"/>' . "\n"
+        . '  <link rel="alternate" href="' . url('/') . '"/>' . "\n"
+        . '  <updated>' . ($entries->first()['updated'] ?? now())->toAtomString() . '</updated>' . "\n";
+    foreach ($entries as $e) {
+        $xml .= '  <entry>' . "\n"
+            . '    <id>' . e($e['url']) . '</id>' . "\n"
+            . '    <title>' . e($e['title']) . '</title>' . "\n"
+            . '    <link rel="alternate" href="' . e($e['url']) . '"/>' . "\n"
+            . '    <updated>' . $e['updated']->toAtomString() . '</updated>' . "\n"
+            . '  </entry>' . "\n";
+    }
+    $xml .= '</feed>' . "\n";
+
+    return response($xml, 200, ['Content-Type' => 'application/atom+xml; charset=UTF-8'])
+        ->setMaxAge(300)->setPublic();
+})->name('feed.updates');
+
 Route::get('/costs', fn () => view('costs-index'))->name('costs.index');
 Route::get('/costs/{slug}', function (string $slug) {
     $guide = collect(config('remodel-costs.guides', []))->firstWhere('slug', $slug);

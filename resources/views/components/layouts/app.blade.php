@@ -48,6 +48,7 @@
     <link rel="alternate" type="text/plain" href="{{ url('/llms.txt') }}" title="LLM Context">
     <link rel="alternate" type="text/plain" href="{{ url('/llms-full.txt') }}" title="LLM Context (Full)">
     <link rel="alternate" type="application/json" href="{{ url('/ai-feed.json') }}" title="AI Feed">
+    <link rel="alternate" type="application/atom+xml" href="{{ url('/feed/updates.atom') }}" title="Recently Updated Pages">
     <meta name="ai-content-description" content="GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, 53+ five-star reviews. Serving 89+ cities in Chicagoland. (224) 735-4200.">
 
     {{-- Hreflang for bilingual support --}}

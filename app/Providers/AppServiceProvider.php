@@ -37,6 +37,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Any save/delete of public content schedules a debounced sitemap
+        // regeneration + WebSub ping, so honest lastmod values reach crawlers
+        // in minutes instead of waiting for the nightly cycle.
+        $recrawlNudge = function ($model): void {
+            \App\Support\SEO\RecrawlNudger::nudge();
+        };
+        foreach ([
+            \App\Models\AreaServed::class,
+            \App\Models\Project::class,
+            \App\Models\ProjectImage::class,
+            \App\Models\Testimonial::class,
+        ] as $model) {
+            $model::saved($recrawlNudge);
+            $model::deleted($recrawlNudge);
+        }
+
         RateLimiter::for('gemini-ai-content', function (): array {
             $rpmLimit = max(1, (int) env('GOOGLE_GEMINI_RPM_LIMIT', 10));
 
