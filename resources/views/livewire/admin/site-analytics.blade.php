@@ -4,9 +4,6 @@
             <flux:heading size="xl">Analytics</flux:heading>
             <flux:text class="mt-1 text-zinc-500">First-party tracking for phone, email & form conversions.</flux:text>
         </div>
-        <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="arrow-left">
-            Back to Dashboard
-        </flux:button>
     </div>
 
     {{-- Filters --}}

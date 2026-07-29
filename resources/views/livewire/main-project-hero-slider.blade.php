@@ -213,7 +213,7 @@
         {{-- Remaining slides rendered via Alpine template --}}
         <template x-for="(slide, index) in slides" :key="index">
             <div
-                x-show="currentSlide === index && index > 0"
+                x-show="typeof index !== 'undefined' && currentSlide === index && index > 0"
                 x-transition:enter="transition ease-out duration-300"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
@@ -261,7 +261,7 @@
 
         {{-- Project title overlay --}}
         <template x-for="(slide, index) in slides" :key="'title-' + index">
-            <div x-show="currentSlide === index && slide.projectUrl" x-transition.opacity.duration.200ms class="absolute top-4 left-4 z-10">
+            <div x-show="typeof slide !== 'undefined' && currentSlide === index && slide.projectUrl" x-transition.opacity.duration.200ms class="absolute top-4 left-4 z-10">
                 <a :href="slide.projectUrl" class="inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/70">
                     <span x-text="slide.projectTitle"></span>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>

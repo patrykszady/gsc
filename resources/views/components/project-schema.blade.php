@@ -107,6 +107,48 @@ if ($project->images->isNotEmpty()) {
         return $obj;
     })->filter()->values()->toArray();
 
+    // Timelapse frames join the gallery as ImageObjects — only frame 1 exists
+    // in the rendered DOM (the rest cycle via JS), so schema + sitemap are how
+    // Google learns these images exist.
+    if ($project->relationLoaded('timelapses')) {
+        $tlPosition = count($associatedMedia);
+        foreach ($project->timelapses as $timelapse) {
+            $tlFrames = $timelapse->frames->sortBy('sort_order')->values();
+            $tlTotal = $tlFrames->count();
+            foreach ($tlFrames as $fi => $frame) {
+                // Skip frames whose file is missing (URL builds regardless).
+                if (! $frame->normalizeStorageLocation()) {
+                    continue;
+                }
+                $frameUrl = $frame->url;
+                if (! is_string($frameUrl) || trim($frameUrl) === '') {
+                    continue;
+                }
+                $tlCaption = 'Construction progress of ' . $project->title
+                    . ($project->location ? ' in ' . $project->location : '')
+                    . ' — timelapse frame ' . ($fi + 1) . ' of ' . $tlTotal . '.';
+                $obj = [
+                    '@type'       => 'ImageObject',
+                    'url'         => $frameUrl,
+                    'contentUrl'  => $frameUrl,
+                    'name'        => $project->title . ' — Construction Timelapse',
+                    'description' => $tlCaption,
+                    'caption'     => $tlCaption,
+                    'position'    => ++$tlPosition,
+                    'creditText'  => 'GS Construction',
+                    'creator'     => ['@id' => 'https://gs.construction/#organization'],
+                    'copyrightNotice' => '© ' . now()->year . ' GS Construction',
+                    'license'     => 'https://gs.construction/',
+                    'acquireLicensePage' => url('/contact'),
+                ];
+                if ($contentLocation) {
+                    $obj['contentLocation'] = $contentLocation;
+                }
+                $associatedMedia[] = $obj;
+            }
+        }
+    }
+
     if (!empty($associatedMedia)) {
         $schema['associatedMedia'] = $associatedMedia;
     }

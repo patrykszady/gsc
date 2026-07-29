@@ -50,8 +50,9 @@ class TitleMetaGenerator
             return ['title' => $title, 'description' => $desc];
         }
 
-        // Area landing page (whole service range).
-        $title = $this->fitTitle("{$city}, IL Remodeling", ['5★ Rated', 'Free Estimates']);
+        // Area landing page (whole service range). No ", IL" — titles never
+        // carry the state (SEOBuilder strips it defensively too).
+        $title = $this->fitTitle("{$city} Remodeling", ['5★ Rated', 'Free Estimates']);
         $desc = $this->fitDesc(
             "Family-owned {$city} remodeling contractor. Kitchen, bathroom & whole-home renovations "
             . "with clear pricing and timelines. 40+ yrs combined experience, 5-star rated. Free estimate."

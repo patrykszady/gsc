@@ -254,6 +254,13 @@ class ContactSection extends Component
             return;
         }
 
+        // Most leads arrive via the generic /contact page where no area is
+        // mounted — derive it from the street address so the notification,
+        // stored submission, and hive.contractors lead all carry the town.
+        if (! $this->area && trim($this->address) !== '') {
+            $this->area = $this->resolveAreaFromAddress($this->address);
+        }
+
         // Send email notification
         Mail::to(config('mail.from.address'))->send(new ContactFormSubmission(
             name: $this->name,
@@ -294,6 +301,36 @@ class ContactSection extends Component
         $this->dispatch('contact-form-submitted');
 
         $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'turnstileToken', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
+    }
+
+    /**
+     * Match a served city inside a free-form street address. Only the part
+     * AFTER the first comma is searched — Chicagoland street names are often
+     * town names ("E Palatine Rd", "Waukegan Rd"), so the street portion must
+     * never attribute. Longest city name wins so "Lake Zurich" beats a
+     * hypothetical "Zurich" and "Chicago Heights" beats "Chicago".
+     */
+    protected function resolveAreaFromAddress(string $address): ?AreaServed
+    {
+        if (! str_contains($address, ',')) {
+            return null;
+        }
+        $tail = mb_strtolower(trim(\Illuminate\Support\Str::after($address, ',')));
+        if ($tail === '') {
+            return null;
+        }
+
+        $best = null;
+        $bestLen = 0;
+        foreach (AreaServed::all() as $area) {
+            $city = mb_strtolower(trim((string) $area->city));
+            if ($city !== '' && mb_strlen($city) > $bestLen && str_contains($tail, $city)) {
+                $best = $area;
+                $bestLen = mb_strlen($city);
+            }
+        }
+
+        return $best;
     }
 
     /**

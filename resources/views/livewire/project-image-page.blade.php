@@ -125,7 +125,9 @@
          These are GS Construction's own project photos, so we assert authorship
          without a licensable-image claim (no false license metadata). --}}
     @php
-        $photoUrl = $image->webp_url ?: $image->url;
+        // Same canonical derivative the page displays and the sitemap lists —
+        // one URL per photo across every indexing surface.
+        $photoUrl = $image->getAnyUrl('large') ?: ($image->webp_url ?: $image->url);
         if ($photoUrl) {
             $photoName = $image->seo_alt_text ?: $image->alt_text ?: ($project->title . ' — remodeling photo');
             $imageObjectSchema = [
@@ -341,8 +343,11 @@
                         $galleryPageUrl = $galleryImageKey
                             ? route('projects.image', ['project' => $project, 'image' => $galleryImageKey])
                             : null;
-                        $galleryThumbUrl = $galleryImage->getWebpThumbnailUrl('thumbnail')
-                            ?: $galleryImage->getThumbnailUrl('thumbnail');
+                        // Size key is 'thumb' — 'thumbnail' is not a real key and
+                        // silently fell back to the multi-MB original .jpg.
+                        $galleryThumbUrl = $galleryImage->getWebpThumbnailUrl('thumb')
+                            ?: $galleryImage->getThumbnailUrl('thumb');
+                        $galleryAlt = trim((string) ($galleryImage->seo_alt_text ?: $galleryImage->alt_text)) ?: 'Photo ' . ($idx + 1);
                     @endphp
                     @if($galleryPageUrl && $galleryThumbUrl)
                         <a
@@ -358,7 +363,7 @@
                         >
                             <img
                                 src="{{ $galleryThumbUrl }}"
-                                alt="Photo {{ $idx + 1 }}"
+                                alt="{{ $galleryAlt }}"
                                 class="w-16 h-16 sm:w-20 sm:h-20 object-cover"
                                 loading="lazy"
                             >

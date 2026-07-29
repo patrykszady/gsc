@@ -317,7 +317,7 @@
                                 x-model="query"
                                 @input.debounce.300ms="search()"
                                 @keydown="handleKeydown($event)"
-                                @focus="if (predictions.length) open = true"
+                                @focus="if (typeof predictions !== 'undefined' && predictions.length) open = true"
                                 id="address-input"
                                 type="text"
                                 autocomplete="off"
@@ -329,7 +329,7 @@
                         
                         {{-- Flux-styled dropdown --}}
                         <div
-                            x-show="open && predictions.length > 0"
+                            x-show="typeof predictions !== 'undefined' && open && predictions.length > 0"
                             x-transition:enter="transition ease-out duration-100"
                             x-transition:enter-start="opacity-0 scale-95"
                             x-transition:enter-end="opacity-100 scale-100"
@@ -492,7 +492,7 @@
                                 
                                 {{-- Time Selection Side --}}
                                 <div class="p-4 sm:w-2/5">
-                                    <template x-if="activeDate">
+                                    <template x-if="typeof activeDate !== 'undefined' && activeDate">
                                         <div>
                                             <div class="mb-3 flex items-center gap-2">
                                                 <svg class="size-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -527,7 +527,7 @@
                             </div>
                             
                             {{-- Selected Times Summary --}}
-                            <template x-if="totalSelections > 0">
+                            <template x-if="typeof totalSelections !== 'undefined' && totalSelections > 0">
                                 <div class="border-t border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-zinc-800">
                                     <div class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Selected Times</div>
                                     <div class="space-y-2">

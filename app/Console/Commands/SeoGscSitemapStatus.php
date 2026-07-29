@@ -36,6 +36,10 @@ class SeoGscSitemapStatus extends Command
         );
         if (! $resp->successful()) {
             $this->error('Sitemaps API failed: ' . $resp->body());
+            \Illuminate\Support\Facades\Log::error('seo:gsc-sitemap-status API failed', [
+                'status' => $resp->status(),
+                'body' => mb_substr($resp->body(), 0, 500),
+            ]);
             return self::FAILURE;
         }
 
@@ -91,7 +95,20 @@ class SeoGscSitemapStatus extends Command
             $this->writeReport($rows, $errored, $stale);
         }
 
-        return ($errored || $stale) ? self::FAILURE : self::SUCCESS;
+        // Staleness (Google simply hasn't re-crawled recently) is a warning,
+        // not a failure — exiting non-zero here made the scheduler log an
+        // opaque "failed with exit code 1" with no reason attached.
+        if ($stale) {
+            \Illuminate\Support\Facades\Log::warning('seo:gsc-sitemap-status stale sitemaps', [
+                'stale' => $stale,
+                'max_age_days' => $maxAgeDays,
+            ]);
+        }
+        if ($errored) {
+            \Illuminate\Support\Facades\Log::error('seo:gsc-sitemap-status sitemap errors', ['errored' => $errored]);
+        }
+
+        return $errored ? self::FAILURE : self::SUCCESS;
     }
 
     /**

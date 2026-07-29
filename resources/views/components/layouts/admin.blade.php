@@ -35,53 +35,55 @@
                 Dashboard
             </flux:sidebar.item>
 
-            <flux:sidebar.item icon="folder" href="{{ route('admin.projects.index') }}" :current="request()->routeIs('admin.projects.*')">
-                Projects
+            <flux:sidebar.item icon="inbox" href="{{ route('admin.leads.index') }}" :current="request()->routeIs('admin.leads.*')">
+                Leads
             </flux:sidebar.item>
 
-            <flux:sidebar.item icon="tag" href="{{ route('admin.tags.index') }}" :current="request()->routeIs('admin.tags.*')">
-                Tags
-            </flux:sidebar.item>
+            <flux:sidebar.group heading="Content">
+                <flux:sidebar.item icon="folder" href="{{ route('admin.projects.index') }}" :current="request()->routeIs('admin.projects.*') || request()->routeIs('admin.tags.*')">
+                    Projects
+                </flux:sidebar.item>
 
-            <flux:sidebar.item icon="star" href="{{ route('admin.testimonials.index') }}" :current="request()->routeIs('admin.testimonials.*')">
-                Reviews
-            </flux:sidebar.item>
+                <flux:sidebar.item icon="star" href="{{ route('admin.testimonials.index') }}" :current="request()->routeIs('admin.testimonials.*')">
+                    Reviews
+                </flux:sidebar.item>
 
-            <flux:sidebar.item icon="map-pin" href="{{ route('admin.areas.index') }}" :current="request()->routeIs('admin.areas.*')">
-                Service Areas
-            </flux:sidebar.item>
+                <flux:sidebar.item icon="map-pin" href="{{ route('admin.areas.index') }}" :current="request()->routeIs('admin.areas.*')">
+                    Service Areas
+                </flux:sidebar.item>
 
-            <flux:sidebar.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
-                Social Media
-            </flux:sidebar.item>
+                <flux:sidebar.item icon="document-plus" href="{{ route('admin.landing-pages.index') }}" :current="request()->routeIs('admin.landing-pages.*')">
+                    Landing Pages
+                </flux:sidebar.item>
+            </flux:sidebar.group>
 
-            <flux:sidebar.item icon="building-storefront" href="{{ route('admin.platforms.index') }}" :current="request()->routeIs('admin.platforms.*')">
-                Platforms
-            </flux:sidebar.item>
+            {{-- One SEO entry: SEO Reports is the hub (it already summarizes the
+                 autopilot ledger + URL inspection); Autopilot and GSC Errors are
+                 reachable from panels inside it as drill-downs. --}}
+            <flux:sidebar.group heading="Marketing">
+                <flux:sidebar.item icon="chart-bar" href="{{ route('admin.seo-reports.index') }}"
+                    :current="request()->routeIs('admin.seo-reports.*') || request()->routeIs('admin.autopilot.*') || request()->routeIs('admin.gsc-errors.*')">
+                    SEO
+                </flux:sidebar.item>
 
-            <flux:sidebar.item icon="chart-bar" href="{{ route('admin.seo-reports.index') }}" :current="request()->routeIs('admin.seo-reports.*')">
-                SEO Reports
-            </flux:sidebar.item>
+                <flux:sidebar.item icon="share" href="{{ route('admin.social-media.index') }}" :current="request()->routeIs('admin.social-media.*')">
+                    Social Media
+                </flux:sidebar.item>
 
-            <flux:sidebar.item icon="sparkles" href="{{ route('admin.autopilot.index') }}" :current="request()->routeIs('admin.autopilot.*')">
-                SEO Autopilot
-            </flux:sidebar.item>
+                <flux:sidebar.item icon="building-storefront" href="{{ route('admin.platforms.index') }}" :current="request()->routeIs('admin.platforms.*')">
+                    Platforms
+                </flux:sidebar.item>
+            </flux:sidebar.group>
 
-            <flux:sidebar.item icon="document-plus" href="{{ route('admin.landing-pages.index') }}" :current="request()->routeIs('admin.landing-pages.*')">
-                Landing Pages
-            </flux:sidebar.item>
+            <flux:sidebar.group heading="Site health">
+                <flux:sidebar.item icon="presentation-chart-line" href="{{ route('admin.analytics.index') }}" :current="request()->routeIs('admin.analytics.*')">
+                    Analytics
+                </flux:sidebar.item>
 
-            <flux:sidebar.item icon="exclamation-triangle" href="{{ route('admin.gsc-errors.index') }}" :current="request()->routeIs('admin.gsc-errors.*')">
-                GSC Errors
-            </flux:sidebar.item>
-
-            <flux:sidebar.item icon="presentation-chart-line" href="{{ route('admin.analytics.index') }}" :current="request()->routeIs('admin.analytics.*')">
-                Analytics
-            </flux:sidebar.item>
-
-            <flux:sidebar.item icon="bug-ant" href="{{ route('admin.js-errors.index') }}" :current="request()->routeIs('admin.js-errors.*')">
-                JS Errors
-            </flux:sidebar.item>
+                <flux:sidebar.item icon="bug-ant" href="{{ route('admin.js-errors.index') }}" :current="request()->routeIs('admin.js-errors.*')">
+                    JS Errors
+                </flux:sidebar.item>
+            </flux:sidebar.group>
         </flux:sidebar.nav>
 
         <flux:sidebar.spacer />

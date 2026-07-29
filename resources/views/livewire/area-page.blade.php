@@ -634,13 +634,29 @@
 
         @case('testimonials')
             {{-- Area Testimonials Page --}}
+            @php
+                // Unique per-town proof numbers: local + nearby review counts
+                // with real reviewer towns, so each spoke carries text no
+                // sibling page shares.
+                $spokeLocalQuotes = $area->localTestimonials(3);
+                $spokeNearbyQuotes = $spokeLocalQuotes->isEmpty() ? $area->nearbyTestimonials() : collect();
+                $spokeReviewerTowns = $spokeLocalQuotes->concat($spokeNearbyQuotes)
+                    ->map(fn ($t) => trim(\Illuminate\Support\Str::before((string) $t->project_location, ',')))
+                    ->filter()->unique()->take(4)->values();
+            @endphp
             <div class="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8 text-center">
                 <p class="text-sm font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">Testimonials</p>
                 <h1 class="mt-2 font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
                     {{ $area->city }} Remodeling Reviews
                 </h1>
                 <p class="mt-4 mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-300">
-                    Read what {{ $area->city }} homeowners say about working with GS Construction.
+                    @if($spokeLocalQuotes->isNotEmpty())
+                        Verified reviews from {{ $area->city }} homeowners — real projects, real names, photographed by our own crews.
+                    @elseif($spokeReviewerTowns->isNotEmpty())
+                        What homeowners near {{ $area->city }} — in {{ $spokeReviewerTowns->implode(', ') }} — say about working with GS Construction.
+                    @else
+                        Read what homeowners across Chicago's northwest suburbs say about working with GS Construction.
+                    @endif
                 </p>
             </div>
 
@@ -657,11 +673,38 @@
 
         @case('projects')
             {{-- Area Projects Page --}}
+            @php
+                // Data-driven unique intro: real project counts, towns, and
+                // types near THIS city. Differentiates the spoke from 80
+                // sibling pages that Google was clustering as duplicates.
+                $spokeProjects = $area->nearbyProjects(12);
+                $spokeTowns = $spokeProjects->map(fn ($p) => trim(\Illuminate\Support\Str::before((string) $p->location, ',')))
+                    ->filter()->unique()->take(5)->values();
+                $spokeTypes = $spokeProjects->pluck('project_type')->filter()->unique()
+                    ->map(fn ($t) => str_replace('-', ' ', (string) $t))->take(4)->values();
+            @endphp
+            <div class="mx-auto max-w-3xl px-4 pt-8 text-center sm:px-6 lg:px-8">
+                <p class="text-sm font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">Project Gallery</p>
+                <h1 class="mt-2 font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+                    {{ $area->city }} Remodeling Projects
+                </h1>
+                @if($spokeProjects->isNotEmpty())
+                    <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
+                        Browse {{ $spokeProjects->count() }}{{ $spokeProjects->count() === 12 ? '+' : '' }} completed
+                        {{ $spokeTypes->implode(', ') }} projects photographed in and around {{ $area->city }}@if($spokeTowns->isNotEmpty()) — including work in {{ $spokeTowns->implode(', ') }}@endif.
+                        Every photo below is our own crews' work, with the owners on site from demo to final walkthrough.
+                    </p>
+                @endif
+            </div>
+
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <livewire:timelapse-section />
             </div>
 
             <livewire:projects-grid :area="$area" />
+
+            {{-- Crawlable per-town proof line (completed-project radius count) --}}
+            <livewire:map-section :area="$area" />
 
             <x-cta-section 
                 variant="blue"

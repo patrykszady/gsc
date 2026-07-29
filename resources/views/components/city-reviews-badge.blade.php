@@ -53,6 +53,31 @@
             ];
         }
     }
+
+    // Built inside @php on purpose: Laravel 12 ships a real @context Blade
+    // directive, so a literal '@context' key in template text gets compiled
+    // into PHP and corrupts the emitted JSON-LD.
+    $cityReviewsSchemaJson = ($cityName && $aggregate) ? json_encode([
+        '@context'        => 'https://schema.org',
+        '@type'           => 'LocalBusiness',
+        '@id'             => url($area->url) . '#city-reviews',
+        'name'            => 'GS Construction',
+        // Service-area business: single real HQ address. The city this node is
+        // about is conveyed via areaServed below, not a fabricated local address.
+        'address'         => [
+            '@type'           => 'PostalAddress',
+            'addressLocality' => 'Prospect Heights',
+            'addressRegion'   => 'IL',
+            'postalCode'      => '60070',
+            'addressCountry'  => 'US',
+        ],
+        'areaServed'      => ['@type' => 'City', 'name' => $cityName.', IL'],
+        // No aggregateRating here: self-serving LocalBusiness ratings are ignored
+        // for stars (2019 policy) and would compete with the page's rated Product
+        // nodes — the only entities eligible to render stars. Reviews stay for
+        // E-E-A-T / AI-answer surfaces; the visible badge still shows the average.
+        'review'          => $reviews,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
 @endphp
 
 @if($cityName && $aggregate)
@@ -78,28 +103,6 @@
 </div>
 
 @push('head')
-<script type="application/ld+json">
-{!! json_encode([
-    '@context'        => 'https://schema.org',
-    '@type'           => 'LocalBusiness',
-    '@id'             => url($area->url) . '#city-reviews',
-    'name'            => 'GS Construction',
-    // Service-area business: single real HQ address. The city this node is
-    // about is conveyed via areaServed below, not a fabricated local address.
-    'address'         => [
-        '@type'           => 'PostalAddress',
-        'addressLocality' => 'Prospect Heights',
-        'addressRegion'   => 'IL',
-        'postalCode'      => '60070',
-        'addressCountry'  => 'US',
-    ],
-    'areaServed'      => ['@type' => 'City', 'name' => $cityName.', IL'],
-    // No aggregateRating here: self-serving LocalBusiness ratings are ignored
-    // for stars (2019 policy) and would compete with the page's rated Product
-    // nodes — the only entities eligible to render stars. Reviews stay for
-    // E-E-A-T / AI-answer surfaces; the visible badge still shows the average.
-    'review'          => $reviews,
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
+<script type="application/ld+json">{!! $cityReviewsSchemaJson !!}</script>
 @endpush
 @endif

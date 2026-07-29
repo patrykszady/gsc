@@ -1,9 +1,6 @@
 <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <flux:heading size="xl">Contact Submissions</flux:heading>
-        <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="arrow-left">
-            Back to Dashboard
-        </flux:button>
     </div>
 
     @if(session('status'))

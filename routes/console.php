@@ -301,6 +301,16 @@ Schedule::command('seo:autopilot --markdown --max=25')
     ->appendOutputTo(storage_path('logs/seo-autopilot.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:autopilot failed'));
 
+// SEO: rebuild the admin report's Priority Actions + recommendations from live
+// data and self-heal stale pipelines. Runs right after the autopilot so the
+// report reflects today's ledger state.
+Schedule::command('seo:recommendations-refresh')
+    ->dailyAt('11:10')
+    ->timezone('America/Chicago')
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/seo-recommendations-refresh.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:recommendations-refresh failed'));
+
 // SEO: weekly internal-link audit — orphans + weakly linked pages.
 Schedule::command('seo:internal-link-audit --min=3')
     ->weeklyOn(1, '08:30')
@@ -409,6 +419,15 @@ Schedule::command('seo:gsc-inspect-bulk --limit=0 --markdown')
     ->appendOutputTo(storage_path('logs/seo-gsc-inspect-bulk.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-inspect-bulk failed'))
     ->when(fn () => config('services.google.search_console.enabled'));
+
+// SEO: weekly cleanup of coverage rows for URLs that left the sitemap — the
+// sweep can never refresh them, so they pollute /admin/gsc-errors and the
+// autopilot's coverage synthesizers. Runs after the Sunday sitemap regen.
+Schedule::command('seo:gsc-prune-retired')
+    ->weeklyOn(0, '05:30')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/seo-gsc-prune-retired.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:gsc-prune-retired failed'));
 
 // SEO: daily sitemap submission-status check (errors, warnings, stale lastDownloaded).
 $seoAlertEmail = (string) env('SEO_ALERT_EMAIL', '');

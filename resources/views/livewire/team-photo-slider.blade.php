@@ -234,7 +234,7 @@
         <template x-for="(bg, index) in (typeof backgrounds !== 'undefined' && Array.isArray(backgrounds) ? backgrounds : [])" :key="index">
             <div
                 x-show="(typeof introPhase !== 'undefined' && !introPhase) && (currentSlide === index || previousSlide === index)"
-                :style="{ zIndex: currentSlide === index ? 10 : 5 }"
+                :style="{ zIndex: (typeof index !== 'undefined' && currentSlide === index) ? 10 : 5 }"
                 class="absolute inset-0"
             >
                 {{-- Skeleton while loading --}}

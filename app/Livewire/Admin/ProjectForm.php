@@ -730,7 +730,22 @@ class ProjectForm extends Component
                     $filename = $sortOrder . '_' . \Illuminate\Support\Str::random(8) . '.' . $extension;
                     $path = $basePath . '/' . $filename;
 
+                    // Resize like the upload branch above — a raw byte copy
+                    // ships the full-resolution original as a "frame".
                     $sourceContent = \Illuminate\Support\Facades\Storage::disk('public')->get($galleryImage->path);
+                    try {
+                        $image = \Intervention\Image\Laravel\Facades\Image::read($sourceContent);
+                        if ($image->width() > 1920) {
+                            $image->scale(width: 1920);
+                        }
+                        $sourceContent = match (strtolower($extension)) {
+                            'png' => $image->toPng()->toString(),
+                            'webp' => $image->toWebp(80)->toString(),
+                            default => $image->toJpeg(80)->toString(),
+                        };
+                    } catch (\Throwable $e) {
+                        // Unreadable image — fall back to the original bytes.
+                    }
                     \Illuminate\Support\Facades\Storage::disk('public')->put($path, $sourceContent);
 
                     ProjectTimelapseFrame::create([

@@ -42,10 +42,31 @@ class SyncPageSpeedInsights extends Command
         $totalOk = 0;
         $totalFail = 0;
         $failedUrls = [];
+        $deadUrls = [];
         $runRows = [];
 
         foreach ($urls as $url) {
             $urlFailed = false;
+
+            // Removed pages (e.g. retired area slugs still present in GSC data
+            // or the failed-retry cache) 404 locally and make the PSI API
+            // return 500 after burning ~75s per attempt. Probe cheaply first.
+            // ONLY 404/410 count as dead — transient 5xx (deploy, maintenance
+            // mode) and bot-challenge 403s from Cloudflare must fall through
+            // to the normal PSI attempt, not silently retire the URL.
+            try {
+                $status = \Illuminate\Support\Facades\Http::timeout(10)
+                    ->withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'])
+                    ->head($url)
+                    ->status();
+                if (in_array($status, [404, 410], true)) {
+                    $this->warn(" ↳ skipped {$url}: page returns HTTP {$status}");
+                    $deadUrls[] = $url;
+                    continue;
+                }
+            } catch (\Throwable $e) {
+                // Probe failure is inconclusive — let PSI try normally.
+            }
 
             foreach ($strategies as $strategy) {
                 $this->line("PSI: {$strategy} {$url}");
@@ -118,8 +139,16 @@ class SyncPageSpeedInsights extends Command
             }
         }
 
+        // Circuit breaker: if most of the pool probes "dead", something is
+        // wrong with the SITE or the probe (outage, WAF change) — don't let
+        // one bad cycle retire the whole retry cache.
+        if (count($deadUrls) > max(3, (int) floor(count($urls) / 2))) {
+            $this->error('Dead-probe ratio too high (' . count($deadUrls) . '/' . count($urls) . ') — treating as outage, not pruning.');
+            $deadUrls = [];
+        }
+
         if (! $dry) {
-            $this->persistFailedUrls($failedUrls);
+            $this->persistFailedUrls($failedUrls, $deadUrls);
         }
 
         $this->info("Done. ok={$totalOk} failed={$totalFail}" . ($dry ? ' (dry-run)' : ''));
@@ -241,15 +270,21 @@ class SyncPageSpeedInsights extends Command
         return array_values(array_unique(array_filter($urls, fn ($u) => is_string($u) && str_starts_with($u, $base))));
     }
 
-    protected function persistFailedUrls(array $failedUrls): void
+    protected function persistFailedUrls(array $failedUrls, array $deadUrls = []): void
     {
-        if (empty($failedUrls)) {
+        if (empty($failedUrls) && empty($deadUrls)) {
             cache()->forget(self::FAILED_URLS_CACHE_KEY);
             return;
         }
 
         // Keep up to 200 failed URLs for 7 days; newest failures first.
+        // Dead URLs (4xx pages) are pruned so they stop re-entering the pool.
         $merged = array_values(array_unique(array_merge($failedUrls, (array) cache()->get(self::FAILED_URLS_CACHE_KEY, []))));
+        $merged = array_values(array_diff($merged, $deadUrls));
+        if (empty($merged)) {
+            cache()->forget(self::FAILED_URLS_CACHE_KEY);
+            return;
+        }
         cache()->put(self::FAILED_URLS_CACHE_KEY, array_slice($merged, 0, 200), now()->addDays(7));
     }
 

@@ -26,8 +26,16 @@ class ProjectImagePage extends Component
             abort(404);
         }
 
-        // Ensure image belongs to project
+        // Wrong project in the URL (stale link, or a historical slug collision
+        // resolving to another project's image): 301 to the image's canonical
+        // home instead of 404ing a page Google may have indexed.
         if ($image->project_id !== $project->id) {
+            $ownerSlug = $image->project?->slug;
+            if ($ownerSlug) {
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                    redirect()->to(route('projects.image', ['project' => $ownerSlug, 'image' => $image->slug ?: $image->id]), 301)
+                );
+            }
             abort(404);
         }
 
@@ -143,7 +151,11 @@ class ProjectImagePage extends Component
             ->canonical($canonicalUrl)
             ->url($currentUrl)
             ->type('article')
-            ->image($googleUrl ?: $imageUrl);
+            // Always OUR hosted image — pointing og:image at the Google-hosted
+            // copy (lh3.googleusercontent.com) tells crawlers the page's image
+            // lives off-domain and starves our own image indexing. The Google
+            // copy stays discoverable via the schema sameAs below.
+            ->image($imageUrl);
 
         $schema = [
             '@context' => 'https://schema.org',

@@ -177,6 +177,12 @@
                         msg.indexOf("Failed to execute 'insertRule' on 'CSSStyleSheet'") !== -1
                         && msg.indexOf('@layer base') !== -1
                     ) return;
+                    // Scripts injected by in-app browsers (Facebook/Instagram)
+                    // reference their own globals that don't exist outside the
+                    // native shell — not our code, never actionable.
+                    if (msg.indexOf('_AutofillCallbackHandler') !== -1) return;
+                    if (msg.indexOf('__gCrWeb') !== -1) return;
+                    if (msg.indexOf('window.webkit.messageHandlers') !== -1) return;
                     var sig = kind + '|' + msg + '|' + (data.source || '') + '|' + (data.line || '');
                     if (seen[sig]) return; // de-dupe storms (e.g. loops)
                     seen[sig] = true;

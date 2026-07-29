@@ -5,9 +5,6 @@
             <flux:text class="mt-1 text-zinc-500">Google Search Console URL Inspection states with filters and CSV export.</flux:text>
         </div>
         <div class="flex items-center gap-2">
-            <flux:button href="{{ route('admin.seo-reports.index') }}" variant="ghost" icon="arrow-left">
-                Back to SEO Reports
-            </flux:button>
             <flux:button
                 wire:click="refreshInBackground"
                 wire:confirm="Queue a full sitemap GSC inspection in the background?"
@@ -19,6 +16,16 @@
             <flux:button wire:click="exportCsv" variant="ghost" icon="arrow-down-tray">
                 Export CSV
             </flux:button>
+            @if(($stats['retired'] ?? 0) > 0)
+                <flux:button
+                    wire:click="pruneRetired"
+                    wire:confirm="Delete {{ number_format($stats['retired']) }} tracked URL(s) that are no longer in the sitemap? They can never be re-inspected and only add noise. Rows are re-created automatically if a URL returns to the sitemap."
+                    variant="ghost"
+                    icon="trash"
+                >
+                    Prune retired ({{ number_format($stats['retired']) }})
+                </flux:button>
+            @endif
         </div>
     </div>
 
@@ -50,7 +57,10 @@
         <flux:card>
             <div class="text-sm text-zinc-500">Inspection Coverage</div>
             <div class="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">{{ number_format($stats['inspection_coverage_pct'] ?? 0) }}%</div>
-            <div class="text-xs text-zinc-500">Tracked vs sitemap</div>
+            <div class="text-xs text-zinc-500">Of current sitemap inspected</div>
+            @if(($stats['retired'] ?? 0) > 0)
+                <div class="mt-1 text-xs text-amber-600 dark:text-amber-400">{{ number_format($stats['retired']) }} tracked URLs left the sitemap</div>
+            @endif
         </flux:card>
     </div>
 

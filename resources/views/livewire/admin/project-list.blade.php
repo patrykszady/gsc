@@ -1,9 +1,14 @@
 <div>
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <flux:heading size="xl">Projects</flux:heading>
-        <flux:button href="{{ route('admin.projects.create') }}" icon="plus">
-            New Project
-        </flux:button>
+        <div class="flex items-center gap-2">
+            <flux:button href="{{ route('admin.tags.index') }}" variant="ghost" icon="tag">
+                Tags
+            </flux:button>
+            <flux:button href="{{ route('admin.projects.create') }}" icon="plus">
+                New Project
+            </flux:button>
+        </div>
     </div>
 
     {{-- Filters --}}

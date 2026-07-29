@@ -238,6 +238,23 @@ class PublishSocialMediaPost extends Command
             }
         }
 
+        // Prefer never-posted images from the engine's GBP focus towns —
+        // towns where we rank page 1 with zero organic clicks and the local
+        // pack needs fresh photo evidence (seo/priority-pages.json, daily).
+        $focusTowns = $this->gbpFocusTowns();
+        if ($focusTowns !== []) {
+            $focusQuery = (clone $query)->whereHas('project', function ($q) use ($focusTowns) {
+                $q->where(function ($qq) use ($focusTowns) {
+                    foreach ($focusTowns as $town) {
+                        $qq->orWhere('location', 'like', $town . '%');
+                    }
+                });
+            });
+            if ($image = $focusQuery->inRandomOrder()->first()) {
+                return $image;
+            }
+        }
+
         if ($image = $query->inRandomOrder()->first()) {
             return $image;
         }
@@ -297,6 +314,22 @@ class PublishSocialMediaPost extends Command
     /**
      * Build the same full caption format used for live posting.
      */
+    /** @return array<int, string> Towns from the engine's daily priority file. */
+    protected function gbpFocusTowns(): array
+    {
+        try {
+            if (! \Illuminate\Support\Facades\Storage::disk('local')->exists('seo/priority-pages.json')) {
+                return [];
+            }
+            $decoded = json_decode((string) \Illuminate\Support\Facades\Storage::disk('local')->get('seo/priority-pages.json'), true);
+            $towns = $decoded['gbp_focus_towns'] ?? [];
+
+            return is_array($towns) ? array_values(array_filter($towns, 'is_string')) : [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     protected function buildFullCaption(array $content, string $shortLinkUrl): string
     {
         $parts = [];

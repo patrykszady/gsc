@@ -80,6 +80,7 @@ class SeoAutopilotService
         $created = 0;
         $created += $this->synthesizeTitleMeta();
         $created += $this->synthesizeReindex();
+        $created += $this->synthesizeCoverageClusters();
         $created += $this->synthesizeLlmsRefresh();
         $created += $this->synthesizeCreatePage();
 
@@ -290,8 +291,8 @@ class SeoAutopilotService
             // Never chase URLs we deliberately noindexed.
             ->whereRaw('LOWER(COALESCE(coverage_state, "")) not like ?', ['%excluded by%'])
             ->orderByRaw('COALESCE(last_changed_at, inspected_at) DESC')
-            ->limit(15)
-            ->get(['url', 'coverage_state', 'verdict']);
+            ->limit(50)
+            ->get(['url', 'coverage_state', 'verdict', 'last_crawl_time']);
 
         $created = 0;
         foreach ($rows as $row) {
@@ -300,21 +301,217 @@ class SeoAutopilotService
                 continue;
             }
 
+            $state = strtolower((string) $row->coverage_state);
+            $isCrawledNotIndexed = str_contains($state, 'crawled') && str_contains($state, 'not indexed');
+
+            // "Crawled – currently not indexed" is a quality judgment: Google
+            // already fetched the page and declined it. Resubmitting the SAME
+            // content does nothing — only act once the page actually changed
+            // after Google's last crawl. Discovery states (unknown/discovered/
+            // 404s) still benefit from a plain resubmit.
+            $updatedAt = $this->contentUpdatedAt($url);
+            $changedSinceCrawl = $updatedAt !== null
+                && $row->last_crawl_time !== null
+                && $updatedAt->gt(Carbon::parse($row->last_crawl_time));
+
+            if ($isCrawledNotIndexed && ! $changedSinceCrawl) {
+                continue;
+            }
+
+            // Version the fingerprint by content stamp so a URL becomes
+            // actionable AGAIN each time its content is refreshed (a static
+            // per-URL fingerprint meant one resubmit ever, then silence).
+            // Unchanged URLs keep the LEGACY un-suffixed key so pre-existing
+            // ledger rows still dedup instead of spawning "|initial" twins.
+            $stamp = $changedSinceCrawl ? $updatedAt->format('Ymd') : 'initial';
+            $fingerprint = $changedSinceCrawl
+                ? $this->fp('coverage_error', 'reindex', $url . '|' . $stamp)
+                : $this->fp('coverage_error', 'reindex', $url);
+
+            // Collapse repeat edits: if a reindex for this URL was already
+            // proposed/applied AFTER the content change, another action adds
+            // nothing — one resubmission per content version is enough.
+            if ($changedSinceCrawl) {
+                $alreadyCovered = SeoAction::where('category', 'reindex')
+                    ->where('target_url', $url)
+                    ->whereIn('status', [SeoAction::STATUS_PROPOSED, SeoAction::STATUS_APPLIED])
+                    ->where(function ($q) use ($updatedAt) {
+                        $q->where('created_at', '>=', $updatedAt)
+                            ->orWhere('applied_at', '>=', $updatedAt);
+                    })
+                    ->exists();
+                if ($alreadyCovered) {
+                    continue;
+                }
+            }
+
             $created += $this->upsertAction([
-                'fingerprint' => $this->fp('coverage_error', 'reindex', $url),
+                'fingerprint' => $fingerprint,
                 'source' => 'coverage_error',
                 'category' => 'reindex',
                 'risk' => SeoAction::RISK_SAFE,
                 'target_url' => $url,
                 'title' => 'Reindex: ' . Str::of($url)->after(self::BASE_URL),
-                'hypothesis' => sprintf('Coverage verdict "%s" / state "%s" — resubmit to IndexNow to prompt a re-crawl.', $row->verdict ?? '?', $row->coverage_state ?? '?'),
+                'hypothesis' => $changedSinceCrawl
+                    ? sprintf(
+                        'Content updated %s — after Google\'s last crawl (%s, state "%s"). Resubmit so the improved page gets re-evaluated.',
+                        $updatedAt->toDateString(),
+                        Carbon::parse($row->last_crawl_time)->toDateString(),
+                        $row->coverage_state ?? '?'
+                    )
+                    : sprintf('Coverage verdict "%s" / state "%s" — resubmit to IndexNow to prompt a re-crawl.', $row->verdict ?? '?', $row->coverage_state ?? '?'),
                 'metric' => 'impressions',
-                'payload' => ['url' => $url, 'coverage_state' => $row->coverage_state],
-                'impact_score' => 5.0,
+                'payload' => ['url' => $url, 'coverage_state' => $row->coverage_state, 'content_stamp' => $stamp],
+                'impact_score' => $changedSinceCrawl ? 8.0 : 5.0,
             ]);
         }
 
         return $created;
+    }
+
+    /**
+     * Best-known content timestamp for a public URL, so reindex actions can
+     * distinguish "page improved since Google's crawl" from "same page again".
+     */
+    private function contentUpdatedAt(string $url): ?Carbon
+    {
+        $path = parse_url($url, PHP_URL_PATH) ?: '/';
+
+        if (preg_match('#^/areas-served/([^/]+)#', $path, $m)) {
+            $ts = AreaServed::where('slug', $m[1])->value('updated_at');
+
+            return $ts ? Carbon::parse($ts) : null;
+        }
+
+        if (preg_match('#^/projects/([^/]+)#', $path, $m)) {
+            $ts = Project::where('slug', $m[1])->value('updated_at');
+
+            return $ts ? Carbon::parse($ts) : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Template-family index-rate alarm. When a large share of one URL family
+     * (photo pages, area service combos…) is "Crawled – currently not
+     * indexed", the family needs content differentiation, not resubmission —
+     * exactly how the /services/kitchen-remodeling thin-content problem was
+     * found by hand. Emits ONE review-risk action per family with the numbers.
+     */
+    private function synthesizeCoverageClusters(): int
+    {
+        if (! Schema::hasTable('gsc_coverage_states')) {
+            return 0;
+        }
+
+        // Only count URLs still in the sitemap — retired rows (deliberately
+        // de-indexed thin spokes) otherwise inflate a family's "not indexed"
+        // share and raise alarms about pages we removed on purpose.
+        $inSitemap = [];
+        $sitemapPath = public_path('sitemap.xml');
+        if (is_file($sitemapPath) && ($xml = @simplexml_load_string((string) file_get_contents($sitemapPath))) && isset($xml->url)) {
+            foreach ($xml->url as $u) {
+                $inSitemap[(string) $u->loc] = true;
+            }
+        }
+
+        $families = [];
+        GscCoverageState::query()
+            ->select(['id', 'url', 'coverage_state'])
+            ->chunkById(500, function ($rows) use (&$families, $inSitemap): void {
+                foreach ($rows as $row) {
+                    if ($inSitemap !== [] && ! isset($inSitemap[(string) $row->url])) {
+                        continue;
+                    }
+                    $path = parse_url((string) $row->url, PHP_URL_PATH) ?: '/';
+                    $family = $this->urlFamily($path);
+                    $families[$family]['total'] = ($families[$family]['total'] ?? 0) + 1;
+                    $state = strtolower((string) $row->coverage_state);
+                    if (str_contains($state, 'not indexed')) {
+                        $families[$family]['unindexed'] = ($families[$family]['unindexed'] ?? 0) + 1;
+                    }
+                }
+            });
+
+        // Self-expire: close open alarms whose family no longer breaches the
+        // threshold — advisories must disappear when their condition heals.
+        $openAlarms = SeoAction::where('source', 'coverage_cluster')
+            ->where('status', SeoAction::STATUS_PROPOSED)
+            ->get();
+        foreach ($openAlarms as $alarm) {
+            $family = (string) ($alarm->payload['family'] ?? '');
+            $total = (int) ($families[$family]['total'] ?? 0);
+            $unindexed = (int) ($families[$family]['unindexed'] ?? 0);
+            $currentPct = $total > 0 ? (int) round(($unindexed / $total) * 100) : 0;
+            $breaches = $total >= 10 && $total > 0 && $unindexed / $total >= 0.4;
+            // Also retire alarms whose severity band no longer matches — the
+            // current-band alarm is (re)created below, so an old "49%" row
+            // must not linger next to the fresh "60%" one.
+            $sameBand = (int) (floor($currentPct / 20) * 20) === (int) (floor((int) ($alarm->payload['pct'] ?? 0) / 20) * 20);
+            if (! $breaches || ! $sameBand) {
+                $alarm->status = SeoAction::STATUS_SKIPPED;
+                $alarm->notes = trim(($alarm->notes ? $alarm->notes . ' ' : '')
+                    . sprintf('Auto-resolved %s: family now %d/%d not indexed.', now()->toDateString(), $unindexed, $total));
+                $alarm->save();
+            }
+        }
+
+        $created = 0;
+        foreach ($families as $family => $counts) {
+            $total = (int) ($counts['total'] ?? 0);
+            $unindexed = (int) ($counts['unindexed'] ?? 0);
+            if ($total < 10 || $unindexed / $total < 0.4) {
+                continue;
+            }
+
+            $pct = (int) round(($unindexed / $total) * 100);
+            // Severity band (40s/60s/80s…) in the fingerprint: a new action
+            // only appears when the problem meaningfully worsens or recurs.
+            $band = (int) (floor($pct / 20) * 20);
+
+            $created += $this->upsertAction([
+                'fingerprint' => $this->fp('coverage_cluster', 'content_quality', $family . '|' . $band),
+                'source' => 'coverage_cluster',
+                'category' => 'content_quality',
+                'risk' => SeoAction::RISK_REVIEW,
+                'target_url' => self::BASE_URL . '/' . ltrim(str_replace('*', '', $family), '/'),
+                'title' => "Index-rate alarm: {$family} ({$pct}% not indexed)",
+                'hypothesis' => sprintf(
+                    '%d of %d tracked URLs in the "%s" family are not indexed (%d%%). Google is declining this template as a group — it needs content differentiation (unique copy, proof elements, internal links), not resubmission.',
+                    $unindexed,
+                    $total,
+                    $family,
+                    $pct
+                ),
+                'metric' => 'impressions',
+                'payload' => ['family' => $family, 'total' => $total, 'unindexed' => $unindexed, 'pct' => $pct],
+                'impact_score' => 9.0,
+            ]);
+        }
+
+        return $created;
+    }
+
+    /** Bucket a path into its template family for cluster analysis. */
+    private function urlFamily(string $path): string
+    {
+        if (str_contains($path, '/photos/')) {
+            return 'projects/*/photos';
+        }
+        if (preg_match('#^/areas-served/[^/]+/services/#', $path)) {
+            return 'areas-served/*/services';
+        }
+        if (preg_match('#^/areas-served/[^/]+/(about|testimonials|projects|contact)#', $path)) {
+            return 'areas-served/*/subpages';
+        }
+        if (preg_match('#^/service-area/#', $path)) {
+            return 'service-area/*';
+        }
+
+        $seg = explode('/', trim($path, '/'))[0] ?? '';
+
+        return $seg !== '' ? $seg : '(root)';
     }
 
     /** Refresh the AI-answer surface (llms.txt) when it goes stale. */
@@ -354,21 +551,42 @@ class SeoAutopilotService
     {
         $this->rescoreOpenActions();
 
+        // Reindex actions are single IndexNow pings — cheap, harmless, and
+        // pointless to ration. They get their own generous cap so a content
+        // batch (e.g. 67 town updates) drains in one run instead of trickling
+        // out 25/day while the backlog reads as "needs manual apply" in admin.
+        $categoryCaps = ['reindex' => 200];
+
         $candidates = SeoAction::open()
             ->whereIn('category', self::SAFE_ALLOWLIST)
             ->orderByDesc('priority')
-            ->limit($maxApplies)
+            ->limit(500)
             ->get();
 
         $appliers = $this->appliers();
         $applied = $failed = 0;
         $items = [];
+        $perCategory = [];
+        $generalBudget = $maxApplies;
 
         foreach ($candidates as $action) {
             $applier = $appliers[$action->category] ?? null;
             if (! $applier) {
                 continue;
             }
+
+            $cap = $categoryCaps[$action->category] ?? null;
+            if ($cap !== null) {
+                if (($perCategory[$action->category] ?? 0) >= $cap) {
+                    continue;
+                }
+            } else {
+                if ($generalBudget <= 0) {
+                    continue;
+                }
+                $generalBudget--;
+            }
+            $perCategory[$action->category] = ($perCategory[$action->category] ?? 0) + 1;
 
             if ($dryRun) {
                 $items[] = ['id' => $action->id, 'title' => $action->title, 'priority' => $action->priority, 'result' => 'would-apply'];

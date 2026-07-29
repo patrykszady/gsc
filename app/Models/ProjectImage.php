@@ -109,19 +109,22 @@ class ProjectImage extends Model
         // Combine description with location
         $baseSlug = $location ? "{$descSlug}-{$location}" : $descSlug;
         
-        // Ensure uniqueness within the project
+        // GLOBAL uniqueness: route binding resolves {image:slug} across all
+        // projects, so a slug reused in two projects makes one of the two
+        // sitemap URLs 404 (binding finds the other project's image, the
+        // ownership check in ProjectImagePage aborts). Per-project uniqueness
+        // caused exactly that with 6 colliding slugs.
         $slug = $baseSlug;
         $counter = 1;
-        
-        while (static::where('project_id', $this->project_id)
-            ->where('slug', $slug)
+
+        while (static::where('slug', $slug)
             ->where('id', '!=', $this->id ?? 0)
             ->exists()
         ) {
             $slug = "{$baseSlug}-{$counter}";
             $counter++;
         }
-        
+
         return $slug;
     }
 

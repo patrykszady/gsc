@@ -8,20 +8,17 @@
             </flux:text>
         </div>
         <div class="flex items-center gap-2">
-            <flux:button href="{{ route('admin.seo-reports.index') }}" variant="ghost" icon="arrow-left">
-                SEO Reports
-            </flux:button>
-            <flux:button wire:click="synthesize" variant="ghost" icon="arrow-path" wire:loading.attr="disabled">
-                Refresh ledger
-            </flux:button>
+            {{-- Sole manual override: the identical cycle runs itself daily at
+                 10:40 CT — this exists only to avoid waiting after a content
+                 push or deploy. Ledger refresh happens inside the same cycle. --}}
             <flux:button
                 wire:click="runAutopilot"
-                wire:confirm="Run the autopilot now? It will auto-apply the top safe actions (title/meta, reindex, llms) — all reversible."
-                variant="primary"
+                wire:confirm="Run the daily cycle now instead of waiting for 10:40? Same loop: synthesize → auto-apply safe actions → measure."
+                variant="ghost"
                 icon="sparkles"
                 wire:loading.attr="disabled"
             >
-                Run autopilot
+                Run cycle now
             </flux:button>
         </div>
     </div>
@@ -33,6 +30,19 @@
     @if ($flash)
         <flux:callout variant="success" class="mb-4">{{ $flash }}</flux:callout>
     @endif
+
+    {{-- Automation status: nothing safe on this page needs a human --}}
+    <flux:callout variant="secondary" icon="clock" class="mb-6">
+        <flux:callout.heading>Fully automated — no manual applying needed</flux:callout.heading>
+        <flux:callout.text>
+            Safe actions (reindex, title/meta experiments, llms.txt refresh, page creation) apply themselves daily at
+            10:40 CT — reindex pings drain completely each run, other categories at up to 25/run — then each change is
+            measured for ~21 days and kept, or judged no-effect/regressed and learned from. Rows marked
+            <flux:badge size="sm" color="amber" inset="top bottom">advisory</flux:badge> are strategy alarms (e.g. a whole
+            template family not indexing) that need a content decision, not a button — everything else clears on its own.
+            The buttons below just let you jump the queue.
+        </flux:callout.text>
+    </flux:callout>
 
     {{-- KPI cards --}}
     <div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -81,7 +91,18 @@
                         ])>×{{ number_format($w['weight'], 2) }}</span>
                     </div>
                     <div class="mt-1 text-xs text-zinc-500">
-                        {{ $w['worked'] }} worked · {{ $w['regressed'] }} regressed · {{ $w['no_effect'] }} no-effect
+                        @if ($w['worked'] + $w['regressed'] + $w['no_effect'] === 0)
+                            @if ($w['measuring'] > 0)
+                                No outcomes yet — {{ $w['measuring'] }} measuring, first due {{ $w['next_due'] }}
+                            @else
+                                No measured history yet
+                            @endif
+                        @else
+                            {{ $w['worked'] }} worked · {{ $w['regressed'] }} regressed · {{ $w['no_effect'] }} no-effect
+                            @if ($w['measuring'] > 0)
+                                · {{ $w['measuring'] }} measuring
+                            @endif
+                        @endif
                     </div>
                 </div>
             @endforeach
@@ -161,7 +182,14 @@
                             <td class="py-3 pr-3">
                                 <div class="flex justify-end gap-1">
                                     @if ($a->status === 'proposed')
-                                        <flux:button size="xs" variant="primary" wire:click="applyOne({{ $a->id }})">Apply</flux:button>
+                                        @if (in_array($a->category, \App\Services\Seo\SeoAutopilotService::SAFE_ALLOWLIST, true))
+                                            <div class="text-right">
+                                                <flux:button size="xs" variant="ghost" wire:click="applyOne({{ $a->id }})">Apply now</flux:button>
+                                                <div class="mt-1 text-[10px] text-zinc-400">auto-applies at 10:40</div>
+                                            </div>
+                                        @else
+                                            <flux:badge size="sm" color="amber">advisory</flux:badge>
+                                        @endif
                                         <flux:button size="xs" variant="ghost" wire:click="skipOne({{ $a->id }})">Skip</flux:button>
                                     @elseif ($a->status === 'applied')
                                         <flux:button size="xs" variant="ghost" wire:click="revertOne({{ $a->id }})"

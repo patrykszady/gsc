@@ -133,6 +133,37 @@
                     {{ $project->description }}
                 </p>
             @endif
+
+            {{-- Inside this remodel: unique per-project prose assembled from the
+                 photo captions we already write per image. Server-rendered body
+                 text that differentiates project pages Google was declining as
+                 template-thin ("Crawled – currently not indexed" cluster). --}}
+            @php
+                $highlightBullets = $project->relationLoaded('images')
+                    ? $project->images
+                        ->map(fn ($img) => trim((string) ($img->seo_alt_text ?: $img->alt_text)))
+                        ->filter(fn ($t) => mb_strlen($t) >= 55
+                            && ! str_starts_with(mb_strtolower($t), 'photo ')
+                            && ! str_contains(mb_strtolower($t), 'by gs construction'))
+                        ->unique(fn ($t) => mb_strtolower(mb_substr($t, 0, 45)))
+                        ->take(6)
+                        ->values()
+                    : collect();
+                $projectTown = trim(\Illuminate\Support\Str::before((string) $project->location, ','));
+            @endphp
+            @if($highlightBullets->count() >= 3)
+                <div class="mt-8">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        Inside this {{ $projectTown !== '' ? $projectTown . ' ' : '' }}remodel
+                    </h2>
+                    <ul class="mt-3 list-disc space-y-1.5 pl-5 text-gray-600 dark:text-gray-400">
+                        @foreach($highlightBullets as $hb)
+                            <li>{{ rtrim($hb, '.') }}.</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="mt-6">
                 <flux:button href="{{ route('projects.index') }}" variant="primary" size="sm">
                     Show More Projects

@@ -38,9 +38,15 @@ class GenerateSitemap extends Command
         $imageCount = 0;
 
         $resolveImageUrl = static function ($image) use ($googleBusinessProfileService): ?string {
-            // Prefer canonical full-size originals for image indexing quality.
-            // Thumbnail URLs can still be crawled, but originals are a stronger
-            // signal for Google Image metadata/indexing.
+            // Use the SAME URL the pages actually display (the _large.webp
+            // derivative — og:image, ImageObject contentUrl, and in-page <img>
+            // all use it). Listing originals here while pages show derivatives
+            // splits each photo across two URLs and Google indexes neither well.
+            $imageUrl = $image->getAnyUrl('large');
+            if (is_string($imageUrl) && trim($imageUrl) !== '') {
+                return $imageUrl;
+            }
+
             $preferred = [
                 $image->webp_url ?? null,
                 $image->url ?? null,
@@ -54,11 +60,6 @@ class GenerateSitemap extends Command
             $googleUrl = $image->google_places_media_url;
             if (is_string($googleUrl) && trim($googleUrl) !== '') {
                 return $googleUrl;
-            }
-
-            $imageUrl = $image->getAnyUrl('large');
-            if (is_string($imageUrl) && trim($imageUrl) !== '') {
-                return $imageUrl;
             }
 
             $mediaName = $image->google_places_media_name;
@@ -502,7 +503,7 @@ class GenerateSitemap extends Command
 
         // Add individual project pages with images
         $this->info("Adding project pages to sitemap...");
-        $projects = Project::where('is_published', true)->with('images')->get();
+        $projects = Project::where('is_published', true)->with(['images', 'timelapses.frames'])->get();
         $projectCount = 0;
         $imageCount = 0;
         $photoPageCount = 0;
@@ -529,7 +530,37 @@ class GenerateSitemap extends Command
                     $imageCount++;
                 }
             }
-            
+
+            // Timelapse frames: only frame 1 exists in the rendered DOM (the
+            // rest cycle via JS), so the sitemap is how Google discovers them.
+            foreach ($project->timelapses as $timelapse) {
+                $tlFrames = $timelapse->frames->sortBy('sort_order')->values();
+                $tlTotal = $tlFrames->count();
+                foreach ($tlFrames as $fi => $frame) {
+                    // Skip frames whose file is gone — getUrlAttribute builds a
+                    // URL regardless; normalizeStorageLocation() verifies (and
+                    // self-heals legacy locations) before we advertise it.
+                    if (! $frame->normalizeStorageLocation()) {
+                        continue;
+                    }
+                    $frameUrl = $frame->url;
+                    if (! is_string($frameUrl) || trim($frameUrl) === '') {
+                        continue;
+                    }
+                    if ($needsImageRewrite) {
+                        $frameUrl = str_replace($appUrl, $baseUrl, $frameUrl);
+                    }
+                    $url->addImage(
+                        url: $frameUrl,
+                        caption: 'Construction progress of ' . $project->title
+                            . ($project->location ? ' in ' . $project->location : '')
+                            . ' — timelapse frame ' . ($fi + 1) . ' of ' . $tlTotal . '.',
+                        title: $project->title . ' — Construction Timelapse',
+                    );
+                    $imageCount++;
+                }
+            }
+
             $sitemap->add($url);
             $urlCount++;
             $projectCount++;

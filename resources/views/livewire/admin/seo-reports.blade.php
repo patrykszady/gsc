@@ -472,7 +472,9 @@
         <flux:card class="min-w-0 overflow-hidden p-5">
             <div class="mb-4 flex items-center justify-between">
                 <flux:heading size="md">Priority Actions</flux:heading>
-                <flux:text class="text-xs text-zinc-500">Automated guidance</flux:text>
+                <a href="{{ route('admin.autopilot.index') }}" wire:navigate class="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400">
+                    Autopilot ledger &rarr;
+                </a>
             </div>
             <ul class="space-y-2 text-sm text-zinc-700 dark:text-zinc-200">
                 @foreach ($snapshot['action_items'] as $item)
@@ -486,9 +488,14 @@
         <flux:card class="min-w-0 overflow-hidden p-5 lg:col-span-2">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <flux:heading size="md">GSC Errors (URL Inspection)</flux:heading>
-                <flux:text class="text-xs text-zinc-500">
-                    Latest inspection: {{ $gscErrors['latest_inspected'] ?? 'never' }}
-                </flux:text>
+                <div class="flex items-center gap-3">
+                    <flux:text class="text-xs text-zinc-500">
+                        Latest inspection: {{ $gscErrors['latest_inspected'] ?? 'never' }}
+                    </flux:text>
+                    <a href="{{ route('admin.gsc-errors.index') }}" wire:navigate class="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400">
+                        Full inspection &rarr;
+                    </a>
+                </div>
             </div>
 
             @if (! $gscErrors['available'])

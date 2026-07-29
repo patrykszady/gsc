@@ -173,6 +173,9 @@
         </div>
     </section>
 
+    {{-- Auto-refreshing internal links to striking-distance area pages --}}
+    <x-priority-area-links />
+
     {{-- FAQ Section --}}
     <x-faq-section :faqs="$faqs" heading="Areas Served FAQ" />
 

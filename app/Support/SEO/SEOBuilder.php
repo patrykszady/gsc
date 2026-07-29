@@ -131,8 +131,16 @@ class SEOBuilder
         // model, so this is the only override channel that reaches them.
         $pathOverride = \App\Models\SeoPathOverride::forPath(request()->path());
 
+        // Titles never carry the state — "Palatine Kitchen Remodeling", not
+        // "Palatine, IL Kitchen Remodeling". Applied at this choke point so
+        // every source (builder, model, autopilot override) is covered.
+        $title = ($pathOverride['title'] ?? null) ?: ($this->title ?? $base?->title);
+        if (is_string($title)) {
+            $title = trim(str_replace([', Illinois', ', IL'], '', $title));
+        }
+
         $data = new SEOData(
-            title:             ($pathOverride['title'] ?? null) ?: ($this->title ?? $base?->title),
+            title:             $title,
             description:       ($pathOverride['description'] ?? null) ?: ($this->description ?? $base?->description),
             author:            $this->author         ?? $base?->author,
             image:             $this->image          ?? $base?->image,

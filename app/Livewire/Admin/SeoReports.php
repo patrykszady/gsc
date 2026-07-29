@@ -60,72 +60,34 @@ class SeoReports extends Component
     protected array $sortableColumns = ['clicks', 'impressions', 'ctr', 'position'];
 
     /**
-     * Registry of reports rendered in the dashboard. Keys are file names
-     * (without extension) under storage/app/reports/; each value provides
-     * the display label and the artisan command that regenerates it.
+     * Report registry, loaded from config/seo-reports.php every request via
+     * boot() (a protected non-Livewire property resets between requests, so
+     * mount() alone would leave it empty on interaction round-trips).
      *
      * @var array<string, array{label:string, command:string, description:string}>
      */
-    protected array $reports = [
-        'content-decay' => [
-            'label' => 'Content decay',
-            'command' => 'seo:content-decay --markdown',
-            'description' => 'Pages losing clicks or position week over week.',
-        ],
-        'content-gap' => [
-            'label' => 'Content gap (rank 8–20)',
-            'command' => 'seo:content-gap --markdown',
-            'description' => 'Striking-distance queries clustered into content briefs.',
-        ],
-        'cwv-template' => [
-            'label' => 'CWV by template',
-            'command' => 'seo:cwv-template --markdown',
-            'description' => 'p75 LCP/INP/CLS per page template with regression alerts.',
-        ],
-        'gbp-parity' => [
-            'label' => 'GBP / local-SEO parity',
-            'command' => 'seo:gbp-parity --markdown',
-            'description' => 'NAP consistency and Google Business Profile ↔ site service parity.',
-        ],
-        'internal-link-suggest' => [
-            'label' => 'Internal-link suggestions',
-            'command' => 'seo:internal-link-suggest --markdown',
-            'description' => 'Unlinked plain-text mentions of other pages’ anchors.',
-        ],
-        'backlinks-monitor' => [
-            'label' => 'Backlinks / mentions',
-            'command' => 'seo:backlinks-monitor --markdown',
-            'description' => 'New and lost referring hosts (via Brave Search).',
-        ],
-        'schema-audit' => [
-            'label' => 'Schema audit',
-            'command' => 'seo:schema-audit --markdown',
-            'description' => 'JSON-LD coverage and validity sweep.',
-        ],
-        'area-pages-audit' => [
-            'label' => 'Area pages (thin/dup)',
-            'command' => 'seo:area-pages-audit --markdown',
-            'description' => 'Thin pages and near-duplicate clusters across per-area landing pages.',
-        ],
-        'health-check' => [
-            'label' => 'Local SEO health-check',
-            'command' => 'seo:health-check --markdown --min-score=0',
-            'description' => 'Composite 0–100 score per URL across title, meta, H1, alt, links, schema, canonical, word count.',
-        ],
-        'health' => [
-            'label' => 'SEO health',
-            'command' => 'seo:health --markdown',
-            'description' => 'Unified 0–100 SEO pillar dashboard with freshness, rankings, GBP and on-page signals.',
-        ],
-        'clarity-health' => [
-            'label' => 'Clarity health',
-            'command' => 'seo:clarity-health --markdown',
-            'description' => 'Clarity API/config status, last sync freshness, and latest behavioral metrics snapshot.',
-        ],
-    ];
+    protected array $reports = [];
+
+    public function boot(): void
+    {
+        $this->reports = (array) config('seo-reports.reports', []);
+    }
 
     public function mount(?string $report = null): void
     {
+        // Self-heal stale reports on view: the scheduler keeps these fresh in
+        // production, but on a machine without `schedule:work` (local dev) the
+        // files just age. Queue regens — throttled per report — so the page
+        // converges to fresh on its own wherever a queue worker runs.
+        foreach ($this->reports as $key => $meta) {
+            $path = "reports/{$key}.md";
+            $mtime = Storage::disk('local')->exists($path) ? Storage::disk('local')->lastModified($path) : null;
+            $isStale = $mtime === null || $mtime < now()->subHours(26)->getTimestamp();
+            if ($isStale && Cache::add("report_regen_queued:{$key}", 1, now()->addHours(6))) {
+                \App\Jobs\RunSeoChannelSyncJob::dispatch($meta['command']);
+            }
+        }
+
         if ($report !== null && isset($this->reports[$report])) {
             $this->active = $report;
         }
@@ -273,7 +235,9 @@ class SeoReports extends Component
             $size = $exists ? $disk->size($path) : null;
             $mtimeTs = $exists ? $disk->lastModified($path) : null;
             $mtime = $mtimeTs ? Carbon::createFromTimestamp($mtimeTs) : null;
-            $ageHours = $mtime ? (int) now()->diffInHours($mtime) : null;
+            // abs(): Carbon 3 signed diffs return NEGATIVE hours for past
+            // mtimes, which made month-old files pass "<= 24" as "fresh".
+            $ageHours = $mtime ? (int) abs(now()->diffInHours($mtime)) : null;
             $freshnessPct = $ageHours === null ? 0 : max(0, 100 - (int) round(min($ageHours, 72) / 72 * 100));
             $status = $ageHours === null ? 'missing' : ($ageHours <= 24 ? 'fresh' : 'stale');
             $out[] = [
@@ -568,25 +532,17 @@ class SeoReports extends Component
                 $rankings['below20'] = max(0, $rankings['tracked'] - $rankings['top20']);
             }
 
-            $actionItems = [];
-            if (($coverage['problem'] ?? 0) > 0) {
-                $actionItems[] = "{$coverage['problem']} URLs have non-pass coverage verdicts. Run `seo:reindex-problem-pages --auto` and review access/canonical states.";
+            // Data-driven action items from the RecommendationEngine (refreshed
+            // daily by seo:recommendations-refresh, which also self-heals stale
+            // pipelines). Never generated inline — the engine does heavy
+            // aggregate queries plus a live HTTP self-probe, which would stall
+            // (or on a single-worker server, deadlock) a web request. If the
+            // stored output is missing, queue one refresh and show a placeholder.
+            $engineOutput = \App\Services\Seo\RecommendationEngine::latest();
+            if ($engineOutput === null && \Illuminate\Support\Facades\Cache::add('seo_recs_refresh_queued', 1, now()->addMinutes(10))) {
+                \App\Jobs\RunSeoChannelSyncJob::dispatch('seo:recommendations-refresh', ['--no-heal' => true]);
             }
-            if (($rankings['tracked'] ?? 0) > 0 && ($rankings['top10'] / max(1, $rankings['tracked'])) < 0.4) {
-                $actionItems[] = 'Less than 40% of tracked terms are in top 10. Prioritize city-service pages with high impressions and average position 8-20.';
-            }
-            if (($channels['gsc']['delta_clicks'] ?? 0) < -10) {
-                $actionItems[] = 'Google clicks are down more than 10% vs prior 7 days. Check top-loss queries and titles/meta for affected pages.';
-            }
-            if (($channels['bing']['impressions'] ?? 0) < 100) {
-                $actionItems[] = 'Bing visibility is low. Confirm `seo:bing-sync` runs daily and ensure sitemap is submitted in Bing Webmaster.';
-            }
-            if (($channels['gbp']['clicks'] ?? 0) < 20) {
-                $actionItems[] = 'GBP engagement is light. Increase GBP post cadence and add fresh geotagged project photos this week.';
-            }
-            if (empty($actionItems)) {
-                $actionItems[] = 'No urgent anomalies detected. Keep daily syncs healthy and continue shipping localized content + backlinks.';
-            }
+            $actionItems = $engineOutput['action_items'] ?? ['Generating live recommendations in the background — refresh this page in a minute.'];
 
             return [
                 'channels' => $channels,
@@ -1007,12 +963,11 @@ class SeoReports extends Component
                     'priority_cities' => count(\App\Support\SEO\AreaSeoPolicy::priorityCities()),
                     'total_cities' => $areas->count(),
                 ],
-                'recommendations' => [
-                    ['t' => 'Win the local pack, not organic #10', 'd' => 'For “[city] remodeling” the Maps 3-pack takes the clicks. Push GBP: review volume & recency, replies, categories, service areas, weekly posts.', 'p' => 'now'],
-                    ['t' => 'Deepen the priority city pages', 'd' => 'Local testimonials, pricing guidance, city FAQs and project galleries on the cities that have real work. Depth on a few beats templates on many.', 'p' => 'now'],
-                    ['t' => 'Fix titles & H1 consistency', 'd' => 'Drop weak suffixes; lead with rating / review count / free estimate. Give area pages a visible, area-matched H1 (today it is an sr-only mismatch).', 'p' => 'next'],
-                    ['t' => 'Restore a real FAQ for GEO', 'd' => '/faq is 410’d — yet Q&A is exactly what AI Overviews, ChatGPT and Perplexity cite. Rebuild with FAQ schema; keep llms.txt fresh.', 'p' => 'next'],
-                ],
+                // Live, self-expiring recommendations from the engine — each one
+                // disappears on its own once its underlying condition heals.
+                // Read-only here; generation happens in the scheduled command.
+                'recommendations' => (\App\Services\Seo\RecommendationEngine::latest()['recommendations'] ?? null)
+                    ?: [['t' => 'Generating recommendations…', 'd' => 'The engine runs daily at 11:10 CT (and was just queued if its output was missing). Refresh in a minute.', 'p' => 'next']],
             ];
         });
     }

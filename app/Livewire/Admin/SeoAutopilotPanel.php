@@ -34,16 +34,6 @@ class SeoAutopilotPanel extends Component
         $this->resetPage();
     }
 
-    /** Synthesize + measure now, without auto-applying (operator reviews first). */
-    public function synthesize(): void
-    {
-        $svc = app(SeoAutopilotService::class);
-        $svc->measure();
-        $created = $svc->synthesize();
-        $this->flash = "Synthesized {$created} new action(s) and refreshed measurements.";
-        $this->clearCaches();
-    }
-
     /** Full autonomous run: measure, synthesize, auto-apply the safe allowlist. */
     public function runAutopilot(): void
     {
@@ -120,6 +110,10 @@ class SeoAutopilotPanel extends Component
                 'worked' => SeoAction::where('category', $cat)->where('outcome', SeoAction::OUTCOME_WORKED)->count(),
                 'regressed' => SeoAction::where('category', $cat)->where('outcome', SeoAction::OUTCOME_REGRESSED)->count(),
                 'no_effect' => SeoAction::where('category', $cat)->where('outcome', SeoAction::OUTCOME_NO_EFFECT)->count(),
+                'measuring' => SeoAction::where('category', $cat)->whereNotNull('applied_at')->whereNull('measured_at')->count(),
+                'next_due' => ($due = SeoAction::where('category', $cat)->whereNull('measured_at')->whereNotNull('measure_after')->min('measure_after'))
+                    ? 'in ' . \Illuminate\Support\Carbon::parse($due)->diffForHumans(null, true)
+                    : null,
             ];
         }
 
@@ -129,8 +123,13 @@ class SeoAutopilotPanel extends Component
     public function render()
     {
         $query = match ($this->tab) {
+            // Outcome-watching order: rows still measuring first (due soonest
+            // on top — "what resolves next"), then measured rows with the most
+            // recent outcomes first. Plain applied_at buried both.
             'applied' => SeoAction::whereIn('status', [SeoAction::STATUS_APPLIED, SeoAction::STATUS_REVERTED])
-                ->orderByDesc('applied_at'),
+                ->orderByRaw('(measured_at IS NULL) DESC')
+                ->orderByRaw('CASE WHEN measured_at IS NULL THEN COALESCE(measure_after, applied_at) END ASC')
+                ->orderByDesc('measured_at'),
             'all' => SeoAction::query()->orderByDesc('priority'),
             default => SeoAction::open()->orderByDesc('priority'),
         };

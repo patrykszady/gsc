@@ -68,6 +68,59 @@ class GscErrors extends Component
         }
     }
 
+    /**
+     * Delete coverage rows for URLs that left the sitemap. The inspection
+     * sweep only re-inspects sitemap URLs, so retired rows can never refresh —
+     * they linger forever as phantom "problems" and permanently-stale entries
+     * (e.g. removed towns, old area subpages). If a URL re-enters the sitemap
+     * the next sweep simply re-creates its row.
+     */
+    public function pruneRetired(): void
+    {
+        $sitemapUrls = $this->sitemapUrlSet();
+        if ($sitemapUrls === []) {
+            $this->flash = 'Prune skipped: could not read sitemap.xml.';
+
+            return;
+        }
+
+        $deleted = 0;
+        GscCoverageState::query()
+            ->select(['id', 'url'])
+            ->chunkById(500, function ($rows) use ($sitemapUrls, &$deleted): void {
+                $ids = $rows->filter(fn ($r) => ! isset($sitemapUrls[(string) $r->url]))->pluck('id');
+                if ($ids->isNotEmpty()) {
+                    $deleted += GscCoverageState::query()->whereIn('id', $ids)->delete();
+                }
+            });
+
+        $this->resetPage();
+        $this->flash = $deleted > 0
+            ? "Pruned {$deleted} retired URL(s) no longer in the sitemap."
+            : 'Nothing to prune — every tracked URL is in the current sitemap.';
+    }
+
+    /** @return array<string, true> sitemap URLs as a lookup set */
+    protected function sitemapUrlSet(): array
+    {
+        $path = public_path('sitemap.xml');
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $xml = @simplexml_load_string((string) file_get_contents($path));
+        if (! $xml || ! isset($xml->url)) {
+            return [];
+        }
+
+        $set = [];
+        foreach ($xml->url as $u) {
+            $set[(string) $u->loc] = true;
+        }
+
+        return $set;
+    }
+
     public function exportCsv(): StreamedResponse
     {
         $filename = 'gsc-errors-' . now()->format('Ymd-His') . '.csv';
@@ -139,18 +192,33 @@ class GscErrors extends Component
                 ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%']);
         })->count();
 
+        // Coverage means "how much of the CURRENT sitemap has been inspected".
+        // Tracked rows include retired URLs that left the sitemap, so raw
+        // tracked/sitemap can exceed 100% — intersect first.
+        $sitemapUrls = $this->sitemapUrlSet();
+        $trackedInSitemap = 0;
+        $retired = 0;
+        if ($sitemapUrls !== []) {
+            GscCoverageState::query()->select(['id', 'url'])->chunkById(500, function ($rows) use ($sitemapUrls, &$trackedInSitemap, &$retired): void {
+                foreach ($rows as $r) {
+                    isset($sitemapUrls[(string) $r->url]) ? $trackedInSitemap++ : $retired++;
+                }
+            });
+        }
+
         $stats = [
             'tracked' => (int) $tracked,
             'problem' => (int) $problem,
             'pass' => max(0, (int) $tracked - (int) $problem),
+            'retired' => $retired,
             'latest_inspected' => ($latest = GscCoverageState::query()->max('inspected_at'))
                 ? \Illuminate\Support\Carbon::parse($latest)->diffForHumans()
                 : null,
-            'sitemap_urls' => $this->countSitemapUrls(),
+            'sitemap_urls' => count($sitemapUrls),
         ];
 
         $stats['inspection_coverage_pct'] = $stats['sitemap_urls'] > 0
-            ? (int) round(($stats['tracked'] / max(1, $stats['sitemap_urls'])) * 100)
+            ? min(100, (int) round(($trackedInSitemap / max(1, $stats['sitemap_urls'])) * 100))
             : 0;
 
         $enhancements = $this->enhancementSnapshot();
@@ -291,21 +359,6 @@ class GscErrors extends Component
             'latest_inspected' => $latest ? \Illuminate\Support\Carbon::parse((string) $latest)->diffForHumans() : null,
             'by_type' => $byType,
         ];
-    }
-
-    protected function countSitemapUrls(): int
-    {
-        $path = public_path('sitemap.xml');
-        if (! is_file($path)) {
-            return 0;
-        }
-
-        $xml = @simplexml_load_string((string) file_get_contents($path));
-        if (! $xml || ! isset($xml->url)) {
-            return 0;
-        }
-
-        return count($xml->url);
     }
 
     protected function filteredQuery(): Builder

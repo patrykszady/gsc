@@ -26,7 +26,7 @@ class SeoCwvTemplate extends Command
         {--lab-lcp-regress=500 : LCP threshold (ms) for lab-only buckets; lab mobile LCP is synthetic and noisy}
         {--inp-regress=40 : Flag templates whose p75 INP grew by >=N ms}
         {--cls-regress=0.02 : Flag templates whose p75 CLS grew by >=N}
-        {--min-samples=5 : Require at least N samples in BOTH windows before flagging a regression}
+        {--min-samples=10 : Require at least N samples in BOTH windows before flagging a regression}
         {--markdown : Save report to storage/app/reports/cwv-template.md}';
 
     protected $description = 'Aggregate Core Web Vitals per page template and surface week-over-week regressions.';
@@ -72,10 +72,12 @@ class SeoCwvTemplate extends Command
             }
 
             // Lab-only LCP (no CrUX field data) is synthetic and noisy, so it
-            // uses a more tolerant threshold than real-user field LCP.
+            // uses a more tolerant threshold than real-user field LCP — and a
+            // relative floor, since ±500 ms is routine run-to-run variance on
+            // throttled mobile emulation when the baseline is already 4-5s.
             $lcpThreshold = ($r['lcp_field'] ?? false)
                 ? (int) $this->option('lcp-regress')
-                : (int) $this->option('lab-lcp-regress');
+                : max((int) $this->option('lab-lcp-regress'), (int) round(($p['lcp'] ?? 0) * 0.15));
             if ($lcpΔ !== null && $lcpΔ >= $lcpThreshold) {
                 $src = ($r['lcp_field'] ?? false) ? 'field' : 'lab';
                 $alerts[] = "{$template} [{$strategy}] LCP +{$lcpΔ} ms ({$src})";

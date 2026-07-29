@@ -145,6 +145,9 @@
             'mudroom' => 'Mudroom Remodel',
         ];
     @endphp
+    {{-- Auto-refreshing internal links to striking-distance area pages --}}
+    <x-priority-area-links />
+
     @if($homeProjects->isNotEmpty())
         <section class="mx-auto max-w-7xl px-6 py-12 lg:px-8" aria-label="Recent remodeling projects">
             <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">

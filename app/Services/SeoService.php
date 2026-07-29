@@ -79,7 +79,10 @@ class SeoService
         } else {
             // Lead with brand on the homepage so Google adopts "GS Construction"
             // as the site name (https://developers.google.com/search/docs/appearance/site-names)
-            $title = 'GS Construction — Kitchen & Bathroom Remodeling, Chicagoland';
+            // Full brand name leads the homepage title — Google's site-name
+            // picker cross-checks WebSite schema against prominent usage, and
+            // "GS Construction & Remodeling" here reinforces the schema name.
+            $title = 'GS Construction & Remodeling — Kitchen & Bath, Chicagoland';
             $description = 'Family-owned kitchen, bathroom & whole-home remodeling in Chicago\'s suburbs. 40+ yrs combined experience, 5-star rated. Free estimates.';
         }
 
@@ -304,10 +307,13 @@ class SeoService
         $types = Project::projectTypes();
         $typeLabel = $types[$project->project_type] ?? ucfirst(str_replace('-', ' ', $project->project_type));
         
-        // Build title: "Project Title | Kitchen Remodel"
+        // Build title: "Project Title in {City}" — append the city only when
+        // the stored title doesn't already name it ("Palatine Kitchen Remodel"
+        // must not become "Palatine Kitchen Remodel in Palatine, IL").
         $title = $project->title;
-        if ($project->location) {
-            $title .= " in {$project->location}";
+        $city = trim(Str::before((string) $project->location, ','));
+        if ($city !== '' && ! str_contains(mb_strtolower($title), mb_strtolower($city))) {
+            $title .= " in {$city}";
         }
         
         // Build description
@@ -599,7 +605,7 @@ class SeoService
         $service = $services[$serviceType] ?? [
             'label' => 'Remodeling',
             'shortLabel' => 'Remodeling',
-            'titleTemplate' => 'Remodeling in %s, IL',
+            'titleTemplate' => 'Remodeling in %s',
             'descriptionTemplate' => 'Expert remodeling services in %s. Local contractors with 40+ years experience.',
             'keywords' => [],
         ];
@@ -1020,7 +1026,10 @@ class SeoService
     protected static function setTags(string $title, string $description, ?string $image = null): void
     {
         $title = self::normalizeMetaText($title, 60);
-        $description = self::normalizeMetaText($description, 150);
+        // 160 matches the builder-side budget in buildAreaServiceMeta — a
+        // second, tighter pass here backtracked to the previous sentence and
+        // silently deleted the price-hint sentence on longer openers.
+        $description = self::normalizeMetaText($description, 160);
 
         // Canonical: strip noisy params (utm_*, gclid, fbclid, pagination) so
         // each indexable URL maps to one clean canonical regardless of source.

@@ -125,7 +125,7 @@
             x-ref="frame"
             x-show="frames.length"
             :src="src()"
-            alt="Project timelapse"
+            alt="{{ $timelapse?->project ? 'Construction timelapse of ' . $timelapse->project->title . ($timelapse->project->location ? ' in ' . $timelapse->project->location : '') : 'Project construction timelapse' }}"
             class="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
         />
 

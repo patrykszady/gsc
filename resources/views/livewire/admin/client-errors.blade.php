@@ -4,9 +4,6 @@
             <flux:heading size="xl">JavaScript Errors</flux:heading>
             <flux:text class="mt-1 text-zinc-500">Client-side errors captured from real visitors, grouped by signature.</flux:text>
         </div>
-        <flux:button href="{{ route('admin.dashboard') }}" variant="ghost" icon="arrow-left">
-            Back to Dashboard
-        </flux:button>
     </div>
 
     {{-- Stats Grid --}}
