@@ -96,7 +96,7 @@ return [
             'comparison_note' => 'Kitchen Village is a showroom-based kitchen and bath firm at 1081 E. Golf Road in Arlington Heights, serving the Northwest suburbs since 1990, with NKBA design awards and 100+ five-star Google reviews. Its published focus is kitchens, baths, laundry rooms, and built-in cabinets. GS Construction is an owner-led general remodeler across the same towns: Greg and Patryk run the full project — kitchens, baths, basements, additions, and whole-home — pull the permits, and stay flexible whether you bring your own designer or shop your own materials.',
             'them' => [
                 'project_types' => 'Kitchen and bathroom remodeling, laundry rooms, and built-in cabinets (showroom-led)',
-                'service_area' => 'Northwest suburbs: Schaumburg, Arlington Heights, Palatine, Mount Prospect, Buffalo Grove, Elk Grove Village',
+                'service_area' => 'Northwest suburbs of Chicago',
                 'experience' => 'In business since 1990',
             ],
             'also_known_as' => ['kitchenvillage', 'kitchen village chicago'],
@@ -235,7 +235,7 @@ return [
             'focus' => 'Design-build interior remodeling and architectural design',
             'comparison_note' => 'Chi Renovation and Design runs a design-build studio at 4368 N. Milwaukee Ave in Chicago, with certified interior design staff, an architect and engineer on retainer, and a published 6-step process that pairs each client with a designer and a project manager. GS Construction concentrates on the Northwest suburbs and North Shore and lets you choose how design happens — your designer, our recommendations, or your own plans — with the owners themselves as your contact and clear, itemized pricing.',
             'them' => [
-                'service_area' => 'Chicago and near-north suburbs, from a Northwest Side design studio',
+                'service_area' => 'Chicago; describes itself as a Chicago design-build studio',
                 'design_model' => 'In-house design-build (6-step process) with an architect and engineer on retainer and certified interior design staff.',
                 'point_of_contact' => 'Clients are paired with a designer plus a project manager.',
             ],
@@ -300,9 +300,9 @@ return [
             'website' => 'https://www.advancedesignstudio.com',
             'location' => 'Gilberts, IL',
             'focus' => 'Design-build remodeling with a showroom, serving the far-northwest suburbs',
-            'comparison_note' => 'Advance Design Studio is an established design-build firm (since 1992) with a full-service showroom in Gilberts, centered on far-northwest towns like Barrington, Crystal Lake, and Algonquin. GS Construction is headquartered in Prospect Heights and works the Northwest suburbs and North Shore, with an owner-led model: Greg and Patryk run every project, pricing stays itemized and transparent, and you are free to bring your own designer or materials.',
+            'comparison_note' => 'Advance Design Studio is an established design-build firm (since 1992) based in Gilberts, working far-northwest towns including Barrington and Crystal Lake. GS Construction is headquartered in Prospect Heights and works the Northwest suburbs and North Shore, with an owner-led model: Greg and Patryk run every project, pricing stays itemized and transparent, and you are free to bring your own designer or materials.',
             'them' => [
-                'service_area' => 'Far-northwest suburbs: Barrington, Crystal Lake, Algonquin, and nearby towns',
+                'service_area' => 'Barrington, Crystal Lake, and nearby towns',
             ],
             'also_known_as' => ['advance design', 'advance design studio gilberts', 'common sense remodeling'],
         ],
@@ -499,23 +499,23 @@ return [
             ],
             'them_sources' => [
                 'project_types' => [
-                    'label' => 'Their Facebook page',
-                    'url' => 'https://www.facebook.com/ScottLyonCompany/',
+                    'label' => 'Archived about page (Apr 2014)',
+                    'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/about/',
                     'quote' => 'High-end residential construction and commercial contracting.',
                 ],
                 'point_of_contact' => [
-                    'label' => 'Archived about page (2014)',
+                    'label' => 'Archived about page (Apr 2014)',
                     'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/about/',
                     'quote' => 'we consider our role as a representative of our client, with all decisions being made as a team',
                 ],
                 'design_model' => [
-                    'label' => 'Archived services page (2014)',
-                    'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/services/',
+                    'label' => 'Archived services page (Apr 2014)',
+                    'url' => 'https://web.archive.org/web/20140409005158/http://www.scottlyonconstruction.com/services/',
                     'quote' => 'SLC offers a menu of options with regard to the design and detail of each individual project.',
                 ],
                 'self_perform' => [
-                    'label' => 'Archived services page (2014)',
-                    'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/services/',
+                    'label' => 'Archived services page (Apr 2014)',
+                    'url' => 'https://web.archive.org/web/20140409005158/http://www.scottlyonconstruction.com/services/',
                     'quote' => 'our strong relationships with highly skilled tradesmen',
                 ],
             ],
