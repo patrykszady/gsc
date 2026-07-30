@@ -117,7 +117,7 @@ return [
         ],
         [
             'q' => 'Can you work with my designer or architect?',
-            'a' => 'Yes. We collaborate regularly with kitchen designers, interior designers, and architects, and can also handle full design-build in-house if you prefer a single point of contact.',
+            'a' => 'Yes. We collaborate regularly with kitchen designers, interior designers, and architects — and if you don\'t have one, we can connect you with our trusted architects, engineers, or designers. We can also handle full design-build in-house if you prefer a single point of contact.',
             'topics' => ['design', 'process'],
         ],
         [

@@ -5,6 +5,10 @@
     'sectionClasses' => 'bg-white pt-8 pb-6 sm:pt-10 sm:pb-8 dark:bg-zinc-900',
     'collapsed' => true,
     'contentMaxWidth' => 'max-w-none',
+    // Outer container width. Set this (not contentMaxWidth) to align the FAQ
+    // with a page whose own columns use the same max-width + padding pattern —
+    // nesting two constrained containers renders narrower than the page.
+    'outerMaxWidth' => 'max-w-7xl',
 ])
 
 @if(count($faqs) > 0)
@@ -13,7 +17,7 @@
 
 {{-- Visible FAQ section --}}
 <section class="{{ $sectionClasses }}">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto {{ $outerMaxWidth }} px-4 sm:px-6 lg:px-8">
         <div class="mx-auto {{ $contentMaxWidth }}">
             @if($collapsed)
             <x-faq-card x-data="{ open: false }" class="overflow-visible">

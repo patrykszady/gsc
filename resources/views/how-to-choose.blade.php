@@ -71,8 +71,8 @@
     <div class="mx-auto mt-6 max-w-5xl px-6 lg:px-8">
         <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             @foreach ([
-                ['Family-owned', 'Father & son'],
-                ['Combined experience', '40+ years'],
+                ['Family-owned', 'Father & Son'],
+                ['Combined experience', '40+ Years'],
                 ['Verified reviews', $reviewCount . '+'],
                 ['Licensed & insured', 'Yes'],
             ] as [$label, $value])

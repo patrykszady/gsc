@@ -43,10 +43,15 @@
                     {{-- Driven by the `review` flag in config/socials.php so the
                          footer, icon row, and schema sameAs never drift apart. --}}
                     @php $reviewProfiles = array_filter(config('socials'), fn ($s) => $s['review'] ?? false); @endphp
-                    <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                    {{-- Kept on one line: the xl brand rail is only ~176px wide, so
+                         the separator is a plain spaced bullet (no mx-* margins) to
+                         keep the four labels inside it. Spacing stays symmetric
+                         because the markup whitespace collapses into the spaces in
+                         the span. A fifth review platform would need a rethink. --}}
+                    <p class="mt-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                         @foreach($reviewProfiles as $profile)
                             <a href="{{ $profile['url'] }}" target="_blank" rel="noopener noreferrer external" class="hover:text-sky-600 dark:hover:text-sky-400">{{ $profile['label'] }}</a>
-                            @if(! $loop->last)<span class="mx-1 text-gray-400">•</span>@endif
+                            @if(! $loop->last)<span class="text-gray-400"> &bull; </span>@endif
                         @endforeach
                     </p>
                 </div>

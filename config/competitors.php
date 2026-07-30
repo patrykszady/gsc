@@ -35,10 +35,10 @@ return [
     'criteria' => [
         ['key' => 'ownership',          'label' => 'Ownership',                  'us' => 'Family-owned, father-son team (Greg & Patryk Szady)',
             'why' => 'Owner-operators are personally accountable for your project — not a sales rep who moves on after signing.'],
-        ['key' => 'point_of_contact',   'label' => 'Your point of contact',      'us' => 'Patryk & Greg Szady — the owners — are your single point of contact from the first call to the final walkthrough',
+        ['key' => 'point_of_contact',   'label' => 'Your point of contact',      'us' => 'Greg & Patryk Szady — the owners — are your single point of contact from the first call to the final walkthrough',
             'them_default' => 'Larger firms often hand you to a different coordinator at each phase; ask who your day-to-day contact is and whether it changes.',
             'why' => 'Every hand-off between coordinators is a chance for details to get lost and mistakes to creep in.'],
-        ['key' => 'design_model',       'label' => 'Design approach',            'us' => 'We build your project and collaborate with the independent designer or architect you choose — or you can be your own designer: we send you to our trusted material sources, follow your requirements, and install the materials you purchase. Your design, your decisions — we are flexible',
+        ['key' => 'design_model',       'label' => 'Design approach',            'us' => 'We build your project and collaborate with the independent designer or architect you choose — or we can connect you with our trusted architects, engineers, or designers — or be your own designer: we send you to our trusted material sources, follow your requirements, and install the materials you purchase. Your design, your decisions — we are flexible',
             'them_default' => 'Many firms steer you into in-house design or subcontract it; ask whether you can bring your own designer/architect.',
             'why' => 'A flexible design model means you keep control of the look and the budget instead of being funneled into one in-house package.'],
         ['key' => 'pricing',            'label' => 'Pricing transparency',       'us' => 'Itemized, transparent pricing — labor is not marked up through layers of middlemen',
@@ -61,7 +61,7 @@ return [
         ['key' => 'public_reviews',     'label' => 'Public reviews',             'us' => 'Verified reviews on Google, Houzz, Yelp, and Angi',
             'why' => 'Reviews across multiple independent platforms are harder to game than testimonials on a company\'s own site.'],
         ['key' => 'estimate',           'label' => 'Estimates',                  'us' => 'Free in-home estimate with itemized scope'],
-        ['key' => 'licensed_insured',   'label' => 'Licensed & insured',         'us' => 'Yes',
+        ['key' => 'licensed_insured',   'label' => 'Licensed & insured',         'us' => 'Yes — GS Construction and every tradesman on your project is fully licensed, insured, bonded, and registered in each city and village we work in',
             'why' => 'Proper licensing and insurance protect you if something goes wrong on the job.'],
     ],
 
@@ -127,6 +127,28 @@ return [
                 'experience' => 'In business since 2011',
                 'design_model' => 'In-house design-build: design studio selections and 3D renderings within a 7-step process.',
                 'point_of_contact' => 'A dedicated project manager oversees the build; consultants and designers lead earlier phases.',
+            ],
+            // Per-claim citations, keyed by criteria key. Each quote is verbatim
+            // from the competitor's own public site, captured 2026-07-29 and
+            // documented in docs/legal/evidence-4ever-2026-07-29.md §3. Only add
+            // an entry here once the quote has actually been verified on the
+            // named page — a missing entry simply renders no citation mark.
+            'them_sources' => [
+                'experience' => [
+                    'label' => 'About page',
+                    'url' => 'https://4everremodeling.com/about/',
+                    'quote' => 'Since 2011, 4Ever Remodeling has been a trusted name…',
+                ],
+                'design_model' => [
+                    'label' => 'Homepage',
+                    'url' => 'https://4everremodeling.com/',
+                    'quote' => "With thousands of selections available at our design studio, it's easy to explore ideas and find the right fit for your style and budget",
+                ],
+                'point_of_contact' => [
+                    'label' => 'Design-build process page',
+                    'url' => 'https://4everremodeling.com/design-build-process/',
+                    'quote' => 'Phase 5: Project Management — A dedicated project manager oversees your project, maintains consistent communication…',
+                ],
             ],
             'also_known_as' => ['4ever remodeling', '4everremodeling', 'four ever remodeling'],
         ],

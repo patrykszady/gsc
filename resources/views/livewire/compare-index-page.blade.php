@@ -1,4 +1,10 @@
-<div class="bg-white dark:bg-gray-950">
+@php
+    // ?bg=grid|floorplan|mesh|aurora previews the other decor variants locally.
+    $decor = app()->environment('local') ? request()->query('bg', 'grid') : 'grid';
+@endphp
+<div class="relative isolate overflow-x-clip bg-white dark:bg-gray-950">
+    <x-page-decor :variant="$decor" />
+
     <x-breadcrumbs :items="[['label' => 'Compare Contractors']]" />
 
     <div class="mx-auto max-w-3xl px-6 pt-2 text-center lg:px-8">
@@ -98,6 +104,18 @@
                     </p>
                 </div>
             </div>
+
+            {{-- Verbatim AG guidance (verified July 2026 at
+                 illinoisattorneygeneral.gov/Consumer-Protection/Home-Repair). --}}
+            <p class="mt-8 rounded-xl bg-zinc-50 p-5 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                Do your homework: the
+                <a href="https://illinoisattorneygeneral.gov/Consumer-Protection/Home-Repair/" target="_blank" rel="noopener nofollow"
+                   class="font-medium text-sky-700 underline hover:text-sky-600 dark:text-sky-400">Illinois Attorney General's Consumer Protection</a>
+                office explains how to avoid home-repair fraud and choose a reliable contractor. Its guidance for
+                homeowners is explicit &mdash;
+                <strong class="font-semibold text-zinc-800 dark:text-zinc-200">&ldquo;Get more than one estimate and get them in writing&rdquo;</strong>
+                &mdash; so comparing side by side before you sign is the state's own advice.
+            </p>
         </section>
     </main>
 

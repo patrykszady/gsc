@@ -89,20 +89,42 @@ class CompareCompetitorPage extends Component
     {
         $criteria = (array) config('competitors.criteria', []);
         $overrides = (array) ($competitor['them'] ?? []);
+        $sources = (array) ($competitor['them_sources'] ?? []);
 
         $rows = [];
         foreach ($criteria as $row) {
             $key = (string) ($row['key'] ?? '');
             $fallback = (string) ($row['them_default'] ?? 'Varies — verify directly with the company.');
+            $hasOverride = array_key_exists($key, $overrides);
             $rows[] = [
+                // Key is exposed so the view can enrich specific rows (e.g.
+                // linking each review platform in `public_reviews`).
+                'key' => $key,
                 'label' => (string) ($row['label'] ?? $key),
-                'us' => (string) ($row['us'] ?? ''),
+                // Terminal period added here so config strings stay editable
+                // without every author remembering punctuation.
+                'us' => $this->endWithPeriod((string) ($row['us'] ?? '')),
                 'them' => (string) ($overrides[$key] ?? $fallback),
+                // Only cite a row that actually states a fact about them. The
+                // generic "verify directly" fallback is our own wording, so a
+                // citation there would point at a page that never said it.
+                'them_source' => $hasOverride ? (array) ($sources[$key] ?? []) : [],
                 'why' => (string) ($row['why'] ?? ''),
             ];
         }
 
         return $rows;
+    }
+
+    /** Ensure a sentence ends in terminal punctuation. */
+    protected function endWithPeriod(string $value): string
+    {
+        $value = rtrim($value);
+        if ($value === '' || in_array(mb_substr($value, -1), ['.', '!', '?'], true)) {
+            return $value;
+        }
+
+        return $value . '.';
     }
 
     /**
@@ -120,7 +142,7 @@ class CompareCompetitorPage extends Component
         $faqs = [
             [
                 'question' => "Is GS Construction a good alternative to {$name}?",
-                'answer' => "If you want to work directly with the owners and keep control of your design and materials, GS Construction is a strong alternative to {$name}. Greg and Patryk Szady are a father-son team who run every project from the first call to the final walkthrough — there is no rotating cast of coordinators, and you can bring your own designer or architect (or be your own) and shop your own materials from our trusted material sources.",
+                'answer' => "If you want to work directly with the owners and keep control of your design and materials, GS Construction is a strong alternative to {$name}. Greg and Patryk Szady are a father-son team who run every project from the first call to the final walkthrough — there is no rotating cast of coordinators, and you can bring your own designer or architect, get connected with our trusted architects, engineers, or designers, or be your own and shop our trusted material sources.",
             ],
             [
                 'question' => "How does GS Construction's pricing compare to {$name}?",
@@ -132,7 +154,7 @@ class CompareCompetitorPage extends Component
             ],
             [
                 'question' => 'Can I bring my own designer or buy my own materials?',
-                'answer' => 'Yes. You can collaborate with the independent designer or architect of your choice, or design the project yourself. We point you to our trusted material sources, follow your requirements, and install the materials you purchase — your design, your decisions.',
+                'answer' => 'Yes. You can collaborate with the independent designer or architect of your choice — or we can connect you with our trusted architects, engineers, or designers — or design the project yourself. We point you to our trusted material sources, follow your requirements, and install the materials you purchase — your design, your decisions.',
             ],
         ];
 
