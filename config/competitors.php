@@ -417,5 +417,109 @@ return [
             ],
             'also_known_as' => ['thomas meyer renovations', 'tom meyer renovations', 'thomas meyer remodeling'],
         ],
+        [
+            'slug' => 'delta-remodels',
+            'name' => 'Delta Remodels',
+            'website' => 'https://www.deltaremodels.com',
+            'location' => 'Lake Forest, IL',
+            'focus' => 'Kitchen, bathroom, and basement remodeling',
+            'comparison_note' => 'Delta Remodels is a family-owned North Shore remodeler in business since 1987, focused on kitchen, bathroom, basement, and accessibility remodeling, with an in-house designer, 3D renderings, a four-step process, and a dedicated project manager on each job. The difference with GS Construction comes down to design freedom and who runs your project: you can bring your own designer or architect — or use one of our trusted partners — and the owners, Greg and Patryk Szady, personally run every job from the first call to the final walkthrough.',
+            'them' => [
+                'experience' => 'Family-owned, in business since 1987',
+                'design_model' => 'Design-build with an in-house designer; 3D renderings included.',
+                'point_of_contact' => 'A dedicated project manager is assigned to each project.',
+                'service_area' => 'North Shore communities (Lake Forest, Highland Park, Winnetka, Glenview, Northbrook, etc.)',
+                'project_types' => 'Kitchen, bathroom, basement, and accessible remodeling.',
+            ],
+            // Verified 2026-07-29 on deltaremodels.com (see them_sources quotes).
+            'them_sources' => [
+                'experience' => [
+                    'label' => 'Homepage',
+                    'url' => 'https://www.deltaremodels.com/',
+                    'quote' => 'Family-Owned Since 1987',
+                ],
+                'point_of_contact' => [
+                    'label' => 'Homepage',
+                    'url' => 'https://www.deltaremodels.com/',
+                    'quote' => 'dedicated project manager',
+                ],
+                'design_model' => [
+                    'label' => 'Homepage',
+                    'url' => 'https://www.deltaremodels.com/',
+                    'quote' => 'professional 3D renderings',
+                ],
+            ],
+            'also_known_as' => ['delta remodels', 'delta construction', 'delta remodeling', 'deltaremodels'],
+        ],
+        [
+            'slug' => 'dream-kitchens',
+            'name' => 'Dream Kitchens',
+            'website' => 'https://dreamkitchens.com',
+            'location' => 'Highland Park, IL',
+            'focus' => 'Kitchen and bath design',
+            'comparison_note' => 'Dream Kitchens is a Highland Park kitchen-and-bath design firm in business since 1992, known for showroom-based design — in-house designers, 3D mockups, and detailed drawings — with installation arranged through the firm or your own contractor. GS Construction approaches the same projects from the build side: a licensed and insured construction company run by its owners, where you keep control of the design — bring your own designer, use one of our trusted partners, or be your own — and one accountable team takes the job from demolition to final walkthrough.',
+            'them' => [
+                'experience' => 'In business since 1992',
+                'design_model' => 'Showroom-based design firm: in-house designers, 3D mockups, and detailed drawings; installation by the firm or your own contractor.',
+                'service_area' => 'Highland Park and surrounding communities',
+                'project_types' => 'Kitchen and bathroom design, including outdoor and kosher kitchens.',
+            ],
+            // Verified 2026-07-29 on dreamkitchens.com (see them_sources quotes).
+            'them_sources' => [
+                'experience' => [
+                    'label' => 'Homepage',
+                    'url' => 'https://dreamkitchens.com/',
+                    'quote' => 'Since 1992 we have been transforming our clients\' kitchens into their unique culinary space.',
+                ],
+                'design_model' => [
+                    'label' => 'Homepage',
+                    'url' => 'https://dreamkitchens.com/',
+                    'quote' => 'carpenter friendly detailed drawings',
+                ],
+            ],
+            'also_known_as' => ['dream kitchens', 'dream kitchens inc', 'dreamkitchens'],
+        ],
+        [
+            'slug' => 'scott-lyon-company',
+            'name' => 'Scott Lyon & Company',
+            'website' => 'https://www.scottlyonconstruction.com',
+            'location' => 'Glencoe, IL',
+            'focus' => 'Residential construction',
+            // Their live site has shown an "under construction" placeholder
+            // since ~2015, so sourced rows quote Internet Archive copies of
+            // their real site (2012-2014 captures) and say so inline; the
+            // citation tooltips link the exact snapshots. project_types quotes
+            // their current Facebook description. Verified 2026-07-30.
+            'comparison_note' => 'Scott Lyon & Company is a Glencoe-based contractor with a background in high-end residential construction and commercial contracting. Its own website currently shows an under-construction placeholder, so the sourced rows above come from archived copies of its site (2012-2014), where it described a construction-management approach — acting as the client\'s representative, with decisions made as a team — plus per-project design options and household maintenance services. Details may have changed since, so verify directly; the most reliable way to compare is to request an itemized estimate from both companies — GS Construction\'s is free, itemized, and walked through with you by the owners themselves.',
+            'them' => [
+                'project_types' => 'High-end residential construction and commercial contracting.',
+                'point_of_contact' => 'Per their archived site (2014): acts as a representative of the client, with decisions made as a team.',
+                'design_model' => 'Per their archived site (2014): a menu of options for the design and detail of each project, discussed personally.',
+                'self_perform' => 'Per their archived site (2014): skilled tradesmen through strong relationships.',
+            ],
+            'them_sources' => [
+                'project_types' => [
+                    'label' => 'Their Facebook page',
+                    'url' => 'https://www.facebook.com/ScottLyonCompany/',
+                    'quote' => 'High-end residential construction and commercial contracting.',
+                ],
+                'point_of_contact' => [
+                    'label' => 'Archived about page (2014)',
+                    'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/about/',
+                    'quote' => 'we consider our role as a representative of our client, with all decisions being made as a team',
+                ],
+                'design_model' => [
+                    'label' => 'Archived services page (2014)',
+                    'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/services/',
+                    'quote' => 'SLC offers a menu of options with regard to the design and detail of each individual project.',
+                ],
+                'self_perform' => [
+                    'label' => 'Archived services page (2014)',
+                    'url' => 'https://web.archive.org/web/20140409064545/http://www.scottlyonconstruction.com/services/',
+                    'quote' => 'our strong relationships with highly skilled tradesmen',
+                ],
+            ],
+            'also_known_as' => ['scott lyon', 'scott lyon and company', 'scott lyon construction', 'scott lyon & co'],
+        ],
     ],
 ];
