@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 class PsiSnapshot extends Model
 {
+    use BelongsToSite;
+
     protected $table = 'psi_snapshots';
 
     protected $fillable = [

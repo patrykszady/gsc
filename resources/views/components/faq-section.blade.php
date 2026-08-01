@@ -62,7 +62,15 @@
                 <div class="border-b border-zinc-200/80 px-5 py-4 last:border-b-0 dark:border-white/10 sm:px-6">
                     <dt class="text-base font-semibold leading-7 text-zinc-900 dark:text-white">{{ $faq['question'] }}</dt>
                     <dd class="mt-2">
-                        <p class="text-base leading-7 text-zinc-600 dark:text-zinc-400">{{ $faq['answer'] }}</p>
+                        {{-- 'link' is rendered for readers only and deliberately
+                             kept out of 'answer', which is what <x-faq-schema>
+                             emits as acceptedAnswer text. --}}
+                        <p class="text-base leading-7 text-zinc-600 dark:text-zinc-400">
+                            {{ $faq['answer'] }}
+                            @if(!empty($faq['link']))
+                                <a href="{{ $faq['link']['href'] }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">{{ $faq['link']['text'] }}</a>.
+                            @endif
+                        </p>
                     </dd>
                 </div>
                 @endforeach

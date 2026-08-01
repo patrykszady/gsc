@@ -26,7 +26,15 @@ class Login extends Component
 
         if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
             session()->regenerate();
-            $this->redirect(route('admin.dashboard'), navigate: true);
+
+            // The hub, NOT route('admin.dashboard'). That route is admin/{site},
+            // and the {site} default is filled by ResolveAdminSite, which only
+            // runs inside the admin/{site} group — /admin/login sits outside it,
+            // so generating it here throws UrlGenerationException for a missing
+            // parameter. /admin picks the site: it redirects straight through
+            // when there is only one, and shows the picker otherwise.
+            $this->redirect(route('admin.hub'), navigate: true);
+
             return;
         }
 

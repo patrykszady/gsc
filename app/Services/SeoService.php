@@ -1042,7 +1042,9 @@ class SeoService
             ->canonical($canonical)
             ->url($canonical)
             ->image($ogImage)
-            ->siteName('GS Construction & Remodeling')
+            // Per-tenant: falls back to config/seo.php for gs.construction,
+            // overridden by config/sites/{slug}/seo.php for other sites.
+            ->siteName(config('seo.site_name'))
             ->locale('en_US')
             ->type('website');
 

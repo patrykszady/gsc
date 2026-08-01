@@ -4,12 +4,12 @@
     // ranking 8–20 with real search demand. Rendering their links from
     // high-authority pages is the automated version of "deepen internal links
     // on these first". Renders nothing when the file is absent.
-    $priorityLinks = \Illuminate\Support\Facades\Cache::remember('priority_area_links', 3600, function () {
+    $priorityLinks = \Illuminate\Support\Facades\Cache::remember(\App\Support\Tenancy::cacheKey('priority_area_links'), 3600, function () {
         try {
-            if (! \Illuminate\Support\Facades\Storage::disk('local')->exists('seo/priority-pages.json')) {
+            if (! \Illuminate\Support\Facades\Storage::disk('local')->exists(\App\Support\SeoStorage::path('seo/priority-pages.json'))) {
                 return [];
             }
-            $decoded = json_decode((string) \Illuminate\Support\Facades\Storage::disk('local')->get('seo/priority-pages.json'), true);
+            $decoded = json_decode((string) \Illuminate\Support\Facades\Storage::disk('local')->get(\App\Support\SeoStorage::path('seo/priority-pages.json')), true);
 
             return is_array($decoded['items'] ?? null) ? $decoded['items'] : [];
         } catch (\Throwable $e) {

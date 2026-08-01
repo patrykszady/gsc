@@ -128,6 +128,12 @@
             if (!this.hasMultipleSlides) return;
             this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
         },
+        goToSlide(index) {
+            // Clamped: the dots are the only manual control now, so a bad index
+            // must not leave the slider on a blank frame.
+            if (!this.hasMultipleSlides) return;
+            this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        },
         handleVisibility(isVisible) {
             this.isVisible = isVisible;
             if (isVisible && this.isTabVisible && !this.isHovered) {
@@ -351,9 +357,19 @@
                         x-text="slide.subheading"
                         class="mt-4 text-lg text-white drop-shadow-lg sm:text-xl"
                     ></p>
+                    {{-- Same <x-buttons.cta> as the images-only overlay above.
+                         These were hand-rolled anchors, which is how the
+                         secondary ended up on border-transparent (invisible
+                         until hover) and the primary on bg-sky-500 while every
+                         other primary CTA on the site is sky-600.
+
+                         href is bound by Alpine, so the component is given no
+                         href prop — that also keeps wire:navigate off, which is
+                         correct here: the link target changes per slide. --}}
                     <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
-                        <a
-                            :href="slide.link"
+                        <x-buttons.cta
+                            size="lg"
+                            ::href="slide.link"
                             x-on:click="
                                 if (slide.link.startsWith('#')) {
                                     $event.preventDefault();
@@ -371,17 +387,18 @@
                                     })(startTime);
                                 }
                             "
-                            class="inline-flex items-center justify-center rounded-lg bg-sky-500 px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-lg transition hover:bg-sky-600"
                             x-text="slide.button"
-                        ></a>
-                        <a
+                        />
+
+                        <x-buttons.cta
+                            variant="secondary"
+                            size="lg"
+                            :onDark="true"
                             x-show="slide.secondaryButton || '{{ $secondaryCtaText }}'"
-                            :href="slide.secondaryLink || '{{ $secondaryCtaUrl }}'"
-                            class="inline-flex items-center justify-center rounded-lg border border-transparent px-6 py-3 text-base font-semibold capitalize tracking-wide text-white transition hover:border-white"
+                            ::href="slide.secondaryLink || '{{ $secondaryCtaUrl }}'"
                         >
                             <span x-text="slide.secondaryButton || '{{ $secondaryCtaText }}'"></span>
-                            <span class="ml-2">&rarr;</span>
-                        </a>
+                        </x-buttons.cta>
                     </div>
                 </div>
             </div>
@@ -390,31 +407,29 @@
         @endif {{-- !isImagesOnly --}}
     </div>
 
-    {{-- Left/Right Arrow Buttons --}}
-    <button
-        x-show="hasMultipleSlides"
-        @click="prev(); stopAutoplay(); startAutoplay();"
-        class="absolute left-3 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 focus:outline-none"
-        aria-label="Previous slide"
-    >
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-    </button>
-    <button
-        x-show="hasMultipleSlides"
-        @click="next(); stopAutoplay(); startAutoplay();"
-        class="absolute right-3 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 focus:outline-none"
-        aria-label="Next slide"
-    >
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-    </button>
+    {{-- Dot indicators — now the ONLY manual control.
 
-    {{-- Dot Indicators (display only) --}}
-    <div x-show="hasMultipleSlides" class="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+         The left/right arrows were removed as duplicative, but the dots were
+         display-only <div>s, so that would have left no pointer affordance at
+         all (arrow keys still work, but nobody discovers those). They are
+         buttons now: real click targets, keyboard focusable, and labelled.
+
+         A p-2 hit area around each 12px dot keeps them tappable on a phone
+         without changing how they look. --}}
+    <div x-show="hasMultipleSlides" class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-1">
         <template x-for="(slide, index) in slides" :key="'dot-' + index">
-            <div
-                :class="currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3'"
-                class="h-3 rounded-full transition-all duration-300"
-            ></div>
+            <button
+                type="button"
+                @click="goToSlide(index); stopAutoplay(); startAutoplay();"
+                :aria-label="'Go to slide ' + (index + 1)"
+                :aria-current="currentSlide === index"
+                class="group p-2 focus:outline-none"
+            >
+                <span
+                    :class="currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3 group-hover:bg-white/80'"
+                    class="block h-3 rounded-full transition-all duration-300"
+                ></span>
+            </button>
         </template>
     </div>
 </div>

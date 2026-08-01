@@ -261,38 +261,14 @@
                     <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">
                         {{ $projectsHeading }}
                     </h2>
-                    <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        @foreach($cityProjects as $cityProject)
-                            <a href="{{ route('projects.show', $cityProject) }}" wire:navigate
-                               class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
-                                @php
-                                    $cardTown = $projectsAreLocal
-                                        ? $area->city
-                                        : trim((string) (preg_split('/[,.]/', (string) $cityProject->location)[0] ?? ''));
-                                @endphp
-                                <div class="relative aspect-[4/3] overflow-hidden">
-                                    @if($cityProject->images->first())
-                                        <x-lqip-image
-                                            :image="$cityProject->images->first()"
-                                            size="medium" width="600" height="450"
-                                            :alt="$cityProject->title . ' — remodeling project in ' . ($cardTown ?: $area->city) . ', IL'"
-                                            class="h-full w-full transition duration-300 group-hover:scale-105" />
-                                    @endif
-                                    @if($cityProject->project_type)
-                                        <div class="absolute right-3 top-3">
-                                            <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">{{ ucfirst($cityProject->project_type) }}</span>
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="p-3">
-                                    <p class="line-clamp-1 text-sm font-medium text-zinc-800 group-hover:text-sky-700 dark:text-zinc-200 dark:group-hover:text-sky-400">{{ $cityProject->title }}</p>
-                                    @if(! $projectsAreLocal && $cardTown !== '')
-                                        <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ $cardTown }}, IL</p>
-                                    @endif
-                                </div>
-                            </a>
-                        @endforeach
-                    </div>
+                    {{-- Shared <x-project-grid>: same container and cards as
+                         every other project grid. towns=true only when these
+                         projects come from NEIGHBOURING towns, so each card
+                         states where the job actually was. --}}
+                    <x-project-grid
+                        :projects="$cityProjects"
+                        :towns="! $projectsAreLocal"
+                        class="mt-5" />
                 </section>
             @endif
             @include('livewire.partials.town-review-quotes')
@@ -313,13 +289,12 @@
                     <p class="mt-2 max-w-4xl text-sm text-zinc-600 dark:text-zinc-300">
                         {{ $homeSeo['intent_intro'] }}
                     </p>
-                    <div class="mt-5 flex flex-wrap gap-3">
-                        <a href="{{ $area->serviceUrl('kitchen-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Kitchen Remodeling Contractor</a>
-                        <a href="{{ $area->serviceUrl('bathroom-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Bathroom Remodeling</a>
-                        <a href="{{ $area->serviceUrl('home-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Home Remodeling</a>
-                        <a href="{{ $area->serviceUrl('basement-remodeling') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Basement Remodeling</a>
-                        <a href="{{ $area->serviceUrl('home-additions') }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $area->city }} Home Additions</a>
-                    </div>
+                    {{-- "Contractor" on the kitchen chip is deliberate anchor-text
+                         variation for the highest-intent query, not a typo. --}}
+                    <x-service-chips
+                        :area="$area"
+                        :labels="['kitchen-remodeling' => 'Kitchen Remodeling Contractor']"
+                        class="mt-5" />
                     @if(!empty($homePostalCodes))
                         <div class="mt-4">
                             <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">ZIP codes we commonly serve near {{ $area->city }}</p>
@@ -356,8 +331,11 @@
                     ? \Illuminate\Support\Str::limit($leadInfo['cost_coverage'], 180) . ' Illinois law requires replacement over time — see how the program works, how to check your own line, and what it means mid-remodel.'
                     : 'Illinois law requires every water system to inventory and replace lead service lines — and many suburbs cover part or all of the cost. See how to check your ' . $area->city . ' line and what it means mid-remodel.';
             @endphp
-            <section class="mx-auto mt-10 max-w-5xl px-4 sm:px-6 lg:px-8">
-                <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            {{-- max-w-7xl, matching the 22 other sections on this page. It was the
+                 lone max-w-5xl, so it sat visibly narrower than everything
+                 above and below it. --}}
+            <section class="mx-auto mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="group rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <h2 class="font-heading text-xl font-bold text-zinc-900 dark:text-white">
@@ -384,147 +362,7 @@
                  Provides genuine differentiation between area pages — critical to
                  avoid Google's "duplicate content / thin local lander" penalty. --}}
             @if($area->hasUniqueContent() || filled($area->landmarks) || filled($area->permit_notes))
-            @php
-                // Prefer genuinely local project photos (projects whose location
-                // resolves to this city) — a strong "real local work" signal for
-                // both Google and AI Overviews. Fall back to cover photos of our
-                // featured projects when this city has no matched projects yet.
-                $citySliderImages = $area->localProjectImages(6);
-                $hasLocalProjects = $citySliderImages->isNotEmpty();
-                if (! $hasLocalProjects) {
-                    $citySliderImages = \App\Models\ProjectImage::curatedCovers(null, 6);
-                }
-            @endphp
-            <section class="overflow-hidden bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} remodeling">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-start">
-
-                        {{-- LEFT: project image slider --}}
-                        <div class="lg:mt-2">
-                            @if($citySliderImages->count() > 0)
-                                <div
-                                    x-data="{
-                                        current: 0,
-                                        total: {{ $citySliderImages->count() }},
-                                        timer: null,
-                                        prev() { this.current = (this.current - 1 + this.total) % this.total; },
-                                        next() { this.current = (this.current + 1) % this.total; },
-                                        start() { this.timer = setInterval(() => this.next(), 3000); },
-                                        stop()  { if (this.timer) clearInterval(this.timer); this.timer = null; },
-                                    }"
-                                    x-init="start()"
-                                    @mouseenter="stop()"
-                                    @mouseleave="start()"
-                                    class="relative overflow-hidden rounded-2xl shadow-lg ring-1 ring-zinc-900/10 dark:ring-white/10"
-                                >
-                                    <div class="relative aspect-[4/3] w-full bg-zinc-100 dark:bg-zinc-800">
-                                        @foreach($citySliderImages as $idx => $img)
-                                            <div
-                                                x-show="current === {{ $idx }}"
-                                                x-transition:enter="transition ease-out duration-700"
-                                                x-transition:enter-start="opacity-0"
-                                                x-transition:enter-end="opacity-100"
-                                                x-transition:leave="transition ease-in duration-700"
-                                                x-transition:leave-start="opacity-100"
-                                                x-transition:leave-end="opacity-0"
-                                                class="absolute inset-0"
-                                            >
-                                                <x-lqip-image
-                                                    :image="$img"
-                                                    size="large"
-                                                    aspectRatio="4/3"
-                                                    rounded="2xl"
-                                                    :alt="($img->seo_alt_text ?? $img->alt_text) ?: 'Remodeling project near ' . $area->city . ', IL'"
-                                                    class="h-full w-full object-cover" />
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-                                    @if($citySliderImages->count() > 1)
-                                        <button
-                                            type="button"
-                                            @click="prev()"
-                                            class="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/85 p-2 text-zinc-900 shadow-sm transition hover:bg-white dark:bg-zinc-900/80 dark:text-white dark:hover:bg-zinc-900"
-                                            aria-label="Previous slide"
-                                        >
-                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                <path fill-rule="evenodd" d="M12.78 15.78a.75.75 0 01-1.06 0l-5.25-5.25a.75.75 0 010-1.06l5.25-5.25a.75.75 0 111.06 1.06L8.06 10l4.72 4.72a.75.75 0 010 1.06z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            @click="next()"
-                                            class="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/85 p-2 text-zinc-900 shadow-sm transition hover:bg-white dark:bg-zinc-900/80 dark:text-white dark:hover:bg-zinc-900"
-                                            aria-label="Next slide"
-                                        >
-                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                <path fill-rule="evenodd" d="M7.22 4.22a.75.75 0 011.06 0l5.25 5.25a.75.75 0 010 1.06l-5.25 5.25a.75.75 0 11-1.06-1.06L11.94 10 7.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
-                                    @endif
-
-                                    {{-- Dots --}}
-                                    @if($citySliderImages->count() > 1)
-                                        <div class="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-2">
-                                            @foreach($citySliderImages as $idx => $_img)
-                                                <button
-                                                    type="button"
-                                                    @click="current = {{ $idx }}"
-                                                    :class="current === {{ $idx }} ? 'bg-white' : 'bg-white/50 hover:bg-white/80'"
-                                                    class="h-2 w-2 rounded-full transition"
-                                                    aria-label="Show slide {{ $idx + 1 }}"></button>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
-                            @if($hasLocalProjects)
-                                <p class="mt-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                                    Recent remodeling projects we completed in {{ $area->city }}, IL.
-                                </p>
-                            @endif
-                        </div>
-
-                        {{-- RIGHT: city copy --}}
-                        <div class="lg:pl-4">
-                            <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
-                                Remodeling in {{ $area->city }}, IL
-                            </h2>
-
-                            @if(filled($area->intro))
-                                <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
-                                    {{ $area->intro }}
-                                </p>
-                            @endif
-
-                            @if(filled($area->local_intro))
-                                <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
-                                    {!! nl2br(e($area->local_intro)) !!}
-                                </div>
-                            @endif
-
-                            @if(filled($area->landmarks))
-                                <div class="mt-6">
-                                    <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                                        Neighborhoods &amp; landmarks we serve in {{ $area->city }}
-                                    </h3>
-                                    <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->landmarks }}</p>
-                                </div>
-                            @endif
-
-                            @if(filled($area->permit_notes))
-                                <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-                                    <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
-                                        {{ $area->city }} permits &amp; building codes
-                                    </h3>
-                                    <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->permit_notes }}</p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </section>
+            @include('partials.area-intro-slider')
             @endif
 
             <livewire:about-section :area="$area" />
@@ -630,6 +468,18 @@
 
             {{-- Services Section --}}
             @include('partials.services-grid', ['area' => $area])
+
+            {{-- Closing CTA, scoped to this town: About Us goes to the area's
+                 own about page, not the company-wide one. --}}
+            <x-cta-section
+                variant="blue"
+                heading="Want to know who you're hiring?"
+                :description="'GS Construction is a father-and-son company — Gregory and Patryk are on your ' . $area->city . ' job personally. Read how the company started and how we work.'"
+                primaryText="About Us"
+                :primaryHref="$area->pageUrl('about')"
+                secondaryText="View Our Work"
+                :secondaryHref="$area->pageUrl('projects')"
+            />
             @break
 
         @case('testimonials')
@@ -723,6 +573,7 @@
             {{-- Area About Page --}}
             @php
                 $galleryImages = \App\Models\ProjectImage::query()
+                    ->with('project')
                     ->whereHas('project')
                     ->select('project_images.*')
                     ->join(
@@ -759,91 +610,46 @@
                                     </p>
                                 </div>
                                 
-                                {{-- Image gallery --}}
-                                <div class="mt-14 flex justify-end gap-4 sm:-mt-44 sm:justify-start sm:pl-20 lg:mt-0 lg:pl-0">
-                                    <div class="ml-auto w-40 flex-none space-y-4 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-0 xl:pt-80">
-                                        @if($galleryImages->count() > 0)
-                                        <div class="relative">
-                                            <x-lqip-image :image="$galleryImages[0]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
-                                            <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
-                                        </div>
-                                        @endif
-                                        @if($galleryImages->count() > 5)
-                                        <div class="relative">
-                                            <x-lqip-image :image="$galleryImages[5]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
-                                            <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
-                                        </div>
-                                        @endif
-                                    </div>
-                                    <div class="mr-auto w-40 flex-none space-y-4 sm:mr-0 sm:pt-52 lg:pt-36">
-                                        @if($galleryImages->count() > 1)
-                                        <div class="relative">
-                                            <x-lqip-image :image="$galleryImages[1]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
-                                            <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
-                                        </div>
-                                        @endif
-                                        @if($galleryImages->count() > 2)
-                                        <div class="relative">
-                                            <x-lqip-image :image="$galleryImages[2]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
-                                            <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
-                                        </div>
-                                        @endif
-                                    </div>
-                                    <div class="w-40 flex-none space-y-4 pt-32 sm:pt-0">
-                                        @if($galleryImages->count() > 3)
-                                        <div class="relative">
-                                            <x-lqip-image :image="$galleryImages[3]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
-                                            <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
-                                        </div>
-                                        @endif
-                                        @if($galleryImages->count() > 4)
-                                        <div class="relative">
-                                            <x-lqip-image :image="$galleryImages[4]" size="medium" aspectRatio="square" rounded="xl" class="w-full shadow-lg" />
-                                            <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-zinc-900/10 ring-inset dark:ring-white/10"></div>
-                                        </div>
-                                        @endif
-                                    </div>
-                                </div>
+                @include('partials.about-gallery')
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Stats section -->
-                <div class="mx-auto mt-8 max-w-7xl px-6 sm:mt-12 lg:px-8">
-                    <div class="mx-auto max-w-2xl lg:mx-0 lg:max-w-none">
-                        <h2 class="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">Our Commitment to {{ $area->city }}</h2>
-                        <div class="mt-6 flex flex-col gap-x-8 gap-y-20 lg:flex-row">
-                            <div class="lg:w-full lg:max-w-2xl lg:flex-auto">
-                                <p class="text-xl/8 text-zinc-700 dark:text-zinc-200">
-                                    To transform {{ $area->city }} houses into dream homes while building genuine relationships with every homeowner we serve.
-                                </p>
-                                <p class="mt-8 max-w-xl text-base/7 text-zinc-600 dark:text-zinc-400">
-                                    With deep roots in {{ $area->city }} and the greater Chicagoland area, we understand the unique needs of local homeowners. From historic home renovations to modern kitchen makeovers, we bring the same level of care and craftsmanship to every project.
-                                </p>
-                            </div>
-                            <div class="lg:flex lg:flex-auto lg:justify-center">
-                                <dl class="w-64 space-y-8 xl:w-80">
-                                    <div class="flex flex-col-reverse gap-y-4">
-                                        <dt class="text-base/7 text-zinc-600 dark:text-zinc-400">Years of combined experience</dt>
-                                        <dd class="font-heading text-5xl font-bold tracking-tight text-zinc-900 dark:text-white">40+</dd>
-                                    </div>
-                                    <div class="flex flex-col-reverse gap-y-4">
-                                        <dt class="text-base/7 text-zinc-600 dark:text-zinc-400">Projects completed</dt>
-                                        <dd class="font-heading text-5xl font-bold tracking-tight text-zinc-900 dark:text-white">300+</dd>
-                                    </div>
-                                    <div class="flex flex-col-reverse gap-y-4">
-                                        <dt class="text-base/7 text-zinc-600 dark:text-zinc-400">5-star reviews</dt>
-                                        <dd class="font-heading text-5xl font-bold tracking-tight text-zinc-900 dark:text-white">70+</dd>
-                                    </div>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {{-- Same partial /about renders. This page used to carry its
+                     own copy of the mission + stats — same sentences, same
+                     three figures — so every stat change had to be made
+                     twice. The partial is area-aware, so the heading reads
+                     "Our Mission in {city}". --}}
+                @include('partials.about-mission', ['area' => $area])
 
                 <!-- Greg & Patryk Section -->
-                <livewire:about-section variant="team" />
+                {{-- :area passed so the team blurb can name the town — the main
+                     /about does the same, this call was just missing it. --}}
+                <livewire:about-section variant="team" :area="$area" />
+
+                {{-- The founders' story and full bios, shared with /about.
+                     These pages had only the short team summary; the story of
+                     how the company grew, the individual bios, and why the
+                     father-son pairing works are the reason someone trusts a
+                     contractor, and they were main-page-only. --}}
+                @include('partials.about-story')
+
+                @include('partials.about-founder-bios')
+
+                @include('partials.about-pairing')
+
+                {{-- Same partials the main /about renders. Both were already
+                     written to be area-aware ("Our Values Serving {city}"), but
+                     only /about ever included them, so these pages were missing
+                     content that had been authored for them.
+
+                     The comparison block also links /compare and its competitor
+                     pages from ~70 more crawled pages, which is exactly what it
+                     exists to do. --}}
+                @include('partials.about-values', ['area' => $area])
+
+                @include('partials.about-comparison')
 
                 <x-cta-section 
                     variant="blue"
@@ -1058,10 +864,14 @@
                     ? \Illuminate\Support\Str::limit((string) $area->permit_notes, 120)
                     : null;
 
+                // Tail sentences lead with how the job is run in this town — who
+                // is on site, how the scope is priced, who pulls the permits —
+                // rather than with finish decisions. The materials are the
+                // homeowner's to choose; the job is ours.
                 $descriptionTail = match ($serviceTone) {
-                    0 => "This {$area->city} page focuses on practical planning, realistic budgets, and finish decisions for {$config['label']} projects.",
-                    1 => "Homeowners in {$area->city} typically compare timeline, scope, and permit implications first; this page addresses those points directly.",
-                    default => "For {$config['label']} in {$area->city}, we prioritize clear scope, clean jobsite execution, and transparent milestone planning.",
+                    0 => "On a {$area->city} project that means an owner on site daily, an itemized scope before demo day, and the village permits pulled by us.",
+                    1 => "Homeowners in {$area->city} compare timeline, scope and permit handling first — all three are handled by the owners rather than passed to a project manager.",
+                    default => "For {$config['label']} in {$area->city} we run one scope, one written schedule, and one point of contact from the free in-home estimate to the punch list.",
                 };
 
                 if ($landmarkSnippet) {
@@ -1072,7 +882,7 @@
                 $config['contentSections'] = [
                     [
                         'heading' => "Planning {$config['label']} in {$area->city}",
-                        'body' => "Most {$area->city} projects start with scope alignment: what to renovate now, what to phase later, and which finishes deliver the highest daily impact. We build plans around your home layout, timeline, and budget priorities.",
+                        'body' => "Most {$area->city} projects start with scope alignment: what to do now, what to phase later, and what the budget actually buys. Gregory or Patryk walks the space themselves, takes real measurements, and prices labor, materials, demolition and disposal line by line — not one number you cannot check.",
                     ],
                     [
                         'heading' => "Execution and permitting in {$area->city}",
@@ -1140,7 +950,20 @@
                     :primary-cta-url="$area->pageUrl('contact')"
                     secondary-cta-text="View {{ $config['label'] }} Projects"
                     :secondary-cta-url="$area->pageUrl('projects')"
-                    height-classes="h-[340px] sm:h-[420px] lg:h-[520px]"
+                    {{-- Taller on NARROW screens, not shorter: the hero content is
+                         bottom-aligned inside an overflow-hidden box, so when
+                         "Arlington Heights Bathroom Remodeling" wraps to three
+                         lines the heading is clipped off the TOP rather than
+                         pushing the box down. Measured worst case below 480px is
+                         494px of content; 340px was cutting up to 154px off every
+                         area service page, not just the long city names.
+
+                         lg gets its own bump for the same reason: at exactly
+                         1024px the type is at its largest but the column is not
+                         yet wide enough to hold "Arlington Heights Bathroom
+                         Remodeling" on two lines, so 520px clipped 34px. xl
+                         drops back to 520px once the line fits. --}}
+                    height-classes="h-[520px] min-[480px]:h-[420px] lg:h-[600px] xl:h-[520px]"
                 />
             </div>
 
@@ -1158,59 +981,66 @@
                  are interpolated per (city, service) so each URL has unique prose. --}}
             @include('partials.area-unique-content', ['area' => $area, 'context' => $config['urlSlug']])
 
-            <section class="bg-zinc-50 py-8 dark:bg-zinc-800/40">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $config['label'] }} Coverage Around {{ $area->city }}</h2>
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">We provide {{ strtolower($config['label']) }} in {{ $area->city }} and nearby communities to keep schedules, crews, and permitting coordination efficient.</p>
 
-                    @if(!empty($servicePostalCodes))
-                        <div class="mt-4">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Local ZIP coverage</p>
-                            <div class="mt-2 flex flex-wrap gap-2">
-                                @foreach($servicePostalCodes as $zip)
-                                    <a href="{{ url('/service-area/' . $zip) }}" wire:navigate class="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $zip }}</a>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
+            {{-- REMOVED: the "Long-Form Content Sections (SEO depth)" block —
+                 Planning / Execution and permitting / Nearby service coverage.
 
-                    <div class="mt-4 flex flex-wrap gap-3">
-                        @foreach($nearbyAreas->take(6) as $nearbyArea)
-                            <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate class="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">
-                                {{ $config['label'] }} in {{ $nearbyArea->city }}
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-            </section>
+                 113 words of templated copy rendered on 420 pages (70 areas × 6
+                 services), 75.6% identical between two towns for the same
+                 service; only the city token and the nearby-town list varied.
+                 Added to bulk pages up, but at that scale templated city-swap
+                 paragraphs read as doorway content rather than depth.
 
-            {{-- Long-Form Content Sections (SEO depth) --}}
-            @if(!empty($config['contentSections']))
-            <section class="bg-white py-16 sm:py-20 dark:bg-zinc-900">
-                <div class="mx-auto max-w-7xl px-6 lg:px-8">
-                    <div class="mx-auto max-w-3xl">
-                        @foreach($config['contentSections'] as $section)
-                        <div class="{{ !$loop->first ? 'mt-12' : '' }}">
-                            <h2 class="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-white">
-                                {{ $section['heading'] }}
-                            </h2>
-                            <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-400">
-                                {{ $section['body'] }}
-                            </p>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-            </section>
+                 Nothing unique was lost: the genuinely local material
+                 (local_intro, landmarks, permit_notes) renders in the intro
+                 block above, with the real permit text rather than the
+                 mid-word "…in the...." truncation this block produced, and the
+                 process paraphrase is superseded by the real six stages below.
+
+                 $config['contentSections'] is still built in this file — left
+                 in place so this is a one-line revert if the removal costs
+                 rankings. --}}
+
+            {{-- Our process — the SAME six stages as /services/{service} and
+                 /process, read from config('services-content.process').
+
+                 Not duplicated here: a visitor who lands on the Schaumburg
+                 kitchen page from search should see how the job actually runs,
+                 and if these ever differed from the main service page they
+                 would describe two different companies. One source, three
+                 places that render it. --}}
+            @php $areaProcess = (array) config('services-content.process', []); @endphp
+            @if($areaProcess !== [])
+            <x-process-steps
+                :steps="$areaProcess"
+                heading="How your {{ $area->city }} project runs"
+                class="bg-zinc-50 dark:bg-zinc-800/50" />
             @endif
+
+            {{-- Testimonials, straight after the process: someone who has just
+                 read how the job runs is at the point of asking "do people
+                 actually get that?" — proof answers it. The coverage/ZIP list
+                 is reference material and sits further up with the service
+                 detail. --}}
+            <livewire:testimonials-section :area="$area" />
 
             {{-- Timelapse Section --}}
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <livewire:timelapse-section />
             </div>
 
-            {{-- Projects for this service type --}}
-            <livewire:projects-grid :area="$area" :type="$config['projectType']" :hide-filters="true" :hide-when-empty="true" />
+            {{-- Projects for this service type. Same props as /services/{service}
+                 — limit + pagination — so the grid behaves identically, and the
+                 same "More X Projects" footer so the page has a route onward
+                 instead of ending on a grid. --}}
+            <livewire:projects-grid
+                :area="$area"
+                :type="$config['projectType']"
+                :limit="3"
+                :hide-filters="true"
+                :show-pagination="true"
+                :hide-when-empty="true"
+                :more-projects-type="$config['projectType']" />
 
             {{-- Town-attributed review quotes (real reviewer towns, never faked) --}}
             @include('livewire.partials.town-review-quotes')
@@ -1242,9 +1072,6 @@
                 </div>
             @endif
 
-            {{-- Testimonials --}}
-            <livewire:testimonials-section :area="$area" />
-
             {{-- Map Section --}}
             <livewire:map-section :area="$area" />
 
@@ -1254,54 +1081,63 @@
                     <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-6">
                         More Remodeling Services in {{ $area->city }}
                     </h2>
-                    <div class="flex flex-wrap gap-3">
-                        @foreach([
-                            'kitchen-remodeling' => 'Kitchen Remodeling',
-                            'bathroom-remodeling' => 'Bathroom Remodeling',
-                            'home-remodeling' => 'Home Remodeling',
-                            'basement-remodeling' => 'Basement Remodeling',
-                            'home-additions' => 'Home Additions',
-                        ] as $slug => $label)
-                            @if($config['urlSlug'] !== $slug)
-                            <a href="{{ $area->serviceUrl($slug) }}" wire:navigate class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
-                                {{ $area->city }} {{ $label }}
-                            </a>
-                            @endif
-                        @endforeach
-                    </div>
+                    <x-service-chips :area="$area" :exclude="$config['urlSlug']" />
                 </div>
             </section>
-
-            {{-- Nearby Areas Section for Internal Linking --}}
-            @if($nearbyAreas->count() > 0)
-            <section class="bg-white py-12 dark:bg-zinc-900">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
-                        {{ $config['label'] }} in Nearby Areas
-                    </h2>
-                    <p class="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
-                        We also serve these communities near {{ $area->city }}, IL. Click for {{ strtolower($config['label']) }} info specific to each city.
-                    </p>
-                    <div class="flex flex-wrap gap-3">
-                        @foreach($nearbyAreas as $nearbyArea)
-                        <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate
-                           class="inline-flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                           title="{{ $config['label'] }} services in {{ $nearbyArea->city }}, IL">
-                            <span>{{ $nearbyArea->city }} {{ $config['label'] }}</span>
-                            @if(isset($nearbyArea->distance_miles))
-                                <span class="rounded bg-white/70 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-900/70 dark:text-zinc-400">
-                                    {{ number_format($nearbyArea->distance_miles, 1) }} mi
-                                </span>
-                            @endif
-                        </a>
-                        @endforeach
-                    </div>
-                </div>
-            </section>
-            @endif
 
             {{-- Contact Section --}}
             <livewire:contact-section :area="$area" />
+
+            {{-- Coverage (ZIPs + nearby towns) sits AFTER the contact form.
+                 It is reference material — "do you come to my street?" — not
+                 something a visitor reads before deciding to get in touch, and
+                 it doubles as the internal-linking block that should sit near
+                 the end of the page. --}}
+            <section class="bg-zinc-50 py-8 dark:bg-zinc-800/40">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $config['label'] }} Coverage Around {{ $area->city }}</h2>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">We provide {{ strtolower($config['label']) }} in {{ $area->city }} and nearby communities to keep schedules, crews, and permitting coordination efficient.</p>
+
+                    @if(!empty($servicePostalCodes))
+                        <div class="mt-4">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Local ZIP coverage</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach($servicePostalCodes as $zip)
+                                    <a href="{{ url('/service-area/' . $zip) }}" wire:navigate class="rounded-md bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700">{{ $zip }}</a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Merged in from the old "{Label} in Nearby Areas" section
+                         further down the page: it listed the SAME $nearbyAreas
+                         with the SAME serviceUrl() links, just uncapped and with
+                         distance badges. Two sections asking the reader to pick a
+                         neighbouring town. This is the richer version, kept whole. --}}
+                    @if($nearbyAreas->count() > 0)
+                        <div class="mt-5">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Nearby communities</p>
+                            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                                Click a town for {{ strtolower($config['label']) }} information specific to it.
+                            </p>
+                            <div class="mt-3 flex flex-wrap gap-3">
+                                @foreach($nearbyAreas as $nearbyArea)
+                                    <a href="{{ $nearbyArea->serviceUrl($config['urlSlug']) }}" wire:navigate
+                                       class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                                       title="{{ $config['label'] }} services in {{ $nearbyArea->city }}, IL">
+                                        <span>{{ $nearbyArea->city }} {{ $config['label'] }}</span>
+                                        @if(isset($nearbyArea->distance_miles))
+                                            <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                                {{ number_format($nearbyArea->distance_miles, 1) }} mi
+                                            </span>
+                                        @endif
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </section>
             @break
 
         @default

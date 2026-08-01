@@ -49,6 +49,14 @@ class RedirectLegacyUrls
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // This map is gs.construction's URL history (old WordPress paths,
+        // renamed pages). Other tenants have their own routes at some of these
+        // paths — /portfolio and /testimonials are live pages on jpeterson —
+        // so the legacy redirects must not fire off-tenant.
+        if (\App\Models\Site::current()->slug !== 'gsc') {
+            return $next($request);
+        }
+
         $path = '/' . ltrim($request->path(), '/');
         
         // Check exact redirects

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class SeoAction extends Model
 {
+    use BelongsToSite;
+
     // Risk tiers gate auto-apply eligibility.
     public const RISK_SAFE = 'safe';
     public const RISK_REVIEW = 'review';

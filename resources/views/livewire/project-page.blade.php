@@ -206,7 +206,7 @@
                     x-show="active === {{ $tIdx }}"
                     x-cloak
                     role="tabpanel"
-                    class="mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
+                    class="group mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5 transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600"
                 >
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{{ $timelapseTitle }}</h2>
@@ -501,7 +501,7 @@
                         x-show="active === {{ $tIdx }}"
                         x-cloak
                         role="tabpanel"
-                        class="mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5"
+                        class="group mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5 transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600"
                     >
                         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             @if($visibleTimelapses->count() > 1)

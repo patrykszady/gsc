@@ -14,8 +14,13 @@
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <flux:card class="p-4">
             <flux:text class="text-xs uppercase tracking-wide text-zinc-500">SEO Health</flux:text>
-            <div class="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">{{ $this->healthSnapshot['score'] }}</div>
-            <flux:text class="text-xs text-zinc-500">Out of 100</flux:text>
+            @if ($this->healthSnapshot['score'] === null)
+                <div class="mt-2 text-3xl font-semibold text-zinc-400 dark:text-zinc-500">&mdash;</div>
+                <flux:text class="text-xs text-zinc-500">Not measured yet</flux:text>
+            @else
+                <div class="mt-2 text-3xl font-semibold text-zinc-900 dark:text-white">{{ $this->healthSnapshot['score'] }}</div>
+                <flux:text class="text-xs text-zinc-500">Out of 100</flux:text>
+            @endif
         </flux:card>
         <flux:card class="p-4">
             <flux:text class="text-xs uppercase tracking-wide text-zinc-500">Reports</flux:text>
@@ -573,7 +578,7 @@
                     <div class="px-1">
                         <div class="mb-1 flex items-center justify-between gap-2 text-sm">
                             <span class="min-w-0 truncate font-medium text-zinc-700 dark:text-zinc-200">{{ $pillar['name'] }}</span>
-                            <span class="text-zinc-500">{{ $pillar['score'] }}</span>
+                            <span class="{{ $pillar['score'] === null ? 'text-zinc-400 italic' : 'text-zinc-500' }}">{{ $pillar['score'] ?? 'not measured' }}</span>
                         </div>
                         <div class="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                             <div
@@ -582,8 +587,9 @@
                                     'bg-emerald-500' => $pillar['color'] === 'emerald',
                                     'bg-amber-500' => $pillar['color'] === 'amber',
                                     'bg-rose-500' => $pillar['color'] === 'rose',
+                                    'bg-zinc-200 dark:bg-zinc-700' => $pillar['color'] === 'zinc',
                                 ])
-                                style="width: {{ $pillar['score'] }}%"
+                                style="width: {{ $pillar['score'] ?? 0 }}%"
                             ></div>
                         </div>
                     </div>

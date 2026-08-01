@@ -65,7 +65,7 @@
             </p>
 
             {{-- How GS vets & supervises (shared standard) --}}
-            <div class="mt-12 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group mt-12 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white">
                     How GS vets and supervises this trade
                 </h2>

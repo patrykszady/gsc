@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class ShortLink extends Model
 {
+    use BelongsToSite;
+
     protected $fillable = [
         'code',
         'url',

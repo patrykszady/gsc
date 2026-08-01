@@ -80,10 +80,10 @@ class SeoReports extends Component
         // files just age. Queue regens — throttled per report — so the page
         // converges to fresh on its own wherever a queue worker runs.
         foreach ($this->reports as $key => $meta) {
-            $path = "reports/{$key}.md";
+            $path = \App\Support\SeoStorage::path("reports/{$key}.md");
             $mtime = Storage::disk('local')->exists($path) ? Storage::disk('local')->lastModified($path) : null;
             $isStale = $mtime === null || $mtime < now()->subHours(26)->getTimestamp();
-            if ($isStale && Cache::add("report_regen_queued:{$key}", 1, now()->addHours(6))) {
+            if ($isStale && Cache::add(\App\Support\Tenancy::cacheKey("report_regen_queued:{$key}"), 1, now()->addHours(6))) {
                 \App\Jobs\RunSeoChannelSyncJob::dispatch($meta['command']);
             }
         }
@@ -139,7 +139,7 @@ class SeoReports extends Component
             $this->flash = 'Failed to regenerate: ' . $e->getMessage();
         }
         $this->active = $key;
-        Cache::forget('admin.seo-reports.health-snapshot');
+        Cache::forget(\App\Support\Tenancy::cacheKey('admin.seo-reports.health-snapshot'));
         Cache::forget($this->searchSnapshotCacheKey());
         // Bust the computed cache so the file list / body re-read from disk.
         unset($this->files, $this->reportStats, $this->healthSnapshot, $this->searchSnapshot, $this->activeHtml);
@@ -230,7 +230,7 @@ class SeoReports extends Component
         $disk = Storage::disk('local');
         $out = [];
         foreach ($this->reports as $key => $meta) {
-            $path = "reports/{$key}.md";
+            $path = \App\Support\SeoStorage::path("reports/{$key}.md");
             $exists = $disk->exists($path);
             $size = $exists ? $disk->size($path) : null;
             $mtimeTs = $exists ? $disk->lastModified($path) : null;
@@ -328,16 +328,16 @@ class SeoReports extends Component
                 // Prefer true site-wide daily totals (date-dimension sync) which
                 // include anonymized-query clicks the query-dimension table drops.
                 $hasDailyTotals = Schema::hasTable('gsc_daily_totals')
-                    && DB::table('gsc_daily_totals')->whereBetween('date', [$prevStart->toDateString(), $today->toDateString()])->exists();
+                    && \App\Support\Tenancy::table('gsc_daily_totals')->whereBetween('date', [$prevStart->toDateString(), $today->toDateString()])->exists();
 
                 $totalsTable = $hasDailyTotals ? 'gsc_daily_totals' : 'gsc_query_metrics';
 
-                $curr = DB::table($totalsTable)
+                $curr = \App\Support\Tenancy::table($totalsTable)
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position')
                     ->first();
 
-                $prev = DB::table($totalsTable)
+                $prev = \App\Support\Tenancy::table($totalsTable)
                     ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks')
                     ->first();
@@ -356,7 +356,7 @@ class SeoReports extends Component
 
             if (Schema::hasTable('bing_traffic_stats')) {
                 // Position only exists in the per-query table; daily totals lack it.
-                $positionRow = DB::table('bing_traffic_stats')
+                $positionRow = \App\Support\Tenancy::table('bing_traffic_stats')
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
                     ->selectRaw('AVG(position) as position')
                     ->first();
@@ -364,16 +364,16 @@ class SeoReports extends Component
                 // Prefer true site-wide daily totals (GetRankAndTrafficStats)
                 // which include anonymized traffic the query table drops.
                 $hasBingDailyTotals = Schema::hasTable('bing_daily_totals')
-                    && DB::table('bing_daily_totals')->whereBetween('date', [$prevStart->toDateString(), $today->toDateString()])->exists();
+                    && \App\Support\Tenancy::table('bing_daily_totals')->whereBetween('date', [$prevStart->toDateString(), $today->toDateString()])->exists();
 
                 $bingTotalsTable = $hasBingDailyTotals ? 'bing_daily_totals' : 'bing_traffic_stats';
 
-                $curr = DB::table($bingTotalsTable)
+                $curr = \App\Support\Tenancy::table($bingTotalsTable)
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks, SUM(impressions) as impressions')
                     ->first();
 
-                $prev = DB::table($bingTotalsTable)
+                $prev = \App\Support\Tenancy::table($bingTotalsTable)
                     ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
                     ->selectRaw('SUM(clicks) as clicks')
                     ->first();
@@ -406,17 +406,17 @@ class SeoReports extends Component
                     'BUSINESS_IMPRESSIONS_MOBILE_SEARCH',
                 ];
 
-                $currClicks = (int) DB::table('gbp_daily_metrics')
+                $currClicks = (int) \App\Support\Tenancy::table('gbp_daily_metrics')
                     ->whereIn('metric', $interactionMetrics)
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
                     ->sum('value');
 
-                $prevClicks = (int) DB::table('gbp_daily_metrics')
+                $prevClicks = (int) \App\Support\Tenancy::table('gbp_daily_metrics')
                     ->whereIn('metric', $interactionMetrics)
                     ->whereBetween('date', [$prevStart->toDateString(), $prevEnd->toDateString()])
                     ->sum('value');
 
-                $currImpressions = (int) DB::table('gbp_daily_metrics')
+                $currImpressions = (int) \App\Support\Tenancy::table('gbp_daily_metrics')
                     ->whereIn('metric', $impressionMetrics)
                     ->whereBetween('date', [$currStart->toDateString(), $today->toDateString()])
                     ->sum('value');
@@ -440,7 +440,7 @@ class SeoReports extends Component
                 // Prefer true daily totals; fall back to query-metric sums for
                 // any day not yet captured by the date-dimension sync.
                 $dailyTotal = $hasDailyTotalsTable
-                    ? DB::table('gsc_daily_totals')->whereDate('date', $day)->first()
+                    ? \App\Support\Tenancy::table('gsc_daily_totals')->whereDate('date', $day)->first()
                     : null;
 
                 if ($dailyTotal) {
@@ -448,17 +448,17 @@ class SeoReports extends Component
                     $gscDayImpressions = (int) $dailyTotal->impressions;
                 } else {
                     $gscDayClicks = Schema::hasTable('gsc_query_metrics')
-                        ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('clicks')
+                        ? (int) \App\Support\Tenancy::table('gsc_query_metrics')->whereDate('date', $day)->sum('clicks')
                         : 0;
 
                     $gscDayImpressions = Schema::hasTable('gsc_query_metrics')
-                        ? (int) DB::table('gsc_query_metrics')->whereDate('date', $day)->sum('impressions')
+                        ? (int) \App\Support\Tenancy::table('gsc_query_metrics')->whereDate('date', $day)->sum('impressions')
                         : 0;
                 }
 
                 // Prefer true Bing daily totals; fall back to query-stat sums.
                 $bingDailyTotal = $hasBingDailyTotalsTable
-                    ? DB::table('bing_daily_totals')->whereDate('date', $day)->first()
+                    ? \App\Support\Tenancy::table('bing_daily_totals')->whereDate('date', $day)->first()
                     : null;
 
                 if ($bingDailyTotal) {
@@ -466,11 +466,11 @@ class SeoReports extends Component
                     $bingDayImpressions = (int) $bingDailyTotal->impressions;
                 } else {
                     $bingDayClicks = Schema::hasTable('bing_traffic_stats')
-                        ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('clicks')
+                        ? (int) \App\Support\Tenancy::table('bing_traffic_stats')->whereDate('date', $day)->sum('clicks')
                         : 0;
 
                     $bingDayImpressions = Schema::hasTable('bing_traffic_stats')
-                        ? (int) DB::table('bing_traffic_stats')->whereDate('date', $day)->sum('impressions')
+                        ? (int) \App\Support\Tenancy::table('bing_traffic_stats')->whereDate('date', $day)->sum('impressions')
                         : 0;
                 }
 
@@ -494,19 +494,19 @@ class SeoReports extends Component
             ];
 
             if (Schema::hasTable('gsc_coverage_states')) {
-                $coverage['total'] = (int) DB::table('gsc_coverage_states')->count();
-                $coverage['problem'] = (int) DB::table('gsc_coverage_states')
+                $coverage['total'] = (int) \App\Support\Tenancy::table('gsc_coverage_states')->count();
+                $coverage['problem'] = (int) \App\Support\Tenancy::table('gsc_coverage_states')
                     ->where(function ($q) {
                         $q->where('verdict', '!=', 'PASS')->orWhereNull('verdict');
                     })
                     ->count();
-                $coverage['forbidden'] = (int) DB::table('gsc_coverage_states')
+                $coverage['forbidden'] = (int) \App\Support\Tenancy::table('gsc_coverage_states')
                     ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%forbidden%'])
                     ->count();
-                $coverage['not_indexed'] = (int) DB::table('gsc_coverage_states')
+                $coverage['not_indexed'] = (int) \App\Support\Tenancy::table('gsc_coverage_states')
                     ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])
                     ->count();
-                $coverage['duplicate'] = (int) DB::table('gsc_coverage_states')
+                $coverage['duplicate'] = (int) \App\Support\Tenancy::table('gsc_coverage_states')
                     ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%'])
                     ->count();
             }
@@ -520,9 +520,9 @@ class SeoReports extends Component
             ];
 
             if (Schema::hasTable('seo_rank_snapshots')) {
-                $latest = DB::table('seo_rank_snapshots as r1')
+                $latest = \App\Support\Tenancy::table('seo_rank_snapshots as r1')
                     ->selectRaw('r1.gsc_position as position')
-                    ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, ""))')
+                    ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, "") AND (r2.site_id = ? OR r2.site_id IS NULL))', [\App\Support\Tenancy::currentId()])
                     ->get();
 
                 $rankings['tracked'] = $latest->count();
@@ -539,7 +539,7 @@ class SeoReports extends Component
             // (or on a single-worker server, deadlock) a web request. If the
             // stored output is missing, queue one refresh and show a placeholder.
             $engineOutput = \App\Services\Seo\RecommendationEngine::latest();
-            if ($engineOutput === null && \Illuminate\Support\Facades\Cache::add('seo_recs_refresh_queued', 1, now()->addMinutes(10))) {
+            if ($engineOutput === null && \Illuminate\Support\Facades\Cache::add(\App\Support\Tenancy::cacheKey('seo_recs_refresh_queued'), 1, now()->addMinutes(10))) {
                 \App\Jobs\RunSeoChannelSyncJob::dispatch('seo:recommendations-refresh', ['--no-heal' => true]);
             }
             $actionItems = $engineOutput['action_items'] ?? ['Generating live recommendations in the background — refresh this page in a minute.'];
@@ -617,7 +617,7 @@ class SeoReports extends Component
         $start = Carbon::today()->subDays(max(1, $this->topDays) - 1)->toDateString();
         $end = Carbon::today()->toDateString();
 
-        return DB::table('gsc_query_metrics')
+        return \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start, $end])
             ->groupBy($dimension)
             ->selectRaw("{$dimension} as dim, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position")
@@ -640,7 +640,7 @@ class SeoReports extends Component
     #[Computed]
     public function healthSnapshot(): array
     {
-        return Cache::remember('admin.seo-reports.health-snapshot', now()->addMinutes(15), function (): array {
+        return Cache::remember(\App\Support\Tenancy::cacheKey('admin.seo-reports.health-snapshot'), now()->addMinutes(15), function (): array {
             try {
                 Artisan::call('seo:health --json');
                 $raw = trim(Artisan::output());
@@ -648,24 +648,31 @@ class SeoReports extends Component
 
                 $pillars = collect($data['pillars'] ?? [])
                     ->map(function (array $pillar): array {
-                        $score = (int) ($pillar['score'] ?? 0);
+                        // null score = seo:health could not measure this pillar
+                        // for the current tenant. Keep it null: casting to (int)
+                        // turns "no data" into a red 0, which reads as a failing
+                        // grade for a site that simply has not been measured.
+                        $raw = $pillar['score'] ?? null;
+                        $score = $raw === null ? null : (int) $raw;
 
                         return [
                             'name' => (string) ($pillar['name'] ?? 'Unknown'),
                             'score' => $score,
-                            'color' => $score >= 80 ? 'emerald' : ($score >= 60 ? 'amber' : 'rose'),
+                            'color' => $score === null
+                                ? 'zinc'
+                                : ($score >= 80 ? 'emerald' : ($score >= 60 ? 'amber' : 'rose')),
                         ];
                     })
                     ->values()
                     ->all();
 
                 return [
-                    'score' => (int) ($data['score'] ?? 0),
+                    'score' => isset($data['score']) ? (int) $data['score'] : null,
                     'pillars' => $pillars,
                 ];
             } catch (\Throwable) {
                 return [
-                    'score' => 0,
+                    'score' => null,
                     'pillars' => [],
                 ];
             }
@@ -674,7 +681,7 @@ class SeoReports extends Component
 
     public function refreshDashboard(): void
     {
-        Cache::forget('admin.seo-reports.health-snapshot');
+        Cache::forget(\App\Support\Tenancy::cacheKey('admin.seo-reports.health-snapshot'));
         Cache::forget($this->searchSnapshotCacheKey());
         unset($this->files, $this->reportStats, $this->healthSnapshot, $this->searchSnapshot, $this->trendChartData, $this->gscErrorSnapshot);
         $this->flash = 'Dashboard metrics refreshed.';
@@ -811,7 +818,7 @@ class SeoReports extends Component
 
     protected function searchSnapshotCacheKey(): string
     {
-        return 'admin.seo-reports.search-snapshot.' . $this->trendDays;
+        return \App\Support\Tenancy::cacheKey('admin.seo-reports.search-snapshot.' . $this->trendDays);
     }
 
     protected function percentDelta(int $current, int $previous): float
@@ -829,7 +836,7 @@ class SeoReports extends Component
         if ($this->active === null || ! isset($this->reports[$this->active])) {
             return null;
         }
-        $path = "reports/{$this->active}.md";
+        $path = \App\Support\SeoStorage::path("reports/{$this->active}.md");
         $disk = Storage::disk('local');
         if (! $disk->exists($path)) {
             return '<p class="text-zinc-500">Report not yet generated. Click <strong>Run now</strong> to create it.</p>';
@@ -853,7 +860,7 @@ class SeoReports extends Component
     #[Computed]
     public function diagnostic(): array
     {
-        return Cache::remember('seo_reports_diagnostic', now()->addMinutes(15), function (): array {
+        return Cache::remember(\App\Support\Tenancy::cacheKey('seo_reports_diagnostic'), now()->addMinutes(15), function (): array {
             $maxDate = \App\Models\GscDailyTotal::max('date');
             if (! $maxDate) {
                 return ['available' => false];
@@ -876,7 +883,7 @@ class SeoReports extends Component
             $peakRow = $rows->sortByDesc('impressions')->first();
 
             // Non-brand CTR across the window (brand terms flatter the average).
-            $nb = DB::table('gsc_query_metrics')
+            $nb = \App\Support\Tenancy::table('gsc_query_metrics')
                 ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
                 ->where('query', 'not like', '%gs construction%')
                 ->where('query', 'not like', '%gs builder%')
@@ -885,7 +892,7 @@ class SeoReports extends Component
             $nbCtr = ($nb && $nb->imp > 0) ? round(($nb->clk / $nb->imp) * 100, 3) : 0.0;
 
             // Area pages losing the most impressions, recent 7d vs prior 7d.
-            $aggPage = fn ($from, $to) => DB::table('gsc_query_metrics')
+            $aggPage = fn ($from, $to) => \App\Support\Tenancy::table('gsc_query_metrics')
                 ->whereBetween('date', [$from, $to])
                 ->where('page', 'like', '%/areas-served/%')
                 ->selectRaw('page, SUM(impressions) imp')

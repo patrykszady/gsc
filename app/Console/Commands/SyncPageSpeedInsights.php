@@ -204,7 +204,7 @@ class SyncPageSpeedInsights extends Command
     protected function topGscUrls(int $limit, string $base): array
     {
         try {
-            $rows = DB::table('gsc_query_metrics')
+            $rows = \App\Support\Tenancy::table('gsc_query_metrics')
                 ->selectRaw('page, SUM(impressions) AS impr')
                 ->where('date', '>=', now()->subDays(28)->toDateString())
                 ->whereNotNull('page')

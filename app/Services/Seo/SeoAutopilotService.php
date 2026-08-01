@@ -127,7 +127,7 @@ class SeoAutopilotService
         $end = Carbon::today();
         $start = $end->copy()->subDays(MetricProbe::WINDOW_DAYS - 1);
 
-        $queries = DB::table('gsc_query_metrics')
+        $queries = \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->groupBy('query')
             ->havingRaw('SUM(impressions) >= 60')
@@ -198,7 +198,7 @@ class SeoAutopilotService
         $end = Carbon::today();
         $start = $end->copy()->subDays(MetricProbe::WINDOW_DAYS - 1);
 
-        $pages = DB::table('gsc_query_metrics')
+        $pages = \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->where('page', 'like', self::BASE_URL . '/%')
             ->groupBy('page')

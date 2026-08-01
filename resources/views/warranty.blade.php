@@ -35,7 +35,7 @@
 
         {{-- Coverage at a glance --}}
         <div class="mt-10 grid gap-4 sm:grid-cols-3">
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="font-heading text-lg font-bold text-zinc-900 dark:text-white">Year 1</p>
                 <p class="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     Written workmanship warranty on all labor, in every contract — covering every trade on your project.
@@ -47,7 +47,7 @@
                     We still answer, come out, and make it right. We've never told a client "your warranty expired."
                 </p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="font-heading text-lg font-bold text-zinc-900 dark:text-white">Manufacturers</p>
                 <p class="mt-1.5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     Cabinets, counters, and appliances keep their own warranties — often 5–25 years. We install to spec so they stay valid.

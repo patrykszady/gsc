@@ -59,7 +59,9 @@
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <livewire:main-project-hero-slider 
                 :slides="$homeSlides"
-                height-classes="h-[360px] sm:h-[380px] lg:h-[420px]"
+                {{-- Same clipping as the area service hero, just milder: 360px
+                     left the heading 4px short at 360px wide. --}}
+                height-classes="h-[400px] sm:h-[380px] lg:h-[420px]"
                 :autoplay-interval="8000"
             />
         </div>
@@ -84,5 +86,20 @@
 
         {{-- Services Section --}}
         @include('partials.services-grid')
+
+        {{-- Closing CTA. This page had none — it ended on the services grid,
+             so the only route onward from a contact page was back up to the
+             nav. "Meet the team" is the honest secondary here: someone on
+             /contact has already found the form, so pushing them at it again
+             adds nothing, whereas who they'd be hiring is the open question. --}}
+        <x-cta-section
+            variant="blue"
+            heading="Want to know who you're hiring?"
+            description="GS Construction is a father-and-son company — Gregory and Patryk are on your job personally. Read how the company started and how we work."
+            primaryText="About Us"
+            primaryHref="/about"
+            secondaryText="View Our Work"
+            secondaryHref="/projects"
+        />
     </main>
 </x-layouts.app>

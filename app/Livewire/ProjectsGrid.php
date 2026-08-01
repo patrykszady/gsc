@@ -31,6 +31,13 @@ class ProjectsGrid extends Component
 
     public bool $showPagination = true;
 
+    /**
+     * Project type for the "More {Type} Projects" button, rendered in the
+     * pagination footer row. Callers used to include the partial separately
+     * below the component, which cost a whole extra row of vertical space.
+     */
+    public ?string $moreProjectsType = null;
+
     public bool $responsivePerPage = false;
 
     public ?int $randomTimelapseId = null;

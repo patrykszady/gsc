@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Site;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,6 +38,13 @@ class NoIndexNonProduction
             return true;
         }
 
+        // A preview host reaches a site that has NOT launched (is_active=false).
+        // Nothing served there may be indexed — it is unfinished content on a
+        // hostname the real business does not own yet.
+        if (app()->bound('site.preview_host')) {
+            return true;
+        }
+
         $host = strtolower($request->getHost());
 
         foreach (['dev.', 'staging.', 'stage.', 'test.', 'preview.'] as $prefix) {
@@ -45,6 +53,10 @@ class NoIndexNonProduction
             }
         }
 
-        return false;
+        // Multi-tenant: only a host that belongs to a real Site is indexable.
+        // Server aliases (the ss.systems admin hub, a domain parked ahead of
+        // its theme being built, the *.on-forge.com default) all resolve to
+        // the fallback site and would otherwise serve a full duplicate of it.
+        return Site::forHost($host) === null;
     }
 }

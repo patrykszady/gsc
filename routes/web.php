@@ -99,20 +99,38 @@ Route::get('/review', function () {
 })->name('review.write');
 
 // 301 redirects from legacy /testimonials URLs (preserves link equity).
-Route::redirect('/testimonials', '/reviews', 301)->name('testimonials.index');
+Route::get('/testimonials', function () {
+    // gs.construction canonicalised testimonials into /reviews years of links
+    // ago — keep that 301. jpeterson has a first-class testimonials page.
+    if (\App\Models\Site::current()->slug === 'jpeterson') {
+        return view('testimonials-page');
+    }
+
+    return redirect('/reviews', 301);
+})->name('testimonials.index');
 Route::get('/testimonials/{testimonial}', function (string $testimonial) {
     return redirect("/reviews/{$testimonial}", 301);
 })->name('testimonials.show');
 
 Route::get('/about', function () {
-    SeoService::about();
-    return view('about');
+    // SeoService writes GS-specific meta; other tenants set titles in-view.
+    if (\App\Models\Site::current()->slug === 'gsc') {
+        SeoService::about();
+    }
+
+    return view('about');   // resolved through the theme overlay per tenant
 })->name('about');
 
 Route::get('/contact', function () {
-    SeoService::contact();
+    if (\App\Models\Site::current()->slug === 'gsc') {
+        SeoService::contact();
+    }
+
     return view('contact');
 })->name('contact');
+
+// J. Peterson Design portfolio (tenant-gated: only jpeterson claims /portfolio).
+Route::get('/portfolio', fn () => view('portfolio'))->name('portfolio');
 
 // Careers & trade partnerships (email-only inquiry form).
 Route::get('/jobs', JobsPage::class)->name('jobs.index');
@@ -173,7 +191,14 @@ Route::get('/projects/{project}/photos/{image:slug}', ProjectImagePage::class)
     ->scopeBindings()
     ->name('projects.image');
 
-Route::get('/services', ServicesPage::class)->name('services.index');
+Route::get('/services', function () {
+    if (\App\Models\Site::current()->slug !== 'gsc') {
+        return view('services');   // themed view (jpeterson); guard 404s the rest
+    }
+
+    // Livewire full-page components are invokable controllers.
+    return app()->call(ServicesPage::class . '@__invoke');
+})->name('services.index');
 
 Route::redirect('/contact-us', '/contact', 301);
 
@@ -412,7 +437,19 @@ Route::post('/admin/logout', function () {
 })->name('admin.logout')->middleware('noindex');
 
 // Admin routes (protected by auth)
-Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(function () {
+// Admin is site-scoped by URL: /admin/{site}/…  e.g. /admin/gs.construction/projects
+//
+// {site} is constrained to hostname-shaped segments (must contain a dot), which
+// is what lets the legacy /admin/projects paths below fall through to a redirect
+// instead of being mis-parsed as a site key named "projects".
+//
+// ResolveAdminSite sets URL::defaults(['site' => …]), so every existing
+// route('admin.*') call keeps working untouched.
+Route::middleware(['auth', 'noindex', \App\Http\Middleware\ResolveAdminSite::class])
+    ->prefix('admin/{site}')
+    ->where(['site' => '[a-z0-9\-]+\.[a-z0-9.\-]+'])
+    ->name('admin.')
+    ->group(function () {
     Route::get('/', Dashboard::class)->name('dashboard');
     
     // Projects
@@ -496,3 +533,102 @@ Route::middleware(['auth', 'noindex'])->prefix('admin')->name('admin.')->group(f
         return redirect()->route('admin.platforms.index');
     })->name('platforms.meta-callback');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin hub entry points
+|--------------------------------------------------------------------------
+| /admin            -> site picker (the hub landing page)
+| /admin/anything   -> legacy path from before admin was site-scoped; sent to
+|                      the same page under the current site so old bookmarks
+|                      and any hardcoded /admin/... links keep working.
+|
+| Both live OUTSIDE the {site} group. The group's constraint requires a dot in
+| the segment, so "projects" can never be mistaken for a site key.
+*/
+Route::get('/admin', function (\Illuminate\Http\Request $request) {
+    // Only what this user may administer. A client login is scoped to one
+    // tenant, so it must never be shown a menu of everybody else's sites —
+    // the picker was leaking the full client list to anyone who logged in.
+    $sites = $request->user()->accessibleSites();
+
+    // Nothing to choose from: go straight in. This is the normal path for a
+    // client login, which should never see a picker at all.
+    if ($sites->count() === 1) {
+        return redirect("/admin/{$sites->first()->primary_host}");
+    }
+
+    abort_if($sites->isEmpty(), 403, 'Your account is not linked to a site.');
+
+    return view('admin.site-picker', ['sites' => $sites]);
+})->middleware(['auth', 'noindex'])->name('admin.hub');
+
+Route::get('/admin/{path}', function (string $path) {
+    return redirect('/admin/' . \App\Models\Site::current()->primary_host . '/' . ltrim($path, '/'), 301);
+})->where('path', '.*')->middleware(['auth', 'noindex']);
+
+
+/*
+|--------------------------------------------------------------------------
+| J. Peterson Design — market pages
+|--------------------------------------------------------------------------
+| /chicago, /atlanta, /south-haven. Slugs come from
+| config/sites/jpeterson/markets.php (the single source for the studio's
+| metros), so a market added there registers its route in the same edit.
+| The same file feeds jpeterson's exclusive_paths claim in config/sites.php,
+| so these paths 404 on every other tenant.
+*/
+$jpMarketSlugs = array_column(
+    (array) data_get(require config_path('sites/jpeterson/markets.php'), 'list', []),
+    'slug',
+);
+
+if ($jpMarketSlugs !== []) {
+    Route::get('/{market}', function (string $market) {
+        // markets.list is only overlaid for the jpeterson tenant; on any other
+        // site TenantRouteGuard has already 404'd before we get here, and this
+        // abort covers the belt-and-braces case anyway.
+        $data = collect(config('markets.list', []))->firstWhere('slug', $market);
+        abort_unless($data, 404);
+
+        return view('market', ['market' => $data]);
+    })->where('market', implode('|', array_map('preg_quote', $jpMarketSlugs)))->name('market.show');
+}
+
+/*
+|--------------------------------------------------------------------------
+| Local tenant register (/_sites)
+|--------------------------------------------------------------------------
+| Registered ONLY in local, so a production request for /_sites is a plain
+| router 404 rather than an authorisation decision that could be got wrong.
+| Forge builds its route cache with APP_ENV=production, so these are absent
+| from the cached table too.
+|
+| The public counterpart to the /admin site picker: every tenant, its local
+| host, what it overrides, and what a given path would do on each.
+*/
+if (app()->environment('local')) {
+    Route::get('/_sites', function (\Illuminate\Http\Request $request) {
+        $path = '/' . ltrim((string) $request->query('path', '/'), '/');
+
+        return view('dev.sites-index', [
+            'sites' => \App\Support\DevSites::register($path),
+            'current' => \App\Models\Site::current(),
+            'via' => \App\Support\DevSites::resolvedVia(),
+            'path' => $path,
+            'port' => \App\Support\DevSites::port(),
+        ]);
+    })->name('dev.sites');
+
+    // Toggle the injected dev bar. A cookie rather than a query param so it
+    // survives navigation — the bar is genuinely intrusive in the screenshots
+    // this repo verifies theme work with.
+    Route::get('/_sites/bar', function (\Illuminate\Http\Request $request) {
+        $off = $request->query('state') === 'off';
+        $back = (string) $request->query('back', '/');
+
+        return redirect()->away($back)->withCookie(
+            cookie('dev_bar', $off ? 'off' : 'on', 60 * 24 * 30)
+        );
+    })->name('dev.sites.bar');
+}

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,6 +14,7 @@ use RalphJSmit\Laravel\SEO\Support\SEOData;
 
 class Testimonial extends Model
 {
+    use BelongsToSite;
     use HasGeoProfile;
     use HasSEO;
 

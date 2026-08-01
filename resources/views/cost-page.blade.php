@@ -53,7 +53,7 @@
         <h2 class="mt-12 font-heading text-2xl font-bold text-zinc-900 dark:text-white">What moves the number</h2>
         <div class="mt-5 space-y-4">
             @foreach($guide['drivers'] as $driver)
-                <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                     <h3 class="font-semibold text-zinc-900 dark:text-white">{{ $driver['factor'] }}</h3>
                     <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $driver['note'] }}</p>
                 </div>

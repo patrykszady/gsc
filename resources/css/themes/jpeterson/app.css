@@ -1,0 +1,50 @@
+/* J. Peterson Design — own Tailwind entry (own tokens/fonts/palette).
+   Separate from gsc's bundle so the two sites share no styling. */
+@import 'tailwindcss';
+@source '../../../views/themes/jpeterson/**/*.blade.php';
+@source '../../../views/components/**/*.blade.php';
+
+@theme {
+    /* Editorial serif for display type — an interior-design register, not the
+       slab used on gs.construction. System stack: no webfont download, and
+       these faces are present on effectively every desktop and phone. */
+    --font-heading: ui-serif, Georgia, 'Times New Roman', Times, serif;
+
+    /* Warm neutral ground, so "white" surfaces read as paper rather than screen */
+    --color-canvas: #faf8f5;
+
+    /* ---- Brand teal, taken from the studio's logo monogram ----
+       --color-brand-500 IS the logo colour, and buttons use it at full
+       brightness. The catch: white on it is only 3.15:1, well under WCAG AA
+       (4.5:1) for a text-sm label — so the label is --color-ink, which
+       measures 4.69:1. Hover goes LIGHTER to -400 (ink 5.35:1) rather than
+       darker, which keeps the brand bright and raises contrast at the same
+       time.
+
+       Two accessible pairings, and only these two:
+         bg-brand-500 / text-ink    4.69:1   the primary button
+         bg-brand-600 / text-white  4.52:1   when a white label is required
+       -600 is tuned to be the brightest same-hue teal that clears 4.5:1 with
+       white; do not lighten it. -900 is the dark ground (white 9.66:1).
+       Measured, not guessed — rerun the ratios before adding a step. */
+    --color-brand-50:  #f1f8f8;
+    --color-brand-100: #dcedee;
+    --color-brand-200: #bbdbdd;
+    --color-brand-300: #8fc3c7;
+    --color-brand-400: #5fa7ac;
+    --color-brand-500: #4e9da2;
+    --color-brand-600: #408085;
+    --color-brand-700: #336b70;
+    --color-brand-800: #2c585c;
+    --color-brand-900: #274a4d;
+
+    /* Headings: a near-black tinted toward the brand rather than neutral
+       stone-900. Keeps the page from reading as "black text on paper" while
+       staying well above AA (15:1 on canvas). */
+    --color-ink: #1e2a2b;
+}
+
+/* Flux renders into the light palette here; the studio look is stone + paper. */
+:root {
+    color-scheme: light;
+}

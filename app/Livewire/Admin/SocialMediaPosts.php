@@ -16,7 +16,23 @@ use Livewire\Component;
 #[Title('Social Media')]
 class SocialMediaPosts extends Component
 {
-    private const SOCIAL_PLATFORMS = ['instagram', 'google', 'facebook', 'yelp', 'houzz', 'angi'];
+    /**
+     * Every platform the admin offers a field for — the full supported roster
+     * from config/social-platforms.php, not just the ones this tenant has
+     * already configured.
+     *
+     * Deriving the list from the tenant's own socials config would mean a new
+     * tenant could never add its first Facebook URL, because the field would
+     * not exist until the URL did. VALUES are still strictly per tenant: a
+     * platform this site has not configured renders empty, never another
+     * business's profile.
+     *
+     * @return array<int, string>
+     */
+    private function socialPlatforms(): array
+    {
+        return array_keys((array) config('social-platforms', []));
+    }
 
     private const PLATFORM_LABELS = [
         'instagram' => 'Instagram',
@@ -63,16 +79,11 @@ class SocialMediaPosts extends Component
 
     public function saveSocialUrls(): void
     {
-        $validated = $this->validate([
-            'socialUrls.instagram' => 'nullable|url|max:500',
-            'socialUrls.google' => 'nullable|url|max:500',
-            'socialUrls.facebook' => 'nullable|url|max:500',
-            'socialUrls.yelp' => 'nullable|url|max:500',
-            'socialUrls.houzz' => 'nullable|url|max:500',
-            'socialUrls.angi' => 'nullable|url|max:500',
-        ]);
+        $validated = $this->validate(collect($this->socialPlatforms())
+            ->mapWithKeys(fn (string $p) => ["socialUrls.{$p}" => 'nullable|url|max:500'])
+            ->all());
 
-        foreach (self::SOCIAL_PLATFORMS as $platform) {
+        foreach ($this->socialPlatforms() as $platform) {
             $url = trim((string) ($validated['socialUrls'][$platform] ?? ''));
             PlatformSetting::put('socials.url.' . $platform, $url !== '' ? $url : null);
             config()->set('socials.' . $platform . '.url', $url !== '' ? $url : $this->defaultSocialUrl($platform));
@@ -85,7 +96,7 @@ class SocialMediaPosts extends Component
     private function loadSocialUrls(): void
     {
         $urls = [];
-        foreach (self::SOCIAL_PLATFORMS as $platform) {
+        foreach ($this->socialPlatforms() as $platform) {
             $default = $this->defaultSocialUrl($platform);
             $urls[$platform] = (string) PlatformSetting::get('socials.url.' . $platform, $default);
         }
@@ -94,13 +105,14 @@ class SocialMediaPosts extends Component
 
     private function defaultSocialUrl(string $platform): string
     {
-        static $defaults = null;
-
-        if (! is_array($defaults)) {
-            $defaults = require config_path('socials.php');
-        }
-
-        return (string) ($defaults[$platform]['url'] ?? '');
+        // config('socials'), NOT require config_path('socials.php'): the raw
+        // file is gs.construction's, and requiring it skipped the per-site
+        // overlay entirely — so every tenant's admin was prefilled with GS's
+        // Google, Yelp, Facebook and Angi profile URLs.
+        //
+        // No static memo either: it would pin the first tenant's defaults for
+        // the rest of the process (queue worker, console loop, Octane).
+        return (string) config("socials.{$platform}.url", '');
     }
 
     public function postNow(string $platform = 'all'): void

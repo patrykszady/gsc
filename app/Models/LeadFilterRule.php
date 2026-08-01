@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -18,6 +19,8 @@ use Illuminate\Support\Str;
  */
 class LeadFilterRule extends Model
 {
+    use BelongsToSite;
+
     protected $fillable = [
         'action',
         'match_type',

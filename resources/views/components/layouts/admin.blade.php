@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? 'Admin' }} - {{ config('app.name', 'GS Construction') }}</title>
+    {{-- brand.*, not app.name: this one layout administers every tenant, and
+         config('app.name') is process-global. ResolveAdminSite has already
+         bound the site from the URL and applied its config overlay. --}}
+    <title>{{ $title ?? 'Admin' }} - {{ config('brand.display_name', config('app.name')) }}</title>
 
     {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -23,12 +26,26 @@
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @fluxAppearance
+
+    @include('partials.admin-accent')
 </head>
 <body class="min-h-screen lg:h-screen lg:overflow-hidden bg-zinc-50 font-sans antialiased dark:bg-zinc-900">
     <flux:sidebar sticky collapsible class="border-r border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
         <flux:sidebar.toggle class="lg:hidden" icon="x-mark" />
 
-        <flux:sidebar.brand href="{{ route('admin.dashboard') }}" logo="{{ asset('images/logo.svg') }}" logo:dark="{{ asset('images/logo-dark.svg') }}" name="GS Construction" />
+        {{-- Name and logo come from the tenant being administered. The logo is
+             optional: a site with no mark of its own renders the name alone,
+             which is correct — showing GS Construction's logo while editing
+             another business is worse than showing none. --}}
+        @if (config('admin.logo'))
+            <flux:sidebar.brand
+                href="{{ route('admin.dashboard') }}"
+                logo="{{ asset(config('admin.logo')) }}"
+                logo:dark="{{ asset(config('admin.logo_dark', config('admin.logo'))) }}"
+                name="{{ config('brand.name') }}" />
+        @else
+            <flux:sidebar.brand href="{{ route('admin.dashboard') }}" name="{{ config('brand.name') }}" />
+        @endif
 
         <flux:sidebar.nav>
             <flux:sidebar.item icon="home" href="{{ route('admin.dashboard') }}" :current="request()->routeIs('admin.dashboard')">
@@ -96,7 +113,13 @@
 
         {{-- User menu --}}
         <flux:dropdown position="top" align="start" class="max-lg:hidden">
-            <flux:sidebar.profile avatar="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()?->name ?? 'Admin') }}&background=0ea5e9&color=fff" name="{{ auth()->user()?->name ?? 'Admin' }}" />
+            {{-- Locally rendered initials in the tenant accent. Was a remote
+                 ui-avatars.com PNG with background=0ea5e9 baked in, which no
+                 amount of theming could recolour and which sent the signed-in
+                 user's name to a third party on every page load. --}}
+            <flux:sidebar.profile
+                avatar="{{ \App\Support\Avatar::initials(auth()->user()?->name) }}"
+                name="{{ auth()->user()?->name ?? 'Admin' }}" />
 
             <flux:menu>
                 <form method="POST" action="{{ route('admin.logout') }}">
@@ -111,7 +134,7 @@
     <flux:header sticky class="lg:hidden">
         <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
         <flux:spacer />
-        <flux:profile avatar="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()?->name ?? 'Admin') }}&background=0ea5e9&color=fff" />
+        <flux:profile avatar="{{ \App\Support\Avatar::initials(auth()->user()?->name) }}" />
     </flux:header>
 
     {{-- Main content --}}

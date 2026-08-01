@@ -8,7 +8,7 @@
     @php
         $answers = collect(config('geo-answers.answers', []))
             ->filter(fn ($a) => filled($a['q'] ?? null) && filled($a['a'] ?? null))
-            ->map(fn ($a) => ['question' => $a['q'], 'answer' => $a['a']])
+            ->map(fn ($a) => ['question' => $a['q'], 'answer' => $a['a'], 'link' => $a['link'] ?? null])
             ->values()
             ->all();
     @endphp

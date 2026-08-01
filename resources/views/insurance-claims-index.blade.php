@@ -18,17 +18,17 @@
 
         {{-- How it works with a claim --}}
         <div class="mt-8 grid gap-4 sm:grid-cols-3">
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="text-2xl font-bold text-sky-600 dark:text-sky-400">1</p>
                 <h2 class="mt-1 font-semibold text-zinc-900 dark:text-white">Document</h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Photo documentation of the full loss — including what's easy to miss — before anything gets covered up.</p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="text-2xl font-bold text-sky-600 dark:text-sky-400">2</p>
                 <h2 class="mt-1 font-semibold text-zinc-900 dark:text-white">Itemize</h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">A free line-by-line rebuild estimate your adjuster can compare against the claim scope — and we'll meet them on site when it helps.</p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="text-2xl font-bold text-sky-600 dark:text-sky-400">3</p>
                 <h2 class="mt-1 font-semibold text-zinc-900 dark:text-white">Rebuild</h2>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">One project lead sequences every trade — to pre-loss condition or better, with our <a href="{{ route('warranty') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">written warranty</a>.</p>
@@ -49,7 +49,7 @@
         </div>
 
         {{-- Compliance / trust note --}}
-        <div class="mt-10 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
+        <div class="group mt-10 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/50 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
             <h2 class="font-heading text-lg font-bold text-zinc-900 dark:text-white">Straight talk about our role</h2>
             <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                 {{ config('insurance-claims.disclaimer') }}

@@ -5,7 +5,7 @@
             {{-- Column 1: Logo, Company Name, Contact, Social Icons --}}
             <div class="space-y-6">
                 {{-- GS Logo (same as navbar) --}}
-                <a href="/" wire:navigate.hover aria-label="GS Construction homepage">
+                <a href="/" wire:navigate.hover aria-label="{{ config('brand.name') }} homepage">
                     <img src="{{ asset('images/logo.svg') }}" alt="" width="80" height="80" class="size-20 dark:hidden" />
                     <img src="{{ asset('images/logo-dark.svg') }}" alt="" width="80" height="80" class="hidden size-20 dark:block" />
                 </a>
@@ -14,20 +14,20 @@
                      names — keeping them crawlable helps branded search). --}}
                 <div>
                     <p class="text-sm font-bold tracking-wide text-gray-800 uppercase dark:text-white">
-                        <a href="/" wire:navigate.hover class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">GS Construction &amp; Remodeling</a>
+                        <a href="/" wire:navigate.hover class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">{{ config('brand.display_name') }}</a>
                     </p>
-                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Greg &amp; Son Construction Company</p>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{{ config('brand.also_known_as') }}</p>
                 </div>
 
                 {{-- Contact Info --}}
                 <p class="text-sm/6 text-balance text-gray-700 dark:text-gray-300">
-                    <a href="tel:2247354200" class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">(224) 735-4200</a><br>
-                    <a href="mailto:crew@gs.construction" class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">crew@gs.construction</a>
+                    <a href="tel:{{ config('brand.phone_href') }}" class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">{{ config('brand.phone') }}</a><br>
+                    <a href="mailto:{{ config('brand.email') }}" class="inline-block py-1 hover:text-sky-600 dark:hover:text-sky-400">{{ config('brand.email') }}</a>
                 </p>
 
                 {{-- Social Icons — 3 per row so the narrow brand rail holds them --}}
                 <div class="grid w-fit grid-cols-3 gap-x-2 gap-y-1">
-                    @foreach(config('socials') as $key => $social)
+                    @foreach(site_config('socials') as $key => $social)
                         <flux:tooltip content="{{ $social['label'] }}">
                             <a href="{{ $social['url'] }}" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                                 <span class="sr-only">{{ $social['label'] }}</span>
@@ -42,7 +42,7 @@
                     <p class="text-xs font-semibold tracking-wide text-gray-700 uppercase dark:text-gray-300">Review Profiles</p>
                     {{-- Driven by the `review` flag in config/socials.php so the
                          footer, icon row, and schema sameAs never drift apart. --}}
-                    @php $reviewProfiles = array_filter(config('socials'), fn ($s) => $s['review'] ?? false); @endphp
+                    @php $reviewProfiles = array_filter(site_config('socials'), fn ($s) => $s['review'] ?? false); @endphp
                     {{-- Kept on one line: the xl brand rail is only ~176px wide, so
                          the separator is a plain spaced bullet (no mx-* margins) to
                          keep the four labels inside it. Spacing stays symmetric

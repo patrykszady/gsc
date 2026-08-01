@@ -49,7 +49,7 @@
     <link rel="alternate" type="text/plain" href="{{ url('/llms-full.txt') }}" title="LLM Context (Full)">
     <link rel="alternate" type="application/json" href="{{ url('/ai-feed.json') }}" title="AI Feed">
     <link rel="alternate" type="application/atom+xml" href="{{ url('/feed/updates.atom') }}" title="Recently Updated Pages">
-    <meta name="ai-content-description" content="GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, 53+ five-star reviews. Serving 89+ cities in Chicagoland. (224) 735-4200.">
+    <meta name="ai-content-description" content="{{ config('brand.ai_description', config('geo.site_description')) }}">
 
     {{-- Hreflang for bilingual support --}}
     <x-hreflang />
@@ -108,7 +108,7 @@
     <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('node_modules/@fontsource-variable/roboto-slab/files/roboto-slab-latin-wght-normal.woff2') }}" crossorigin>
 
     {{-- Styles --}}
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(\App\Support\Theme::viteEntries(\App\Models\Site::current()))
 
     {{-- Flux injects CSS rules via insertRule(). Older browsers (e.g. Chrome 79)
          can throw on @layer rules and break component bootstrapping. For legacy

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 class GbpDailyMetric extends Model
 {
+    use BelongsToSite;
+
     protected $table = 'gbp_daily_metrics';
 
     protected $fillable = ['date', 'location_id', 'metric', 'value'];

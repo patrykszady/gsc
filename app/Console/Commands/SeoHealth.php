@@ -45,7 +45,10 @@ class SeoHealth extends Command
             'freshness'       => $this->scoreFreshness(),
         ];
 
-        $total = (int) round(collect($pillars)->avg('score'));
+        // Average only the pillars that were actually measured. Treating an
+        // unmeasured pillar as 0 (or as 100) invents a score out of absence.
+        $measured = collect($pillars)->whereNotNull('score');
+        $total = $measured->isEmpty() ? null : (int) round($measured->avg('score'));
 
         if ($this->option('json')) {
             $this->line(json_encode([
@@ -96,6 +99,19 @@ class SeoHealth extends Command
             ->count();
         $areaPct = $totalAreas > 0 ? (int) round($areasComplete / $totalAreas * 100) : 100;
 
+        // A tenant with no published images and no service areas has nothing
+        // to measure. Scoring that 100 (the >0 fallbacks above each return 100)
+        // told J. Peterson Design its on-page SEO was perfect when it has no
+        // content at all.
+        if ($totalImages === 0 && $totalAreas === 0) {
+            return [
+                'name' => 'On-page completeness',
+                'score' => null,
+                'metrics' => ['status' => 'no published images or service areas yet'],
+                'fix' => null,
+            ];
+        }
+
         $score = (int) round(($altPct + $areaPct) / 2);
 
         return [
@@ -115,14 +131,29 @@ class SeoHealth extends Command
         // Quick proxy: every published AreaServed should be linked from at least
         // its neighbours (nearestCities widget) + the areas-served index.
         // We score based on whether footer + main index exist (structural check).
-        $score = 90; // assume healthy unless we know otherwise
+        // This was a hardcoded 90 — the same "healthy" score for every tenant
+        // on every run, whether or not a crawl had ever happened. Report the
+        // truth instead: unmeasured until the audit has actually run.
+        $lastCrawl = $this->lastLogModified('seo-internal-links.log');
+
+        if ($lastCrawl === 'never') {
+            return [
+                'name' => 'Internal linking',
+                'score' => null,
+                'metrics' => ['last_full_crawl' => 'never'],
+                'fix' => 'Run: php artisan seo:internal-link-audit',
+                'notes' => ['No crawl has run for this site yet.'],
+            ];
+        }
+
+        $score = 90;
         $notes = ['Run `seo:internal-link-audit` weekly for live crawl data.'];
 
         return [
             'name' => 'Internal linking',
             'score' => $score,
             'metrics' => [
-                'last_full_crawl' => $this->lastLogModified('seo-internal-links.log'),
+                'last_full_crawl' => $lastCrawl,
             ],
             'fix' => 'Schedule already runs weekly: seo:internal-link-audit',
             'notes' => $notes,
@@ -158,6 +189,22 @@ class SeoHealth extends Command
             $photoScore = $photosLast90 > 0 ? 100 : 60;
         }
 
+        // No Google Business Profile pipeline for this tenant at all — never a
+        // post, never an upload. Scoring that 30 reads as "neglecting your
+        // GBP" when there is no GBP connected to neglect.
+        $everPosted = ImageSocialPost::query()->where('platform', 'google_business')->exists();
+        $everUploaded = Schema::hasTable('image_platform_uploads')
+            && \App\Models\ImagePlatformUpload::query()->where('platform', 'google_places')->exists();
+
+        if (! $everPosted && ! $everUploaded) {
+            return [
+                'name' => 'GBP activity',
+                'score' => null,
+                'metrics' => ['status' => 'no Google Business Profile activity recorded for this site'],
+                'fix' => null,
+            ];
+        }
+
         $score = (int) round(($postScore + $photoScore) / 2);
 
         return [
@@ -185,9 +232,9 @@ class SeoHealth extends Command
 
         if (Schema::hasTable('seo_rank_snapshots')) {
             // Latest snapshot per (engine, query, location).
-            $latestPerQuery = DB::table('seo_rank_snapshots as r1')
+            $latestPerQuery = \App\Support\Tenancy::table('seo_rank_snapshots as r1')
                 ->select('r1.engine', 'r1.gsc_position as position')
-                ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, ""))')
+                ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, "") AND (r2.site_id = ? OR r2.site_id IS NULL))', [\App\Support\Tenancy::currentId()])
                 ->get();
 
             if (! $latestPerQuery->isEmpty()) {
@@ -214,7 +261,7 @@ class SeoHealth extends Command
             $from = now()->subDays(27)->toDateString();
             $to = now()->toDateString();
 
-            $perPage = DB::table('gsc_query_metrics')
+            $perPage = \App\Support\Tenancy::table('gsc_query_metrics')
                 ->whereBetween('date', [$from, $to])
                 ->whereNotNull('page')
                 ->where('page', '!=', '')
@@ -238,7 +285,7 @@ class SeoHealth extends Command
         if ($queryScore === null && $pageScore === null) {
             return [
                 'name' => 'Local rankings',
-                'score' => 0,
+                'score' => null,
                 'metrics' => ['status' => 'no rank snapshots and no GSC page metrics yet'],
                 'fix' => 'Run: php artisan seo:track-rankings --engine=both and ensure seo:gsc-sync is scheduled.',
             ];
@@ -279,10 +326,19 @@ class SeoHealth extends Command
     /** Freshness: when did sitemap, GSC, GBP last run? */
     protected function scoreFreshness(): array
     {
+        // These are GLOBAL paths — public/sitemap.xml and the shared log files
+        // belong to the default site. Read raw, every tenant reported
+        // gs.construction's sync timestamps as its own freshness. Non-default
+        // tenants look under their own prefix, so a tenant whose pipelines have
+        // never run reports "missing" rather than borrowing someone else's.
+        $slug = \App\Models\Site::current()->slug;
+        $isDefault = $slug === (string) config('sites.default', 'gsc');
+        $prefix = $isDefault ? '' : "tenants/{$slug}/";
+
         $checks = [
-            'sitemap.xml'           => public_path('sitemap.xml'),
-            'gsc-sync log'          => storage_path('logs/seo-gsc-sync.log'),
-            'gbp-metrics-sync log'  => storage_path('logs/gbp-metrics-sync.log'),
+            'sitemap.xml'           => $isDefault ? public_path('sitemap.xml') : storage_path("app/private/{$prefix}sitemap.xml"),
+            'gsc-sync log'          => storage_path("logs/{$prefix}seo-gsc-sync.log"),
+            'gbp-metrics-sync log'  => storage_path("logs/{$prefix}gbp-metrics-sync.log"),
         ];
 
         $metrics = [];
@@ -298,6 +354,17 @@ class SeoHealth extends Command
                 $scoreSum += max(0, (int) round(100 - ($age * 100 / 30)));
             }
             $scoreCount++;
+        }
+
+        // Nothing on disk at all = pipelines have never run for this tenant.
+        // That is "not measured", not "stale" — a 0 would read as neglect.
+        if (! collect($metrics)->contains(fn ($v) => $v !== 'missing')) {
+            return [
+                'name' => 'Freshness',
+                'score' => null,
+                'metrics' => $metrics,
+                'fix' => 'No sync has run for this site yet.',
+            ];
         }
 
         return [

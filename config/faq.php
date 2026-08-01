@@ -70,7 +70,7 @@ return [
         ],
         [
             'question' => 'How long does a kitchen remodel take?',
-            'answer' => 'Most kitchen remodels take 6–10 weeks from demo to final walkthrough. Custom-cabinet projects can take 12+ weeks due to lead times. GS Construction provides a written schedule before work begins.',
+            'answer' => 'Most kitchen remodels take 8–12 weeks from demo to final walkthrough. Custom-cabinet projects can take 14+ weeks due to lead times. GS Construction provides a written schedule before work begins.',
             'category' => 'Kitchen Remodeling',
             'priority' => 6,
         ],

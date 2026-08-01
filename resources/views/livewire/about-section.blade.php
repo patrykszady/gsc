@@ -18,11 +18,17 @@
                     {{-- Features List --}}
                     <ul class="mt-6 space-y-3 text-base text-zinc-600 dark:text-zinc-300">
                         @foreach($content['features'] as $feature)
+                        {{-- A feature is either a plain string or
+                             ['text' =>, 'href' =>, 'linkText' =>] when it points
+                             at a page that backs the claim up. --}}
+                        @php $f = is_array($feature) ? $feature : ['text' => $feature]; @endphp
                         <li class="flex items-start gap-3">
                             <svg class="mt-0.5 size-5 flex-shrink-0 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
                             </svg>
-                            <span>{{ $feature }}</span>
+                            <span>
+                                {{ $f['text'] }}@if(!empty($f['href'])) — <a href="{{ $f['href'] }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">{{ $f['linkText'] }}</a>@endif
+                            </span>
                         </li>
                         @endforeach
                     </ul>
@@ -32,7 +38,11 @@
                         <x-buttons.cta href="{{ $content['cta_href'] }}" class="w-full sm:w-auto">
                             {{ $content['cta_text'] }}
                         </x-buttons.cta>
-                        <x-buttons.cta href="/about" variant="secondary" class="w-full sm:w-auto">
+                        {{-- Stay in the area when there is one: from a Barrington
+                             page this goes to /areas-served/barrington/about, not
+                             the company-wide page. The primary CTA beside it
+                             already scopes to the area this way. --}}
+                        <x-buttons.cta href="{{ $area?->pageUrl('about') ?? '/about' }}" variant="secondary" class="w-full sm:w-auto">
                             About Us
                         </x-buttons.cta>
                     </div>

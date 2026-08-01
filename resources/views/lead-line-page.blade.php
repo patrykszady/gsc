@@ -54,13 +54,13 @@
             <h2 class="mt-10 font-heading text-2xl font-bold text-zinc-900 dark:text-white">{{ $area->city }}'s program at a glance</h2>
             <div class="mt-5 space-y-4">
                 @if($published($info['water_system'] ?? null))
-                    <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                         <h3 class="font-semibold text-zinc-900 dark:text-white">Who supplies the water</h3>
                         <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $info['water_system'] }}</p>
                     </div>
                 @endif
                 @if($published($info['program_name'] ?? null) && strtolower(trim($info['program_name'])) !== 'not named')
-                    <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                         <h3 class="font-semibold text-zinc-900 dark:text-white">Program</h3>
                         <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $info['program_name'] }}</p>
                     </div>
@@ -72,19 +72,19 @@
                     </div>
                 @endif
                 @if($published($info['how_to_check_line'] ?? null))
-                    <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                         <h3 class="font-semibold text-zinc-900 dark:text-white">How to check your line</h3>
                         <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $info['how_to_check_line'] }}</p>
                     </div>
                 @endif
                 @if($published($info['how_to_apply'] ?? null))
-                    <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                         <h3 class="font-semibold text-zinc-900 dark:text-white">How to get into the program</h3>
                         <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $info['how_to_apply'] }}</p>
                     </div>
                 @endif
                 @if($published($info['notes'] ?? null))
-                    <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                         <h3 class="font-semibold text-zinc-900 dark:text-white">Worth knowing</h3>
                         <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $info['notes'] }}</p>
                     </div>
@@ -102,7 +102,7 @@
                 </p>
             @endif
         @else
-            <div class="mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div class="group mt-8 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/50 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h2 class="font-heading text-lg font-bold text-zinc-900 dark:text-white">Check with {{ $area->city }} directly</h2>
                 <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     We haven't yet verified a published replacement program for {{ $area->city }}. Every Illinois

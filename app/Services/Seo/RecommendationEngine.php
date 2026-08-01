@@ -123,7 +123,7 @@ class RecommendationEngine
             'recommendations' => $recommendations,
         ];
 
-        Storage::disk('local')->put(self::STORAGE_PATH, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        Storage::disk('local')->put(\App\Support\SeoStorage::path(self::STORAGE_PATH), json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
         if ($this->healed !== []) {
             Log::info('seo:recommendations-refresh self-healed', ['healed' => $this->healed]);
@@ -137,11 +137,11 @@ class RecommendationEngine
      */
     public static function latest(): ?array
     {
-        if (! Storage::disk('local')->exists(self::STORAGE_PATH)) {
+        if (! Storage::disk('local')->exists(\App\Support\SeoStorage::path(self::STORAGE_PATH))) {
             return null;
         }
 
-        $decoded = json_decode((string) Storage::disk('local')->get(self::STORAGE_PATH), true);
+        $decoded = json_decode((string) Storage::disk('local')->get(\App\Support\SeoStorage::path(self::STORAGE_PATH)), true);
 
         return is_array($decoded) && isset($decoded['action_items'], $decoded['recommendations']) ? $decoded : null;
     }
@@ -219,7 +219,7 @@ class RecommendationEngine
         }
 
         $since = now()->subDays(28)->toDateString();
-        $pages = DB::table('gsc_query_metrics')
+        $pages = \App\Support\Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->whereNotNull('page')
             ->where('query', 'not like', '%gs construction%')
@@ -250,7 +250,7 @@ class RecommendationEngine
         // social-post picker biases photo freshness toward these towns so the
         // Business Profile shows recent local work where the Maps pack is
         // taking our clicks.
-        $gbpFocusTowns = DB::table('gsc_query_metrics')
+        $gbpFocusTowns = \App\Support\Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->where('page', 'like', '%/areas-served/%')
             ->where('query', 'not like', '%gs construction%')
@@ -267,12 +267,12 @@ class RecommendationEngine
             ->values()
             ->all();
 
-        Storage::disk('local')->put('seo/priority-pages.json', json_encode([
+        Storage::disk('local')->put(\App\Support\SeoStorage::path('seo/priority-pages.json'), json_encode([
             'generated_at' => now()->toIso8601String(),
             'items' => array_slice($items, 0, 6),
             'gbp_focus_towns' => $gbpFocusTowns,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        \Illuminate\Support\Facades\Cache::forget('priority_area_links');
+        \Illuminate\Support\Facades\Cache::forget(\App\Support\Tenancy::cacheKey('priority_area_links'));
     }
 
     /**
@@ -370,23 +370,69 @@ class RecommendationEngine
             $inSitemap[(string) $u->loc] = true;
         }
 
-        $broken = GscCoverageState::query()
+        $candidates = GscCoverageState::query()
             ->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not found%'])
-            ->pluck('url')
-            ->filter(fn ($u) => isset($inSitemap[(string) $u]))
-            ->map(fn ($u) => parse_url((string) $u, PHP_URL_PATH) ?: (string) $u)
+            ->get(['url', 'last_crawl_time'])
+            ->filter(fn ($row) => isset($inSitemap[(string) $row->url]))
             ->values();
 
-        if ($broken->isEmpty()) {
+        if ($candidates->isEmpty()) {
             return [];
         }
 
-        return [
-            'URGENT: ' . $broken->count() . ' sitemap URL(s) return 404 to Google: '
-            . $broken->take(3)->implode(', ')
-            . ($broken->count() > 3 ? '…' : '')
-            . ' — a live sitemap URL should never 404; fix the route or remove it from the sitemap.',
-        ];
+        // Google's Inspection API replays the LAST CRAWL, which can be months
+        // old — so a page fixed since then keeps reporting 404 until Googlebot
+        // returns. /faq did exactly this: crawled 404 on 2026-06-22, fixed
+        // 2026-07-07, then shouted URGENT 32 times in a row while serving 200.
+        //
+        // Verify against the origin before crying wolf. Only a URL that is
+        // still broken RIGHT NOW is urgent; one that is fixed but stale in
+        // Google's index needs a re-crawl, which is a different, calmer job.
+        $stillBroken = [];
+        $staleInGoogle = [];
+
+        foreach ($candidates->take(10) as $row) {
+            $url = (string) $row->url;
+            $path = parse_url($url, PHP_URL_PATH) ?: $url;
+
+            try {
+                $live = Http::timeout(8)->withHeaders(['User-Agent' => 'GSC-SEO-Verify/1.0'])->get($url);
+                $status = $live->status();
+            } catch (\Throwable) {
+                // Could not reach the origin — say nothing rather than raise a
+                // false alarm from our own network trouble.
+                continue;
+            }
+
+            if ($status >= 400) {
+                $stillBroken[] = $path . ' (' . $status . ')';
+
+                continue;
+            }
+
+            $crawled = $row->last_crawl_time
+                ? Carbon::parse($row->last_crawl_time)->toFormattedDateString()
+                : 'unknown date';
+            $staleInGoogle[] = $path . ' (Google last crawled ' . $crawled . ')';
+        }
+
+        $items = [];
+
+        if ($stillBroken !== []) {
+            $items[] = 'URGENT: ' . count($stillBroken) . ' sitemap URL(s) return 404 to Google AND to us right now: '
+                . implode(', ', array_slice($stillBroken, 0, 3))
+                . (count($stillBroken) > 3 ? '…' : '')
+                . ' — a live sitemap URL should never 404; fix the route or remove it from the sitemap.';
+        }
+
+        if ($staleInGoogle !== []) {
+            $items[] = count($staleInGoogle) . ' sitemap URL(s) serve 200 but Google still has an old 404 on file: '
+                . implode(', ', array_slice($staleInGoogle, 0, 3))
+                . (count($staleInGoogle) > 3 ? '…' : '')
+                . ' — nothing is broken; run `php artisan seo:reindex-problem-pages` so Googlebot re-crawls and the coverage state clears.';
+        }
+
+        return $items;
     }
 
     /** @return array<int, string> */
@@ -396,19 +442,19 @@ class RecommendationEngine
             return [];
         }
 
-        $maxDate = DB::table('gsc_daily_totals')->max('date');
+        $maxDate = \App\Support\Tenancy::table('gsc_daily_totals')->max('date');
         if (! $maxDate) {
             return [];
         }
         $end = Carbon::parse($maxDate);
-        $recent = (int) DB::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(6)->toDateString(), $end->toDateString()])->sum('clicks');
-        $prior = (int) DB::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), (clone $end)->subDays(7)->toDateString()])->sum('clicks');
+        $recent = (int) \App\Support\Tenancy::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(6)->toDateString(), $end->toDateString()])->sum('clicks');
+        $prior = (int) \App\Support\Tenancy::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), (clone $end)->subDays(7)->toDateString()])->sum('clicks');
 
         if ($prior < 20 || $recent >= $prior * 0.85) {
             return [];
         }
 
-        $losing = DB::table('gsc_query_metrics')
+        $losing = \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), $end->toDateString()])
             ->selectRaw('query, SUM(CASE WHEN date >= ? THEN clicks ELSE 0 END) rc, SUM(CASE WHEN date < ? THEN clicks ELSE 0 END) pc', [
                 (clone $end)->subDays(6)->toDateString(),
@@ -462,7 +508,7 @@ class RecommendationEngine
         }
 
         $since = now()->subDays(28)->toDateString();
-        $pages = DB::table('gsc_query_metrics')
+        $pages = \App\Support\Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->whereNotNull('page')
             ->where('query', 'not like', '%gs construction%')
@@ -506,7 +552,7 @@ class RecommendationEngine
         }
 
         $since = now()->subDays(28)->toDateString();
-        $towns = DB::table('gsc_query_metrics')
+        $towns = \App\Support\Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->where('page', 'like', '%/areas-served/%')
             ->where('query', 'not like', '%gs construction%')
@@ -564,12 +610,12 @@ class RecommendationEngine
             return [];
         }
 
-        $maxDate = DB::table('gsc_query_metrics')->max('date');
+        $maxDate = \App\Support\Tenancy::table('gsc_query_metrics')->max('date');
         if (! $maxDate) {
             return [];
         }
         $end = Carbon::parse($maxDate);
-        $agg = fn ($from, $to) => DB::table('gsc_query_metrics')
+        $agg = fn ($from, $to) => \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$from, $to])
             ->whereNotNull('page')
             ->selectRaw('page, SUM(impressions) imp')
@@ -637,8 +683,8 @@ class RecommendationEngine
             return [];
         }
 
-        $recent = (int) DB::table('testimonials')->where('review_date', '>=', now()->subDays(60)->toDateString())->count();
-        $prior = (int) DB::table('testimonials')
+        $recent = (int) \App\Support\Tenancy::table('testimonials')->where('review_date', '>=', now()->subDays(60)->toDateString())->count();
+        $prior = (int) \App\Support\Tenancy::table('testimonials')
             ->whereBetween('review_date', [now()->subDays(120)->toDateString(), now()->subDays(61)->toDateString()])
             ->count();
 
@@ -647,7 +693,7 @@ class RecommendationEngine
         }
 
         $missingEmails = Schema::hasColumn('projects', 'client_email')
-            ? (int) DB::table('projects')->where('is_published', 1)->whereNull('client_email')->count()
+            ? (int) \App\Support\Tenancy::table('projects')->where('is_published', 1)->whereNull('client_email')->count()
             : null;
 
         return [[

@@ -32,7 +32,7 @@
         <h2 class="mt-10 font-heading text-2xl font-bold text-zinc-900 dark:text-white">What to do first</h2>
         <ol class="mt-5 space-y-3">
             @foreach($claim['steps'] as $i => $step)
-                <li class="flex gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <li class="group flex gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                     <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sm font-bold text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">{{ $i + 1 }}</span>
                     <p class="text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $step }}</p>
                 </li>
@@ -43,7 +43,7 @@
         <h2 class="mt-12 font-heading text-2xl font-bold text-zinc-900 dark:text-white">Worth knowing before the adjuster visit</h2>
         <div class="mt-5 space-y-4">
             @foreach($claim['coverage_notes'] as $note)
-                <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                     <h3 class="font-semibold text-zinc-900 dark:text-white">{{ $note['point'] }}</h3>
                     <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $note['note'] }}</p>
                 </div>

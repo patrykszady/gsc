@@ -10,11 +10,31 @@
                     <livewire:team-photo-slider wire:key="contact-slider" />
                 </div>
 
+                {{-- Eyebrow, matching the "Our Work" / "About Us" labels on the
+                     other sections. brand.name rather than a literal: this
+                     component is shared, so a hardcoded "GS CONSTRUCTION" would
+                     render on every tenant. --}}
+                <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                    Contact {{ config('brand.name') }}
+                </p>
+
                 {{-- Heading --}}
-                <h2 class="font-heading text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl dark:text-white">
+                <h2 class="mt-2 font-heading text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl dark:text-white">
                     Let's Build Beautiful Spaces Together
                 </h2>
-                <p class="mt-4 text-lg/8 text-gray-600 dark:text-gray-400">
+
+                {{-- The copy below says "father-and-son company" but gave no way
+                     to check that. Sits directly under the heading rather than
+                     at the foot of the column, where it read as an afterthought.
+                     Scoped to the area when there is one, so a Barrington
+                     visitor lands on the Barrington about page. --}}
+                <div class="mt-5">
+                    <x-buttons.cta href="{{ $area?->pageUrl('about') ?? '/about' }}">
+                        About Us
+                    </x-buttons.cta>
+                </div>
+
+                <p class="mt-5 text-lg/8 text-gray-600 dark:text-gray-400">
                     @if($area)
                         GS Construction is a father-and-son construction company specializing in residential remodeling and renovations in {{ $area->city }}. Expect clear communication, quality craftsmanship, and a straightforward plan—reach out today to schedule a free in-home consultation and get a detailed estimate and honest feedback.
                     @else
@@ -23,7 +43,13 @@
                 </p>
 
                 {{-- Contact Info --}}
-                <dl class="mt-6 space-y-4 text-base/7 text-gray-600 dark:text-gray-300">
+                {{-- Two columns so phone and email share one line; service area
+                     spans both underneath. The grid lives on the <dl> rather
+                     than in a wrapper <div> because HTML only allows one level
+                     of <div> between <dl> and its <dt>/<dd> pairs — nesting a
+                     row wrapper around these groups would be invalid. Stacks
+                     below sm, where the two do not fit side by side. --}}
+                <dl class="mt-6 grid grid-cols-1 gap-4 text-base/7 text-gray-600 sm:grid-cols-2 dark:text-gray-300">
                     {{-- Phone --}}
                     <div class="flex gap-x-4">
                         <dt class="flex-none">
@@ -45,7 +71,7 @@
                         <dd><a href="mailto:crew@gs.construction" class="hover:text-gray-900 dark:hover:text-white">crew@gs.construction</a></dd>
                     </div>
                     {{-- Service Area --}}
-                    <div class="flex gap-x-4">
+                    <div class="flex gap-x-4 sm:col-span-2">
                         <dt class="flex-none">
                             <span class="sr-only">Service Area</span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" class="h-7 w-6 text-gray-400">
@@ -59,11 +85,12 @@
                         </dd>
                     </div>
                 </dl>
+
             </div>
         </div>
 
         {{-- Right Column: Contact Form --}}
-        <form wire:submit="submit" autocomplete="on" class="px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
+        <form wire:submit="submit" autocomplete="on" class="contact-form px-6 py-8 sm:py-10 lg:px-8 lg:py-12">
             <div
                 x-data="{ expanded: $wire.entangle('showConsultationOptions') }"
                 class="mx-auto max-w-xl lg:mr-0 lg:max-w-lg"
@@ -319,8 +346,14 @@
                                 @keydown="handleKeydown($event)"
                                 @focus="if (typeof predictions !== 'undefined' && predictions.length) open = true"
                                 id="address-input"
+                                name="address"
                                 type="text"
-                                autocomplete="off"
+                                {{-- street-address, not off. The custom predictions
+                                     dropdown only opens once you type, so browser
+                                     autofill and the Places-style list do not fight
+                                     each other — and an address is the single most
+                                     valuable field to autofill on this form. --}}
+                                autocomplete="street-address"
                                 placeholder="Start typing your address..."
                                 :invalid="$errors->has('address')"
                                 class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
@@ -641,4 +674,42 @@
             </div>
         </form>
     </div>
+
+    {{-- Autofill → Livewire sync.
+
+         wire:model listens for input/change events. Chrome fills autocompleted
+         fields without reliably dispatching either, so the form can LOOK filled
+         while the component's properties are still empty — the user submits and
+         gets "name is required" over a visibly populated field.
+
+         Browsers do apply the :-webkit-autofill pseudo-class, and a CSS
+         animation keyed to it fires animationstart. That is the standard way to
+         detect autofill; we use it to dispatch the events Livewire is waiting
+         for. Also swept on submit, to catch fills that predate this listener. --}}
+    <style>
+        @keyframes onAutoFillStart { from { /* marker only */ } to { /* marker only */ } }
+        .contact-form input:-webkit-autofill { animation-name: onAutoFillStart; animation-duration: 1ms; }
+    </style>
+
+    <script data-navigate-once>
+        (() => {
+            const sync = (el) => {
+                if (!el || el.dataset.autofillSynced === el.value) return;
+                el.dataset.autofillSynced = el.value;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            document.addEventListener('animationstart', (e) => {
+                if (e.animationName === 'onAutoFillStart') sync(e.target);
+            }, true);
+
+            // Belt and braces: some fills happen before this script runs, and
+            // Safari never fires the animation at all.
+            document.addEventListener('submit', (e) => {
+                const form = e.target.closest?.('.contact-form');
+                if (form) form.querySelectorAll('input, textarea, select').forEach(sync);
+            }, true);
+        })();
+    </script>
 </section>

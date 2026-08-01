@@ -25,6 +25,17 @@
         default               => "Remodeling in {$area->city}, IL",
     };
 
+    // Project::project_type values, so the slider can show this trade's work.
+    // 'contact' has no trade, so it keeps the mixed portfolio.
+    $sliderType = match ($ctx) {
+        'kitchen-remodeling'  => 'kitchen',
+        'bathroom-remodeling' => 'bathroom',
+        'home-remodeling'     => 'home-remodel',
+        'basement-remodeling' => 'basement',
+        'home-additions'      => 'addition',
+        default               => null,
+    };
+
     $serviceLine = match ($ctx) {
         'kitchen-remodeling'  => "kitchen remodels",
         'bathroom-remodeling' => "bathroom remodels",
@@ -36,39 +47,15 @@
 @endphp
 
 @if($area->hasUniqueContent() || filled($area->landmarks) || filled($area->permit_notes))
-<section class="bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} {{ $serviceLine }}">
-    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
-            {{ $heading }}
-        </h2>
-
-        @if(filled($area->local_intro))
-            <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
-                {!! nl2br(e($area->local_intro)) !!}
-            </div>
-        @elseif(filled($area->intro))
-            <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
-                {{ $area->intro }}
-            </p>
-        @endif
-
-        @if(filled($area->landmarks))
-            <div class="mt-6">
-                <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                    Neighborhoods &amp; landmarks near our {{ $area->city }} {{ $serviceLine }}
-                </h3>
-                <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->landmarks }}</p>
-            </div>
-        @endif
-
-        @if(filled($area->permit_notes))
-            <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-                <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
-                    {{ $area->city }} permits &amp; building codes for {{ $serviceLine }}
-                </h3>
-                <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->permit_notes }}</p>
-            </div>
-        @endif
-    </div>
-</section>
+    {{-- Renders through partials.area-intro-slider, the same block the area
+         landing page uses — project slider left, city copy right. This file
+         used to carry its own single-column, slider-less version, so a service
+         page looked nothing like the landing page above it. All it owns now is
+         the per-(city, service) heading and wording. --}}
+    @include('partials.area-intro-slider', [
+        'area' => $area,
+        'heading' => $heading,
+        'serviceLine' => $serviceLine,
+        'projectType' => $sliderType,
+    ])
 @endif

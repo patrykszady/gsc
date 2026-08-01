@@ -11,7 +11,12 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [
             laravel({
-                input: ['resources/css/app.css', 'resources/js/app.js'],
+                input: [
+                    'resources/css/app.css',
+                    // Per-theme entries: each site ships its own compiled CSS.
+                    'resources/css/themes/jpeterson/app.css',
+                    'resources/js/app.js',
+                ],
                 refresh: true,
             }),
             ...(useHttps ? [basicSsl()] : []),

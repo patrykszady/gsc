@@ -21,7 +21,7 @@
 <div>
 @unless($projectsGridHidden)
 <div
-    class="relative isolate bg-white pt-2 pb-8 sm:pt-4 sm:pb-12 dark:bg-zinc-900"
+    class="relative isolate bg-white pt-10 pb-8 sm:pt-14 sm:pb-12 dark:bg-zinc-900"
     @if($responsivePerPage)
         x-data="{ isMobile: window.innerWidth < 640, resizeTimer: null, syncPerPage() { const nextPerPage = this.isMobile ? {{ $mobilePerPage }} : {{ $desktopPerPage }}; if ($wire.perPage !== nextPerPage) { $wire.setPerPage(nextPerPage); } } }"
         x-init="syncPerPage(); window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { const nextIsMobile = window.innerWidth < 640; if (nextIsMobile !== isMobile) { isMobile = nextIsMobile; syncPerPage(); } }, 120); })"
@@ -58,9 +58,9 @@
             <h1 class="mt-2 font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
             @endif
                 @if($area && $typeLabel)
-                    {{ $typeLabel }} Projects in {{ $area->city }}
+                    {{ $typeLabel }} Projects near {{ $area->city }}
                 @elseif($area)
-                    GS Construction Projects in {{ $area->city }}
+                    GS Construction Projects near {{ $area->city }}
                 @elseif($typeLabel)
                     {{ $typeLabel }} Projects
                 @else
@@ -72,10 +72,15 @@
             </h1>
             @endif
             <p class="mx-auto mt-4 max-w-4xl text-base sm:text-lg text-zinc-600 dark:text-zinc-300">
+                {{-- "near", not "in". ProjectsGrid filters on is_published and
+                     project_type only — never on $area — so this grid shows work
+                     from across Chicagoland. Saying "completed in {city}" over a
+                     Chicago or Western Springs job is a claim the page cannot
+                     support. Each card carries its own town where relevant. --}}
                 @if($area && $typeLabel)
-                    Browse our {{ strtolower($typeLabel) }} remodeling projects completed in {{ $area->city }}. See the quality craftsmanship our family brings to every {{ strtolower($typeLabel) }} project.
+                    Browse our {{ strtolower($typeLabel) }} remodeling projects completed near {{ $area->city }}. See the quality craftsmanship our family brings to every {{ strtolower($typeLabel) }} project.
                 @elseif($area)
-                    Browse GS Construction's portfolio of completed home remodeling projects in {{ $area->city }} and surrounding areas. From kitchens to bathrooms, see the quality craftsmanship our family brings to every project.
+                    Browse GS Construction's portfolio of completed home remodeling projects near {{ $area->city }} and the surrounding suburbs. From kitchens to bathrooms, see the quality craftsmanship our family brings to every project.
                 @else
                     Browse GS Construction's portfolio of completed home remodeling projects throughout Chicagoland. From kitchens to bathrooms, basements to whole-home renovations, see the quality craftsmanship our family brings to every project.
                 @endif
@@ -143,66 +148,30 @@
                     @endif
                 </div>
             @else
-                <div
-                    class="mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-6 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-3 transition-opacity duration-150"
+                <x-project-grid
+                    :projects="$projects"
+                    class="mx-auto mt-10 max-w-2xl lg:mx-0 lg:max-w-none transition-opacity duration-150"
                     wire:loading.delay.class="opacity-60"
-                    wire:target="previousPage,nextPage,gotoPage,setPage"
-                >
-                    @foreach($projects as $project)
-                    <a
-                        href="{{ route('projects.show', $project) }}"
-                        wire:navigate
-                        wire:key="project-card-{{ $project->id }}"
-                        class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10{{ $responsivePerPage && $loop->index >= ($mobilePerPage ?? 999) ? ' hidden sm:flex' : '' }}"
-                    >
-                        {{-- Project Image --}}
-                        <div class="relative aspect-[4/3] overflow-hidden">
-                            @if($project->images->first())
-                            <x-lqip-image
-                                :image="$project->images->first()"
-                                size="medium"
-                                width="600"
-                                height="450"
-                                :eager="$loop->index < 2"
-                                class="h-full w-full transition duration-300 group-hover:scale-105"
-                            />
-                            @else
-                            <div class="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-700">
-                                <svg class="h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                                </svg>
-                            </div>
-                            @endif
+                    wire:target="previousPage,nextPage,gotoPage,setPage" />
 
-                            {{-- Featured badge --}}
-                            @if($project->is_featured)
-                            <div class="absolute top-3 left-3">
-                                <span class="inline-flex items-center rounded-full bg-sky-500 px-2.5 py-1 text-xs font-medium text-white">
-                                    Featured
-                                </span>
-                            </div>
-                            @endif
+                {{-- Footer row: pagination and the "More {Type} Projects"
+                     button share one line. The button used to render below the
+                     whole component, costing an extra row of vertical space
+                     under a grid that already has a results count and pager. --}}
+                @php $showsPager = $showPagination && $projects->hasPages(); @endphp
+                @if($showsPager)
+                    <div id="projects-grid-pagination" class="mt-10">
+                        <flux:pagination :paginator="$projects" />
+                    </div>
+                @endif
 
-                            {{-- Project type badge --}}
-                            @if($project->project_type)
-                            <div class="absolute top-3 right-3">
-                                <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
-                                    {{ ucfirst($project->project_type) }}
-                                </span>
-                            </div>
-                            @endif
-                        </div>
-
-                        <span class="sr-only">View project: {{ $project->title }}</span>
-                    </a>
-                    @endforeach
-                </div>
-
-                {{-- Flux pagination (no scrollTo prop = stays in place) --}}
-                @if($showPagination && $projects->hasPages())
-                <div id="projects-grid-pagination" class="mt-10">
-                    <flux:pagination :paginator="$projects" />
-                </div>
+                {{-- Directly under the pager, centred. Kept inside the component
+                     (rather than included by the caller after it) so it stays
+                     tight to the pagination instead of a full section apart. --}}
+                @if($moreProjectsType)
+                    <div class="mt-5 text-center">
+                        @include('partials.more-projects-link', ['projectType' => $moreProjectsType, 'inline' => true])
+                    </div>
                 @endif
             @endif
         </div>

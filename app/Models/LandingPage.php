@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class LandingPage extends Model
 {
+    use BelongsToSite;
+
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PUBLISHED = 'published';
 

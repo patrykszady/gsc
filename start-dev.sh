@@ -137,3 +137,12 @@ else
 fi
 
 echo "🌐 Public dev URL: https://dev.gs.construction"
+
+# Per-tenant local URLs. Printed from the sites table, so a new tenant appears
+# here the day its row exists, with nothing to maintain. *.localhost is mapped
+# to loopback by the browser itself — no hosts file needed.
+echo ""
+echo "🏢 Sites on this platform:"
+php artisan tinker --execute='foreach (App\Models\Site::listAll() as $s) { printf("   %-34s %-12s %s%s", "http://".$s->devHost().":8003/", $s->slug, $s->is_active ? "" : "(in build) ", PHP_EOL); }' 2>/dev/null \
+  || echo "   (could not read the sites table)"
+echo "   http://127.0.0.1:8003/_sites        register + path checker"

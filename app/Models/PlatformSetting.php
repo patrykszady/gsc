@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 
 class PlatformSetting extends Model
 {
+    use BelongsToSite;
+
     protected $fillable = ['key', 'value'];
 
     protected $casts = [

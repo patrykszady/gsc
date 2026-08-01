@@ -4,7 +4,7 @@
 - Laravel 12 + Blade
 - Vite
 - Tailwind CSS v4.x
-- Livewire v3.7.x + Flux UI
+- Livewire v4.x + Flux UI
 - Alpine.js (for lightweight interactivity)
 
 ## UI rules

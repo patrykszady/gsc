@@ -67,7 +67,7 @@ return [
         ],
         [
             'q' => 'How long does a kitchen remodel take?',
-            'a' => 'Most kitchen remodels take 6–10 weeks from demo to final walkthrough. Custom-cabinet projects can take 12+ weeks due to lead times. GS Construction provides a written schedule before work begins.',
+            'a' => 'Most kitchen remodels take 8–12 weeks from demo to final walkthrough. Custom-cabinet projects can take 14+ weeks due to lead times. GS Construction provides a written schedule before work begins.',
             'topics' => ['timeline', 'kitchen'],
         ],
         [
@@ -122,7 +122,11 @@ return [
         ],
         [
             'q' => 'What warranty do you provide?',
-            'a' => 'GS Construction provides a 1-year workmanship warranty on all labor, on top of any manufacturer warranties on cabinets, countertops, and appliances. Warranty terms are spelled out in every contract.',
+            // The written term is deliberately not quoted here — it is stated on
+            // /warranty, which this links to. Everywhere else leads with the
+            // promise instead of a number that reads like an expiry date.
+            'a' => 'GS Construction provides a written workmanship warranty on all labor in every contract, on top of any manufacturer warranties on cabinets, countertops, and appliances. Our commitment never expires — call us years later and we still come out, evaluate the issue, and give you honest answers until it is resolved.',
+            'link' => ['href' => '/warranty', 'text' => 'Read the full warranty promise'],
             'topics' => ['warranty', 'trust'],
         ],
         [

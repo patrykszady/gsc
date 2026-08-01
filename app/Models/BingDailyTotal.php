@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 class BingDailyTotal extends Model
 {
+    use BelongsToSite;
+
     protected $table = 'bing_daily_totals';
 
     protected $fillable = ['date', 'site_url', 'clicks', 'impressions', 'ctr'];

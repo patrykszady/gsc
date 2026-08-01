@@ -25,20 +25,37 @@ class RunSeoChannelSyncJob implements ShouldQueue
 
     public int $tries = 1;
 
-    /** @param array<string, mixed> $options */
+    /**
+     * @param  array<string, mixed>  $options
+     * @param  int|null  $siteId  tenant to run as; defaults to whoever dispatched
+     */
     public function __construct(
         public string $command,
         public array $options = [],
-    ) {}
+        public ?int $siteId = null,
+    ) {
+        // Capture the dispatching tenant. The queue has no request, so
+        // Site::current() there falls back to the DEFAULT site — a job queued
+        // from J. Peterson Design's admin would otherwise generate content as
+        // gs.construction.
+        $this->siteId ??= \App\Models\Site::current()->id;
+    }
 
     public function handle(): void
     {
-        $exit = Artisan::call($this->command, $this->options);
-        if ($exit !== 0) {
-            Log::warning('RunSeoChannelSyncJob command exited non-zero', [
-                'command' => $this->command,
-                'exit' => $exit,
-            ]);
-        }
+        $site = \App\Models\Site::find($this->siteId);
+
+        $run = function (): void {
+            $exit = Artisan::call($this->command, $this->options);
+            if ($exit !== 0) {
+                Log::warning('RunSeoChannelSyncJob command exited non-zero', [
+                    'command' => $this->command,
+                    'exit' => $exit,
+                    'site_id' => $this->siteId,
+                ]);
+            }
+        };
+
+        $site ? \App\Support\Tenancy::for($site, $run) : $run();
     }
 }

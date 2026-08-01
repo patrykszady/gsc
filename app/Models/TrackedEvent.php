@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 class TrackedEvent extends Model
 {
+    use BelongsToSite;
+
     public const TYPE_PHONE_CLICK = 'phone_click';
     public const TYPE_EMAIL_CLICK = 'email_click';
     public const TYPE_FORM_SUBMIT = 'form_submit';

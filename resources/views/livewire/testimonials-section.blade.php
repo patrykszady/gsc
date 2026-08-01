@@ -91,224 +91,133 @@
             </div>
             @endif
 
-            {{-- Large Card Container --}}
-            <div 
+            {{-- Review card.
+
+                 FIXED HEIGHT at every breakpoint. The carousel swaps quotes of
+                 wildly different lengths (200–1400 chars), and a card that
+                 resizes makes the whole page jump on every rotation. The height
+                 is the container; the quote clamps to fit it.
+
+                 One responsive layout — this was two near-identical copies
+                 (lg: and lg:hidden), ~150 lines of duplicated markup. --}}
+            <div
                 @touchstart="handleTouchStart($event)"
                 @touchend.passive="handleTouchEnd($event)"
-                class="relative w-full touch-pan-y rounded-2xl bg-white px-6 py-10 shadow-lg ring-1 ring-gray-900/5 sm:px-12 sm:py-12 lg:px-16 lg:py-14 dark:bg-gray-800/75 dark:shadow-none dark:ring-white/10"
+                class="relative flex h-[27rem] w-full flex-col touch-pan-y overflow-hidden rounded-2xl bg-white p-4 shadow-lg ring-1 ring-gray-900/5 sm:h-[16.5rem] sm:p-5 lg:h-[17.5rem] lg:p-6 dark:bg-gray-800/75 dark:shadow-none dark:ring-white/10"
             >
-                {{-- Testimonial Content --}}
-                <div class="relative">
-                    <figure class="grid grid-cols-1 items-start gap-x-6 gap-y-4 lg:grid-cols-[auto_1fr] lg:gap-x-10 lg:gap-y-2">
-                        {{-- Desktop: Left column with image + reviewer info --}}
-                        <div class="relative row-span-3 hidden w-48 flex-col lg:flex xl:w-56">
-                            @if($hasMultiple)
-                            {{-- Previous Arrow --}}
+                {{-- min-h-0 lets the quote clamp instead of forcing the flex
+                     parent taller than its fixed height. --}}
+                <figure class="flex min-h-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-5">
+                    <div
+                        x-data="{
+                            imgLoaded: window.imageCache?.has('{{ $imageUrl }}') || false,
+                            init() {
+                                this.$nextTick(() => {
+                                    const img = this.$refs.reviewImg;
+                                    if (img?.complete && img?.naturalWidth > 0) this.imgLoaded = true;
+                                });
+                            }
+                        }"
+                        {{-- size-38 (9.5rem/152px) is the measured width of the
+                             "Read full review" button in the footer below, which
+                             is pinned to sm:w-38 so the two edges line up. Change
+                             one, change the other. --}}
+                        class="relative h-36 w-full shrink-0 overflow-hidden rounded-xl bg-zinc-100 sm:size-38 dark:bg-zinc-700/40"
+                    >
+                        <img
+                            x-ref="reviewImg"
+                            src="{{ $imageUrl }}"
+                            alt=""
+                            loading="lazy"
+                            class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
+                            :class="imgLoaded ? 'opacity-100' : 'opacity-0'"
+                            @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
+                        />
+                    </div>
+
+                    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+                        {{-- self-start: this column is a flex COLUMN, where
+                             align-items defaults to stretch, so a w-auto image
+                             does not sit hard left the way it would in normal
+                             flow — it drifted off the text's left edge. --}}
+                        <img src="{{ asset('images/5-stars.svg') }}" alt="Rated 5 out of 5" class="h-9 w-auto self-start dark:hidden" />
+                        <img src="{{ asset('images/5-stars-dark.svg') }}" alt="Rated 5 out of 5" class="hidden h-9 w-auto self-start dark:block" />
+
+                        <blockquote
+                            class="mt-3 min-h-0 flex-1"
+                            @mouseenter="pauseAutoplay()"
+                            @mouseleave="resumeAutoplay()"
+                            @touchstart.passive="pauseAutoplay()"
+                            @touchend.passive="resumeAutoplay()"
+                        >
+                            <p class="line-clamp-3 text-base/7 text-gray-700 sm:line-clamp-4 dark:text-gray-200">
+                                {{ $current['description'] ?? '' }}
+                            </p>
+                        </blockquote>
+
+                        <figcaption class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                            <span class="font-semibold text-gray-900 dark:text-white">{{ $current['name'] ?? '' }}</span>
+
+                            @if(!empty($current['location']))
+                                <span aria-hidden="true" class="text-zinc-300 dark:text-zinc-600">&middot;</span>
+                                @if(!empty($current['area_slug']))
+                                    <a href="/areas/{{ $current['area_slug'] }}" class="text-gray-500 hover:text-sky-600 hover:underline dark:text-gray-400 dark:hover:text-sky-400">{{ $current['location'] }}</a>
+                                @else
+                                    <span class="text-gray-500 dark:text-gray-400">{{ $current['location'] }}</span>
+                                @endif
+                            @endif
+
+                            @if(!empty($current['date']))
+                                <span aria-hidden="true" class="text-zinc-300 dark:text-zinc-600">&middot;</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ $current['date'] }}</span>
+                            @endif
+
+                            @if(!empty($current['project_type']))
+                                <span class="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-400/20">
+                                    {{ \Illuminate\Support\Str::title(str_replace('-', ' ', $current['project_type'])) }}
+                                </span>
+                            @endif
+                        </figcaption>
+                    </div>
+                </figure>
+
+                {{-- Footer row: both CTAs left, arrows right. mt-auto pins it to
+                     the bottom of the fixed-height card whatever the quote does. --}}
+                <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-3 dark:border-white/5">
+                    @if(!empty($current['slug']))
+                        {{-- w-38 matches the thumbnail above it (see figure). The
+                             label's natural width is 152px, so this pins rather
+                             than stretches. --}}
+                        <x-buttons.cta href="{{ route('reviews.show', $current['slug']) }}" size="sm" class="sm:w-38">
+                            Read full review
+                        </x-buttons.cta>
+                    @endif
+
+                    <x-buttons.cta href="{{ route('reviews.index') }}" variant="outline" size="sm">
+                        All {{ $totalCount ?? '' }} reviews
+                    </x-buttons.cta>
+
+                    @if($hasMultiple)
+                        <div class="ml-auto flex items-center gap-2">
                             <button
                                 wire:click="prevTestimonial"
-                                class="absolute -left-14 top-24 z-10 -translate-y-1/2 cursor-pointer p-2 text-gray-400 transition hover:text-gray-600 dark:text-white/60 dark:hover:text-white"
-                                aria-label="Previous testimonial"
+                                class="cursor-pointer rounded-full border border-zinc-200 p-2 text-gray-500 transition hover:bg-zinc-50 hover:text-gray-900 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
+                                aria-label="Previous review"
                             >
-                                <svg class="size-10" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                            @endif
-
-                            <div 
-                                x-data="{ 
-                                    imgLoaded: window.imageCache?.has('{{ $imageUrl }}') || false,
-                                    wasCached: window.imageCache?.has('{{ $imageUrl }}') || false,
-                                    init() {
-                                        this.$nextTick(() => {
-                                            const img = this.$refs.testimonialImg;
-                                            if (img?.complete && img?.naturalWidth > 0) {
-                                                this.imgLoaded = true;
-                                                this.wasCached = true;
-                                            }
-                                        });
-                                    }
-                                }"
-                                class="relative aspect-square w-full overflow-hidden rounded-2xl bg-sky-50 dark:bg-sky-900/20"
-                            >
-                                <img
-                                    x-ref="testimonialImg"
-                                    src="{{ $imageUrl }}"
-                                    alt="{{ $current['name'] ?? '' }}"
-                                    class="absolute inset-0 h-full w-full object-cover"
-                                    :class="wasCached ? 'opacity-100' : (imgLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
-                                    @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
-                                />
-                            </div>
-                            {{-- Reviewer info under image on desktop --}}
-                            <div class="mt-4">
-                                <div class="font-semibold text-gray-900 dark:text-white">{{ $current['name'] ?? '' }}</div>
-                                <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    @if(!empty($current['area_slug']))
-                                        <a href="/areas/{{ $current['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $current['location'] ?? '' }}</a>
-                                    @else
-                                        <span>{{ $current['location'] ?? '' }}</span>
-                                    @endif
-                                    @if(!empty($current['date']))
-                                        <span> · </span>
-                                        <span>{{ $current['date'] }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Desktop: Right column --}}
-                        <div class="relative hidden flex-col lg:flex">
-                            {{-- 5-star image --}}
-                            <div>
-                                <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" class="h-10 w-auto dark:hidden" />
-                                <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" class="hidden h-10 w-auto dark:block" />
-                            </div>
-
-                            {{-- Quote --}}
-                            <div class="relative mt-4 h-40">
-                                <svg viewBox="0 0 162 128" fill="none" aria-hidden="true" class="absolute -top-12 left-0 -z-10 h-32 stroke-gray-900/10 dark:stroke-white/20">
-                                    <path id="testimonial-quote-path-desktop" d="M65.5697 118.507L65.8918 118.89C68.9503 116.314 71.367 113.253 73.1386 109.71C74.9162 106.155 75.8027 102.28 75.8027 98.0919C75.8027 94.237 75.16 90.6155 73.8708 87.2314C72.5851 83.8565 70.8137 80.9533 68.553 78.5292C66.4529 76.1079 63.9476 74.2482 61.0407 72.9536C58.2795 71.4949 55.276 70.767 52.0386 70.767C48.9935 70.767 46.4686 71.1668 44.4872 71.9924L44.4799 71.9955L44.4726 71.9988C42.7101 72.7999 41.1035 73.6831 39.6544 74.6492C38.2407 75.5916 36.8279 76.455 35.4159 77.2394L35.4047 77.2457L35.3938 77.2525C34.2318 77.9787 32.6713 78.3634 30.6736 78.3634C29.0405 78.3634 27.5131 77.2868 26.1274 74.8257C24.7483 72.2185 24.0519 69.2166 24.0519 65.8071C24.0519 60.0311 25.3782 54.4081 28.0373 48.9335C30.703 43.4454 34.3114 38.345 38.8667 33.6325C43.5812 28.761 49.0045 24.5159 55.1389 20.8979C60.1667 18.0071 65.4966 15.6179 71.1291 13.7305C73.8626 12.8145 75.8027 10.2968 75.8027 7.38572C75.8027 3.6497 72.6341 0.62247 68.8814 1.1527C61.1635 2.2432 53.7398 4.41426 46.6119 7.66522C37.5369 11.6459 29.5729 17.0612 22.7236 23.9105C16.0322 30.6019 10.618 38.4859 6.47981 47.558L6.47976 47.558L6.47682 47.5647C2.4901 56.6544 0.5 66.6148 0.5 77.4391C0.5 84.2996 1.61702 90.7679 3.85425 96.8404L3.8558 96.8445C6.08991 102.749 9.12394 108.02 12.959 112.654L12.959 112.654L12.9646 112.661C16.8027 117.138 21.2829 120.739 26.4034 123.459L26.4033 123.459L26.4144 123.465C31.5505 126.033 37.0873 127.316 43.0178 127.316C47.5035 127.316 51.6783 126.595 55.5376 125.148L55.5376 125.148L55.5477 125.144C59.5516 123.542 63.0052 121.456 65.9019 118.881L65.5697 118.507Z" />
-                                    <use x="86" href="#testimonial-quote-path-desktop" />
-                                </svg>
-                                <blockquote
-                                    class="text-xl/8 text-gray-900 dark:text-white"
-                                    @mouseenter="pauseAutoplay()"
-                                    @mouseleave="resumeAutoplay()"
-                                    @touchstart.passive="pauseAutoplay()"
-                                    @touchend.passive="resumeAutoplay()"
-                                    @touchcancel.passive="resumeAutoplay()"
-                                >
-                                    <p class="line-clamp-5 italic transition-opacity duration-300">{{ $current['description'] ?? '' }}</p>
-                                </blockquote>
-                            </div>
-
-                            {{-- Desktop: Read More button --}}
-                            <div class="mt-6 flex items-center gap-4">
-                                <x-buttons.cta href="{{ route('reviews.index') }}" size="sm">
-                                    Read More Testimonials
-                                </x-buttons.cta>
-                                @if(!empty($current['slug']))
-                                <x-buttons.cta href="{{ route('reviews.show', $current['slug']) }}" variant="secondary" size="sm">
-                                    Show This Review
-                                </x-buttons.cta>
-                                @endif
-                            </div>
-
-                            @if($hasMultiple)
-                            {{-- Next Arrow --}}
                             <button
                                 wire:click="nextTestimonial"
-                                class="absolute -right-14 top-24 z-10 -translate-y-1/2 p-2 text-gray-400 transition hover:text-gray-600 dark:text-white/60 dark:hover:text-white"
-                                aria-label="Next testimonial"
+                                class="cursor-pointer rounded-full border border-zinc-200 p-2 text-gray-500 transition hover:bg-zinc-50 hover:text-gray-900 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
+                                aria-label="Next review"
                             >
-                                <svg class="size-10" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                                 </svg>
                             </button>
-                            @endif
                         </div>
-
-                        {{-- Mobile: Stars + Quote --}}
-                        <div class="lg:hidden">
-                            {{-- 5-star image --}}
-                            <div>
-                                <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" class="h-8 w-auto dark:hidden" />
-                                <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" class="hidden h-8 w-auto dark:block" />
-                            </div>
-
-                            {{-- Quote --}}
-                            <div class="relative mt-4">
-                                <svg viewBox="0 0 162 128" fill="none" aria-hidden="true" class="absolute -top-12 left-0 -z-10 h-32 stroke-gray-900/10 dark:stroke-white/20">
-                                    <path id="testimonial-quote-path-mobile" d="M65.5697 118.507L65.8918 118.89C68.9503 116.314 71.367 113.253 73.1386 109.71C74.9162 106.155 75.8027 102.28 75.8027 98.0919C75.8027 94.237 75.16 90.6155 73.8708 87.2314C72.5851 83.8565 70.8137 80.9533 68.553 78.5292C66.4529 76.1079 63.9476 74.2482 61.0407 72.9536C58.2795 71.4949 55.276 70.767 52.0386 70.767C48.9935 70.767 46.4686 71.1668 44.4872 71.9924L44.4799 71.9955L44.4726 71.9988C42.7101 72.7999 41.1035 73.6831 39.6544 74.6492C38.2407 75.5916 36.8279 76.455 35.4159 77.2394L35.4047 77.2457L35.3938 77.2525C34.2318 77.9787 32.6713 78.3634 30.6736 78.3634C29.0405 78.3634 27.5131 77.2868 26.1274 74.8257C24.7483 72.2185 24.0519 69.2166 24.0519 65.8071C24.0519 60.0311 25.3782 54.4081 28.0373 48.9335C30.703 43.4454 34.3114 38.345 38.8667 33.6325C43.5812 28.761 49.0045 24.5159 55.1389 20.8979C60.1667 18.0071 65.4966 15.6179 71.1291 13.7305C73.8626 12.8145 75.8027 10.2968 75.8027 7.38572C75.8027 3.6497 72.6341 0.62247 68.8814 1.1527C61.1635 2.2432 53.7398 4.41426 46.6119 7.66522C37.5369 11.6459 29.5729 17.0612 22.7236 23.9105C16.0322 30.6019 10.618 38.4859 6.47981 47.558L6.47976 47.558L6.47682 47.5647C2.4901 56.6544 0.5 66.6148 0.5 77.4391C0.5 84.2996 1.61702 90.7679 3.85425 96.8404L3.8558 96.8445C6.08991 102.749 9.12394 108.02 12.959 112.654L12.959 112.654L12.9646 112.661C16.8027 117.138 21.2829 120.739 26.4034 123.459L26.4033 123.459L26.4144 123.465C31.5505 126.033 37.0873 127.316 43.0178 127.316C47.5035 127.316 51.6783 126.595 55.5376 125.148L55.5376 125.148L55.5477 125.144C59.5516 123.542 63.0052 121.456 65.9019 118.881L65.5697 118.507Z" />
-                                    <use x="86" href="#testimonial-quote-path-mobile" />
-                                </svg>
-                                <blockquote class="text-lg/7 text-gray-900 dark:text-white">
-                                    <p class="line-clamp-5 italic transition-opacity duration-300">{{ $current['description'] ?? '' }}</p>
-                                </blockquote>
-                            </div>
-                        </div>
-
-                        {{-- Mobile: Reviewer info with image + Read More --}}
-                        <figcaption class="text-base lg:hidden">
-                            <div class="flex items-center gap-4">
-                                <div 
-                                    x-data="{ 
-                                        imgLoaded: window.imageCache?.has('{{ $imageUrl }}') || false,
-                                        wasCached: window.imageCache?.has('{{ $imageUrl }}') || false,
-                                        init() {
-                                            this.$nextTick(() => {
-                                                const img = this.$refs.testimonialImgMobile;
-                                                if (img?.complete && img?.naturalWidth > 0) {
-                                                    this.imgLoaded = true;
-                                                    this.wasCached = true;
-                                                }
-                                            });
-                                        }
-                                    }"
-                                    class="relative size-14 overflow-hidden rounded-xl bg-sky-50 dark:bg-sky-900/20"
-                                >
-                                    <img
-                                        x-ref="testimonialImgMobile"
-                                        src="{{ $imageUrl }}"
-                                        alt="{{ $current['name'] ?? '' }}"
-                                        class="absolute inset-0 h-full w-full object-cover"
-                                        :class="wasCached ? 'opacity-100' : (imgLoaded ? 'opacity-100 transition-opacity duration-300' : 'opacity-0')"
-                                        @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
-                                    />
-                                </div>
-                                <div>
-                                    <div class="font-semibold text-gray-900 dark:text-white">{{ $current['name'] ?? '' }}</div>
-                                    <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                        @if(!empty($current['area_slug']))
-                                            <a href="/areas/{{ $current['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $current['location'] ?? '' }}</a>
-                                        @else
-                                            <span>{{ $current['location'] ?? '' }}</span>
-                                        @endif
-                                        @if(!empty($current['date']))
-                                            <span> · </span>
-                                            <span>{{ $current['date'] }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-4 flex flex-wrap items-center gap-3">
-                                <x-buttons.cta href="{{ route('reviews.index') }}" size="sm">
-                                    Read More Testimonials
-                                </x-buttons.cta>
-                                @if(!empty($current['slug']))
-                                <x-buttons.cta href="{{ route('reviews.show', $current['slug']) }}" variant="secondary" size="sm">
-                                    Show This Review
-                                </x-buttons.cta>
-                                @endif
-                            </div>
-                        </figcaption>
-                    </figure>
-
-                    @if($hasMultiple)
-                    {{-- Mobile arrows: in-flow below the content (the old absolute,
-                         vertically-centered pair overlapped the quote text on
-                         narrow screens). Swiping still works too. --}}
-                    <div class="mt-5 flex items-center justify-center gap-4 lg:hidden">
-                        <button
-                            wire:click="prevTestimonial"
-                            class="cursor-pointer rounded-full border border-zinc-200 p-2.5 text-gray-500 transition hover:bg-zinc-50 hover:text-gray-700 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
-                            aria-label="Previous testimonial"
-                        >
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                            </svg>
-                        </button>
-                        <button
-                            wire:click="nextTestimonial"
-                            class="cursor-pointer rounded-full border border-zinc-200 p-2.5 text-gray-500 transition hover:bg-zinc-50 hover:text-gray-700 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white"
-                            aria-label="Next testimonial"
-                        >
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </button>
-                    </div>
                     @endif
                 </div>
             </div>

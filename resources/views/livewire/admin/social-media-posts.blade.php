@@ -108,21 +108,35 @@
         </div>
 
         @php
-            $socialUrlFields = [
-                'instagram' => ['label' => 'Instagram', 'placeholder' => 'https://www.instagram.com/gs.construction.co/'],
-                'google' => ['label' => 'Google', 'placeholder' => 'https://www.google.com/search?q=GS+Construction+chicago'],
-                'facebook' => ['label' => 'Facebook', 'placeholder' => 'https://www.facebook.com/gs.construction.chi'],
-                'yelp' => ['label' => 'Yelp', 'placeholder' => 'https://www.yelp.com/biz/gs-construction-prospect-heights'],
-                'houzz' => ['label' => 'Houzz', 'placeholder' => 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575'],
-                'angi' => ['label' => 'Angi', 'placeholder' => 'https://www.angi.com/companylist/us/il/chicagoland/gs-construction-and-remodeling-reviews-11400361.htm'],
-            ];
+            // Roster from config/social-platforms.php so EVERY supported
+            // platform gets a field, even ones this site has not set up yet.
+            // Label and icon may be overridden per tenant; the placeholder is
+            // always the generic catalogue one — it must never be another
+            // business's live profile URL, which is what the old hardcoded
+            // array rendered in every tenant's admin.
+            $socialUrlFields = collect(config('social-platforms', []))
+                ->map(fn ($cat, $key) => [
+                    'label' => config("socials.{$key}.label", $cat['label'] ?? ucfirst($key)),
+                    'icon' => config("socials.{$key}.icon", $cat['icon'] ?? null),
+                    'placeholder' => $cat['placeholder'] ?? 'https://…',
+                ])
+                ->all();
         @endphp
+
+        @if (empty($socialUrlFields))
+            <flux:text class="mt-4 text-sm text-zinc-500">
+                No social platforms configured for this site yet — add them in
+                <code>config/sites/{slug}/socials.php</code>.
+            </flux:text>
+        @endif
 
         <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             @foreach($socialUrlFields as $key => $field)
                 <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                     <div class="mb-2 flex items-center gap-2">
-                        <img src="{{ asset(config('socials.' . $key . '.icon')) }}" alt="{{ $field['label'] }} logo" class="size-5 rounded-sm object-contain" />
+                        @if ($field['icon'])
+                            <img src="{{ asset($field['icon']) }}" alt="{{ $field['label'] }} logo" class="size-5 rounded-sm object-contain" />
+                        @endif
                         <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $field['label'] }}</span>
                     </div>
                     <flux:input
@@ -134,12 +148,9 @@
             @endforeach
         </div>
 
-        @error('socialUrls.instagram') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
-        @error('socialUrls.google') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
-        @error('socialUrls.facebook') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
-        @error('socialUrls.yelp') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
-        @error('socialUrls.houzz') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
-        @error('socialUrls.angi') <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @foreach (array_keys($socialUrlFields) as $key)
+            @error('socialUrls.' . $key) <p class="mt-2 text-xs text-red-600">{{ $message }}</p> @enderror
+        @endforeach
     </flux:card>
 
     @if(!$isConfigured)

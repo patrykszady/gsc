@@ -36,7 +36,7 @@ return [
                 ['factor' => 'Countertop material', 'note' => 'Quartz and granite sit mid-range; quartzite and porcelain slabs push higher.'],
                 ['factor' => 'Appliances', 'note' => 'Panel-ready and pro-style ranges can add five figures on their own — we quote them as their own line.'],
             ],
-            'timeline' => 'Most kitchen remodels take 6–10 weeks from demo to walkthrough; custom-cabinet projects can run 12+ weeks due to lead times.',
+            'timeline' => 'Most kitchen remodels take 8–12 weeks from demo to walkthrough; custom-cabinet projects can run 14+ weeks due to lead times.',
             'faq' => [
                 ['question' => 'How much does a kitchen remodel cost in the Chicago suburbs?', 'answer' => 'A mid-range kitchen remodel typically runs $35,000–$80,000 depending on cabinets, countertops, and layout changes. High-end kitchens with custom cabinetry exceed $100,000. GS Construction provides free in-home estimates.'],
                 ['question' => 'What is the biggest cost driver in a kitchen remodel?', 'answer' => 'Cabinetry — the jump from stock to semi-custom to custom cabinets is often 30–40% of the total budget. Layout changes that move plumbing or walls are the second biggest swing.'],

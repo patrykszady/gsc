@@ -103,8 +103,8 @@
                             Start Your Project
                         </x-buttons.cta>
                         <div class="mt-4 space-y-2 text-center text-sm text-zinc-600 dark:text-zinc-300">
-                            <a href="tel:2247354200" class="block hover:text-zinc-900 dark:hover:text-zinc-100">(224) 735-4200</a>
-                            <a href="mailto:crew@gs.construction" class="block hover:text-zinc-900 dark:hover:text-zinc-100">crew@gs.construction</a>
+                            <a href="tel:{{ config('brand.phone_href') }}" class="block hover:text-zinc-900 dark:hover:text-zinc-100">{{ config('brand.phone') }}</a>
+                            <a href="mailto:{{ config('brand.email') }}" class="block hover:text-zinc-900 dark:hover:text-zinc-100">{{ config('brand.email') }}</a>
                         </div>
                     </div>
                 </div>

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use App\Jobs\SendLeadToHive;
 use Illuminate\Database\Eloquent\Model;
 
 class ContactSubmission extends Model
 {
+    use BelongsToSite;
+
     protected $fillable = [
         'name',
         'email',

@@ -318,10 +318,10 @@ class PublishSocialMediaPost extends Command
     protected function gbpFocusTowns(): array
     {
         try {
-            if (! \Illuminate\Support\Facades\Storage::disk('local')->exists('seo/priority-pages.json')) {
+            if (! \Illuminate\Support\Facades\Storage::disk('local')->exists(\App\Support\SeoStorage::path('seo/priority-pages.json'))) {
                 return [];
             }
-            $decoded = json_decode((string) \Illuminate\Support\Facades\Storage::disk('local')->get('seo/priority-pages.json'), true);
+            $decoded = json_decode((string) \Illuminate\Support\Facades\Storage::disk('local')->get(\App\Support\SeoStorage::path('seo/priority-pages.json')), true);
             $towns = $decoded['gbp_focus_towns'] ?? [];
 
             return is_array($towns) ? array_values(array_filter($towns, 'is_string')) : [];

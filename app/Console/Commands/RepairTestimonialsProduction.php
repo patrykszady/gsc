@@ -115,7 +115,7 @@ class RepairTestimonialsProduction extends Command
             return;
         }
 
-        $rows = DB::table('testimonials')
+        $rows = \App\Support\Tenancy::table('testimonials')
             ->whereNotNull('google_review_id')
             ->where('google_review_id', '!=', '')
             ->get(['id', 'google_review_id']);

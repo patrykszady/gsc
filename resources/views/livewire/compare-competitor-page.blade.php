@@ -65,13 +65,16 @@
                 <x-buttons.cta href="/contact" variant="primary" size="lg">
                     Get a free estimate
                 </x-buttons.cta>
-                <a href="tel:2247354200" class="inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-semibold uppercase tracking-wide text-sky-700 ring-1 ring-sky-300 transition hover:bg-sky-50 dark:text-sky-300 dark:ring-sky-700 dark:hover:bg-sky-950/40">
+                {{-- Was the one CTA on the site still hand-rolled, on ring-1
+                     rather than border, so it sat a hair different from every
+                     other outline button. --}}
+                <x-buttons.cta href="tel:2247354200" variant="outline" size="lg">
                     Call (224) 735-4200
-                </a>
+                </x-buttons.cta>
             </div>
         </header>
 
-        <section class="mt-12 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+        <section class="group mt-12 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-160 text-left text-sm">
                     <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
@@ -94,7 +97,7 @@
                                     @if(($row['key'] ?? '') === 'public_reviews')
                                         {{-- Platforms link out to the real profiles, driven by the
                                              `review` flag in config/socials.php (same source as the footer). --}}
-                                        @php $reviewProfiles = array_values(array_filter(config('socials'), fn ($s) => $s['review'] ?? false)); @endphp
+                                        @php $reviewProfiles = array_values(array_filter(site_config('socials'), fn ($s) => $s['review'] ?? false)); @endphp
                                         Verified reviews on
                                         @foreach($reviewProfiles as $profile)
                                             <a href="{{ $profile['url'] }}" target="_blank" rel="noopener noreferrer external"

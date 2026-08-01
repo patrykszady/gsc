@@ -29,15 +29,15 @@
 
         {{-- Quick facts strip --}}
         <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="font-heading text-3xl font-bold text-sky-600 dark:text-sky-400">{{ $guides->count() }}</p>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">town guides, each verified against the village's own permit pages</p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="font-heading text-3xl font-bold text-sky-600 dark:text-sky-400">100%</p>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">of these villages require a permit for kitchen, bath &amp; basement remodels</p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 text-center dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <p class="font-heading text-3xl font-bold text-sky-600 dark:text-sky-400">0</p>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">permit paperwork left to you — GS handles applications and inspections on every project</p>
             </div>
@@ -68,7 +68,7 @@
             Chicago's suburbs the pattern is consistent:
         </p>
         <div class="mt-6 grid gap-5 sm:grid-cols-2">
-            <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
                     <svg class="size-5 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                     Permit required
@@ -84,7 +84,7 @@
                     <li>Roof tear-offs and siding replacement (most villages)</li>
                 </ul>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
                     <svg class="size-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                     Usually exempt
@@ -113,7 +113,7 @@
                 ['Build with inspections', 'Work proceeds in stages, with village inspections at the points that matter: rough framing, electrical, plumbing, and insulation before anything is covered up.'],
                 ['Final approval', 'A final inspection signs the project off and closes the permit — the paper trail that protects you at resale and keeps insurance claims clean.'],
             ] as $i => $step)
-                <li class="flex gap-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <li class="group flex gap-4 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                     <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sm font-bold text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">{{ $i + 1 }}</span>
                     <div>
                         <h3 class="font-semibold text-zinc-900 dark:text-white">{{ $step[0] }}</h3>
@@ -126,7 +126,7 @@
         {{-- Why it matters --}}
         <h2 class="mt-14 font-heading text-2xl font-bold text-zinc-900 dark:text-white">Why skipping the permit costs more</h2>
         <div class="mt-5 space-y-4">
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="font-semibold text-zinc-900 dark:text-white">Resale comes with questions</h3>
                 <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     Illinois sellers disclose known work, and buyers' attorneys and appraisers ask for
@@ -134,7 +134,7 @@
                     closing or come off the price.
                 </p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="font-semibold text-zinc-900 dark:text-white">Insurance can push back</h3>
                 <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     If unpermitted electrical or plumbing work is implicated in a loss, a claim gets
@@ -142,7 +142,7 @@
                     <a href="{{ route('insurance-claims.index') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">insurance claim rebuild guides</a>.
                 </p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="font-semibold text-zinc-900 dark:text-white">Retroactive permits are the expensive kind</h3>
                 <p class="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     Villages that discover unpermitted work can issue stop-work orders, charge multiplied

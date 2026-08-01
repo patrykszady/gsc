@@ -9,22 +9,19 @@
     $aggregate = null;
 
     if ($cityName) {
-        $cacheKey = 'city_reviews_'.md5($cityName);
-        $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($cityName) {
-            $q = Testimonial::query()
-                ->visible()
-                ->where('project_location', 'LIKE', '%'.$cityName.'%');
-
-            $count = (clone $q)->count();
-            $avg   = (float) (clone $q)->avg('star_rating') ?: 5.0;
-            $items = (clone $q)
-                ->orderByDesc('review_date')
-                ->limit(5)
-                ->get(['id', 'reviewer_name', 'star_rating', 'review_description', 'project_location', 'project_type', 'review_date']);
+        // Same set the quote cards below render — a strict
+        // project_location LIKE '%City%' gave Barrington "1 verified review"
+        // sitting directly above three cards, and beside the words "and
+        // surrounding homeowners". Topped up from the nearest towns.
+        $cacheKey = \App\Support\Tenancy::cacheKey('city_reviews_'.md5($cityName));
+        $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($area) {
+            // 3, matching the number of quote cards rendered below — the badge
+            // must never claim a count the page does not show.
+            $items = $area->testimonialsWithNeighbours(3);
 
             return [
-                'count' => $count,
-                'avg'   => round($avg, 1),
+                'count' => $items->count(),
+                'avg'   => round((float) ($items->avg('star_rating') ?: 5.0), 1),
                 'items' => $items,
             ];
         });

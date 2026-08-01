@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 class Tracked404 extends Model
 {
+    use BelongsToSite;
+
     protected $table = 'tracked_404s';
 
     protected $fillable = [

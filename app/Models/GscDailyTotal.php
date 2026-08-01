@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 class GscDailyTotal extends Model
 {
+    use BelongsToSite;
+
     protected $table = 'gsc_daily_totals';
 
     protected $fillable = [

@@ -17,7 +17,7 @@
 
         <h2 class="mt-10 font-heading text-2xl font-bold text-zinc-900 dark:text-white">The routes homeowners actually use</h2>
         <div class="mt-5 space-y-5">
-            <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">HELOC (home-equity line of credit)</h3>
                 <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     The most common choice for kitchens and baths. You draw only what the project needs,
@@ -25,14 +25,14 @@
                     Your bank or credit union will ask for a scope of work; ours arrives itemized.
                 </p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Home-equity loan or cash-out refinance</h3>
                 <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     A fixed lump sum at a fixed rate — a fit for larger, clearly-scoped projects like additions
                     and whole-home remodels where the budget is locked before demo day.
                 </p>
             </div>
-            <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="group rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Third-party renovation loans</h3>
                 <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                     Unsecured home-improvement loans and renovation products (offered by many banks and

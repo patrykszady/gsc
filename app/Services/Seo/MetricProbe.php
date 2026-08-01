@@ -43,7 +43,7 @@ class MetricProbe
         // miss rows from canonical/normalization differences.
         $variants = array_unique([$pageUrl, rtrim($pageUrl, '/'), rtrim($pageUrl, '/') . '/']);
 
-        $row = DB::table('gsc_query_metrics')
+        $row = \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->whereIn('page', $variants)
             ->selectRaw('SUM(clicks) c, SUM(impressions) i, AVG(position) p')

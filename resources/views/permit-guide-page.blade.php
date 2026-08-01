@@ -85,7 +85,7 @@
         @if($quirksAsList)
             <ul class="mt-4 space-y-3">
                 @foreach($quirks as $quirk)
-                    <li class="flex gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                    <li class="group flex gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                         <span class="mt-1 size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden="true"></span>
                         <span>{{ $quirk }}</span>
                     </li>

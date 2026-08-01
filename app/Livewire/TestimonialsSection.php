@@ -290,6 +290,10 @@ class TestimonialsSection extends Component
     {
         return view('livewire.testimonials-section', [
             'area' => $this->area,
+            // Shown on the "All N reviews" link. A real count is a stronger
+            // trust signal than a bare "read more", and it is already scoped
+            // to this tenant by BelongsToSite.
+            'totalCount' => \App\Models\Testimonial::query()->count(),
         ]);
     }
 }

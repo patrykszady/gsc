@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
@@ -9,6 +10,7 @@ use RalphJSmit\Laravel\SEO\Support\SEOData;
 
 class AreaServed extends Model
 {
+    use BelongsToSite;
     use HasSEO;
     protected $table = 'areas_served';
 
@@ -114,22 +116,25 @@ class AreaServed extends Model
      *
      * @return Collection<int, \App\Models\Project>
      */
-    public function localProjects(int $limit = 12): Collection
+    public function localProjects(int $limit = 12, ?string $projectType = null): Collection
     {
         $city = trim((string) $this->city);
         if ($city === '') {
             return new Collection;
         }
 
-        $key = "area:{$this->id}:local_projects:{$limit}";
+        $key = "area:{$this->id}:local_projects:{$limit}:" . ($projectType ?: 'all');
 
-        return cache()->remember($key, 21600, function () use ($city, $limit) {
+        return cache()->remember($key, 21600, function () use ($city, $limit, $projectType) {
             $needle = mb_strtolower($city);
 
             return Project::query()
                 ->where('is_published', true)
                 ->whereNotNull('location')
                 ->where('location', '!=', '')
+                // A bathroom service page showing kitchen photos undercuts the
+                // one thing the page is meant to prove.
+                ->when($projectType, fn ($q) => $q->where('project_type', $projectType))
                 ->with('images')
                 ->latest('updated_at')
                 ->get()
@@ -176,6 +181,37 @@ class AreaServed extends Model
                 ->take($limit)
                 ->values();
         });
+    }
+
+    /**
+     * This town's reviews, topped up from the NEAREST towns until there are
+     * enough to fill the section.
+     *
+     * localTestimonials() alone leaves a three-column grid holding one card —
+     * Barrington has exactly one review of its own — and a badge reading
+     * "5/5 from 1 verified review from Barrington and surrounding homeowners",
+     * where the count contradicts the sentence around it.
+     *
+     * nearestCities() walks outward by distance, so the fill is always the
+     * closest available towns rather than an arbitrary set. Every review is a
+     * real review of this business; the UI labels each card with the
+     * reviewer's actual town, so nothing is passed off as local.
+     *
+     * @return Collection<int, Testimonial>
+     */
+    public function testimonialsWithNeighbours(int $limit = 3): Collection
+    {
+        $local = $this->localTestimonials($limit);
+
+        if ($local->count() >= $limit) {
+            return $local;
+        }
+
+        return $local->concat(
+            $this->nearbyTestimonials($limit + $local->count())
+                ->reject(fn (Testimonial $t) => $local->contains('id', $t->id))
+                ->take($limit - $local->count())
+        )->values();
     }
 
     /**
@@ -245,10 +281,12 @@ class AreaServed extends Model
      *
      * @return Collection<int, \App\Models\ProjectImage>
      */
-    public function localProjectImages(int $limit = 6): Collection
+    public function localProjectImages(int $limit = 6, ?string $projectType = null): Collection
     {
-        return $this->localProjects()
-            ->map(fn (Project $project) => $project->images->firstWhere('is_cover', true) ?? $project->images->first())
+        return $this->localProjects(12, $projectType)
+            // setRelation, not a fresh query: the slide overlay links to the
+            // project, and the parent is already loaded here.
+            ->map(fn (Project $project) => ($project->images->firstWhere('is_cover', true) ?? $project->images->first())?->setRelation('project', $project))
             ->filter()
             ->take($limit)
             ->values();

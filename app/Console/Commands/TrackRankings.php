@@ -52,7 +52,7 @@ class TrackRankings extends Command
             $lower = strtolower($query);
             $variants = array_unique([$lower, preg_replace('/\s+il$/', '', $lower)]);
 
-            $row = DB::table('gsc_query_metrics')
+            $row = \App\Support\Tenancy::table('gsc_query_metrics')
                 ->where('date', '>=', $since)
                 ->whereIn('query', $variants)
                 ->selectRaw('SUM(position * impressions) / NULLIF(SUM(impressions), 0) pos, SUM(impressions) impr, SUM(clicks) clk')

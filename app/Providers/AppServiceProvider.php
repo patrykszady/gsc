@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
+use Livewire\Livewire;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
 use Opcodes\LogViewer\Facades\LogViewer;
@@ -37,6 +38,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Livewire update requests POST to /livewire/update and do NOT re-run
+        // the original route's middleware. Without this, ResolveAdminSite never
+        // fires on interaction, so every admin action after first paint would
+        // run against the DEFAULT site instead of the one in the URL.
+        Livewire::addPersistentMiddleware([
+            \App\Http\Middleware\ResolveSite::class,
+            \App\Http\Middleware\ResolveAdminSite::class,
+        ]);
+
         // Any save/delete of public content schedules a debounced sitemap
         // regeneration + WebSub ping, so honest lastmod values reach crawlers
         // in minutes instead of waiting for the nightly cycle.

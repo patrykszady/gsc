@@ -48,15 +48,30 @@
          it and the sections below are the page's only substantive unique copy,
          so they must render, not just feed schema). --}}
     <section class="py-12 sm:py-16">
-        <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        {{-- max-w-7xl to line up with every other section on this page; it was
+             the lone max-w-3xl and sat visibly inset. The paragraph keeps its
+             own cap, since body copy running the full 7xl is a hard read. --}}
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
                 Expert {{ $data['title'] }} Services
             </h2>
-            <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-300">
+            <p class="mt-4 max-w-4xl text-base leading-7 text-zinc-600 dark:text-zinc-300">
                 {{ $data['description'] }}
             </p>
         </div>
     </section>
+
+    {{-- At a glance — <x-facts-grid>, the same component the area pages use
+         for their cost guide. Every figure is also published on /costs and
+         /process; the config carries no independent numbers, so the pages
+         cannot contradict each other. --}}
+    <x-facts-grid
+        :items="$data['facts'] ?? []"
+        class="border-y border-zinc-200 bg-white py-8 dark:border-zinc-700 dark:bg-zinc-900">
+        Ranges are typical for our Chicagoland projects — see
+        <a href="/costs" class="underline underline-offset-2 hover:text-sky-700 dark:hover:text-sky-400">full cost breakdowns</a>.
+        Your itemized estimate is free.
+    </x-facts-grid>
 
     {{-- Features --}}
     @if(!empty($data['features']))
@@ -65,9 +80,9 @@
                 <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
                     What We Offer
                 </h2>
-                <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($data['features'] as $feature)
-                        <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+                        <div class="group rounded-2xl bg-white p-6 shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
                             <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $feature['title'] }}</h3>
                             <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $feature['description'] }}</p>
                         </div>
@@ -78,25 +93,51 @@
     @endif
 
     {{-- Process --}}
-    @if(!empty($data['process']))
-        <section class="py-12 sm:py-16">
+    <x-process-steps :steps="$data['process'] ?? []" heading="Our Process" />
+
+    {{-- What the price covers. Stating the exclusions plainly is the point:
+         it is the question every estimate conversation starts with. --}}
+    @if(!empty($data['included']))
+        <section class="bg-zinc-50 py-12 sm:py-16 dark:bg-zinc-800/50">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
-                    Our Process
+                    What&rsquo;s Included
                 </h2>
-                <p class="mt-2 text-base text-zinc-600 dark:text-zinc-400">
-                    From initial consultation to final walkthrough, here's what to expect.
-                </p>
-                <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                    @foreach($data['process'] as $step)
-                        <div class="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-                            <div class="flex size-10 items-center justify-center rounded-full bg-sky-50 text-lg font-bold text-sky-700 dark:bg-sky-500/10 dark:text-sky-400">
-                                {{ $step['step'] }}
-                            </div>
-                            <h3 class="mt-4 text-lg font-semibold text-zinc-900 dark:text-white">{{ $step['title'] }}</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{{ $step['description'] }}</p>
+                <div class="mt-8 grid gap-8 lg:grid-cols-2">
+                    <div class="group rounded-2xl bg-white p-6 shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+                        <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Labor &amp; installation we include</h3>
+                        <ul class="mt-4 space-y-2">
+                            @foreach($data['included'] as $item)
+                                <li class="flex gap-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                                    <svg class="mt-1 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span>{{ $item }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    @if(!empty($data['notIncluded']))
+                        <div class="group rounded-2xl bg-white p-6 shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
+                            <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">You supply / quoted separately</h3>
+                            <ul class="mt-4 space-y-2">
+                                @foreach($data['notIncluded'] as $item)
+                                    <li class="flex gap-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                                        <svg class="mt-1 size-4 shrink-0 text-zinc-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="M4 10a1 1 0 0 1 1-1h10a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Z" clip-rule="evenodd" />
+                                        </svg>
+                                        <span>{{ $item }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <p class="mt-4 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                                You choose and purchase the finish materials; we specify what is needed,
+                                schedule it against the build, and install it. Listed openly so nothing
+                                on your final invoice is a surprise.
+                            </p>
                         </div>
-                    @endforeach
+                    @endif
                 </div>
             </div>
         </section>
@@ -104,29 +145,16 @@
 
     {{-- Projects Section --}}
     @if($projects->isNotEmpty())
-        <livewire:projects-grid :projectType="$data['projectType']" :limit="3" :hideFilters="true" :showPagination="true" />
-        @php
-            $moreProjects = [
-                'kitchen' => ['label' => 'More Kitchen Projects', 'url' => '/projects/kitchens', 'variant' => 'secondary'],
-                'bathroom' => ['label' => 'More Bathroom Projects', 'url' => '/projects/bathrooms', 'variant' => 'secondary'],
-                'home-remodel' => ['label' => 'More Home Remodeling Projects', 'url' => '/projects/home-remodeling', 'variant' => 'secondary'],
-            ];
-            $moreProjectsLink = $moreProjects[$data['projectType']] ?? null;
-        @endphp
-        @if($moreProjectsLink)
-            <div class="relative z-10 -mt-4 text-center">
-                <x-buttons.cta href="{{ $moreProjectsLink['url'] }}" variant="{{ $moreProjectsLink['variant'] ?? 'primary' }}" size="lg" class="pointer-events-auto">
-                    {{ $moreProjectsLink['label'] }}
-                </x-buttons.cta>
-            </div>
-        @endif
+        <livewire:projects-grid
+            :projectType="$data['projectType']"
+            :limit="3"
+            :hideFilters="true"
+            :showPagination="true"
+            :moreProjectsType="$data['projectType']" />
     @endif
 
     {{-- Testimonials Section --}}
     <livewire:testimonials-section :project-type="$data['projectType']" :key="'testimonials-'.$data['projectType']" />
-
-    {{-- Internal Links Section --}}
-    <x-internal-links :projects="$projects" :current-service="$service" />
 
     {{-- Service by City — hub-to-spoke internal linking for local SEO --}}
     @php

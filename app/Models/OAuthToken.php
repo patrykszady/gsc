@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
 
 class OAuthToken extends Model
 {
+    use BelongsToSite;
+
     protected $table = 'oauth_tokens';
 
     protected $fillable = [
