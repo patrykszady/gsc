@@ -32,7 +32,7 @@ class DeleteGooglePlacesMedia implements ShouldQueue
 
         if (! $deleted) {
             $error = $service->getLastError();
-            Log::warning('GBP: Delete job failed', [
+            Log::channel('gbp')->warning('GBP: Delete job failed', [
                 'media_name' => $this->mediaName,
                 'error' => $error,
             ]);

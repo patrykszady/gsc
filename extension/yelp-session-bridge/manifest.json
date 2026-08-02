@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "GS Construction \u2014 Yelp Session Bridge",
+  "version": "1.0.0",
+  "description": "Keeps gs.construction's Yelp photo automation logged in by sharing your biz.yelp.com session with the server.",
+  "permissions": [
+    "cookies",
+    "alarms",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*.yelp.com/*",
+    "https://gs.construction/*",
+    "http://127.0.0.1:8003/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Send Yelp session to gs.construction",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gs.construction/admin/*",
+        "http://127.0.0.1:8003/admin/*"
+      ],
+      "js": [
+        "pair.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

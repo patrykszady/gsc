@@ -443,4 +443,26 @@ class ProjectImage extends Model
             $image->deleteFile();
         });
     }
+
+    /**
+     * The Google Business Profile copy of this photo, at full resolution.
+     *
+     * googleusercontent.com URLs serve a SMALL default rendition (512px on the
+     * long edge) unless the request carries a size parameter — so the bare URL
+     * we store looked like we had uploaded a low-quality image. We had not:
+     * `=s0` returns the original we sent, byte-for-byte.
+     *
+     * All 227 stored URLs are bare, so this is applied at read time rather than
+     * by rewriting the column: the stored value stays the canonical identity
+     * Google gave us, and the size is a presentation concern.
+     *
+     * @param  string  $size  Google size token — s0 = original, w2400 = 2400px wide.
+     */
+    public function googleMediaUrl(string $size = 's0'): ?string
+    {
+        return \App\Services\GoogleBusinessProfileService::sizedMediaUrl(
+            $this->google_places_media_url,
+            $size,
+        );
+    }
 }

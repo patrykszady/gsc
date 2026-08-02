@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font: 13px/1.5 system-ui, sans-serif; width: 300px; margin: 0; padding: 14px; }
+    h1 { font-size: 14px; margin: 0 0 4px; }
+    p.sub { color: #666; margin: 0 0 12px; }
+    button { width: 100%; padding: 9px; font: inherit; font-weight: 600; cursor: pointer;
+             border: 0; border-radius: 6px; background: #0284c7; color: #fff; }
+    button:disabled { background: #94a3b8; cursor: default; }
+    .status { margin-top: 12px; padding: 9px; border-radius: 6px; font-size: 12px; }
+    .ok   { background: #ecfdf5; color: #065f46; }
+    .bad  { background: #fef2f2; color: #991b1b; }
+    .idle { background: #f8fafc; color: #475569; }
+    a { color: #0284c7; font-size: 12px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #18181b; color: #e4e4e7; }
+      p.sub { color: #a1a1aa; }
+      .ok { background: #052e2b; color: #6ee7b7; }
+      .bad { background: #300f0f; color: #fca5a5; }
+      .idle { background: #27272a; color: #d4d4d8; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Yelp Session Bridge</h1>
+  <p class="sub">Shares your biz.yelp.com login with gs.construction so photo uploads keep working.</p>
+  <button id="send">Send session now</button>
+  <div id="status" class="status idle">Checking…</div>
+  <p style="margin-top:10px"><a href="#" id="opts">Settings</a></p>
+  <script src="popup.js"></script>
+</body>
+</html>

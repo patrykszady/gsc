@@ -57,7 +57,7 @@ class AreaServedObserver
 
             \App\Jobs\SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
-            Log::warning('IndexNow: Failed to submit area URL', [
+            Log::channel('indexnow')->warning('IndexNow: Failed to submit area URL', [
                 'area_id' => $area->id,
                 'error' => $e->getMessage(),
             ]);

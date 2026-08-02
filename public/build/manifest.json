@@ -16,11 +16,11 @@
     "src": "node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BmxJf5Yd.css",
+    "file": "assets/app-jDmVqe0c.css",
     "src": "resources/css/app.css"
   },
   "resources/css/themes/jpeterson/app.css": {
-    "file": "assets/app-D1EIByFQ.css",
+    "file": "assets/app-C04HqQsF.css",
     "src": "resources/css/themes/jpeterson/app.css",
     "isEntry": true,
     "name": "app",

@@ -57,9 +57,9 @@ class SocialsCheck extends Command
             $cacheKey = 'socials:check:warn:' . now()->format('Ymd') . ':' . $fingerprint;
 
             if (Cache::add($cacheKey, true, now()->addHours(30))) {
-                Log::channel('single')->warning('Socials check found issues', $issues);
+                Log::channel('social')->warning('Socials check found issues', $issues);
             } else {
-                Log::channel('single')->info('Socials check repeated issues suppressed', $issues);
+                Log::channel('social')->info('Socials check repeated issues suppressed', $issues);
             }
 
             $this->newLine();

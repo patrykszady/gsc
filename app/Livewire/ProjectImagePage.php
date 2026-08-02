@@ -140,7 +140,7 @@ class ProjectImagePage extends Component
         }
 
         $imageUrl = $this->image->getAnyUrl('large');
-        $googleUrl = $this->image->google_places_media_url;
+        $googleUrl = $this->image->googleMediaUrl();
         if (! $googleUrl && $this->image->google_places_media_name) {
             $googleUrl = app(GoogleBusinessProfileService::class)
                 ->getMediaUrlCached($this->image->google_places_media_name);

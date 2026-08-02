@@ -63,7 +63,7 @@ class GenerateAiContentJob implements ShouldQueue
             && !empty($image->caption)
             && !empty($rawSeoAltText);
         if ($skipContent) {
-            Log::debug('GenerateAiContentJob: Skipping image content, already has alt_text, caption, and seo_alt_text', [
+            Log::channel('ai_content')->debug('GenerateAiContentJob: Skipping image content, already has alt_text, caption, and seo_alt_text', [
                 'image_id' => $image->id,
             ]);
         }
@@ -71,7 +71,7 @@ class GenerateAiContentJob implements ShouldQueue
         // Check if image file exists before trying to process
         $disk = 'public';
         if (!\Illuminate\Support\Facades\Storage::disk($disk)->exists($image->path)) {
-            Log::warning('GenerateAiContentJob: Image file not found, skipping', [
+            Log::channel('ai_content')->warning('GenerateAiContentJob: Image file not found, skipping', [
                 'image_id' => $image->id,
                 'path' => $image->path,
                 'disk' => $disk,
@@ -108,7 +108,7 @@ class GenerateAiContentJob implements ShouldQueue
                 if ($this->shouldRetryAiError($error)) {
                     $delay = $this->nextRetryDelaySeconds();
 
-                    Log::warning('GenerateAiContentJob: Transient image AI error, releasing job for retry', [
+                    Log::channel('ai_content')->warning('GenerateAiContentJob: Transient image AI error, releasing job for retry', [
                         'image_id' => $image->id,
                         'attempt' => $this->attempts(),
                         'retry_in_seconds' => $delay,
@@ -119,7 +119,7 @@ class GenerateAiContentJob implements ShouldQueue
                     return;
                 }
 
-                Log::warning('GenerateAiContentJob: Failed to generate image content', [
+                Log::channel('ai_content')->warning('GenerateAiContentJob: Failed to generate image content', [
                     'image_id' => $image->id,
                     'error' => $error,
                 ]);
@@ -197,7 +197,7 @@ class GenerateAiContentJob implements ShouldQueue
             ->count();
 
         if ($completedImages < $totalImages) {
-            Log::debug('GenerateAiContentJob: Waiting for remaining images', [
+            Log::channel('ai_content')->debug('GenerateAiContentJob: Waiting for remaining images', [
                 'project_id' => $project->id,
                 'completed' => $completedImages,
                 'total' => $totalImages,
@@ -205,7 +205,7 @@ class GenerateAiContentJob implements ShouldQueue
             return;
         }
 
-        Log::info('GenerateAiContentJob: All images processed, generating project description', [
+        Log::channel('ai_content')->info('GenerateAiContentJob: All images processed, generating project description', [
             'project_id' => $project->id,
             'image_count' => $totalImages,
         ]);
@@ -215,7 +215,7 @@ class GenerateAiContentJob implements ShouldQueue
         $acquired = Cache::add($lockKey, true, now()->addMinutes(10));
 
         if (!$acquired) {
-            Log::debug('GenerateAiContentJob: Project description dispatch already queued', [
+            Log::channel('ai_content')->debug('GenerateAiContentJob: Project description dispatch already queued', [
                 'project_id' => $project->id,
             ]);
 
@@ -234,7 +234,7 @@ class GenerateAiContentJob implements ShouldQueue
 
         // Skip if already has description and not overwriting
         if (!$this->overwrite && !empty($project->description)) {
-            Log::debug('GenerateAiContentJob: Skipping project, already has description', [
+            Log::channel('ai_content')->debug('GenerateAiContentJob: Skipping project, already has description', [
                 'project_id' => $project->id,
             ]);
             return;
@@ -248,7 +248,7 @@ class GenerateAiContentJob implements ShouldQueue
             if ($this->shouldRetryAiError($error)) {
                 $delay = $this->nextRetryDelaySeconds();
 
-                Log::warning('GenerateAiContentJob: Transient project AI error, releasing job for retry', [
+                Log::channel('ai_content')->warning('GenerateAiContentJob: Transient project AI error, releasing job for retry', [
                     'project_id' => $project->id,
                     'attempt' => $this->attempts(),
                     'retry_in_seconds' => $delay,
@@ -259,7 +259,7 @@ class GenerateAiContentJob implements ShouldQueue
                 return;
             }
 
-            Log::warning('GenerateAiContentJob: Failed to generate project description', [
+            Log::channel('ai_content')->warning('GenerateAiContentJob: Failed to generate project description', [
                 'project_id' => $project->id,
                 'error' => $error,
             ]);
@@ -278,7 +278,7 @@ class GenerateAiContentJob implements ShouldQueue
         try {
             Artisan::call('sitemap:generate');
         } catch (\Exception $e) {
-            Log::warning('GenerateAiContentJob: Failed to regenerate sitemap', [
+            Log::channel('ai_content')->warning('GenerateAiContentJob: Failed to regenerate sitemap', [
                 'error' => $e->getMessage(),
             ]);
         }

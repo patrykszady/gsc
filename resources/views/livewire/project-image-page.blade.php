@@ -31,7 +31,10 @@
             // Prefer the URL stored at upload time (no API call). Fall back
             // to the cached GBP lookup only for legacy rows that pre-date
             // the google_places_media_url column.
-            'googleUrl' => $img->google_places_media_url
+            // googleMediaUrl() appends =s0 so "View on Google" opens the
+            // ORIGINAL we uploaded; the bare URL serves Google's 512px default
+            // rendition, which read as if we had uploaded a low-res photo.
+            'googleUrl' => $img->googleMediaUrl()
                 ?: ($img->google_places_media_name
                     ? $gbpService->getMediaUrlCached($img->google_places_media_name)
                     : null),

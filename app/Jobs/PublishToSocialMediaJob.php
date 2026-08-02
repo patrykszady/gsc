@@ -36,7 +36,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         $project = $image->project;
 
         if (! $project || ! $project->is_published) {
-            Log::warning('Social Media: Skipping unpublished project image', ['image_id' => $image->id]);
+            Log::channel('social')->warning('Social Media: Skipping unpublished project image', ['image_id' => $image->id]);
             return;
         }
 
@@ -45,7 +45,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         $imageUrl = $metaService->getPublicImageUrl($image);
 
         if (! $imageUrl) {
-            Log::error('Social Media: No public URL for image', ['image_id' => $image->id]);
+            Log::channel('social')->error('Social Media: No public URL for image', ['image_id' => $image->id]);
             return;
         }
 
@@ -53,7 +53,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl);
 
         if (! $content) {
-            Log::error('Social Media: AI content generation failed', [
+            Log::channel('social')->error('Social Media: AI content generation failed', [
                 'image_id' => $image->id,
                 'error' => $aiService->getLastError(),
             ]);
@@ -108,7 +108,7 @@ class PublishToSocialMediaJob implements ShouldQueue
             ->exists();
 
         if ($exists) {
-            Log::info("Social Media: Skipping {$platform} (recent or pending post exists)", ['image_id' => $image->id]);
+            Log::channel('social')->info("Social Media: Skipping {$platform} (recent or pending post exists)", ['image_id' => $image->id]);
             return;
         }
 
@@ -142,7 +142,7 @@ class PublishToSocialMediaJob implements ShouldQueue
 
             if ($result) {
                 $post->markPublished($result['id'], $result['permalink'] ?? null);
-                Log::info("Social Media: Published to {$platform}", [
+                Log::channel('social')->info("Social Media: Published to {$platform}", [
                     'image_id' => $image->id,
                     'post_id' => $result['id'],
                 ]);
@@ -152,14 +152,14 @@ class PublishToSocialMediaJob implements ShouldQueue
                     : $metaService->getLastError();
 
                 $post->markFailed($this->formatErrorForStorage($error));
-                Log::error("Social Media: Failed to publish to {$platform}", [
+                Log::channel('social')->error("Social Media: Failed to publish to {$platform}", [
                     'image_id' => $image->id,
                     'error' => $error,
                 ]);
             }
         } catch (\Throwable $e) {
             $post->markFailed($e->getMessage());
-            Log::error("Social Media: Exception publishing to {$platform}", [
+            Log::channel('social')->error("Social Media: Exception publishing to {$platform}", [
                 'image_id' => $image->id,
                 'exception' => $e->getMessage(),
             ]);

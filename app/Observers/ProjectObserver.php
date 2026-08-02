@@ -121,7 +121,7 @@ class ProjectObserver
 
             SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
-            Log::warning('IndexNow: Failed to queue project URL submission', [
+            Log::channel('indexnow')->warning('IndexNow: Failed to queue project URL submission', [
                 'project_id' => $project->id,
                 'error' => $e->getMessage(),
             ]);
@@ -160,7 +160,7 @@ class ProjectObserver
         $country = (string) config('services.google.business_profile.geocode_country', 'USA');
         [$lat, $lng] = $this->geocoder->geocodeCity($city, $state, $country);
         if ($lat === null || $lng === null) {
-            Log::warning('[GBP] Failed to geocode project city via OpenStreetMap.', [
+            Log::channel('gbp')->warning('[GBP] Failed to geocode project city via OpenStreetMap.', [
                 'project_id' => $project->id,
                 'city' => $city,
             ]);

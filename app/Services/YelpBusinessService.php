@@ -26,6 +26,8 @@ class YelpBusinessService
 {
     public const SETTING_EMAIL = 'yelp_biz_email';
     public const SETTING_PASSWORD = 'yelp_biz_password';
+    /** Bearer token the browser extension uses for POST /api/yelp/cookies. */
+    public const SETTING_INGEST_TOKEN = 'yelp_cookie_ingest_token';
     private const AUTOMATION_LOCK_KEY = 'yelp:browser-automation:lock';
     private const LAST_RUN_KEY = 'yelp:browser-automation:last-run-at';
     // Host-wide cooldown: epoch seconds until which NO automation may run.
@@ -276,11 +278,75 @@ class YelpBusinessService
     /**
      * Mark the session as authenticated. Called after any operation that
      * proves the cookies still work (upload, login success, manual check).
+     *
+     * If this call is the recovery from a dead session, photos whose upload
+     * jobs failed while the session was down are re-queued automatically —
+     * the admin's only task is logging back in; nobody has to remember to
+     * run yelp:sync-business-photos afterwards.
+     *
+     * @return int  Number of photos re-queued (0 when the session wasn't dead).
      */
-    public function markSessionFresh(): void
+    public function markSessionFresh(): int
     {
+        $wasDead = Cache::has('yelp.session_dead');
+
         Cache::put('yelp.last_auth', true, now()->addHours(6));
         Cache::forget('yelp.session_dead');
+        // New episode, new alert: if the session dies again later, the admin
+        // should hear about it even though an email went out for the last one.
+        Cache::forget('yelp.session_dead_notified');
+
+        if (! $wasDead) {
+            return 0;
+        }
+
+        $requeued = $this->requeueMissingBusinessPhotos();
+        if ($requeued > 0) {
+            Log::channel('yelp')->info('Yelp: session restored, re-queued photos that failed while it was down', [
+                'requeued' => $requeued,
+            ]);
+        }
+
+        return $requeued;
+    }
+
+    /**
+     * Dispatch upload jobs for published images that are not on Yelp yet.
+     *
+     * Mirrors yelp:sync-business-photos' eligibility rules (same queued
+     * marker, same queue) so the two paths can never disagree. Images with
+     * an in-flight marker are skipped — those need manual verification
+     * (possible duplicate) and must not be resurrected blindly.
+     */
+    public function requeueMissingBusinessPhotos(int $limit = 50): int
+    {
+        if (! $this->isConfigured()) {
+            return 0;
+        }
+
+        $count = 0;
+
+        ProjectImage::query()
+            ->whereHas('project', fn ($q) => $q->where('is_published', true))
+            ->notUploadedTo('yelp_biz')
+            ->orderByDesc('id')
+            ->each(function (ProjectImage $image) use (&$count, $limit) {
+                if ($count >= $limit) {
+                    return false;
+                }
+
+                $queuedKey = 'yelp_biz_upload_queued:' . $image->id;
+                if (Cache::has($queuedKey) || Cache::has(self::inFlightCacheKey($image->id))) {
+                    return;
+                }
+
+                Cache::put($queuedKey, true, now()->addHours(12));
+                \App\Jobs\UploadProjectImageToYelpBusinessPhotos::dispatch($image->id)
+                    ->onQueue('media-sync');
+                $count++;
+            });
+
+        return $count;
     }
 
     /**
@@ -303,6 +369,87 @@ class YelpBusinessService
             'at' => now()->toIso8601String(),
             'note' => $note,
         ], now()->addHours(12));
+
+        // Try to fix it ourselves before bothering anyone. The job rate-limits
+        // itself to one attempt per 30 minutes and only emails if it cannot
+        // recover — so the operator hears about a dead session only when
+        // their input is genuinely required.
+        if ($this->canAutoLogin()) {
+            \App\Jobs\YelpAutoLogin::dispatch()->onQueue('media-sync');
+            Log::channel('yelp')->info('Yelp: session dead, dispatched auto-login attempt');
+            return;
+        }
+
+        $this->notifySessionDead($note);
+    }
+
+    /**
+     * Is unattended login actually viable right now?
+     *
+     * Credentials alone are not enough: DataDome ties a solved captcha to the
+     * requesting IP, so the solver needs a proxy to route through. Without
+     * both a key and a proxy the attempt cannot succeed, and dispatching one
+     * would only delay the email the operator needs.
+     */
+    public function canAutoLogin(): bool
+    {
+        return $this->isConfigured()
+            && (bool) $this->proxyUrl()
+            && ($this->captchaKey('twocaptcha') || $this->captchaKey('anticaptcha'));
+    }
+
+    /**
+     * Email the admin that Yelp uploads are paused until they re-login.
+     *
+     * Before this existed the only signal was a WARNING in yelp.log and a
+     * banner on /admin/platforms — a page nobody visits unprompted, so a dead
+     * session could sit unnoticed for weeks (June 14 → July 14 in production)
+     * while every new project photo silently skipped Yelp.
+     *
+     * Throttled to once per episode: the flag's own 12h TTL is the window,
+     * and markSessionFresh() clears the throttle so a *new* death after a
+     * recovery alerts again. Same recipient chain as the GBP review alerts.
+     */
+    protected function notifySessionDead(?string $note): void
+    {
+        // The alert is for the business owner. A developer running the
+        // automation locally must not page them because a dev profile is not
+        // logged in — and with MAIL_MAILER=smtp that is a real email. Config
+        // rather than a bare environment() check so tests can exercise the
+        // send path without pretending to be production.
+        if (! config('services.yelp.business.alert_emails', app()->environment('production'))) {
+            Log::channel('yelp')->info('Yelp session-dead alert suppressed (alert_emails disabled)');
+            return;
+        }
+
+        if (Cache::has('yelp.session_dead_notified')) {
+            return;
+        }
+        Cache::put('yelp.session_dead_notified', true, now()->addHours(12));
+
+        $to = config('mail.review_alert_to')
+            ?: env('REVIEW_ALERT_TO')
+            ?: config('mail.from.address');
+        if (! $to) {
+            Log::channel('yelp')->warning('Yelp session-dead alert skipped: no recipient configured');
+            return;
+        }
+
+        try {
+            $url = route('admin.platforms.index', ['site' => 'gs.construction']);
+        } catch (\Throwable) {
+            $url = rtrim((string) config('app.url'), '/') . '/admin/gs.construction/platforms';
+        }
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($to)
+                ->send(new \App\Mail\YelpSessionExpired($note, $url));
+            Log::channel('yelp')->info('Yelp: session-dead alert email sent', ['to' => $to]);
+        } catch (\Throwable $e) {
+            // Mail must never break the upload/check path that detected the
+            // dead session — the sticky banner still surfaces the state.
+            Log::channel('yelp')->warning('Yelp: session-dead alert email failed', ['error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -330,7 +477,7 @@ class YelpBusinessService
         // keeps reporting NOT authenticated even after a successful import because
         // the puppeteer profile's Default/Cookies sqlite still holds the stale
         // session.
-        $cookiesFile = storage_path('app/yelp-cookies.json');
+        $cookiesFile = \App\Support\YelpCookieJar::path();
         if (is_file($cookiesFile) && filesize($cookiesFile) > 0) {
             $args[] = '--cookies-file=' . $cookiesFile;
         }
@@ -361,6 +508,18 @@ class YelpBusinessService
         if (! is_array($payload) || empty($payload['ok'])) {
             return null;
         }
+
+        // DataDome blocked the probe: the landing URL looks identical to a
+        // logged-out session, but we learned nothing about the cookies.
+        // Treating that as "logged out" marks the session dead and aborts
+        // every queued upload for 12h — a self-inflicted outage caused by
+        // the bot-wall, not by an actually expired session. Report
+        // indeterminate and leave the existing flag untouched.
+        if (! empty($payload['blocked'])) {
+            Log::channel('yelp')->warning('Yelp: checkSession indeterminate — DataDome blocked the probe, leaving session flag unchanged');
+            return null;
+        }
+
         $authed = (bool) ($payload['authenticated'] ?? false);
         Cache::put('yelp.last_auth', $authed, now()->addHours(6));
         // Keep the sticky session_dead banner in sync with reality. Without
@@ -368,11 +527,157 @@ class YelpBusinessService
         // an earlier failed upload, and every subsequent job aborts with
         // "session expired" until the 12h TTL elapses.
         if ($authed) {
-            Cache::forget('yelp.session_dead');
+            // Through markSessionFresh, not a bare Cache::forget — recovery
+            // also re-queues the photos that failed while the session was down.
+            $this->markSessionFresh();
         } else {
             $this->markSessionDead('checkSession reported not authenticated');
         }
         return $authed;
+    }
+
+    /**
+     * Log in to biz.yelp.com headlessly with the stored email/password.
+     *
+     * The fully backend path: no cookies, no browser extension, no operator.
+     * A headless Chromium drives the real login form, and DataDome challenges
+     * are solved through 2captcha/anti-captcha.
+     *
+     * On success the session lands in the persistent Chromium profile, so
+     * every subsequent upload just reuses it.
+     *
+     * @return array{ok: bool, code: string, hint: string}
+     */
+    public function loginHeadless(): array
+    {
+        if (! $this->isConfigured()) {
+            return ['ok' => false, 'code' => 'not_configured', 'hint' => 'Set the Yelp email and password in Admin → Platforms.'];
+        }
+
+        $cfg = config('services.yelp.business');
+        $userDataDir = $cfg['user_data_dir'] ?? storage_path('app/yelp-puppeteer');
+        @mkdir($userDataDir, 0775, true);
+
+        $args = [
+            $cfg['node_binary'] ?? 'node',
+            base_path('scripts/yelp-login.mjs'),
+            '--mode=login',
+            '--unattended',
+            '--user-data-dir=' . $userDataDir,
+            '--email=' . (string) $this->getEmail(),
+            '--password=' . (string) $this->getPassword(),
+            // Bounded: nobody is watching, so waiting out the 10-minute
+            // interactive budget only holds the automation lock hostage.
+            '--timeout-ms=' . (int) ($cfg['login_timeout_ms'] ?? 180000),
+        ];
+
+        // The captcha solver REQUIRES a proxy: DataDome ties the solved token
+        // to the IP that requested the challenge, so a solve bought from a
+        // solver's IP is rejected. Without one the script logs
+        // "cannot solve: need both --proxy and --twocaptcha-key" and the
+        // login can only fail — which is exactly what production has been
+        // doing, with neither value set.
+        $proxy = $this->proxyUrl();
+        if ($proxy) {
+            $args[] = '--proxy=' . $proxy;
+        }
+        if ($key = $this->captchaKey('twocaptcha')) {
+            $args[] = '--twocaptcha-key=' . $key;
+        }
+        if ($key = $this->captchaKey('anticaptcha')) {
+            $args[] = '--anticaptcha-key=' . $key;
+        }
+
+        Log::channel('yelp')->info('Yelp: headless login starting', [
+            'has_proxy' => (bool) $proxy,
+            'has_twocaptcha' => (bool) $this->captchaKey('twocaptcha'),
+            'has_anticaptcha' => (bool) $this->captchaKey('anticaptcha'),
+        ]);
+
+        // Through the flock wrapper and the app lock: a login launches
+        // Chromium against the SAME profile the upload jobs use, and two
+        // Chromiums on one user_data_dir corrupt the cookie store.
+        try {
+            $payload = $this->withAutomationLock('headless_login', function () use ($args, $cfg) {
+                // The script's timeout-ms bounds only its post-setup polling
+                // loop. Setup — proxy wrap, up to three ~100s captcha solves,
+                // autofill — happens before that clock starts, so the outer
+                // budgets must be internal + solver headroom, not internal + 60.
+                $internal = (int) (($cfg['login_timeout_ms'] ?? 180000) / 1000);
+                $env = $this->browserProcessEnv();
+                $env['YELP_RUN_TIMEOUT'] = (string) ($internal + 300); // flock wrapper hard-kill
+                $process = new Process($this->wrapWithFlock($args), base_path(), $env);
+                $process->setTimeout($internal + 360);
+                $process->run();
+
+                $line = $this->lastJsonLine(trim($process->getOutput()));
+
+                return [
+                    'payload' => $line ? json_decode($line, true) : null,
+                    'stderr' => mb_substr($process->getErrorOutput(), -4000),
+                ];
+            });
+        } catch (YelpUploadThrottledException $e) {
+            return ['ok' => false, 'code' => 'busy', 'hint' => 'Another Yelp automation is running; try again shortly.'];
+        } catch (\Throwable $e) {
+            Log::channel('yelp')->error('Yelp: headless login crashed', ['error' => $e->getMessage()]);
+
+            return ['ok' => false, 'code' => 'crashed', 'hint' => $e->getMessage()];
+        }
+
+        $data = is_array($payload['payload'] ?? null) ? $payload['payload'] : null;
+
+        if (is_array($data) && ! empty($data['authenticated'])) {
+            // Proven-good session: clears the dead flag AND re-queues the
+            // photos that piled up while login was broken.
+            $requeued = $this->markSessionFresh();
+
+            Log::channel('yelp')->info('Yelp: headless login succeeded', ['requeued' => $requeued]);
+
+            return ['ok' => true, 'code' => 'authenticated', 'hint' => $requeued > 0
+                ? "Logged in. {$requeued} pending photo uploads re-queued."
+                : 'Logged in.'];
+        }
+
+        $code = (string) ($data['code'] ?? 'unknown');
+        $hint = (string) ($data['hint'] ?? 'Login did not reach the Yelp dashboard.');
+
+        // No proxy is the single most likely cause and the script cannot
+        // detect it from the page, so say it here where we know the config.
+        if ($code === 'datadome_blocked' && ! $proxy) {
+            $hint = 'DataDome blocked the login and no proxy is configured. The captcha solver needs YELP_BIZ_PROXY (a residential/ISP proxy) to work at all.';
+        }
+
+        Log::channel('yelp')->warning('Yelp: headless login failed', [
+            'code' => $code,
+            'hint' => $hint,
+            'stderr_tail' => $payload['stderr'] ?? null,
+        ]);
+
+        return ['ok' => false, 'code' => $code, 'hint' => $hint];
+    }
+
+    /**
+     * Captcha solver key: per-platform setting first, then global config.
+     *
+     * Settings-first so the key can be pasted in the admin UI without a
+     * deploy — the same treatment the Yelp password already gets.
+     */
+    public function captchaKey(string $provider): ?string
+    {
+        $setting = PlatformSetting::get('yelp_' . $provider . '_key');
+        if ($setting) {
+            return $setting;
+        }
+
+        return config('services.' . $provider . '.api_key') ?: null;
+    }
+
+    /** Proxy for browser automation: admin setting first, then config/env. */
+    public function proxyUrl(): ?string
+    {
+        return PlatformSetting::get('yelp_proxy')
+            ?: (config('services.yelp.business.proxy') ?: null);
     }
 
     /**
@@ -518,7 +823,7 @@ class YelpBusinessService
         if (! empty($cfg['headed'])) {
             $args[] = '--headed';
         }
-        $cookiesFile = storage_path('app/yelp-cookies.json');
+        $cookiesFile = \App\Support\YelpCookieJar::path();
         $hasCookies = is_file($cookiesFile) && filesize($cookiesFile) > 0;
         if ($hasCookies) {
             $args[] = '--cookies-file=' . $cookiesFile;
@@ -713,6 +1018,25 @@ class YelpBusinessService
                     $isThrottle = $exit === 75
                         || (is_array($payload) && ! empty($payload['throttled']));
                     if ($isThrottle) {
+                        // yelp-run-locked.sh also exits 75 when it cannot get
+                        // the OS flock — i.e. another of OUR Chromiums is
+                        // running. That is not Yelp pushing back, so it must
+                        // not feed the oops streak or start a host-wide
+                        // cooldown (in production a single flock collision
+                        // was pausing the whole queue for 2 minutes).
+                        $errText = is_array($payload) ? (string) ($payload['error'] ?? '') : '';
+                        if (str_contains($errText, 'another Yelp automation is running')) {
+                            Cache::forget(self::inFlightCacheKey($image->id));
+                            Log::channel('yelp')->debug('Yelp biz: flock collision, short retry', [
+                                'image_id' => $image->id,
+                            ]);
+                            throw new YelpUploadThrottledException(
+                                'Yelp automation lock busy; retry shortly',
+                                60,
+                                'lock_collision',
+                            );
+                        }
+
                         $retryAfter = is_array($payload)
                             ? (int) ($payload['retry_after_seconds'] ?? 5)
                             : 5;

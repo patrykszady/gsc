@@ -118,7 +118,7 @@ class GoogleBusinessProfileService
         if (! $response->successful()) {
             $error = $response->json();
             $msg = $error['error_description'] ?? $response->body();
-            Log::error('GBP: OAuth code exchange failed', ['body' => $response->body()]);
+            Log::channel('gbp')->error('GBP: OAuth code exchange failed', ['body' => $response->body()]);
 
             return ['success' => false, 'error' => $msg];
         }
@@ -155,7 +155,7 @@ class GoogleBusinessProfileService
         // Clear any cooldown from previous invalid_grant errors
         $this->clearInvalidGrantCooldown();
 
-        Log::info('GBP: OAuth tokens stored via web flow', ['email' => $email]);
+        Log::channel('gbp')->info('GBP: OAuth tokens stored via web flow', ['email' => $email]);
 
         return ['success' => true];
     }
@@ -168,7 +168,7 @@ class GoogleBusinessProfileService
         OAuthToken::where('provider', self::PROVIDER)->delete();
         Cache::forget('google_business_profile_access_token');
         $this->clearInvalidGrantCooldown();
-        Log::info('GBP: Disconnected (tokens removed)');
+        Log::channel('gbp')->info('GBP: Disconnected (tokens removed)');
     }
 
     /**
@@ -203,7 +203,7 @@ class GoogleBusinessProfileService
 
         $imageUrl = $this->getPublicImageUrl($image);
         if (! $imageUrl) {
-            Log::warning('GBP: Image URL not available', ['image_id' => $image->id]);
+            Log::channel('gbp')->warning('GBP: Image URL not available', ['image_id' => $image->id]);
             return null;
         }
 
@@ -233,7 +233,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to upload media', [
+            Log::channel('gbp')->warning('GBP: Failed to upload media', [
                 'image_id' => $image->id,
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -250,9 +250,12 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $googleUrl = $data['googleUrl'] ?? $data['thumbnailUrl'] ?? null;
+        // Sized here so every caller that persists this URL stores the
+        // full-resolution form. Google hands back a bare URL, which renders as
+        // a 512px thumbnail — see sizedMediaUrl().
+        $googleUrl = self::sizedMediaUrl($data['googleUrl'] ?? $data['thumbnailUrl'] ?? null);
 
-        Log::info('GBP: Uploaded image', [
+        Log::channel('gbp')->info('GBP: Uploaded image', [
             'image_id' => $image->id,
             'media_name' => $mediaName,
             'has_url' => $googleUrl !== null,
@@ -291,7 +294,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to delete media', [
+            Log::channel('gbp')->warning('GBP: Failed to delete media', [
                 'media_name' => $mediaName,
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -302,7 +305,7 @@ class GoogleBusinessProfileService
 
         $this->lastError = null;
 
-        Log::info('GBP: Deleted media', ['media_name' => $mediaName]);
+        Log::channel('gbp')->info('GBP: Deleted media', ['media_name' => $mediaName]);
 
         return true;
     }
@@ -333,7 +336,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to fetch media item', [
+            Log::channel('gbp')->warning('GBP: Failed to fetch media item', [
                 'media_name' => $mediaName,
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -357,9 +360,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        return $item['googleUrl']
-            ?? $item['thumbnailUrl']
-            ?? null;
+        return self::sizedMediaUrl($item['googleUrl'] ?? $item['thumbnailUrl'] ?? null);
     }
 
     /**
@@ -371,6 +372,42 @@ class GoogleBusinessProfileService
      * so a brief upstream blip doesn't hide the "View on Google" link on
      * every project image page for a week.
      */
+    /**
+     * Append a size token to a googleusercontent.com URL.
+     *
+     * A bare googleusercontent URL serves a SMALL default rendition — 512px on
+     * the long edge, ~53KB — which made our uploads look like low-quality
+     * images even though the originals we sent Google are intact. `=s0` asks
+     * for that original back (3200x2134, ~1.8MB for a typical project photo).
+     *
+     * Read-time only: the bare URL stays in the column as the canonical
+     * identity Google gave us, and the size stays a presentation concern.
+     *
+     * @param  string  $size  Google size token — s0 = original, w2400 = 2400px wide.
+     */
+    public static function sizedMediaUrl(?string $url, string $size = 's0'): ?string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '') {
+            return null;
+        }
+
+        // Only googleusercontent understands the =size suffix. Other hosts
+        // (Yelp, Instagram) share the ImagePlatformUpload table, and appending
+        // to their URLs would break them.
+        if (! str_contains($url, 'googleusercontent.com')) {
+            return $url;
+        }
+
+        // Already sized (ours or Google's own) — leave it alone.
+        if (preg_match('/=[a-z0-9-]+$/i', $url)) {
+            return $url;
+        }
+
+        return $url . '=' . $size;
+    }
+
     public function getMediaUrlCached(string $mediaName, int $ttlSeconds = 604800): ?string
     {
         if (! $mediaName) {
@@ -382,7 +419,10 @@ class GoogleBusinessProfileService
 
         $cached = Cache::get($cacheKey, '__missing__');
         if ($cached !== '__missing__') {
-            return $cached; // may be null (negative cache hit) or string
+            // Sized on the way out, not on the way in — entries cached before
+            // sizedMediaUrl() existed live for 7 days and would otherwise keep
+            // serving the 512px rendition until they expired.
+            return self::sizedMediaUrl($cached); // null passes through
         }
 
         $url = $this->getMediaUrl($mediaName);
@@ -390,13 +430,13 @@ class GoogleBusinessProfileService
             Cache::put($cacheKey, $url, $ttlSeconds);
         } else {
             Cache::put($cacheKey, null, $negativeTtl);
-            Log::info('GBP: cached null media URL (transient failure or deleted item)', [
+            Log::channel('gbp')->info('GBP: cached null media URL (transient failure or deleted item)', [
                 'media_name' => $mediaName,
                 'negative_ttl_seconds' => $negativeTtl,
             ]);
         }
 
-        return $url;
+        return self::sizedMediaUrl($url);
     }
 
     /**
@@ -429,7 +469,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to list media', [
+            Log::channel('gbp')->warning('GBP: Failed to list media', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -490,7 +530,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to list accounts', [
+            Log::channel('gbp')->warning('GBP: Failed to list accounts', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -534,7 +574,7 @@ class GoogleBusinessProfileService
                 'body' => $response->body(),
                 'account_id' => $accountId,
             ];
-            Log::warning('GBP: Failed to list locations', [
+            Log::channel('gbp')->warning('GBP: Failed to list locations', [
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'account_id' => $accountId,
@@ -602,7 +642,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to create local post', [
+            Log::channel('gbp')->warning('GBP: Failed to create local post', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -612,7 +652,7 @@ class GoogleBusinessProfileService
         $data = $response->json();
         $this->lastError = null;
 
-        Log::info('GBP: Created local post', [
+        Log::channel('gbp')->info('GBP: Created local post', [
             'name' => $data['name'] ?? null,
             'search_url' => $data['searchUrl'] ?? null,
         ]);
@@ -724,7 +764,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to delete local post', [
+            Log::channel('gbp')->warning('GBP: Failed to delete local post', [
                 'post_name' => $postName,
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -734,7 +774,7 @@ class GoogleBusinessProfileService
         }
 
         $this->lastError = null;
-        Log::info('GBP: Deleted local post', ['post_name' => $postName]);
+        Log::channel('gbp')->info('GBP: Deleted local post', ['post_name' => $postName]);
 
         return true;
     }
@@ -778,7 +818,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to fetch reviews', [
+            Log::channel('gbp')->warning('GBP: Failed to fetch reviews', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -864,7 +904,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to fetch place reviews', [
+            Log::channel('gbp')->warning('GBP: Failed to fetch place reviews', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -966,7 +1006,7 @@ class GoogleBusinessProfileService
 
                 Storage::disk($disk)->put($jpgPath, $jpg);
             } catch (\Exception $e) {
-                Log::warning('GBP: Failed to generate JPG for image', [
+                Log::channel('gbp')->warning('GBP: Failed to generate JPG for image', [
                     'image_id' => $image->id,
                     'path' => $path,
                     'error' => $e->getMessage(),
@@ -1110,7 +1150,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to get location', [
+            Log::channel('gbp')->warning('GBP: Failed to get location', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -1179,7 +1219,7 @@ class GoogleBusinessProfileService
         }
 
         if ($failed) {
-            Log::warning('GBP: Could not resolve place IDs for some cities', [
+            Log::channel('gbp')->warning('GBP: Could not resolve place IDs for some cities', [
                 'failed' => $failed,
                 'resolved' => count($placeInfos),
             ]);
@@ -1206,7 +1246,7 @@ class GoogleBusinessProfileService
 
         $url = $this->infoLocationUrl() . '?updateMask=serviceArea';
 
-        Log::debug('GBP: Service area update request', [
+        Log::channel('gbp')->debug('GBP: Service area update request', [
             'url' => $url,
             'business_type' => $businessType,
             'cities_count' => count($placeInfos),
@@ -1223,7 +1263,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to update service area', [
+            Log::channel('gbp')->warning('GBP: Failed to update service area', [
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'cities_count' => count($placeInfos),
@@ -1235,7 +1275,7 @@ class GoogleBusinessProfileService
         $this->lastError = null;
         $data = $response->json();
 
-        Log::info('GBP: Updated service area', [
+        Log::channel('gbp')->info('GBP: Updated service area', [
             'cities_count' => count($placeInfos),
             'business_type' => $businessType,
         ]);
@@ -1262,7 +1302,7 @@ class GoogleBusinessProfileService
     {
         $apiKey = config('services.google.places_api_key');
         if (! $apiKey) {
-            Log::warning('GBP: Google Places API key not configured');
+            Log::channel('gbp')->warning('GBP: Google Places API key not configured');
 
             return null;
         }
@@ -1315,7 +1355,7 @@ class GoogleBusinessProfileService
         ]);
 
         if (! $response->successful()) {
-            Log::warning('GBP: Places text search failed', [
+            Log::channel('gbp')->warning('GBP: Places text search failed', [
                 'query' => $query,
                 'status' => $response->status(),
                 'body' => mb_substr($response->body(), 0, 300),
@@ -1367,7 +1407,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to update categories', [
+            Log::channel('gbp')->warning('GBP: Failed to update categories', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -1378,7 +1418,7 @@ class GoogleBusinessProfileService
         $this->lastError = null;
         $data = $response->json();
 
-        Log::info('GBP: Updated categories', [
+        Log::channel('gbp')->info('GBP: Updated categories', [
             'primary' => $primaryCategoryId,
             'additional' => $additionalCategoryIds,
         ]);
@@ -1446,7 +1486,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to reply to review', [
+            Log::channel('gbp')->warning('GBP: Failed to reply to review', [
                 'review' => $reviewName,
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -1456,7 +1496,7 @@ class GoogleBusinessProfileService
         }
 
         $this->lastError = null;
-        Log::info('GBP: Replied to review', ['review' => $reviewName]);
+        Log::channel('gbp')->info('GBP: Replied to review', ['review' => $reviewName]);
 
         return $response->json();
     }
@@ -1515,7 +1555,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
-            Log::warning('GBP: Failed to update service items', [
+            Log::channel('gbp')->warning('GBP: Failed to update service items', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -1524,7 +1564,7 @@ class GoogleBusinessProfileService
         }
 
         $this->lastError = null;
-        Log::info('GBP: Updated service items', ['count' => count($serviceItems)]);
+        Log::channel('gbp')->info('GBP: Updated service items', ['count' => count($serviceItems)]);
 
         return $response->json();
     }
@@ -1608,14 +1648,14 @@ class GoogleBusinessProfileService
 
                 $invalidGrantLoggedKey = "google_business_profile_invalid_grant_logged:{$refreshTokenHash}";
                 if (Cache::add($invalidGrantLoggedKey, true, now()->addHours(6))) {
-                    Log::error('GBP: Refresh token invalid_grant (expired/revoked). Re-authenticate via Admin > GBP Settings.', [
+                    Log::channel('gbp')->error('GBP: Refresh token invalid_grant (expired/revoked). Re-authenticate via Admin > GBP Settings.', [
                         'status' => $response->status(),
                         'error' => $errorCode,
                         'error_description' => $errorDescription,
                     ]);
                 }
             } else {
-                Log::warning('GBP: Failed to refresh access token', [
+                Log::channel('gbp')->warning('GBP: Failed to refresh access token', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
@@ -1652,7 +1692,7 @@ class GoogleBusinessProfileService
                 if ($dbToken) {
                     $dbToken->update(['refresh_token' => $data['refresh_token']]);
                 }
-                Log::info('GBP: Refresh token rotated and persisted to DB.');
+                Log::channel('gbp')->info('GBP: Refresh token rotated and persisted to DB.');
             }
         }
 

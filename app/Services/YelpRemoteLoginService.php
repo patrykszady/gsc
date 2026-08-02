@@ -249,7 +249,7 @@ class YelpRemoteLoginService
         // suspicion. Connecting direct from this host (where the operator
         // also runs their personal browser) keeps the IP fingerprint
         // consistent with the cookies.
-        $cookiesFile = storage_path('app/yelp-cookies.json');
+        $cookiesFile = \App\Support\YelpCookieJar::path();
         $hasCookies = is_file($cookiesFile) && filesize($cookiesFile) > 0;
         if ($hasCookies) {
             $cmdParts[] = '--cookies-file=' . escapeshellarg($cookiesFile);

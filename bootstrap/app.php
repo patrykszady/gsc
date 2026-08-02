@@ -41,6 +41,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 | Request::HEADER_X_FORWARDED_PREFIX,
         );
         
+        // The Yelp cookie ingest endpoint is called by a browser extension
+        // service worker, which has no Laravel session and therefore no CSRF
+        // token. It authenticates with a bearer token instead (constant-time
+        // compare in YelpCookieIngestController).
+        $middleware->validateCsrfTokens(except: [
+            'api/yelp/cookies',
+        ]);
+
         // Bot blocking now handled by Cloudflare WAF + Bot Fight Mode
         
         // SEO: Track domain source for analytics, handle legacy redirects, cache static assets, and add security headers

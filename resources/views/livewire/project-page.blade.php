@@ -55,6 +55,13 @@
                             'imageAlt' => $img->seo_alt_text ?: $img->alt_text ?: $project->title,
                             'projectTitle' => null,
                             'projectUrl' => null,
+                            // Each hero slide links to its OWN photo page — the
+                            // hero was the only place showing a project image
+                            // with no route to the full-size view the gallery
+                            // below already offers.
+                            'imagePageUrl' => ($key = $img->slug ?: $img->id)
+                                ? route('projects.image', ['project' => $project, 'image' => $key])
+                                : null,
                         ];
                     })->values()->all();
                 @endphp

@@ -157,7 +157,7 @@ class MetaSocialService
                 'status' => $publishResponse->status(),
                 'body' => $publishResponse->json(),
             ];
-            Log::error('Meta Social: IG publish failed', $this->lastError);
+            Log::channel('social')->error('Meta Social: IG publish failed', $this->lastError);
             return null;
         }
 
@@ -166,7 +166,7 @@ class MetaSocialService
         // Fetch permalink
         $permalink = $this->getInstagramPermalink($mediaId, $token);
 
-        Log::info('Meta Social: Published to Instagram', [
+        Log::channel('social')->info('Meta Social: Published to Instagram', [
             'media_id' => $mediaId,
             'permalink' => $permalink,
         ]);
@@ -234,7 +234,7 @@ class MetaSocialService
                     'body' => $resp->json(),
                     'url' => $url,
                 ];
-                Log::error('Meta Social: IG carousel child failed', $this->lastError);
+                Log::channel('social')->error('Meta Social: IG carousel child failed', $this->lastError);
                 return null;
             }
 
@@ -273,7 +273,7 @@ class MetaSocialService
                 'status' => $parentResp->status(),
                 'body' => $parentResp->json(),
             ];
-            Log::error('Meta Social: IG carousel parent failed', $this->lastError);
+            Log::channel('social')->error('Meta Social: IG carousel parent failed', $this->lastError);
             return null;
         }
 
@@ -295,14 +295,14 @@ class MetaSocialService
                 'status' => $publishResp->status(),
                 'body' => $publishResp->json(),
             ];
-            Log::error('Meta Social: IG carousel publish failed', $this->lastError);
+            Log::channel('social')->error('Meta Social: IG carousel publish failed', $this->lastError);
             return null;
         }
 
         $mediaId = $publishResp->json('id');
         $permalink = $this->getInstagramPermalink($mediaId, $token);
 
-        Log::info('Meta Social: Published IG carousel', [
+        Log::channel('social')->info('Meta Social: Published IG carousel', [
             'media_id' => $mediaId,
             'children' => count($childIds),
             'permalink' => $permalink,
@@ -353,7 +353,7 @@ class MetaSocialService
                 'status' => $containerResponse->status(),
                 'body' => $containerResponse->json(),
             ];
-            Log::error('Meta Social: IG container failed', $this->lastError);
+            Log::channel('social')->error('Meta Social: IG container failed', $this->lastError);
             return null;
         }
 
@@ -404,7 +404,7 @@ class MetaSocialService
                 'status' => $response->status(),
                 'body' => $response->json(),
             ];
-            Log::error('Meta Social: FB upload failed', $this->lastError);
+            Log::channel('social')->error('Meta Social: FB upload failed', $this->lastError);
             return null;
         }
 
@@ -414,7 +414,7 @@ class MetaSocialService
         $permalink = $this->getFacebookPermalink((string) $postId, $token)
             ?? "https://www.facebook.com/{$postId}";
 
-        Log::info('Meta Social: Published to Facebook', [
+        Log::channel('social')->info('Meta Social: Published to Facebook', [
             'post_id' => $postId,
             'permalink' => $permalink,
         ]);
@@ -640,7 +640,7 @@ class MetaSocialService
                     'message' => 'Container processing failed',
                     'body' => $status->json(),
                 ];
-                Log::error('Meta Social: Container error', $this->lastError);
+                Log::channel('social')->error('Meta Social: Container error', $this->lastError);
                 return false;
             }
 
@@ -648,7 +648,7 @@ class MetaSocialService
         }
 
         $this->lastError = ['message' => 'Container processing timed out'];
-        Log::warning('Meta Social: Container timed out', ['container_id' => $containerId]);
+        Log::channel('social')->warning('Meta Social: Container timed out', ['container_id' => $containerId]);
         return false;
     }
 
@@ -672,7 +672,7 @@ class MetaSocialService
 
         $metricCount = $this->bumpHourlyMetric('meta_social.stale_ig_location_id');
 
-        Log::warning('Meta Social: invalidating cached IG location ID', [
+        Log::channel('social')->warning('Meta Social: invalidating cached IG location ID', [
             'location_id' => $locationId,
             'error' => (string) ($response->json('error.message') ?? ''),
             'metric' => 'meta_social.stale_ig_location_id',

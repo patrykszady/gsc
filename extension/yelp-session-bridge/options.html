@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Yelp Session Bridge — Settings</title>
+  <style>
+    body { font: 14px/1.6 system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 20px; }
+    label { display: block; margin-top: 18px; font-weight: 600; }
+    input[type=text], input[type=password], input[type=number] {
+      width: 100%; padding: 8px; font: inherit; margin-top: 4px;
+      border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;
+    }
+    .hint { color: #64748b; font-size: 12px; font-weight: 400; margin-top: 3px; }
+    button { margin-top: 22px; padding: 9px 18px; font: inherit; font-weight: 600;
+             border: 0; border-radius: 6px; background: #0284c7; color: #fff; cursor: pointer; }
+    #saved { color: #059669; margin-left: 10px; font-size: 13px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #18181b; color: #e4e4e7; }
+      input[type=text], input[type=password], input[type=number] {
+        background: #27272a; color: #e4e4e7; border-color: #3f3f46;
+      }
+      .hint { color: #a1a1aa; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Yelp Session Bridge</h1>
+  <p>Get the token from <strong>Admin → Platforms → Yelp for Business → Browser extension</strong>.</p>
+
+  <label>Server URL
+    <input type="text" id="serverUrl" placeholder="https://gs.construction" />
+    <div class="hint">Must match a host listed in the extension's permissions.</div>
+  </label>
+
+  <label>Token
+    <input type="password" id="token" placeholder="Paste the token from the admin page" />
+  </label>
+
+  <label>Re-send every (minutes)
+    <input type="number" id="intervalMinutes" min="30" step="30" />
+    <div class="hint">360 (6 hours) is plenty. The session is also sent automatically the moment you log in to Yelp.</div>
+  </label>
+
+  <label style="font-weight:400; margin-top:20px">
+    <input type="checkbox" id="enabled" /> Enabled
+  </label>
+
+  <button id="save">Save</button><span id="saved"></span>
+  <script src="options.js"></script>
+</body>
+</html>

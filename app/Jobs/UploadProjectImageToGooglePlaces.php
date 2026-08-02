@@ -28,7 +28,7 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
         $image = ProjectImage::with('project')->find($this->imageId);
 
         if (! $image) {
-            Log::warning('GBP: Image not found', ['image_id' => $this->imageId]);
+            Log::channel('gbp')->warning('GBP: Image not found', ['image_id' => $this->imageId]);
             return;
         }
 
@@ -59,7 +59,7 @@ class UploadProjectImageToGooglePlaces implements ShouldQueue
                 'remote_url' => $result['url'],
             ]);
 
-            Log::info('GBP: Project image synced', [
+            Log::channel('gbp')->info('GBP: Project image synced', [
                 'image_id' => $image->id,
                 'force_refresh' => $this->forceRefresh,
                 'previous_media_name' => $previousMediaName,

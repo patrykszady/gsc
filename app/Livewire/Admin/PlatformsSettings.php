@@ -92,6 +92,30 @@ class PlatformsSettings extends Component
     public ?string $yelpCookieDataDomeExpiresAt = null;
     public ?string $yelpCookieBseExpiresAt = null;
 
+    // Browser-extension bridge. $yelpExtensionToken holds the PLAINTEXT token
+    // for exactly one render, right after generating it — it is nulled in
+    // refreshYelpExtensionStatus() so it does not sit in the Livewire payload
+    // of every subsequent request.
+    public ?string $yelpExtensionToken = null;
+    public bool $yelpExtensionConfigured = false;
+    public ?string $yelpExtensionLastPushAt = null;
+    public ?string $yelpExtensionVerified = null;
+    public ?string $yelpExtensionPairedAt = null;
+    public int $yelpCookieExpiredCount = 0;
+
+    // ---- Backend (credentials-only) login ----
+    #[Validate('nullable|string|max:120')]
+    public string $yelpCaptchaKey = '';
+
+    #[Validate('nullable|string|max:255')]
+    public string $yelpProxy = '';
+
+    public bool $yelpCanAutoLogin = false;
+    public bool $yelpHasCaptchaKey = false;
+    public bool $yelpHasProxy = false;
+    public ?string $yelpAutoLoginAt = null;
+    public ?array $yelpAutoLoginResult = null;
+
     public function mount(): void
     {
         $this->refreshStatus();
@@ -350,7 +374,7 @@ class PlatformsSettings extends Component
 
     public function resetInstagramProfile(): void
     {
-        Log::info('Instagram remote login: operator requested profile reset', [
+        Log::channel('social')->info('Instagram remote login: operator requested profile reset', [
             'user_id' => auth()->id(),
         ]);
         $this->igRemoteOpen = false;
@@ -415,7 +439,7 @@ class PlatformsSettings extends Component
 
     public function reportInstagramRemoteError(string $reason = 'iframe load failure'): void
     {
-        Log::warning('Instagram remote login: iframe error reported by client', [
+        Log::channel('social')->warning('Instagram remote login: iframe error reported by client', [
             'reason' => $reason,
             'url' => $this->igRemoteUrl,
             'user_id' => auth()->id(),
@@ -594,8 +618,9 @@ class PlatformsSettings extends Component
             // the operator just acquired, and the probe almost always
             // reports "NOT logged in" even when the session is valid.
             $outcome = $remote->readLoginOutcome();
+            $requeued = 0;
             if (is_array($outcome) && ($outcome['authenticated'] ?? false) === true) {
-                $svc->markSessionFresh();
+                $requeued = $svc->markSessionFresh();
                 $this->yelpAuthenticated = true;
                 Log::channel('yelp')->info('Yelp remote login: script reported authenticated=true, skipping headless re-check', [
                     'outcome' => $outcome,
@@ -612,7 +637,9 @@ class PlatformsSettings extends Component
             }
 
             if ($this->yelpAuthenticated === true) {
-                session()->flash('platforms-success', 'Yelp login completed — session is active.');
+                session()->flash('platforms-success', $requeued > 0
+                    ? "Yelp login completed — session is active. {$requeued} pending " . str('photo')->plural($requeued) . ' re-queued for upload.'
+                    : 'Yelp login completed — session is active.');
             } else {
                 session()->flash('platforms-error', 'Login window closed before a Yelp session could be verified. Click “Verify Login” to try again.');
             }
@@ -715,9 +742,133 @@ class PlatformsSettings extends Component
      * Inspect storage/app/yelp-cookies.json and surface a few headline
      * facts (count, mtime, key cookie expirations) for the admin UI.
      */
+    /**
+     * Issue a new bearer token for the browser extension.
+     *
+     * Shown once, then only ever as a fingerprint — same treatment as the Yelp
+     * password. Regenerating invalidates the old one, so the extension must be
+     * updated with the new value.
+     */
+    public function generateYelpExtensionToken(): void
+    {
+        $token = \Illuminate\Support\Str::random(48);
+
+        \App\Models\PlatformSetting::put(YelpBusinessService::SETTING_INGEST_TOKEN, $token);
+
+        // Local var → public property assignment happens here and ONLY here.
+        $this->yelpExtensionToken = $token;
+        $this->yelpExtensionConfigured = true;
+
+        Log::channel('yelp')->info('Yelp extension token generated', ['user_id' => auth()->id()]);
+
+        session()->flash('platforms-success', 'Extension token generated — copy it now, it is not shown again.');
+    }
+
+    /**
+     * Show the CURRENT token for the manual-setup fold.
+     *
+     * Distinct from generate: regenerating here would silently invalidate the
+     * token an auto-paired extension is already using — that exact footgun
+     * caused the first real-world "Unauthorized".
+     */
+    public function revealYelpExtensionToken(): void
+    {
+        $token = \App\Models\PlatformSetting::get(YelpBusinessService::SETTING_INGEST_TOKEN);
+
+        if (! $token) {
+            // No token exists yet; minting one is what the user meant.
+            $this->generateYelpExtensionToken();
+            return;
+        }
+
+        $this->yelpExtensionToken = $token;
+
+        Log::channel('yelp')->info('Yelp extension token revealed', ['user_id' => auth()->id()]);
+    }
+
+    public function revokeYelpExtensionToken(): void
+    {
+        \App\Models\PlatformSetting::put(YelpBusinessService::SETTING_INGEST_TOKEN, null);
+        $this->yelpExtensionToken = null;
+        $this->yelpExtensionConfigured = false;
+
+        Log::channel('yelp')->info('Yelp extension token revoked', ['user_id' => auth()->id()]);
+
+        session()->flash('platforms-success', 'Extension token revoked.');
+    }
+
+    /**
+     * Save the captcha key / proxy that unattended login needs.
+     *
+     * In PlatformSetting (encrypted) rather than .env so the whole feature is
+     * configurable from this page — the point of "just provide login info" is
+     * that nobody has to SSH anywhere.
+     */
+    public function saveYelpAutoLogin(): void
+    {
+        $this->validateOnly('yelpCaptchaKey');
+        $this->validateOnly('yelpProxy');
+
+        if ($this->yelpCaptchaKey !== '') {
+            \App\Models\PlatformSetting::put('yelp_twocaptcha_key', $this->yelpCaptchaKey);
+            $this->yelpCaptchaKey = '';
+        }
+        if ($this->yelpProxy !== '') {
+            \App\Models\PlatformSetting::put('yelp_proxy', $this->yelpProxy);
+            $this->yelpProxy = '';
+        }
+
+        $this->refreshStatus();
+        session()->flash('platforms-success', 'Saved.');
+    }
+
+    /** Queue a background login using the stored credentials. */
+    public function yelpLoginNow(): void
+    {
+        // Clear the rate-limit floor: an operator clicking the button is an
+        // explicit request, not the automatic retry the floor exists to damp.
+        Cache::forget('yelp.auto_login_attempted');
+
+        \App\Jobs\YelpAutoLogin::dispatch()->onQueue('media-sync');
+
+        Log::channel('yelp')->info('Yelp: login requested from admin', ['user_id' => auth()->id()]);
+
+        session()->flash('platforms-success', 'Logging in to Yelp in the background — refresh in a minute for the result.');
+    }
+
+    protected function refreshYelpAutoLoginStatus(): void
+    {
+        $svc = app(YelpBusinessService::class);
+
+        $this->yelpHasCaptchaKey = (bool) ($svc->captchaKey('twocaptcha') || $svc->captchaKey('anticaptcha'));
+        $this->yelpHasProxy = (bool) $svc->proxyUrl();
+        $this->yelpCanAutoLogin = $svc->canAutoLogin();
+        $this->yelpAutoLoginAt = Cache::get('yelp.auto_login_at');
+        $result = Cache::get('yelp.auto_login_result');
+        $this->yelpAutoLoginResult = is_array($result) ? $result : null;
+    }
+
+    protected function refreshYelpExtensionStatus(): void
+    {
+        $this->refreshYelpAutoLoginStatus();
+
+        // Drop the plaintext token from the payload — see the property comment.
+        $this->yelpExtensionToken = null;
+
+        $this->yelpExtensionConfigured = (bool) (
+            \App\Models\PlatformSetting::get(YelpBusinessService::SETTING_INGEST_TOKEN)
+                ?: config('services.yelp.business.cookie_ingest_token')
+        );
+        $this->yelpExtensionLastPushAt = Cache::get('yelp.cookies_ingested_at');
+        $this->yelpExtensionVerified = Cache::get('yelp.cookies_verified');
+        $this->yelpExtensionPairedAt = Cache::get('yelp.extension_paired_at');
+    }
+
     protected function refreshYelpCookieStatus(): void
     {
-        $path = storage_path('app/yelp-cookies.json');
+        $this->refreshYelpExtensionStatus();
+
+        $path = \App\Support\YelpCookieJar::path();
         if (! is_file($path)) {
             $this->yelpCookieFileCount = null;
             $this->yelpCookieFileUpdatedAt = null;
@@ -736,6 +887,11 @@ class PlatformsSettings extends Component
         $this->yelpCookieFileUpdatedAt = date('c', (int) filemtime($path));
         $this->yelpCookieDataDomeExpiresAt = null;
         $this->yelpCookieBseExpiresAt = null;
+        // A jar is a snapshot and its cookies rot: the production session died
+        // because biz_session expired 2026-07-25 in a file captured 2026-06-01,
+        // and every run afterwards faithfully injected a dead cookie. Surface
+        // the count so it is visible before the next upload fails.
+        $this->yelpCookieExpiredCount = count(\App\Support\YelpCookieJar::expiredNames($data));
         foreach ($data as $c) {
             $name = strtolower((string) ($c['name'] ?? ''));
             if (! isset($c['expires']) && ! isset($c['expirationDate'])) continue;
@@ -781,7 +937,7 @@ class PlatformsSettings extends Component
             return;
         }
 
-        $dest = storage_path('app/yelp-cookies.json');
+        $dest = \App\Support\YelpCookieJar::path();
         @mkdir(dirname($dest), 0755, true);
 
         $merged = $yelpCookies;
@@ -825,7 +981,7 @@ class PlatformsSettings extends Component
 
     public function clearYelpCookieFile(): void
     {
-        $path = storage_path('app/yelp-cookies.json');
+        $path = \App\Support\YelpCookieJar::path();
         if (is_file($path)) {
             @unlink($path);
             Log::channel('yelp')->info('Yelp cookies file deleted', [

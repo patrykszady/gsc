@@ -57,7 +57,10 @@ class GenerateSitemap extends Command
                 }
             }
 
-            $googleUrl = $image->google_places_media_url;
+            // googleMediaUrl(), not the raw column: a bare googleusercontent
+            // URL serves a 512px rendition, and an <image:loc> pointing at a
+            // 512px thumbnail is what Google Images would index.
+            $googleUrl = $image->googleMediaUrl();
             if (is_string($googleUrl) && trim($googleUrl) !== '') {
                 return $googleUrl;
             }

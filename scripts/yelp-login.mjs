@@ -42,7 +42,12 @@ function parseArgs(argv) {
     timeoutMs: 600000,
     proxy: null,
     twocaptchaKey: null,
+    anticaptchaKey: null,
     cookiesFile: null,
+    // Unattended: nobody is watching a VNC viewer, so the script must drive
+    // the credential form itself and give up on a bounded schedule rather
+    // than waiting out the full interactive timeout.
+    unattended: false,
     userAgent:
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   };
@@ -55,6 +60,8 @@ function parseArgs(argv) {
     else if (a.startsWith('--proxy=')) args.proxy = a.slice('--proxy='.length);
     else if (a.startsWith('--twocaptcha-key=')) args.twocaptchaKey = a.slice('--twocaptcha-key='.length);
     else if (a.startsWith('--cookies-file=')) args.cookiesFile = a.slice('--cookies-file='.length);
+    else if (a === '--unattended') args.unattended = true;
+    else if (a.startsWith('--anticaptcha-key=')) args.anticaptchaKey = a.slice('--anticaptcha-key='.length);
     else if (a.startsWith('--user-agent=')) args.userAgent = a.slice('--user-agent='.length);
   }
   return args;
@@ -62,6 +69,37 @@ function parseArgs(argv) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const emit = (p) => process.stdout.write(JSON.stringify(p) + '\n');
+
+/**
+ * Why did an unattended login not reach the dashboard?
+ *
+ * `authenticated:false` on its own is useless to an operator — "wrong
+ * password" and "Yelp emailed you a code" need completely different
+ * responses. Returns a stable code the PHP side turns into an instruction.
+ */
+async function diagnoseLoginFailure(page) {
+  let url = '';
+  try { url = page.url(); } catch {}
+  let text = '';
+  try {
+    text = (await page.evaluate(() => document.body?.innerText || '')).toLowerCase();
+  } catch {}
+
+  if (/verify|verification|two-step|two-factor|security code|enter the code/.test(text)
+      || /verif|challenge|two_factor/i.test(url)) {
+    return { code: 'needs_verification', hint: 'Yelp is asking for an emailed/SMS verification code. Use Verify Login (interactive) once to clear it.' };
+  }
+  if (/incorrect|does not match|invalid (email|password)|couldn.t find an account|wrong password/.test(text)) {
+    return { code: 'bad_credentials', hint: 'Yelp rejected the email/password. Re-enter them in Admin → Platforms.' };
+  }
+  if (/captcha-delivery|dd_referrer/.test(url) || /unusual activity|error processing your request/.test(text)) {
+    return { code: 'datadome_blocked', hint: 'DataDome blocked the login. A residential proxy (YELP_BIZ_PROXY) is required for the captcha solver to work.' };
+  }
+  if (/\/login/.test(url)) {
+    return { code: 'still_on_login', hint: 'Credentials submitted but Yelp kept us on the login page.' };
+  }
+  return { code: 'unknown', hint: `Ended on ${url || 'an unknown page'}.` };
+}
 
 function isAuthedUrl(url) {
   // Must match the dashboard URL shapes the upload script also uses:
@@ -170,7 +208,14 @@ async function buildBrowser(args, headless) {
     try {
       const cookies = loadCookiesFromFile(args.cookiesFile);
       const n = await applyCookies(browser, cookies);
-      console.error(`[yelp-login] injected ${n} cookies from ${args.cookiesFile}`);
+      // n is what Chrome ACCEPTED. A count below cookies.length means entries
+      // were rejected — the usual cause of an "authenticated" run that turns
+      // out not to be.
+      if (n < cookies.length) {
+        console.error(`[yelp-login] WARNING: only ${n}/${cookies.length} cookies accepted from ${args.cookiesFile}`);
+      } else {
+        console.error(`[yelp-login] injected ${n} cookies from ${args.cookiesFile}`);
+      }
     } catch (e) {
       console.error(`[yelp-login] cookie injection failed: ${e?.message || e}`);
     }
@@ -576,6 +621,18 @@ async function autofillLogin(page, email, password) {
   console.error('[yelp-login] form pre-filled; waiting for operator to press Continue in viewer');
 }
 
+/**
+ * Probe whether the persistent profile is still logged in.
+ *
+ * Returns 'authed' | 'anonymous' | 'blocked'.
+ *
+ * The 'blocked' case matters: when DataDome hard-blocks the probe we land on
+ * a captcha/login URL that looks EXACTLY like a logged-out session, but we
+ * have learned nothing about the cookies. Reporting that as "not logged in"
+ * is a false negative, and the PHP side reacts by marking the session dead —
+ * which aborts every queued upload for 12h without even trying. Callers must
+ * treat 'blocked' as "could not determine", not as "logged out".
+ */
 async function modeCheck(args) {
   const { browser, proxyConfig } = await buildBrowser(args, true);
   try {
@@ -583,8 +640,8 @@ async function modeCheck(args) {
     await setupPage(page, args, proxyConfig);
     await page.goto('https://biz.yelp.com/', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
     await sleep(2000 + Math.random() * 2000);
-    await maybeBypassDataDome(page, proxyConfig, args);
-    if (isAuthedUrl(page.url())) return true;
+    let bypassed = await maybeBypassDataDome(page, proxyConfig, args);
+    if (isAuthedUrl(page.url())) return 'authed';
 
     // Yelp sometimes redirects '/' to a regional landing page
     // (e.g. biz.yelp.com.br/landing/signup_fy21) for authenticated US
@@ -593,8 +650,15 @@ async function modeCheck(args) {
     console.error(`[yelp-login] check: '/' redirected to ${page.url()} - retrying via /home`);
     await page.goto('https://biz.yelp.com/home', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
     await sleep(1500);
-    await maybeBypassDataDome(page, proxyConfig, args);
-    return isAuthedUrl(page.url());
+    const bypassed2 = await maybeBypassDataDome(page, proxyConfig, args);
+    bypassed = bypassed && bypassed2;
+    if (isAuthedUrl(page.url())) return 'authed';
+
+    if (!bypassed) {
+      console.error('[yelp-login] check: INDETERMINATE - DataDome blocked the probe, cookie state unknown');
+      return 'blocked';
+    }
+    return 'anonymous';
   } finally {
     await browser.close().catch(() => {});
   }
@@ -668,7 +732,29 @@ async function modeLogin(args) {
           // handle the page manually in the viewer.
           const url = page.url();
           const burned = url.includes('dd_referrer') || url.includes('datadome');
-          if (burned) {
+
+          if (args.unattended) {
+            // UNATTENDED: there is no operator to hand the form to, so the
+            // two bail-outs below are exactly what made headless login
+            // impossible — a DataDome challenge on first load meant the
+            // credentials were never typed at all, and the run then sat
+            // waiting out its timeout for a human who was never coming.
+            //
+            // A burned URL is recoverable: the bypass above already solved
+            // the challenge and banked the cookie, so re-requesting a clean
+            // /login usually lands on the real form.
+            if (burned) {
+              console.error('[yelp-login] unattended: challenge URL detected, re-requesting clean /login');
+              await page.goto('https://biz.yelp.com/login', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
+              await sleep(1500 + Math.random() * 1500);
+              await maybeBypassDataDome(page, proxyConfig, args);
+            }
+            try {
+              await autofillLogin(page, args.email, args.password);
+            } catch (e) {
+              console.error('[yelp-login] unattended autofill failed: ' + (e?.message || e));
+            }
+          } else if (burned) {
             console.error('[yelp-login] DataDome challenge detected on initial load; leaving form for manual entry');
           } else if (args.cookiesFile) {
             console.error('[yelp-login] cookies injected; skipping autofill');
@@ -797,7 +883,13 @@ async function modeLogin(args) {
           }
           await sleep(2000);
         }
-        finish({ closed: false, authenticated: false });
+        // Timed out without reaching the dashboard. Say WHY — an unattended
+        // caller has no viewer to look at, and "authenticated:false" alone
+        // cannot tell an operator whether to fix the password, clear a
+        // verification prompt, or buy a proxy.
+        const diag = await diagnoseLoginFailure(page).catch(() => ({ code: 'unknown', hint: '' }));
+        console.error(`[yelp-login] give-up diagnosis: ${diag.code} — ${diag.hint}`);
+        finish({ closed: false, authenticated: false, code: diag.code, hint: diag.hint });
         await browser.close().catch(() => {});
       } catch (e) {
         console.error('[yelp-login] error: ' + (e?.stack || e?.message));
@@ -815,8 +907,13 @@ async function main() {
   }
   try {
     if (args.mode === 'check') {
-      const authed = await modeCheck(args);
-      emit({ ok: true, authenticated: authed });
+      const outcome = await modeCheck(args);
+      emit({
+        ok: true,
+        authenticated: outcome === 'authed',
+        // PHP treats blocked as indeterminate and leaves the session flag alone.
+        blocked: outcome === 'blocked',
+      });
       process.exit(0);
     }
     if (args.mode === 'login') {
@@ -825,7 +922,14 @@ async function main() {
         process.exit(2);
       }
       const result = await modeLogin(args);
-      emit({ ok: true, authenticated: !!result.authenticated, closed: !!result.closed });
+      emit({
+        ok: true,
+        authenticated: !!result.authenticated,
+        closed: !!result.closed,
+        // Present only on failure; tells the caller what to do about it.
+        code: result.code || null,
+        hint: result.hint || null,
+      });
       process.exit(0);
     }
     emit({ ok: false, error: `unknown mode: ${args.mode}` });

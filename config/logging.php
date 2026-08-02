@@ -146,6 +146,48 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Google Business Profile: media upload/delete, review sync, posts,
+        // performance metrics. The chattiest integration we have — every
+        // project photo upload logs, and it was drowning laravel.log.
+        'gbp' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/gbp.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        // GenerateAiContentJob: alt text, captions, and descriptions written
+        // by the model, plus the quality gates and retries around them.
+        'ai_content' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai-content.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        // IndexNow URL submissions (Bing/Yandex ping on content change).
+        // High volume, low individual value — 30 days is plenty to answer
+        // "did we submit this URL, and what did they say?".
+        'indexnow' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/indexnow.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        // Meta (Facebook/Instagram) publishing, the Instagram remote-login
+        // service, and the socials health check.
+        'social' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/social.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         // Front-end JavaScript errors captured by the client beacon
         // (window.onerror / unhandledrejection -> POST /client-error).
         // The Microsoft Clarity API only exposes an error *count*, never the

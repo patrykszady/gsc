@@ -1053,7 +1053,14 @@ async function main() {
     try {
       const cookies = loadCookiesFromFile(args.cookiesFile);
       const n = await applyCookies(browser, cookies);
-      console.error(`[yelp-upload] injected ${n} cookies from ${args.cookiesFile}`);
+      // n is what Chrome ACCEPTED. A count below cookies.length means entries
+      // were rejected — the usual cause of an "authenticated" run that turns
+      // out not to be.
+      if (n < cookies.length) {
+        console.error(`[yelp-upload] WARNING: only ${n}/${cookies.length} cookies accepted from ${args.cookiesFile}`);
+      } else {
+        console.error(`[yelp-upload] injected ${n} cookies from ${args.cookiesFile}`);
+      }
     } catch (e) {
       console.error(`[yelp-upload] cookie injection failed: ${e?.message || e}`);
     }

@@ -141,12 +141,12 @@ class GoogleBusinessProfilePerformanceService
 
         if (! $resp->successful()) {
             if ($this->isServiceDisabled($resp)) {
-                Log::warning('GBP Performance: API disabled in GCP project, skipping daily metrics sync', [
+                Log::channel('gbp')->warning('GBP Performance: API disabled in GCP project, skipping daily metrics sync', [
                     'activation_url' => (string) ($resp->json('error.details.0.metadata.activationUrl') ?? ''),
                 ]);
                 return [];
             }
-            Log::warning('GBP Performance: daily metrics fetch failed', [
+            Log::channel('gbp')->warning('GBP Performance: daily metrics fetch failed', [
                 'status' => $resp->status(),
                 'body' => $resp->body(),
             ]);
@@ -204,12 +204,12 @@ class GoogleBusinessProfilePerformanceService
             $resp = Http::withToken($token)->timeout(45)->get($u);
             if (! $resp->successful()) {
                 if ($this->isServiceDisabled($resp)) {
-                    Log::warning('GBP Performance: API disabled in GCP project, skipping keywords sync', [
+                    Log::channel('gbp')->warning('GBP Performance: API disabled in GCP project, skipping keywords sync', [
                         'activation_url' => (string) ($resp->json('error.details.0.metadata.activationUrl') ?? ''),
                     ]);
                     return [];
                 }
-                Log::warning('GBP Performance: keywords fetch failed', [
+                Log::channel('gbp')->warning('GBP Performance: keywords fetch failed', [
                     'status' => $resp->status(),
                     'body' => $resp->body(),
                 ]);

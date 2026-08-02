@@ -37,7 +37,7 @@ class IndexNowService
     public function submitBatch(array $urls): bool
     {
         if (! $this->enabled || empty($this->key) || empty($urls)) {
-            Log::debug('IndexNow: Skipping submission', [
+            Log::channel('indexnow')->debug('IndexNow: Skipping submission', [
                 'enabled' => $this->enabled,
                 'has_key' => ! empty($this->key),
                 'url_count' => count($urls),
@@ -63,13 +63,13 @@ class IndexNowService
                     ]);
 
                 if ($response->successful() || $response->status() === 202) {
-                    Log::info('IndexNow: URLs submitted successfully', [
+                    Log::channel('indexnow')->info('IndexNow: URLs submitted successfully', [
                         'count' => count($chunk),
                         'status' => $response->status(),
                         'urls' => $chunk,
                     ]);
                 } else {
-                    Log::warning('IndexNow: Failed to submit URLs', [
+                    Log::channel('indexnow')->warning('IndexNow: Failed to submit URLs', [
                         'status' => $response->status(),
                         'body' => $response->body(),
                         'urls' => $chunk,
@@ -78,7 +78,7 @@ class IndexNowService
                     return false;
                 }
             } catch (\Exception $e) {
-                Log::error('IndexNow: Exception during submission', [
+                Log::channel('indexnow')->error('IndexNow: Exception during submission', [
                     'message' => $e->getMessage(),
                     'urls' => $chunk,
                 ]);
@@ -100,7 +100,7 @@ class IndexNowService
 
             return $this->submit($url);
         } catch (\Exception $e) {
-            Log::error('IndexNow: Failed to generate route URL', [
+            Log::channel('indexnow')->error('IndexNow: Failed to generate route URL', [
                 'route' => $routeName,
                 'parameters' => $parameters,
                 'message' => $e->getMessage(),

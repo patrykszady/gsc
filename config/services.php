@@ -56,7 +56,22 @@ return [
     ],
 
     'google' => [
+        // SERVER-SIDE ONLY. Places/Geocoding calls made from PHP. Must never
+        // be rendered into a page — a server key cannot be referrer-restricted
+        // (server requests carry no Referer), so anything that can read it can
+        // spend against it.
         'places_api_key' => env('GOOGLE_PLACES_API_KEY'),
+
+        // BROWSER key: rendered into every page for the Maps JavaScript API,
+        // and therefore public by design. That is fine ONLY if it is locked
+        // down in Google Cloud — HTTP-referrer restricted to gs.construction
+        // and limited to the Maps JS / Places-web services.
+        //
+        // These were one key until 2026-08-02, which meant the server-side
+        // Places/Geocoding credential was published in the HTML of every page.
+        // Falls back to the old key so nothing breaks before the new,
+        // restricted one is issued — remove the fallback once it is.
+        'maps_browser_key' => env('GOOGLE_MAPS_BROWSER_KEY', env('GOOGLE_PLACES_API_KEY')),
         'analytics_id' => env('GOOGLE_ANALYTICS_GTAG', env('GOOGLE_MEASUREMENT_ID')),
         'ads_id' => env('GOOGLE_ADS_ID'),
         'ads_conversions' => [
@@ -260,6 +275,28 @@ return [
             // host. 5s default = brief breath between uploads; tune via env
             // if Yelp starts rate-limiting.
             'min_interval_seconds' => (int) env('YELP_BIZ_MIN_INTERVAL_SECONDS', 5),
+
+            // Send the "session expired" alert to the business owner. Null =
+            // production only, so local/staging runs against a logged-out dev
+            // profile never page them.
+            'alert_emails' => env('YELP_ALERT_EMAILS'),
+
+            // The one cookie jar every Yelp automation reads. Overridable so
+            // tests never touch the real file.
+            'cookies_file' => env('YELP_COOKIES_FILE', storage_path('app/yelp-cookies.json')),
+
+            // Shared secret for the browser-extension cookie ingest endpoint
+            // (POST /api/yelp/cookies). Read via config(), never env() —
+            // `php artisan config:cache` runs on deploy and env() returns null
+            // there. Empty/unset disables the endpoint entirely (503).
+            'cookie_ingest_token' => env('YELP_COOKIE_INGEST_TOKEN'),
+
+            // Cookies the browser marks session-only carry no expiry, so CDP
+            // stores them in memory and they vanish when Chromium exits — the
+            // profile looks authenticated for exactly one run, then "expires".
+            // Persisting them for this many days is what lets an imported
+            // session survive between queue jobs. 0 = keep session-only.
+            'cookie_session_ttl_days' => (int) env('YELP_COOKIE_SESSION_TTL_DAYS', 30),
             // Override where Puppeteer looks for its installed Chrome.
             // Defaults to {real-$HOME}/.cache/puppeteer. Set this only if
             // your deploy installs Chrome at a non-standard location.

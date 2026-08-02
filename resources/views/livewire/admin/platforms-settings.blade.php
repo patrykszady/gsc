@@ -361,14 +361,13 @@
             </div>
 
             <div class="rounded-lg bg-sky-50 p-3 text-sm text-sky-800 dark:bg-sky-900/20 dark:text-sky-200">
-                <strong>How login works:</strong> When you save credentials below (or click <em>Verify Login</em>),
-                a remote Chromium session opens <em>right here in this page</em>. Complete any CAPTCHA / 2FA / device
-                verification in the embedded viewer. The session is then persisted, and all future uploads run
-                silently in the background.
+                <strong>How this works:</strong> photo uploads need a logged-in Yelp session. The browser extension
+                below supplies it &mdash; you stay logged in to biz.yelp.com in your normal browser, and it keeps this
+                server's copy fresh. Because the login happens in <em>your</em> browser on <em>your</em> connection,
+                Yelp's bot protection never sees a scripted login.
                 <br><br>
-                <strong>Email verification link?</strong> If Yelp emails you a &ldquo;Confirm Email&rdquo; link,
-                <em>right-click &rarr; Copy link</em> in your email client, then paste it into the address bar of
-                the embedded Chromium viewer and press Enter. The viewer closes itself once Yelp confirms.
+                <strong>Reviews are separate</strong> and need no login at all &mdash; they are read from the public
+                Yelp business page on a weekly schedule.
             </div>
 
             @if($yelpSessionDead)
@@ -382,6 +381,11 @@
                                 uploads are being skipped. Click <strong>Verify Login</strong> below to re-establish
                                 the session in the embedded viewer (DataDome blocks unattended scripted logins, so
                                 this step must be interactive).
+                            </p>
+                            <p>
+                                Photos that failed to upload while the session was down will
+                                <strong>re-upload automatically</strong> once you're logged back in &mdash;
+                                nothing else to run.
                             </p>
                             @if($yelpSessionDeadAt)
                                 <p class="text-xs opacity-75">Detected at {{ $yelpSessionDeadAt }}.</p>
@@ -467,6 +471,18 @@
                             <span wire:loading wire:target="checkYelpSession">Browser session: checking…</span>
                         </span>
                     </div>
+                    @php
+                        $yelpPendingCount = \App\Models\ProjectImage::query()
+                            ->whereHas('project', fn ($q) => $q->where('is_published', true))
+                            ->notUploadedTo('yelp_biz')
+                            ->count();
+                    @endphp
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full {{ $yelpPendingCount === 0 ? 'bg-green-500' : 'bg-amber-500' }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">
+                            {{ $yelpPendingCount === 0 ? 'All photos uploaded' : $yelpPendingCount . ' ' . str('photo')->plural($yelpPendingCount) . ' waiting to upload' }}
+                        </span>
+                    </div>
                 </div>
                 <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
                     Click <strong>Verify Login</strong> any time Yelp invalidates the session (e.g. after a password change
@@ -474,10 +490,227 @@
                 </p>
             </div>
 
+            {{-- Browser extension bridge: alternative path for when the
+                 proxy/captcha route is not wanted. --}}
+            <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Keeping the session alive</h4>
+                    @if($yelpExtensionConfigured)
+                        <flux:button type="button" wire:click="revokeYelpExtensionToken" wire:confirm="Revoke the extension token? The extension will stop sending your Yelp session until you paste a new one." variant="subtle" size="xs">
+                            Revoke token
+                        </flux:button>
+                    @endif
+                </div>
+
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                    A small Chrome extension shares your Yelp session with the server, on every login and every
+                    6 hours. This is the path that uploads run on.
+                </p>
+
+                <div class="rounded-lg bg-sky-50 p-3 mb-3 text-sm dark:bg-sky-900/20">
+                    <p class="font-semibold text-sky-900 dark:text-sky-200 mb-1">Two steps, once:</p>
+                    <ol class="list-decimal ml-5 space-y-0.5 text-sky-900/90 dark:text-sky-200/90">
+                        <li>Install the extension: <code>chrome://extensions</code> → Developer mode → Load unpacked → <code>extension/yelp-session-bridge</code></li>
+                        <li>Reload this page — the extension connects itself (a green "connected" toast appears).</li>
+                    </ol>
+                    <p class="mt-2 text-sky-900/90 dark:text-sky-200/90">
+                        From then on, just stay logged in to
+                        <a href="https://biz.yelp.com" target="_blank" rel="noopener" class="underline">biz.yelp.com</a>
+                        as you normally would. There is nothing to copy and nothing to maintain.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full {{ $yelpExtensionPairedAt ? 'bg-green-500' : 'bg-zinc-400' }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">
+                            @if($yelpExtensionPairedAt)
+                                Extension connected <span class="text-zinc-500">({{ \Carbon\Carbon::parse($yelpExtensionPairedAt)->diffForHumans() }})</span>
+                            @else
+                                Extension not connected yet
+                            @endif
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @php
+                            // "Not received yet" must depend on whether a push
+                            // arrived, not on the verification result — those
+                            // are two different facts, and showing the
+                            // never-received label next to a push timestamp
+                            // reads as a contradiction.
+                            $vState = match(true) {
+                                $yelpExtensionVerified === 'ok' => ['bg-green-500', 'Session verified'],
+                                $yelpExtensionVerified === 'failed' => ['bg-red-500', 'Session did not authenticate'],
+                                $yelpExtensionVerified === 'indeterminate' => ['bg-amber-500', 'Could not verify (bot wall)'],
+                                (bool) $yelpExtensionLastPushAt => ['bg-sky-500', 'Received — verifying'],
+                                default => ['bg-zinc-400', 'Not received yet'],
+                            };
+                        @endphp
+                        <span class="size-2 rounded-full {{ $vState[0] }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">
+                            {{ $vState[1] }}
+                            @if($yelpExtensionLastPushAt)
+                                <span class="text-zinc-500">({{ \Carbon\Carbon::parse($yelpExtensionLastPushAt)->diffForHumans() }})</span>
+                            @endif
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Manual path only for the odd case (another machine, no
+                     admin login in that browser). Auto-pairing makes this
+                     unnecessary day-to-day, so it hides in a details fold. --}}
+                <details class="text-xs text-zinc-500 dark:text-zinc-400">
+                    <summary class="cursor-pointer select-none">Manual setup (advanced)</summary>
+                    <div class="mt-2 space-y-2">
+                        <p>Paste the server URL and this token into the extension's Settings page yourself:</p>
+                        @if($yelpExtensionToken)
+                            <div class="flex items-center gap-2" x-data="{ copied: false }">
+                                <code class="flex-1 select-all break-all rounded bg-zinc-100 px-2 py-1 dark:bg-zinc-800">{{ $yelpExtensionToken }}</code>
+                                <flux:button type="button" size="xs" variant="subtle"
+                                    x-on:click="navigator.clipboard.writeText(@js($yelpExtensionToken)); copied = true; setTimeout(() => copied = false, 2000)">
+                                    <span x-show="!copied">Copy</span>
+                                    <span x-show="copied" x-cloak>Copied</span>
+                                </flux:button>
+                            </div>
+                        @else
+                            <flux:button type="button" wire:click="revealYelpExtensionToken" variant="subtle" size="xs" icon="key">
+                                Reveal token
+                            </flux:button>
+                        @endif
+                    </div>
+                </details>
+            </div>
+
+            {{-- Reviews: a genuinely separate pipeline. It reads the PUBLIC
+                 yelp.com/biz page and never touches the login session or the
+                 cookie jar, so a dead Yelp session does not stop reviews —
+                 worth stating, because the two were easy to conflate. --}}
+            <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-2">Reviews</h4>
+                @php
+                    // Provenance lives on the reviewUrls relation (platform =
+                    // 'yelp'), not a column on testimonials.
+                    $yelpReviewQuery = \App\Models\Testimonial::query()
+                        ->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'yelp'));
+                    $yelpReviewCount = (clone $yelpReviewQuery)->count();
+                    $yelpLatestReview = (clone $yelpReviewQuery)->max('review_date');
+                @endphp
+                <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full {{ $yelpReviewCount > 0 ? 'bg-green-500' : 'bg-zinc-400' }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">
+                            {{ $yelpReviewCount }} Yelp {{ Str::plural('review', $yelpReviewCount) }} imported
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full bg-sky-500"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">
+                            Syncs weekly
+                            @if($yelpLatestReview)
+                                <span class="text-zinc-500">(newest {{ \Carbon\Carbon::parse($yelpLatestReview)->diffForHumans() }})</span>
+                            @endif
+                        </span>
+                    </div>
+                </div>
+                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    Read from the public Yelp business page &mdash; no login required, so this keeps working even if
+                    the session above expires. Run manually with
+                    <code>php artisan testimonials:sync-yelp-reviews --only-new</code>.
+                </p>
+            </div>
+
+            {{-- Fallbacks. Neither is part of the normal flow: the extension keeps
+                 the session fresh on its own. Folded away so the page shows one
+                 working path instead of three competing ones. --}}
+            <details class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <summary class="cursor-pointer select-none text-sm font-semibold text-zinc-900 dark:text-white">
+                    Other ways to sign in <span class="font-normal text-zinc-500">(not needed if the extension is connected)</span>
+                </summary>
+                <div class="mt-3 space-y-4">
+            {{-- Backend login: credentials only, nothing else to install. --}}
+            <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Automatic login (server-side)</h4>
+                    <flux:button type="button" wire:click="yelpLoginNow" variant="primary" size="sm" icon="arrow-right-end-on-rectangle">
+                        <span wire:loading.remove wire:target="yelpLoginNow">Log in now</span>
+                        <span wire:loading wire:target="yelpLoginNow">Starting…</span>
+                    </flux:button>
+                </div>
+
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                    The server logs in to Yelp itself with the email and password above — no cookies, no extension,
+                    nothing to install. It re-logs in automatically whenever the session expires.
+                </p>
+
+                <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full {{ $yelpHasPassword ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">Credentials</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full {{ $yelpHasCaptchaKey ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">Captcha solver</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="size-2 rounded-full {{ $yelpHasProxy ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                        <span class="text-zinc-700 dark:text-zinc-300">Proxy</span>
+                    </div>
+                </div>
+
+                @unless($yelpCanAutoLogin)
+                    <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 mb-3 text-xs dark:border-amber-700/60 dark:bg-amber-900/20">
+                        <p class="font-semibold text-amber-900 dark:text-amber-200 mb-1">Both fields below are required.</p>
+                        <p class="text-amber-900/90 dark:text-amber-200/90">
+                            Yelp is protected by DataDome, which ties a solved captcha to the IP address that requested it.
+                            The solver therefore cannot help unless the browser goes out through the same proxy —
+                            a captcha key on its own will always fail.
+                        </p>
+                    </div>
+                @endunless
+
+                @if($yelpAutoLoginResult)
+                    <div class="rounded-lg p-3 mb-3 text-xs {{ ($yelpAutoLoginResult['ok'] ?? false) ? 'bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-200' : 'bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-200' }}">
+                        <p class="font-semibold">
+                            Last attempt: {{ ($yelpAutoLoginResult['ok'] ?? false) ? 'success' : ($yelpAutoLoginResult['code'] ?? 'failed') }}
+                            @if($yelpAutoLoginAt)
+                                <span class="opacity-75">({{ \Carbon\Carbon::parse($yelpAutoLoginAt)->diffForHumans() }})</span>
+                            @endif
+                        </p>
+                        @if(!empty($yelpAutoLoginResult['hint']))
+                            <p class="mt-0.5">{{ $yelpAutoLoginResult['hint'] }}</p>
+                        @endif
+                    </div>
+                @endif
+
+                <form wire:submit="saveYelpAutoLogin" class="space-y-3">
+                    <flux:field>
+                        <flux:label>2captcha API key</flux:label>
+                        <flux:description>
+                            @if($yelpHasCaptchaKey) Saved — leave blank to keep. @endif
+                            From <a href="https://2captcha.com/enterpage" target="_blank" rel="noopener" class="underline">2captcha.com</a> (~$3 per 1,000 solves).
+                        </flux:description>
+                        <flux:input wire:model="yelpCaptchaKey" type="password" placeholder="{{ $yelpHasCaptchaKey ? '••••••••' : 'Paste your 2captcha key' }}" autocomplete="off" />
+                        <flux:error name="yelpCaptchaKey" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>Proxy URL</flux:label>
+                        <flux:description>
+                            @if($yelpHasProxy) Saved — leave blank to keep. @endif
+                            A residential or ISP proxy, e.g. <code>http://user:pass@host:port</code>.
+                        </flux:description>
+                        <flux:input wire:model="yelpProxy" type="password" placeholder="{{ $yelpHasProxy ? '••••••••' : 'http://user:pass@host:port' }}" autocomplete="off" />
+                        <flux:error name="yelpProxy" />
+                    </flux:field>
+
+                    <flux:button type="submit" variant="primary" size="sm">Save</flux:button>
+                </form>
+            </div>
+
             {{-- Cookie injection (paste from Cookie-Editor extension) --}}
             <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Cookie injection</h4>
+                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Cookie injection (manual fallback)</h4>
                     @if($yelpCookieFileCount !== null)
                         <flux:button type="button" wire:click="clearYelpCookieFile" wire:confirm="Delete the stored Yelp cookie file? Uploads will fail until new cookies are imported." variant="subtle" size="xs">
                             Clear stored cookies
@@ -504,6 +737,12 @@
                                 </span>
                             @endif
                         </div>
+                        @if($yelpCookieExpiredCount > 0)
+                            <div class="font-semibold text-red-700 dark:text-red-400">
+                                {{ $yelpCookieExpiredCount }} stored {{ Str::plural('cookie', $yelpCookieExpiredCount) }} already expired —
+                                send a fresh session from the browser extension.
+                            </div>
+                        @endif
                         @if($yelpCookieBseExpiresAt)
                             <div class="text-zinc-600 dark:text-zinc-400">
                                 <code>bse</code> expires {{ \Carbon\Carbon::parse($yelpCookieBseExpiresAt)->diffForHumans() }}
@@ -538,6 +777,8 @@
                     </flux:button>
                 </div>
             </div>
+                </div>
+            </details>
 
             {{-- Remote-login viewer (Xvfb + noVNC) --}}
             @if($yelpRemoteError)

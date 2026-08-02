@@ -75,6 +75,12 @@ child_pgid=${child_pid}
 # configured timeout — the child has its own internal soft timeout
 # (YELP_RUN_TIMEOUT - small buffer) to attempt a graceful close first.
 (
+  # Drop the lock fd FIRST. This subshell inherits fd 9, and so does the
+  # `sleep` it forks — and `kill $killer_pid` below kills the subshell but
+  # NOT that sleep, which then held the flock for the full RUN_TIMEOUT after
+  # the upload had already finished. Every subsequent upload collided with a
+  # process doing nothing but sleeping, costing ~4 minutes per photo.
+  exec 9>&-
   sleep "${RUN_TIMEOUT}"
   if kill -0 "${child_pid}" 2>/dev/null; then
     echo "[yelp-run-locked] HARD TIMEOUT after ${RUN_TIMEOUT}s - killing pgid ${child_pgid}" >&2
@@ -83,14 +89,21 @@ child_pgid=${child_pid}
 ) &
 killer_pid=$!
 
+# Kill the watchdog AND the sleep it forked. Killing only the subshell
+# leaves the sleep orphaned until it expires.
+kill_watchdog() {
+  pkill -P "${killer_pid}" 2>/dev/null || true
+  kill "${killer_pid}" 2>/dev/null || true
+}
+
 # Forward SIGTERM/SIGINT from PHP straight to the child group.
-trap 'cleanup_pgid "${child_pgid}"; kill "${killer_pid}" 2>/dev/null || true; exit 143' TERM INT
+trap 'cleanup_pgid "${child_pgid}"; kill_watchdog; exit 143' TERM INT
 
 wait "${child_pid}"
 exit_code=$?
 
 # Child finished on its own — cancel the killer and clean up any zombies.
-kill "${killer_pid}" 2>/dev/null || true
+kill_watchdog
 wait "${killer_pid}" 2>/dev/null || true
 cleanup_pgid "${child_pgid}"
 

@@ -169,7 +169,32 @@ class SyncYelpBusinessPhotos extends Command
                     };
                 }
 
-                $result = $service->uploadProjectImageToBusinessPhotos($image, $onProgress);
+                // Throttles are the NORMAL path here, not an error: Yelp
+                // cools down after each accepted upload, and the previous
+                // image's Chromium may still be releasing the OS flock when
+                // the next one starts. The queued path releases the job back
+                // to the worker; running inline there is no worker to release
+                // to, so retry in-process. Without this the exception escapes
+                // and kills the whole batch after the first collision.
+                $result = null;
+                for ($attempt = 1; $attempt <= 5; $attempt++) {
+                    try {
+                        $result = $service->uploadProjectImageToBusinessPhotos($image, $onProgress);
+                        break;
+                    } catch (\App\Exceptions\YelpUploadThrottledException $e) {
+                        if ($attempt === 5) {
+                            $this->error("    gave up on image #{$image->id} after 5 throttles ({$e->reason})");
+                            break;
+                        }
+                        $wait = max(5, min(180, $e->retryAfterSeconds));
+                        $this->warn("    throttled ({$e->reason}); waiting {$wait}s then retrying image #{$image->id} [{$attempt}/5]");
+                        sleep($wait);
+                    } catch (\App\Exceptions\YelpSessionExpiredException $e) {
+                        $this->error('    session expired — aborting batch. Re-send your Yelp session, then re-run.');
+                        return false;
+                    }
+                }
+
                 if ($result) {
                     $this->info("    uploaded image #{$image->id} (photo_id={$result['photo_id']})");
                 } else {

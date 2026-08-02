@@ -275,6 +275,21 @@
             </div>
         </template>
 
+        {{-- "Show Full Image" — same chip treatment as the project-title
+             overlay opposite it, so the two read as one system. Top-RIGHT:
+             top-left belongs to the title, and bottom-centre to the dots. --}}
+        <template x-for="(slide, index) in slides" :key="'fullimg-' + index">
+            <div x-show="typeof slide !== 'undefined' && currentSlide === index && slide.imagePageUrl" x-transition.opacity.duration.200ms class="absolute top-4 right-4 z-10">
+                <a :href="slide.imagePageUrl" wire:navigate
+                   class="inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/70">
+                    Show Full Image
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5v4m0-4h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    </svg>
+                </a>
+            </div>
+        </template>
+
         @if(!$isImagesOnly)
         @if($isServiceMode)
         {{-- Service Page Content (per-slide) --}}

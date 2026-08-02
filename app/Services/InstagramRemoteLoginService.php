@@ -103,7 +103,7 @@ class InstagramRemoteLoginService
 
         $req = $this->checkRequirements();
         if (! $req['ok']) {
-            Log::warning('Instagram remote login: missing host packages', ['missing' => $req['missing']]);
+            Log::channel('social')->warning('Instagram remote login: missing host packages', ['missing' => $req['missing']]);
             return ['ok' => false, 'error' => 'Missing host packages: ' . implode(', ', $req['missing']) . '. Install with: sudo apt install xvfb x11vnc novnc websockify'];
         }
 
@@ -143,7 +143,7 @@ class InstagramRemoteLoginService
 
         $userDataDir = $this->userDataDir();
         if ($resetProfile && is_dir($userDataDir)) {
-            Log::info('Instagram remote login: wiping user-data-dir', ['dir' => $userDataDir]);
+            Log::channel('social')->info('Instagram remote login: wiping user-data-dir', ['dir' => $userDataDir]);
             @shell_exec('rm -rf ' . escapeshellarg($userDataDir));
         }
         @mkdir($userDataDir, 0775, true);
@@ -256,7 +256,7 @@ class InstagramRemoteLoginService
         ];
         $this->writeState($state);
 
-        Log::info('Instagram remote login: session started', $state);
+        Log::channel('social')->info('Instagram remote login: session started', $state);
 
         return $this->buildResponse($state);
     }
@@ -272,7 +272,7 @@ class InstagramRemoteLoginService
         }
         $alive = $this->isAlive($state);
         if (! $alive) {
-            Log::info('Instagram remote login: chromium exited, tearing down', [
+            Log::channel('social')->info('Instagram remote login: chromium exited, tearing down', [
                 'ran_seconds' => isset($state['started_at']) ? time() - (int) $state['started_at'] : null,
             ]);
             $this->killState($state);
@@ -281,7 +281,7 @@ class InstagramRemoteLoginService
             foreach (['xvfb', 'x11vnc', 'websockify'] as $proc) {
                 $pid = (int) ($state['pids'][$proc] ?? 0);
                 if ($pid > 0 && ! $this->pidAlive($pid)) {
-                    Log::warning('Instagram remote login: support proc died', ['proc' => $proc, 'pid' => $pid]);
+                    Log::channel('social')->warning('Instagram remote login: support proc died', ['proc' => $proc, 'pid' => $pid]);
                     $this->killState($state);
                     $alive = false;
                     break;
@@ -455,7 +455,7 @@ class InstagramRemoteLoginService
             @shell_exec('pkill -f ' . escapeshellarg('Xvfb ' . $state['display']) . ' 2>/dev/null');
         }
         @unlink($this->stateFile);
-        Log::info('Instagram remote login: session stopped');
+        Log::channel('social')->info('Instagram remote login: session stopped');
     }
 
     protected function killOrphans(): void
@@ -469,7 +469,7 @@ class InstagramRemoteLoginService
         @shell_exec('pkill -f ' . escapeshellarg('websockify.*' . $wsPort) . ' 2>/dev/null');
         @shell_exec('pkill -f ' . escapeshellarg('Xvfb ' . $display) . ' 2>/dev/null');
         @unlink($this->stateFile);
-        Log::info('Instagram remote login: orphan cleanup completed');
+        Log::channel('social')->info('Instagram remote login: orphan cleanup completed');
     }
 
     protected function readState(): ?array

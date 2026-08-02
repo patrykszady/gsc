@@ -57,7 +57,7 @@ class TestimonialObserver
 
             SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
-            Log::warning('IndexNow: Failed to queue testimonial URL submission', [
+            Log::channel('indexnow')->warning('IndexNow: Failed to queue testimonial URL submission', [
                 'testimonial_id' => $testimonial->id,
                 'error' => $e->getMessage(),
             ]);

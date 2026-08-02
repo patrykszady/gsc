@@ -307,7 +307,7 @@
                                 try {
                                     const resp = await fetch('https://places.googleapis.com/v1/places/' + prediction.placeId, {
                                         headers: {
-                                            'X-Goog-Api-Key': @js(config('services.google.places_api_key')),
+                                            'X-Goog-Api-Key': @js(config('services.google.maps_browser_key')),
                                             'X-Goog-FieldMask': 'addressComponents',
                                         },
                                     });

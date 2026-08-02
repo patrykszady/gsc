@@ -45,7 +45,7 @@ class YelpImportCookies extends Command
 
             return self::FAILURE;
         }
-        $dest = storage_path('app/yelp-cookies.json');
+        $dest = \App\Support\YelpCookieJar::path();
         @mkdir(dirname($dest), 0755, true);
 
         $merged = $yelpCookies;

@@ -16,7 +16,7 @@
     @endif
     {{-- Project Map Section - Uses clip-path to create bg-fixed effect with fixed map --}}
     <section class="relative {{ $heightClasses }}" style="clip-path: inset(0);">
-        @if(!config('services.google.places_api_key'))
+        @if(!config('services.google.maps_browser_key'))
             <div
                 class="absolute inset-0 bg-fixed bg-center bg-cover"
                 style="background-image: url('{{ asset('images/gs_map.png') }}');"

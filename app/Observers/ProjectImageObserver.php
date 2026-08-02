@@ -270,7 +270,7 @@ class ProjectImageObserver
 
             \App\Jobs\SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
-            Log::warning('IndexNow: Failed to submit project image URL', [
+            Log::channel('indexnow')->warning('IndexNow: Failed to submit project image URL', [
                 'image_id' => $image->id,
                 'error' => $e->getMessage(),
             ]);

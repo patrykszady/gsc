@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -85,9 +86,23 @@ Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:
 Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
-// Yelp biz: verify the persisted browser session is still authenticated once a day.
-Schedule::command('yelp:check-session')->dailyAt('04:00')
+// Yelp biz: verify the persisted browser session is still authenticated once
+// a day — BEFORE the nightly media automation (02:30 GBP sync, ~03:00 Yelp
+// batch), not after. Ran at 04:00 until 2026-08-02, when a dead session was
+// only detected an hour AFTER the whole upload batch had burned DataDome
+// attempts against the login wall. A failed check sets yelp.session_dead
+// (jobs fail fast without launching Chromium) and emails the admin.
+Schedule::command('yelp:check-session')->dailyAt('02:15')
     ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+
+// Yelp biz: re-login unattended when the session is known-dead, 15 minutes
+// after the check above has had its say. Only runs when a captcha key AND a
+// proxy are configured (see canAutoLogin) — without both, DataDome cannot be
+// cleared and the attempt would just burn a Chromium launch.
+Schedule::command('yelp:login')->dailyAt('02:30')
+    ->withoutOverlapping()
+    ->when(fn () => Cache::has('yelp.session_dead') && app(\App\Services\YelpBusinessService::class)->canAutoLogin())
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
 // Google Business Profile: sync new reviews daily at 06:00 AM CT

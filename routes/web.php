@@ -76,6 +76,15 @@ Route::post('/client-error', ClientErrorController::class)
     ->middleware('throttle:30,1')
     ->name('client-error');
 
+// Yelp session hand-off from the browser extension. The owner logs in to
+// biz.yelp.com in their own browser (a real residential IP, so DataDome never
+// fires) and the extension posts the resulting cookies here; a queued job
+// injects them into the automation profile. Bearer-token auth, CSRF-exempt in
+// bootstrap/app.php. Throttled because it is internet-reachable.
+Route::post('/api/yelp/cookies', \App\Http\Controllers\YelpCookieIngestController::class)
+    ->middleware('throttle:20,1')
+    ->name('yelp.cookies.ingest');
+
 // Reviews (canonical). Old /testimonials URLs 301 → /reviews for SEO/GEO.
 // "reviews" matches schema.org/Review, has ~10× search volume vs "testimonials",
 // and aligns with how AI assistants phrase queries.
@@ -502,6 +511,13 @@ Route::middleware(['auth', 'noindex', \App\Http\Middleware\ResolveAdminSite::cla
 
     // Platforms (Google Business Profile, Yelp, etc.)
     Route::get('/platforms', PlatformsSettings::class)->name('platforms.index');
+
+    // Self-pairing for the Yelp Session Bridge extension. Its content script
+    // calls this same-origin (with the admin session cookie) while you view
+    // the platforms page, and configures itself with the returned token —
+    // nobody copies tokens by hand. Session-authed via this group's `auth`.
+    Route::get('/platforms/extension-pairing', [\App\Http\Controllers\YelpCookieIngestController::class, 'pairing'])
+        ->name('platforms.extension-pairing');
 
     // SEO weekly reports dashboard
     Route::get('/seo-reports/{report?}', \App\Livewire\Admin\SeoReports::class)->name('seo-reports.index');
