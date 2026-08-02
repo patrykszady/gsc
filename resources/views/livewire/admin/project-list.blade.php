@@ -74,7 +74,7 @@
             @foreach($projects as $project)
                 <flux:card class="group overflow-hidden !p-0">
                     {{-- Image --}}
-                    <div class="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+                    <div class="relative aspect-4/3 bg-zinc-100 dark:bg-zinc-800">
                         @if($project->coverImage)
                             <img 
                                 src="{{ $project->coverImage->getThumbnailUrl('medium') }}" 

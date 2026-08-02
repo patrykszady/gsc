@@ -2,7 +2,7 @@
     // ?bg=grid|floorplan|mesh|aurora previews the other decor variants locally.
     $decor = app()->environment('local') ? request()->query('bg', 'grid') : 'grid';
 @endphp
-<div class="relative isolate overflow-x-clip bg-white dark:bg-gray-950">
+<div class="relative isolate overflow-x-clip bg-white dark:bg-zinc-950">
     <x-page-decor :variant="$decor" />
 
     <x-breadcrumbs :items="[['label' => 'Compare Contractors']]" />
@@ -16,7 +16,7 @@
         key-suffix="compare-index"
     />
 
-    <main class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
+    <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
             <p class="mt-8 text-lg text-zinc-600 dark:text-zinc-300">
                 Researching options? Compare GS Construction to other Chicago-area remodeling companies using
@@ -28,9 +28,7 @@
             @foreach($competitors as $competitor)
                 @continue(empty($competitor['slug']))
                 <li>
-                    <a href="{{ route('compare.show', ['slug' => $competitor['slug']]) }}"
-                       wire:navigate
-                       class="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
+                    <x-link-card :href="route('compare.show', ['slug' => $competitor['slug']])">
                         <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternative to</p>
                         <h2 class="mt-1 text-xl font-semibold text-zinc-900 dark:text-white">
                             GS Construction vs {{ $competitor['name'] }}
@@ -41,7 +39,7 @@
                         <p class="mt-4 text-sm font-medium text-sky-700 dark:text-sky-400">
                             See comparison &rarr;
                         </p>
-                    </a>
+                    </x-link-card>
                 </li>
             @endforeach
         </ul>
@@ -100,12 +98,11 @@
             @endphp
             <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
                 @foreach($howToCards as $card)
-                    <a href="{{ $card['href'] }}" wire:navigate
-                       class="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
+                    <x-link-card :href="$card['href']">
                         <h3 class="text-base font-semibold text-zinc-900 dark:text-white">{{ $card['title'] }}</h3>
                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{{ $card['body'] }}</p>
                         <p class="mt-4 text-sm font-medium text-sky-700 dark:text-sky-400">{{ $card['cta'] }} &rarr;</p>
-                    </a>
+                    </x-link-card>
                 @endforeach
             </div>
 
@@ -121,7 +118,7 @@
                 &mdash; so comparing side by side before you sign is the state's own advice.
             </p>
         </section>
-    </main>
+    </div>
 
     <div class="mt-12">
         <x-cta-section
@@ -130,8 +127,8 @@
             description="Comparing your options? Get a no-pressure, itemized estimate from GS Construction and see the difference for yourself."
             primaryText="Request a free estimate"
             primaryHref="/contact"
-            secondaryText="Call (224) 735-4200"
-            secondaryHref="tel:2247354200"
+            secondaryText="Call {{ config('brand.phone') }}"
+            secondaryHref="tel:{{ config('brand.phone_href') }}"
         />
     </div>
 

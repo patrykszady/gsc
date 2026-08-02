@@ -39,7 +39,7 @@
         <div class="bg-gray-900 rounded-xl shadow-xl overflow-hidden">
             <div class="px-6 py-4 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
                 <h3 class="text-gray-200 text-sm font-semibold">JSON-LD Output Preview</h3>
-                <span class="px-2 py-0.5 bg-green-900/50 text-green-400 text-[10px] font-bold rounded uppercase">Valid Schema</span>
+                <span class="px-2 py-0.5 bg-green-900/50 text-green-400 text-3xs font-bold rounded uppercase">Valid Schema</span>
             </div>
             <div class="p-6">
                 <pre class="text-xs text-blue-300 font-mono whitespace-pre-wrap leading-relaxed">
@@ -61,7 +61,7 @@
 }
                 </pre>
             </div>
-            <div class="px-6 py-3 bg-gray-800/50 text-[10px] text-gray-400 flex justify-between italic">
+            <div class="px-6 py-3 bg-gray-800/50 text-3xs text-gray-400 flex justify-between italic">
                 <span>View source of your page to see actual output</span>
                 <span>Injects into &lt;head&gt;</span>
             </div>

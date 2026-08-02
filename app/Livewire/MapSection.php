@@ -42,32 +42,15 @@ class MapSection extends Component
         // same Hive completed-project data as text search engines (and AI
         // answers) can read. Counts are real jobs from the PM system, computed
         // within a radius of this town's center via haversine.
+        // One implementation, on the model — the projects-page intro needs the
+        // same figure and used to have no way to get it.
         $proofStats = null;
-        if ($this->area && $this->area->latitude !== null && $zipPoints->isNotEmpty()) {
-            $lat = (float) $this->area->latitude;
-            $lng = (float) $this->area->longitude;
-            $withinMiles = function (float $radius) use ($zipPoints, $lat, $lng): int {
-                return (int) $zipPoints->filter(function ($p) use ($lat, $lng, $radius) {
-                    $dLat = deg2rad($p['lat'] - $lat);
-                    $dLng = deg2rad($p['lng'] - $lng);
-                    $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat)) * cos(deg2rad($p['lat'])) * sin($dLng / 2) ** 2;
-
-                    return 3959 * 2 * atan2(sqrt($a), sqrt(1 - $a)) <= $radius;
-                })->sum('count');
-            };
-
-            $radius = 10;
-            $nearby = $withinMiles($radius);
-            if ($nearby === 0) {
-                $radius = 15;
-                $nearby = $withinMiles($radius);
-            }
-
+        if ($this->area && ($nearby = $this->area->completedProjectsNearby())) {
             $proofStats = [
-                'nearby' => $nearby,
-                'radius' => $radius,
-                'total' => (int) $zipPoints->sum('count'),
-                'zips' => $zipPoints->count(),
+                'nearby' => $nearby['count'],
+                'radius' => $nearby['radius'],
+                'total' => $nearby['total'],
+                'zips' => $nearby['zips'],
             ];
         }
 

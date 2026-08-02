@@ -26,7 +26,28 @@ class Site extends Model
             return app('site.current');
         }
 
-        $site = static::default();
+        // ResolveSite lives in the `web` middleware group, which only runs for
+        // a MATCHED route. An unmatched URL throws NotFoundHttpException during
+        // routing, so the 404 view used to render with the default site — every
+        // tenant served GS Construction's 404, brand name, phone and all. Same
+        // for any error page rendered outside the route pipeline.
+        //
+        // Falling back to the request host first fixes all of those at once,
+        // without reordering middleware (ResolveSite must stay after
+        // StartSession for the ?site= pin). Console and queue have no request,
+        // so they still fall through to the default site as documented.
+        $site = null;
+
+        if (app()->bound('request')) {
+            // Same order ResolveSite uses, so an error page resolves to the
+            // same tenant the matched route would have.
+            $host = app('request')->getHost();
+            $site = static::forDevHost($host)
+                ?? static::forHost($host)
+                ?? static::forPreviewHost($host);
+        }
+
+        $site ??= static::default();
         app()->instance('site.current', $site);
 
         return $site;

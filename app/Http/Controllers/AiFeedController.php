@@ -19,7 +19,7 @@ class AiFeedController extends Controller
     public function __invoke(): JsonResponse
     {
         $payload = Cache::remember('ai_feed_v1', 900, function (): array {
-            $reviewCount = Testimonial::count();
+            $reviewCount = \App\Support\CompanyStats::reviewsTotal();
 
             $services = [
                 ['slug' => 'kitchen-remodeling',  'name' => 'Kitchen Remodeling',  'description' => 'Full kitchen renovations: cabinets, countertops, flooring, lighting, appliances.'],

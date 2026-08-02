@@ -118,7 +118,6 @@
         $breadcrumbItems[] = ['name' => $project->title, 'url' => route('projects.show', $project)];
         $breadcrumbItems[] = ['name' => 'Photos'];
     @endphp
-    <x-breadcrumb-schema :items="$breadcrumbItems" />
 
     {{-- ImageObject for the actual photo on this page — strengthens Google Images
          understanding with contentUrl, caption, creator, and credit/copyright.
@@ -159,42 +158,7 @@
         <script type="application/ld+json">{!! json_encode($imageObjectSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
     @endif
 
-    {{-- Visual Breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="{{ route('home') }}" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('projects.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Projects</a>
-                </li>
-                @if($photoCrumb)
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('projects.index', ['type' => $photoCrumb['type']]) }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">{{ $photoCrumb['label'] }}</a>
-                </li>
-                @endif
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('projects.show', $project) }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">{{ $project->title }}</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Photos</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="$breadcrumbItems" padding="py-4" />
 
     {{-- Main Content --}}
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

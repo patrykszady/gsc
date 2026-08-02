@@ -3,26 +3,10 @@
     metaDescription="Read testimonials from our satisfied customers. See what homeowners say about GS Construction's kitchen, bathroom, and home remodeling services in the Chicagoland area."
 >
     {{-- Breadcrumb Schema --}}
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Testimonials'],
-    ]" />
 
-    {{-- Visual Breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Testimonials</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="[
+        ['name' => 'Reviews'],
+    ]" padding="py-4" />
 
     <section class="mx-auto max-w-7xl px-4 pb-2 sm:px-6 lg:px-8">
         <h1 class="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
@@ -30,7 +14,9 @@
         </h1>
     </section>
 
-    <livewire:testimonials-grid />
+    {{-- show-stars: every visible review on this site is 5/5, so the five-star
+         graphic states a fact rather than an average it rounds up to. --}}
+    <livewire:testimonials-grid :show-stars="true" />
 
     {{-- Rich citation block: ItemList of recent reviews + per-platform sources --}}
     <x-review-citations />
@@ -57,7 +43,7 @@
         description="Read enough? Get a free, no-pressure estimate from Greg & Patryk — the same two people every review above talks about."
         primaryText="Request a free estimate"
         primaryHref="/contact"
-        secondaryText="Call (224) 735-4200"
-        secondaryHref="tel:2247354200"
+        secondaryText="Call {{ config('brand.phone') }}"
+        secondaryHref="tel:{{ config('brand.phone_href') }}"
     />
 </x-layouts.app>

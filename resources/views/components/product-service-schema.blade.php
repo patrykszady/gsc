@@ -138,13 +138,32 @@
         'items' => $reviewItems,
     ];
 
+    // Every one of these pointed at images/services/{type}-hero.jpg, and not a
+    // single one of those files exists — /images/services/kitchen-hero.jpg is a
+    // 404. Google drops (or distrusts) a Product node whose image cannot be
+    // fetched, which is the node that carries the review stars.
+    //
+    // Resolution order: the curated static image if one exists (only basement
+    // and addition have one), else a real photo of that project type from the
+    // portfolio, else the site OG image. All three are known-good URLs.
+    $productImage = \App\Support\ServiceImages::firstUrl($projectType)
+        ?: optional(
+            \App\Models\Project::query()
+                ->where('is_published', true)
+                ->where('project_type', $projectType)
+                ->with(['images' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
+                ->latest('updated_at')
+                ->first()?->images->first()
+        )->getWebpThumbnailUrl('medium')
+        ?: secure_url(config('seo.image.fallback', 'images/og-default.jpg'));
+
     $schema = [
         '@context'    => 'https://schema.org',
         '@type'       => 'Product',
         '@id'         => $url . '#product',
         'name'        => $name,
         'description' => $c['description'],
-        'image'       => asset($c['image']),
+        'image'       => $productImage,
         'url'         => $url,
         'category'    => 'Home Improvement',
         'brand'       => [

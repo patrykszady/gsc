@@ -450,7 +450,10 @@ class GenerateSitemap extends Command
 
         // Add ZIP-code service-area landing pages
         $this->info("Adding ZIP-code service-area pages to sitemap...");
-        $zipMap = app(\App\Services\ZipCodeService::class)->getZipMap();
+        // servedZipMap, not getZipMap: ZIPs for towns outside the admin area
+        // list are redirected to /service-area, so listing them here would put
+        // known redirects in the sitemap.
+        $zipMap = app(\App\Services\ZipCodeService::class)->servedZipMap();
         $sitemap->add(
             Url::create("{$baseUrl}/service-area")
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)

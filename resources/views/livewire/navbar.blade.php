@@ -1,4 +1,4 @@
-<header class="relative z-50 bg-white dark:bg-slate-950" x-data="{ mobileMenuOpen: false, projectsOpen: true }">
+<header class="relative z-50 bg-white dark:bg-zinc-950" x-data="{ mobileMenuOpen: false, projectsOpen: true }">
     @php
         $homeUrl = $area ? $area->url : '/';
         $contactUrl = $area ? $area->pageUrl('contact') : '/contact';
@@ -76,7 +76,7 @@
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="translate-x-0"
             x-transition:leave-end="translate-x-full"
-            class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 dark:bg-slate-950 dark:ring-white/10"
+            class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 dark:bg-zinc-950 dark:ring-white/10"
         >
             <div class="flex items-center justify-between">
                 <a href="{{ $homeUrl }}" wire:navigate class="flex items-center gap-x-3" aria-label="GS Construction homepage">

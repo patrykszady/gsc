@@ -104,7 +104,7 @@
                         <ul class="mt-2 space-y-1 text-sm">
                             @foreach ($row['nav'] as $link)
                                 <li class="flex items-center gap-2">
-                                    <span class="w-9 shrink-0 rounded px-1 text-center font-mono text-[11px] font-bold
+                                    <span class="w-9 shrink-0 rounded px-1 text-center font-mono text-2xs font-bold
                                         @class([
                                             'bg-emerald-950 text-emerald-300' => $link['status'] === '200',
                                             'bg-red-950 text-red-300' => $link['status'] === '404',

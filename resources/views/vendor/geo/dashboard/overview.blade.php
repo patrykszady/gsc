@@ -88,7 +88,7 @@
                         <span class="text-sm font-medium text-gray-700">{{ $path }}</span>
                         <span class="text-xs text-gray-400">GET request</span>
                     </div>
-                    <span class="px-2 py-1 text-[10px] font-bold uppercase rounded-full {{ $status === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
+                    <span class="px-2 py-1 text-3xs font-bold uppercase rounded-full {{ $status === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
                         {{ $status }}
                     </span>
                 </div>

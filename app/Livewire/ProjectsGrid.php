@@ -40,6 +40,28 @@ class ProjectsGrid extends Component
 
     public bool $responsivePerPage = false;
 
+    /**
+     * Optional block rendered BETWEEN the hero slider and the gallery.
+     *
+     * The area projects page used to print its own heading above this
+     * component, which put two <h1>s on the page and pushed the gallery's own
+     * header ("GS Construction Projects near {city}") into second place. The
+     * page still authors the copy; the grid only decides where it sits,
+     * because the hero it has to sit under lives in here.
+     */
+    public ?string $introHeading = null;
+
+    public ?string $introBody = null;
+
+    /**
+     * Render the area About block between the hero and the intro heading.
+     *
+     * Placement-only, like introHeading/introBody: the hero and the gallery
+     * both live in this component, so anything that has to sit between them
+     * has to be positioned from here. The page decides whether to ask for it.
+     */
+    public bool $showAbout = false;
+
     public ?int $randomTimelapseId = null;
 
     // Stable random seed so re-renders (e.g. pagination) keep the same order
@@ -81,7 +103,37 @@ class ProjectsGrid extends Component
             ->with(['images' => fn($q) => $q->orderBy('sort_order')->limit(1)])
             ->when($this->type, fn($q) => $q->where('project_type', $this->type))
             ->orderByDesc('is_featured')
-            ->orderByRaw('RAND(?)', [$this->randomSeed]);
+            ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed));
+
+        // Area pages lead with that town's OWN projects, then its neighbours.
+        //
+        // The heading says "Projects in {city}" but this query had no area
+        // filter at all — it returned every published project in random order,
+        // so a Palatine page opened with Inverness and Arlington Heights work.
+        // Same local-then-nearby principle the reviews carousel uses.
+        //
+        // Ordered, not filtered: a town with three projects would otherwise
+        // show three cards and an empty pager. Cards from other towns keep
+        // their town chip (see <x-project-grid :towns>), so nothing claims to
+        // be in this city when it is not.
+        if ($this->area) {
+            $localIds = $this->area->localProjects(60)->pluck('id')->all();
+            $nearbyIds = $this->area->nearbyProjects(60)->pluck('id')
+                ->reject(fn ($id) => in_array($id, $localIds, true))->values()->all();
+
+            $ranked = array_merge($localIds, $nearbyIds);
+            if ($ranked !== []) {
+                $projectsQuery->reorder()
+                    ->orderByRaw(
+                        'CASE WHEN id IN (' . implode(',', array_fill(0, count($localIds) ?: 1, '?')) . ') THEN 0 '
+                        . 'WHEN id IN (' . implode(',', array_fill(0, count($nearbyIds) ?: 1, '?')) . ') THEN 1 '
+                        . 'ELSE 2 END',
+                        array_merge($localIds ?: [0], $nearbyIds ?: [0])
+                    )
+                    ->orderByDesc('is_featured')
+                    ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed));
+            }
+        }
 
         $pageName = 'page';
         $requestedPage = max(1, (int) Paginator::resolveCurrentPage($pageName));
@@ -99,11 +151,13 @@ class ProjectsGrid extends Component
             $requestedPage
         );
 
-        // Curated, service-aligned filter list shown in a fixed, sensible order.
+        // Service-aligned filter list, in the order services are declared.
+        // Comes from ServiceCatalog rather than a hand-kept array, so adding a
+        // service adds its filter automatically.
         // Every category GS Construction offers a service page for is shown, even
         // when no projects of that type are posted yet (the empty state then links
         // to the matching service page instead of showing a dead end).
-        $curatedOrder = ['kitchen', 'bathroom', 'home-remodel', 'basement', 'addition', 'mudroom'];
+        $curatedOrder = \App\Support\ServiceCatalog::projectTypes()->all();
         $existingTypes = Project::query()
             ->where('is_published', true)
             ->distinct()

@@ -84,15 +84,19 @@ return new class extends Migration
             }
 
             foreach ($indexes as $name => $columns) {
-                $exists = collect(DB::select("SHOW INDEX FROM `{$table}`"))
-                    ->contains(fn ($row) => $row->Key_name === $name);
+                // Schema::getIndexes(), not SHOW INDEX / ALTER ... DROP INDEX:
+                // those are MySQL-only and broke the whole migration chain
+                // under phpunit's SQLite.
+                $exists = collect(Schema::getIndexes($table))
+                    ->contains(fn ($idx) => $idx['name'] === $name);
 
-                if ($exists) {
-                    DB::statement("ALTER TABLE `{$table}` DROP INDEX `{$name}`");
-                }
+                Schema::table($table, function (Blueprint $t) use ($exists, $name, $columns) {
+                    if ($exists) {
+                        $t->dropUnique($name);
+                    }
 
-                $cols = implode('`, `', $columns);
-                DB::statement("ALTER TABLE `{$table}` ADD UNIQUE `{$name}` (`{$cols}`)");
+                    $t->unique($columns, $name);
+                });
             }
         }
     }

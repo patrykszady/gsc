@@ -2,8 +2,8 @@
     'heading' => 'Want a second opinion before you decide?',
     'primaryText' => 'Get a free estimate',
     'primaryHref' => '/contact',
-    'secondaryText' => 'Call (224) 735-4200',
-    'secondaryHref' => 'tel:2247354200',
+    'secondaryText' => 'Call ' . config('brand.phone'),
+    'secondaryHref' => 'tel:' . config('brand.phone_href'),
 ])
 
 {{-- Compact mid-page CTA band — shared so every page's "soft ask" looks the same. --}}
@@ -11,12 +11,15 @@
     <p class="font-heading text-lg font-semibold text-zinc-900 dark:text-white">
         {{ $heading }}
     </p>
+    {{-- <x-buttons.cta>, not hand-rolled anchors: these hovered sky-500
+         while every other primary on the site hovers sky-700 — the drift the
+         shared component exists to prevent. --}}
     <div class="mt-4 flex flex-wrap items-center justify-center gap-3 sm:mt-0">
-        <a href="{{ $primaryHref }}" wire:navigate class="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500">
+        <x-buttons.cta :href="$primaryHref" size="sm">
             {{ $primaryText }}
-        </a>
-        <a href="{{ $secondaryHref }}" class="rounded-md px-4 py-2 text-sm font-semibold text-sky-700 ring-1 ring-sky-300 hover:bg-white dark:text-sky-300 dark:ring-sky-700">
+        </x-buttons.cta>
+        <x-buttons.cta :href="$secondaryHref" variant="outline" size="sm">
             {{ $secondaryText }}
-        </a>
+        </x-buttons.cta>
     </div>
 </div>

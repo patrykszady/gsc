@@ -23,7 +23,6 @@
         introTimerDone: false,
         noBgLoaded: window.imageCache?.has('{{ asset('images/greg-patryk-no-background.webp') }}') || false,
         init() {
-            document.addEventListener('visibilitychange', () => this.handleTabVisibility());
             // Mark cached background images as loaded
             this.backgrounds.forEach((bg, index) => {
                 if (window.imageCache?.has(bg.url)) {
@@ -182,12 +181,13 @@
             }, 550);
         }
     }"
+    x-on:visibilitychange.document="handleTabVisibility()"
     x-intersect:enter.threshold.40="handleVisibility(true)"
     x-intersect:leave.threshold.40="handleVisibility(false)"
     class="relative w-full overflow-hidden rounded-xl shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800"
 >
     {{-- Background Images (rotating) --}}
-    <div class="relative aspect-[4/3] w-full bg-zinc-200 dark:bg-zinc-700">
+    <div class="relative aspect-4/3 w-full bg-zinc-200 dark:bg-zinc-700">
         {{-- Intro Phase: greg-patryk with LQIP --}}
         <div
             x-show="typeof introPhase !== 'undefined' && introPhase"

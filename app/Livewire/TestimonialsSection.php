@@ -21,6 +21,14 @@ class TestimonialsSection extends Component
 
     public string $maxWidthClass = 'max-w-7xl';
 
+    /**
+     * Horizontal padding on the inner container. Set to '' when this section is
+     * nested inside a page container that already pads — otherwise the two pad
+     * on top of each other and the card renders narrower than the content it
+     * sits under (1152px against a 1216px grid on /projects).
+     */
+    public string $paddingClass = 'px-4 sm:px-6 lg:px-8';
+
     public string $sectionClasses = 'relative isolate overflow-hidden bg-white py-12 sm:py-16 dark:bg-zinc-900';
 
     public array $current = [];
@@ -33,8 +41,11 @@ class TestimonialsSection extends Component
 
     public function placeholder(): string
     {
+        // Mirrors $sectionClasses (py-12 sm:py-16, dark:bg-zinc-900). The old
+        // placeholder ran py-16..24 and dark:bg-slate-950, so lazy hydration on
+        // the homepage visibly shifted the page and flashed a different dark.
         return <<<'HTML'
-        <div class="relative isolate bg-white py-16 sm:py-20 lg:py-24 dark:bg-slate-950">
+        <div class="relative isolate overflow-hidden bg-white py-12 sm:py-16 dark:bg-zinc-900">
             <div class="mx-auto max-w-7xl px-6 lg:px-8">
                 <div class="mx-auto max-w-2xl text-center space-y-4">
                     <div class="h-4 w-24 mx-auto bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse"></div>
@@ -67,6 +78,52 @@ class TestimonialsSection extends Component
                 $this->current = $this->history[0];
                 $this->historyIndex = 0;
             }
+            return;
+        }
+
+        // Area-scoped: this town's own reviews FIRST, then the nearest towns'.
+        //
+        // The carousel was seeding a purely random pool, so an area page led
+        // with a review from anywhere in Chicagoland while the heading said
+        // "Your Neighbours in {city} Love Us". Reviews from the town the
+        // visitor is reading about are the proof that page exists to show, so
+        // they go first and the ring widens as you page through.
+        //
+        // Order comes from AreaServed: localTestimonials() is strict-town,
+        // nearbyTestimonials() walks outward by real distance. Both already
+        // back the city badge, so the carousel cannot disagree with it.
+        if ($this->area) {
+            $local = $this->area->localTestimonials(10);
+            $ordered = $local->concat(
+                $this->area->nearbyTestimonials(10)
+                    ->reject(fn (Testimonial $t) => $local->contains('id', $t->id))
+            );
+
+            // Top up with anything else visible so the carousel never runs dry
+            // in a town with few nearby reviews.
+            if ($ordered->count() < 10) {
+                $ordered = $ordered->concat(
+                    Testimonial::query()
+                        ->visible()
+                        ->with('projects:id')
+                        ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+                        ->whereNotIn('id', $ordered->pluck('id')->all() ?: [0])
+                        ->inRandomOrder()
+                        ->take(10 - $ordered->count())
+                        ->get()
+                );
+            }
+
+            foreach ($ordered->take(10) as $testimonial) {
+                $this->history[] = $this->formatTestimonial($testimonial);
+                $this->shownIds[] = $testimonial->id;
+            }
+
+            if (! empty($this->history)) {
+                $this->current = $this->history[0];
+                $this->historyIndex = 0;
+            }
+
             return;
         }
 
@@ -131,6 +188,32 @@ class TestimonialsSection extends Component
         if ($this->historyIndex < count($this->history) - 1) {
             $this->historyIndex++;
             $this->current = $this->history[$this->historyIndex];
+            return;
+        }
+
+        // On an area page keep widening outward rather than jumping to a
+        // random review — the seeded pool is already local-first.
+        if ($this->area) {
+            $next = Testimonial::query()
+                ->visible()
+                ->with('projects:id')
+                ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+                ->whereNotIn('id', $this->shownIds ?: [0])
+                ->inRandomOrder()
+                ->first();
+
+            if (! $next) {
+                $this->historyIndex = 0;
+                $this->current = $this->history[$this->historyIndex];
+
+                return;
+            }
+
+            $this->current = $this->formatTestimonial($next);
+            $this->shownIds[] = $next->id;
+            $this->history[] = $this->current;
+            $this->historyIndex = count($this->history) - 1;
+
             return;
         }
 
@@ -293,7 +376,7 @@ class TestimonialsSection extends Component
             // Shown on the "All N reviews" link. A real count is a stronger
             // trust signal than a bare "read more", and it is already scoped
             // to this tenant by BelongsToSite.
-            'totalCount' => \App\Models\Testimonial::query()->count(),
+            'totalCount' => \App\Support\CompanyStats::reviewsTotal(),
         ]);
     }
 }

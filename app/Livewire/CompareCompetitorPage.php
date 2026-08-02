@@ -57,7 +57,7 @@ class CompareCompetitorPage extends Component
             ->take(6)
             ->get();
 
-        $reviewCount = Testimonial::query()->count();
+        $reviewCount = \App\Support\CompanyStats::reviewsTotal();
 
         return view('livewire.compare-competitor-page', [
             'projects' => $projects,

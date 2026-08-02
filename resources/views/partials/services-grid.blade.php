@@ -1,86 +1,10 @@
 @php
     use App\Models\ProjectImage;
 
-    $services = [
-        [
-            'slug' => 'kitchen-remodeling',
-            'urlSlug' => 'kitchen-remodeling',
-            'title' => 'Kitchen Remodeling',
-            'projectType' => 'kitchen',
-            'description' => 'Transform your kitchen into the heart of your home. From custom cabinetry and premium countertops to complete renovations – we create beautiful, functional spaces where families gather and memories are made.',
-            'gradient' => 'from-sky-500 to-blue-600',
-            'features' => [
-                'Custom cabinetry & storage solutions',
-                'Granite, quartz & marble countertops',
-                'Flooring, lighting & complete renovations',
-            ],
-        ],
-        [
-            'slug' => 'bathroom-remodeling',
-            'urlSlug' => 'bathroom-remodeling',
-            'title' => 'Bathroom Remodeling',
-            'projectType' => 'bathroom',
-            'description' => 'Create your personal spa retreat with expert bathroom renovations. From luxurious walk-in showers and soaking tubs to modern vanities and tile work – we design bathrooms that combine comfort with style.',
-            'gradient' => 'from-indigo-500 to-purple-600',
-            'features' => [
-                'Walk-in showers & luxury tubs',
-                'Custom tile work & vanities',
-                'Modern fixtures & lighting',
-            ],
-        ],
-        [
-            'slug' => 'home-remodeling',
-            'urlSlug' => 'home-remodeling',
-            'title' => 'Home Remodeling',
-            'projectType' => 'home-remodel',
-            'description' => 'Comprehensive home renovations that breathe new life into your entire living space. From room additions and open floor plans to complete home makeovers – we handle projects of any scale with precision.',
-            'gradient' => 'from-emerald-500 to-teal-600',
-            'features' => [
-                'Room additions & expansions',
-                'Open concept floor plans',
-                'Complete home renovations',
-            ],
-        ],
-        [
-            'slug' => 'basement-remodeling',
-            'urlSlug' => 'basement-remodeling',
-            'title' => 'Basement Remodeling',
-            'projectType' => 'basement',
-            'description' => 'Turn an unfinished or dated basement into comfortable, code-compliant living space. From family rooms and home theaters to guest suites, wet bars, and basement bathrooms – we finish lower levels your family will actually use.',
-            'gradient' => 'from-amber-500 to-orange-600',
-            'features' => [
-                'Family rooms, theaters & rec spaces',
-                'Guest bedrooms & basement bathrooms',
-                'Code-compliant electrical & plumbing',
-            ],
-        ],
-        [
-            'slug' => 'home-additions',
-            'urlSlug' => 'home-additions',
-            'title' => 'Home Additions',
-            'projectType' => 'addition',
-            'description' => 'Expand your home with seamless additions designed to match your existing layout. From sunrooms and master suites to second-story additions – we add square footage that blends naturally with your home.',
-            'gradient' => 'from-rose-500 to-pink-600',
-            'features' => [
-                'Room additions & bump-outs',
-                'Sunrooms & four-season rooms',
-                'Master suite & second-story additions',
-            ],
-        ],
-        [
-            'slug' => 'mudroom-remodeling',
-            'urlSlug' => 'mudroom-remodeling',
-            'title' => 'Mudroom & Laundry',
-            'projectType' => 'mudroom',
-            'description' => 'Tame the daily clutter with a custom mudroom or laundry/mudroom combo. Built-in lockers, benches, cubbies, drop zones, durable tile floors, and utility sinks – designed around how your family actually moves through your home.',
-            'gradient' => 'from-teal-500 to-cyan-600',
-            'features' => [
-                'Built-in lockers, benches & cubbies',
-                'Combined laundry/mudroom layouts',
-                'Durable tile floors & utility sinks',
-            ],
-        ],
-    ];
+    // Per-tenant: SHARED partial, so a hardcoded list here renders one
+    // company's services on every site. A tenant with no 'grid' key renders
+    // no cards rather than someone else's.
+    $services = (array) config('services-content.grid', []);
 
     // Helper to get cover image with thumbnail
     $gridCity = isset($area) ? $area->city : null;
@@ -139,7 +63,7 @@
             @foreach ($services as $service)
                 @php $imageData = $getCoverImageData($service['projectType']); @endphp
                 <div class="group relative overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-200 transition hover:shadow-xl dark:bg-zinc-800 dark:ring-zinc-700">
-                    <div class="aspect-[16/9] overflow-hidden bg-gradient-to-br {{ $service['gradient'] }}">
+                    <div class="aspect-video overflow-hidden bg-gradient-to-br {{ $service['gradient'] }}">
                         <x-lqip-image 
                             :src="$imageData['url']"
                             :thumb="$imageData['thumb']"
@@ -184,13 +108,20 @@
     </div>
 </section>
 
-{{-- CTA Section --}}
-<x-cta-section 
-    variant="blue"
-    heading="Ready to Start Your {{ isset($area) ? $area->city . ' ' : '' }}Project?"
-    description="Get a free consultation and quote for your remodeling project. GS Construction is ready to bring your vision to life."
-    primaryText="Get Free Quote"
-    :primaryHref="isset($area) ? $area->pageUrl('contact') : route('contact')"
-    secondaryText="View Our Work"
-    :secondaryHref="isset($area) ? $area->pageUrl('projects') : route('projects.index')"
-/>
+{{-- CTA Section.
+
+     Optional: pass ['showCta' => false] from a page that already asks for the
+     same thing. On /contact this pointed "Get Free Quote" at /contact — the
+     page the reader is already on, directly below its own contact form and
+     above a second CTA. --}}
+@if($showCta ?? true)
+    <x-cta-section
+        variant="blue"
+        heading="Ready to Start Your {{ isset($area) ? $area->city . ' ' : '' }}Project?"
+        description="Get a free consultation and quote for your remodeling project. GS Construction is ready to bring your vision to life."
+        primaryText="Get Free Quote"
+        :primaryHref="isset($area) ? $area->pageUrl('contact') : route('contact')"
+        secondaryText="View Our Work"
+        :secondaryHref="isset($area) ? $area->pageUrl('projects') : route('projects.index')"
+    />
+@endif

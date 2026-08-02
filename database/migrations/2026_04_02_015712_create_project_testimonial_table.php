@@ -22,14 +22,27 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('testimonials', 'project_id')) {
-            // Migrate existing project_id data to pivot table.
-            // INSERT IGNORE keeps this safe if the migration partially ran before and is retried.
-            DB::statement('
-                INSERT IGNORE INTO project_testimonial (project_id, testimonial_id, created_at, updated_at)
-                SELECT project_id, id, NOW(), NOW()
-                FROM testimonials
-                WHERE project_id IS NOT NULL
-            ');
+            // Migrate existing project_id data to the pivot. insertOrIgnore()
+            // keeps this safe if the migration partially ran before and is
+            // retried — and unlike the raw `INSERT IGNORE ... NOW()` it used to
+            // be, it compiles on every driver. The MySQL-only SQL made THIS
+            // migration abort the whole chain under phpunit's :memory: SQLite,
+            // which is why the test suite could not run at all.
+            $now = now();
+            $rows = DB::table('testimonials')
+                ->whereNotNull('project_id')
+                ->get(['id', 'project_id'])
+                ->map(fn ($t) => [
+                    'project_id' => $t->project_id,
+                    'testimonial_id' => $t->id,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])
+                ->all();
+
+            if ($rows !== []) {
+                DB::table('project_testimonial')->insertOrIgnore($rows);
+            }
 
             Schema::table('testimonials', function (Blueprint $table) {
                 // The FK may already be dropped on partially-applied environments.
@@ -42,10 +55,16 @@ return new class extends Migration
             });
         }
 
-        // Fix mojibake-encoded reviewer names (double-encoded UTF-8 curly quotes)
+        // Fix mojibake-encoded reviewer names (double-encoded UTF-8 curly quotes).
+        // The BINARY comparison is MySQL syntax; other drivers get the plain
+        // LIKE, which is sufficient there (SQLite LIKE is byte-oriented).
         $mojibake = DB::table('testimonials')
             ->where('reviewer_name', 'LIKE', '%â€%')
-            ->orWhereRaw('BINARY `reviewer_name` LIKE ?', ['%'."\xc2\x9d".'%'])
+            ->when(
+                in_array(DB::getDriverName(), ['mysql', 'mariadb'], true),
+                fn ($q) => $q->orWhereRaw('BINARY `reviewer_name` LIKE ?', ['%'."\xc2\x9d".'%']),
+                fn ($q) => $q->orWhere('reviewer_name', 'LIKE', '%'."\xc2\x9d".'%'),
+            )
             ->get(['id', 'reviewer_name']);
 
         foreach ($mojibake as $row) {
@@ -71,15 +90,15 @@ return new class extends Migration
             $table->foreignId('project_id')->nullable()->constrained()->nullOnDelete();
         });
 
-        // Restore first linked project back to FK
+        // Restore first linked project back to FK. Correlated subquery, not
+        // MySQL's UPDATE...INNER JOIN, so a rollback also works off-MySQL.
         DB::statement('
-            UPDATE testimonials t
-            INNER JOIN (
-                SELECT testimonial_id, MIN(project_id) AS project_id
+            UPDATE testimonials
+            SET project_id = (
+                SELECT MIN(project_id)
                 FROM project_testimonial
-                GROUP BY testimonial_id
-            ) pt ON t.id = pt.testimonial_id
-            SET t.project_id = pt.project_id
+                WHERE project_testimonial.testimonial_id = testimonials.id
+            )
         ');
 
         Schema::dropIfExists('project_testimonial');

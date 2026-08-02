@@ -49,7 +49,11 @@
     <link rel="alternate" type="text/plain" href="{{ url('/llms-full.txt') }}" title="LLM Context (Full)">
     <link rel="alternate" type="application/json" href="{{ url('/ai-feed.json') }}" title="AI Feed">
     <link rel="alternate" type="application/atom+xml" href="{{ url('/feed/updates.atom') }}" title="Recently Updated Pages">
-    <meta name="ai-content-description" content="{{ config('brand.ai_description', config('geo.site_description')) }}">
+    {{-- :reviews / :cities filled from CompanyStats — see config/brand.php. --}}
+    <meta name="ai-content-description" content="{{ strtr(config('brand.ai_description', config('geo.site_description')), [
+        ':reviews' => \App\Support\CompanyStats::reviewsCountLabel(),
+        ':cities' => \App\Support\CompanyStats::citiesServedLabel(),
+    ]) }}">
 
     {{-- Hreflang for bilingual support --}}
     <x-hreflang />
@@ -253,7 +257,7 @@
     {{-- Founder Person schema (E-E-A-T) --}}
     <x-person-schema />
 </head>
-<body class="min-h-screen bg-white font-sans text-zinc-900 antialiased dark:bg-slate-950 dark:text-zinc-100">
+<body class="min-h-screen bg-white font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
     {{-- Navbar --}}
     <livewire:navbar />
 

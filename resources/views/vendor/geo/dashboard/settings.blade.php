@@ -15,7 +15,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Dashboard Route</label>
                     <input type="text" value="{{ config('geo.dashboard.path') }}" readonly class="w-full bg-gray-50 border-gray-300 rounded-lg text-sm text-gray-400 cursor-not-allowed">
-                    <p class="mt-1 text-[10px] text-gray-400 italic">Change <code>GEO_DASHBOARD_PATH</code> in .env to update</p>
+                    <p class="mt-1 text-3xs text-gray-400 italic">Change <code>GEO_DASHBOARD_PATH</code> in .env to update</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Auth Middleware</label>

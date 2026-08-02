@@ -25,7 +25,7 @@
     wire:navigate
     {{ $attributes->class('group relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10') }}
 >
-    <div class="relative aspect-[4/3] overflow-hidden">
+    <div class="relative aspect-4/3 overflow-hidden">
         @if($project->images->first())
             <x-lqip-image
                 :image="$project->images->first()"
@@ -62,22 +62,29 @@
             </div>
         @endif
 
-        @if($project->project_type)
-            <div class="absolute top-14 right-3">
-                <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
-                    {{ ucfirst($project->project_type) }}
-                </span>
-            </div>
-        @endif
+        {{-- Bottom-left cluster: the town (only when this card is shown on
+             ANOTHER town's page — the card is image-only, so it still has to
+             say where the job actually was) and the project type.
 
-        {{-- Town chip, not a footer caption. The card is image-only, but a
-             project shown on another town's page still has to say where it
-             actually was. --}}
-        @if($town)
-            <div class="absolute bottom-3 left-3">
-                <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
-                    {{ $town }}, IL
-                </span>
+             One flex row rather than two corners: the type chip used to sit at
+             top-14 right-3, so a card could carry a label in three different
+             corners at once. Wrapping them together also means they can never
+             overlap when both are present. --}}
+        @if($town || $project->project_type)
+            <div class="absolute bottom-3 left-3 flex flex-wrap items-center gap-2">
+                @if($town)
+                    <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
+                        {{ $town }}, IL
+                    </span>
+                @endif
+
+                @if($project->project_type)
+                    {{-- str_replace before ucwords: the slug is 'home-remodel',
+                         and ucfirst alone rendered it as "Home-remodel". --}}
+                    <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
+                        {{ ucwords(str_replace('-', ' ', $project->project_type)) }}
+                    </span>
+                @endif
             </div>
         @endif
     </div>

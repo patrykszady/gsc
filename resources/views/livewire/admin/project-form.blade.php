@@ -577,7 +577,7 @@
                                                         <flux:icon.x-mark class="size-3" />
                                                     </button>
                                                     <div class="absolute left-0.5 top-0.5">
-                                                        <span class="inline-flex size-4 items-center justify-center rounded-full bg-black/60 text-[9px] font-medium text-white">{{ $fIdx + 1 }}</span>
+                                                        <span class="inline-flex size-4 items-center justify-center rounded-full bg-black/60 text-3xs font-medium text-white">{{ $fIdx + 1 }}</span>
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -638,12 +638,12 @@
                                         @if(isset($baBeforeUploads[$baIndex]) && $baBeforeUploads[$baIndex])
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                 <img src="{{ $baBeforeUploads[$baIndex]->temporaryUrl() }}" alt="Before (new)" class="size-full object-cover">
-                                                <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">New</span>
+                                                <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-3xs font-medium text-white">New</span>
                                             </div>
                                         @elseif($ba['beforeGalleryImageId'] && isset($galleryImageMap[$ba['beforeGalleryImageId']]))
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-sky-500 dark:bg-zinc-800">
                                                 <img src="{{ $galleryImageMap[$ba['beforeGalleryImageId']]['url'] }}" alt="Before (from gallery)" class="size-full object-cover">
-                                                <span class="absolute left-1 top-1 rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-medium text-white">Gallery</span>
+                                                <span class="absolute left-1 top-1 rounded bg-sky-500 px-1.5 py-0.5 text-3xs font-medium text-white">Gallery</span>
                                                 <button
                                                     type="button"
                                                     wire:click="setBeforeAfterGalleryImage({{ $baIndex }}, 'before', {{ $ba['beforeGalleryImageId'] }})"
@@ -675,12 +675,12 @@
                                         @if(isset($baAfterUploads[$baIndex]) && $baAfterUploads[$baIndex])
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                                                 <img src="{{ $baAfterUploads[$baIndex]->temporaryUrl() }}" alt="After (new)" class="size-full object-cover">
-                                                <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">New</span>
+                                                <span class="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-3xs font-medium text-white">New</span>
                                             </div>
                                         @elseif($ba['afterGalleryImageId'] && isset($galleryImageMap[$ba['afterGalleryImageId']]))
                                             <div class="group relative aspect-video overflow-hidden rounded-lg bg-zinc-100 ring-2 ring-sky-500 dark:bg-zinc-800">
                                                 <img src="{{ $galleryImageMap[$ba['afterGalleryImageId']]['url'] }}" alt="After (from gallery)" class="size-full object-cover">
-                                                <span class="absolute left-1 top-1 rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-medium text-white">Gallery</span>
+                                                <span class="absolute left-1 top-1 rounded bg-sky-500 px-1.5 py-0.5 text-3xs font-medium text-white">Gallery</span>
                                                 <button
                                                     type="button"
                                                     wire:click="setBeforeAfterGalleryImage({{ $baIndex }}, 'after', {{ $ba['afterGalleryImageId'] }})"

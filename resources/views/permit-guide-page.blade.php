@@ -38,21 +38,12 @@
     :title="'Building Permits in ' . $town . ', IL — Remodeling Permit Guide (' . now()->year . ') | GS Construction'"
     :metaDescription="\Illuminate\Support\Str::limit($whenRequired, 155)"
 >
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Permit Guides', 'url' => route('permits.index')],
-        ['name' => $town],
-    ]" />
+    {{-- One trail, one source: <x-breadcrumbs> renders the visible nav AND
+         the BreadcrumbList. The hand-rolled nav here stopped one crumb short
+         of the schema, so Google saw a trail the reader did not. --}}
+    <x-breadcrumbs :items="[['label' => 'Permit Guides', 'url' => route('permits.index')], ['label' => $town]]" maxWidth="max-w-3xl" padding="pt-10 pb-0 sm:pt-14" />
 
-    <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
-        <nav class="flex text-sm" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2">
-                <li><a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a></li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <a href="{{ route('permits.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Permit Guides</a>
-                </li>
-            </ol>
-        </nav>
+    <div class="mx-auto max-w-3xl px-4 pt-4 sm:px-6 lg:px-8">
 
         <p class="mt-6 text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">{{ $town }} · {{ now()->year }}</p>
         <h1 class="mt-1 font-heading text-3xl font-bold tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">

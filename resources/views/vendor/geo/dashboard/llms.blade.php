@@ -15,7 +15,7 @@
                 <span class="text-xl font-semibold text-gray-800">Missing</span>
             @endif
         </div>
-        <p class="text-[10px] text-gray-400 mt-2">Checked in <code>public/llms.txt</code></p>
+        <p class="text-3xs text-gray-400 mt-2">Checked in <code>public/llms.txt</code></p>
     </div>
 
     <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm lg:col-span-3">

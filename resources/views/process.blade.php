@@ -2,6 +2,8 @@
     title="Our Remodeling Process & Timelines | GS Construction"
     metaDescription="The 6-step GS Construction process — free in-home estimate, itemized scope, permits, owner-supervised build with a live client portal, walkthrough & warranty — with real timelines."
 >
+
+    <x-breadcrumbs :items="[['label' => 'Our Process']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
     <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">How We Work</p>
         <h1 class="mt-1 font-heading text-3xl font-bold tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">
@@ -16,14 +18,19 @@
         </p>
 
         @php
-            $steps = [
-                ['n' => 1, 'title' => 'Free in-home estimate', 'time' => 'Week 0', 'body' => 'Greg or Patryk — the owners, not a salesperson — walk your space, talk through what you want, and take real measurements. You get honest feedback on what your budget buys, grounded in the project ranges we publish openly.'],
-                ['n' => 2, 'title' => 'Itemized scope & contract', 'time' => 'Within days of the visit', 'body' => 'Your proposal is an itemized scope — labor, materials, demolition, disposal, line by line — not a single mystery number. Payment terms and warranty coverage are spelled out in the written contract. No surprise charges on the final invoice.'],
-                ['n' => 3, 'title' => 'Design & selections, your way', 'time' => 'Parallel with permits', 'body' => 'Bring your own designer or architect, let us connect you with our trusted architects, engineers, or designers, or be your own designer — we send you to trusted showrooms and install what you choose. Selections are scheduled ahead of the build so lead times never stall the site.'],
-                ['n' => 4, 'title' => 'Permits & scheduling', 'time' => 'Typically 1–2 weeks in most suburbs', 'body' => 'We pull and manage building, plumbing, and electrical permits with your village — Arlington Heights, Palatine, Winnetka, Schaumburg, and every town we serve — and hand you a written schedule before demo day.'],
-                ['n' => 5, 'title' => 'The build, owner-supervised daily', 'time' => 'Kitchens 8–12 wks · Baths 3–5 wks', 'body' => 'Our long-standing trade partners work in sequence under daily owner supervision. Your private client portal shows the schedule (past and upcoming), current change orders, and up-to-date balances — and you always have a direct line to the owners.'],
-                ['n' => 6, 'title' => 'Walkthrough, punch list & warranty', 'time' => 'Final week', 'body' => 'We walk the finished project together, close out every punch-list item, hand over manufacturer paperwork, and your written workmanship warranty starts — with the owners a phone call away if anything ever needs attention.', 'link' => ['href' => '/warranty', 'text' => 'Our commitment never expires']],
-            ];
+            // One process, one file: config/sites/gsc/services-content.php.
+            // These six stages were ALSO written out here in full, and the two
+            // copies were one edit away from disagreeing (the kitchen-week
+            // change earlier had to be made twice). The config carries the
+            // condensed card copy ('description') for the service pages and
+            // the long copy ('time'/'body'/'pageTitle') for this page.
+            $steps = collect(config('services-content.process', []))->map(fn ($s) => [
+                'n' => $s['step'],
+                'title' => $s['pageTitle'] ?? $s['title'],
+                'time' => $s['time'] ?? '',
+                'body' => $s['body'] ?? $s['description'],
+                'link' => $s['link'] ?? null,
+            ])->all();
         @endphp
 
         <ol class="mt-10 space-y-6">

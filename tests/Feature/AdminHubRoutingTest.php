@@ -9,9 +9,9 @@ class AdminHubRoutingTest extends TestCase
 {
     public function test_admin_routes_are_site_scoped(): void
     {
-        $user = User::first();
-        $this->assertNotNull($user, 'no user to authenticate as');
-
+        // Provision rather than assume: the suite runs on a fresh
+        // in-memory DB, so there is no pre-existing user to find.
+        $user = User::factory()->create();
         $cases = [
             ['/admin', [200, 302]],
             ['/admin/gs.construction', [200]],
@@ -31,7 +31,9 @@ class AdminHubRoutingTest extends TestCase
 
     public function test_admin_urls_generate_with_site_segment(): void
     {
-        $user = User::first();
+        // Provision rather than assume: the suite runs on a fresh
+        // in-memory DB, so there is no pre-existing user to find.
+        $user = User::factory()->create();
         $this->actingAs($user)->get('/admin/gs.construction/projects');
         $url = route('admin.projects.index', [], false);
         fwrite(STDERR, "  route('admin.projects.index') = {$url}\n");

@@ -1,35 +1,13 @@
 <div class="bg-white dark:bg-zinc-900">
     {{-- Breadcrumb Schema --}}
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Reviews', 'url' => route('reviews.index')],
-        ['name' => $testimonial->display_name],
-    ]" />
 
     {{-- Review Schema for rich results --}}
     <x-review-schema :testimonial="$testimonial" />
 
-    {{-- Breadcrumb --}}
-    <div class="mx-auto max-w-5xl px-6 pt-8 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="{{ route('home') }}" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('reviews.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Reviews</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $testimonial->display_name }}</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="[
+        ['name' => 'Reviews', 'url' => route('reviews.index')],
+        ['name' => $testimonial->display_name],
+    ]" maxWidth="max-w-5xl" padding="pt-8" />
 
     {{-- Main Content --}}
     <div class="mx-auto max-w-5xl px-6 py-10 lg:px-8 lg:py-14">
@@ -58,8 +36,7 @@
 
             {{-- 5 stars --}}
             <div class="mb-6">
-                <img src="{{ asset('images/5-stars.svg') }}" alt="5 Stars" width="224" height="32" class="h-8 w-auto dark:hidden" />
-                <img src="{{ asset('images/5-stars-dark.svg') }}" alt="5 Stars" width="224" height="32" class="hidden h-8 w-auto dark:block" />
+                <x-five-stars size="h-8" />
             </div>
 
             {{-- Review text --}}
@@ -85,7 +62,7 @@
                             window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}');
                         }
                     }"
-                    class="relative size-16 overflow-hidden rounded-full bg-gray-50 dark:bg-gray-700"
+                    class="relative size-16 overflow-hidden rounded-full bg-gray-50 dark:bg-zinc-700"
                 >
                     <img
                         x-ref="avatarImg"

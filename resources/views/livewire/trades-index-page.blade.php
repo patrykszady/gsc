@@ -1,19 +1,8 @@
-<div class="bg-white dark:bg-gray-950">
-    <x-breadcrumb-schema :items="[
+<div class="bg-white dark:bg-zinc-950">
+
+    <x-breadcrumbs :items="[
         ['name' => 'Our Trade Partners'],
     ]" />
-
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li><a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a></li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Trade Partners</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
 
     <div class="mx-auto max-w-3xl px-6 pt-2 text-center lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">The Team Behind Every Remodel</p>
@@ -24,7 +13,7 @@
         key-suffix="trades-index"
     />
 
-    <main class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
+    <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
             <p class="mt-8 text-lg text-zinc-600 dark:text-zinc-300">
                 {{ $intro }}
@@ -80,9 +69,7 @@
                 @foreach($trades as $trade)
                     @continue(empty($trade['slug']))
                     <li>
-                        <a href="{{ route('trades.show', ['slug' => $trade['slug']]) }}"
-                           wire:navigate
-                           class="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
+                        <x-link-card :href="route('trades.show', ['slug' => $trade['slug']])">
                             <div class="flex items-center justify-between">
                                 <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $trade['name'] }}</h3>
                                 @if(!empty($trade['licensed']))
@@ -93,7 +80,7 @@
                             <p class="mt-4 text-sm font-semibold text-sky-600 dark:text-sky-400">
                                 How we work with {{ strtolower($trade['short']) }} →
                             </p>
-                        </a>
+                        </x-link-card>
                     </li>
                 @endforeach
             </ul>
@@ -129,7 +116,7 @@
                 ]"
             />
         </div>
-    </main>
+    </div>
 
     <x-cta-section
         variant="blue"

@@ -9,7 +9,7 @@ $recent = Testimonial::visible()
     ->limit(20)
     ->get();
 
-$total = Testimonial::count();
+$total = \App\Support\CompanyStats::reviewsTotal();
 
 $itemList = [
     '@context' => 'https://schema.org',

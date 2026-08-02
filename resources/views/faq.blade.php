@@ -2,6 +2,8 @@
     title="Remodeling FAQ — Chicago Suburbs | GS Construction"
     metaDescription="Straight answers on kitchen, bathroom, basement & whole-home remodeling in the Chicago suburbs — pricing, permits, timelines, and how GS Construction works."
 >
+
+    <x-breadcrumbs :items="[['label' => 'FAQ']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
     {{-- Curated Q&A doubles as GEO content: the same answers served to AI engines
          at /geo/answers.json render here as a visible, schema-marked FAQ that
          Google, AI Overviews, ChatGPT and Perplexity can cite directly. --}}
@@ -27,20 +29,14 @@
 
     <x-faq-section
         :faqs="$answers"
-        heading="Remodeling questions &amp; answers"
+        heading="Remodeling questions & answers"
         :collapsed="false"
         contentMaxWidth="max-w-3xl"
     />
 
-    {{-- Soft CTA to a free estimate --}}
+    {{-- Soft CTA — <x-mid-cta>, the component documented as owning every
+         mid-page "soft ask", instead of a third hand-rolled variant of it. --}}
     <div class="mx-auto max-w-3xl px-4 pb-14 sm:px-6 lg:px-8">
-        <div class="rounded-2xl bg-sky-50 px-6 py-6 text-center dark:bg-sky-900/20">
-            <p class="text-base font-semibold text-zinc-900 dark:text-white">Ready to scope your project?</p>
-            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Free, no-pressure estimate from Greg &amp; Patryk.</p>
-            <a href="{{ url('/contact') }}" wire:navigate
-               class="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800">
-                Get a free estimate
-            </a>
-        </div>
+        <x-mid-cta heading="Ready to scope your project?" />
     </div>
 </x-layouts.app>

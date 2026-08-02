@@ -16,8 +16,7 @@
             {{ $description }}
         </p>
     </div>
-    <a href="{{ $href }}" wire:navigate
-       class="shrink-0 rounded-lg bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500">
+    <x-buttons.cta :href="$href" class="shrink-0">
         {{ $buttonText }}
-    </a>
+    </x-buttons.cta>
 </div>

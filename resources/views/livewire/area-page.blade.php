@@ -27,7 +27,6 @@
             $breadcrumbItems[] = ['name' => $pageNames[$page] ?? ucfirst($page)];
         }
     @endphp
-    <x-breadcrumb-schema :items="$breadcrumbItems" />
 
     {{-- Per-area LocalBusiness schema (with geo, hours, postalCodes, hasMap) --}}
     <x-area-local-business-schema :area="$area" />
@@ -35,56 +34,7 @@
     {{-- ImageGallery schema: surfaces this city's project photos in Google Images / Photos carousel --}}
     <x-area-image-gallery-schema :area="$area" />
 
-    {{-- Visual Breadcrumb Navigation --}}
-    <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('areas.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Areas Served</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    @if($page === 'home')
-                        <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $area->city }}</span>
-                    @else
-                        <a href="{{ $area->url }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">{{ $area->city }}</a>
-                    @endif
-                </li>
-                @if($page === 'service' && $service)
-                    <li class="flex items-center">
-                        <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                        </svg>
-                        <a href="{{ $area->pageUrl('services') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-300">Services</a>
-                    </li>
-                    <li class="flex items-center">
-                        <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                        </svg>
-                        @php
-                            $serviceLabels = ['kitchen-remodeling' => 'Kitchens', 'bathroom-remodeling' => 'Bathrooms', 'home-remodeling' => 'Home Remodeling', 'basement-remodeling' => 'Basements', 'home-additions' => 'Additions'];
-                        @endphp
-                        <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $serviceLabels[$service] ?? ucfirst($service) }}</span>
-                    </li>
-                @elseif($page !== 'home')
-                    <li class="flex items-center">
-                        <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="ml-2 text-gray-700 dark:text-gray-300">{{ ucfirst($page) }}</span>
-                    </li>
-                @endif
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="$breadcrumbItems" padding="py-1" />
 
     @switch($page)
         @case('home')
@@ -365,7 +315,9 @@
             @include('partials.area-intro-slider')
             @endif
 
-            <livewire:about-section :area="$area" />
+            {{-- lazy: sits below the hero + services fold on every branch;
+                 placeholder() renders until it scrolls near. --}}
+            <livewire:about-section :area="$area" lazy />
 
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <livewire:timelapse-section />
@@ -533,25 +485,36 @@
                 $spokeTypes = $spokeProjects->pluck('project_type')->filter()->unique()
                     ->map(fn ($t) => str_replace('-', ' ', (string) $t))->take(4)->values();
             @endphp
-            <div class="mx-auto max-w-3xl px-4 pt-8 text-center sm:px-6 lg:px-8">
-                <p class="text-sm font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">Project Gallery</p>
-                <h1 class="mt-2 font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
-                    {{ $area->city }} Remodeling Projects
-                </h1>
-                @if($spokeProjects->isNotEmpty())
-                    <p class="mt-4 text-lg text-zinc-600 dark:text-zinc-300">
-                        Browse {{ $spokeProjects->count() }}{{ $spokeProjects->count() === 12 ? '+' : '' }} completed
-                        {{ $spokeTypes->implode(', ') }} projects photographed in and around {{ $area->city }}@if($spokeTowns->isNotEmpty()) — including work in {{ $spokeTowns->implode(', ') }}@endif.
-                        Every photo below is our own crews' work, with the owners on site from demo to final walkthrough.
-                    </p>
-                @endif
-            </div>
+            @php
+                // Authored here, rendered by the grid BELOW its hero slider —
+                // the copy talks about the work the hero is showing, and the
+                // gallery's own header should lead the page.
+                $spokeNearby = $area->completedProjectsNearby();
+                $spokeIntroHeading = $area->city . ' Remodeling Projects';
+                $spokeIntroBody = null;
+
+                if ($spokeProjects->isNotEmpty()) {
+                    $spokeIntroBody = ($spokeNearby && $spokeNearby['count'] > 0)
+                        ? number_format($spokeNearby['count']) . ' projects completed within ' . $spokeNearby['radius']
+                            . ' miles of ' . $area->city . '. Browse the ' . $spokeTypes->implode(', ')
+                            . ' work we have photographed in and around ' . $area->city
+                            . ($spokeTowns->isNotEmpty() ? ' — including ' . $spokeTowns->implode(', ') : '') . '. '
+                            . "Every photo below is our own crews' work, with the owners on site from demo to final walkthrough."
+                        : 'Browse completed ' . $spokeTypes->implode(', ') . ' projects photographed in and around '
+                            . $area->city . ($spokeTowns->isNotEmpty() ? ' — including work in ' . $spokeTowns->implode(', ') : '') . '. '
+                            . "Every photo below is our own crews' work, with the owners on site from demo to final walkthrough.";
+                }
+            @endphp
+
+            <livewire:projects-grid
+                :area="$area"
+                :show-about="true"
+                :intro-heading="$spokeIntroHeading"
+                :intro-body="$spokeIntroBody" />
 
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <livewire:timelapse-section />
             </div>
-
-            <livewire:projects-grid :area="$area" />
 
             {{-- Crawlable per-town proof line (completed-project radius count) --}}
             <livewire:map-section :area="$area" />
@@ -584,15 +547,10 @@
                     ->get();
             @endphp
             
-            <main class="isolate">
+            <div class="isolate">
                 <!-- Hero section -->
                 <div class="relative isolate -z-10">
-                    <div aria-hidden="true" class="absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-30 blur-3xl">
-                        <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[max(50%,38rem)] aspect-[1313/771] w-[82.0625rem] bg-linear-to-tr from-sky-300 to-sky-600"></div>
-                    </div>
-                    <div aria-hidden="true" class="absolute inset-x-0 top-0 -z-10 flex transform-gpu overflow-hidden pt-32 opacity-25 blur-3xl sm:pt-40 xl:justify-end">
-                        <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[-22rem] aspect-[1313/771] w-[82.0625rem] flex-none origin-top-right rotate-[30deg] bg-linear-to-tr from-sky-300 to-sky-600 xl:mr-[calc(50%-12rem)] xl:ml-0"></div>
-                    </div>
+                    <x-decor-blobs />
                     
                     <div class="overflow-hidden">
                         <div class="mx-auto max-w-7xl px-6 pt-12 pb-16 sm:pt-16 lg:px-8 lg:pt-12">
@@ -660,7 +618,7 @@
                     secondaryText="View Our Work"
                     :secondaryHref="$area->pageUrl('projects')"
                 />
-            </main>
+            </div>
 
             @include('partials.area-service-links', ['area' => $area])
             @break
@@ -745,9 +703,9 @@
                             'Backsplash and tile work',
                         ],
                         'faqs' => [
-                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Kitchen remodeling costs in {$area->city} typically range from \$25,000 to \$75,000+ depending on the scope, materials, and size of your kitchen. A minor refresh with cosmetic updates runs less, while a full gut renovation with custom cabinets and premium countertops costs more. We provide free in-home estimates with a detailed, no-surprise breakdown."],
+                            ['question' => "How much does kitchen remodeling cost in {$area->city}?", 'answer' => "Kitchen remodeling in {$area->city} typically runs \$35,000–\$80,000, with custom work above \$100,000 — driven by scope, materials, and whether the layout or plumbing moves. Your estimate is itemized line by line before demo day, so you can see exactly what drives the number."],
                             ['question' => "What is a reasonable budget for a kitchen remodel?", 'answer' => "A good rule of thumb is to budget 5–15% of your home's value for a kitchen remodel. For most {$area->city} homes, that translates to \$30,000–\$80,000. We work with a range of budgets and help you prioritize upgrades that deliver the most impact for your investment."],
-                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "Most kitchen remodels in {$area->city} take 4–8 weeks from demolition to completion. Simple cosmetic updates can be faster, while projects involving layout changes, custom cabinetry, or structural work may take 10–12 weeks. We provide a detailed timeline before starting and keep you updated throughout."],
+                            ['question' => "How long does a kitchen remodel take in {$area->city}?", 'answer' => "Most kitchen remodels in {$area->city} run 8–12 weeks on site, from demolition to the final walkthrough. Simple cosmetic updates can be faster; layout changes, custom cabinetry or structural work sit at the top of that range. We hand you a written schedule before demo day and keep it updated throughout."],
                             ['question' => "Do you handle kitchen remodeling permits in {$area->city}?", 'answer' => "Yes, GS Construction handles all necessary permits for {$area->city} kitchen remodeling projects. Electrical, plumbing, and structural work typically require permits — we're familiar with local building codes and manage the entire permitting process for you."],
                             ['question' => "Can you remodel my kitchen while I live in my {$area->city} home?", 'answer' => "Absolutely. Most of our {$area->city} clients stay in their homes during kitchen remodels. We set up a temporary kitchen area with your microwave, coffee maker, and a prep surface, and we clean up the work area daily to minimize disruption."],
                             ['question' => "What does a full kitchen remodel include?", 'answer' => "A full kitchen remodel with GS Construction typically includes demolition of existing finishes, new cabinetry, countertop installation (quartz, granite, or marble), backsplash tile, flooring, lighting fixtures, plumbing fixtures, electrical updates, and painting. We can also handle layout changes, island additions, and appliance relocation."],
@@ -1127,7 +1085,7 @@
                                        title="{{ $config['label'] }} services in {{ $nearbyArea->city }}, IL">
                                         <span>{{ $nearbyArea->city }} {{ $config['label'] }}</span>
                                         @if(isset($nearbyArea->distance_miles))
-                                            <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                            <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-3xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
                                                 {{ number_format($nearbyArea->distance_miles, 1) }} mi
                                             </span>
                                         @endif

@@ -169,14 +169,58 @@ class ZipCodeService
      *
      * @return array<string, array<int, string>>
      */
+    /**
+     * ZIPs grouped by city, for the /service-area index.
+     *
+     * Restricted to ZIPs that belong to a town in the admin area list. The map
+     * itself is built from hive_project_zip_counts — everywhere we have ever
+     * completed a job — which is a wider net than the service area we publish:
+     * it was listing Naperville, Wheaton, Hinsdale, Oak Lawn and 7 others that
+     * were deliberately not in the curated area list.
+     *
+     * Only the LISTING is filtered. getZipMap()/find() stay unfiltered on
+     * purpose, so /service-area/{zip} pages that are already indexed keep
+     * returning 200 instead of turning into 404s.
+     */
     public function groupedByCity(): array
     {
         $grouped = [];
-        foreach ($this->getZipMap() as $zip => $info) {
+        foreach ($this->servedZipMap() as $zip => $info) {
             $grouped[$info['city']][] = (string) $zip;
         }
         ksort($grouped);
         return $grouped;
+    }
+
+    /**
+     * The ZIP map restricted to towns in the admin area list.
+     *
+     * getZipMap() is built from hive_project_zip_counts — everywhere we have
+     * ever completed a job — which is a wider net than the service area we
+     * publish. It was surfacing Naperville, Wheaton, Hinsdale, Oak Lawn and 7
+     * others that were deliberately not in the curated list.
+     *
+     * This is the one definition of "served", shared by the /service-area
+     * index, the sitemap and the generated ZIP content, so the three cannot
+     * drift. getZipMap() stays unfiltered because ZipCodePage still needs to
+     * RECOGNISE an unserved ZIP in order to redirect it rather than 404.
+     *
+     * @return array<string, array{city: string, area_slug: ?string, project_ids: array<int,int>, count: int}>
+     */
+    public function servedZipMap(): array
+    {
+        $servedSlugs = AreaServed::query()->pluck('slug')->flip();
+
+        return array_filter(
+            $this->getZipMap(),
+            fn (array $info): bool => $info['area_slug'] && $servedSlugs->has($info['area_slug'])
+        );
+    }
+
+    /** True when the ZIP resolves to a town we actually publish. */
+    public function isServed(string $zip): bool
+    {
+        return isset($this->servedZipMap()[preg_replace('/\D/', '', $zip)]);
     }
 
     public function flush(): void

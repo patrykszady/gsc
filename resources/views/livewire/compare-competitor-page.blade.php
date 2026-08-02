@@ -2,11 +2,11 @@
     // ?bg=grid|floorplan|mesh|aurora previews the other decor variants locally.
     $decor = app()->environment('local') ? request()->query('bg', 'grid') : 'grid';
 @endphp
-<div class="relative isolate overflow-x-clip bg-white pb-20 dark:bg-gray-950 lg:pb-0">
+<div class="relative isolate overflow-x-clip bg-white pb-20 dark:bg-zinc-950 lg:pb-0">
     <x-page-decor :variant="$decor" />
 
     <x-breadcrumbs :items="[
-        ['label' => 'Compare', 'url' => route('compare.index')],
+        ['label' => 'Compare Contractors', 'url' => route('compare.index')],
         ['label' => 'GS Construction vs ' . ($competitor['name'] ?? '')],
     ]" />
 
@@ -20,39 +20,9 @@
     />
 
     {{-- Trust signals --}}
-    <div class="mx-auto mt-6 max-w-5xl px-6 lg:px-8">
-        <p class="mb-4 text-center text-sm font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400">
-            GS Construction &amp; Remodeling
-        </p>
-        <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div class="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Family-owned</dt>
-                <dd class="mt-0.5 font-heading text-lg font-bold text-zinc-900 dark:text-white">Father &amp; Son</dd>
-            </div>
-            <div class="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Combined experience</dt>
-                <dd class="mt-0.5 font-heading text-lg font-bold text-zinc-900 dark:text-white">40+ Years</dd>
-            </div>
-            {{-- Whole card links to the reviews page. The anchor lives inside the
-                 <dd> and stretches over the card, so the dl/dt/dd structure stays
-                 valid for screen readers while the full tile stays clickable. --}}
-            <div class="group relative rounded-xl border border-zinc-200 bg-white px-4 py-3 text-center transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
-                <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Verified reviews</dt>
-                <dd class="mt-0.5 font-heading text-lg font-bold text-zinc-900 transition group-hover:text-sky-700 dark:text-white dark:group-hover:text-sky-400">
-                    {{ $reviewCount }}+
-                    <a href="{{ route('reviews.index') }}" wire:navigate
-                       class="absolute inset-0 rounded-xl focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
-                       aria-label="Read all {{ $reviewCount }}+ verified reviews"></a>
-                </dd>
-            </div>
-            <div class="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400">Licensed &amp; insured</dt>
-                <dd class="mt-0.5 font-heading text-lg font-bold text-zinc-900 dark:text-white">Yes</dd>
-            </div>
-        </dl>
-    </div>
+    <x-trust-signals class="mt-6" :eyebrow="config('brand.display_name')" />
 
-    <main class="mx-auto max-w-5xl px-6 pb-6 lg:px-8">
+    <div class="mx-auto max-w-5xl px-6 pb-6 lg:px-8">
         <header class="mx-auto mt-10 max-w-3xl text-center">
             <p class="text-lg text-zinc-600 dark:text-zinc-300">
                 Considering {{ $competitor['name'] }} for your kitchen, bathroom, or whole-home remodel?
@@ -68,8 +38,8 @@
                 {{-- Was the one CTA on the site still hand-rolled, on ring-1
                      rather than border, so it sat a hair different from every
                      other outline button. --}}
-                <x-buttons.cta href="tel:2247354200" variant="outline" size="lg">
-                    Call (224) 735-4200
+                <x-buttons.cta href="tel:{{ config('brand.phone_href') }}" variant="outline" size="lg">
+                    Call {{ config('brand.phone') }}
                 </x-buttons.cta>
             </div>
         </header>
@@ -179,7 +149,7 @@
                 </div>
             </div>
         </section>
-    </main>
+    </div>
 
     {{-- Customer reviews — same column width as the page (the component brings
          its own max-width + padding, so pass the width instead of wrapping). --}}
@@ -190,7 +160,7 @@
         :key="'compare-reviews-'.$competitor['slug']"
     />
 
-    <main class="mx-auto max-w-5xl px-6 pb-16 lg:px-8">
+    <div class="mx-auto max-w-5xl px-6 pb-16 lg:px-8">
         <section class="mt-12 grid gap-8 md:grid-cols-2">
             <div>
                 {{-- Block span keeps the brand on its own line at every width while
@@ -254,7 +224,7 @@
                     <a href="{{ route('projects.show', $project) }}" wire:navigate
                        class="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
                         @if($cover)
-                            <div class="relative aspect-[4/3] overflow-hidden">
+                            <div class="relative aspect-4/3 overflow-hidden">
                                 <x-lqip-image
                                     :image="$cover"
                                     size="medium" width="600" height="450"
@@ -273,7 +243,7 @@
                 @endforeach
             </div>
         </section>
-    </main>
+    </div>
 
     {{-- FAQ (visible + FAQPage schema) --}}
     <x-faq-section
@@ -292,8 +262,8 @@
             description="It is smart to compare. We are happy to give you a no-pressure estimate even if you are already talking to {{ $competitor['name'] }}."
             primaryText="Request a free estimate"
             primaryHref="/contact"
-            secondaryText="Call (224) 735-4200"
-            secondaryHref="tel:2247354200"
+            secondaryText="Call {{ config('brand.phone') }}"
+            secondaryHref="tel:{{ config('brand.phone_href') }}"
         />
     </div>
 
@@ -317,12 +287,12 @@
     </div>
 
     {{-- Sticky mobile CTA bar --}}
-    <div class="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-gray-950/95">
+    <div class="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
         <div class="flex items-center gap-3">
             <a href="/contact" wire:navigate class="flex-1 rounded-md bg-sky-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-sky-500">
                 Free estimate
             </a>
-            <a href="tel:2247354200" class="rounded-md px-4 py-2.5 text-center text-sm font-semibold text-sky-700 ring-1 ring-sky-300 dark:text-sky-300 dark:ring-sky-700">
+            <a href="tel:{{ config('brand.phone_href') }}" class="rounded-md px-4 py-2.5 text-center text-sm font-semibold text-sky-700 ring-1 ring-sky-300 dark:text-sky-300 dark:ring-sky-700">
                 Call
             </a>
         </div>

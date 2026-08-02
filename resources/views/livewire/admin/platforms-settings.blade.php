@@ -283,7 +283,7 @@
 
             @if($igRemoteOpen && $igRemoteUrl)
                 <div class="rounded-lg border border-zinc-300 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900"
-                     wire:poll.4s="pollInstagramRemoteLogin"
+                     wire:poll.4s.visible="pollInstagramRemoteLogin"
                      wire:ignore.self>
                     <div class="flex items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
                         <div class="text-sm font-medium">
@@ -335,15 +335,14 @@
 
                     <div class="border-t border-zinc-200 px-3 py-2 text-xs dark:border-zinc-700">
                         <div class="font-medium mb-1 opacity-70">Chromium log tail</div>
-                        <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-tight opacity-80"
-                             wire:poll.4s="pollInstagramRemoteLogin">{{ $igRemoteLogTail ?: '(no activity yet)' }}</pre>
+                        <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all text-2xs leading-tight opacity-80">{{ $igRemoteLogTail ?: '(no activity yet)' }}</pre>
                     </div>
                 </div>
             @elseif($igRemoteOpen && $igRemoteFinished)
                 <div class="rounded-lg border border-zinc-300 bg-zinc-50 p-3 text-xs dark:border-zinc-600 dark:bg-zinc-900"
-                     wire:poll.10s="pollInstagramRemoteLogin">
+                     wire:poll.10s.visible="pollInstagramRemoteLogin">
                     <div class="font-medium mb-1 opacity-70">Final Chromium log</div>
-                    <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all text-[11px] leading-tight opacity-80">{{ $igRemoteLogTail ?: '(empty)' }}</pre>
+                    <pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all text-2xs leading-tight opacity-80">{{ $igRemoteLogTail ?: '(empty)' }}</pre>
                 </div>
             @endif
             </div>
@@ -550,7 +549,7 @@
             @if($yelpRemoteOpen && $yelpRemoteUrl)
                 <div
                     class="border-t border-zinc-200 pt-4 dark:border-zinc-700"
-                    wire:poll.4s="pollYelpRemoteLogin"
+                    wire:poll.4s.visible="pollYelpRemoteLogin"
                 >
                     <div class="flex items-center justify-between mb-2">
                         <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">
@@ -634,8 +633,7 @@
                         <summary class="cursor-pointer text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                             Browser activity log (live)
                         </summary>
-                        <pre class="mt-2 max-h-64 overflow-auto rounded bg-zinc-900 p-2 text-[11px] leading-relaxed text-zinc-100 whitespace-pre-wrap"
-                             wire:poll.4s="pollYelpRemoteLogin">{{ $yelpRemoteLogTail ?: '(no activity yet)' }}</pre>
+                        <pre class="mt-2 max-h-64 overflow-auto rounded bg-zinc-900 p-2 text-2xs leading-relaxed text-zinc-100 whitespace-pre-wrap">{{ $yelpRemoteLogTail ?: '(no activity yet)' }}</pre>
                     </details>
                 </div>
             @elseif($yelpRemoteOpen && $yelpRemoteFinished)
@@ -644,7 +642,7 @@
                      review what happened. Polls one more time to refresh tail. --}}
                 <div
                     class="border-t border-zinc-200 pt-4 dark:border-zinc-700"
-                    wire:poll.10s="pollYelpRemoteLogin"
+                    wire:poll.10s.visible="pollYelpRemoteLogin"
                 >
                     <div class="flex items-center justify-between mb-2">
                         <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">
@@ -661,7 +659,7 @@
                         <summary class="cursor-pointer text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                             Browser activity log (final)
                         </summary>
-                        <pre class="mt-2 max-h-96 overflow-auto rounded bg-zinc-900 p-2 text-[11px] leading-relaxed text-zinc-100 whitespace-pre-wrap">{{ $yelpRemoteLogTail ?: '(no activity captured)' }}</pre>
+                        <pre class="mt-2 max-h-96 overflow-auto rounded bg-zinc-900 p-2 text-2xs leading-relaxed text-zinc-100 whitespace-pre-wrap">{{ $yelpRemoteLogTail ?: '(no activity captured)' }}</pre>
                     </details>
                 </div>
             @endif

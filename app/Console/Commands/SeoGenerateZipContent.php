@@ -19,7 +19,8 @@ class SeoGenerateZipContent extends Command
 
     public function handle(ZipCodeService $zips, AiContentService $ai): int
     {
-        $zipMap = $zips->getZipMap();
+        // Only towns we actually publish — the rest redirect to /service-area.
+        $zipMap = $zips->servedZipMap();
         if (empty($zipMap)) {
             $this->error('No ZIP map rows found. Run `php artisan hive:sync` first to populate hive_project_zip_counts.');
             return self::FAILURE;

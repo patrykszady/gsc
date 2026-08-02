@@ -9,13 +9,24 @@ class TimelapseSection extends Component
 {
     public ?int $timelapseId = null;
 
+    /**
+     * Heading printed above the frame. Null hides it.
+     *
+     * The gallery page stacks eight of these and labels each with its own
+     * project, so the generic line would repeat eight times.
+     */
+    public ?string $heading = 'Before & After & Timelapse';
+
     public function placeholder(): string
     {
+        // Mirrors the hydrated shell: heading line + the fixed-height frame
+        // (h-[375px] sm:h-[450px] lg:h-[525px]) with no section padding. The
+        // old placeholder was a padded zinc band with an aspect-video box, so
+        // the homepage visibly reflowed when the real component hydrated.
         return <<<'HTML'
-        <section class="relative bg-zinc-50 py-12 sm:py-16 lg:py-20 dark:bg-slate-900">
-            <div class="mx-auto max-w-7xl px-6 lg:px-8">
-                <div class="mt-10 aspect-video max-w-4xl mx-auto bg-zinc-200 dark:bg-zinc-700 rounded-2xl animate-pulse"></div>
-            </div>
+        <section>
+            <div class="mb-4 h-5"></div>
+            <div class="relative h-[375px] animate-pulse rounded-2xl bg-zinc-200 sm:h-[450px] lg:h-[525px] dark:bg-zinc-700"></div>
         </section>
         HTML;
     }

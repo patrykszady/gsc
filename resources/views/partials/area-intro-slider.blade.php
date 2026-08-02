@@ -9,7 +9,7 @@
        $area        AreaServed (required)
        $heading     string — the H2. Varies per (city, service) on purpose: the
                     H2 is heavily weighted in Google's near-duplicate detection,
-                    and these pages exist across ~70 towns.
+                    and these pages exist across {{ \App\Support\CompanyStats::citiesServedLabel() }} towns.
        $serviceLine string — "bathroom remodels", "remodeling projects" — woven
                     through the aria-label, landmark and permit sub-headings.
 
@@ -71,7 +71,7 @@
                         @mouseleave="start()"
                         class="relative overflow-hidden rounded-2xl shadow-lg ring-1 ring-zinc-900/10 dark:ring-white/10"
                     >
-                        <div class="relative aspect-[4/3] w-full bg-zinc-100 dark:bg-zinc-800">
+                        <div class="relative aspect-4/3 w-full bg-zinc-100 dark:bg-zinc-800">
                             @foreach($citySliderImages as $idx => $img)
                                 <div
                                     x-show="current === {{ $idx }}"

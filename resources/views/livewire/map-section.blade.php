@@ -107,7 +107,7 @@
                     @click="activateMap()"
                     class="absolute inset-0 z-10 cursor-pointer"
                 >
-                    <div class="absolute right-4 top-4 rounded-full bg-white/95 px-4 py-2.5 shadow-lg dark:bg-slate-800/95">
+                    <div class="absolute right-4 top-4 rounded-full bg-white/95 px-4 py-2.5 shadow-lg dark:bg-zinc-800/95">
                         <div class="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
                             <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />

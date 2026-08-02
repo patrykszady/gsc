@@ -1,4 +1,4 @@
-<section class="overflow-hidden bg-zinc-50 py-8 sm:py-10 dark:bg-slate-950">
+<section class="overflow-hidden bg-zinc-50 py-8 sm:py-10 dark:bg-zinc-950">
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-start">
             {{-- Text Content --}}
@@ -15,23 +15,25 @@
                         {{ $content['body'] }}
                     </p>
 
-                    {{-- Features List --}}
-                    <ul class="mt-6 space-y-3 text-base text-zinc-600 dark:text-zinc-300">
+                    {{-- Features List — <x-marker-list>, the shared check-bullet
+                         idiom, via its slot form because a feature can carry an
+                         inline proof link. --}}
+                    <x-marker-list class="mt-6 text-base text-zinc-600 dark:text-zinc-300">
                         @foreach($content['features'] as $feature)
-                        {{-- A feature is either a plain string or
-                             ['text' =>, 'href' =>, 'linkText' =>] when it points
-                             at a page that backs the claim up. --}}
-                        @php $f = is_array($feature) ? $feature : ['text' => $feature]; @endphp
-                        <li class="flex items-start gap-3">
-                            <svg class="mt-0.5 size-5 flex-shrink-0 text-sky-500" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
-                            </svg>
-                            <span>
-                                {{ $f['text'] }}@if(!empty($f['href'])) — <a href="{{ $f['href'] }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">{{ $f['linkText'] }}</a>@endif
-                            </span>
-                        </li>
+                            {{-- A feature is either a plain string or
+                                 ['text' =>, 'href' =>, 'linkText' =>] when it
+                                 points at a page that backs the claim up. --}}
+                            @php $f = is_array($feature) ? $feature : ['text' => $feature]; @endphp
+                            <li class="flex items-start gap-2.5">
+                                <svg class="mt-0.5 size-5 shrink-0 text-sky-600 dark:text-sky-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span>
+                                    {{ $f['text'] }}@if(!empty($f['href'])) — <a href="{{ $f['href'] }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">{{ $f['linkText'] }}</a>@endif
+                                </span>
+                            </li>
                         @endforeach
-                    </ul>
+                    </x-marker-list>
 
                     {{-- CTA Buttons --}}
                     <div class="mt-6 flex flex-wrap items-center gap-4">

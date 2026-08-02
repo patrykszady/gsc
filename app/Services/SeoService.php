@@ -905,7 +905,7 @@ class SeoService
      */
     protected static function getReviewCountLabel(): string
     {
-        $count = cache()->remember('testimonial_count', 3600, fn () => \App\Models\Testimonial::count());
+        $count = \App\Support\CompanyStats::reviewsTotal();
         $rounded = (int) floor($count / 5) * 5;
         return $rounded . '+';
     }
@@ -915,7 +915,7 @@ class SeoService
      */
     protected static function getReviewCountNumeric(): int
     {
-        return (int) cache()->remember('testimonial_count', 3600, fn () => \App\Models\Testimonial::count());
+        return \App\Support\CompanyStats::reviewsTotal();
     }
 
     /**

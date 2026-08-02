@@ -69,10 +69,23 @@
             'addressCountry'  => 'US',
         ],
         'areaServed'      => ['@type' => 'City', 'name' => $cityName.', IL'],
-        // No aggregateRating here: self-serving LocalBusiness ratings are ignored
-        // for stars (2019 policy) and would compete with the page's rated Product
-        // nodes — the only entities eligible to render stars. Reviews stay for
-        // E-E-A-T / AI-answer surfaces; the visible badge still shows the average.
+        // aggregateRating is REQUIRED here, not optional.
+        //
+        // This node used to omit it deliberately, reasoning that a self-serving
+        // LocalBusiness rating is ignored for stars (2019 policy) and would
+        // compete with the page's rated Product nodes. That reasoning is right
+        // about eligibility and wrong about validity: schema.org requires an
+        // aggregateRating whenever an item carries MORE THAN ONE review, and
+        // this node carries three. Search Console flagged every area page with
+        // "Multiple reviews without aggregateRating object — items with this
+        // issue are invalid".
+        //
+        // $aggregate was already computed (it gates this whole block) and is
+        // the same average and count the visible badge prints directly below,
+        // so the markup matches the rendered page. Omitting it bought nothing:
+        // the node stays ineligible for stars either way, and the Product nodes
+        // still carry their own ratings.
+        'aggregateRating' => $aggregate,
         'review'          => $reviews,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null;
 @endphp
@@ -81,8 +94,7 @@
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
     <div class="mt-4 flex flex-wrap items-center justify-center gap-3 rounded-xl bg-sky-50 px-4 py-3 text-center dark:bg-sky-950/30">
         <div aria-hidden="true" class="shrink-0">
-            <img src="{{ asset('images/5-stars.svg') }}" alt="" width="140" height="20" class="h-5 w-auto dark:hidden" />
-            <img src="{{ asset('images/5-stars-dark.svg') }}" alt="" width="140" height="20" class="hidden h-5 w-auto dark:block" />
+            <x-five-stars size="h-5" label="" />
         </div>
         <p class="text-sm font-medium text-sky-900 dark:text-sky-200">
             <span class="font-bold">{{ $data['avg'] }}/5</span>

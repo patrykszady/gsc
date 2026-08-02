@@ -108,9 +108,20 @@
     @pointercancel.window="endDrag()"
     x-intersect:enter.full="play()"
     x-intersect:leave.full="pause()"
-    class="relative w-full overflow-hidden rounded-2xl bg-white dark:bg-slate-950"
+    class="relative w-full overflow-hidden rounded-2xl bg-white dark:bg-zinc-950"
 >
-    <div class="relative h-[375px] sm:h-[450px] lg:h-[525px]">
+    {{-- Heading above every timelapse, wherever it renders (home, /projects,
+         area pages, project pages). Sits inside the component rather than at
+         each of the 7 call sites, so it cannot drift or be forgotten. --}}
+    @if($heading)
+        <div class="mb-4 text-center">
+            <p class="text-sm font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+                {{ $heading }}
+            </p>
+        </div>
+    @endif
+
+    <div class="relative gallery-viewport">
         {{-- Blur placeholder while first frame loads --}}
         <img
             x-cloak

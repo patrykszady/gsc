@@ -101,28 +101,41 @@ return [
         'homepage_title' => null,
     ],
 
+    /*
+     * These four were nested inside one 'description' array, each using the key
+     * 'fallback'. PHP keeps only the last duplicate key, so the description
+     * fallback resolved to the string "GS Construction" and the image and
+     * author fallbacks were discarded entirely — config('seo.image.fallback')
+     * and config('seo.author.fallback') both returned null. The package reads
+     * them as four sibling keys (vendor/ralphjsmit/laravel-seo/config/seo.php).
+     */
     'description' => [
         /**
-         * Use this setting to specify a fallback description, which will be used on places
-         * where we don't have a description set via an associated ->seo model or via
-         * the ->getDynamicSEOData() method.
+         * Fallback description, used where none is set via an associated ->seo
+         * model or ->getDynamicSEOData().
+         *
+         * Carries no review or city count: config is loaded before the database
+         * is available, so a number here cannot be kept current and this one had
+         * already gone stale at "53+ five-star reviews".
          */
-        'fallback' => 'Family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs. 40+ years combined experience, 53+ five-star reviews.',
+        'fallback' => 'Family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs, with 40+ years of combined experience.',
+    ],
+
+    'image' => [
         /**
-         * Use this setting to specify a fallback image, which will be used on places where you
-         * don't have an image set via an associated ->seo model or via the ->getDynamicSEOData() method.
-         * This should be a path to an image. The url to the path is generated using the `secure_url()` function
-         * (`secure_url($yourProvidedPath)`), so make sure the image is accessible from the public folder.
+         * Fallback OG image. Resolved through secure_url(), so it must be
+         * reachable from the public folder.
          */
         'fallback' => 'images/og-default.jpg',
-        /**
-         * Use this setting to specify a fallback author, which will be used on places where you
-         * don't have an author set via an associated ->seo model or via the ->getDynamicSEOData() method.
-         */
+    ],
+
+    'author' => [
         'fallback' => 'GS Construction',
+    ],
+
+    'twitter' => [
         /**
-         * Use this setting to enter your username and include that with the Twitter Card tags.
-         * Enter the username like 'yourUserName', so without the '@'.
+         * Username without the '@'.
          */
         '@username' => null,
     ],

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
+use App\Support\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
@@ -72,6 +73,97 @@ class AreaServed extends Model
     public function serviceUrl(string $service): string
     {
         return route('areas.service', ['area' => $this->slug, 'service' => $service]);
+    }
+
+    /**
+     * Every area, ordered by how many published projects we have in that town
+     * (most first), then alphabetically.
+     *
+     * Drives the "{Service} by City" chip order on the service hub pages, which
+     * used to run off a hardcoded list of 14 "priority" slugs kept in the view.
+     * That list needed hand-editing whenever the area list changed and had gone
+     * stale — it still named a town removed from the area list. Ordering by
+     * real project volume puts the towns with the strongest local proof first
+     * and needs no maintenance when areas change in admin.
+     *
+     * Counted in PHP rather than SQL: projects have no area foreign key, they
+     * carry a free-text `location`, so matching means normalising the leading
+     * town name. At a few hundred projects that is cheaper than a per-area
+     * query and avoids MySQL-only string functions.
+     *
+     * @return Collection<int, AreaServed>
+     */
+    public static function orderedByLocalProjects(): Collection
+    {
+        return cache()->remember(Tenancy::cacheKey('areas.ordered_by_projects'), 21600, function (): Collection {
+            $counts = Project::query()
+                ->where('is_published', true)
+                ->whereNotNull('location')
+                ->where('location', '!=', '')
+                ->pluck('location')
+                ->countBy(fn (string $location): string => mb_strtolower(trim(preg_split('/[,.]/', $location)[0] ?? '')));
+
+            return static::query()
+                ->orderBy('city')
+                ->get()
+                // Stable sort (PHP 8+), so towns on an equal count keep the
+                // alphabetical order the query already applied.
+                ->sortByDesc(fn (self $area): int => $counts[mb_strtolower(trim($area->city))] ?? 0)
+                ->values();
+        });
+    }
+
+    /**
+     * Completed jobs from the Hive PM system within `radius` miles of this
+     * town's centre, widening to 15 miles if 10 finds nothing.
+     *
+     * The real proof number for a town — 263 within 10 miles of Prospect
+     * Heights, against the 12 photographed projects the gallery can show. The
+     * haversine lived only inside App\Livewire\MapSection, so any other block
+     * wanting the figure had to re-derive it; the projects page was instead
+     * quoting its own page-size cap ("12+").
+     *
+     * @return array{count:int,radius:int,total:int,zips:int}|null
+     */
+    public function completedProjectsNearby(float $radius = 10.0): ?array
+    {
+        if ($this->latitude === null || $this->longitude === null) {
+            return null;
+        }
+
+        return cache()->remember("area:{$this->id}:hive_nearby:{$radius}", 21600, function () use ($radius) {
+            $points = collect(app(\App\Services\HiveProjectsClient::class)->storedZipPoints());
+            if ($points->isEmpty()) {
+                return null;
+            }
+
+            $lat = (float) $this->latitude;
+            $lng = (float) $this->longitude;
+
+            $within = function (float $miles) use ($points, $lat, $lng): int {
+                return (int) $points->filter(function ($p) use ($lat, $lng, $miles) {
+                    $dLat = deg2rad($p['lat'] - $lat);
+                    $dLng = deg2rad($p['lng'] - $lng);
+                    $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat)) * cos(deg2rad($p['lat'])) * sin($dLng / 2) ** 2;
+
+                    return 3959 * 2 * atan2(sqrt($a), sqrt(1 - $a)) <= $miles;
+                })->sum('count');
+            };
+
+            $used = $radius;
+            $count = $within($used);
+            if ($count === 0) {
+                $used = 15.0;
+                $count = $within($used);
+            }
+
+            return [
+                'count' => $count,
+                'radius' => (int) $used,
+                'total' => (int) $points->sum('count'),
+                'zips' => $points->count(),
+            ];
+        });
     }
 
     /**

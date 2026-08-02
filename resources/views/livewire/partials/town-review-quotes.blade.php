@@ -37,8 +37,7 @@
                     @php $stars = (int) ($quote->star_rating ?? 5); @endphp
                     @if($stars === 5)
                         {{-- Brand 5-star mark, matching the testimonials carousel. --}}
-                        <img src="{{ asset('images/5-stars.svg') }}" alt="Rated 5 out of 5" class="h-6 w-auto self-start dark:hidden" />
-                        <img src="{{ asset('images/5-stars-dark.svg') }}" alt="Rated 5 out of 5" class="hidden h-6 w-auto self-start dark:block" />
+                        <x-five-stars size="h-6" class="self-start" />
                     @else
                         {{-- The asset is a fixed FIVE-star graphic, so anything
                              lower must still draw individually — using it for a

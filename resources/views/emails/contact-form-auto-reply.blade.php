@@ -7,6 +7,6 @@ Thanks for reaching out to GS Construction. GS Crew will be in touch shortly reg
 In the meantime, feel free to browse our website to view our recent projects and homeowner reviews.
 
 Thank you,  
-GS Crew | (224) 735-4200  
+GS Crew | {{ config('brand.phone') }}  
 <a href="{{ config('app.url') }}">{{ parse_url(config('app.url'), PHP_URL_HOST) }}</a> | <a href="{{ config('socials.instagram.url') }}">Instagram</a>
 </x-mail::message>

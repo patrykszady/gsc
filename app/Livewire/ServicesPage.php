@@ -16,43 +16,6 @@ class ServicesPage extends Component
         SeoService::services();
     }
 
-    protected function getCoverImageForType(string $projectType): string
-    {
-        // Prefer a curated, real project photo: featured first, then most recently
-        // completed/published. Walk through candidates and skip any whose cover
-        // file has been deleted from disk (the url accessor returns null in that
-        // case, which would otherwise surface a stock fallback).
-        $projects = Project::query()
-            ->ofType($projectType)
-            ->published()
-            ->whereHas('images', fn ($q) => $q->where('is_cover', true))
-            ->orderByDesc('is_featured')
-            ->orderByDesc('completed_at')
-            ->orderByDesc('id')
-            ->limit(10)
-            ->get();
-
-        foreach ($projects as $project) {
-            $cover = ProjectImage::query()
-                ->where('project_id', $project->id)
-                ->where('is_cover', true)
-                ->first();
-
-            $url = $cover?->url;
-            if (is_string($url) && $url !== '') {
-                return $url;
-            }
-        }
-
-        if (in_array($projectType, ['basement', 'addition'], true)) {
-            $curated = \App\Support\ServiceImages::firstUrl($projectType);
-            if (is_string($curated) && $curated !== '') {
-                return $curated;
-            }
-        }
-
-        return $this->getFallbackForType($projectType);
-    }
 
     protected function getFallbackForType(string $type): string
     {
@@ -66,88 +29,22 @@ class ServicesPage extends Component
         };
     }
 
+    /**
+     * Slug + title for every service, for the schema loops in the view.
+     *
+     * Was a 90-line hand-maintained array duplicating config — descriptions,
+     * gradients and feature bullets already owned by services-content 'grid'
+     * (rendered via partials/services-grid) — kept alive only because the
+     * ItemList/Product schema needed slugs and titles. Those now come from
+     * ServiceCatalog, so adding a service in config updates this page's grid,
+     * schema and cards together.
+     */
     public function getServicesProperty(): array
     {
-        return [
-            [
-                'slug' => 'kitchen-remodeling',
-                'title' => 'Kitchen Remodeling',
-                'projectType' => 'kitchen',
-                'description' => 'Transform your kitchen into the heart of your home. From custom cabinetry and premium countertops to complete renovations – we create beautiful, functional spaces where families gather and memories are made.',
-                'image' => $this->getCoverImageForType('kitchen'),
-                'gradient' => 'from-sky-500 to-blue-600',
-                'features' => [
-                    'Custom cabinetry & storage solutions',
-                    'Granite, quartz & marble countertops',
-                    'Flooring, lighting & complete renovations',
-                ],
-            ],
-            [
-                'slug' => 'bathroom-remodeling',
-                'title' => 'Bathroom Remodeling',
-                'projectType' => 'bathroom',
-                'description' => 'Create your personal spa retreat with expert bathroom renovations. From luxurious walk-in showers and soaking tubs to modern vanities and tile work – we design bathrooms that combine comfort with style.',
-                'image' => $this->getCoverImageForType('bathroom'),
-                'gradient' => 'from-indigo-500 to-purple-600',
-                'features' => [
-                    'Walk-in showers & luxury tubs',
-                    'Custom tile work & vanities',
-                    'Modern fixtures & lighting',
-                ],
-            ],
-            [
-                'slug' => 'home-remodeling',
-                'title' => 'Home Remodeling',
-                'projectType' => 'home-remodel',
-                'description' => 'Comprehensive home renovations that breathe new life into your entire living space. From room additions and open floor plans to complete home makeovers – we handle projects of any scale with precision.',
-                'image' => $this->getCoverImageForType('home-remodel'),
-                'gradient' => 'from-emerald-500 to-teal-600',
-                'features' => [
-                    'Room additions & expansions',
-                    'Open concept floor plans',
-                    'Complete home renovations',
-                ],
-            ],
-            [
-                'slug' => 'basement-remodeling',
-                'title' => 'Basement Remodeling',
-                'projectType' => 'basement',
-                'description' => 'Unlock your basement\'s full potential with expert finishing services. Home theaters, in-law suites, recreation rooms, and wet bars — fully permitted with proper waterproofing, egress, and code-compliant electrical and plumbing.',
-                'image' => $this->getCoverImageForType('basement'),
-                'gradient' => 'from-amber-500 to-orange-600',
-                'features' => [
-                    'Home theaters & rec rooms',
-                    'Guest suites with egress windows',
-                    'Wet bars & full bathrooms',
-                ],
-            ],
-            [
-                'slug' => 'home-additions',
-                'title' => 'Home Additions',
-                'projectType' => 'addition',
-                'description' => 'Expand your home with seamless design-build additions. Room bump-outs, master suite additions, sunrooms, and full second-story expansions — fully permitted and matched to your existing architecture.',
-                'image' => $this->getCoverImageForType('addition'),
-                'gradient' => 'from-rose-500 to-pink-600',
-                'features' => [
-                    'Room & master suite additions',
-                    'Sunrooms & four-season rooms',
-                    'Second-story expansions',
-                ],
-            ],
-            [
-                'slug' => 'mudroom-remodeling',
-                'title' => 'Mudroom & Laundry',
-                'projectType' => 'mudroom',
-                'description' => 'Tame the daily clutter with a custom mudroom or laundry/mudroom combo. Built-in lockers, benches, cubbies, drop zones, durable tile floors, and utility sinks — designed around how your family actually moves through your home.',
-                'image' => $this->getCoverImageForType('mudroom'),
-                'gradient' => 'from-teal-500 to-cyan-600',
-                'features' => [
-                    'Built-in lockers, benches & cubbies',
-                    'Combined laundry/mudroom layouts',
-                    'Durable tile floors & utility sinks',
-                ],
-            ],
-        ];
+        return \App\Support\ServiceCatalog::all()
+            ->map(fn (array $s) => ['slug' => $s['slug'], 'title' => $s['label']])
+            ->values()
+            ->all();
     }
 
     protected function getFaqs(): array
@@ -156,8 +53,8 @@ class ServicesPage extends Component
             ['question' => 'What remodeling services does GS Construction offer?', 'answer' => 'We specialize in kitchen remodeling, bathroom remodeling, whole-home renovations, basement finishing, and home additions. As a licensed general contractor, we handle cabinetry, countertops, tile work, flooring, plumbing, electrical, structural modifications, room additions, and more.'],
             ['question' => 'Are you a licensed general contractor?', 'answer' => 'Yes — GS Construction is a fully licensed and insured general contractor based in the Chicago suburbs. We hold local municipal licenses, carry general liability and workers\' comp insurance, and self-perform most trades with our in-house crew.'],
             ['question' => 'Do you offer free consultations?', 'answer' => 'Yes! We provide free in-home consultations where we assess your space, discuss your vision, and provide a detailed, no-obligation estimate. Call us at (224) 735-4200 to schedule.'],
-            ['question' => 'What areas do you serve?', 'answer' => 'We serve over 89 cities across Chicagoland, including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, Barrington, and communities throughout the Northwest Suburbs, North Shore, and greater Chicago area.'],
-            ['question' => 'How experienced is your team?', 'answer' => 'GS Construction is a family-owned general contracting business with over 40 years of combined experience. Greg and Patryk bring expertise in all aspects of residential remodeling, backed by 53+ five-star Google reviews.'],
+            ['question' => 'What areas do you serve?', 'answer' => 'We serve ' . \App\Support\CompanyStats::citiesServedLabel() . ' cities across Chicagoland, including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, Barrington, and communities throughout the Northwest Suburbs, North Shore, and greater Chicago area.'],
+            ['question' => 'How experienced is your team?', 'answer' => 'GS Construction is a family-owned general contracting business with over 40 years of combined experience. Greg and Patryk bring expertise in all aspects of residential remodeling, backed by ' . \App\Support\CompanyStats::reviewsCountLabel() . ' five-star Google reviews.'],
             ['question' => 'Do you handle the entire project from start to finish?', 'answer' => 'Yes, we are a full-service general contractor. From initial design and permits to construction and final inspection, we manage every aspect of your project so you have a single point of contact throughout.'],
         ];
     }

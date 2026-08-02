@@ -3,7 +3,7 @@
     $answers = config('geo-answers.answers', []);
     $siteUrl = rtrim($site_url ?? config('geo.site_url', 'https://gs.construction'), '/');
     $phone = $meta['phone'] ?? '+1-224-735-4200';
-    $email = $meta['email'] ?? 'crew@gs.construction';
+    $email = $meta['email'] ?? config('brand.email');
     $languages = implode(', ', $meta['languages'] ?? ['English', 'Polish']);
     $cities = collect(array_keys(\App\Support\SEO\AreaSeoPolicy::priorityCities()))
         ->map(fn ($c) => \Illuminate\Support\Str::of($c)->title())

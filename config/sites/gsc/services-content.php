@@ -31,14 +31,14 @@
 // Shared across services because it IS shared — only the build duration differs,
 // which each service overrides via 'buildTime'.
 $process = [
-    ['step' => 1, 'title' => 'Free in-home estimate', 'description' => 'Greg or Patryk — the owners, not a salesperson — walk your space, take real measurements, and give you honest feedback on what your budget buys.'],
-    ['step' => 2, 'title' => 'Itemized scope & contract', 'description' => 'Labor, materials, demolition and disposal priced line by line, not one mystery number. Payment terms and warranty are in the written contract.'],
-    ['step' => 3, 'title' => 'Design & selections', 'description' => 'Bring your own designer, use our architects and designers, or choose everything yourself. Selections are scheduled ahead so lead times never stall the site.'],
-    ['step' => 4, 'title' => 'Permits & scheduling', 'description' => 'We pull and manage building, plumbing and electrical permits with your village — typically 1–2 weeks — and hand you a written schedule before demo day.'],
-    ['step' => 5, 'title' => 'The build, owner-supervised', 'description' => 'Long-standing trade partners working in sequence under daily owner supervision. Your client portal shows the schedule, change orders and current balance.'],
+    ['step' => 1, 'title' => 'Free in-home estimate', 'description' => 'Greg or Patryk — the owners, not a salesperson — walk your space, take real measurements, and give you honest feedback on what your budget buys.', 'time' => 'Week 0', 'body' => 'Greg or Patryk — the owners, not a salesperson — walk your space, talk through what you want, and take real measurements. You get honest feedback on what your budget buys, grounded in the project ranges we publish openly.'],
+    ['step' => 2, 'title' => 'Itemized scope & contract', 'description' => 'Labor, materials, demolition and disposal priced line by line, not one mystery number. Payment terms and warranty are in the written contract.', 'time' => 'Within days of the visit', 'body' => 'Your proposal is an itemized scope — labor, materials, demolition, disposal, line by line — not a single mystery number. Payment terms and warranty coverage are spelled out in the written contract. No surprise charges on the final invoice.'],
+    ['step' => 3, 'title' => 'Design & selections', 'description' => 'Bring your own designer, use our architects and designers, or choose everything yourself. Selections are scheduled ahead so lead times never stall the site.', 'time' => 'Parallel with permits', 'body' => 'Bring your own designer or architect, let us connect you with our trusted architects, engineers, or designers, or be your own designer — we send you to trusted showrooms and install what you choose. Selections are scheduled ahead of the build so lead times never stall the site.', 'pageTitle' => 'Design & selections, your way'],
+    ['step' => 4, 'title' => 'Permits & scheduling', 'description' => 'We pull and manage building, plumbing and electrical permits with your village — typically 1–2 weeks — and hand you a written schedule before demo day.', 'time' => 'Typically 1–2 weeks in most suburbs', 'body' => 'We pull and manage building, plumbing, and electrical permits with your village — Arlington Heights, Palatine, Winnetka, Schaumburg, and every town we serve — and hand you a written schedule before demo day.'],
+    ['step' => 5, 'title' => 'The build, owner-supervised', 'description' => 'Long-standing trade partners working in sequence under daily owner supervision. Your client portal shows the schedule, change orders and current balance.', 'time' => 'Kitchens 8–12 wks · Baths 3–5 wks', 'body' => 'Our long-standing trade partners work in sequence under daily owner supervision. Your private client portal shows the schedule (past and upcoming), current change orders, and up-to-date balances — and you always have a direct line to the owners.', 'pageTitle' => 'The build, owner-supervised daily'],
     // 'link' renders as a trailing anchor after the description. Kept as data
     // rather than HTML in the string because every consumer escapes these.
-    ['step' => 6, 'title' => 'Walkthrough & warranty', 'description' => 'We walk the finished job together, close out every punch-list item, hand over manufacturer paperwork, and your written workmanship warranty starts.', 'link' => ['href' => '/warranty', 'text' => 'Our commitment never expires']],
+    ['step' => 6, 'title' => 'Walkthrough & warranty', 'description' => 'We walk the finished job together, close out every punch-list item, hand over manufacturer paperwork, and your written workmanship warranty starts.', 'link' => ['href' => '/warranty', 'text' => 'Our commitment never expires'], 'time' => 'Final week', 'body' => 'We walk the finished project together, close out every punch-list item, hand over manufacturer paperwork, and your written workmanship warranty starts — with the owners a phone call away if anything ever needs attention.', 'pageTitle' => 'Walkthrough, punch list & warranty'],
 ];
 
 return [
@@ -49,6 +49,7 @@ return [
             'heroTitle' => 'Kitchen Remodeling Contractors',
             'heroSubtitle' => 'Layout changes, permits, trades and schedule — all of it ours to handle, with an owner here every day',
             'projectType' => 'kitchen',
+            'shortLabel' => 'Kitchen',
             'description' => 'Your kitchen is the room the whole house runs through, so we don\'t treat the remodel like something you just have to survive. Greg or Patryk is here every day — not a project manager passing your questions along — and the same trades we\'ve worked with for years show up in the order they\'re supposed to. You\'ll know what everything costs before demo day, and you\'ll have a direct line to the owners from the first walkthrough to the last punch-list item.',
 
             'facts' => [
@@ -99,6 +100,7 @@ return [
             'heroTitle' => 'Bathroom Remodeling Contractors',
             'heroSubtitle' => 'Primary baths and shower rebuilds, done once and done right — with an owner here, not a middleman',
             'projectType' => 'bathroom',
+            'shortLabel' => 'Bathroom',
             'description' => 'Bathrooms are small rooms that hide expensive mistakes behind the tile. That\'s why one of us is here while the work happens, and why nothing gets closed up before the village has seen it. You get your scope written out line by line before we start, so there\'s no guessing what you\'re paying for — and we build it to the standard we\'d want in our own house.',
 
             'facts' => [
@@ -148,6 +150,7 @@ return [
             'heroTitle' => 'Basement Finishing & Remodeling',
             'heroSubtitle' => 'Egress, moisture control and code-compliant build-outs — finished space that passes inspection and stays dry',
             'projectType' => 'basement',
+            'shortLabel' => 'Basement',
             'description' => 'Most of a basement is decided before the drywall ever goes up: where the water\'s really coming from, whether the egress is legal, how much ceiling you actually have. We sort all that out first, pull the permits with your village, and hand you a schedule before demo day. Then we build the room you actually wanted — and nothing gets framed over until it\'s been signed off.',
 
             'facts' => [
@@ -183,7 +186,7 @@ return [
             ],
 
             'faqs' => [
-                ['question' => 'How much does basement finishing cost?', 'answer' => 'Finishing a basement in the Chicago suburbs typically runs $25,000–$50,000+ depending on square footage, layout, finishes, and whether you need a bathroom, wet bar, or egress windows. GS Construction provides a free, itemized estimate broken down by phase.'],
+                ['question' => 'How much does basement finishing cost?', 'answer' => 'Finishing a basement in the Chicago suburbs typically runs $45,000–$90,000, or $90,000–$150,000+ once you add a bedroom and full bath — driven by square footage, layout, finishes, and whether you need egress windows or below-grade plumbing. GS Construction provides a free, itemized estimate broken down by phase.'],
                 ['question' => 'How long does basement finishing take?', 'answer' => 'A typical basement finish takes 6–12 weeks. Waterproofing, framing, electrical, and plumbing are the longest phases. Adding a full bathroom or wet bar adds 1–2 weeks. We work to minimize disruption to your daily life.'],
                 ['question' => 'Do I need permits to finish my basement in Illinois?', 'answer' => 'Yes — Illinois municipalities (Arlington Heights, Palatine, Hoffman Estates, Schaumburg, etc.) all require building, electrical, and plumbing permits for basement finishing. GS Construction handles all permitting and inspections for you.'],
                 ['question' => 'Can you add a bedroom or bathroom in my basement?', 'answer' => 'Yes. Basement bedrooms require code-compliant egress windows, and bathrooms require proper plumbing tie-ins (often with an ejector pit). We handle the engineering, permits, and full build.'],
@@ -197,6 +200,7 @@ return [
             'heroTitle' => 'Home Addition Contractors',
             'heroSubtitle' => 'Room additions, second stories and dormers — foundation to roofline, permitted and owner-supervised',
             'projectType' => 'addition',
+            'shortLabel' => 'Home Addition',
             'description' => 'An addition is really a small house attached to the one you already have, and the seam between them is where most projects go wrong. We run the whole thing as one job with one schedule, so nobody\'s pointing at the next trade. The engineering and the village approvals are done before we break ground, one of us is here while it goes up, and you can check the schedule, any change orders and your balance in your portal whenever you want.',
 
             'facts' => [
@@ -233,7 +237,7 @@ return [
             ],
 
             'faqs' => [
-                ['question' => 'How much does a home addition cost?', 'answer' => 'A room addition or home extension typically costs $100–$300+ per square foot depending on the type of room, finishes, foundation work, and site conditions. A basic 400 sq ft addition might run $40,000–$80,000; a master suite addition often runs $80,000–$150,000+. GS Construction provides free, detailed estimates.'],
+                ['question' => 'How much does a home addition cost?', 'answer' => 'A room addition or home extension typically runs $200–$400 per square foot depending on the type of room, finishes, foundation work, and site conditions — about $60,000–$120,000 for a ~300 sq ft addition, and $150,000–$350,000+ for a large second-storey or master-suite build. GS Construction provides free, detailed estimates.'],
                 ['question' => 'How long does a room addition take?', 'answer' => 'Most room additions take 8–16 weeks depending on size, permits, weather, and structural work required. Foundation, framing, and roofing are the longest phases. Second-story additions typically take 16–24 weeks.'],
                 ['question' => 'Do you handle architectural plans and permits for additions?', 'answer' => 'Yes. We work with licensed architects and structural engineers and handle all village/city zoning, building, electrical, plumbing, and mechanical permits — including Arlington Heights, Palatine, Hoffman Estates, and Schaumburg.'],
                 ['question' => 'Can I add a second story to my existing house?', 'answer' => 'Often, yes. We evaluate the existing foundation and structural framing for capacity, work with an engineer to design proper reinforcement, and coordinate permits. Second-story additions are major projects but add significant square footage without losing yard space.'],
@@ -246,7 +250,8 @@ return [
             'title' => 'Whole-Home Remodeling',
             'heroTitle' => 'Whole-Home Remodeling Contractors',
             'heroSubtitle' => 'Multi-room and gut renovations sequenced as one project, under daily owner supervision',
-            'projectType' => 'home',
+            'projectType' => 'home-remodel',
+            'shortLabel' => 'Home Remodel',
             'description' => 'A whole-home remodel lives or dies on the order things happen in. We run it as one job, with one schedule and one number to call: Greg or Patryk here on site, trades we\'ve used for years rather than whoever happens to be free that week, and a portal showing you the schedule, any change orders and your balance. You shouldn\'t have to project-manage your own house.',
 
             'facts' => [
@@ -297,6 +302,7 @@ return [
             'heroTitle' => 'Mudroom & Entry Remodeling',
             'heroSubtitle' => 'The small job we run like a big one — measured to your family, priced line by line, owner on site',
             'projectType' => 'mudroom',
+            'shortLabel' => 'Mudroom & Laundry',
             'description' => 'A mudroom is a small job, and small jobs are the ones people cut corners on. We measure how your family actually comes through the door — boots, backpacks, the dog leash, all of it — price the built-ins line by line like any other project, and build it with the same owner on site and the same written warranty as a full kitchen. Short job, same standard.',
 
             'facts' => [
@@ -345,4 +351,100 @@ return [
     // Attached to every service below, so the service pages and /process can
     // never describe two different companies.
     'process' => $process,
+
+    /*
+     * Presentation data for the six service cards rendered by
+     * resources/views/partials/services-grid.blade.php (used on /contact and
+     * the area pages).
+     *
+     * Lifted verbatim out of that partial, which is SHARED code: it hardcoded
+     * GS Construction's six services, so any tenant including the partial
+     * advertised GSC's services as its own. The partial now reads this key and
+     * renders nothing when a site declares none.
+     *
+     * Overlaps with 'services' above (title, description) and should fold into
+     * it once the card copy and the service-page copy are reconciled — the two
+     * descriptions differ today, so merging them would change the visible page.
+     */
+    'grid' => [
+        [
+            'slug' => 'kitchen-remodeling',
+            'urlSlug' => 'kitchen-remodeling',
+            'title' => 'Kitchen Remodeling',
+            'projectType' => 'kitchen',
+            'description' => 'Transform your kitchen into the heart of your home. From custom cabinetry and premium countertops to complete renovations – we create beautiful, functional spaces where families gather and memories are made.',
+            'gradient' => 'from-sky-500 to-blue-600',
+            'features' => [
+                'Custom cabinetry & storage solutions',
+                'Granite, quartz & marble countertops',
+                'Flooring, lighting & complete renovations',
+            ],
+        ],
+        [
+            'slug' => 'bathroom-remodeling',
+            'urlSlug' => 'bathroom-remodeling',
+            'title' => 'Bathroom Remodeling',
+            'projectType' => 'bathroom',
+            'description' => 'Create your personal spa retreat with expert bathroom renovations. From luxurious walk-in showers and soaking tubs to modern vanities and tile work – we design bathrooms that combine comfort with style.',
+            'gradient' => 'from-indigo-500 to-purple-600',
+            'features' => [
+                'Walk-in showers & luxury tubs',
+                'Custom tile work & vanities',
+                'Modern fixtures & lighting',
+            ],
+        ],
+        [
+            'slug' => 'home-remodeling',
+            'urlSlug' => 'home-remodeling',
+            'title' => 'Home Remodeling',
+            'projectType' => 'home-remodel',
+            'description' => 'Comprehensive home renovations that breathe new life into your entire living space. From room additions and open floor plans to complete home makeovers – we handle projects of any scale with precision.',
+            'gradient' => 'from-emerald-500 to-teal-600',
+            'features' => [
+                'Room additions & expansions',
+                'Open concept floor plans',
+                'Complete home renovations',
+            ],
+        ],
+        [
+            'slug' => 'basement-remodeling',
+            'urlSlug' => 'basement-remodeling',
+            'title' => 'Basement Remodeling',
+            'projectType' => 'basement',
+            'description' => 'Turn an unfinished or dated basement into comfortable, code-compliant living space. From family rooms and home theaters to guest suites, wet bars, and basement bathrooms – we finish lower levels your family will actually use.',
+            'gradient' => 'from-amber-500 to-orange-600',
+            'features' => [
+                'Family rooms, theaters & rec spaces',
+                'Guest bedrooms & basement bathrooms',
+                'Code-compliant electrical & plumbing',
+            ],
+        ],
+        [
+            'slug' => 'home-additions',
+            'urlSlug' => 'home-additions',
+            'title' => 'Home Additions',
+            'projectType' => 'addition',
+            'description' => 'Expand your home with seamless additions designed to match your existing layout. From sunrooms and master suites to second-story additions – we add square footage that blends naturally with your home.',
+            'gradient' => 'from-rose-500 to-pink-600',
+            'features' => [
+                'Room additions & bump-outs',
+                'Sunrooms & four-season rooms',
+                'Master suite & second-story additions',
+            ],
+        ],
+        [
+            'slug' => 'mudroom-remodeling',
+            'urlSlug' => 'mudroom-remodeling',
+            'title' => 'Mudroom & Laundry',
+            'projectType' => 'mudroom',
+            'description' => 'Tame the daily clutter with a custom mudroom or laundry/mudroom combo. Built-in lockers, benches, cubbies, drop zones, durable tile floors, and utility sinks – designed around how your family actually moves through your home.',
+            'gradient' => 'from-teal-500 to-cyan-600',
+            'features' => [
+                'Built-in lockers, benches & cubbies',
+                'Combined laundry/mudroom layouts',
+                'Durable tile floors & utility sinks',
+            ],
+        ],
+    ],
+
 ];

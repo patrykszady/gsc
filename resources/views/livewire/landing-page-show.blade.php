@@ -96,7 +96,7 @@
                     @foreach ($projects as $project)
                         <a href="{{ route('projects.show', $project) }}" wire:navigate
                            class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
-                            <div class="relative aspect-[4/3] overflow-hidden">
+                            <div class="relative aspect-4/3 overflow-hidden">
                                 @if ($project->images->first())
                                     <x-lqip-image :image="$project->images->first()" size="medium" width="600" height="450"
                                         class="h-full w-full transition duration-300 group-hover:scale-105" />

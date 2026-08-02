@@ -45,7 +45,7 @@
                         <div class="w-32 bg-gray-100 rounded-full h-2">
                             <div class="h-2 rounded-full {{ $row['score'] >= 70 ? 'bg-green-500' : ($row['score'] >= 40 ? 'bg-yellow-500' : 'bg-red-500') }}" style="width: {{ $row['score'] }}%"></div>
                         </div>
-                        <span class="text-[10px] text-gray-400">{{ $row['score'] }}% coverage</span>
+                        <span class="text-3xs text-gray-400">{{ $row['score'] }}% coverage</span>
                     </td>
                     <td class="px-6 py-4">
                         <span class="px-2 py-0.5 text-xs font-bold rounded {{ $row['grade'] === 'A' ? 'bg-green-100 text-green-800' : ($row['grade'] === 'B' ? 'bg-blue-100 text-blue-800' : ($row['grade'] === 'C' ? 'bg-yellow-100 text-yellow-800' : ($row['grade'] === 'D' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'))) }}">

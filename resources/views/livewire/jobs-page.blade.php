@@ -1,24 +1,9 @@
-<div class="bg-white dark:bg-slate-950">
+<div class="bg-white dark:bg-zinc-950">
     {{-- Breadcrumb schema + visual trail for careers/partnership hub --}}
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Careers & Partnerships'],
-    ]" />
 
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" aria-hidden="true" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Careers &amp; Partnerships</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="[
+        ['name' => 'Careers & Partnerships'],
+    ]" padding="py-4" />
 
     {{-- Hero (shared project slider) --}}
     @php
@@ -47,8 +32,8 @@
             :slide-count="3"
             primary-cta-text="Reach Out"
             primary-cta-url="#apply"
-            secondary-cta-text="Call (224) 735-4200"
-            secondary-cta-url="tel:2247354200"
+            secondary-cta-text="Call {{ config('brand.phone') }}"
+            secondary-cta-url="tel:{{ config('brand.phone_href') }}"
         />
     </section>
 
@@ -117,7 +102,7 @@
     </section>
 
     {{-- Why work with us --}}
-    <section class="bg-gray-50 dark:bg-slate-900/50">
+    <section class="bg-gray-50 dark:bg-zinc-900/50">
         <div class="mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-20">
             <div class="mx-auto max-w-2xl text-center">
                 <h2 class="font-heading text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
@@ -175,89 +160,145 @@
         @endif
 
         <form wire:submit="submit" class="mt-10 space-y-6">
-            {{-- Honeypot (hidden from humans) --}}
-            <div class="absolute left-[-9999px]" aria-hidden="true">
-                <label for="nickname">Nickname</label>
-                <input type="text" id="nickname" wire:model="nickname" tabindex="-1" autocomplete="off" />
+            {{-- Honeypot — same hardening as the contact form: a field name
+                 autofill will never map a profile value onto ("fax_number", not
+                 "nickname"), plus data-1p-ignore/lpignore so password managers
+                 skip it. Without those, an autofill/manager fill could silently
+                 trip the trap and flag a real applicant as spam. The Livewire
+                 property keeps its old name. --}}
+            <div class="absolute -left-[9999px] opacity-0" aria-hidden="true" tabindex="-1">
+                <label for="job-fax-number">Fax number</label>
+                <input type="text" id="job-fax-number" name="fax_number" wire:model="nickname" tabindex="-1" autocomplete="off" data-1p-ignore data-lpignore="true" />
             </div>
 
             <div class="grid gap-6 sm:grid-cols-2">
                 {{-- Name --}}
                 <div>
                     <label for="job-name" class="block text-sm font-medium text-gray-900 dark:text-white">Name <span class="text-red-500">*</span></label>
-                    <input type="text" id="job-name" wire:model="name" autocomplete="name"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="name"
+                            id="job-name"
+                            type="text"
+                            autocomplete="name"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('name') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
                 {{-- Email --}}
                 <div>
                     <label for="job-email" class="block text-sm font-medium text-gray-900 dark:text-white">Email <span class="text-red-500">*</span></label>
-                    <input type="email" id="job-email" wire:model="email" autocomplete="email"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="email"
+                            id="job-email"
+                            type="email"
+                            autocomplete="email"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('email') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
                 {{-- Phone --}}
                 <div>
                     <label for="job-phone" class="block text-sm font-medium text-gray-900 dark:text-white">Phone</label>
-                    <input type="tel" id="job-phone" wire:model="phone" autocomplete="tel"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="phone"
+                            id="job-phone"
+                            type="tel"
+                            autocomplete="tel"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('phone') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
                 {{-- Applicant type --}}
                 <div>
                     <label for="job-type" class="block text-sm font-medium text-gray-900 dark:text-white">I'm reaching out as <span class="text-red-500">*</span></label>
-                    <select id="job-type" wire:model="applicantType"
-                            class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10">
-                        @foreach($applicantTypes as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <div class="mt-2">
+                        <flux:select wire:model="applicantType" id="job-type" class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500">
+                            @foreach($applicantTypes as $value => $label)
+                                <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    </div>
                     @error('applicantType') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
                 {{-- Trade / specialty --}}
                 <div>
                     <label for="job-trade" class="block text-sm font-medium text-gray-900 dark:text-white">Trade / specialty</label>
-                    <input type="text" id="job-trade" wire:model="trade" placeholder="e.g. Tile, carpentry, cabinetry"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="trade"
+                            id="job-trade"
+                            type="text"
+                            placeholder="e.g. Tile, carpentry, cabinetry"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('trade') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
                 {{-- Company --}}
                 <div>
                     <label for="job-company" class="block text-sm font-medium text-gray-900 dark:text-white">Company <span class="text-gray-400">(if any)</span></label>
-                    <input type="text" id="job-company" wire:model="company" autocomplete="organization"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="company"
+                            id="job-company"
+                            type="text"
+                            autocomplete="organization"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('company') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
-                {{-- Website --}}
+                {{-- Website — type=url so mobile keyboards and autofill behave --}}
                 <div>
                     <label for="job-website" class="block text-sm font-medium text-gray-900 dark:text-white">Website / portfolio</label>
-                    <input type="text" id="job-website" wire:model="companyWebsite" placeholder="https://"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="companyWebsite"
+                            id="job-website"
+                            type="url"
+                            autocomplete="url"
+                            placeholder="https://"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('companyWebsite') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
-
                 {{-- Languages --}}
                 <div>
                     <label for="job-languages" class="block text-sm font-medium text-gray-900 dark:text-white">Languages</label>
-                    <input type="text" id="job-languages" wire:model="languages" placeholder="e.g. English, Spanish, Polish"
-                           class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10" />
+                    <div class="mt-2">
+                        <flux:input
+                            wire:model="languages"
+                            id="job-languages"
+                            type="text"
+                            placeholder="e.g. English, Spanish, Polish"
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
                     @error('languages') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
                 </div>
             </div>
 
-            {{-- Message --}}
-            <div>
-                <label for="job-message" class="block text-sm font-medium text-gray-900 dark:text-white">Tell us about your work or partnership <span class="text-red-500">*</span></label>
-                <textarea id="job-message" wire:model="message" rows="5" placeholder="Experience, what you're looking for, availability, etc."
-                          class="mt-2 block w-full rounded-md border-0 bg-white px-3.5 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-500 dark:bg-white/5 dark:text-white dark:ring-white/10"></textarea>
-                @error('message') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-            </div>
+                {{-- Message --}}
+                <div>
+                    <label for="job-message" class="block text-sm font-medium text-gray-900 dark:text-white">Tell us about your work or partnership <span class="text-red-500">*</span></label>
+                    <div class="mt-2">
+                        <flux:textarea
+                            wire:model="message"
+                            id="job-message"
+                            rows="5"
+                            placeholder="Experience, what you're looking for, availability, etc."
+                            class="!bg-white dark:!bg-white/5 focus:!ring-sky-500 focus:!border-sky-500"
+                        />
+                    </div>
+                    @error('message') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                </div>
 
             {{-- Cloudflare Turnstile (Anti-Spam) --}}
             @if($turnstileEnabled && $turnstileSiteKey)
@@ -301,24 +342,26 @@
 
             {{-- Submit --}}
             <div class="flex justify-end">
-                <button type="submit"
-                        class="inline-flex items-center rounded-md bg-sky-500 px-6 py-3 text-base font-semibold text-white shadow-lg transition hover:bg-sky-600 disabled:opacity-60">
+                {{-- Shared CTA rather than a bespoke bg-sky-500 button: this
+                     and the contact form were the last two primaries not using
+                     it, and both hovered a different blue from the rest. --}}
+                <x-buttons.cta as="button" type="submit" size="lg" class="disabled:opacity-60">
                     <span wire:loading.remove wire:target="submit">Send inquiry</span>
                     <span wire:loading wire:target="submit">Sending...</span>
-                </button>
+                </x-buttons.cta>
             </div>
         </form>
 
         <p class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
             Prefer to call? Reach us at
-            <a href="tel:2247354200" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">(224) 735-4200</a>
+            <a href="tel:{{ config('brand.phone_href') }}" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">{{ config('brand.phone') }}</a>
             or email
-            <a href="mailto:crew@gs.construction" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">crew@gs.construction</a>.
+            <a href="mailto:{{ config('brand.email') }}" class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">{{ config('brand.email') }}</a>.
         </p>
     </section>
 
     {{-- Get to know our work (internal links) --}}
-    <section class="border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-slate-900/50">
+    <section class="border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-zinc-900/50">
         <div class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
             <h2 class="text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                 Get to know GS Construction
@@ -342,5 +385,6 @@
             </div>
         </div>
     </section>
+    @include('partials.autofill-sync')
 </div>
 

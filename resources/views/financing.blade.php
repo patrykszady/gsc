@@ -2,6 +2,8 @@
     title="Paying for a Remodel — Financing Options | GS Construction"
     metaDescription="How Chicago-suburb homeowners pay for kitchen, bath & whole-home remodels: HELOCs, home-equity and renovation loans — plus how an itemized GS scope helps with lenders."
 >
+
+    <x-breadcrumbs :items="[['label' => 'Financing']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
     <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">Financing</p>
         <h1 class="mt-1 font-heading text-3xl font-bold tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">

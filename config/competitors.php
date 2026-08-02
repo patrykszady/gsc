@@ -387,7 +387,7 @@ return [
             'website' => 'https://mayaconstructioninc.com',
             'location' => 'Chicago, IL',
             'focus' => 'General contracting and home remodeling',
-            'comparison_note' => 'Maya Construction Group is a Chicago-based general contractor in business since 1998, citing 700+ completed jobs across city neighborhoods and surrounding suburbs. Its identity and address are firmly in the city; GS Construction lives in the suburbs it serves — Prospect Heights headquarters, roughly 90 suburbs across Cook, Lake, and DuPage counties — with an owner-led team supervising every job, published typical project ranges, and a written workmanship warranty.',
+            'comparison_note' => 'Maya Construction Group is a Chicago-based general contractor in business since 1998, citing 700+ completed jobs across city neighborhoods and surrounding suburbs. Its identity and address are firmly in the city; GS Construction lives in the suburbs it serves — Prospect Heights headquarters, serving communities across Cook, Lake, and DuPage counties — with an owner-led team supervising every job, published typical project ranges, and a written workmanship warranty.',
             'them' => [
                 'service_area' => 'Chicago city neighborhoods plus nearby suburbs',
             ],

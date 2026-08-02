@@ -50,6 +50,11 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
     --font-heading: 'Roboto Slab Variable', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
 
+    /* Micro type for dense admin tables/badges. Was text-[10px]/[11px]/[9px]
+       repeated ~28 times across 12 views with no token to name them. */
+    --text-2xs: 0.6875rem;
+    --text-3xs: 0.625rem;
+
     /* Sky/Blue accent for Flux */
     --color-accent: var(--color-sky-500);
     --color-accent-content: var(--color-sky-600);
@@ -83,6 +88,16 @@ html,
 body {
     scroll-behavior: smooth;
     overflow-x: clip;
+}
+
+/* Reserve the vertical scrollbar's width permanently.
+   Without this, anything that changes page height — a Livewire re-render
+   swapping a carousel slide, a filter narrowing a grid — makes the scrollbar
+   appear or disappear, and every element on the page jumps sideways by its
+   width. Reads as the whole page twitching left/right on click.
+   Only html: setting it on body too would reserve the gutter twice. */
+html {
+    scrollbar-gutter: stable;
 }
 
 /* ---------------------------------------------------------------------------
@@ -266,4 +281,16 @@ body {
 .seo-report th[align='center'],
 .seo-report td[align='center'] {
     text-align: center;
+}
+
+/* The gallery/slider viewport height.
+
+   The triple h-[375px] sm:h-[450px] lg:h-[525px] was repeated at five call
+   sites across three views (hero sliders, project galleries, timelapse), so
+   changing the gallery height meant finding all five. @utility so it composes
+   like any other class. */
+@utility gallery-viewport {
+    height: 375px;
+    @media (width >= 40rem) { height: 450px; }
+    @media (width >= 64rem) { height: 525px; }
 }

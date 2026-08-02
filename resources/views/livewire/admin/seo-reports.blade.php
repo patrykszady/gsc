@@ -110,7 +110,7 @@
                                 <div class="relative h-4 flex-1 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
                                     <div class="absolute inset-y-0 left-0 rounded bg-sky-500/70" style="width: {{ round($l['prior'] / $lmax * 100, 1) }}%"></div>
                                 </div>
-                                <div class="w-24 shrink-0 text-right text-[11px] tabular-nums text-zinc-500">{{ number_format($l['prior']) }}→{{ $l['recent'] }}</div>
+                                <div class="w-24 shrink-0 text-right text-2xs tabular-nums text-zinc-500">{{ number_format($l['prior']) }}→{{ $l['recent'] }}</div>
                             </div>
                         @empty
                             <flux:text class="text-xs text-zinc-500">No area-page losses in the current window.</flux:text>
@@ -139,7 +139,7 @@
                 <div class="mt-3 grid gap-3 sm:grid-cols-2">
                     @foreach ($diag['recommendations'] as $rec)
                         <div class="flex gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                            <span class="mt-0.5 inline-flex h-fit shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide {{ $rec['p'] === 'now' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' }}">{{ $rec['p'] === 'now' ? 'Do now' : 'Next' }}</span>
+                            <span class="mt-0.5 inline-flex h-fit shrink-0 rounded-full px-2 py-0.5 text-3xs font-semibold uppercase tracking-wide {{ $rec['p'] === 'now' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' }}">{{ $rec['p'] === 'now' ? 'Do now' : 'Next' }}</span>
                             <div>
                                 <div class="text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $rec['t'] }}</div>
                                 <div class="mt-0.5 text-xs text-zinc-500">{{ $rec['d'] }}</div>
@@ -172,15 +172,15 @@
                 </div>
                 <div class="grid gap-3 sm:grid-cols-3">
                     <div class="min-w-0">
-                        <flux:text class="text-[11px] uppercase tracking-wide text-zinc-500">Clicks (7d)</flux:text>
+                        <flux:text class="text-2xs uppercase tracking-wide text-zinc-500">Clicks (7d)</flux:text>
                         <div class="truncate text-lg font-semibold text-zinc-900 dark:text-white">{{ number_format($channel['clicks']) }}</div>
                     </div>
                     <div class="min-w-0">
-                        <flux:text class="text-[11px] uppercase tracking-wide text-zinc-500">Impressions</flux:text>
+                        <flux:text class="text-2xs uppercase tracking-wide text-zinc-500">Impressions</flux:text>
                         <div class="truncate text-lg font-semibold text-zinc-900 dark:text-white">{{ number_format($channel['impressions']) }}</div>
                     </div>
                     <div class="min-w-0">
-                        <flux:text class="text-[11px] uppercase tracking-wide text-zinc-500">CTR / Pos</flux:text>
+                        <flux:text class="text-2xs uppercase tracking-wide text-zinc-500">CTR / Pos</flux:text>
                         <div class="truncate text-lg font-semibold text-zinc-900 dark:text-white">
                             {{ number_format($channel['ctr'], 2) }}%
                             @if ($channel['position'] > 0)
@@ -646,9 +646,9 @@
                                     @if ($f['exists'])
                                         Updated {{ $f['age'] }} &middot; {{ number_format($f['size'] / 1024, 1) }} KB
                                         @if ($f['status'] === 'fresh')
-                                            <span class="ml-1 inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">fresh</span>
+                                            <span class="ml-1 inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-3xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">fresh</span>
                                         @elseif ($f['status'] === 'stale')
-                                            <span class="ml-1 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">stale</span>
+                                            <span class="ml-1 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-3xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">stale</span>
                                         @endif
                                     @else
                                         <span class="text-amber-600">Never generated</span>

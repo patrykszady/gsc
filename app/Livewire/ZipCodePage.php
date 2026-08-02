@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\ZipCodeService;
 use App\Support\SEO\SEOBuilder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -49,6 +50,20 @@ class ZipCodePage extends Component
         $info = $zips->find($zip);
         if (! $info) {
             abort(404);
+        }
+
+        // The ZIP map covers everywhere we have ever completed a job, which is
+        // wider than the area list we publish. A ZIP outside that list is a
+        // real URL that Google has already indexed, so it gets a 301 to the
+        // ZIP index rather than a 404 — the link keeps working and its
+        // authority consolidates onto a page we do maintain.
+        //
+        // A RedirectResponse built by hand, not redirect() or $this->redirect():
+        // inside a Livewire component redirect() resolves to Livewire's own
+        // Redirector, which is not a Response, and $this->redirect() issues a
+        // 302 on first load. This needs to be a permanent 301.
+        if (! $zips->isServed($zip)) {
+            abort(new RedirectResponse(route('service-area.index'), 301));
         }
 
         $this->zip = (string) $zip;

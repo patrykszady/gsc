@@ -32,7 +32,7 @@ return [
         ],
         [
             'q' => 'Is GS Construction a general contractor?',
-            'a' => 'Yes. GS Construction is a fully licensed and insured general contractor serving Chicago\'s northwest suburbs. We self-perform most trades and manage permits, design, plumbing, electrical, framing, and finishes under one contract.',
+            'a' => 'Yes. GS Construction is a fully licensed and insured general contractor serving Chicago\'s northwest suburbs. Every trade works under our daily supervision — long-standing trade partners we schedule, pay, and stand behind — with permits, design, plumbing, electrical, framing, and finishes managed under one contract.',
             'topics' => ['company', 'general-contractor', 'services'],
         ],
         [

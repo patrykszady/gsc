@@ -1,8 +1,8 @@
 <div>
     {{-- Breadcrumb Schema --}}
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Services', 'url' => route('services.index')],
-        ['name' => $data['title']],
+    <x-breadcrumbs :items="[
+        ['label' => 'Services', 'url' => route('services.index')],
+        ['label' => $data['title']],
     ]" />
 
     {{-- Service Schema --}}
@@ -92,6 +92,18 @@
         </section>
     @endif
 
+    {{-- Projects Section — directly under "What We Offer", so the claim about
+         what we do is followed immediately by the work itself rather than
+         sitting three sections away, after the process and pricing blocks. --}}
+    @if($projects->isNotEmpty())
+        <livewire:projects-grid
+            :projectType="$data['projectType']"
+            :limit="3"
+            :hideFilters="true"
+            :showPagination="true"
+            :moreProjectsType="$data['projectType']" />
+    @endif
+
     {{-- Process --}}
     <x-process-steps :steps="$data['process'] ?? []" heading="Our Process" />
 
@@ -143,16 +155,6 @@
         </section>
     @endif
 
-    {{-- Projects Section --}}
-    @if($projects->isNotEmpty())
-        <livewire:projects-grid
-            :projectType="$data['projectType']"
-            :limit="3"
-            :hideFilters="true"
-            :showPagination="true"
-            :moreProjectsType="$data['projectType']" />
-    @endif
-
     {{-- Testimonials Section --}}
     <livewire:testimonials-section :project-type="$data['projectType']" :key="'testimonials-'.$data['projectType']" />
 
@@ -169,26 +171,11 @@
         ];
         $serviceSlug = $serviceSlugMap[$service] ?? null;
 
-        // Lead with our highest GSC search-demand suburbs (striking distance for
-        // "{service} {city}" queries, e.g. Schaumburg / Deer Park kitchen), then
-        // the rest alphabetically. Surfacing them first gives those spokes the
-        // most prominent internal link on every service hub page.
-        $priorityCitySlugs = [
-            'schaumburg', 'deer-park', 'barrington', 'glenview', 'northbrook',
-            'arlington-heights', 'winnetka', 'wilmette', 'kenilworth', 'glencoe',
-            'evanston', 'mount-prospect', 'orland-park', 'lake-bluff',
-        ];
-        $allAreas = collect();
-        if ($serviceSlug) {
-            $areas = \App\Models\AreaServed::orderBy('city')->get();
-            $priorityAreas = $areas
-                ->filter(fn ($a) => in_array($a->slug, $priorityCitySlugs, true))
-                ->sortBy(fn ($a) => array_search($a->slug, $priorityCitySlugs))
-                ->values();
-            $allAreas = $priorityAreas->concat(
-                $areas->reject(fn ($a) => in_array($a->slug, $priorityCitySlugs, true))
-            )->values();
-        }
+        // Towns with the most completed work first, then alphabetically — see
+        // AreaServed::orderedByLocalProjects(). Replaces a hardcoded list of 14
+        // "priority" slugs that needed hand-editing whenever the area list
+        // changed, and had already gone stale.
+        $allAreas = $serviceSlug ? \App\Models\AreaServed::orderedByLocalProjects() : collect();
     @endphp
     @if($allAreas->isNotEmpty())
     <section class="bg-zinc-50 py-12 dark:bg-zinc-800/50">
@@ -210,6 +197,10 @@
     </section>
     @endif
 
+
+    {{-- FAQ Section (visible + schema for rich results) --}}
+    <x-faq-section :faqs="$data['faqs'] ?? []" :heading="$data['title'] . ' FAQ'" />
+
     {{-- CTA Section --}}
     <x-cta-section 
         variant="blue"
@@ -221,6 +212,23 @@
         :secondaryHref="route('projects.index')"
     />
 
-    {{-- FAQ Section (visible + schema for rich results — just above footer) --}}
-    <x-faq-section :faqs="$data['faqs'] ?? []" :heading="$data['title'] . ' FAQ'" />
+    {{-- Other services — the site-wide counterpart to the area pages' "More
+         Remodeling Services in {city}" block, sharing the same
+         <x-service-chips> component. Passing no area switches it to the
+         /services/* links.
+
+         Last block before the footer, where the cross-links belong: the FAQ is
+         still part of this service's content, so the reader is only offered a
+         different service once they are done with this one.
+
+         brand.name rather than a literal: this view is shared across tenants,
+         so a hardcoded "GS Construction" would render on every site. --}}
+    <section class="bg-zinc-50 py-12 dark:bg-zinc-800/50">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <h2 class="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
+                Other {{ config('brand.name') }} Services
+            </h2>
+            <x-service-chips :exclude="$service" />
+        </div>
+    </section>
 </div>

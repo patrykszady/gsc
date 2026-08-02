@@ -3,9 +3,7 @@
     title="Building Permit Guides — Chicago Suburbs | GS Construction"
     metaDescription="Town-by-town building permit guides for remodeling in Chicago's northwest suburbs and North Shore — who needs a permit, fees, review times, inspections, and contractor registration, from official village sources."
 >
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Permit Guides'],
-    ]" />
+    <x-breadcrumbs :items="[['label' => 'Permit Guides']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
 
     <div class="mx-auto max-w-3xl px-6 pt-10 text-center lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Permit Guides · {{ now()->year }}</p>
@@ -47,12 +45,11 @@
         <h2 class="mt-12 font-heading text-2xl font-bold text-zinc-900 dark:text-white">Pick your town</h2>
         <div class="mt-5 grid gap-5 sm:grid-cols-2">
             @foreach($guides as $slug => $guide)
-                <a href="{{ route('permits.show', ['slug' => $slug]) }}" wire:navigate
-                   class="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
+                <x-link-card :href="route('permits.show', ['slug' => $slug])">
                     <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $guide['town'] }}</h3>
                     <p class="mt-2 grow text-sm text-zinc-600 dark:text-zinc-400">Who needs a permit, fees, review times &amp; inspections in {{ $guide['town'] }}.</p>
                     <p class="mt-4 text-sm font-semibold text-sky-600 dark:text-sky-400">Full {{ $guide['town'] }} permit guide →</p>
-                </a>
+                </x-link-card>
             @endforeach
         </div>
         <p class="mt-4 text-sm text-zinc-500 dark:text-zinc-400">

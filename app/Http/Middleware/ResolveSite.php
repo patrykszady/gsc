@@ -50,6 +50,10 @@ class ResolveSite
         Theme::apply($site);
         SiteConfig::applyRuntime($site);
 
+        // Tells the exception renderer the overlay is already in place, so an
+        // error thrown from a MATCHED route does not apply the theme twice.
+        app()->instance('site.overlay_applied', true);
+
         if (app()->environment('local')) {
             // Read back by the dev site bar and /_sites, so "which tenant am
             // I looking at, and why" is answerable without adding a dd().

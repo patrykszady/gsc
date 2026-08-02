@@ -49,6 +49,15 @@ return new class extends Migration
         }
 
         Schema::table('testimonials', function (Blueprint $table) {
+            // Drop the unique index BEFORE the column. MySQL drops it
+            // implicitly; SQLite errors ("error in index ... after drop
+            // column") and killed the test-suite migration chain here.
+            try {
+                $table->dropUnique(['google_review_id']);
+            } catch (\Throwable) {
+                // Index name may differ or be already gone on partial runs.
+            }
+
             $table->dropColumn('google_review_id');
         });
     }

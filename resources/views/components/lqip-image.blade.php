@@ -33,11 +33,11 @@
     // Build aspect ratio class
     $aspectClass = match($aspectRatio) {
         'square' => 'aspect-square',
-        '4/3' => 'aspect-[4/3]',
-        '3/4' => 'aspect-[3/4]',
+        '4/3' => 'aspect-4/3',
+        '3/4' => 'aspect-3/4',
         '16/9' => 'aspect-video',
-        '3/2' => 'aspect-[3/2]',
-        '2/3' => 'aspect-[2/3]',
+        '3/2' => 'aspect-3/2',
+        '2/3' => 'aspect-2/3',
         default => $aspectRatio ? "aspect-[$aspectRatio]" : '',
     };
     

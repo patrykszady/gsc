@@ -23,7 +23,6 @@
             $projectsCrumbs[] = ['name' => 'Projects'];
         }
     @endphp
-    <x-breadcrumb-schema :items="$projectsCrumbs" />
 
     {{-- ItemList (summary-page carousel) of the projects in this portfolio view.
          Scoped to the active /projects/{type} filter when present. Each ListItem
@@ -65,34 +64,7 @@
         <script type="application/ld+json">{!! json_encode($projectItemList, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
     @endif
 
-    {{-- Visual Breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    @if($activeCrumb)
-                        <a href="{{ route('projects.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Projects</a>
-                    @else
-                        <span class="ml-2 text-gray-700 dark:text-gray-300">Projects</span>
-                    @endif
-                </li>
-                @if($activeCrumb)
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $activeCrumb['label'] }}</span>
-                </li>
-                @endif
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="$projectsCrumbs" padding="py-4" />
 
     {{-- Projects Grid (includes timelapse + filters) --}}
     <livewire:projects-grid :mobilePerPage="3" />
@@ -116,7 +88,7 @@
     @php
         $faqs = [
             ['question' => 'What types of remodeling projects do you do?', 'answer' => 'GS Construction specializes in kitchen remodeling, bathroom remodeling, and whole-home renovations. We handle everything from single-room updates to complete home transformations across the Chicagoland area.'],
-            ['question' => 'How do I get a free estimate for my project?', 'answer' => 'Contact us by phone at (224) 735-4200 or through our website to schedule a free in-home consultation. We will assess your space, discuss your vision, and provide a detailed, no-obligation estimate.'],
+            ['question' => 'How do I get a free estimate for my project?', 'answer' => 'Contact us by phone at ' . config('brand.phone') . ' or through our website to schedule a free in-home consultation. We will assess your space, discuss your vision, and provide a detailed, no-obligation estimate.'],
             ['question' => 'How long does a typical remodeling project take?', 'answer' => 'Timelines vary depending on scope — a bathroom remodel may take 2–6 weeks, a kitchen remodel 4–10 weeks, and larger whole-home renovations several months. We provide a detailed schedule before work begins.'],
             ['question' => 'Do you handle permits and inspections?', 'answer' => 'Yes, GS Construction handles all required permits and coordinates inspections for every project. We are familiar with building codes across Chicagoland and ensure full compliance.'],
             ['question' => 'Are you licensed, bonded, and insured?', 'answer' => 'Yes, GS Construction is fully licensed, bonded, and insured. We carry general liability insurance and workers\' compensation coverage for your protection.'],

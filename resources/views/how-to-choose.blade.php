@@ -10,7 +10,6 @@
             ->filter(fn ($c) => filled($c['why'] ?? null) && filled($c['label'] ?? null))
             ->values();
 
-        $reviewCount = \App\Models\Testimonial::query()->count();
 
         $questions = [
             'Are you licensed and insured, and can I see the certificates?',
@@ -37,20 +36,8 @@
         ];
     @endphp
 
-    <x-breadcrumb-schema :items="[['name' => 'How to Choose a Remodeling Contractor']]" />
 
-    {{-- Visual breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav class="flex text-sm" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2">
-                <li><a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a></li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">How to Choose a Contractor</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="[['name' => 'How to Choose a Remodeling Contractor']]" padding="py-4" />
 
     {{-- Hero slider with overlay heading + CTA --}}
     <x-page-hero
@@ -68,23 +55,9 @@
     </x-page-hero>
 
     {{-- Trust signals --}}
-    <div class="mx-auto mt-6 max-w-5xl px-6 lg:px-8">
-        <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            @foreach ([
-                ['Family-owned', 'Father & Son'],
-                ['Combined experience', '40+ Years'],
-                ['Verified reviews', $reviewCount . '+'],
-                ['Licensed & insured', 'Yes'],
-            ] as [$label, $value])
-                <div class="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                    <dt class="text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ $label }}</dt>
-                    <dd class="mt-0.5 font-heading text-lg font-bold text-zinc-900 dark:text-white">{{ $value }}</dd>
-                </div>
-            @endforeach
-        </dl>
-    </div>
+    <x-trust-signals class="mt-6" />
 
-    <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+    <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         <p class="text-lg leading-8 text-zinc-600 dark:text-zinc-300">
             Hiring the right contractor decides how your remodel goes more than any single material choice.
             Here's what actually matters, the questions to ask, and how to compare quotes fairly —
@@ -124,7 +97,7 @@
                 or <a href="{{ url('/contact') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">request a free itemized estimate</a>.
             </p>
         </div>
-    </main>
+    </div>
 
     <x-faq-section
         :faqs="$faqs"

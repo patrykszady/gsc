@@ -13,7 +13,7 @@
 
     `floorplan` is the showpiece, available for reuse on other pages:
 
-        <div class="relative isolate overflow-x-clip bg-sky-50/60 dark:bg-gray-950">
+        <div class="relative isolate overflow-x-clip bg-sky-50/60 dark:bg-zinc-950">
             <x-page-decor variant="floorplan" />
 
     Two things it REQUIRES to be visible, both learned the hard way:

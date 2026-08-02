@@ -33,8 +33,14 @@ return [
 
     'owners' => 'Greg & Patryk Szady',
 
-    // Verbatim original of the ai-content-description meta tag, kept so
-    // gs.construction's output is unchanged by the move to config.
-    'ai_description' => 'GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, 53+ five-star reviews. Serving 89+ cities in Chicagoland. (224) 735-4200.',
+    // The ai-content-description meta tag.
+    //
+    // :reviews and :cities are substituted at render time from CompanyStats —
+    // config is loaded (and cached) before the database is usable, so the
+    // figures cannot be resolved here. They were hardcoded at "53+ five-star
+    // reviews" and "89+ cities" against actuals of 70+ and 70+; this meta tag
+    // is what search and AI crawlers quote, so a stale number here is the one
+    // that travels furthest.
+    'ai_description' => 'GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, :reviews five-star reviews. Serving :cities cities in Chicagoland. (224) 735-4200.',
 
 ];

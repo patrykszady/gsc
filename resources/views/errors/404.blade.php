@@ -1,12 +1,16 @@
 @php
+    // brand.name, not a literal: this view is SHARED, so every tenant was
+    // being served "Page Not Found | GS Construction".
+    //
+    // No canonical. It pointed at url('/'), which tells Google this 404 IS the
+    // homepage — a soft-404 signal that can get the real homepage's ranking
+    // reassigned to a missing URL. A noindex 404 wants no canonical at all.
     app(\App\Support\SEO\SEOBuilder::class)
-        ->title('Page Not Found | GS Construction')
-        ->description("Sorry, we couldn't find that page. Browse our remodeling services, projects, and service areas in the Chicago suburbs.")
-        ->canonical(url('/'))
+        ->title('Page Not Found | ' . config('brand.name'))
+        ->description("Sorry, we couldn't find that page. Browse our services, projects, and service areas.")
         ->url(url()->current())
         ->markNoindex();
 
-    $popularAreas = \App\Models\AreaServed::orderBy('city')->limit(12)->get();
 @endphp
 
 <x-layouts.app>
@@ -73,26 +77,17 @@
                 </a>
             </div>
 
-            @if($popularAreas->count())
-                <div class="mt-14">
-                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Service Areas</h2>
-                    <div class="mt-4 flex flex-wrap justify-center gap-2">
-                        @foreach($popularAreas as $a)
-                            <a href="{{ $a->url }}" wire:navigate
-                               class="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
-                                {{ $a->city }}
-                            </a>
-                        @endforeach
-                        <a href="{{ route('areas.index') }}" wire:navigate
-                           class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-800 hover:bg-sky-200 dark:bg-sky-900/40 dark:text-sky-300 dark:hover:bg-sky-900/60">
-                            See all areas →
-                        </a>
-                    </div>
-                </div>
-            @endif
+            {{-- <x-area-chips> — the same generated, project-count-ordered
+                 town row the rest of the site uses (its all-areas link is the
+                 "See all" this block hand-rolled, with the real count). The
+                 inline copy ordered alphabetically and had its own chip style. --}}
+            <div class="mt-14">
+                <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">Service Areas</h2>
+                <x-area-chips :limit="12" :heading="null" :subheading="null" class="mt-4" />
+            </div>
 
             <p class="mt-12 text-sm text-zinc-500 dark:text-zinc-400">
-                Need help? Call <a href="tel:+12247354200" class="font-semibold text-sky-600 hover:underline dark:text-sky-400">(224) 735-4200</a>
+                Need help? Call <a href="tel:+1{{ config('brand.phone_href') }}" class="font-semibold text-sky-600 hover:underline dark:text-sky-400">{{ config('brand.phone') }}</a>
                 — we'll point you in the right direction.
             </p>
         </div>

@@ -1,26 +1,11 @@
-<div class="bg-white dark:bg-gray-950">
-    <x-breadcrumb-schema :items="[
+<div class="bg-white dark:bg-zinc-950">
+
+    <x-breadcrumbs :items="[
         ['name' => 'Our Trade Partners', 'url' => route('trades.index')],
         ['name' => $trade['name']],
     ]" />
 
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li><a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a></li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <a href="{{ route('trades.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Trade Partners</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $trade['name'] }}</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
-
-    <main class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
+    <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl">
             <div class="flex flex-wrap items-center gap-3">
                 <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Trade Partners</p>
@@ -134,7 +119,7 @@
                 </a>
             </div>
         </div>
-    </main>
+    </div>
 
     <x-cta-section
         variant="blue"

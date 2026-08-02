@@ -1,4 +1,4 @@
-<footer class="relative z-10 bg-gray-100 dark:bg-gray-900">
+<footer class="relative z-10 bg-gray-100 dark:bg-zinc-900">
     <div class="mx-auto max-w-7xl px-6 py-10 lg:px-8 lg:py-12">
         {{-- 6-col grid: brand rail takes 1, the five link columns take 5. --}}
         <div class="xl:grid xl:grid-cols-6 xl:gap-8">
@@ -70,43 +70,60 @@
                         <li><a href="/process" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Our Process</a></li>
                         <li><a href="/reviews" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Reviews</a></li>
                         <li><a href="/trades" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Our Trade Partners</a></li>
+                        <li><a href="/design-partners" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Design Professionals</a></li>
                         <li><a href="/jobs" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Careers &amp; Partners</a></li>
                         <li><a href="/contact" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Contact</a></li>
                     </ul>
                 </div>
 
+                {{-- Services, Projects and Service Areas are all derived, not
+                     typed out. The hand-written versions had drifted: Services
+                     listed five of six (no Mudroom) and never linked to
+                     /services; Projects omitted Basements and Additions; Service
+                     Areas named five towns picked by hand. --}}
+                @php
+                    $footerServices = \App\Support\ServiceCatalog::all();
+                    $footerProjectTypes = \App\Support\ServiceCatalog::withProjects();
+                    // Top towns by how much work we have actually done there —
+                    // the same ordering the service pages use. nav.footer
+                    // .exclude_areas drops any that rank high but do not belong
+                    // in a six-item shortlist; the area pages stay live either
+                    // way. site_config so a tenant can set its own.
+                    $footerExcludedAreas = (array) site_config('nav.footer.exclude_areas', []);
+                    $footerAreas = \App\Models\AreaServed::orderedByLocalProjects()
+                        ->reject(fn ($area) => in_array($area->slug, $footerExcludedAreas, true))
+                        ->take(5);
+                    $footerLink = 'inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white';
+                @endphp
+
                 <div>
                     <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Services</h3>
                     <ul class="mt-4 space-y-1">
-                        <li><a href="/services/kitchen-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Kitchen Remodeling</a></li>
-                        <li><a href="/services/bathroom-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Bathroom Remodeling</a></li>
-                        <li><a href="/services/home-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home Remodeling</a></li>
-                        <li><a href="/services/basement-remodeling" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Basement Remodeling</a></li>
-                        <li><a href="/services/home-additions" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home Additions</a></li>
+                        <li><a href="/services" wire:navigate.hover class="{{ $footerLink }}">All Services</a></li>
+                        @foreach($footerServices as $footerService)
+                            <li><a href="{{ $footerService['url'] }}" wire:navigate.hover class="{{ $footerLink }}">{{ $footerService['label'] }}</a></li>
+                        @endforeach
                     </ul>
                 </div>
 
                 <div>
                     <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Projects</h3>
                     <ul class="mt-4 space-y-1">
-                        <li><a href="/projects" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">All Projects</a></li>
-                        <li><a href="/projects?type=kitchen" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Kitchen Projects</a></li>
-                        <li><a href="/projects?type=bathroom" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Bathroom Projects</a></li>
-                        <li><a href="/projects?type=home-remodel" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home Remodel Projects</a></li>
-                        <li><a href="/projects?type=mudroom" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Laundry &amp; Mudroom Projects</a></li>
+                        <li><a href="/projects" wire:navigate.hover class="{{ $footerLink }}">All Projects</a></li>
+                        @foreach($footerProjectTypes as $footerProjectService)
+                            <li><a href="{{ $footerProjectService['projectsUrl'] }}" wire:navigate.hover class="{{ $footerLink }}">{{ $footerProjectService['projectsLabel'] }}</a></li>
+                        @endforeach
                     </ul>
                 </div>
 
                 <div>
                     <h3 class="text-sm/6 font-semibold text-gray-900 dark:text-white">Service Areas</h3>
                     <ul class="mt-4 space-y-1">
-                        <li><a href="/areas-served" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">All Areas Served</a></li>
-                        <li><a href="/service-area" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Service Area by ZIP</a></li>
-                        <li><a href="/areas-served/arlington-heights" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Arlington Heights</a></li>
-                        <li><a href="/areas-served/palatine" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Palatine</a></li>
-                        <li><a href="/areas-served/schaumburg" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Schaumburg</a></li>
-                        <li><a href="/areas-served/barrington" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Barrington</a></li>
-                        <li><a href="/areas-served/winnetka" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Winnetka</a></li>
+                        <li><a href="/areas-served" wire:navigate.hover class="{{ $footerLink }}">All Areas Served</a></li>
+                        <li><a href="/service-area" wire:navigate.hover class="{{ $footerLink }}">Service Area by ZIP</a></li>
+                        @foreach($footerAreas as $footerArea)
+                            <li><a href="{{ $footerArea->url }}" wire:navigate.hover class="{{ $footerLink }}">{{ $footerArea->city }}</a></li>
+                        @endforeach
                     </ul>
                 </div>
 

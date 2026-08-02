@@ -44,9 +44,9 @@
         <p class="sr-only" data-speakable="business-summary">
             GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor
             based in Arlington Heights, Illinois, founded in 2015 by Gregory and Patryk.
-            We serve more than 89 cities across the Chicago suburbs, hold a 5-star rating
-            across {{ \App\Models\Testimonial::count() }} verified customer reviews on Google, Houzz, Yelp, and Angi,
-            and offer free in-home estimates. Call (224) 735-4200 or email crew@gs.construction.
+            We serve {{ \App\Support\CompanyStats::citiesServedLabel() }} cities across the Chicago suburbs, hold a 5-star rating
+            across {{ \App\Support\CompanyStats::reviewsTotal() }} verified customer reviews on Google, Houzz, Yelp, and Angi,
+            and offer free in-home estimates. Call {{ config('brand.phone') }} or email {{ config('brand.email') }}.
             We work in English and Polish. Hours: Monday through Saturday, 8 AM to 6 PM Central.
         </p>
     </section>
@@ -161,7 +161,7 @@
                     @endphp
                     <a href="{{ route('projects.show', $homeProject) }}" wire:navigate
                        class="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
-                        <div class="relative aspect-[4/3] overflow-hidden">
+                        <div class="relative aspect-4/3 overflow-hidden">
                             @if($homeProject->images->first())
                                 <x-lqip-image
                                     :image="$homeProject->images->first()"
@@ -191,7 +191,9 @@
     {{-- <livewire:static-map-section lazy /> --}}
     
     {{-- Dynamic Map Section --}}
-    <livewire:map-section />
+    {{-- lazy like every sibling section on this page — it was the one
+         below-fold eager mount left. --}}
+    <livewire:map-section lazy />
 
     {{-- Contact Section (lazy loaded - below fold) --}}
     <livewire:contact-section lazy />
@@ -206,7 +208,7 @@
     {{-- Explore (server-rendered internal links). The sections above are lazy
          Livewire components that don't appear in the initial HTML, so this gives
          crawlers a set of contextual links on first load. --}}
-    <section aria-label="Explore GS Construction" class="border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-slate-900/50">
+    <section aria-label="Explore GS Construction" class="border-t border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-zinc-900/50">
         <div class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
             <h2 class="text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                 Explore Our Remodeling Services
@@ -226,51 +228,11 @@
                 <a href="/contact" wire:navigate.hover class="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">Free Estimate</a>
             </div>
 
-            {{-- Featured service areas: direct homepage links to priority city
-                 hubs. Leads with our highest search-demand markets (GSC: high
-                 impressions at positions 7-12, i.e. striking distance) so the
-                 homepage passes authority to the pages most likely to climb into
-                 the top 5, then fills the rest with our busiest project hubs. --}}
-            @php
-                $prioritySlugs = [
-                    'kenilworth', 'winnetka', 'wilmette', 'schaumburg', 'glenview',
-                    'glencoe', 'evanston', 'arlington-heights', 'northbrook',
-                    'barrington', 'deer-park', 'mount-prospect', 'orland-park', 'lake-bluff',
-                ];
+            {{-- Featured service areas: direct homepage links to the town
+                 hubs we do the most work in. Shared with anywhere else the
+                 chip row appears — see <x-area-chips>. --}}
+            <x-area-chips :limit="18" class="mt-12" />
 
-                $priorityAreas = \App\Models\AreaServed::whereIn('slug', $prioritySlugs)
-                    ->get()
-                    ->sortBy(fn ($a) => array_search($a->slug, $prioritySlugs))
-                    ->values();
-
-                // Fill remaining chips with the busiest project hubs not already shown.
-                $featuredAreas = $priorityAreas
-                    ->concat(
-                        \App\Models\AreaServed::withProjectCounts(20)
-                            ->reject(fn ($a) => in_array($a->slug, $prioritySlugs, true))
-                    )
-                    ->unique('slug')
-                    ->take(18)
-                    ->values();
-            @endphp
-            <h2 class="mt-12 text-center font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                Cities and Suburbs We Commonly Serve Near Chicago
-            </h2>
-            <p class="mx-auto mt-2 max-w-2xl text-center text-sm text-gray-600 dark:text-gray-400">
-                Local kitchen, bathroom, addition, mudroom, basement &amp; home remodeling in the cities and suburbs we serve the most.
-            </p>
-            <div class="mx-auto mt-6 flex max-w-4xl flex-wrap justify-center gap-2">
-                @forelse ($featuredAreas as $area)
-                    <a href="/areas-served/{{ $area->slug }}" wire:navigate.hover 
-                        class="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:border-sky-300 hover:text-sky-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-sky-400">
-                        {{ $area->city }}
-                    </a>
-                @empty
-                    {{-- Fallback to static list if no projects found --}}
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Loading service areas...</p>
-                @endforelse
-                <a href="/areas-served" wire:navigate.hover class="rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">All 89+ Areas →</a>
-            </div>
         </div>
     </section>
 

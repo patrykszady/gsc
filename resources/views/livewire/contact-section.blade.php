@@ -1,4 +1,4 @@
-<section class="relative bg-white dark:bg-gray-900">
+<section class="relative bg-white dark:bg-zinc-900">
     <div class="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2 lg:items-start">
         {{-- Left Column: Image, Heading, Contact Info --}}
         <div class="relative px-6 py-8 sm:py-10 lg:px-8 lg:py-12 lg:sticky lg:top-0 lg:self-start">
@@ -19,7 +19,10 @@
                 </p>
 
                 {{-- Heading --}}
-                <h2 class="mt-2 font-heading text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl dark:text-white">
+                {{-- The shared section-title scale (3xl/4xl bold zinc). This was
+                     the one heading still on stock Tailwind-UI classes —
+                     font-semibold gray at 4xl/5xl, larger than any in-flow H1. --}}
+                <h2 class="mt-2 font-heading text-3xl font-bold tracking-tight text-pretty text-zinc-900 sm:text-4xl dark:text-white">
                     Let's Build Beautiful Spaces Together
                 </h2>
 
@@ -58,7 +61,7 @@
                                 <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                         </dt>
-                        <dd><a href="tel:2247354200" class="hover:text-gray-900 dark:hover:text-white">(224) 735-4200</a></dd>
+                        <dd><a href="tel:{{ config('brand.phone_href') }}" class="hover:text-gray-900 dark:hover:text-white">{{ config('brand.phone') }}</a></dd>
                     </div>
                     {{-- Email --}}
                     <div class="flex gap-x-4">
@@ -68,7 +71,7 @@
                                 <path d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                         </dt>
-                        <dd><a href="mailto:crew@gs.construction" class="hover:text-gray-900 dark:hover:text-white">crew@gs.construction</a></dd>
+                        <dd><a href="mailto:{{ config('brand.email') }}" class="hover:text-gray-900 dark:hover:text-white">{{ config('brand.email') }}</a></dd>
                     </div>
                     {{-- Service Area --}}
                     <div class="flex gap-x-4 sm:col-span-2">
@@ -646,14 +649,13 @@
 
                 {{-- Submit Button --}}
                 <div class="mt-4 flex justify-end">
-                    <button 
-                        type="submit" 
-                        class="inline-flex items-center rounded-md bg-sky-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-sky-600"
-                        @click="trackFormStart('contact')"
-                    >
+                    {{-- Shared CTA. The component already emits its own
+                         @click trackCTA; trackFormStart stays as an extra
+                         listener via x-on:click. --}}
+                    <x-buttons.cta as="button" type="submit" x-on:click="trackFormStart('contact')">
                         <span wire:loading.remove wire:target="submit">Send message</span>
                         <span wire:loading wire:target="submit">Sending...</span>
-                    </button>
+                    </x-buttons.cta>
                 </div>
 
                 {{-- Success Message --}}
@@ -675,41 +677,5 @@
         </form>
     </div>
 
-    {{-- Autofill → Livewire sync.
-
-         wire:model listens for input/change events. Chrome fills autocompleted
-         fields without reliably dispatching either, so the form can LOOK filled
-         while the component's properties are still empty — the user submits and
-         gets "name is required" over a visibly populated field.
-
-         Browsers do apply the :-webkit-autofill pseudo-class, and a CSS
-         animation keyed to it fires animationstart. That is the standard way to
-         detect autofill; we use it to dispatch the events Livewire is waiting
-         for. Also swept on submit, to catch fills that predate this listener. --}}
-    <style>
-        @keyframes onAutoFillStart { from { /* marker only */ } to { /* marker only */ } }
-        .contact-form input:-webkit-autofill { animation-name: onAutoFillStart; animation-duration: 1ms; }
-    </style>
-
-    <script data-navigate-once>
-        (() => {
-            const sync = (el) => {
-                if (!el || el.dataset.autofillSynced === el.value) return;
-                el.dataset.autofillSynced = el.value;
-                el.dispatchEvent(new Event('input', { bubbles: true }));
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-            };
-
-            document.addEventListener('animationstart', (e) => {
-                if (e.animationName === 'onAutoFillStart') sync(e.target);
-            }, true);
-
-            // Belt and braces: some fills happen before this script runs, and
-            // Safari never fires the animation at all.
-            document.addEventListener('submit', (e) => {
-                const form = e.target.closest?.('.contact-form');
-                if (form) form.querySelectorAll('input, textarea, select').forEach(sync);
-            }, true);
-        })();
-    </script>
+    @include('partials.autofill-sync')
 </section>

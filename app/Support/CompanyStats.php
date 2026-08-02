@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\AreaServed;
 use App\Models\HiveProjectZipCount;
 use App\Models\Testimonial;
 use Illuminate\Support\Facades\Cache;
@@ -70,6 +71,47 @@ class CompanyStats
 
             // Steps of 5, so the claim ticks over twice as often as projects.
             return intdiv($total, 5) * 5;
+        });
+    }
+
+    /**
+     * Cities we actually serve — the admin area list, which is the curated
+     * source of truth (towns get removed from it deliberately).
+     *
+     * Rounded DOWN to the nearest 10 so the published claim is never larger
+     * than the real list. The copy said "more than 89 cities" in three places
+     * against an actual 70, which is the sort of number nobody re-checks after
+     * a town is removed in admin.
+     */
+    public static function citiesServed(): int
+    {
+        return Cache::remember(Tenancy::cacheKey('stats.cities_served'), now()->addHours(12), function (): int {
+            return intdiv(AreaServed::query()->count(), 10) * 10;
+        });
+    }
+
+    /** "70+" — never overstates, because citiesServed() rounds down. */
+    public static function citiesServedLabel(): string
+    {
+        return self::citiesServed() . '+';
+    }
+
+    /**
+     * The EXACT number of reviews a visitor can actually find on the site.
+     *
+     * Distinct from reviewsCount(), which rounds down to a marketing figure
+     * ("70+"). Use this wherever a precise number is published — schema
+     * reviewCount/ratingCount, "All N reviews" links, comparison tables.
+     *
+     * Eight code paths were calling Testimonial::count() directly, which
+     * counts HIDDEN testimonials too: the site claimed 72 reviews while 70
+     * were visible. An aggregateRating whose reviewCount exceeds the reviews
+     * Google can crawl is exactly the mismatch that gets rich results pulled.
+     */
+    public static function reviewsTotal(): int
+    {
+        return Cache::remember(Tenancy::cacheKey('stats.reviews_total'), now()->addHours(12), function (): int {
+            return Testimonial::query()->visible()->count();
         });
     }
 

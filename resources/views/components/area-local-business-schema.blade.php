@@ -60,7 +60,7 @@
         'description' => "Family-owned kitchen, bathroom, and home remodeling contractor serving {$city}, IL and the surrounding area. 40+ years combined experience, free in-home estimates.",
         'url' => url('/areas-served/' . $slug),
         'telephone' => '+1-224-735-4200',
-        'email' => 'crew@gs.construction',
+        'email' => config('brand.email'),
         'priceRange' => '$$$',
         'paymentAccepted' => 'Cash, Check, Credit Card, ACH Transfer',
         'currenciesAccepted' => 'USD',

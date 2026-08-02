@@ -1,14 +1,13 @@
 @php
-    // Service-aligned labels + matching service-page routes for filter buttons
-    // and the empty state (so a type with no posted projects links to its service).
-    $filterMeta = [
-        'kitchen' => ['label' => 'Kitchen', 'route' => 'services.kitchen'],
-        'bathroom' => ['label' => 'Bathroom', 'route' => 'services.bathroom'],
-        'home-remodel' => ['label' => 'Home Remodeling', 'route' => 'services.home'],
-        'basement' => ['label' => 'Basement', 'route' => 'services.basement'],
-        'addition' => ['label' => 'Additions', 'route' => 'services.additions'],
-        'mudroom' => ['label' => 'Mudroom & Laundry', 'route' => 'services.mudroom'],
-    ];
+    // Service-aligned labels + the matching service page for filter buttons and
+    // the empty state (so a type with no posted projects links to its service
+    // rather than dead-ending). Derived from ServiceCatalog so this cannot
+    // drift from the footer, the service chips or the service pages themselves.
+    $filterMeta = \App\Support\ServiceCatalog::withProjects()
+        ->mapWithKeys(fn (array $s): array => [
+            $s['projectType'] => ['label' => $s['shortLabel'], 'url' => $s['url'], 'serviceLabel' => $s['label']],
+        ])
+        ->all();
 
     // When this is true we render an (otherwise empty) root element. The root
     // tag must NOT be wrapped in an @if/@else, because Livewire injects
@@ -28,12 +27,7 @@
     @endif
 >
     {{-- Gradient blur background --}}
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-1/2 -z-10 -translate-y-1/2 transform-gpu overflow-hidden opacity-30 blur-3xl">
-        <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[max(50%,38rem)] aspect-[1313/771] w-[82.0625rem] bg-linear-to-tr from-sky-300 to-sky-600"></div>
-    </div>
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 -z-10 flex transform-gpu overflow-hidden pt-32 opacity-25 blur-3xl sm:pt-40 xl:justify-end">
-        <div style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)" class="ml-[-22rem] aspect-[1313/771] w-[82.0625rem] flex-none origin-top-right rotate-[30deg] bg-linear-to-tr from-sky-300 to-sky-600 xl:mr-[calc(50%-12rem)] xl:ml-0"></div>
-    </div>
+    <x-decor-blobs />
 
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
         {{-- Header --}}
@@ -58,9 +52,9 @@
             <h1 class="mt-2 font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl dark:text-white">
             @endif
                 @if($area && $typeLabel)
-                    {{ $typeLabel }} Projects near {{ $area->city }}
+                    {{ $typeLabel }} Projects in {{ $area->city }}
                 @elseif($area)
-                    GS Construction Projects near {{ $area->city }}
+                    GS Construction Projects in {{ $area->city }}
                 @elseif($typeLabel)
                     {{ $typeLabel }} Projects
                 @else
@@ -96,9 +90,32 @@
                         ['projectType' => 'bathroom', 'alt' => 'Bathroom remodeling'],
                         ['projectType' => 'home-remodel', 'alt' => 'Home remodeling'],
                     ]"
-                    height-classes="h-[375px] sm:h-[450px] lg:h-[525px]"
+                    height-classes="gallery-viewport"
                     :images-only="true"
                 />
+            </div>
+        @endif
+
+        {{-- Who we are, above the gallery heading. --}}
+        @if($showAbout && $area)
+            <div class="mt-10">
+                <livewire:about-section :area="$area" :key="'grid-about-'.$area->id" />
+            </div>
+        @endif
+
+        {{-- Page-authored intro, placed under the hero it refers to. --}}
+        @if($introHeading || $introBody)
+            <div class="mx-auto mt-10 max-w-3xl text-center">
+                @if($introHeading)
+                    <h2 class="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
+                        {{ $introHeading }}
+                    </h2>
+                @endif
+                @if($introBody)
+                    <p @class(['text-lg text-zinc-600 dark:text-zinc-300', 'mt-4' => (bool) $introHeading])>
+                        {{ $introBody }}
+                    </p>
+                @endif
             </div>
         @endif
 
@@ -131,12 +148,12 @@
             @if($projects->isEmpty())
                 @php $emptyService = $type ? ($filterMeta[$type] ?? null) : null; @endphp
                 <div class="mt-10 py-12 text-center">
-                    @if($emptyService && \Illuminate\Support\Facades\Route::has($emptyService['route']))
+                    @if($emptyService)
                         <p class="text-lg text-zinc-500 dark:text-zinc-400">
                             We haven't posted {{ strtolower($emptyService['label']) }} projects online yet — but it's one of our services.
                         </p>
                         <a
-                            href="{{ route($emptyService['route']) }}"
+                            href="{{ $emptyService['url'] }}"
                             wire:navigate
                             class="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800"
                         >
@@ -148,8 +165,11 @@
                     @endif
                 </div>
             @else
+                {{-- :towns when an area is in scope — the heading now says "in
+                     {city}", so any card from elsewhere must show its own town. --}}
                 <x-project-grid
                     :projects="$projects"
+                    :towns="(bool) $area"
                     class="mx-auto mt-10 max-w-2xl lg:mx-0 lg:max-w-none transition-opacity duration-150"
                     wire:loading.delay.class="opacity-60"
                     wire:target="previousPage,nextPage,gotoPage,setPage" />
@@ -176,8 +196,47 @@
             @endif
         </div>
 
-        {{-- Timelapse Section (main projects page only) --}}
+        {{-- Reviews, between the grid and the timelapse (main projects page
+             only). Gated on !$hideFilters like the hero and timelapse: the
+             service and area pages embed this grid and already render their own
+             testimonials section right after it, so an ungated one would show
+             the block twice on those pages.
+
+             Scoped to the active filter, so filtering to Kitchen shows kitchen
+             reviews. The component falls back to any recent review when a type
+             has none, so an empty filter never yields an empty section. The key
+             includes $type so Livewire swaps the component when the filter
+             changes rather than reusing the previous type's reviews. --}}
         @if(!$hideFilters)
+            {{-- No bg-*: this page has a tinted/gradient backdrop and the
+                 default bg-white punched a white band through it.
+
+                 max-w-none + empty padding because this sits INSIDE the page's
+                 own max-w-7xl px-6 lg:px-8 container — with the section's own
+                 padding on top the card came out 1152px under a 1216px grid.
+
+                 No overflow-hidden either: with zero padding the card is flush
+                 with the section edges, and the card's ring-1/shadow-lg draw
+                 OUTSIDE its border box, so hidden clipped them away on the left
+                 and right (top and bottom survived on the py-12). Elsewhere the
+                 section is full-bleed with a 112px gutter, so it never showed. --}}
+            {{-- :area so the heading names the town ("Your Neighbours in
+                 Palatine Love Us") and the carousel leads with that town's own
+                 reviews before widening outward. --}}
+            <livewire:testimonials-section
+                :area="$area"
+                :project-type="$type"
+                section-classes="relative isolate py-12 sm:py-16"
+                max-width-class="max-w-none"
+                padding-class=""
+                :key="'projects-testimonials-'.($area?->id ?? 'all').'-'.($type ?? 'all')" />
+        @endif
+
+        {{-- Timelapse Section (main projects page only).
+             `! $area` as well as `! $hideFilters`: the area projects page also
+             leaves filters visible, so this fired there on top of the one the
+             area page renders itself — two timelapses on one page. --}}
+        @if(! $hideFilters && ! $area)
             <div class="mt-10">
                 <livewire:timelapse-section :timelapse-id="$randomTimelapseId" :key="'projects-timelapse-'.($randomTimelapseId ?? 'fallback')" />
             </div>

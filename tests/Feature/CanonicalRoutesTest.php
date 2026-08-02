@@ -114,9 +114,23 @@ class CanonicalRoutesTest extends TestCase
 
     public function test_static_seo_files_served(): void
     {
+        // Route-served — the framework can assert this over HTTP.
         $this->get('/llms.txt')->assertStatus(200);
-        $this->get('/sitemap.xml')->assertStatus(200);
-        $this->get('/robots.txt')->assertStatus(200);
+
+        // robots.txt and sitemap.xml are STATIC files: the web server serves
+        // them from public/, and Laravel's test client only dispatches routes,
+        // so an HTTP assertion here 404s in every environment — which is why
+        // this test was red on every run. Assert presence on disk instead.
+        $this->assertFileExists(public_path('robots.txt'));
+
+        // sitemap.xml is additionally a gitignored deploy artifact (written by
+        // `php artisan sitemap:generate`), so a fresh checkout legitimately
+        // lacks it. Skip loudly rather than fail clean environments.
+        if (! file_exists(public_path('sitemap.xml'))) {
+            $this->markTestSkipped('public/sitemap.xml not generated in this environment (deploy artifact)');
+        }
+
+        $this->assertFileExists(public_path('sitemap.xml'));
     }
 
     public function test_legacy_service_urls_redirect(): void

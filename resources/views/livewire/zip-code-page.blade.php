@@ -1,12 +1,11 @@
-<div class="bg-white dark:bg-gray-900">
+<div class="bg-white dark:bg-zinc-900">
     {{-- Breadcrumb --}}
     @php
         $breadcrumbItems = [
-            ['name' => 'Service Area', 'url' => url('/service-area')],
+            ['name' => 'Service Area by ZIP', 'url' => url('/service-area')],
             ['name' => $city . ' (' . $zip . ')'],
         ];
     @endphp
-    <x-breadcrumb-schema :items="$breadcrumbItems" />
 
     {{-- LocalBusiness JSON-LD scoped to this ZIP --}}
     @php
@@ -19,7 +18,7 @@
             'description' => "Family-owned kitchen, bathroom and home remodeling contractor serving {$city}, IL " . $zip . " and the surrounding ZIP codes.",
             'url' => url('/service-area/' . $zip),
             'telephone' => '+1-224-735-4200',
-            'email' => 'crew@gs.construction',
+            'email' => config('brand.email'),
             'priceRange' => '$$$',
             'image' => (\App\Models\ProjectImage::curatedCover()?->url) ?: asset('images/greg-patryk.jpg'),
             'logo' => asset('android-chrome-512x512.png'),
@@ -56,18 +55,7 @@
         <x-product-service-schema :service-slug="$zipServiceSlug" :area="$area" />
     @endforeach
 
-    {{-- Visual breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-        <nav class="flex text-sm" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2">
-                <li><a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300">Home</a></li>
-                <li class="text-gray-400">/</li>
-                <li><a href="{{ url('/service-area') }}" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300">Service Area</a></li>
-                <li class="text-gray-400">/</li>
-                <li class="font-medium text-gray-900 dark:text-white">{{ $city }} ({{ $zip }})</li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="$breadcrumbItems" padding="pt-6" />
 
     {{-- Hero --}}
     <x-page-hero
@@ -104,13 +92,13 @@
                 class="inline-flex items-center rounded-md bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
                 Request free estimate
             </a>
-            <a href="tel:+12247354200"
-                class="inline-flex items-center rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:ring-gray-700">
-                Call (224) 735-4200
+            <a href="tel:+1{{ config('brand.phone_href') }}"
+                class="inline-flex items-center rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-zinc-800 dark:text-white dark:ring-gray-700">
+                Call {{ config('brand.phone') }}
             </a>
             @if ($area)
                 <a href="{{ $area->url }}" wire:navigate
-                    class="inline-flex items-center rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:ring-gray-700">
+                    class="inline-flex items-center rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 hover:bg-gray-50 dark:bg-zinc-800 dark:text-white dark:ring-gray-700">
                     See {{ $city }} area page &rarr;
                 </a>
             @endif
@@ -118,15 +106,15 @@
 
         {{-- Why homeowners here choose GS --}}
         <div class="mt-10 grid gap-4 sm:grid-cols-3">
-            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-zinc-800">
                 <p class="text-base font-semibold text-gray-900 dark:text-white">One contract, one project lead</p>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Greg &amp; Patryk run every job with licensed trade partners under GS supervision — see <a href="{{ route('process') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">how the process works</a>.</p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-zinc-800">
                 <p class="text-base font-semibold text-gray-900 dark:text-white">Permits handled for you</p>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Application, village registration, and every inspection through final sign-off — on every {{ $city }} project.</p>
             </div>
-            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+            <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-zinc-800">
                 <p class="text-base font-semibold text-gray-900 dark:text-white">Written warranty</p>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Workmanship stands behind every remodel — read the <a href="{{ route('warranty') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">GS warranty</a>.</p>
             </div>
@@ -168,7 +156,7 @@
                         : url('/services/' . $svc['slug']);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                    class="block rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                    class="block rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-zinc-800">
                     <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $svc['label'] }}</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Free estimates &middot; Licensed &middot; Insured</p>
                 </a>
@@ -182,31 +170,18 @@
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                 Recent projects in {{ $city }} {{ $zip }}
             </h2>
-            <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($projects as $project)
-                    @php $img = optional($project->images->first())->url; @endphp
-                    <a href="{{ route('projects.show', $project->slug) }}" wire:navigate
-                        class="group block overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-200 transition hover:shadow-md dark:bg-gray-800 dark:ring-gray-700">
-                        @if ($img)
-                            <img src="{{ $img }}" alt="{{ $project->title }} in {{ $city }}, IL"
-                                loading="lazy" class="aspect-4/3 w-full object-cover" />
-                        @endif
-                        <div class="p-4">
-                            <p class="text-base font-semibold text-gray-900 group-hover:text-sky-700 dark:text-white">
-                                {{ $project->title }}
-                            </p>
-                            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ $project->location }}</p>
-                        </div>
-                    </a>
-                @endforeach
-            </div>
+            {{-- <x-project-grid>, not a fourth hand-rolled card: the copy here
+                 shipped FULL-SIZE original JPGs (thumbnails existed unused) and
+                 its alt text claimed every nearby-town project was "in {city}".
+                 :towns labels each card with its real town instead. --}}
+            <x-project-grid :projects="$projects" :towns="true" class="mt-6" />
         </section>
     @endif
 
     {{-- Local context --}}
     @if ($area)
         <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-            <div class="rounded-lg bg-gray-50 p-6 dark:bg-gray-800">
+            <div class="rounded-lg bg-gray-50 p-6 dark:bg-zinc-800">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">About ZIP {{ $zip }} in {{ $city }}, IL</h2>
                 @if ($zipLocalContext)
                     <p class="mt-3 text-gray-700 dark:text-gray-300">{{ $zipLocalContext }}</p>
@@ -243,17 +218,17 @@
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ $city }} homeowner guides</h2>
             <div class="mt-5 grid gap-4 sm:grid-cols-3">
                 <a href="{{ $zipPermitGuide ? route('permits.show', ['slug' => $area->slug]) : route('permits.index') }}" wire:navigate
-                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-zinc-800">
                     <p class="text-base font-semibold text-gray-900 dark:text-white">Building permits in {{ $city }}</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Who needs one, fees, review times &amp; inspections — from official village sources.</p>
                 </a>
                 <a href="{{ route('areas.lead-line', ['area' => $area->slug]) }}" wire:navigate
-                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-zinc-800">
                     <p class="text-base font-semibold text-gray-900 dark:text-white">Lead pipe replacement in {{ $city }}</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Who pays, how to check your line, and what it means mid-remodel.</p>
                 </a>
                 <a href="{{ route('costs.index') }}" wire:navigate
-                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                   class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-sky-500 hover:shadow-md dark:border-gray-700 dark:bg-zinc-800">
                     <p class="text-base font-semibold text-gray-900 dark:text-white">What remodeling really costs</p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Real {{ now()->year }} price ranges for kitchens, baths, basements &amp; additions.</p>
                 </a>

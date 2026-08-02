@@ -21,38 +21,8 @@
         }
         $breadcrumbItems[] = ['name' => $project->title];
     @endphp
-    <x-breadcrumb-schema :items="$breadcrumbItems" />
 
-    {{-- Visual Breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="{{ route('home') }}" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('projects.index') }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Projects</a>
-                </li>
-                @if($project->project_type)
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <a href="{{ route('projects.index', ['type' => $project->project_type]) }}" wire:navigate class="ml-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">{{ $projectTypeLabel }}</a>
-                </li>
-                @endif
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">{{ $project->title }}</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
+    <x-breadcrumbs :items="$breadcrumbItems" padding="py-4" />
 
     {{-- Main Content --}}
     <div class="mx-auto max-w-7xl px-4 pt-8 pb-3 sm:px-6 lg:px-8 lg:pt-12 lg:pb-4">
@@ -92,7 +62,7 @@
                     <livewire:main-project-hero-slider
                         :custom-slides="$projectHeroSlides"
                         :images-only="true"
-                        height-classes="h-[375px] sm:h-[450px] lg:h-[525px]"
+                        height-classes="gallery-viewport"
                     />
                 </div>
             @endif
@@ -259,7 +229,7 @@
                             x-data="{ active: null }"
                             class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800"
                         >
-                            <div class="relative h-[375px] sm:h-[450px] lg:h-[525px] flex">
+                            <div class="relative gallery-viewport flex">
                                 @foreach($frames as $fIdx => $frameUrl)
                                     <div
                                         class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-[transform,opacity] duration-500 ease-in-out cursor-pointer will-change-transform"
@@ -546,7 +516,7 @@
                         {{-- Accordion Panel --}}
                         <div x-show="view === 'accordion'" x-cloak role="tabpanel">
                             <section x-data="{ active: null }" class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-                                <div class="relative h-[375px] sm:h-[450px] lg:h-[525px] flex">
+                                <div class="relative gallery-viewport flex">
                                     @foreach($frames as $fIdx => $frameUrl)
                                         <div
                                             class="relative h-full overflow-hidden border-r border-white/20 last:border-r-0 transition-[transform,opacity] duration-500 ease-in-out cursor-pointer will-change-transform"
@@ -649,7 +619,7 @@
                 <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($relatedProjects as $related)
                         <a href="{{ route('projects.show', $related) }}" wire:navigate class="group block">
-                            <div class="relative aspect-[4/3] overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800">
+                            <div class="relative aspect-4/3 overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800">
                                 @if($related->images->first())
                                     <x-lqip-image 
                                         :image="$related->images->first()"

@@ -14,7 +14,36 @@ class TestimonialsGrid extends Component
 
     public bool $showHeader = true;
 
+    /**
+     * Render the five-star graphic under the heading.
+     *
+     * Opt-in, because the asset asserts five stars. /reviews turns it on: all
+     * 70 visible testimonials are 5/5 (avg 5.0). Anywhere the shown reviews
+     * could include a lower rating, leave it off.
+     */
+    public bool $showStars = false;
+
     public int $visibleRows = 3; // Start with 3 rows (top + row2 + row3)
+
+    /**
+     * Seeds every random choice in this component (pool order, featured pick,
+     * image assignment). Mounted once, so loadMore() re-renders extend the SAME
+     * shuffle instead of dealing every card a new order and photo — the grid
+     * used to visibly reshuffle on each click. ProjectsGrid set the precedent
+     * (its $randomSeed, for the same reason).
+     */
+    public int $randomSeed = 0;
+
+    /** @var \Illuminate\Support\Collection<int, ProjectImage>|null In-memory image pool for the render pass. */
+    protected $imagePool = null;
+
+    /** @var array<string, string>|null lowercase city => area slug. */
+    protected ?array $areaSlugMap = null;
+
+    public function mount(): void
+    {
+        $this->randomSeed = random_int(1, PHP_INT_MAX >> 8);
+    }
 
     public function loadMore(): void
     {
@@ -23,26 +52,47 @@ class TestimonialsGrid extends Component
 
     public function render()
     {
-        // First 10 random from the last 6 years
+        // ONE image pool and ONE city=>slug map for the whole render.
+        //
+        // formatTestimonial() used to run up to nine queries PER ROW (linked
+        // image x4, by-type image x2, global fallback x2, plus an AreaServed
+        // lookup) across a ~70-row pool — ~150 queries per render, repeated in
+        // full on every loadMore(). 227 eligible images fit comfortably in
+        // memory, so every per-row pick is now an in-memory filter.
+        mt_srand($this->randomSeed);
+
+        $this->imagePool = ProjectImage::query()
+            ->whereHas('project', fn ($q) => $q->published())
+            ->with('project:id,project_type')
+            ->get()
+            ->shuffle(mt_rand());
+
+        $this->areaSlugMap = AreaServed::query()
+            ->pluck('slug', 'city')
+            ->mapWithKeys(fn ($slug, $city) => [mb_strtolower(trim($city)) => $slug])
+            ->all();
+
+        // First 10 random from the last 6 years — RAND(seed), not
+        // inRandomOrder(): the pool must not re-deal between loadMore() calls.
         $recentCutoff = now()->subYears(6)->startOfDay();
-        
+
         $recentTestimonials = Testimonial::query()
             ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->with('projects:id')
-            ->inRandomOrder()
+            ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed))
             ->take(10)
             ->get();
-        
+
         $recentIds = $recentTestimonials->pluck('id')->toArray();
-        
+
         // Then random older ones
         $olderTestimonials = Testimonial::query()
             ->visible()
             ->whereNotIn('id', $recentIds)
             ->with('projects:id')
-            ->inRandomOrder()
+            ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed))
             ->get();
         
         // Combine: recent first, then older
@@ -62,7 +112,14 @@ class TestimonialsGrid extends Component
         $featuredPoolSource = $recentFormatted;
         if ($this->area) {
             $areaSlug = $this->area->slug;
-            $areaFeatured = $recentFormatted->filter(fn ($t) => $t['area_slug'] === $areaSlug);
+            // Filter the FULL collection, not the 10-row recent sample. The
+            // sample is random and recent-only, so a town whose own reviews are
+            // older than 6 years (Buffalo Grove, Evanston, Chicago — 11 towns)
+            // could NEVER lead with a local review, and towns with few local
+            // reviews only led locally when the draw happened to include one.
+            // The badge and quote cards beside this are strictly local-first,
+            // so the spotlight was contradicting them.
+            $areaFeatured = $testimonials->filter(fn ($t) => $t['area_slug'] === $areaSlug);
             if ($areaFeatured->isNotEmpty()) {
                 $featuredPoolSource = $areaFeatured;
             }
@@ -73,7 +130,13 @@ class TestimonialsGrid extends Component
             ->take(6)
             ->values();
 
-        $featured = ($featuredPool->isNotEmpty() ? $featuredPool : $testimonials)->random();
+        $featuredSource = ($featuredPool->isNotEmpty() ? $featuredPool : $testimonials)->values();
+        // Seeded pick — Collection::random() uses the CSPRNG and re-picked a
+        // different spotlight on every loadMore(). Null on an empty database
+        // (the view guards @if($featured)); the old ->random() threw there.
+        $featured = $featuredSource->isNotEmpty()
+            ? $featuredSource[$this->randomSeed % $featuredSource->count()]
+            : null;
 
         if ($this->area) {
             $areaSlug = $this->area->slug;
@@ -82,7 +145,7 @@ class TestimonialsGrid extends Component
         }
 
         // Remaining testimonials - keep order (recent first).
-        $others = $testimonials->reject(fn ($t) => $t['id'] === $featured['id'])->values();
+        $others = $testimonials->reject(fn ($t) => $featured && $t['id'] === $featured['id'])->values();
 
         // Calculate how many testimonials we can show based on visible rows
         // Row 1: featured (2 cols) + leftTop + rightTop = 3 testimonials from $others (indices 0, 1)
@@ -105,37 +168,20 @@ class TestimonialsGrid extends Component
     {
         $projectType = $this->normalizeProjectType($testimonial->project_type);
 
+        // Every pick is an in-memory filter over the preloaded, seed-shuffled
+        // pool — the same preference order the old per-row queries expressed:
+        // linked cover, linked any, same-type unused, same-type any, global
+        // unused, global any.
         $image = $this->linkedProjectImage($testimonial, $usedImageIds);
 
         if ($projectType) {
-            $image ??= ProjectImage::query()
-                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                    ->whereNotIn('id', $usedImageIds)
-                    ->inRandomOrder()
-                    ->first();
-
-            if (! $image) {
-                $image = ProjectImage::query()
-                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                    ->inRandomOrder()
-                    ->first();
-            }
+            $ofType = $this->imagePool->filter(fn ($i) => $i->project?->project_type === $projectType);
+            $image ??= $ofType->first(fn ($i) => ! in_array($i->id, $usedImageIds, true))
+                ?? $ofType->first();
         }
 
-        if (! $image) {
-            $image = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published())
-                ->whereNotIn('id', $usedImageIds)
-                ->inRandomOrder()
-                ->first();
-        }
-
-        if (! $image) {
-            $image = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published())
-                ->inRandomOrder()
-                ->first();
-        }
+        $image ??= $this->imagePool->first(fn ($i) => ! in_array($i->id, $usedImageIds, true))
+            ?? $this->imagePool->first();
 
         if ($image) {
             $usedImageIds[] = $image->id;
@@ -152,7 +198,7 @@ class TestimonialsGrid extends Component
             'slug' => $testimonial->slug,
             'name' => $testimonial->display_name,
             'location' => $testimonial->project_location,
-            'area_slug' => AreaServed::where('city', $cityName)->value('slug'),
+            'area_slug' => $this->areaSlugMap[mb_strtolower(trim((string) $cityName))] ?? null,
             'project_type' => $testimonial->project_type,
             'description' => $testimonial->review_description,
             'date' => $testimonial->review_date?->format('M Y'),
@@ -204,31 +250,13 @@ class TestimonialsGrid extends Component
             return null;
         }
 
-        $image = ProjectImage::query()
-            ->whereIn('project_id', $linkedProjectIds)
-            ->where('is_cover', true)
-            ->whereNotIn('id', $usedImageIds)
-            ->inRandomOrder()
-            ->first();
+        $linked = $this->imagePool->filter(fn ($i) => $linkedProjectIds->contains($i->project_id));
+        $unused = fn ($i) => ! in_array($i->id, $usedImageIds, true);
 
-        $image ??= ProjectImage::query()
-            ->whereIn('project_id', $linkedProjectIds)
-            ->whereNotIn('id', $usedImageIds)
-            ->inRandomOrder()
-            ->first();
-
-        // If linked pool is too small to stay unique, still prefer linked images.
-        $image ??= ProjectImage::query()
-            ->whereIn('project_id', $linkedProjectIds)
-            ->where('is_cover', true)
-            ->inRandomOrder()
-            ->first();
-
-        $image ??= ProjectImage::query()
-            ->whereIn('project_id', $linkedProjectIds)
-            ->inRandomOrder()
-            ->first();
-
-        return $image;
+        return $linked->first(fn ($i) => $i->is_cover && $unused($i))
+            ?? $linked->first($unused)
+            // If the linked pool is too small to stay unique, still prefer linked images.
+            ?? $linked->first(fn ($i) => (bool) $i->is_cover)
+            ?? $linked->first();
     }
 }

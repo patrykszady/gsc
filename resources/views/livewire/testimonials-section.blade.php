@@ -67,9 +67,9 @@
             }
         }
      }"
+    x-on:visibilitychange.document="handleTabVisibility()"
       x-init="
           @if($hasMultiple) scheduleAutoplay(); @endif
-        document.addEventListener('visibilitychange', () => handleTabVisibility());
      "
      x-intersect:enter.threshold.40="handleVisibility(true)"
      x-intersect:leave.threshold.40="handleVisibility(false)"
@@ -83,7 +83,7 @@
 
     <section class="{{ $sectionClasses }}">
 
-        <div class="mx-auto {{ $maxWidthClass }} px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto {{ $maxWidthClass }} {{ $paddingClass }}">
             {{-- Section Header --}}
             @if($showHeader)
             <div class="mb-10">
@@ -103,7 +103,7 @@
             <div
                 @touchstart="handleTouchStart($event)"
                 @touchend.passive="handleTouchEnd($event)"
-                class="relative flex h-[27rem] w-full flex-col touch-pan-y overflow-hidden rounded-2xl bg-white p-4 shadow-lg ring-1 ring-gray-900/5 sm:h-[16.5rem] sm:p-5 lg:h-[17.5rem] lg:p-6 dark:bg-gray-800/75 dark:shadow-none dark:ring-white/10"
+                class="relative flex h-[27rem] w-full flex-col touch-pan-y overflow-hidden rounded-2xl bg-white p-4 shadow-lg ring-1 ring-gray-900/5 sm:h-[16.5rem] sm:p-5 lg:h-[17.5rem] lg:p-6 dark:bg-zinc-800/75 dark:shadow-none dark:ring-white/10"
             >
                 {{-- min-h-0 lets the quote clamp instead of forcing the flex
                      parent taller than its fixed height. --}}
@@ -122,14 +122,28 @@
                              "Read full review" button in the footer below, which
                              is pinned to sm:w-38 so the two edges line up. Change
                              one, change the other. --}}
-                        class="relative h-36 w-full shrink-0 overflow-hidden rounded-xl bg-zinc-100 sm:size-38 dark:bg-zinc-700/40"
+                        class="group/thumb relative h-36 w-full shrink-0 overflow-hidden rounded-xl bg-zinc-100 sm:size-38 dark:bg-zinc-700/40"
                     >
+                        {{-- Same hover zoom as every other image on the site
+                             (project cards, about gallery): scale-105 on the
+                             image inside an overflow-hidden wrapper.
+
+                             Named group/thumb rather than a bare group: the
+                             card and its ancestors already use unnamed groups,
+                             and an unnamed one here would also fire whenever
+                             those were hovered.
+
+                             Plain `transition`, like the project cards use, not
+                             transition-opacity: in Tailwind v4 scale-105 sets
+                             the `scale` property rather than `transform`, so a
+                             narrower transition list would leave the zoom
+                             snapping instantly while the fade animated. --}}
                         <img
                             x-ref="reviewImg"
                             src="{{ $imageUrl }}"
                             alt=""
                             loading="lazy"
-                            class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
+                            class="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover/thumb:scale-105"
                             :class="imgLoaded ? 'opacity-100' : 'opacity-0'"
                             @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
                         />
@@ -140,8 +154,7 @@
                              align-items defaults to stretch, so a w-auto image
                              does not sit hard left the way it would in normal
                              flow — it drifted off the text's left edge. --}}
-                        <img src="{{ asset('images/5-stars.svg') }}" alt="Rated 5 out of 5" class="h-9 w-auto self-start dark:hidden" />
-                        <img src="{{ asset('images/5-stars-dark.svg') }}" alt="Rated 5 out of 5" class="hidden h-9 w-auto self-start dark:block" />
+                        <x-five-stars size="h-9" class="self-start" />
 
                         <blockquote
                             class="mt-3 min-h-0 flex-1"

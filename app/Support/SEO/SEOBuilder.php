@@ -137,6 +137,22 @@ class SEOBuilder
         $title = ($pathOverride['title'] ?? null) ?: ($this->title ?? $base?->title);
         if (is_string($title)) {
             $title = trim(str_replace([', Illinois', ', IL'], '', $title));
+
+            // Brand on EVERY tab. config('seo.title.suffix') is '' and the
+            // package only appends that, so branding was whatever each page
+            // happened to hardcode — 3 of 11 sampled pages carried it and
+            // /areas-served/{city}/projects showed a bare "Remodeling Projects
+            // in Palatine".
+            //
+            // Applied here rather than in config because this is the one choke
+            // point every title source passes through (builder, Eloquent model,
+            // Autopilot path override, and the layout's title= prop), and
+            // because config/brand.php is overlaid per TENANT at runtime — a
+            // literal in config/seo.php would brand every site as GS.
+            $brand = (string) config('brand.name');
+            if ($brand !== '' && ! str_contains($title, $brand)) {
+                $title = $title . ' | ' . $brand;
+            }
         }
 
         $data = new SEOData(

@@ -3,9 +3,7 @@
     :title="'Remodeling Costs — Chicago Suburbs ' . now()->year . ' | GS Construction'"
     metaDescription="Real published price ranges for kitchen, bathroom, basement, and home-addition remodels in the Chicago suburbs — from a contractor that puts its numbers in writing."
 >
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Remodeling Costs'],
-    ]" />
+    <x-breadcrumbs :items="[['label' => 'Remodeling Costs']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
 
     <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">Remodeling Costs · {{ now()->year }}</p>
@@ -37,12 +35,11 @@
         {{-- Guide cards --}}
         <div class="mt-10 grid gap-5 sm:grid-cols-2">
             @foreach($guides as $guide)
-                <a href="{{ route('costs.show', ['slug' => $guide['slug']]) }}" wire:navigate
-                   class="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
+                <x-link-card :href="route('costs.show', ['slug' => $guide['slug']])">
                     <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $guide['name'] }}</h2>
                     <p class="mt-2 grow text-sm text-zinc-600 dark:text-zinc-400">{{ \Illuminate\Support\Str::limit($guide['answer'], 140) }}</p>
                     <p class="mt-4 text-sm font-semibold text-sky-600 dark:text-sky-400">Full {{ now()->year }} breakdown →</p>
-                </a>
+                </x-link-card>
             @endforeach
         </div>
 

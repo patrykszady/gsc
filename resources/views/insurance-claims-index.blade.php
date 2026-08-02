@@ -3,9 +3,7 @@
     title="Insurance Claim Repairs & Rebuilds in Chicago's Suburbs | GS Construction"
     metaDescription="Water, roof, siding, storm, and fire damage rebuilds — itemized estimates your adjuster can work with, and one licensed contractor to put your home back to pre-loss condition."
 >
-    <x-breadcrumb-schema :items="[
-        ['name' => 'Insurance Claim Repairs'],
-    ]" />
+    <x-breadcrumbs :items="[['label' => 'Insurance Claim Repairs']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
 
     <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">Insurance Claim Repairs</p>
@@ -39,12 +37,11 @@
         <h2 class="mt-12 font-heading text-2xl font-bold text-zinc-900 dark:text-white">What happened at your house?</h2>
         <div class="mt-5 grid gap-5 sm:grid-cols-2">
             @foreach($claims as $claim)
-                <a href="{{ route('insurance-claims.show', ['slug' => $claim['slug']]) }}" wire:navigate
-                   class="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-sky-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500">
+                <x-link-card :href="route('insurance-claims.show', ['slug' => $claim['slug']])">
                     <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">{{ $claim['name'] }}</h3>
                     <p class="mt-2 grow text-sm text-zinc-600 dark:text-zinc-400">{{ \Illuminate\Support\Str::limit($claim['answer'], 130) }}</p>
                     <p class="mt-4 text-sm font-semibold text-sky-600 dark:text-sky-400">What to do &amp; how we rebuild →</p>
-                </a>
+                </x-link-card>
             @endforeach
         </div>
 

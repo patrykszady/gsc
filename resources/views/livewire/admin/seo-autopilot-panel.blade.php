@@ -142,7 +142,7 @@
                                     {{ $a->category }}
                                 </flux:badge>
                                 @if ($a->risk === 'safe')
-                                    <div class="mt-1 text-[10px] uppercase text-emerald-600">auto-safe</div>
+                                    <div class="mt-1 text-3xs uppercase text-emerald-600">auto-safe</div>
                                 @endif
                             </td>
                             <td class="py-3 pr-3">
@@ -160,7 +160,7 @@
                                     {{ $a->status }}
                                 </flux:badge>
                                 @if ($a->auto_applied)
-                                    <div class="mt-1 text-[10px] text-zinc-400">auto</div>
+                                    <div class="mt-1 text-3xs text-zinc-400">auto</div>
                                 @endif
                             </td>
                             <td class="py-3 pr-3">
@@ -185,7 +185,7 @@
                                         @if (in_array($a->category, \App\Services\Seo\SeoAutopilotService::SAFE_ALLOWLIST, true))
                                             <div class="text-right">
                                                 <flux:button size="xs" variant="ghost" wire:click="applyOne({{ $a->id }})">Apply now</flux:button>
-                                                <div class="mt-1 text-[10px] text-zinc-400">auto-applies at 10:40</div>
+                                                <div class="mt-1 text-3xs text-zinc-400">auto-applies at 10:40</div>
                                             </div>
                                         @else
                                             <flux:badge size="sm" color="amber">advisory</flux:badge>

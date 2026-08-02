@@ -183,6 +183,10 @@ Route::get('/api/project-images', function () {
         ->header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
 })->name('api.project-images');
 
+// Every before/after timelapse on one page. Declared BEFORE /projects/{project}
+// so "timelapses" is not swallowed as a project slug.
+Route::get('/timelapses', \App\Livewire\TimelapsesPage::class)->name('timelapses.index');
+
 Route::get('/projects/{project}', ProjectPage::class)->name('projects.show');
 // Scope {image} to its parent {project} so photo slugs that are duplicated
 // across projects resolve to the image under THIS project (an unscoped bind
@@ -193,7 +197,17 @@ Route::get('/projects/{project}/photos/{image:slug}', ProjectImagePage::class)
 
 Route::get('/services', function () {
     if (\App\Models\Site::current()->slug !== 'gsc') {
-        return view('services');   // themed view (jpeterson); guard 404s the rest
+        // A THEMED view only. resources/views/services.blade.php is GS
+        // Construction's own hardcoded six-card page; falling back to it would
+        // serve GSC's services to any tenant that claims /services without
+        // supplying its own view. Unreachable today only because jpeterson has
+        // a theme override and ss does not claim the route — a fourth tenant
+        // would have hit it.
+        $themed = 'themes/' . \App\Models\Site::current()->theme . '/services';
+
+        abort_unless(view()->exists($themed), 404);
+
+        return view($themed);
     }
 
     // Livewire full-page components are invokable controllers.
@@ -415,6 +429,10 @@ Route::get('/insurance-claims/{slug}', function (string $slug) {
 
     return view('insurance-claim-page', ['claim' => $claim]);
 })->where('slug', '[a-z0-9\-]+')->name('insurance-claims.show');
+
+// Design studios whose work we build. Sibling to /trades: that page is who
+// does the work, this one is who designed it.
+Route::get('/design-partners', \App\Livewire\DesignPartnersPage::class)->name('design-partners.index');
 
 // Trade-partner pages: how GS (as GC) works with its licensed/vetted trades.
 Route::get('/trades', \App\Livewire\TradesIndexPage::class)->name('trades.index');

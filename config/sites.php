@@ -54,6 +54,7 @@ return [
             'jobs',
             'reviews',
             'projects',
+            'timelapses',
             'areas',
             'areas-served',
             'service-area',

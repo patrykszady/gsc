@@ -22,4 +22,21 @@ return [
         ['label' => 'Careers', 'href' => '/jobs', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Contact', 'href' => '/contact', 'bold' => false],
     ],
+
+    'footer' => [
+        /*
+         * Area slugs kept OUT of the footer's "Service Areas" column.
+         *
+         * That column is generated from the admin area list, ordered by how
+         * many projects we have in each town, so it needs no maintenance — but
+         * a town can rank high and still not belong in a six-item shortlist.
+         * Chicago is the case: plenty of completed work, but the footer is
+         * meant to read as the suburbs we cover.
+         *
+         * Excluding here does NOT unpublish the area — /areas-served/chicago
+         * and its service spokes stay live and stay in the sitemap. This only
+         * affects the footer shortlist.
+         */
+        'exclude_areas' => ['chicago'],
+    ],
 ];

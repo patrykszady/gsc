@@ -61,7 +61,6 @@
                 if (!this.thumbsLoaded.includes(0)) this.thumbsLoaded.push(0);
             }
             this.scheduleAutoplay();
-            document.addEventListener('visibilitychange', () => this.handleTabVisibility());
             // Start sequential loading only when visible
             if (this.isVisible) {
                 this.loadNextImage();
@@ -153,6 +152,7 @@
             }
         }
     }"
+    x-on:visibilitychange.document="handleTabVisibility()"
     x-intersect:enter.threshold.40="handleVisibility(true)"
     x-intersect:leave.threshold.40="handleVisibility(false)"
     @keydown.left.window="if (hasMultipleSlides && isVisible) { prev(); stopAutoplay(); startAutoplay(); }"

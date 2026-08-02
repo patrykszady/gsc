@@ -34,7 +34,9 @@ class AdminSitePersistenceTest extends TestCase
 
     public function test_admin_pages_bind_the_site_from_the_url(): void
     {
-        $user = User::first();
+        // Provision rather than assume: the suite runs on a fresh
+        // in-memory DB, so there is no pre-existing user to find.
+        $user = User::factory()->create();
 
         foreach ([['gs.construction', 'gsc'], ['jpeterson-design.com', 'jpeterson']] as [$host, $slug]) {
             $this->actingAs($user)->get("/admin/{$host}/projects")->assertOk();

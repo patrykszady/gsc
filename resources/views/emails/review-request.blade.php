@@ -16,6 +16,6 @@ It only takes a minute, and every word helps.
 Thank you again — and if anything ever needs a follow-up visit, just reply to this email or call us anytime.
 
 Greg & Patryk
-GS Construction | (224) 735-4200
+GS Construction | {{ config('brand.phone') }}
 <a href="{{ config('app.url') }}">{{ parse_url(config('app.url'), PHP_URL_HOST) }}</a>
 </x-mail::message>

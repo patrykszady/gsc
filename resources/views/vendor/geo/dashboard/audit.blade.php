@@ -67,7 +67,7 @@
                         </div>
                         @if(!$detail['passes'] && $detail['tip'])
                             <p class="text-xs text-gray-500 bg-gray-50 p-2 rounded mt-1 border border-gray-200/50">
-                                <span class="font-bold text-blue-600 uppercase text-[9px] mr-1">Improvement Tip:</span>
+                                <span class="font-bold text-blue-600 uppercase text-3xs mr-1">Improvement Tip:</span>
                                 {{ $detail['tip'] }}
                             </p>
                         @endif

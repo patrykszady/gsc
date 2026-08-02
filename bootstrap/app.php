@@ -15,6 +15,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Models\Site;
+use App\Support\SiteConfig;
+use App\Support\Theme;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
@@ -110,4 +113,36 @@ return Application::configure(basePath: dirname(__DIR__))
         // (terminating middleware on web group). Laravel filters
         // NotFoundHttpException out of report callbacks, so reporter-based
         // tracking does not fire.
+
+        // Resolve the tenant before ANY error view renders.
+        //
+        // ResolveSite lives in the `web` group, which only runs once a route
+        // has matched. An unknown URL throws NotFoundHttpException during
+        // routing, so error pages rendered without it fell back to the default
+        // site: every tenant served GS Construction's 404 — its brand name in
+        // the <title> and its phone number in the body.
+        //
+        // Returning null hands rendering back to Laravel; this callback exists
+        // only for the side effect of binding the tenant, theme and config
+        // overlay first. Guarded on `request` so console/queue are untouched.
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            // Guard on the OVERLAY, not on site.current. Global middleware
+            // (Track404Responses, DevSiteBar) can call Site::current() before
+            // routing, which binds the tenant while leaving the theme and the
+            // config overlay unapplied — so a "site is bound" check passed
+            // while the page still rendered the default tenant's brand.
+            if (! app()->bound('site.overlay_applied')) {
+                $site = Site::forDevHost($request->getHost())
+                    ?? Site::forHost($request->getHost())
+                    ?? Site::forPreviewHost($request->getHost())
+                    ?? Site::default();
+
+                Site::setCurrent($site);
+                Theme::apply($site);
+                SiteConfig::applyRuntime($site);
+                app()->instance('site.overlay_applied', true);
+            }
+
+            return null;
+        });
     })->create();

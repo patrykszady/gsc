@@ -3,7 +3,7 @@ use App\Models\Testimonial;
 use App\Models\AreaServed;
 use App\Models\ProjectImage;
 
-$reviewCount = Testimonial::count();
+$reviewCount = \App\Support\CompanyStats::reviewsTotal();
 $areas = AreaServed::pluck('city')->toArray();
 
 // Curated gallery for the LocalBusiness entity image. Google frequently sources

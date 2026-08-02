@@ -1,30 +1,14 @@
 <x-layouts.app
-    title="Contact GS Construction"
-    metaDescription="Get in touch with GS Construction for your home remodeling project. Free consultations for kitchen, bathroom, and whole-home renovations in Chicagoland."
+    :title="'Contact ' . config('brand.name')"
+    :metaDescription="'Get in touch with ' . config('brand.name') . ' for your home remodeling project. Free consultations for kitchen, bathroom, and whole-home renovations in Chicagoland.'"
 >
     {{-- Breadcrumb Schema --}}
-    <x-breadcrumb-schema :items="[
+
+    <x-breadcrumbs :items="[
         ['name' => 'Contact'],
-    ]" />
+    ]" padding="py-1" />
 
-    {{-- Visual Breadcrumb --}}
-    <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
-        <nav class="flex" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="/" wire:navigate class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
-                </li>
-                <li class="flex items-center">
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="ml-2 text-gray-700 dark:text-gray-300">Contact</span>
-                </li>
-            </ol>
-        </nav>
-    </div>
-
-    <main>
+    <div>
         {{-- Hero Section --}}
         @php
             $homeSlides = [
@@ -46,7 +30,7 @@
                 ],
                 [
                     'title' => "Start Your Home Project",
-                    'subheading' => 'Get a free consultation and clear next steps from GS Construction.',
+                    'subheading' => 'Get a free consultation and clear next steps from ' . config('brand.name') . '.',
                     'button' => 'Request Free Consultation',
                     'link' => '#contact-form',
                     'projectType' => 'kitchen',
@@ -80,12 +64,14 @@
         {{-- FAQ Section --}}
         <x-faq-section 
             :faqs="collect(config('faq.faqs', []))->slice(0, 8)->toArray()" 
-            heading="Common Questions About GS Construction"
+            :heading="'Common Questions About ' . config('brand.name')"
             collapsed
         />
 
         {{-- Services Section --}}
-        @include('partials.services-grid')
+        {{-- showCta false: this page already has the contact form above and a
+             CTA of its own below; the partial's own one pointed back here. --}}
+        @include('partials.services-grid', ['showCta' => false])
 
         {{-- Closing CTA. This page had none — it ended on the services grid,
              so the only route onward from a contact page was back up to the
@@ -95,11 +81,11 @@
         <x-cta-section
             variant="blue"
             heading="Want to know who you're hiring?"
-            description="GS Construction is a father-and-son company — Gregory and Patryk are on your job personally. Read how the company started and how we work."
+            :description="config('brand.name') . ' is a father-and-son company — Gregory and Patryk are on your job personally. Read how the company started and how we work.'"
             primaryText="About Us"
             primaryHref="/about"
             secondaryText="View Our Work"
             secondaryHref="/projects"
         />
-    </main>
+    </div>
 </x-layouts.app>
