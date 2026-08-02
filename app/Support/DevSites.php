@@ -168,7 +168,7 @@ class DevSites
      */
     public static function viewsUsed(): array
     {
-        $themeRoot = resource_path('views/themes');
+        $themeRoot = resource_path('themes');
 
         return collect(View::getFinder()->getViews())
             ->filter(fn (string $file): bool => str_starts_with($file, $themeRoot))

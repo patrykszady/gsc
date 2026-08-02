@@ -1,7 +1,7 @@
 /* J. Peterson Design — own Tailwind entry (own tokens/fonts/palette).
    Separate from gsc's bundle so the two sites share no styling. */
 @import 'tailwindcss';
-@source '../../../views/themes/jpeterson/**/*.blade.php';
+@source '../../../themes/jpeterson/**/*.blade.php';
 @source '../../../views/components/**/*.blade.php';
 
 @theme {

@@ -13,7 +13,7 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
 
 - **Site register + per-site briefs:** [docs/sites/](docs/sites/README.md). Read the brief
   before doing site-specific work.
-- **Which site am I changing?** Files under `resources/views/themes/{theme}/` and
+- **Which site am I changing?** Files under `resources/themes/{theme}/` and
   `config/sites/{slug}/` affect ONE site. Everything else — `resources/views/`,
   `config/*.php`, `app/` — is SHARED and changes every site.
 - **Preview:** every tenant has its own local host — `http://{slug}.localhost:8003`

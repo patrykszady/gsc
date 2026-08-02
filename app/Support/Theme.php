@@ -8,11 +8,21 @@ use Illuminate\Support\Facades\View;
 /**
  * Per-site theming.
  *
- * A theme is an overlay, not a copy: `resources/views/themes/{theme}` is
+ * A theme is an overlay, not a copy: `resources/themes/{theme}` is
  * prepended to the view finder, so a theme overrides only the views it
  * actually defines and everything else falls through to `resources/views`.
  * That means a new site starts by inheriting the whole existing site and
  * diverges one file at a time, instead of needing a full set on day one.
+ *
+ * Themes live OUTSIDE `resources/views` deliberately. `view:cache` compiles
+ * every Blade file under the finder's paths recursively, and a theme's views
+ * reference theme-local components (`<x-button>`, `<x-cta>`) that only
+ * resolve once that theme is prepended — which never happens on the CLI,
+ * where no site is resolved. With themes nested inside `resources/views`,
+ * `php artisan view:cache` therefore died with "Unable to locate a class or
+ * view for component [cta]" and took the whole deploy down with it.
+ * Keeping them out of that tree means the optimizer only compiles shared
+ * views; theme views compile on first render, with the theme in place.
  *
  * Asset entries are per-theme too, so each site ships its own compiled CSS
  * (own palette, fonts, tokens) with no shared bundle to fight over.
@@ -35,7 +45,7 @@ class Theme
     public static function apply(Site $site): void
     {
         $path = self::path($site);
-        $themeRoot = resource_path('views/themes');
+        $themeRoot = resource_path('themes');
 
         $finder = View::getFinder();
 
@@ -66,7 +76,7 @@ class Theme
 
     public static function path(Site $site): string
     {
-        return resource_path('views/themes/' . $site->theme);
+        return resource_path('themes/' . $site->theme);
     }
 
     /**

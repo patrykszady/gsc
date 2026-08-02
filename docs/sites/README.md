@@ -47,7 +47,7 @@ php artisan tenants:run "sitemap:generate"          # every active site
 ## Adding a site
 
 1. Row in `sites` (slug, name, theme, hosts, primary_host) — via migration, `is_active=false` until its theme ships.
-2. `resources/views/themes/{theme}/` — override only the views that differ; everything else falls through.
+2. `resources/themes/{theme}/` — override only the views that differ; everything else falls through.
 3. `config/sites/{slug}/brand.php` — **must** set `'__replace' => true`. Merging inherits another business's phone, email and review-profile URLs.
 4. Optional `resources/css/themes/{theme}/app.css` + a Vite input for its own styling.
 5. `docs/sites/{slug}.md` from the template below.
