@@ -34,3 +34,12 @@ storage/lighthouse-reports/
 C:\\Users\\*
 /C:\\Users\\patry\\AppData\\Local\\lighthouse.*/
 /C:\\Users\\*\\AppData\\Local\\lighthouse.*/
+
+# Legal work product — evidence packs, demand-letter responses, and verbatim
+# source captures of competitor websites. Kept on disk and archived outside
+# the repo, deliberately NOT version-controlled:
+#   - they are privileged/sensitive material that does not belong in a clone
+#     handed to a contractor or pushed to a hosting provider
+#   - the source captures are third parties' pages and carried live Google API
+#     keys, which is what tripped GitHub secret scanning on 2026-08-02
+/docs/legal
