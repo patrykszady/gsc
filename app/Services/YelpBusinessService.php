@@ -448,7 +448,7 @@ class YelpBusinessService
         } catch (\Throwable $e) {
             // Mail must never break the upload/check path that detected the
             // dead session — the sticky banner still surfaces the state.
-            Log::channel('yelp')->warning('Yelp: session-dead alert email failed', ['error' => $e->getMessage()]);
+            Log::channel('yelp')->warning('Yelp: session-dead alert email failed', ['error' => \App\Support\SecretRedactor::redact($e->getMessage())]);
         }
     }
 
@@ -496,11 +496,11 @@ class YelpBusinessService
         } catch (ProcessSignaledException $e) {
             Log::channel('yelp')->warning('Yelp: checkSession subprocess killed', [
                 'signal' => $e->getSignal(),
-                'stderr' => mb_substr($process->getErrorOutput(), 0, 500),
+                'stderr' => \App\Support\SecretRedactor::redact(mb_substr($process->getErrorOutput(), 0, 500)),
             ]);
             return null;
         } catch (\Throwable $e) {
-            Log::channel('yelp')->warning('Yelp: checkSession failed', ['error' => $e->getMessage()]);
+            Log::channel('yelp')->warning('Yelp: checkSession failed', ['error' => \App\Support\SecretRedactor::redact($e->getMessage())]);
             return null;
         }
 
@@ -614,15 +614,15 @@ class YelpBusinessService
 
                 return [
                     'payload' => $line ? json_decode($line, true) : null,
-                    'stderr' => mb_substr($process->getErrorOutput(), -4000),
+                    'stderr' => \App\Support\SecretRedactor::redact(mb_substr($process->getErrorOutput(), -4000)),
                 ];
             });
         } catch (YelpUploadThrottledException $e) {
             return ['ok' => false, 'code' => 'busy', 'hint' => 'Another Yelp automation is running; try again shortly.'];
         } catch (\Throwable $e) {
-            Log::channel('yelp')->error('Yelp: headless login crashed', ['error' => $e->getMessage()]);
+            Log::channel('yelp')->error('Yelp: headless login crashed', ['error' => \App\Support\SecretRedactor::redact($e->getMessage())]);
 
-            return ['ok' => false, 'code' => 'crashed', 'hint' => $e->getMessage()];
+            return ['ok' => false, 'code' => 'crashed', 'hint' => \App\Support\SecretRedactor::redact($e->getMessage())];
         }
 
         $data = is_array($payload['payload'] ?? null) ? $payload['payload'] : null;
@@ -747,13 +747,13 @@ class YelpBusinessService
                 } catch (ProcessTimedOutException $e) {
                     Log::channel('yelp')->error('Yelp: upload script timed out', [
                         'image_id' => $image->id,
-                        'message' => $e->getMessage(),
+                        'message' => \App\Support\SecretRedactor::redact($e->getMessage()),
                     ]);
                     return null;
                 }
 
                 $stdout = trim($process->getOutput());
-                $stderr = trim($process->getErrorOutput());
+                $stderr = \App\Support\SecretRedactor::redact(trim($process->getErrorOutput()));
 
                 if (! $process->isSuccessful()) {
                     Log::channel('yelp')->error('Yelp: upload script exited with error', [
@@ -908,7 +908,7 @@ class YelpBusinessService
                     // automation lock is released and the next job can run.
                     Log::channel('yelp')->error('Yelp biz: upload script timed out', [
                         'image_id' => $image->id,
-                        'message' => $e->getMessage(),
+                        'message' => \App\Support\SecretRedactor::redact($e->getMessage()),
                     ]);
                     try {
                         $pid = $process->getPid();
@@ -938,7 +938,7 @@ class YelpBusinessService
                         @fclose($teeFh);
                     }
                     $stdoutSignaled = trim($process->getOutput());
-                    $stderrSignaled = trim($process->getErrorOutput());
+                    $stderrSignaled = \App\Support\SecretRedactor::redact(trim($process->getErrorOutput()));
                     $jsonLineSignaled = $this->lastJsonLine($stdoutSignaled);
                     $payloadSignaled = $jsonLineSignaled ? json_decode($jsonLineSignaled, true) : null;
                     if (is_array($payloadSignaled) && ! empty($payloadSignaled['ok']) && ! empty($payloadSignaled['photo_id'])) {
@@ -989,7 +989,7 @@ class YelpBusinessService
                 }
 
                 $stdout = trim($process->getOutput());
-                $stderr = trim($process->getErrorOutput());
+                $stderr = \App\Support\SecretRedactor::redact(trim($process->getErrorOutput()));
 
                 // Parse the success payload BEFORE checking $process->isSuccessful().
                 // Chromium teardown after a successful upload occasionally hangs and
@@ -1343,7 +1343,7 @@ class YelpBusinessService
         } catch (\Throwable $e) {
             Log::channel('yelp')->error('Yelp: failed to resolve image path', [
                 'image_id' => $image->id,
-                'error' => $e->getMessage(),
+                'error' => \App\Support\SecretRedactor::redact($e->getMessage()),
             ]);
             return null;
         }

@@ -43,3 +43,10 @@ C:\\Users\\*
 #   - the source captures are third parties' pages and carried live Google API
 #     keys, which is what tripped GitHub secret scanning on 2026-08-02
 /docs/legal
+
+# Nothing log-shaped belongs in the web root. A laravel.log downloaded from
+# the log viewer was found sitting in public/ carrying the proxy password and
+# both captcha keys (2026-08-02) — served at 200 by the dev server.
+/public/*.log
+/public/*.sql
+/public/*.env

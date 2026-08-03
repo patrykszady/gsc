@@ -74,6 +74,30 @@ class NoServerSecretsInViewsTest extends TestCase
         $this->assertSame([], $found, "Google API key literal committed in:\n".implode("\n", $found));
     }
 
+    /**
+     * Nothing log-, dump- or env-shaped may sit in the web root.
+     *
+     * A `laravel.log` downloaded from the log viewer was found in `public/`
+     * carrying the proxy password and both captcha keys, served at HTTP 200
+     * by the dev server. `.gitignore` stops it being committed; this stops it
+     * being present at all, which is the part that actually matters.
+     */
+    public function test_no_secrets_bearing_files_in_the_web_root(): void
+    {
+        $offenders = [];
+
+        foreach (['*.log', '*.sql', '*.env', '*.bak', '*.dump'] as $glob) {
+            foreach (glob(public_path($glob)) ?: [] as $file) {
+                $offenders[] = basename($file);
+            }
+        }
+
+        $this->assertSame([], $offenders, implode("\n", array_merge(
+            ['Files that must never live in public/ (it is web-served):'],
+            $offenders,
+        )));
+    }
+
     /** @return array<int, string> */
     private function bladeFiles(): array
     {
