@@ -193,6 +193,21 @@
                                 </flux:table.cell>
                                 <flux:table.cell>
                                     <div class="text-xs">
+                                        {{-- How the enquiry reached us. Web-form rows carry UTM data;
+                                             rows mirrored from the crew@ inbox have none, so without
+                                             this badge their Source column was simply blank and there
+                                             was no way to tell an emailed enquiry from a form one. --}}
+                                        @php
+                                            $channel = $submission->source === 'web' ? null : match ($submission->source) {
+                                                'crew-email' => ['Email', 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'],
+                                                default => [$submission->source, 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'],
+                                            };
+                                        @endphp
+                                        @if($channel)
+                                            <span class="inline-flex items-center rounded-full px-2 py-0.5 {{ $channel[1] }}">
+                                                {{ $channel[0] }}
+                                            </span>
+                                        @endif
                                         @if($submission->utm_source)
                                             <span class="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400">
                                                 {{ $submission->utm_source }}

@@ -179,6 +179,50 @@ class HiveProjectsClient
     }
 
     /**
+     * Read leads back from hive.contractors.
+     *
+     * The reverse of submitLead(). Enquiries emailed to crew@gs.construction
+     * are captured by hive (it owns the mailbox grant), but this site's admin
+     * is where that team looks — so those leads are mirrored back here.
+     *
+     * Hive endpoint: GET {HIVE_API_URL}/api/v1/leads?source=&since=&limit=
+     * Scoped server-side to the token's vendor.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchLeads(string $source, ?Carbon $since = null, int $limit = 50): array
+    {
+        if ($this->token === '' || $this->baseUrl === '') {
+            throw new RuntimeException('HIVE_API_URL or HIVE_API_TOKEN is not configured.');
+        }
+
+        try {
+            $response = Http::baseUrl($this->baseUrl)
+                ->withToken($this->token)
+                ->acceptJson()
+                ->timeout(15)
+                ->connectTimeout(5)
+                ->retry(2, 500, throw: false)
+                ->get('/api/v1/leads', array_filter([
+                    'source' => $source,
+                    'since' => $since?->toIso8601String(),
+                    'limit' => $limit,
+                ]));
+        } catch (ConnectionException $e) {
+            throw new RuntimeException('Could not reach hive.contractors: ' . $e->getMessage(), 0, $e);
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException(
+                "Hive GET /api/v1/leads returned HTTP {$response->status()}: "
+                . mb_substr((string) $response->body(), 0, 300)
+            );
+        }
+
+        return (array) ($response->json('data') ?? []);
+    }
+
+    /**
      * Fetch fresh zip counts from hive.contractors and overwrite the local table.
      * Returns the number of rows persisted. Throws on failure.
      */

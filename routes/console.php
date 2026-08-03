@@ -65,6 +65,18 @@ Schedule::command('hive:sync')->dailyAt('02:00')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled hive:sync failed'));
 
+// Mirror leads hive captured that did not originate on this site — currently
+// enquiries emailed to crew@gs.construction, which hive reads via its Nylas
+// grant. Without this the leads admin shows only web-form submissions and
+// silently omits everything that arrived by email. Every 15 minutes: hive
+// polls the mailbox every 5, so this trails it closely without hammering the
+// API. Read-only mirror; hive stays the source of truth.
+Schedule::command('leads:pull-from-hive --source=crew-email')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled leads:pull-from-hive failed'));
+
 // Weekly health check of social/sameAs URLs
 Schedule::command('socials:check --quiet-on-success')->weekly()
     ->onOneServer()
