@@ -137,6 +137,12 @@ class ContactSection extends Component
 
     public function toggleTime(string $date, string $time): void
     {
+        // Both arguments come straight off the wire. Reject anything the
+        // calendar would not have offered rather than trusting the browser.
+        if (! static::isSelectableDate($date) || ! in_array($time, static::timeSlots(), true)) {
+            return;
+        }
+
         if (!isset($this->timeSelections[$date])) {
             $this->timeSelections[$date] = [];
         }
@@ -189,11 +195,143 @@ class ContactSection extends Component
     {
         $result = [];
         foreach ($this->timeSelections as $date => $times) {
+            // Last line of defence: timeSelections is a public property, so a
+            // crafted payload can seed it directly without ever calling
+            // toggleTime(). Nothing invalid reaches the submitted lead.
+            if (! static::isSelectableDate((string) $date)) {
+                continue;
+            }
+
             foreach ($times as $time) {
+                if (! in_array($time, static::timeSlots(), true)) {
+                    continue;
+                }
+
                 $result[] = ['date' => $date, 'time' => $time];
             }
         }
         $this->availability = $result;
+    }
+
+    /**
+     * The bookable windows, plus a whole-day option.
+     *
+     * @return array<int, string>
+     */
+    public static function timeSlots(): array
+    {
+        return ['Anytime', '7-9 AM', '9-11 AM', '11-1 PM', '1-3 PM'];
+    }
+
+    /**
+     * How much choice a visit needs before we can route a crew.
+     *
+     * One window on one day is not a schedule, it is an ultimatum — the crew
+     * is on site all day and cannot plan around a single slot. The same
+     * minimums are enforced in hive when the crew reschedules
+     * (Livewire\Leads\PickTimes), so both ends of the conversation ask for the
+     * same thing.
+     */
+    public const MIN_DAYS = 2;
+
+    public const MIN_TIMES = 3;
+
+    /**
+     * What a pick is worth toward MIN_TIMES.
+     *
+     * A whole free day gives us far more room than one two-hour window, so it
+     * counts double — otherwise "Anytime on Thursday and Friday" would be
+     * rejected while three narrow windows sailed through, which is backwards.
+     */
+    public static function slotWeight(string $window): int
+    {
+        return $window === 'Anytime' ? 2 : 1;
+    }
+
+    /** Total weight of everything currently picked. */
+    public function getSelectedWeightProperty(): int
+    {
+        return collect($this->availability)->sum(fn ($a) => static::slotWeight((string) $a['time']));
+    }
+
+    /** Distinct days currently picked. */
+    public function getSelectedDayCountProperty(): int
+    {
+        return collect($this->availability)->pluck('date')->unique()->count();
+    }
+
+    /** Send stays disabled until the minimums are met (button AND server). */
+    public function getCanSubmitProperty(): bool
+    {
+        return $this->selectedWeight >= self::MIN_TIMES
+            && $this->selectedDayCount >= self::MIN_DAYS;
+    }
+
+    /**
+     * How much notice a visit needs.
+     *
+     * Three BUSINESS days, so a Thursday enquiry offers Tuesday rather than
+     * Sunday. Weekends are already excluded from the calendar, but counting
+     * calendar days would still let a Friday request land on Monday — one
+     * working day of notice.
+     */
+    public const LEAD_TIME_BUSINESS_DAYS = 3;
+
+    /**
+     * Where "today" is decided.
+     *
+     * app.timezone is UTC, which is a day ahead of the crew from 7pm Chicago
+     * time — the evening hours when most homeowners actually fill this in. On
+     * UTC's clock their Monday evening is already Tuesday, so the calendar
+     * quietly withdrew a day. Scheduling is a local-business concern, so it
+     * is reckoned on the business's calendar.
+     */
+    public static function businessTimezone(): string
+    {
+        return config('brand.timezone') ?: 'America/Chicago';
+    }
+
+    public static function earliestSelectableDate(): \Carbon\Carbon
+    {
+        $date = now()->setTimezone(static::businessTimezone())->startOfDay();
+
+        for ($added = 0; $added < self::LEAD_TIME_BUSINESS_DAYS;) {
+            $date->addDay();
+            if (! $date->isWeekend()) {
+                $added++;
+            }
+        }
+
+        return $date;
+    }
+
+    /**
+     * Is this date one a visitor is allowed to pick?
+     *
+     * The calendar enforces this in the browser, but `selectedDates` and
+     * `timeSelections` arrive from the client and a crafted Livewire payload
+     * can name any date at all — including yesterday. Checked here so the
+     * crew is never handed an appointment that was never on offer.
+     */
+    public static function isSelectableDate(string $date): bool
+    {
+        try {
+            // Parsed in the business timezone so the comparison below is
+            // day-to-day on the same calendar, not across a UTC offset.
+            $parsed = \Carbon\Carbon::createFromFormat('Y-m-d', $date, static::businessTimezone())?->startOfDay();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (! $parsed || $parsed->format('Y-m-d') !== $date) {
+            return false;
+        }
+
+        return ! $parsed->isWeekend()
+            && $parsed->greaterThanOrEqualTo(static::earliestSelectableDate())
+            && $parsed->lessThanOrEqualTo(
+                now()->setTimezone(static::businessTimezone())->addMonthNoOverflow()->endOfMonth()
+            );
     }
 
     protected function getUnavailableWeekendDates(): string
@@ -220,6 +358,18 @@ class ContactSection extends Component
 
         // VALIDATION FIRST - always show real validation errors to users
         $this->validate();
+
+        // The button is disabled below the minimums, but the button is in the
+        // browser: a crafted Livewire payload can call submit() directly.
+        if (! $this->canSubmit) {
+            $this->addError('availability', sprintf(
+                'Please choose at least %d times across %d different days so we can find one that works.',
+                self::MIN_TIMES,
+                self::MIN_DAYS,
+            ));
+
+            return;
+        }
 
         // Rate limiting: 3 submissions per IP per hour
         $rateLimitKey = 'contact-form:' . request()->ip();
@@ -816,12 +966,11 @@ class ContactSection extends Component
         $unavailableWeekendDates = $this->getUnavailableWeekendDates();
 
         // Flux calendar expects a Y-m-d date string ("today" shorthand exists, but "tomorrow" does not)
-        $minSelectableDate = now()->addDay()->format('Y-m-d');
+        $minSelectableDate = static::earliestSelectableDate()->format('Y-m-d');
         $maxSelectableDate = now()->addMonthNoOverflow()->endOfMonth()->format('Y-m-d');
-        
-        // Available time slots (2-hour windows), plus a whole-day option
-        $times = ['Anytime', '8-10 AM', '10-12 PM', '12-2 PM', '2-4 PM', '4-6 PM'];
-        
+
+        $times = static::timeSlots();
+
         return view('livewire.contact-section', [
             'areasServed' => $areasServed,
             'unavailableWeekendDates' => $unavailableWeekendDates,

@@ -588,8 +588,15 @@
                                 </div>
                             </template>
                         </div>
+                        {{-- Same explanation the crew gives when scheduling a
+                             lead in hive (livewire/leads/pick-times.blade.php),
+                             so a homeowner hears one consistent reason rather
+                             than two different policies. --}}
                         <p class="px-4 pb-4 pt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                            Saturday morning appointments are limited. If you need a Saturday meeting, please mention it in your message. We typically schedule Saturday appointments about 4 weeks in advance.
+                            Our crew puts in long days on site, so early morning and daytime
+                            consultations suit us best &mdash; thank you for understanding. If only a
+                            weekday late afternoon or Saturday morning works for you, please mention
+                            it in your message above.
                         </p>
                     </div>
                     {{-- End Collapsible Consultation Options --}}
@@ -648,11 +655,41 @@
                 @endif
 
                 {{-- Submit Button --}}
-                <div class="mt-4 flex justify-end">
+                <div class="mt-4 flex flex-col items-end gap-2">
+                    {{-- Say what is still missing rather than leaving a dead
+                         button with no explanation. "Anytime" is worth two,
+                         so the count can jump by 2 — matching how the crew's
+                         own scheduler weights it. --}}
+                    @unless($this->canSubmit)
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                            @if($this->selectedWeight === 0)
+                                Pick a few times above so we can find one that works &mdash;
+                                {{ \App\Livewire\ContactSection::MIN_TIMES }} across
+                                {{ \App\Livewire\ContactSection::MIN_DAYS }} different days.
+                            @else
+                                @php
+                                    $needTimes = max(0, \App\Livewire\ContactSection::MIN_TIMES - $this->selectedWeight);
+                                    $needDays = max(0, \App\Livewire\ContactSection::MIN_DAYS - $this->selectedDayCount);
+                                @endphp
+                                Almost there &mdash; add
+                                @if($needTimes > 0)
+                                    {{ $needTimes }} more {{ Str::plural('time', $needTimes) }}@if($needDays > 0), on @endif
+                                @endif
+                                @if($needDays > 0)
+                                    {{ $needDays }} more {{ Str::plural('day', $needDays) }}
+                                @endif.
+                            @endif
+                        </p>
+                    @endunless
+
+                    @error('availability')
+                        <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+
                     {{-- Shared CTA. The component already emits its own
                          @click trackCTA; trackFormStart stays as an extra
                          listener via x-on:click. --}}
-                    <x-buttons.cta as="button" type="submit" x-on:click="trackFormStart('contact')">
+                    <x-buttons.cta as="button" type="submit" :disabled="! $this->canSubmit" x-on:click="trackFormStart('contact')">
                         <span wire:loading.remove wire:target="submit">Send message</span>
                         <span wire:loading wire:target="submit">Sending...</span>
                     </x-buttons.cta>

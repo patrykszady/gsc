@@ -10,7 +10,10 @@
 ])
 
 @php
-    $baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold tracking-wide transition';
+    // disabled: styling lives here so a disabled CTA reads as disabled
+    // everywhere, rather than each caller inventing its own greyed-out look.
+    // Harmless on <a>, which cannot be disabled.
+    $baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold tracking-wide transition disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:hover:bg-sky-600';
     
     $sizes = [
         'sm' => 'px-4 py-2 text-sm',
