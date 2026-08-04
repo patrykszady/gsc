@@ -151,6 +151,21 @@ return Application::configure(basePath: dirname(__DIR__))
                 app()->instance('site.overlay_applied', true);
             }
 
+            // A renamed project 301s to its new URL, together with everything
+            // nested under it (photo pages live at /projects/{p}/photos/{i}).
+            //
+            // Handled here rather than in middleware: route-model binding
+            // THROWS NotFoundHttpException from inside SubstituteBindings, so
+            // a middleware appended to the web group never sees it — the
+            // exception is raised before that middleware's frame is reached.
+            // The render hook is the one place guaranteed to observe it.
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
+                && $request->isMethod('GET')) {
+                if ($redirect = \App\Support\RenamedProjectRedirector::for($request)) {
+                    return $redirect;
+                }
+            }
+
             return null;
         });
     })->create();

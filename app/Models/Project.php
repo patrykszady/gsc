@@ -47,6 +47,61 @@ class Project extends Model
                 $project->slug = static::generateUniqueSlug($project->title);
             }
         });
+
+        // Remember every slug this project has answered on. Photo pages nest
+        // under the project slug, so a rename silently moves that project's
+        // whole photo set too; without this the old URLs 404 and the rename
+        // costs exactly the ranking it was meant to gain.
+        static::updating(function (Project $project) {
+            if (! $project->isDirty('slug')) {
+                return;
+            }
+
+            $old = $project->getOriginal('slug');
+            if (! $old || $old === $project->slug) {
+                return;
+            }
+
+            ProjectSlugHistory::updateOrCreate(
+                ['slug' => $old],
+                ['project_id' => $project->id],
+            );
+
+            // A slug being reclaimed by the project that now owns it is no
+            // longer historical — drop the redirect so it does not loop.
+            ProjectSlugHistory::where('slug', $project->slug)->delete();
+        });
+    }
+
+    public function slugHistory()
+    {
+        return $this->hasMany(ProjectSlugHistory::class);
+    }
+
+    /**
+     * "palatine-il" — the location as it belongs in a URL.
+     *
+     * Location data is entered by hand and is not uniform: most rows read
+     * "Palatine, IL", one uses a period ("Chicago. IL") and one omits the
+     * state entirely ("Arlington Heights"). Split on either separator and
+     * default the state, so a typo cannot leak into a permanent URL.
+     */
+    public function citySlug(): ?string
+    {
+        $location = trim((string) $this->location);
+        if ($location === '') {
+            return null;
+        }
+
+        $parts = preg_split('/[,.]/', $location, 2);
+        $city = Str::slug(trim($parts[0] ?? ''));
+        if ($city === '') {
+            return null;
+        }
+
+        $state = Str::slug(trim($parts[1] ?? '')) ?: 'il';
+
+        return $city . '-' . $state;
     }
 
     /**
