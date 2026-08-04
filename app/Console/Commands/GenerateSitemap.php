@@ -382,6 +382,51 @@ class GenerateSitemap extends Command
         $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
         $includeAreaServicePages = (bool) config('seo.sitemap_generation.include_area_service_pages', true);
         $areaCount = 0;
+        $areaImageCount = 0;
+
+        // Area pages render a strip of real project photos — the same
+        // localProjects(6)/nearbyProjects(6) call area-page.blade.php makes — but
+        // the sitemap declared none of them. Of the site's 701 URLs only 268
+        // carried image tags, and every one was a project or photo page, so Google
+        // Images had no route to the city pages at all.
+        //
+        // Only the cover of each project the page actually renders is declared;
+        // an image sitemap may only advertise images that are on the page.
+        // Verified against production HTML for all four indexed area families
+        // (home, services/*, projects, testimonials) — every cover was present on
+        // each. ZIP service-area pages choose projects differently (1 of 4 covers
+        // matched) and are deliberately left out rather than declare an image that
+        // may not be there.
+        $areaImagesFor = static function (AreaServed $area) use ($resolveImageUrl, $needsImageRewrite, $appUrl, $baseUrl): array {
+            $projects = $area->localProjects(6);
+            if ($projects->isEmpty()) {
+                $projects = $area->nearbyProjects(6);
+            }
+
+            $images = [];
+            foreach ($projects as $project) {
+                $image = $project->images->firstWhere('is_cover', true) ?: $project->images->first();
+                if (! $image) {
+                    continue;
+                }
+
+                $imageUrl = $resolveImageUrl($image);
+                if (! is_string($imageUrl) || trim($imageUrl) === '') {
+                    continue;
+                }
+                if ($needsImageRewrite) {
+                    $imageUrl = str_replace($appUrl, $baseUrl, $imageUrl);
+                }
+
+                $images[] = [
+                    'url' => $imageUrl,
+                    'caption' => $image->alt_text ?: "{$project->title} — {$area->city}, IL",
+                    'title' => "{$project->title} in {$area->city}, IL",
+                ];
+            }
+
+            return $images;
+        };
 
         // Get latest project updated_at for area lastmod dates
         $latestProjectDate = Project::where('is_published', true)->max('updated_at');
@@ -391,6 +436,9 @@ class GenerateSitemap extends Command
             // Honest per-city lastmod: most recent of the area row itself and any
             // project completed in this city (falls back to the global date).
             $thisAreaLastmod = $area->lastmod() ?? $areaLastmod;
+
+            // Computed once per area: every page family below renders the same strip.
+            $areaImages = $areaImagesFor($area);
 
             // Standard area pages — only sitemap the variants the index policy
             // keeps (never advertise a URL we noindex; see AreaSeoPolicy).
@@ -403,12 +451,21 @@ class GenerateSitemap extends Command
                 $uri = $page ? "areas-served/{$area->slug}/{$page}" : "areas-served/{$area->slug}";
                 $priority = $page === '' ? 0.7 : 0.6; // Area home pages slightly higher
 
-                $sitemap->add(
-                    Url::create("{$baseUrl}/{$uri}")
-                        ->setLastModificationDate($thisAreaLastmod)
-                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                        ->setPriority($priority)
-                );
+                $areaUrl = Url::create("{$baseUrl}/{$uri}")
+                    ->setLastModificationDate($thisAreaLastmod)
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority($priority);
+
+                foreach ($areaImages as $areaImage) {
+                    $areaUrl->addImage(
+                        url: $areaImage['url'],
+                        caption: $areaImage['caption'],
+                        title: $areaImage['title'],
+                    );
+                    $areaImageCount++;
+                }
+
+                $sitemap->add($areaUrl);
                 $urlCount++;
                 $areaCount++;
             }
@@ -434,19 +491,28 @@ class GenerateSitemap extends Command
 
                     $uri = "areas-served/{$area->slug}/services/{$servicePage}";
 
-                    $sitemap->add(
-                        Url::create("{$baseUrl}/{$uri}")
-                            ->setLastModificationDate($thisAreaLastmod)
-                            ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
-                            ->setPriority(0.8) // High priority for local service keywords
-                    );
+                    $serviceUrl = Url::create("{$baseUrl}/{$uri}")
+                        ->setLastModificationDate($thisAreaLastmod)
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
+                        ->setPriority(0.8); // High priority for local service keywords
+
+                    foreach ($areaImages as $areaImage) {
+                        $serviceUrl->addImage(
+                            url: $areaImage['url'],
+                            caption: $areaImage['caption'],
+                            title: $areaImage['title'],
+                        );
+                        $areaImageCount++;
+                    }
+
+                    $sitemap->add($serviceUrl);
                     $urlCount++;
                     $areaCount++;
                 }
             }
         }
         $totalPageTypes = count($areaPages) + ($includeAreaServicePages ? count($areaServicePages) : 0);
-        $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × {$totalPageTypes} page types)");
+        $this->line("  Added {$areaCount} area pages ({$areas->count()} areas × {$totalPageTypes} page types, {$areaImageCount} images in sitemap)");
         if (! $includeAreaServicePages) {
             $this->comment('  Skipped area-service URLs (SITEMAP_INCLUDE_AREA_SERVICE_PAGES=false)');
         }
