@@ -205,18 +205,24 @@ Route::get('/projects/{project}/photos/{image:slug}', ProjectImagePage::class)
     ->name('projects.image');
 
 Route::get('/services', function () {
-    if (\App\Models\Site::current()->slug !== 'gsc') {
+    $site = \App\Models\Site::current();
+
+    if ($site->slug !== 'gsc') {
         // A THEMED view only. resources/views/services.blade.php is GS
         // Construction's own hardcoded six-card page; falling back to it would
         // serve GSC's services to any tenant that claims /services without
-        // supplying its own view. Unreachable today only because jpeterson has
-        // a theme override and ss does not claim the route — a fourth tenant
-        // would have hit it.
-        $themed = 'themes/' . \App\Models\Site::current()->theme . '/services';
+        // supplying its own view.
+        //
+        // Test the theme FILE, not a "themes/{theme}/services" view name.
+        // Theme::apply() prepends resources/themes/{theme} to the view finder,
+        // so themed views resolve under their plain name — the path-style name
+        // resolved to nothing and every non-gsc tenant 404'd here, jpeterson
+        // included, despite having services.blade.php in its theme.
+        abort_unless(is_file(\App\Support\Theme::path($site) . '/services.blade.php'), 404);
 
-        abort_unless(view()->exists($themed), 404);
-
-        return view($themed);
+        // Theme-first via the finder; the abort above is what keeps a
+        // theme-less tenant from falling through to GSC's shared page.
+        return view('services');
     }
 
     // Livewire full-page components are invokable controllers.
