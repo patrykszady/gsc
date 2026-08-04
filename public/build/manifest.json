@@ -16,11 +16,11 @@
     "src": "node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-jDmVqe0c.css",
+    "file": "assets/app-Dz1Lx9ab.css",
     "src": "resources/css/app.css"
   },
   "resources/css/themes/jpeterson/app.css": {
-    "file": "assets/app-C04HqQsF.css",
+    "file": "assets/app-BjNequsb.css",
     "src": "resources/css/themes/jpeterson/app.css",
     "isEntry": true,
     "name": "app",
@@ -29,7 +29,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Csgs7WQV.js",
+    "file": "assets/app-DEwncx3a.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

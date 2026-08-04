@@ -1,6 +1,24 @@
 import './bootstrap';
 import intersect from '@alpinejs/intersect';
 
+// Safari only shipped requestIdleCallback in 16.4 (March 2023), so every
+// iPhone older than that threw "Can't find variable: requestIdleCallback" —
+// an uncaught ReferenceError, which aborts the rest of this file. Image
+// preloading, analytics and the scroll handlers below all died with it. It
+// was the most frequent error in the client-error log.
+//
+// Shimmed here rather than guarded at each of the eight call sites: a guard
+// is easy to forget on the ninth, and a missing one fails loudly on exactly
+// the devices least likely to be tested.
+if (typeof window.requestIdleCallback !== 'function') {
+    window.requestIdleCallback = (callback, options) =>
+        window.setTimeout(
+            () => callback({ didTimeout: false, timeRemaining: () => 50 }),
+            options?.timeout ?? 1,
+        );
+    window.cancelIdleCallback = (id) => window.clearTimeout(id);
+}
+
 // Image cache for cross-page persistence (exposed globally for Alpine access)
 const imageCache = new Map();
 window.imageCache = imageCache;

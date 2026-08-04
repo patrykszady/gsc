@@ -116,8 +116,15 @@
         style="opacity: 0;"
         class="absolute inset-0 h-full w-full {{ $objectClass }} transition-opacity duration-500"
         :style="(loaded || cached) ? 'opacity: 1' : 'opacity: 0'"
+        {{-- Alpine owns this. There used to be a native onload beside it,
+             reaching for `this.parentElement.__x` — the Alpine v2 API, on an
+             Alpine v3 app, so the guard was never truthy and the fallback
+             never ran. All it ever did was throw "null is not an object" when
+             an image finished loading after its element left the DOM (a
+             wire:navigate teardown mid-decode). The cached case it was meant
+             to cover is already handled by x-init above, which checks
+             `complete` on the next tick. --}}
         @load="onLoad()"
-        onload="this.parentElement.__x && (this.parentElement.__x.$data.loaded = true)"
     />
 </div>
 @endif
