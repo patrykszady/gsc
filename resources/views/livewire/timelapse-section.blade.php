@@ -108,7 +108,7 @@
     @pointercancel.window="endDrag()"
     x-intersect:enter.full="play()"
     x-intersect:leave.full="pause()"
-    class="relative w-full overflow-hidden rounded-2xl bg-white dark:bg-zinc-950"
+    class="relative w-full"
 >
     {{-- Heading above every timelapse, wherever it renders (home, /projects,
          area pages, project pages). Sits inside the component rather than at
@@ -121,7 +121,19 @@
         </div>
     @endif
 
-    <div class="relative gallery-viewport">
+    {{-- The card chrome belongs to the IMAGE, not to the section. When
+         rounded-2xl + overflow-hidden sat on the section it wrapped the
+         heading too, so the rounded corners were drawn around the eyebrow
+         text and the image below kept square top corners flush to the edge —
+         which reads as the picture being cut off. --}}
+    <div @class([
+        'relative gallery-viewport overflow-hidden bg-white dark:bg-zinc-950',
+        'rounded-2xl' => ! $flush,
+        // Flush: only the top corners round, so the frame meets the parent
+        // card's own radius at the sides and bottom instead of drawing a
+        // second, smaller box inside it.
+        'rounded-t-2xl' => $flush,
+    ])>
         {{-- Blur placeholder while first frame loads --}}
         <img
             x-cloak

@@ -466,6 +466,14 @@
         {{-- Project Timelapses (below Project Photos) --}}
         @if($visibleTimelapses->isNotEmpty())
             <div x-data="{ active: 0 }" x-cloak class="mt-8 mb-8">
+                {{-- Labels the whole timelapse region, so it is rendered once
+                     here rather than per card: the cards are mutually
+                     exclusive (x-show on `active`), and a heading inside each
+                     one would repeat in the markup and move with the tabs. --}}
+                <p class="mb-4 text-center text-sm font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+                    Before &amp; After &amp; Timelapse
+                </p>
+
                 @foreach($visibleTimelapses as $tIdx => $timelapse)
                     @php
                         $frames = $timelapse->frames->sortBy('sort_order')->map(fn($f) => $f->url)->values()->all();
@@ -478,7 +486,7 @@
                         x-show="active === {{ $tIdx }}"
                         x-cloak
                         role="tabpanel"
-                        class="group mb-8 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5 transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600"
+                        class="group mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5 transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600"
                     >
                         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             @if($visibleTimelapses->count() > 1)
@@ -515,14 +523,16 @@
                             </div>
                         </div>
 
-                        {{-- Slider Panel --}}
-                        <div x-show="view === 'slider'" role="tabpanel">
-                            <livewire:timelapse-section :timelapse-id="$timelapse->id" :key="'timelapse-'.$timelapse->id" />
+                        {{-- Slider Panel. Bled to the card edges: the negative
+                             margins cancel the card's p-4/sm:p-5, and the card's
+                             overflow-hidden clips the frame to its own radius. --}}
+                        <div x-show="view === 'slider'" role="tabpanel" class="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5">
+                            <livewire:timelapse-section :timelapse-id="$timelapse->id" :heading="null" :flush="true" :key="'timelapse-'.$timelapse->id" />
                         </div>
 
                         {{-- Accordion Panel --}}
-                        <div x-show="view === 'accordion'" x-cloak role="tabpanel">
-                            <section x-data="{ active: null }" class="relative w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                        <div x-show="view === 'accordion'" x-cloak role="tabpanel" class="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5">
+                            <section x-data="{ active: null }" class="relative w-full overflow-hidden rounded-t-2xl bg-zinc-100 dark:bg-zinc-800">
                                 <div class="relative gallery-viewport flex">
                                     @foreach($frames as $fIdx => $frameUrl)
                                         <div
@@ -554,7 +564,7 @@
                         {{-- Before / After Panel --}}
                         @if($hasBeforeAfter)
                             @php $firstFrame = $frames[0]; $lastFrame = $frames[count($frames) - 1]; @endphp
-                            <div x-show="view === 'before-after'" x-cloak role="tabpanel">
+                            <div x-show="view === 'before-after'" x-cloak role="tabpanel" class="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5">
                                 <section
                                     x-data="{
                                         position: 50,
@@ -585,7 +595,7 @@
                                         @pointermove="onPointerMove($event)"
                                         @pointerup="onPointerUp($event)"
                                         @pointercancel="onPointerUp($event)"
-                                        class="relative h-[375px] w-full overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize sm:h-[450px] lg:h-[525px]" style="touch-action: none;"
+                                        class="relative h-[375px] w-full overflow-hidden rounded-t-2xl bg-zinc-100 dark:bg-zinc-800 cursor-col-resize sm:h-[450px] lg:h-[525px]" style="touch-action: none;"
                                     >
                                         <img src="{{ $lastFrame }}" alt="{{ $timelapseTitle }} — After" class="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                                         <div class="absolute inset-0 overflow-hidden" :style="'clip-path: inset(0 ' + (100 - position) + '% 0 0)'">

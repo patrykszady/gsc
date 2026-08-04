@@ -17,6 +17,16 @@ class TimelapseSection extends Component
      */
     public ?string $heading = 'Before & After & Timelapse';
 
+    /**
+     * Bleed the frame to the edges of whatever card contains it.
+     *
+     * The project page nests this inside its own padded card, where a second
+     * rounded box floating in the middle reads as a mistake. Flush drops the
+     * side and bottom radius so the parent's corners are the only ones drawn;
+     * the caller supplies the negative margins.
+     */
+    public bool $flush = false;
+
     public function placeholder(): string
     {
         // Mirrors the hydrated shell: heading line + the fixed-height frame
