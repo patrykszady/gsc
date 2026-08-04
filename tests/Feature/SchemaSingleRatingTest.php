@@ -91,4 +91,29 @@ class SchemaSingleRatingTest extends TestCase
             'two rated nodes claim different review counts for the same business',
         );
     }
+
+    public function test_no_node_claims_an_address_in_a_town_we_do_not_occupy(): void
+    {
+        // GS is a pure service-area business — Google's Places record returns
+        // no address and no coordinates at all. The per-city LocalBusiness
+        // node used to set addressLocality to the page's city and a local
+        // postal code, publishing a street presence in each of 66 towns.
+        // areaServed conveys where the work happens; address must stay the one
+        // real place the business operates from.
+        $area = $this->area();
+        $hq = (string) config('brand.city');
+
+        foreach ($this->nodes('/areas-served/' . $area->slug) as $node) {
+            $address = $node['address'] ?? null;
+            if (! is_array($address) || ! isset($address['addressLocality'])) {
+                continue;
+            }
+
+            $this->assertSame(
+                $hq,
+                $address['addressLocality'],
+                sprintf('%s claims an address in %s', $node['@type'] ?? '?', $address['addressLocality']),
+            );
+        }
+    }
 }

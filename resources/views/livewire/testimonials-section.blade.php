@@ -174,7 +174,7 @@
                             @if(!empty($current['location']))
                                 <span aria-hidden="true" class="text-zinc-300 dark:text-zinc-600">&middot;</span>
                                 @if(!empty($current['area_slug']))
-                                    <a href="/areas/{{ $current['area_slug'] }}" class="text-gray-500 hover:text-sky-600 hover:underline dark:text-gray-400 dark:hover:text-sky-400">{{ $current['location'] }}</a>
+                                    <a href="{{ route('areas.show', $current['area_slug']) }}" class="text-gray-500 hover:text-sky-600 hover:underline dark:text-gray-400 dark:hover:text-sky-400">{{ $current['location'] }}</a>
                                 @else
                                     <span class="text-gray-500 dark:text-gray-400">{{ $current['location'] }}</span>
                                 @endif

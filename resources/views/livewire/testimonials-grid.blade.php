@@ -48,7 +48,7 @@
                                 <div class="font-semibold text-gray-900 dark:text-white">{{ $featured['name'] }}</div>
                                 <div class="text-gray-600 dark:text-gray-400">
                                     @if($featured['area_slug'])
-                                        <a href="/areas/{{ $featured['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $featured['location'] }}</a>
+                                        <a href="{{ route('areas.show', $featured['area_slug']) }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $featured['location'] }}</a>
                                     @else
                                         {{ $featured['location'] }}
                                     @endif
@@ -78,7 +78,7 @@
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $leftTop['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
                                 @if($leftTop['area_slug'])
-                                    <a href="/areas/{{ $leftTop['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $leftTop['location'] }}</a>
+                                    <a href="{{ route('areas.show', $leftTop['area_slug']) }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $leftTop['location'] }}</a>
                                 @else
                                     {{ $leftTop['location'] }}
                                 @endif
@@ -105,7 +105,7 @@
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $rightTop['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
                                 @if($rightTop['area_slug'])
-                                    <a href="/areas/{{ $rightTop['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $rightTop['location'] }}</a>
+                                    <a href="{{ route('areas.show', $rightTop['area_slug']) }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $rightTop['location'] }}</a>
                                 @else
                                     {{ $rightTop['location'] }}
                                 @endif
@@ -132,7 +132,7 @@
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
                                 @if($testimonial['area_slug'])
-                                    <a href="/areas/{{ $testimonial['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
+                                    <a href="{{ route('areas.show', $testimonial['area_slug']) }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
                                 @else
                                     {{ $testimonial['location'] }}
                                 @endif
@@ -159,7 +159,7 @@
                             <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
                             <div class="text-gray-600 dark:text-gray-400">
                                 @if($testimonial['area_slug'])
-                                    <a href="/areas/{{ $testimonial['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
+                                    <a href="{{ route('areas.show', $testimonial['area_slug']) }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
                                 @else
                                     {{ $testimonial['location'] }}
                                 @endif
@@ -195,7 +195,7 @@
                                 <div class="font-semibold text-gray-900 dark:text-white">{{ $testimonial['name'] }}</div>
                                 <div class="text-gray-600 dark:text-gray-400">
                                     @if($testimonial['area_slug'])
-                                        <a href="/areas/{{ $testimonial['area_slug'] }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
+                                        <a href="{{ route('areas.show', $testimonial['area_slug']) }}" class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial['location'] }}</a>
                                     @else
                                         {{ $testimonial['location'] }}
                                     @endif

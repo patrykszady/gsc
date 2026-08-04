@@ -80,7 +80,7 @@
                     <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ $testimonial->display_name }}</div>
                     <div class="mt-1 text-base text-gray-600 dark:text-gray-400">
                         @if($areaSlug)
-                            <a href="/areas/{{ $areaSlug }}" wire:navigate class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial->project_location }}</a>
+                            <a href="{{ route('areas.show', $areaSlug) }}" wire:navigate class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial->project_location }}</a>
                         @else
                             {{ $testimonial->project_location }}
                         @endif

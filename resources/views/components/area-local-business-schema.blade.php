@@ -21,16 +21,23 @@
             ->count()
     );
 
+    // The address is the ONE real place this business operates from, not the
+    // town the page is about. This node used to set addressLocality to the
+    // page's city and a local postal code — publishing a street presence in
+    // each of 66 towns for a business Google's own Places data reports as
+    // `pureServiceAreaBusiness: true` with no address at all. The town is
+    // conveyed by areaServed below, which is what it is for.
+    //
+    // <x-city-reviews-badge> already does it this way; the two disagreed.
     $address = [
         '@type' => 'PostalAddress',
-        'addressLocality' => $city,
-        'addressRegion' => 'IL',
+        'addressLocality' => config('brand.city'),
+        'addressRegion' => config('brand.state', 'IL'),
         'addressCountry' => 'US',
     ];
-    if (! empty($zipCodes)) {
-        // Primary postal code on address; full list on areaServed below.
-        $address['postalCode'] = $zipCodes[0];
-    }
+    // No postalCode: the page's city zip would reintroduce exactly the
+    // fabricated location removed above. The zips still appear on areaServed,
+    // where they describe coverage rather than an address.
 
     $areaServed = [
         '@type' => 'City',
