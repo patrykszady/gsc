@@ -586,16 +586,39 @@ Route::get('/admin', function (\Illuminate\Http\Request $request) {
     // the picker was leaking the full client list to anyone who logged in.
     $sites = $request->user()->accessibleSites();
 
+    abort_if($sites->isEmpty(), 403, 'Your account is not linked to a site.');
+
     // Nothing to choose from: go straight in. This is the normal path for a
     // client login, which should never see a picker at all.
     if ($sites->count() === 1) {
         return redirect("/admin/{$sites->first()->primary_host}");
     }
 
+    // The host already answered the question. Arriving at gs.construction/admin
+    // and being asked "which site?" is a step with one sensible answer, so
+    // honour the tenant this request came in on. Reached over a host that
+    // names no tenant (127.0.0.1, a bare IP) this is the default site, which
+    // is the right guess for the same reason.
+    $current = \App\Models\Site::current();
+    if ($site = $sites->firstWhere('id', $current->id)) {
+        return redirect("/admin/{$site->primary_host}");
+    }
+
+    // The current tenant is not one this user administers — the picker is a
+    // real question now.
+    return view('admin.site-picker', ['sites' => $sites]);
+})->middleware(['auth', 'noindex'])->name('admin.hub');
+
+// The picker, kept reachable on purpose. /admin now goes straight to the
+// tenant you arrived on, so without this an operator with several sites would
+// have no route to the others — there is no switcher in the admin chrome.
+Route::get('/admin/sites', function (\Illuminate\Http\Request $request) {
+    $sites = $request->user()->accessibleSites();
+
     abort_if($sites->isEmpty(), 403, 'Your account is not linked to a site.');
 
     return view('admin.site-picker', ['sites' => $sites]);
-})->middleware(['auth', 'noindex'])->name('admin.hub');
+})->middleware(['auth', 'noindex'])->name('admin.sites');
 
 Route::get('/admin/{path}', function (string $path) {
     return redirect('/admin/' . \App\Models\Site::current()->primary_host . '/' . ltrim($path, '/'), 301);

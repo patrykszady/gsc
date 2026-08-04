@@ -47,6 +47,18 @@
             <flux:sidebar.brand href="{{ route('admin.dashboard') }}" name="{{ config('brand.name') }}" />
         @endif
 
+        {{-- Only for operators who administer more than one tenant. /admin
+             now goes straight to the site you arrived on, so this is the way
+             back to the others; a client login has exactly one site and never
+             sees it. --}}
+        @if (auth()->user()?->accessibleSites()->count() > 1)
+            <a href="{{ route('admin.sites') }}"
+               class="mx-3 mb-2 inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white">
+                <flux:icon.arrows-right-left class="size-3.5" />
+                Switch site
+            </a>
+        @endif
+
         <flux:sidebar.nav>
             <flux:sidebar.item icon="home" href="{{ route('admin.dashboard') }}" :current="request()->routeIs('admin.dashboard')">
                 Dashboard

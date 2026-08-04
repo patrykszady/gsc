@@ -56,11 +56,23 @@ class AdminSiteAuthorizationTest extends TestCase
 
     public function test_platform_admin_still_sees_every_site(): void
     {
+        // The picker moved to /admin/sites. /admin now honours the host you
+        // arrived on, because being asked "which site?" on a URL that already
+        // names one is a question with a single sensible answer. A platform
+        // admin can still reach every tenant — via the switcher in the admin
+        // chrome, which links here.
         $this->actingAs($this->platformUser())
-            ->get('http://ss.systems/admin')
+            ->get('http://ss.systems/admin/sites')
             ->assertSuccessful()
             ->assertSee('GS Construction')
             ->assertSee('J. Peterson Design');
+    }
+
+    public function test_admin_root_honours_the_host_for_a_platform_admin(): void
+    {
+        $this->actingAs($this->platformUser())
+            ->get('http://ss.systems/admin')
+            ->assertRedirect('http://ss.systems/admin/ss.systems');
     }
 
     public function test_platform_admin_may_administer_any_tenant(): void
