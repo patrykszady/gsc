@@ -1,4 +1,14 @@
 <x-layouts.app title="Contact — J. Peterson Design">
+
+    {{-- TODO: photography supplied by Jenn — placeholder slides until then.
+         No overlay text: this page already owns its single H1. --}}
+    <x-hero-carousel
+        :slides="\App\Support\HeroSlides::placeholders(['Recent project', 'Interior detail', 'Finished space'])"
+        container-classes="mx-auto max-w-6xl px-6 pt-16"
+        rounded-classes="rounded-sm border border-stone-200"
+        height-classes="aspect-16/7"
+    />
+
     <section class="mx-auto grid max-w-6xl gap-14 px-6 py-16 md:grid-cols-2">
         <div>
             <p class="text-xs uppercase tracking-[0.3em] text-stone-400">Contact</p>

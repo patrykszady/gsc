@@ -41,6 +41,16 @@
 
 <x-layouts.app title="About — J. Peterson Design">
 
+    {{-- TODO: photography supplied by Jenn — placeholder slides until then.
+         No overlay text: this page already owns its single H1. --}}
+    <x-hero-carousel
+        :slides="\App\Support\HeroSlides::placeholders(['Studio portrait', 'Studio at work', 'Detail'])"
+        container-classes="mx-auto max-w-6xl px-6 pt-16"
+        rounded-classes="rounded-sm border border-stone-200"
+        height-classes="aspect-16/7"
+    />
+
+
     {{-- ---------- studio ---------- --}}
     <section class="mx-auto grid max-w-6xl gap-12 px-6 py-16 md:grid-cols-5 md:gap-16">
         <div class="md:col-span-2">

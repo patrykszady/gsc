@@ -58,11 +58,16 @@
 
     {{-- TODO: swap for projects from this market once Jenn supplies imagery. --}}
     <section class="mx-auto max-w-6xl px-6 py-12">
-        <div class="aspect-16/7 w-full overflow-hidden rounded-sm border border-stone-200 bg-stone-100">
-            <div class="flex h-full items-center justify-center text-xs tracking-[0.2em] text-stone-400 uppercase">
-                {{ $market['city'] }} project photography
-            </div>
-        </div>
+        <x-hero-carousel
+            :slides="\App\Support\HeroSlides::placeholders([
+                $market['city'] . ' project photography',
+                $market['city'] . ' interior detail',
+                $market['city'] . ' finished space',
+            ])"
+            container-classes=""
+            rounded-classes="rounded-sm border border-stone-200"
+            height-classes="aspect-16/7"
+        />
     </section>
 
     <section class="mx-auto max-w-6xl px-6 py-10">

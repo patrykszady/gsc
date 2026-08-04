@@ -2,16 +2,21 @@
     title="About GS Construction"
     metaDescription="Meet Gregory and Patryk, the father-son team behind GS Construction. Over 40 years of combined experience in kitchen, bathroom, and home remodeling in the Chicagoland area."
 >
-    {{-- Preload LCP image for faster paint --}}
-    @push('head')
-    <link rel="preload" as="image" href="{{ asset('images/greg-patryk.webp') }}" type="image/webp" fetchpriority="high">
-    @endpush
+    {{-- greg-patryk.webp used to be preloaded here as the LCP element. The hero
+         carousel below now paints above it, so that preload would have raced the
+         real LCP for bandwidth at fetchpriority="high" and lost the page time
+         rather than saving it. The portrait still loads normally, just not first. --}}
 
     {{-- Breadcrumb Schema --}}
 
     <x-breadcrumbs :items="[
         ['name' => 'About'],
     ]" padding="py-4" />
+
+    {{-- Hero image band. No overlay text on purpose: this page already owns a
+         single H1 below, and a second one would be an SEO regression. --}}
+    <x-hero-carousel :slides="\App\Support\HeroSlides::fromProjects(null, 5)" eager />
+
 
     @php
         // Get one image from each of 6 different projects

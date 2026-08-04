@@ -1,6 +1,11 @@
 /* J. Peterson Design — own Tailwind entry (own tokens/fonts/palette).
    Separate from gsc's bundle so the two sites share no styling. */
 @import 'tailwindcss';
+/* Flux's own stylesheet, not just its Blade views: the shared components this
+   theme pulls in from resources/views/components include flux:* elements
+   (<x-hero-carousel> renders <ui-carousel>), and those are custom elements with
+   no default display — without this they stack unstyled instead of scrolling. */
+@import '../../../../vendor/livewire/flux/dist/flux.css';
 @source '../../../themes/jpeterson/**/*.blade.php';
 @source '../../../views/components/**/*.blade.php';
 

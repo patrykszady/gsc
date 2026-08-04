@@ -4,6 +4,11 @@
 >
 
     <x-breadcrumbs :items="[['label' => 'FAQ']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
+
+    {{-- Hero image band. No overlay text on purpose: this page already owns a
+         single H1 below, and a second one would be an SEO regression. --}}
+    <x-hero-carousel :slides="\App\Support\HeroSlides::fromProjects(null, 5)" eager />
+
     {{-- Curated Q&A doubles as GEO content: the same answers served to AI engines
          at /geo/answers.json render here as a visible, schema-marked FAQ that
          Google, AI Overviews, ChatGPT and Perplexity can cite directly. --}}

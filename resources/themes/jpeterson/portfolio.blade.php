@@ -10,6 +10,16 @@
         </p>
     </section>
 
+    {{-- TODO: photography supplied by Jenn — placeholder slides until then.
+         No overlay text: this page already owns its single H1. --}}
+    <x-hero-carousel
+        :slides="\App\Support\HeroSlides::placeholders(['Featured project', 'Kitchen', 'Bath'])"
+        container-classes="mx-auto max-w-6xl px-6 pb-2"
+        rounded-classes="rounded-sm border border-stone-200"
+        height-classes="aspect-16/7"
+    />
+
+
     <section class="mx-auto max-w-6xl px-6 py-12">
         <div class="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             @foreach (['Kitchen', 'Primary Bath', 'Living Room', 'Lake House', 'Dining Room', 'Whole Home', 'Home Office', 'Guest Suite', 'Outdoor Room'] as $room)

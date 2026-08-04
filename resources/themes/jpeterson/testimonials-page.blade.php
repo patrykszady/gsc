@@ -4,6 +4,16 @@
         <h1 class="mt-5 font-heading text-4xl text-ink sm:text-5xl">Testimonials</h1>
     </section>
 
+    {{-- TODO: photography supplied by Jenn — placeholder slides until then.
+         No overlay text: this page already owns its single H1. --}}
+    <x-hero-carousel
+        :slides="\App\Support\HeroSlides::placeholders(['Client home', 'Interior detail', 'Finished space'])"
+        container-classes="mx-auto max-w-6xl px-6 pb-2"
+        rounded-classes="rounded-sm border border-stone-200"
+        height-classes="aspect-16/7"
+    />
+
+
     {{-- TODO: real client quotes, with permission, supplied by Jenn. --}}
     <section class="mx-auto max-w-4xl px-6 py-12">
         <div class="space-y-14">

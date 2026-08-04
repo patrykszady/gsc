@@ -8,6 +8,11 @@
         ['name' => 'Reviews'],
     ]" padding="py-4" />
 
+    {{-- Hero image band. No overlay text on purpose: this page already owns a
+         single H1 below, and a second one would be an SEO regression. --}}
+    <x-hero-carousel :slides="\App\Support\HeroSlides::fromProjects(null, 5)" eager />
+
+
     <section class="mx-auto max-w-7xl px-4 pb-2 sm:px-6 lg:px-8">
         <h1 class="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl dark:text-white">
             Customer Reviews & Testimonials

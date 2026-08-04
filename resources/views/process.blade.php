@@ -4,6 +4,11 @@
 >
 
     <x-breadcrumbs :items="[['label' => 'Our Process']]" maxWidth="max-w-3xl" padding="pt-8 pb-0" />
+
+    {{-- Hero image band. No overlay text on purpose: this page already owns a
+         single H1 below, and a second one would be an SEO regression. --}}
+    <x-hero-carousel :slides="\App\Support\HeroSlides::fromProjects(null, 5)" eager />
+
     <div class="mx-auto max-w-3xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">How We Work</p>
         <h1 class="mt-1 font-heading text-3xl font-bold tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">

@@ -30,12 +30,17 @@
             <x-button href="/contact" variant="outline">Start a project</x-button>
         </div>
 
-        <div class="mt-10 aspect-16/7 w-full overflow-hidden rounded-sm border border-stone-200 bg-stone-100">
-            <div class="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-stone-400">
-                {{-- TODO: hero photograph supplied by Jenn --}}
-                Hero image
-            </div>
-        </div>
+        {{-- TODO: hero photography supplied by Jenn — replace the placeholder
+             slides below with real images. Keeps the blocked-out panel's exact
+             frame (aspect, rounding, border) so the layout does not move when
+             the photographs land. --}}
+        <x-hero-carousel
+            :slides="\App\Support\HeroSlides::placeholders(['Hero photograph', 'Interior detail', 'Finished space'])"
+            container-classes="mt-10"
+            rounded-classes="rounded-sm border border-stone-200"
+            height-classes="aspect-16/7"
+            eager
+        />
     </section>
 
     {{-- ---------------- markets ---------------- --}}
