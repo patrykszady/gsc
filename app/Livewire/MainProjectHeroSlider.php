@@ -30,6 +30,19 @@ class MainProjectHeroSlider extends Component
     // the slider's sr-only H1 so the page has exactly one, matched heading.
     public bool $suppressH1 = false;
 
+    /**
+     * Explicit H1, overriding the first slide's title.
+     *
+     * Without this the page's only H1 is whatever the lead slide happens to
+     * be called — the homepage's was the single word "Kitchens", which names
+     * neither the business nor where it works. That matters more than usual
+     * here: Google's Places index cannot currently find this business by name
+     * (a textsearch for "GS Construction & Remodeling" returns a different
+     * company in Texas), and Google is demonstrably assembling title rewrites
+     * from this site's H1s.
+     */
+    public ?string $heading = null;
+
     protected function randomCoverForType(string $projectType, ?int $excludeImageId = null): ?ProjectImage
     {
         // Sliders only surface featured images from featured projects (with a

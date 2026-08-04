@@ -213,7 +213,19 @@
         ],
     ];
 
-    if (($data['count'] ?? 0) >= 1 && $data['items']->isNotEmpty()) {
+    // "ONE unambiguous rated item" has to hold between Product nodes too, not
+    // just between this component and the sitewide business node. An area page
+    // renders one Product per service, so each was adding its own rating: six
+    // aggregateRatings on /areas-served/{city}, claiming 3, 32, 17, 10, 70 and
+    // 70 reviews — all "5" — with @ids pointing at OTHER URLs. Google has no
+    // primary entity to attach a star to and drops every one of them, so the
+    // markup was pure cost: ~54KB per page and a contradiction a reviewer
+    // would read as manufactured.
+    //
+    // First rated node on the page wins; the rest emit as plain Products.
+    $ratingAlreadyOnPage = app()->bound('schema.page_rating_emitted');
+
+    if (! $ratingAlreadyOnPage && ($data['count'] ?? 0) >= 1 && $data['items']->isNotEmpty()) {
         // Signal to the layout-level <x-schema-org /> that this page already
         // carries a rated entity: Google shows review stars only when a page
         // has ONE unambiguous rated item, so the sitewide business node then

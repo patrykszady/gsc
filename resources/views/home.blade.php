@@ -109,8 +109,13 @@
         ];
     @endphp
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
-        <livewire:main-project-hero-slider 
+        {{-- Explicit H1. Left to the slider it became whatever the lead slide
+             was called — literally "Kitchens" — which tied the homepage to no
+             business and no place. Built from config/brand.php so a tenant
+             cannot inherit GS Construction's name here. --}}
+        <livewire:main-project-hero-slider
             :slides="$homeSlides"
+            :heading="config('brand.name') . ' — Kitchen, Bathroom & Whole-Home Remodeling in the Chicago Suburbs'"
         />
     </div>
 

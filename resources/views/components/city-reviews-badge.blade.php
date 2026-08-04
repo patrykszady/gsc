@@ -54,6 +54,19 @@
     // Built inside @php on purpose: Laravel 12 ships a real @context Blade
     // directive, so a literal '@context' key in template text gets compiled
     // into PHP and corrupts the emitted JSON-LD.
+    // One rated entity per page. On an area page this node renders alongside
+    // the per-service Product nodes, so the page carried a LocalBusiness
+    // claiming 3 reviews next to a Product claiming 32 — contradictory counts
+    // for the same business, which gives Google no primary entity and costs
+    // the star it was added to win. Whichever rated node renders first keeps
+    // its rating; this one then emits without.
+    $ratingAlreadyOnPage = app()->bound('schema.page_rating_emitted');
+    if ($aggregate && ! $ratingAlreadyOnPage) {
+        app()->instance('schema.page_rating_emitted', true);
+    } elseif ($ratingAlreadyOnPage) {
+        $aggregate = null;
+    }
+
     $cityReviewsSchemaJson = ($cityName && $aggregate) ? json_encode([
         '@context'        => 'https://schema.org',
         '@type'           => 'LocalBusiness',

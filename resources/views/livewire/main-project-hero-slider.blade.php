@@ -6,9 +6,12 @@
     // Responsive sizes: keep hero sharp while reducing oversized downloads on mobile/tablet.
     $heroSizes = '(max-width: 640px) 360px, (max-width: 1024px) 768px, 1280px';
     // Ensure each page has one semantic H1 even when visible headings are slide-driven.
-    $srOnlyHeading = $isServiceMode
+    // An explicit heading always wins: a slide-derived H1 changes whenever
+    // the slide order does, which is not a property you want in the one
+    // element Google treats as the page's subject.
+    $srOnlyHeading = $heading ?: ($isServiceMode
         ? ($firstSlide['heading'] ?? null)
-        : ($firstSlide['title'] ?? $firstSlide['heading'] ?? null);
+        : ($firstSlide['title'] ?? $firstSlide['heading'] ?? null));
     // Only localize the H1 when the heading doesn't already name the city —
     // service-page headings are "{City} {Service}", so blindly appending
     // produced "{City} {Service} in {City}" on every town-service page.
