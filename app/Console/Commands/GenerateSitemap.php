@@ -405,7 +405,11 @@ class GenerateSitemap extends Command
 
             $images = [];
             foreach ($projects as $project) {
-                $image = $project->images->firstWhere('is_cover', true) ?: $project->images->first();
+                // images->first(), matching <x-project-card> exactly. Not the
+                // is_cover image: the relation is ordered by sort_order and the
+                // card renders the first of that order, so preferring the cover
+                // declared photos the page does not show.
+                $image = $project->images->first();
                 if (! $image) {
                     continue;
                 }
@@ -522,7 +526,8 @@ class GenerateSitemap extends Command
         // servedZipMap, not getZipMap: ZIPs for towns outside the admin area
         // list are redirected to /service-area, so listing them here would put
         // known redirects in the sitemap.
-        $zipMap = app(\App\Services\ZipCodeService::class)->servedZipMap();
+        $zipService = app(\App\Services\ZipCodeService::class);
+        $zipMap = $zipService->servedZipMap();
         $sitemap->add(
             Url::create("{$baseUrl}/service-area")
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
@@ -530,20 +535,48 @@ class GenerateSitemap extends Command
         );
         $urlCount++;
         $zipCount = 0;
+        $zipImageCount = 0;
         $includeZipPages = (bool) config('seo.sitemap_generation.include_zip_pages', true);
         if ($includeZipPages) {
             foreach ($zipMap as $zip => $info) {
-                $sitemap->add(
-                    Url::create("{$baseUrl}/service-area/{$zip}")
-                        ->setLastModificationDate($areaLastmod)
-                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                        ->setPriority(0.65)
-                );
+                $zipUrl = Url::create("{$baseUrl}/service-area/{$zip}")
+                    ->setLastModificationDate($areaLastmod)
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(0.65);
+
+                // These pages pick projects from every area within 10 miles, not
+                // from one area — so they need their own selection rather than an
+                // area's. Shared with the page via ZipCodeService::projectsNear()
+                // so the sitemap can only ever advertise what the page renders.
+                foreach ($zipService->projectsNear((string) $zip, 12) as $project) {
+                    $image = $project->images->first(); // matches <x-project-card>
+                    if (! $image) {
+                        continue;
+                    }
+
+                    $imageUrl = $resolveImageUrl($image);
+                    if (! is_string($imageUrl) || trim($imageUrl) === '') {
+                        continue;
+                    }
+                    if ($needsImageRewrite) {
+                        $imageUrl = str_replace($appUrl, $baseUrl, $imageUrl);
+                    }
+
+                    $city = (string) ($info['city'] ?? '');
+                    $zipUrl->addImage(
+                        url: $imageUrl,
+                        caption: $image->alt_text ?: trim("{$project->title} — {$city}"),
+                        title: trim("{$project->title} near {$zip}"),
+                    );
+                    $zipImageCount++;
+                }
+
+                $sitemap->add($zipUrl);
                 $urlCount++;
                 $zipCount++;
             }
         }
-        $this->line("  Added {$zipCount} ZIP service-area pages");
+        $this->line("  Added {$zipCount} ZIP service-area pages ({$zipImageCount} images in sitemap)");
         if (! $includeZipPages) {
             $this->comment('  Skipped ZIP URLs (SITEMAP_INCLUDE_ZIP_PAGES=false)');
         }

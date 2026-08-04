@@ -223,6 +223,47 @@ class ZipCodeService
         return isset($this->servedZipMap()[preg_replace('/\D/', '', $zip)]);
     }
 
+    /**
+     * The published projects a ZIP service-area page renders, newest first.
+     *
+     * Extracted from ZipCodePage so the sitemap can declare the photos the page
+     * actually shows. These pages pick projects from every area within 10 miles
+     * of the ZIP, which is a different set from an area page's localProjects()
+     * — declaring the area's set here would advertise images that aren't on the
+     * page, so the two must come from one place or they drift.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Project>
+     */
+    public function projectsNear(string $zip, int $limit = 12): \Illuminate\Database\Eloquent\Collection
+    {
+        $nearbyAreaSlugs = $this->getNearbyAreaSlugs($zip, 10.0);
+
+        $cityKeys = AreaServed::whereIn('slug', $nearbyAreaSlugs)
+            ->get()
+            ->map(fn ($a) => mb_strtolower(trim((string) $a->city)))
+            ->unique()
+            ->values()
+            ->all();
+
+        $ids = collect();
+        foreach ($cityKeys as $cityKey) {
+            $ids = $ids->merge(
+                Project::query()
+                    ->where('is_published', true)
+                    ->whereRaw('LOWER(TRIM(SUBSTRING_INDEX(location, ",", 1))) = ?', [$cityKey])
+                    ->pluck('id')
+            );
+        }
+
+        return Project::query()
+            ->whereIn('id', $ids->unique()->values())
+            ->where('is_published', true)
+            ->with('images')
+            ->orderByDesc('updated_at')
+            ->limit($limit)
+            ->get();
+    }
+
     public function flush(): void
     {
         Cache::forget(self::CACHE_KEY);

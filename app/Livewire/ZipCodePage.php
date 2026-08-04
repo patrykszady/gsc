@@ -99,13 +99,10 @@ class ZipCodePage extends Component
             })
             ->count();
         $this->projectCount = $projectCount + $testimonialCount;
-        $this->projects = Project::query()
-            ->whereIn('id', $allProjectIds)
-            ->where('is_published', true)
-            ->with('images')
-            ->orderByDesc('updated_at')
-            ->limit(12)
-            ->get();
+        // Same selection the sitemap declares images from — see
+        // ZipCodeService::projectsNear(). Kept in one place so the images we
+        // advertise to Google Images stay the images this page renders.
+        $this->projects = $zips->projectsNear($this->zip, 12);
 
         // Exact completed-jobs count for this ZIP from Hive — the strongest
         // unique fact a ZIP page can state (crawlable text, not just map bubbles).
