@@ -109,15 +109,6 @@
                      parent taller than its fixed height. --}}
                 <figure class="flex min-h-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-5">
                     <div
-                        x-data="{
-                            imgLoaded: window.imageCache?.has('{{ $imageUrl }}') || false,
-                            init() {
-                                this.$nextTick(() => {
-                                    const img = this.$refs.reviewImg;
-                                    if (img?.complete && img?.naturalWidth > 0) this.imgLoaded = true;
-                                });
-                            }
-                        }"
                         {{-- size-38 (9.5rem/152px) is the measured width of the
                              "Read full review" button in the footer below, which
                              is pinned to sm:w-38 so the two edges line up. Change
@@ -133,19 +124,32 @@
                              and an unnamed one here would also fire whenever
                              those were hovered.
 
-                             Plain `transition`, like the project cards use, not
-                             transition-opacity: in Tailwind v4 scale-105 sets
-                             the `scale` property rather than `transform`, so a
-                             narrower transition list would leave the zoom
-                             snapping instantly while the fade animated. --}}
+                             This card used to run an Alpine fade: opacity-0
+                             until a load event flipped imgLoaded. Verified in a
+                             real browser that the event can fire before Alpine
+                             binds — the image sat fully loaded behind
+                             opacity-0 forever, which is exactly the empty gray
+                             panel this card kept showing. Native inline
+                             handlers are parser-bound at element creation, so
+                             there is no window for an event to be missed: no
+                             fade, no state, no race. The wrapper's gray bg is
+                             the loading skeleton, and a URL that 404s (a
+                             thumbnail cached up to 30 min ago, re-uploaded
+                             since) swaps to the committed owner photo instead
+                             of a broken frame. dataset.fbk guards the swap so a
+                             broken fallback cannot loop the error handler. --}}
                         <img
-                            x-ref="reviewImg"
                             src="{{ $imageUrl }}"
                             alt=""
                             loading="lazy"
                             class="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover/thumb:scale-105"
-                            :class="imgLoaded ? 'opacity-100' : 'opacity-0'"
-                            @load="imgLoaded = true; window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}')"
+                            onload="window.imageCache?.set(this.src, this.src)"
+                            {{-- Root-relative on purpose, not asset(): the
+                                 tenant-aware URL builder emits the bare host
+                                 (no port) in local dev, and an absolute URL is
+                                 one more thing that can be wrong when this is
+                                 the last resort. Same-origin always resolves. --}}
+                            onerror="if (this.dataset.fbk !== '1') { this.dataset.fbk = '1'; this.src = '/images/greg-patryk-thumb.jpg'; }"
                         />
                     </div>
 
