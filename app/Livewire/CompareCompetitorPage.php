@@ -96,6 +96,17 @@ class CompareCompetitorPage extends Component
             $key = (string) ($row['key'] ?? '');
             $fallback = (string) ($row['them_default'] ?? 'Varies — verify directly with the company.');
             $hasOverride = array_key_exists($key, $overrides);
+
+            // Counsel's rule after the 2026-08 cease-and-desist: on the flagged
+            // rows we may publish a statement about a named company only where a
+            // verbatim quote from their own public site backs it. An uncited
+            // override is dropped rather than rendered, so the page shows the
+            // neutral line instead of an assertion we cannot support.
+            if ($hasOverride
+                && in_array($key, (array) config('competitors.requires_citation', []), true)
+                && empty($sources[$key])) {
+                $hasOverride = false;
+            }
             $rows[] = [
                 // Key is exposed so the view can enrich specific rows (e.g.
                 // linking each review platform in `public_reviews`).
@@ -104,7 +115,7 @@ class CompareCompetitorPage extends Component
                 // Terminal period added here so config strings stay editable
                 // without every author remembering punctuation.
                 'us' => $this->endWithPeriod((string) ($row['us'] ?? '')),
-                'them' => (string) ($overrides[$key] ?? $fallback),
+                'them' => $hasOverride ? (string) $overrides[$key] : $fallback,
                 // Only cite a row that actually states a fact about them. The
                 // generic "verify directly" fallback is our own wording, so a
                 // citation there would point at a page that never said it.

@@ -105,8 +105,11 @@
 
         @if(!empty($competitor['comparison_note']))
         <section class="mt-12">
+            {{-- Counsel's revision after the 2026-08 cease-and-desist: keep the
+                 focus positive and on us, rather than framing the section as a
+                 verdict on a named competitor. --}}
             <h2 class="font-heading text-2xl font-semibold text-zinc-900 dark:text-white">
-                How GS Construction compares to {{ $competitor['name'] }}
+                The GS Construction Advantage
             </h2>
             <p class="mt-4 text-zinc-700 dark:text-zinc-300">
                 {{ $competitor['comparison_note'] }}
