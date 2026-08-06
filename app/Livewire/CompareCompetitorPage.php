@@ -47,6 +47,32 @@ class CompareCompetitorPage extends Component
         $this->criteria = $this->buildCriteria($this->competitor);
 
         SeoService::compareCompetitor($this->competitor);
+
+        // Publish only what the page renders.
+        //
+        // Livewire serialises public properties into the wire:snapshot embedded
+        // in the HTML, so `them` and `them_sources` — every statement about the
+        // other company, with its quotes and source URLs — were being shipped to
+        // the browser and were readable in page source even after the competitor
+        // column was removed from the table. Nothing renders them now, so nothing
+        // should publish them.
+        //
+        // buildCriteria() still computes those values and the citation policy
+        // still applies to them (see config/competitors.php and
+        // CompetitorClaimsPolicyTest), so restoring the column stays safe; they
+        // simply no longer leave the server.
+        $this->competitor = array_intersect_key(
+            $found,
+            array_flip(['slug', 'name', 'comparison_note']),
+        );
+
+        $this->criteria = array_map(
+            static fn (array $row): array => array_intersect_key(
+                $row,
+                array_flip(['key', 'label', 'us', 'why']),
+            ),
+            $this->criteria,
+        );
     }
     public function render()
     {

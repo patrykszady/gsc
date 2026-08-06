@@ -46,12 +46,16 @@
 
         <section class="group mt-12 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-160 text-left text-sm">
+                {{-- Two columns only. The third column used to restate what the
+                     other company does; the table now sets out what WE do and
+                     leaves readers to check anyone else directly, which is both
+                     what counsel asked for and the only column we can stand
+                     behind for every row. min-w drops with the column. --}}
+                <table class="w-full min-w-100 text-left text-sm">
                     <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
                         <tr>
                             <th scope="col" class="px-4 py-3 font-semibold">Criteria</th>
                             <th scope="col" class="px-4 py-3 font-semibold text-sky-700 dark:text-sky-400">GS Construction &amp; Remodeling</th>
-                            <th scope="col" class="px-4 py-3 font-semibold">{{ $competitor['name'] }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-950">
@@ -77,7 +81,6 @@
                                         {{ $row['us'] }}
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 align-top text-zinc-600 dark:text-zinc-400">{{ $row['them'] }}@if(! empty($row['them_source']))<x-source-note :source="$row['them_source']" />@endif</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -85,22 +88,16 @@
             </div>
         </section>
 
-        @php
-            // Full column width (no max-w-2xl) so the notice fits two lines.
-            $showSource = $competitor['slug'] !== 'kitchen-village' && ! empty($competitor['website']);
-            $sourceHost = $showSource ? preg_replace('#^www\.#', '', parse_url($competitor['website'], PHP_URL_HOST)) : null;
-            $verifiedAt = ! empty($lastVerified) ? \Illuminate\Support\Carbon::parse($lastVerified)->format('F Y') : null;
-        @endphp
+        {{-- The "Verified {month} · Source: theirsite.com · archived copies"
+             line was here to substantiate the competitor column. With that
+             column gone there is nothing of theirs left to source, and citing
+             their site for a table of our own practices would imply we are
+             still reporting on them. The trademark notice stays, since the
+             page still names them. --}}
         <p class="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-            Informational comparison of publicly available information about {{ $competitor['name'] }}. Trademarks belong to their respective owners — verify details directly with each company.
-            @if($verifiedAt || $showSource)
-                <span class="mt-1 block">
-                    @if($verifiedAt)Verified {{ $verifiedAt }}@endif
-                    @if($verifiedAt && $showSource) · @endif
-                    @if($showSource)Source: <a href="{{ $competitor['website'] }}" target="_blank" rel="noopener nofollow" class="underline hover:text-sky-600 dark:hover:text-sky-400">{{ $sourceHost }}</a>
-                        · <a href="https://web.archive.org/web/*/{{ $sourceHost }}" target="_blank" rel="noopener nofollow" class="underline hover:text-sky-600 dark:hover:text-sky-400">archived copies</a>@endif
-                </span>
-            @endif
+            This table describes GS Construction &amp; Remodeling's own practices.
+            {{ $competitor['name'] }} is named for reference only and its trademarks belong to its owners —
+            please verify their details directly with the company.
         </p>
 
         @if(!empty($competitor['comparison_note']))

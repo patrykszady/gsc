@@ -133,4 +133,60 @@ class CompetitorClaimsPolicyTest extends TestCase
         $this->assertStringContainsString('The GS Construction Advantage', $html);
         $this->assertStringNotContainsString('How GS Construction compares to', $html);
     }
+
+    public function test_the_table_compares_nothing_but_us(): void
+    {
+        $html = $this->get('/compare/4ever-remodeling')->assertOk()->getContent();
+
+        preg_match('#<thead.*?</thead>#s', $html, $head);
+        $this->assertNotEmpty($head, 'comparison table lost its header');
+
+        $this->assertSame(
+            2,
+            substr_count($head[0], '<th '),
+            'the table should carry only Criteria and GS Construction & Remodeling',
+        );
+        $this->assertStringNotContainsString('4Ever Remodeling', $head[0]);
+    }
+
+    /**
+     * Removing the column from the table was not enough on its own.
+     *
+     * Livewire serialises public properties into the wire:snapshot embedded in
+     * the page, so every `them` value and every source quote and URL was still
+     * shipped to the browser and readable in view-source with nothing rendering
+     * it. Not published is not the same as not displayed.
+     */
+    public function test_no_statement_about_a_competitor_is_published_anywhere_in_the_page(): void
+    {
+        foreach ($this->competitors() as $competitor) {
+            $slug = (string) ($competitor['slug'] ?? '');
+            if ($slug === '') {
+                continue;
+            }
+
+            $claims = array_values((array) ($competitor['them'] ?? []));
+            $quotes = array_column((array) ($competitor['them_sources'] ?? []), 'quote');
+            if ($claims === [] && $quotes === []) {
+                continue;
+            }
+
+            $html = $this->get("/compare/{$slug}")->assertOk()->getContent();
+
+            foreach (array_merge($claims, $quotes) as $statement) {
+                $statement = trim((string) $statement);
+                if ($statement === '') {
+                    continue;
+                }
+
+                $this->assertStringNotContainsString(
+                    // Compare on a distinctive head of the string: the full text
+                    // may be HTML-escaped in the snapshot.
+                    mb_substr($statement, 0, 40),
+                    $html,
+                    sprintf('%s still publishes a statement about the competitor', $slug),
+                );
+            }
+        }
+    }
 }
