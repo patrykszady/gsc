@@ -179,7 +179,7 @@ class CompareCompetitorPage extends Component
         $faqs = [
             [
                 'question' => "Is GS Construction a good alternative to {$name}?",
-                'answer' => "If you want to work directly with the owners and keep control of your design and materials, GS Construction is a strong alternative to {$name}. Greg and Patryk Szady are a father-son team who run every project from the first call to the final walkthrough — there is no rotating cast of coordinators, and you can bring your own designer or architect, get connected with our trusted architects, engineers, or designers, or be your own and shop our trusted material sources.",
+                'answer' => "If you want to work directly with the owners and keep control of your design and materials, GS Construction is a strong alternative to {$name}. Greg and Patryk Szady are a father-son team who run every project from the first call to the final walkthrough — there is no rotating cast of coordinators, and you can bring your own designer or architect, get connected with our trusted architects, engineers, or designers, or be your own and shop our trusted material sources. Pricing us as your alternate bid costs nothing — every estimate is free and itemized.",
             ],
             [
                 'question' => "How does GS Construction's pricing compare to {$name}?",

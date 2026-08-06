@@ -936,6 +936,7 @@ class SeoService
             'compare remodeling contractors chicago',
             'best chicago remodeling contractor',
             'remodeling contractor alternatives',
+            'alternate remodeling contractors chicago',
             'kitchen remodeling alternatives chicago',
         ]);
     }
@@ -1005,13 +1006,18 @@ class SeoService
         if ($note !== '') {
             $description = \Illuminate\Support\Str::limit($note, 155);
         } else {
-            $description = "Considering {$name}? See what GS Construction offers on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
+            $description = "Considering {$name}? See what GS Construction offers on service area, project types, communication and reviews — and request a free alternate estimate.";
         }
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
         self::seo()->keywords([
             "alternative to {$name}",
+            // Both spellings on purpose: searchers type "alternate to X" and
+            // "X alternates" nearly as often as the -ive forms, and Google
+            // treats them as distinct tokens.
+            "alternate to {$name}",
+            "{$name} alternatives",
             "{$name} vs",
             "{$name} reviews",
             'compare chicago remodeling contractors',

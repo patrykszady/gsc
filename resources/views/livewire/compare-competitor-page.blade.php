@@ -272,7 +272,7 @@
         <x-cta-section
             variant="blue"
             heading="Get a second opinion and a free estimate"
-            description="It is smart to compare. We are happy to give you a no-pressure estimate even if you are already talking to {{ $competitor['name'] }}."
+            description="It is smart to get an alternate bid. We are happy to give you a no-pressure estimate even if you are already talking to {{ $competitor['name'] }}."
             primaryText="Request a free estimate"
             primaryHref="/contact"
             secondaryText="Call {{ config('brand.phone') }}"

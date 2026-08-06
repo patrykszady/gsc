@@ -19,9 +19,9 @@
     <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
             <p class="mt-8 text-lg text-zinc-600 dark:text-zinc-300">
-                Researching options? See how GS Construction works on the criteria that decide a remodel —
-                service area, project focus, communication, and verified reviews — then check each other
-                company's details directly with them.
+                Researching alternate contractors? See how GS Construction works on the criteria that
+                decide a remodel — service area, project focus, communication, and verified reviews —
+                then check each other company's details directly with them.
             </p>
         </div>
 
