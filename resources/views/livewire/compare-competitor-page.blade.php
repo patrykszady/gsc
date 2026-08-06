@@ -278,10 +278,11 @@
     {{-- Second audience for this page: trades, designers, and suppliers who
          already work with the competitor. Deliberately compact and placed below
          the homeowner CTA so it never competes with the primary conversion. --}}
-    {{-- mb-12 because the page root drops its bottom padding at lg (pb-20 lg:pb-0
-         exists only to clear the sticky mobile CTA), leaving this flush against
-         the footer on desktop. --}}
-    <div class="mx-auto mt-8 mb-12 max-w-5xl px-6 lg:px-8">
+    {{-- lg:mb-12 because the page root drops its bottom padding at lg (pb-20
+         lg:pb-0 exists only to clear the sticky mobile CTA), leaving this flush
+         against the footer on desktop. No mobile margin: there pb-20 is already
+         in effect, and the two stacked to ~8rem of dead space above the footer. --}}
+    <div class="mx-auto mt-8 max-w-5xl px-6 lg:mb-12 lg:px-8">
         <a href="{{ route('trades.index') }}" wire:navigate
            class="group flex flex-col items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-sm transition hover:border-sky-300 hover:bg-sky-50 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500 dark:hover:bg-sky-950/30">
             <span class="text-zinc-700 dark:text-zinc-300">
