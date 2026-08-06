@@ -117,7 +117,7 @@
         <x-mid-cta />
 
         <section class="mt-12">
-            <h2 class="font-heading text-2xl font-semibold text-zinc-900 dark:text-white">Difference</h2>
+            <h2 class="font-heading text-2xl font-semibold text-zinc-900 dark:text-white">GS Construction Difference</h2>
             <div class="mt-6 grid gap-6 sm:grid-cols-2">
                 <div class="group rounded-2xl bg-white p-6 shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
                     <h3 class="font-heading text-lg font-semibold text-balance text-sky-700 dark:text-sky-400">Your design, your decisions</h3>
