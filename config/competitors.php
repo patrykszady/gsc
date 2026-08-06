@@ -134,7 +134,7 @@ return [
             'website' => 'https://kitchenvillage.com',
             'location' => 'Chicago area',
             'focus' => 'Kitchen and bath showroom',
-            'comparison_note' => 'The GS Construction Advantage is an owner-led general remodel: Greg and Patryk run the full project — kitchens, baths, basements, additions, and whole-home — pull the permits, and stay flexible whether you bring your own designer or shop your own materials.',
+            'comparison_note' => 'GS Construction & Remodeling is an owner-led general remodeler: Greg and Patryk run the full project — kitchens, baths, basements, additions, and whole-home — pull the permits, and stay flexible whether you bring your own designer or shop your own materials. Because the owners are on site daily rather than a rotating coordinator, questions get answered by the people who priced and scheduled the job. Pricing is itemized line by line, so you see exactly what demolition, materials, labor, permits, and finishes each cost. Free in-home estimates, a live client portal through the build, and a written workmanship warranty round out how GS Construction & Remodeling works.',
             'them' => [
                 'project_types' => 'Kitchen and bathroom remodeling, laundry rooms, and built-in cabinets (showroom-led)',
                 'service_area' => 'Northwest suburbs of Chicago',
@@ -148,7 +148,7 @@ return [
             'website' => 'https://www.kitchenandbathmart.net',
             'location' => 'Niles and Palatine, IL',
             'focus' => 'Kitchen and bath remodeling',
-            'comparison_note' => 'The GS Construction Advantage is an owner-led remodeling team where Greg and Patryk remain your direct point of contact, with flexible design options — bring your own designer or materials — and transparent, itemized scope pricing.',
+            'comparison_note' => 'GS Construction & Remodeling is an owner-led remodeling team where Greg and Patryk remain your direct point of contact, with flexible design options — bring your own designer or materials — and transparent, itemized scope pricing. The scope runs past kitchens and baths to basements, additions, exteriors, mudrooms, and whole-home remodels, so one accountable team can carry a house end to end. Long-standing, vetted trade partners are scheduled and supervised daily by the owners and covered by a single GS warranty. Estimates are free and itemized, and typical project ranges are published on-site so you can budget before booking a visit.',
             'them' => [
                 'project_types' => 'Kitchen and bathroom remodeling (showroom-led), plus cabinet refacing and laundry rooms',
                 'service_area' => 'Greater Chicagoland, from Niles and Palatine showrooms',
@@ -163,7 +163,7 @@ return [
             'website' => 'https://4everremodeling.com',
             'location' => 'Chicago area',
             'focus' => 'Full-service remodeling',
-            'comparison_note' => 'The GS Construction Advantage comes down to who you work with day to day: the owners, Greg and Patryk Szady, run your project from first call to final walkthrough instead of handing you between team roles, and labor pricing stays transparent with no middleman markup.',
+            'comparison_note' => 'The GS Construction & Remodeling Advantage comes down to who you work with day to day: the owners, Greg and Patryk Szady, run your project from first call to final walkthrough instead of handing you between team roles, and labor pricing stays transparent with no middleman markup. You keep control of the design — bring your own designer or architect, use one of our trusted partners, or specify materials yourself from our sources and we install what you buy. Every estimate is free and itemized, so you can see what each line covers before committing. During the build a private client portal tracks your schedule, change orders, and running balance, backed by a direct line to the owners and weekly progress updates. GS Construction & Remodeling brings 40+ years of combined experience across the North Shore and Northwest suburbs, pulls the permits, coordinates inspections, and stands behind the work with a written workmanship warranty.',
             'them' => [
                 'experience' => 'In business since 2011',
                 'design_model' => 'In-house design-build: design studio selections and 3D renderings within a 7-step process.',
@@ -199,7 +199,7 @@ return [
             'website' => 'https://www.airoom.com',
             'location' => 'Chicago suburbs',
             'focus' => 'Design-build additions and remodels',
-            'comparison_note' => 'The GS Construction Advantage is a leaner, owner-led approach: bring your own designer or architect (or be your own), buy your own materials from our trusted material sources, and work directly with the owners on every phase.',
+            'comparison_note' => 'The GS Construction & Remodeling Advantage is a leaner, owner-led approach: bring your own designer or architect (or be your own), buy your own materials from our trusted sources, and work directly with the owners on every phase. Nothing is routed through a sales rep who moves on after signing — Greg and Patryk price the job, schedule it, and are the people you reach during construction. Labor is not marked up through layers of middlemen, and every estimate arrives itemized so the numbers can be checked line by line. GS Construction & Remodeling covers kitchens, baths, basements, additions, exteriors, and whole-home work across the North Shore and Northwest suburbs.',
             'them' => [
                 'experience' => 'In business since 1958; claims 20,000+ projects',
                 'design_model' => 'In-house design/build with its own architecture arm (Airoom Architects Corp).',
@@ -214,7 +214,7 @@ return [
             'website' => 'https://www.normandyremodeling.com',
             'location' => 'Chicago suburbs',
             'focus' => 'Design-build remodeling',
-            'comparison_note' => 'With GS Construction you keep more control: collaborate with the independent designer or architect you choose, follow live schedule, change-order, and balance updates in our client portal, and work directly with Greg and Patryk on every phase.',
+            'comparison_note' => 'With GS Construction & Remodeling you keep more control: collaborate with the independent designer or architect you choose, follow live schedule, change-order, and balance updates in our client portal, and work directly with Greg and Patryk on every phase. If you would rather not source a designer, we can connect you with trusted architects, engineers, and designers — or you can specify materials yourself and we install what you buy. Permits are pulled and inspections coordinated by us, so approvals do not become your second job. GS Construction & Remodeling backs the finished work with a written workmanship warranty and 40+ years of combined experience.',
             'them' => [
                 'experience' => 'In business since 1979',
                 'design_model' => 'In-house interior design, architecture, and construction under one roof; designs to a target budget.',
@@ -229,7 +229,7 @@ return [
             'website' => 'https://123remodeling.com',
             'location' => 'Chicago, IL (offices in Chicago and Northfield)',
             'focus' => 'Design-build kitchen, bathroom, condo, and basement remodeling',
-            'comparison_note' => 'GS Construction serves the Northwest suburbs with an owner-led crew and stays flexible on design — whether you want a designer, want to design it yourself, or want to supply your own materials from our trusted material sources.',
+            'comparison_note' => 'GS Construction & Remodeling serves the Northwest suburbs with an owner-led crew and stays flexible on design — whether you want a designer, want to design it yourself, or want to supply your own materials from our trusted sources. The owners are your single point of contact from the first call to the final walkthrough, so nothing is lost in a hand-off between coordinators. Itemized, transparent pricing means labor is never marked up through layers of middlemen. Free in-home estimates, a live client portal, verified reviews across Google, Houzz, Yelp, and Angi, and a written workmanship warranty complete the picture.',
             'them' => [
                 'service_area' => 'Chicago and North Shore suburbs',
                 'design_model' => 'In-house design-build team of interior designers and architectural staff.',
@@ -243,7 +243,7 @@ return [
             'website' => 'https://www.pickellbuilders.com',
             'location' => 'Wilmette, IL and Chicago North Shore',
             'focus' => 'Luxury custom homes and high-end design-build remodeling',
-            'comparison_note' => 'GS Construction is a Northwest-suburbs remodeling specialist — kitchens, baths, whole-home, additions, basements, and exteriors — with itemized, transparent pricing and the owners on site.',
+            'comparison_note' => 'GS Construction & Remodeling is a Northwest-suburbs remodeling specialist — kitchens, baths, whole-home, additions, basements, and exteriors — with itemized, transparent pricing and the owners on site. Greg and Patryk personally schedule and supervise the vetted trade partners on your job, and all of it sits under one GS warranty rather than split across separate contracts. Design stays yours: bring your own architect or designer, use one of our trusted partners, or specify materials yourself. Estimates are free and itemized, and typical project ranges are published on-site so budgeting starts before the first visit.',
             'them' => [
                 'service_area' => '30+ communities across Illinois, Southern Wisconsin, and Harbor Country Michigan',
                 'project_types' => 'Luxury custom homes plus remodeling, additions, and custom cabinetry',
@@ -259,7 +259,7 @@ return [
             'website' => 'https://skorconstruction.com',
             'location' => 'Palatine, IL',
             'focus' => 'Design-build remodeling, additions, kitchens, baths, and basements',
-            'comparison_note' => 'GS Construction runs a live client portal and keeps the model flexible: bring your own designer or architect, supply your own materials from our trusted material sources, and talk directly to owners Greg and Patryk throughout the build.',
+            'comparison_note' => 'GS Construction & Remodeling runs a live client portal and keeps the model flexible: bring your own designer or architect, supply your own materials from our trusted sources, and talk directly to owners Greg and Patryk throughout the build. The portal carries your schedule past and upcoming, current change orders, and an up-to-date balance, so you are never waiting on a callback to know where things stand. Pricing is itemized, with labor not marked up through middlemen. GS Construction & Remodeling works the North Shore and Northwest suburbs with 40+ years of combined experience and a written workmanship warranty.',
             'them' => [
                 'service_area' => "Chicago's North Shore and Northwest suburbs",
                 'design_model' => 'In-house 5-step design-build: proposal, design schematics, and architectural plans when required.',
@@ -274,7 +274,7 @@ return [
             'website' => 'https://www.chirenovation.com',
             'location' => 'Chicago, IL',
             'focus' => 'Design-build interior remodeling and architectural design',
-            'comparison_note' => 'GS Construction concentrates on the Northwest suburbs and North Shore and lets you choose how design happens — your designer, our recommendations, or your own plans — with the owners themselves as your contact and clear, itemized pricing.',
+            'comparison_note' => 'GS Construction & Remodeling concentrates on the Northwest suburbs and North Shore and lets you choose how design happens — your designer, our recommendations, or your own plans — with the owners themselves as your contact and clear, itemized pricing. Because Greg and Patryk carry the project from estimate to walkthrough, the person who quoted your job is the person supervising it. Permits are pulled and inspections coordinated by us. Free in-home estimates, a live client portal, and a written workmanship warranty are standard on every GS Construction & Remodeling project.',
             'them' => [
                 'service_area' => 'Chicago; describes itself as a Chicago design-build studio',
                 'design_model' => 'In-house design-build (6-step process) with an architect and engineer on retainer and certified interior design staff.',
@@ -288,7 +288,7 @@ return [
             'website' => 'https://www.contactohi.com',
             'location' => 'Elk Grove Village, IL',
             'focus' => 'Design-build kitchen, bath, basement, and additions with an in-house showroom',
-            'comparison_note' => 'The GS Construction Advantage is simplicity: the owners, Greg and Patryk, are your single point of contact from first call to final walkthrough, estimates are free and itemized, and you are free to bring your own designer or buy your own materials.',
+            'comparison_note' => 'The GS Construction & Remodeling Advantage is simplicity: the owners, Greg and Patryk, are your single point of contact from first call to final walkthrough, estimates are free and itemized, and you are free to bring your own designer or buy your own materials. There is no design retainer to start a conversation and no layer of middlemen marking up labor. Typical project ranges are published on-site, and the client portal keeps your schedule, change orders, and balance current throughout the build. GS Construction & Remodeling covers kitchens, baths, basements, additions, exteriors, and whole-home remodels across the North Shore and Northwest suburbs.',
             'them' => [
                 'service_area' => 'Northwest suburbs: Arlington Heights, Barrington, Buffalo Grove, Deerfield, Elk Grove Village, and nearby towns',
                 'design_model' => 'In-house designers and a 1,500 sq ft showroom; a design retainer (5% of the high-end ballpark budget) begins formal plans.',
@@ -303,7 +303,7 @@ return [
             'website' => 'https://www.modernbuildersdesign.com',
             'location' => 'Round Lake, IL',
             'focus' => 'General contractor offering remodeling, painting, and epoxy flooring',
-            'comparison_note' => 'GS Construction focuses specifically on remodeling craftsmanship — kitchens, baths, whole-home, additions, basements, and exteriors — across the Northwest suburbs, with 40+ years of combined experience and the owners themselves running every project.',
+            'comparison_note' => 'GS Construction & Remodeling focuses specifically on remodeling craftsmanship — kitchens, baths, whole-home, additions, basements, and exteriors — across the Northwest suburbs, with 40+ years of combined experience and the owners themselves running every project. Trade partners are long-standing and vetted, licensed where required, insured, and supervised daily by Greg and Patryk under one GS warranty. Pricing is itemized so you can see what each phase costs, and estimates are free and delivered in person. GS Construction & Remodeling pulls the permits and coordinates inspections on your behalf.',
             'them' => [
                 'service_area' => 'Barrington, South Barrington, Round Lake, Crystal Lake, Waukegan, and surrounding suburbs',
                 'project_types' => 'Kitchen, bathroom, and basement remodeling plus painting, epoxy floor coatings, and flooring',
@@ -317,7 +317,7 @@ return [
             'website' => 'https://prestigekitchenbath.com',
             'location' => 'Arlington Heights, IL',
             'focus' => 'Showroom-based kitchen and bathroom design and remodeling',
-            'comparison_note' => 'GS Construction covers the full remodel spectrum — kitchens, baths, basements, additions, and whole-home — with the owners, Greg and Patryk, as your direct contact and typical project price ranges published on-site so you can budget before booking a visit.',
+            'comparison_note' => 'GS Construction & Remodeling covers the full remodel spectrum — kitchens, baths, basements, additions, and whole-home — with the owners, Greg and Patryk, as your direct contact and typical project price ranges published on-site so you can budget before booking a visit. Design stays flexible: your designer, one of our trusted partners, or your own selections installed by us. Every estimate is free and itemized, and labor is never marked up through middlemen. Work is backed by a written workmanship warranty and verified reviews across Google, Houzz, Yelp, and Angi.',
             'them' => [
                 'project_types' => 'Kitchen and bathroom remodeling (showroom-led)',
             ],
@@ -329,7 +329,7 @@ return [
             'website' => 'https://www.patrickafinn.com',
             'location' => 'Palatine, IL',
             'focus' => 'Upscale design-build remodeling and custom homes',
-            'comparison_note' => 'GS Construction publishes typical project ranges up front, offers a free in-home estimate with an itemized scope, and stays flexible — bring your own designer or your own materials and work directly with the owners throughout.',
+            'comparison_note' => 'GS Construction & Remodeling publishes typical project ranges up front, offers a free in-home estimate with an itemized scope, and stays flexible — bring your own designer or your own materials and work directly with the owners throughout. You do not need a completed design before you can get real numbers to plan around. Greg and Patryk run the job from first call to final walkthrough, scheduling and supervising vetted trade partners under one GS warranty. GS Construction & Remodeling works the North Shore and Northwest suburbs and handles permits and inspections as part of the job.',
             'them' => [
                 'design_model' => 'In-house design-build; pricing follows a completed design agreement.',
             ],
@@ -341,7 +341,7 @@ return [
             'website' => 'https://www.advancedesignstudio.com',
             'location' => 'Gilberts, IL',
             'focus' => 'Design-build remodeling with a showroom, serving the far-northwest suburbs',
-            'comparison_note' => 'GS Construction is headquartered in Prospect Heights and works the Northwest suburbs and North Shore, with an owner-led model: Greg and Patryk run every project, pricing stays itemized and transparent, and you are free to bring your own designer or materials.',
+            'comparison_note' => 'GS Construction & Remodeling is headquartered in Prospect Heights and works the Northwest suburbs and North Shore, with an owner-led model: Greg and Patryk run every project, pricing stays itemized and transparent, and you are free to bring your own designer or materials. Working the same towns daily means knowing the local permitting offices, inspectors, and supply houses rather than learning them job by job. A live client portal tracks schedule, change orders, and balance through the build. GS Construction & Remodeling brings 40+ years of combined experience and backs its work with a written workmanship warranty.',
             'them' => [
                 'service_area' => 'Barrington, Crystal Lake, and nearby towns',
             ],
@@ -353,7 +353,7 @@ return [
             'website' => 'https://www.regencyhomeremodeling.com',
             'location' => 'North Chicago, IL',
             'focus' => 'Kitchen, bathroom, and countertop remodeling',
-            'comparison_note' => 'GS Construction is a full general remodeler — additions, basements, and whole-home included — with itemized transparent pricing, published typical project ranges, and the owners supervising every job.',
+            'comparison_note' => 'GS Construction & Remodeling is a full general remodeler — additions, basements, and whole-home included — with itemized transparent pricing, published typical project ranges, and the owners supervising every job. An itemized scope lets you compare estimates line by line instead of weighing one lump sum against another. Design is yours to direct: your designer, our trusted partners, or your own material selections installed by our crew. Free in-home estimates, a live client portal, and a written workmanship warranty come standard.',
             'them' => [
                 'project_types' => 'Kitchen, bathroom, and countertop remodeling',
             ],
@@ -365,7 +365,7 @@ return [
             'website' => 'https://sunnyremodeling.com',
             'location' => 'Schaumburg, IL',
             'focus' => 'Kitchen, bathroom, basement, and whole-house remodeling',
-            'comparison_note' => 'GS Construction gives you a father-son owner team as your single point of contact from first call to walkthrough, a live client portal for schedule, change orders, and balances, and typical project price ranges published openly on-site.',
+            'comparison_note' => 'GS Construction & Remodeling gives you a father-son owner team as your single point of contact from first call to walkthrough, a live client portal for schedule, change orders, and balances, and typical project price ranges published openly on-site. Greg and Patryk schedule and supervise vetted trade partners daily, all under one GS warranty. Design stays flexible — bring your own designer or architect, use a trusted partner, or specify your own materials. GS Construction & Remodeling pulls permits, coordinates inspections, and carries verified reviews across Google, Houzz, Yelp, and Angi.',
             'them' => [
                 'service_area' => '60+ North and Northwest Chicago suburbs',
             ],
@@ -377,7 +377,7 @@ return [
             'website' => 'https://www.lamantia.com',
             'location' => 'Hinsdale, IL',
             'focus' => 'Design-build luxury remodeling with a showroom',
-            'comparison_note' => 'GS Construction is rooted in the Northwest suburbs with a leaner owner-led model: work directly with Greg and Patryk, keep control of design and material choices, and see exactly what you pay for in an itemized scope.',
+            'comparison_note' => 'GS Construction & Remodeling is rooted in the Northwest suburbs with a leaner owner-led model: work directly with Greg and Patryk, keep control of design and material choices, and see exactly what you pay for in an itemized scope. Kitchens, baths, basements, additions, exteriors, and whole-home remodels all sit with one accountable team under a single GS warranty. Estimates are free and given in your home, with typical project ranges published on-site beforehand. A live client portal keeps your schedule, change orders, and balance current from demolition to final walkthrough.',
             'them' => [
                 'design_model' => 'In-house architects and designers with a showroom-led 9-step process.',
                 'service_area' => 'Hinsdale and the western Chicago suburbs',
@@ -390,7 +390,7 @@ return [
             'website' => 'https://www.synergyhomeremodel.com',
             'location' => 'West Chicago, IL',
             'focus' => 'Design-build remodeling with a showroom',
-            'comparison_note' => 'GS Construction\'s daily territory is the Northwest suburbs and North Shore, where the owners themselves run each project, estimates are free with an itemized scope, and typical project price ranges are published on-site.',
+            'comparison_note' => 'GS Construction & Remodeling\'s daily territory is the Northwest suburbs and North Shore, where the owners themselves run each project, estimates are free with an itemized scope, and typical project price ranges are published on-site. Design can come from your own architect or designer, one of our trusted partners, or your own selections that we install. Labor is not marked up through layers of middlemen, and a live client portal keeps schedule, change orders, and balance visible throughout. GS Construction & Remodeling backs the finished work with a written workmanship warranty.',
             'them' => [
                 'service_area' => 'West, northwest, and north Chicago suburbs',
             ],
@@ -402,7 +402,7 @@ return [
             'website' => 'https://senkusbuild.com',
             'location' => 'Lake Zurich, IL',
             'focus' => 'Bathroom and kitchen remodeling',
-            'comparison_note' => 'GS Construction, founded in 2015, brings 40+ years of combined hands-on experience, 5-star reviews across Google, Houzz, Yelp, and Angi, and full general-contractor scope including basements, additions, and whole-home remodels.',
+            'comparison_note' => 'GS Construction & Remodeling, founded in 2015, brings 40+ years of combined hands-on experience, 5-star reviews across Google, Houzz, Yelp, and Angi, and full general-contractor scope including basements, additions, and whole-home remodels. Greg and Patryk are your single point of contact from the first call to the final walkthrough, supervising vetted trade partners daily under one GS warranty. Pricing is itemized and transparent, with typical project ranges published on-site. Permits and inspections are handled by GS Construction & Remodeling as part of the job.',
             'them' => [
                 'project_types' => 'Bathroom and kitchen remodeling',
                 'service_area' => 'Lake Zurich, Barrington, Crystal Lake, McHenry, and nearby far-northwest towns',
@@ -415,7 +415,7 @@ return [
             'website' => 'https://assemblyserviceil.com',
             'location' => 'Chicago, IL',
             'focus' => 'Design-build kitchen, bath, and condo remodeling',
-            'comparison_note' => 'GS Construction is headquartered in Prospect Heights, owner-led by a father-son team, and focused on single-family homes across the Northwest suburbs and North Shore.',
+            'comparison_note' => 'GS Construction & Remodeling is headquartered in Prospect Heights, owner-led by a father-son team, and focused on single-family homes across the Northwest suburbs and North Shore. That means kitchens, baths, basements, additions, exteriors, and whole-home remodels handled by the owners rather than passed between coordinators. Estimates are free and itemized, typical project ranges are published on-site, and a live client portal tracks schedule, change orders, and balance. GS Construction & Remodeling pulls the permits, coordinates inspections, and warrants its workmanship in writing.',
             'them' => [
                 'service_area' => 'Chicago city neighborhoods, condos, and high-rises',
                 'project_types' => 'Kitchen, bath, and condo/high-rise remodeling',
@@ -428,7 +428,7 @@ return [
             'website' => 'https://mayaconstructioninc.com',
             'location' => 'Chicago, IL',
             'focus' => 'General contracting and home remodeling',
-            'comparison_note' => 'GS Construction lives in the suburbs it serves — Prospect Heights headquarters, serving communities across Cook, Lake, and DuPage counties — with an owner-led team supervising every job, published typical project ranges, and a written workmanship warranty.',
+            'comparison_note' => 'GS Construction & Remodeling lives in the suburbs it serves — Prospect Heights headquarters, serving communities across Cook, Lake, and DuPage counties — with an owner-led team supervising every job, published typical project ranges, and a written workmanship warranty. Working these towns daily means knowing the local permit offices and inspectors rather than learning them project by project. Design stays yours: your designer, our trusted partners, or your own material selections. Estimates from GS Construction & Remodeling are free, itemized, and walked through with you by the owners.',
             'them' => [
                 'service_area' => 'Chicago city neighborhoods plus nearby suburbs',
             ],
@@ -440,7 +440,7 @@ return [
             'website' => 'https://ecobuildplus.com',
             'location' => 'Mount Prospect, IL',
             'focus' => 'Design-build remodeling, new construction, and commercial work',
-            'comparison_note' => 'GS Construction focuses exclusively on residential remodeling across the Northwest suburbs — kitchens, baths, basements, additions, and whole-home — with the owners, Greg and Patryk, personally running every project.',
+            'comparison_note' => 'GS Construction & Remodeling focuses exclusively on residential remodeling across the Northwest suburbs — kitchens, baths, basements, additions, and whole-home — with the owners, Greg and Patryk, personally running every project. That focus means the crews on your house do this work every week rather than rotating between unrelated project types. Pricing is itemized and transparent, estimates are free, and typical project ranges are published on-site. A live client portal and a written workmanship warranty carry through to the final walkthrough.',
             'them' => [
                 'project_types' => 'Residential remodeling, new construction, and commercial projects',
             ],
@@ -452,7 +452,7 @@ return [
             'website' => 'https://thomasmeyerrenovations.com',
             'location' => 'Palatine, IL',
             'focus' => 'Countertops, tile, flooring, and kitchen/bath remodeling',
-            'comparison_note' => 'GS Construction is a full general remodeler whose long-standing, vetted trade partners are scheduled and supervised daily by the owners, covered by one GS warranty, with reviews cited across Google, Houzz, Yelp, and Angi.',
+            'comparison_note' => 'GS Construction & Remodeling is a full general remodeler whose long-standing, vetted trade partners are scheduled and supervised daily by the owners, covered by one GS warranty, with reviews cited across Google, Houzz, Yelp, and Angi. One accountable team carries kitchens, baths, basements, additions, exteriors, and whole-home remodels from demolition to final walkthrough. Design remains flexible — your designer, one of our trusted partners, or your own selections installed by us. Estimates from GS Construction & Remodeling are free and itemized, with typical project ranges published on-site.',
             'them' => [
                 'project_types' => 'Countertops, tile, and flooring plus kitchen/bath/basement remodels',
             ],
@@ -464,7 +464,7 @@ return [
             'website' => 'https://www.deltaremodels.com',
             'location' => 'Lake Forest, IL',
             'focus' => 'Kitchen, bathroom, and basement remodeling',
-            'comparison_note' => 'The GS Construction Advantage comes down to design freedom and who runs your project: you can bring your own designer or architect — or use one of our trusted partners — and the owners, Greg and Patryk Szady, personally run every job from the first call to the final walkthrough.',
+            'comparison_note' => 'The GS Construction & Remodeling Advantage comes down to design freedom and who runs your project: you can bring your own designer or architect — or use one of our trusted partners — and the owners, Greg and Patryk Szady, personally run every job from the first call to the final walkthrough. Pricing arrives itemized, with labor never marked up through middlemen, and typical project ranges published on-site. Through the build a live client portal keeps your schedule, change orders, and balance current. GS Construction & Remodeling handles permits and inspections and warrants its workmanship in writing.',
             'them' => [
                 'experience' => 'Family-owned, in business since 1987',
                 'design_model' => 'Design-build with an in-house designer; 3D renderings included.',
@@ -498,7 +498,7 @@ return [
             'website' => 'https://dreamkitchens.com',
             'location' => 'Highland Park, IL',
             'focus' => 'Kitchen and bath design',
-            'comparison_note' => 'GS Construction approaches these projects from the build side: a licensed and insured construction company run by its owners, where you keep control of the design — bring your own designer, use one of our trusted partners, or be your own — and one accountable team takes the job from demolition to final walkthrough.',
+            'comparison_note' => 'GS Construction & Remodeling approaches these projects from the build side: a licensed and insured construction company run by its owners, where you keep control of the design — bring your own designer, use one of our trusted partners, or be your own — and one accountable team takes the job from demolition to final walkthrough. Every tradesman on your project is licensed, insured, bonded, and registered in the municipality where the work happens. Estimates are free and itemized, and typical project ranges are published on-site. GS Construction & Remodeling covers kitchens, baths, basements, additions, exteriors, and whole-home remodels.',
             'them' => [
                 'experience' => 'In business since 1992',
                 'design_model' => 'Showroom-based design firm: in-house designers, 3D mockups, and detailed drawings; installation by the firm or your own contractor.',
@@ -531,7 +531,7 @@ return [
             // their real site (2012-2014 captures) and say so inline; the
             // citation tooltips link the exact snapshots. project_types quotes
             // their current Facebook description. Verified 2026-07-30.
-            'comparison_note' => 'The most reliable way to compare any two contractors is to request an itemized estimate from each. GS Construction\'s is free, itemized, and walked through with you by the owners themselves.',
+            'comparison_note' => 'The most reliable way to compare any two contractors is to request an itemized estimate from each. GS Construction & Remodeling\'s is free, itemized, and walked through with you by the owners themselves, so every line — demolition, materials, labor, permits, finishes — is accounted for before you commit. Greg and Patryk then run the project personally from first call to final walkthrough, supervising vetted trade partners under a single GS warranty. Typical project ranges are published on-site and a live client portal tracks schedule, change orders, and balance throughout.',
             'them' => [
                 'project_types' => 'High-end residential construction and commercial contracting.',
                 'point_of_contact' => 'Per their archived site (2014): acts as a representative of the client, with decisions made as a team.',

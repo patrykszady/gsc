@@ -30,9 +30,9 @@
                  is ours — so it says so rather than describing a comparison it
                  no longer makes. --}}
             <p class="text-lg text-zinc-600 dark:text-zinc-300">
-                Considering {{ $competitor['name'] }} for your kitchen, bathroom, or whole-home remodel?
-                Here is what GS Construction &amp; Remodeling offers, so you know what to weigh
-                before requesting estimates.
+                Considering {{ $competitor['name'] }} for your kitchen, bathroom, addition, basement,
+                or whole-home remodel? Here is what {{ config('brand.display_name') }} offers, so you
+                know what to weigh before requesting estimates.
             </p>
 
             {{-- Shared CTA button component: same look, sizing, and click
@@ -101,9 +101,8 @@
              still reporting on them. The trademark notice stays, since the
              page still names them. --}}
         <p class="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-            This table describes GS Construction &amp; Remodeling's own practices.
-            {{ $competitor['name'] }} is named for reference only and its trademarks belong to its owners —
-            please verify their details directly with the company.
+            This table describes {{ config('brand.display_name') }}'s own practices.
+            {{ $competitor['name'] }} is named for reference only.
         </p>
 
         @if(!empty($competitor['comparison_note']))
