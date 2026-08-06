@@ -19,8 +19,9 @@
     <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
             <p class="mt-8 text-lg text-zinc-600 dark:text-zinc-300">
-                Researching options? Compare GS Construction to other Chicago-area remodeling companies using
-                factual criteria like service area, project focus, communication, and verified reviews.
+                Researching options? See how GS Construction works on the criteria that decide a remodel —
+                service area, project focus, communication, and verified reviews — then check each other
+                company's details directly with them.
             </p>
         </div>
 
@@ -37,7 +38,7 @@
                             {{ $competitor['location'] ?? '' }} · {{ $competitor['focus'] ?? '' }}
                         </p>
                         <p class="mt-4 text-sm font-medium text-sky-700 dark:text-sky-400">
-                            See comparison &rarr;
+                            See what we offer &rarr;
                         </p>
                     </x-link-card>
                 </li>

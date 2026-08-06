@@ -150,6 +150,30 @@ class CompetitorClaimsPolicyTest extends TestCase
     }
 
     /**
+     * The pages must not advertise a comparison they no longer contain.
+     *
+     * The intro promised "a factual side-by-side so you can compare options"
+     * and the meta description promised one "on service area, project types,
+     * communication and reviews" — written when the table still had a column
+     * for the other company. Left in place they oversell the page to a reader
+     * and describe us reporting on a competitor we no longer report on.
+     */
+    public function test_no_compare_page_promises_a_side_by_side(): void
+    {
+        foreach (['/compare', '/compare/4ever-remodeling', '/how-to-choose-a-remodeling-contractor'] as $uri) {
+            $html = $this->get($uri)->assertOk()->getContent();
+
+            foreach (['factual side-by-side', 'factual, side-by-side'] as $phrase) {
+                $this->assertStringNotContainsString(
+                    $phrase,
+                    $html,
+                    "{$uri} still promises a side-by-side comparison",
+                );
+            }
+        }
+    }
+
+    /**
      * Removing the column from the table was not enough on its own.
      *
      * Livewire serialises public properties into the wire:snapshot embedded in

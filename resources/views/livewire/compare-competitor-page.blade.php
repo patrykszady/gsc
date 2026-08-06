@@ -24,9 +24,15 @@
 
     <div class="mx-auto max-w-5xl px-6 pb-6 lg:px-8">
         <header class="mx-auto mt-10 max-w-3xl text-center">
+            {{-- Promised "a factual side-by-side" until the competitor column
+                 came out of the table. The page still names them, because that
+                 is what the reader searched for, but everything it now sets out
+                 is ours — so it says so rather than describing a comparison it
+                 no longer makes. --}}
             <p class="text-lg text-zinc-600 dark:text-zinc-300">
                 Considering {{ $competitor['name'] }} for your kitchen, bathroom, or whole-home remodel?
-                Here is a factual side-by-side so you can compare options before requesting estimates.
+                Here is what GS Construction &amp; Remodeling offers, so you know what to weigh
+                before requesting estimates.
             </p>
 
             {{-- Shared CTA button component: same look, sizing, and click

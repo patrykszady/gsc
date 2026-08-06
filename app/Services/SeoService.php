@@ -924,7 +924,11 @@ class SeoService
     public static function compareIndex(): void
     {
         $title = 'Compare Chicago Remodeling Contractors';
-        $description = 'Compare GS Construction to other Chicago-area kitchen, bathroom, and home remodeling contractors. Factual side-by-side on service area, communication, reviews and more.';
+        // No longer "a factual side-by-side": these pages set out what we offer
+        // and leave the reader to check anyone else directly. A snippet that
+        // promises a comparison the page does not contain is both a legal
+        // exposure and the kind of mismatch that costs the click on arrival.
+        $description = 'Considering another Chicago-area kitchen, bathroom, or home remodeling contractor? See what GS Construction offers on service area, communication, reviews and more.';
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
@@ -1001,7 +1005,7 @@ class SeoService
         if ($note !== '') {
             $description = \Illuminate\Support\Str::limit($note, 155);
         } else {
-            $description = "Comparing GS Construction with {$name}? See a factual side-by-side on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
+            $description = "Considering {$name}? See what GS Construction offers on service area, project types, communication and reviews — and request a free Chicagoland estimate.";
         }
 
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));

@@ -16,9 +16,9 @@
             <div class="group rounded-2xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-700 dark:bg-zinc-800/40 sm:p-8 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
                 <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">How we compare to other Chicago remodelers</h2>
                 <p class="mt-2 max-w-3xl text-zinc-600 dark:text-zinc-300">
-                    Getting other quotes? We keep factual, side-by-side comparisons with the region's
-                    larger design-build firms — service area, approach, materials and communication —
-                    plus a plain-English guide to choosing a contractor, so you can decide with clear information.
+                    Getting other quotes? We set out how we work — service area, approach, materials
+                    and communication — alongside a plain-English guide to choosing a contractor,
+                    so you can decide with clear information.
                 </p>
                 <div class="mt-4 flex flex-wrap gap-x-6 gap-y-2">
                     <a href="{{ route('compare.index') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">

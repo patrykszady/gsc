@@ -91,8 +91,8 @@
 
         <div class="mt-12 rounded-2xl bg-zinc-50 p-6 dark:bg-zinc-800/40">
             <p class="text-base text-zinc-700 dark:text-zinc-200">
-                Comparing GS Construction with a specific firm? See our
-                <a href="{{ route('compare.index') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">factual side-by-side comparisons</a>,
+                Considering GS Construction alongside a specific firm? See
+                <a href="{{ route('compare.index') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">what we offer</a>,
                 read <a href="{{ url('/reviews') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">verified reviews</a>,
                 or <a href="{{ url('/contact') }}" wire:navigate class="font-medium text-sky-700 hover:underline dark:text-sky-400">request a free itemized estimate</a>.
             </p>
