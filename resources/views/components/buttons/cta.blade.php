@@ -43,13 +43,20 @@
     
     // Auto-detect tracking location from current route
     $trackLocation = request()->route()?->getName() ?? Str::slug(request()->path());
+
+    // wire:navigate is for page navigations only. It used to be stamped on
+    // every link, and Livewire intercepts the click and fetches the href as a
+    // page — for href="tel:…" that meant tapping "Call (224) 735-4200"
+    // SPA-navigated to a literal /tel:… URL and landed on the 404 page instead
+    // of dialing. Same failure class for mailto:, sms:, and in-page anchors.
+    $navigable = $href && ! preg_match('/^(?:tel:|mailto:|sms:|#)/i', $href);
 @endphp
 
 @php $tag = $as === 'button' ? 'button' : 'a'; @endphp
 
 <{{ $tag }}
     @if($tag === 'button') type="{{ $attributes->get('type', 'button') }}" @endif
-    @if($href) href="{{ $href }}" wire:navigate @endif
+    @if($href) href="{{ $href }}" @if($navigable) wire:navigate @endif @endif
     @click="trackCTA($el.textContent.trim(), '{{ $trackLocation }}')"
     {{ $attributes->except('type')->merge(['class' => $baseClasses . ' ' . $sizeClasses . ' ' . $variantClasses]) }}
 >
