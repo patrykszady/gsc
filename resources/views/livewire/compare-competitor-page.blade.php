@@ -53,30 +53,30 @@
             </div>
         </header>
 
-        <section class="group mt-12 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600">
-            <div class="overflow-x-auto">
-                {{-- Two columns only. The third column used to restate what the
-                     other company does; the table now sets out what WE do and
-                     leaves readers to check anyone else directly, which is both
-                     what counsel asked for and the only column we can stand
-                     behind for every row. min-w drops with the column. --}}
-                <table class="w-full min-w-100 text-left text-sm">
-                    <thead class="bg-zinc-50 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 font-semibold">Criteria</th>
-                            <th scope="col" class="px-4 py-3 font-semibold text-sky-700 dark:text-sky-400">GS Construction &amp; Remodeling</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-950">
-                        @foreach($criteria as $row)
-                            <tr>
-                                <th scope="row" class="px-4 py-3 align-top font-medium text-zinc-700 dark:text-zinc-200">
-                                    {{ $row['label'] }}
-                                    @if(!empty($row['why']))
-                                        <span class="mt-1 block text-xs font-normal text-zinc-400 dark:text-zinc-500">{{ $row['why'] }}</span>
-                                    @endif
-                                </th>
-                                <td class="px-4 py-3 align-top text-zinc-700 dark:text-zinc-300">
+        {{-- Rendered in the same idiom as <x-faq-section>: with the competitor
+             column gone every row is just "criterion -> what we do", which is a
+             question-and-answer shape, not a comparison grid. Same card, header
+             bar, dt/dd typography and dividers as the FAQ further down, so the
+             page reads as one system. Rows stay always-visible (no collapse):
+             this section is the page's substance, not supplementary. --}}
+        <section class="mt-12">
+            <x-faq-card>
+                <div class="border-b border-zinc-200/80 bg-zinc-50 px-5 py-3 sm:px-6 dark:border-white/10 dark:bg-zinc-900">
+                    <h2 class="text-lg font-bold tracking-tight text-sky-700 sm:text-xl dark:text-sky-400">
+                        {{ config('brand.display_name') }}
+                    </h2>
+                </div>
+                <dl>
+                    @foreach($criteria as $row)
+                        <div class="border-b border-zinc-200/80 px-5 py-4 last:border-b-0 sm:px-6 dark:border-white/10">
+                            <dt class="text-base font-semibold leading-7 text-zinc-900 dark:text-white">
+                                {{ $row['label'] }}
+                                @if(!empty($row['why']))
+                                    <span class="mt-0.5 block text-xs font-normal text-zinc-400 dark:text-zinc-500">{{ $row['why'] }}</span>
+                                @endif
+                            </dt>
+                            <dd class="mt-2">
+                                <p class="text-base leading-7 text-zinc-600 dark:text-zinc-400">
                                     @if(($row['key'] ?? '') === 'public_reviews')
                                         {{-- Platforms link out to the real profiles, driven by the
                                              `review` flag in config/socials.php (same source as the footer). --}}
@@ -89,12 +89,12 @@
                                     @else
                                         {{ $row['us'] }}
                                     @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                                </p>
+                            </dd>
+                        </div>
+                    @endforeach
+                </dl>
+            </x-faq-card>
         </section>
 
         {{-- The "Verified {month} · Source: theirsite.com · archived copies"
@@ -104,7 +104,7 @@
              still reporting on them. The trademark notice stays, since the
              page still names them. --}}
         <p class="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-            This table describes {{ config('brand.display_name') }}'s own practices.
+            This section describes {{ config('brand.display_name') }}'s own practices.
             {{ $competitor['name'] }} is named for reference only.
         </p>
 

@@ -134,19 +134,16 @@ class CompetitorClaimsPolicyTest extends TestCase
         $this->assertStringNotContainsString('How GS Construction compares to', $html);
     }
 
-    public function test_the_table_compares_nothing_but_us(): void
+    public function test_the_criteria_section_presents_only_us(): void
     {
         $html = $this->get('/compare/4ever-remodeling')->assertOk()->getContent();
 
-        preg_match('#<thead.*?</thead>#s', $html, $head);
-        $this->assertNotEmpty($head, 'comparison table lost its header');
-
-        $this->assertSame(
-            2,
-            substr_count($head[0], '<th '),
-            'the table should carry only Criteria and GS Construction & Remodeling',
-        );
-        $this->assertStringNotContainsString('4Ever Remodeling', $head[0]);
+        // The criteria now render FAQ-style (dt/dd under a single brand
+        // heading), not as a comparison grid. A <thead> reappearing here is the
+        // competitor column trying to come back.
+        $this->assertStringNotContainsString('<thead', $html, 'a comparison table has reappeared');
+        $this->assertStringContainsString('Pricing transparency', $html, 'the criteria rows went missing');
+        $this->assertStringContainsString('GS Construction &amp; Remodeling', $html);
     }
 
     /**
