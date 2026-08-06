@@ -6,16 +6,19 @@
     <x-page-decor :variant="$decor" />
 
     <x-breadcrumbs :items="[
-        ['label' => 'Compare Contractors', 'url' => route('compare.index')],
-        ['label' => 'GS Construction vs ' . ($competitor['name'] ?? '')],
+        ['label' => 'Alternatives', 'url' => route('compare.index')],
+        ['label' => ($competitor['name'] ?? '') . ' Alternative'],
     ]" />
 
+    {{-- "vs" framing retired with the comparison itself: the page presents GS
+         as an alternative to the company the reader searched for, so the H1
+         says that and the eyebrow stops pre-empting it. --}}
     <div class="mx-auto max-w-3xl px-6 pt-2 text-center lg:px-8">
-        <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternative to {{ $competitor['name'] }}</p>
+        <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Choosing a remodeler</p>
     </div>
 
     <x-page-hero
-        title="GS Construction vs {{ $competitor['name'] }}"
+        title="An Alternative to {{ $competitor['name'] }}"
         :key-suffix="'compare-' . $competitor['slug']"
     />
 

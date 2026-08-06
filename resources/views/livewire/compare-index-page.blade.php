@@ -5,14 +5,14 @@
 <div class="relative isolate overflow-x-clip bg-white dark:bg-zinc-950">
     <x-page-decor :variant="$decor" />
 
-    <x-breadcrumbs :items="[['label' => 'Compare Contractors']]" />
+    <x-breadcrumbs :items="[['label' => 'Alternatives']]" />
 
     <div class="mx-auto max-w-3xl px-6 pt-2 text-center lg:px-8">
-        <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Compare</p>
+        <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternatives</p>
     </div>
 
     <x-page-hero
-        title="Compare Chicago-area remodeling contractors"
+        title="Considering another Chicago-area remodeling contractor?"
         key-suffix="compare-index"
     />
 
@@ -32,7 +32,7 @@
                     <x-link-card :href="route('compare.show', ['slug' => $competitor['slug']])">
                         <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternative to</p>
                         <h2 class="mt-1 text-xl font-semibold text-zinc-900 dark:text-white">
-                            GS Construction vs {{ $competitor['name'] }}
+                            {{ $competitor['name'] }}
                         </h2>
                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
                             {{ $competitor['location'] ?? '' }} · {{ $competitor['focus'] ?? '' }}
@@ -134,11 +134,14 @@
     </div>
 
     <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
+        {{-- "We compare publicly available information … Information verified
+             {month}" described the retired comparison and dated competitor facts
+             the pages no longer publish. What remains is ours, so the notice
+             says that instead. --}}
         <p class="mx-auto mt-10 max-w-2xl text-center text-xs text-zinc-500 dark:text-zinc-400">
-            We compare publicly available information only. Always verify details directly with each company before making a decision.
-            @if(config('competitors.last_verified'))
-                <span class="mt-1 block">Information verified {{ \Illuminate\Support\Carbon::parse(config('competitors.last_verified'))->format('F Y') }}.</span>
-            @endif
+            These pages describe {{ config('brand.display_name') }}'s own services. Other companies are
+            named for reference only — always verify their details directly with each company before
+            making a decision.
         </p>
     </div>
 </div>

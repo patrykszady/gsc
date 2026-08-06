@@ -923,7 +923,7 @@ class SeoService
      */
     public static function compareIndex(): void
     {
-        $title = 'Compare Chicago Remodeling Contractors';
+        $title = 'Chicago Remodeling Contractor Alternatives';
         // No longer "a factual side-by-side": these pages set out what we offer
         // and leave the reader to check anyone else directly. A snippet that
         // promises a comparison the page does not contain is both a legal

@@ -136,7 +136,7 @@
                         <li><a href="/warranty" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Warranty</a></li>
                         <li><a href="/insurance-claims" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Insurance Claim Repairs</a></li>
                         <li><a href="/how-to-choose-a-remodeling-contractor" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">How to Choose a Contractor</a></li>
-                        <li><a href="/compare" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Compare Contractors</a></li>
+                        <li><a href="/compare" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Contractor Alternatives</a></li>
                     </ul>
                 </div>
             </div>
