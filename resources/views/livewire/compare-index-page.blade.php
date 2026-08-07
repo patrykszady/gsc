@@ -121,16 +121,29 @@
             </div>
 
             {{-- Verbatim AG guidance (verified July 2026 at
-                 illinoisattorneygeneral.gov/Consumer-Protection/Home-Repair). --}}
-            <p class="mt-8 rounded-xl bg-zinc-50 p-5 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-                Do your homework: the
-                <a href="https://illinoisattorneygeneral.gov/Consumer-Protection/Home-Repair/" target="_blank" rel="noopener nofollow"
-                   class="font-medium text-sky-700 underline hover:text-sky-600 dark:text-sky-400">Illinois Attorney General's Consumer Protection</a>
-                office explains how to avoid home-repair fraud and choose a reliable contractor. Its guidance for
-                homeowners is explicit &mdash;
-                <strong class="font-semibold text-zinc-800 dark:text-zinc-200">&ldquo;Get more than one estimate and get them in writing&rdquo;</strong>
-                &mdash; so comparing side by side before you sign is the state's own advice.
-            </p>
+                 illinoisattorneygeneral.gov/Consumer-Protection/Home-Repair).
+
+                 Same card as the trade-partner strip on /compare/*: one
+                 clickable row, bold lead, body, blue CTA pinned right, stacking
+                 on mobile. It was a plain tinted paragraph whose only link was
+                 buried mid-sentence, so the whole card is the link now.
+
+                 External, so target/rel rather than wire:navigate — Livewire
+                 would otherwise try to SPA-navigate to the AG's site. --}}
+            <a href="https://illinoisattorneygeneral.gov/Consumer-Protection/Home-Repair/"
+               target="_blank" rel="noopener nofollow"
+               class="group mt-8 flex flex-col items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-sm transition hover:border-sky-300 hover:bg-sky-50 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500 dark:hover:bg-sky-950/30">
+                <span class="text-zinc-700 dark:text-zinc-300">
+                    <span class="font-semibold text-zinc-900 dark:text-white">Do your homework.</span>
+                    The Illinois Attorney General's Consumer Protection office explains how to avoid
+                    home-repair fraud and choose a reliable contractor &mdash; its guidance for homeowners
+                    is explicit:
+                    <strong class="font-semibold text-zinc-800 dark:text-zinc-200">&ldquo;Get more than one estimate and get them in writing.&rdquo;</strong>
+                </span>
+                <span class="shrink-0 font-semibold text-sky-700 group-hover:text-sky-600 dark:text-sky-400">
+                    Read the AG's guidance &rarr;
+                </span>
+            </a>
         </section>
     </div>
 
