@@ -73,6 +73,22 @@
             making a decision.
         </p>
 
+        {{-- Real homeowner proof between the list of alternatives and the
+             how-to-choose guidance: the reader has just seen who else they
+             could call, so this is where reviews carry.
+
+             max-w-4xl + no padding to line up with the card grid and the
+             section below (the component's own max-w-7xl/px-* would sit wider
+             inside this wrapper), and section-classes carries no background —
+             the default bg-white would paint an opaque band over the page's
+             drafting grid. Not lazy: a lazily-loaded section is absent from the
+             initial HTML, and this page's job is to be crawled. --}}
+        <livewire:testimonials-section
+            max-width-class="max-w-4xl"
+            padding-class=""
+            section-classes="relative isolate overflow-hidden pt-12 pb-2 sm:pt-16"
+        />
+
         {{-- How to choose — evergreen guidance that makes this hub a resource, not just a link list --}}
         <section class="mx-auto mt-16 max-w-4xl">
             <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">
