@@ -186,7 +186,10 @@
         :key="'compare-reviews-'.$competitor['slug']"
     />
 
-    <div class="mx-auto max-w-5xl px-6 pb-16 lg:px-8">
+    {{-- pb-8, not pb-16: this padding is now the gap between the partner card
+         at the end of this wrapper and the FAQ below it, so it matches the
+         mt-8 above the card rather than doubling it. --}}
+    <div class="mx-auto max-w-5xl px-6 pb-8 lg:px-8">
         <section class="mt-12 grid gap-8 md:grid-cols-2">
             <div>
                 {{-- Block span keeps the brand on its own line at every width while
