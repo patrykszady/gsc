@@ -269,23 +269,28 @@
                 @endforeach
             </div>
         </section>
-    </div>
 
-    {{-- Second audience for this page: trades, designers, and suppliers who
-         already work with the competitor. Compact on purpose, and above the FAQ
-         rather than after the homeowner CTA — down there it was the last thing
-         before the footer, past the point most readers stop. --}}
-    <div class="mx-auto mt-8 mb-8 max-w-5xl px-6 lg:px-8">
-        <a href="{{ route('trades.index') }}" wire:navigate
-           class="group flex flex-col items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-sm transition hover:border-sky-300 hover:bg-sky-50 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500 dark:hover:bg-sky-950/30">
-            <span class="text-zinc-700 dark:text-zinc-300">
-                <span class="font-semibold text-zinc-900 dark:text-white">Work with {{ $competitor['name'] }}?</span>
-                Tradespeople, designers, and suppliers &mdash; get in touch to see how we can work together.
-            </span>
-            <span class="shrink-0 font-semibold text-sky-700 group-hover:text-sky-600 dark:text-sky-400">
-                Partner with GS Construction &rarr;
-            </span>
-        </a>
+        {{-- Second audience for this page: trades, designers, and suppliers who
+             already work with the competitor. Compact on purpose, and above the
+             FAQ rather than after the homeowner CTA — down there it was the last
+             thing before the footer, past the point most readers stop.
+
+             Inside this wrapper, not after it: as a sibling its own top margin
+             stacked on the wrapper's pb-16 and opened ~96px of gap. In here a
+             single margin controls the space above, and the wrapper's padding
+             becomes the gap down to the FAQ. --}}
+        <div class="mt-8">
+            <a href="{{ route('trades.index') }}" wire:navigate
+               class="group flex flex-col items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-5 py-4 text-sm transition hover:border-sky-300 hover:bg-sky-50 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-sky-500 dark:hover:bg-sky-950/30">
+                <span class="text-zinc-700 dark:text-zinc-300">
+                    <span class="font-semibold text-zinc-900 dark:text-white">Work with {{ $competitor['name'] }}?</span>
+                    Tradespeople, designers, and suppliers &mdash; get in touch to see how we can work together.
+                </span>
+                <span class="shrink-0 font-semibold text-sky-700 group-hover:text-sky-600 dark:text-sky-400">
+                    Partner with GS Construction &rarr;
+                </span>
+            </a>
+        </div>
     </div>
 
     {{-- FAQ (visible + FAQPage schema) --}}
