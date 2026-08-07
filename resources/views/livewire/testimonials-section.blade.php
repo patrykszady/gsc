@@ -103,7 +103,13 @@
             <div
                 @touchstart="handleTouchStart($event)"
                 @touchend.passive="handleTouchEnd($event)"
-                class="relative flex h-[27rem] w-full flex-col touch-pan-y overflow-hidden rounded-2xl bg-white p-4 shadow-lg ring-1 ring-gray-900/5 sm:h-[16.5rem] sm:p-5 lg:h-[17.5rem] lg:p-6 dark:bg-zinc-800/75 dark:shadow-none dark:ring-white/10"
+                {{-- Chrome matches <x-link-card>: border-zinc-200 + shadow-sm,
+                     not the ring-1/shadow-lg this used to carry, so the review
+                     carousel sits in the same family as the /compare tiles and
+                     the review card. Padding stays responsive (p-4/5/6) — the
+                     card is fixed-height, so link-card's flat p-6 would change
+                     how much quote fits. --}}
+                class="relative flex h-[27rem] w-full flex-col touch-pan-y overflow-hidden rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:h-[16.5rem] sm:p-5 lg:h-[17.5rem] lg:p-6 dark:border-zinc-800 dark:bg-zinc-900"
             >
                 {{-- min-h-0 lets the quote clamp instead of forcing the flex
                      parent taller than its fixed height. --}}
