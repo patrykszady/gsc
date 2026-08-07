@@ -154,8 +154,12 @@
     </div>
 
     {{-- More Testimonials Section --}}
-    <livewire:testimonials-section :show-header="false" max-width-class="max-w-5xl" section-classes="relative isolate overflow-hidden bg-white pt-0 pb-4 sm:pb-6 dark:bg-zinc-900" />
+    {{-- No bg-white here (or on the FAQ below): these sections used to paint an
+         opaque panel over the page canvas, so the drafting grid stopped dead
+         behind them while continuing above and below. Transparent lets the
+         canvas run the full height, which is how /compare/* does it. --}}
+    <livewire:testimonials-section :show-header="false" max-width-class="max-w-5xl" section-classes="relative isolate overflow-hidden bg-transparent pt-0 pb-4 sm:pb-6" />
 
     {{-- FAQ Section --}}
-    <x-faq-section :faqs="$faqs" heading="FAQ About This Review" sectionClasses="bg-white pt-0 pb-4 sm:pb-6 dark:bg-zinc-900" content-max-width="max-w-[60rem]" />
+    <x-faq-section :faqs="$faqs" heading="FAQ About This Review" sectionClasses="bg-transparent pt-0 pb-10 sm:pb-14" content-max-width="max-w-[60rem]" />
 </x-page-canvas>
