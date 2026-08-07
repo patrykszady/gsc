@@ -28,7 +28,7 @@
         </div>
     </x-page-hero>
 
-    <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
+    <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
             <p class="mt-8 text-lg text-zinc-600 dark:text-zinc-300">
                 Researching alternate contractors? See how GS Construction works on the criteria that
@@ -147,7 +147,10 @@
         </section>
     </div>
 
-    <div class="mt-12">
+    {{-- 24px between the last content and the blue CTA, matching /compare/*.
+         This was pb-16 on the wrapper above (64px) plus mt-12 here (48px) =
+         112px of dead space under the AG card. --}}
+    <div class="mt-6">
         <x-cta-section
             variant="blue"
             heading="Request a free estimate"
