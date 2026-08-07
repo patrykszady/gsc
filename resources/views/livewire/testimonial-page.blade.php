@@ -1,4 +1,6 @@
-<div class="bg-white dark:bg-zinc-900">
+{{-- Same decorated canvas as /compare and /compare/*, via the shared
+     component rather than another hand-rolled root. --}}
+<x-page-canvas>
     {{-- Breadcrumb Schema --}}
 
     {{-- Review Schema for rich results --}}
@@ -24,7 +26,10 @@
             </div>
         @endif
 
-        <article class="relative">
+        {{-- The review sits in a card, like every other block of substance on
+             the site (the /compare criteria, the FAQ). On the decorated canvas
+             a bare quote had nothing holding it. --}}
+        <article class="relative rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm sm:p-8 lg:p-10 dark:border-white/10 dark:bg-zinc-900/70">
             {{-- H1 for SEO --}}
             <h1 class="sr-only">{{ $testimonial->display_name }}'s {{ ucfirst($testimonial->project_type ?? 'Home') }} Remodeling Review in {{ $testimonial->project_location }}</h1>
 
@@ -39,9 +44,16 @@
                 <x-five-stars size="h-8" />
             </div>
 
-            {{-- Review text --}}
-            <blockquote class="text-lg leading-8 text-zinc-700 sm:text-xl sm:leading-9 dark:text-zinc-200">
-                <p>{{ $reviewText }}</p>
+            {{-- Review text.
+                 max-w-[68ch] regardless of the 64rem column: at full width a
+                 long review runs past 100 characters a line, which is where
+                 the eye starts losing its place on the return sweep. The
+                 reviews average ~530 characters and reach 2,272, so this is
+                 the difference between readable and a wall. --}}
+            <blockquote class="max-w-[68ch] text-lg leading-8 text-zinc-700 sm:text-xl sm:leading-9 dark:text-zinc-200">
+                @foreach($reviewParagraphs as $paragraph)
+                    <p @class(['mt-5' => ! $loop->first])>{{ $paragraph }}</p>
+                @endforeach
             </blockquote>
 
             {{-- Reviewer info --}}
@@ -136,4 +148,4 @@
 
     {{-- FAQ Section --}}
     <x-faq-section :faqs="$faqs" heading="FAQ About This Review" sectionClasses="bg-white pt-0 pb-4 sm:pb-6 dark:bg-zinc-900" content-max-width="max-w-[60rem]" />
-</div>
+</x-page-canvas>
