@@ -5,10 +5,28 @@
         <p class="text-sm font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternatives</p>
     </div>
 
-    <x-page-hero
-        title="Considering another Chicago-area remodeling contractor?"
-        key-suffix="compare-index"
-    />
+    {{-- Slot rather than the title prop, so the brand line and the CTA sit
+         inside the hero overlay with the H1. --}}
+    <x-page-hero key-suffix="compare-index">
+        {{-- sky-400, not the sky-600 used for eyebrows on white: this sits on a
+             darkened photo, where 600 is too dark to read. --}}
+        <p class="text-sm font-semibold uppercase tracking-wide text-sky-400 text-shadow sm:text-base">
+            {{ config('brand.display_name') }}
+        </p>
+
+        <h1 class="mt-2 font-heading text-4xl font-bold text-white text-shadow-lg sm:text-5xl lg:text-6xl">
+            Considering another Chicago-area remodeling contractor?
+        </h1>
+
+        {{-- pointer-events-auto: the overlay is pointer-events-none so the
+             slider's own arrows and dots stay clickable underneath it. Without
+             this the button would render and do nothing. --}}
+        <div class="pointer-events-auto mt-6">
+            <x-buttons.cta href="/about" variant="primary" size="lg">
+                About Greg &amp; Patryk
+            </x-buttons.cta>
+        </div>
+    </x-page-hero>
 
     <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
