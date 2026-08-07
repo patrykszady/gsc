@@ -54,7 +54,13 @@
                  the eye starts losing its place on the return sweep. The
                  reviews average ~530 characters and reach 2,272, so this is
                  the difference between readable and a wall. --}}
-            <blockquote class="max-w-[68ch] text-lg leading-8 text-zinc-700 sm:text-xl sm:leading-9 dark:text-zinc-200">
+            {{-- text-base/leading-7 is the site's long-form setting — 27 blocks
+                 use it, including the FAQ answers and the /compare criteria.
+                 This was text-lg/leading-8 rising to text-xl/leading-9 (20px on
+                 36px), which set the review looser and larger than any other
+                 body copy on the site and made long ones harder to read, not
+                 easier. --}}
+            <blockquote class="max-w-[68ch] text-base leading-7 text-zinc-700 dark:text-zinc-200">
                 @foreach($reviewParagraphs as $paragraph)
                     <p @class(['mt-5' => ! $loop->first])>{{ $paragraph }}</p>
                 @endforeach
