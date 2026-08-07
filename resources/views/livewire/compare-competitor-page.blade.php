@@ -94,7 +94,26 @@
                                     @else
                                         {{ $row['us'] }}
                                     @endif
+
                                 </p>
+
+                                {{-- One internal link per row, as a small blue
+                                     button under the answer. These 26 pages are
+                                     a large share of the crawlable surface and
+                                     used to link almost nowhere but /contact.
+                                     Anchor text names the destination — "Meet
+                                     Greg and Patryk", not "learn more" — so it
+                                     carries weight for the page it points at. --}}
+                                @if(!empty($row['link']['href']))
+                                    <flux:button
+                                        href="{{ $row['link']['href'] }}"
+                                        wire:navigate
+                                        variant="primary"
+                                        size="sm"
+                                        icon:trailing="arrow-right"
+                                        class="mt-3"
+                                    >{{ $row['link']['text'] }}</flux:button>
+                                @endif
                             </dd>
                         </div>
                     @endforeach

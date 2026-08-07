@@ -210,4 +210,29 @@ class CompetitorClaimsPolicyTest extends TestCase
             }
         }
     }
+
+    /**
+     * These 26 pages are a large share of the site's crawlable surface and used
+     * to link almost nowhere but /contact. Every criterion now carries an
+     * internal link, so a row losing one is a silent loss of internal linking.
+     */
+    public function test_every_criterion_links_somewhere_useful(): void
+    {
+        $html = $this->get('/compare/4ever-remodeling')->assertOk()->getContent();
+
+        $criteria = (array) config('competitors.criteria', []);
+        $this->assertNotEmpty($criteria);
+
+        foreach ($criteria as $row) {
+            $href = $row['link']['href'] ?? null;
+            $text = $row['link']['text'] ?? null;
+
+            $this->assertNotNull($href, ($row['key'] ?? '?').' has no internal link');
+            $this->assertStringContainsString('href="'.$href.'"', $html);
+            // Anchor text has to name the destination — "learn more" carries no
+            // weight for the page it points at.
+            $this->assertStringContainsString(e($text), $html);
+            $this->assertNotSame('Learn more', $text);
+        }
+    }
 }

@@ -69,7 +69,7 @@ class CompareCompetitorPage extends Component
         $this->criteria = array_map(
             static fn (array $row): array => array_intersect_key(
                 $row,
-                array_flip(['key', 'label', 'us', 'why']),
+                array_flip(['key', 'label', 'us', 'why', 'link']),
             ),
             $this->criteria,
         );
@@ -147,6 +147,10 @@ class CompareCompetitorPage extends Component
                 // citation there would point at a page that never said it.
                 'them_source' => $hasOverride ? (array) ($sources[$key] ?? []) : [],
                 'why' => (string) ($row['why'] ?? ''),
+                // Internal link substantiating this row. These 26 pages are a
+                // large share of the site's crawlable surface and used to link
+                // almost nowhere except /contact.
+                'link' => (array) ($row['link'] ?? []),
             ];
         }
 
