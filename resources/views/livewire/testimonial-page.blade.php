@@ -12,12 +12,12 @@
     ]" maxWidth="max-w-5xl" padding="pt-8" />
 
     {{-- Main Content --}}
-    <div class="mx-auto max-w-5xl px-6 py-10 lg:px-8 lg:py-14">
+    <div class="mx-auto max-w-5xl px-6 py-6 lg:px-8 lg:py-8">
         {{-- Project Thumbnail --}}
         {{-- 21/9 rather than 16/9: at this column width 16/9 stood 576px tall
              and pushed the review itself below the fold on a laptop. --}}
         @if($thumbnailUrl)
-            <div class="mb-8 overflow-hidden rounded-2xl shadow-sm ring-1 ring-zinc-900/5">
+            <div class="mb-6 overflow-hidden rounded-2xl shadow-sm ring-1 ring-zinc-900/5">
                 <x-lqip-image
                     :src="$thumbnailUrl"
                     :thumb="$thumbnailThumbUrl ?? $thumbnailUrl"
@@ -30,7 +30,7 @@
 
         {{-- Stars sit above the card, at size, so the rating reads before the
              text rather than as a small mark inside it. --}}
-        <div class="mb-6 flex justify-center sm:justify-start">
+        <div class="mb-4 flex justify-center sm:justify-start">
             <x-five-stars size="h-10 sm:h-12" />
         </div>
 
@@ -67,7 +67,7 @@
             </blockquote>
 
             {{-- Reviewer info --}}
-            <figcaption class="mt-10 flex items-center gap-x-6 border-t border-gray-200 pt-10 dark:border-gray-700">
+            <figcaption class="mt-6 flex items-center gap-x-6 border-t border-gray-200 pt-6 dark:border-gray-700">
                 <div 
                     x-data="{
                         loaded: window.imageCache?.has('{{ $imageUrl }}') ?? false,

@@ -58,7 +58,7 @@
              bar, dt/dd typography and dividers as the FAQ further down, so the
              page reads as one system. Rows stay always-visible (no collapse):
              this section is the page's substance, not supplementary. --}}
-        <section class="mt-12">
+        <section class="mt-8">
             <x-faq-card>
                 <div class="border-b border-zinc-200/80 bg-zinc-50 px-5 py-3 sm:px-6 dark:border-white/10 dark:bg-zinc-900">
                     <h2 class="text-lg font-bold tracking-tight text-sky-700 sm:text-xl dark:text-sky-400">
@@ -142,7 +142,7 @@
 
         <x-mid-cta />
 
-        <section class="mt-12">
+        <section class="mt-8">
             <h2 class="font-heading text-2xl font-semibold text-zinc-900 dark:text-white">GS Construction Difference</h2>
             <div class="mt-6 grid gap-6 sm:grid-cols-2">
                 <div class="group rounded-2xl bg-white p-6 shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">

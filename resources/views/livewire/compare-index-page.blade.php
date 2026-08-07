@@ -37,7 +37,7 @@
             </p>
         </div>
 
-        <ul class="mx-auto mt-12 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
+        <ul class="mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
             @foreach($competitors as $competitor)
                 @continue(empty($competitor['slug']))
                 <li>
@@ -90,7 +90,7 @@
         />
 
         {{-- How to choose — evergreen guidance that makes this hub a resource, not just a link list --}}
-        <section class="mx-auto mt-16 max-w-4xl">
+        <section class="mx-auto mt-10 max-w-4xl">
             <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">
                 How to compare remodeling contractors in the Chicago suburbs
             </h2>
