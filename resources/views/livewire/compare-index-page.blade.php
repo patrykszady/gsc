@@ -57,6 +57,22 @@
                 </li>
             @endforeach
         </ul>
+
+        {{-- Sits with the cards it qualifies. It used to be the last thing on
+             the page, below the estimate CTA, where a reader who converted from
+             the cards never reached it — the point of the notice is to be read
+             alongside the companies it names.
+
+             "We compare publicly available information … Information verified
+             {month}" described the retired comparison and dated competitor
+             facts the pages no longer publish. What remains is ours, so the
+             notice says that instead. --}}
+        <p class="mx-auto mt-8 max-w-2xl text-center text-xs text-zinc-500 dark:text-zinc-400">
+            These pages describe {{ config('brand.display_name') }}'s own services. Other companies are
+            named for reference only — always verify their details directly with each company before
+            making a decision.
+        </p>
+
         {{-- How to choose — evergreen guidance that makes this hub a resource, not just a link list --}}
         <section class="mx-auto mt-16 max-w-4xl">
             <h2 class="font-heading text-2xl font-bold text-zinc-900 dark:text-white sm:text-3xl">
@@ -162,15 +178,6 @@
         />
     </div>
 
-    <div class="mx-auto max-w-7xl px-6 pb-16 lg:px-8">
-        {{-- "We compare publicly available information … Information verified
-             {month}" described the retired comparison and dated competitor facts
-             the pages no longer publish. What remains is ours, so the notice
-             says that instead. --}}
-        <p class="mx-auto mt-10 max-w-2xl text-center text-xs text-zinc-500 dark:text-zinc-400">
-            These pages describe {{ config('brand.display_name') }}'s own services. Other companies are
-            named for reference only — always verify their details directly with each company before
-            making a decision.
-        </p>
-    </div>
+    {{-- pb-16 clears the footer now that nothing follows the CTA. --}}
+    <div class="pb-16"></div>
 </x-page-canvas>
