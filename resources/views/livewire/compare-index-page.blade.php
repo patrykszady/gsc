@@ -178,6 +178,7 @@
         />
     </div>
 
-    {{-- pb-16 clears the footer now that nothing follows the CTA. --}}
-    <div class="pb-16"></div>
+    {{-- Nothing after the CTA: its blue band runs straight into the footer.
+         A pb-16 spacer sat here to "clear the footer", which only produced a
+         strip of empty canvas between two full-width blocks. --}}
 </x-page-canvas>
