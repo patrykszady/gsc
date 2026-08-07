@@ -169,8 +169,8 @@
     <div class="mt-6">
         <x-cta-section
             variant="blue"
-            heading="Request a free estimate"
-            description="Comparing your options? Get a no-pressure, itemized estimate from GS Construction and see the difference for yourself."
+            heading="Get a second opinion and a free estimate"
+            description="It is smart to get an alternate bid. We are happy to give you a no-pressure, itemized estimate even if you are already talking to another contractor."
             primaryText="Request a free estimate"
             primaryHref="/contact"
             secondaryText="Call {{ config('brand.phone') }}"
