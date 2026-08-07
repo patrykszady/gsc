@@ -26,10 +26,11 @@
             </div>
         @endif
 
-        {{-- The review sits in a card, like every other block of substance on
-             the site (the /compare criteria, the FAQ). On the decorated canvas
-             a bare quote had nothing holding it. --}}
-        <article class="relative rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm sm:p-8 lg:p-10 dark:border-white/10 dark:bg-zinc-900/70">
+        {{-- The same tile as the /compare cards, via the shared component
+             rather than a copy of its class string — link-card renders a plain
+             div when given no href, which is exactly this case. Copying the
+             chrome is how those six call sites forked in the first place. --}}
+        <x-link-card class="relative">
             {{-- H1 for SEO --}}
             <h1 class="sr-only">{{ $testimonial->display_name }}'s {{ ucfirst($testimonial->project_type ?? 'Home') }} Remodeling Review in {{ $testimonial->project_location }}</h1>
 
@@ -126,7 +127,7 @@
                 </div>
             </figcaption>
 
-        </article>
+        </x-link-card>
 
         {{-- Back link --}}
         <div class="relative z-10 mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
