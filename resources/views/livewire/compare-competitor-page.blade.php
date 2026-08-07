@@ -1,14 +1,9 @@
-@php
-    // ?bg=grid|floorplan|mesh|aurora previews the other decor variants locally.
-    $decor = app()->environment('local') ? request()->query('bg', 'grid') : 'grid';
-@endphp
 {{-- pb-4: small mobile gap between the partner card and the footer. This was
      pb-20 "to clear the sticky mobile CTA", but the fixed bar overlays the
      viewport, not this gap — the tall footer below scrolls under it and only
      the copyright line passes behind the bar at full scroll, same as any
      fixed-bar page. The padding was pure dead space. --}}
-<div class="relative isolate overflow-x-clip bg-white pb-4 dark:bg-zinc-950 lg:pb-0">
-    <x-page-decor :variant="$decor" />
+<x-page-canvas class="pb-4 lg:pb-0">
 
     <x-breadcrumbs :items="[
         ['label' => 'Alternatives', 'url' => route('compare.index')],
@@ -330,4 +325,4 @@
             </a>
         </div>
     </div>
-</div>
+</x-page-canvas>

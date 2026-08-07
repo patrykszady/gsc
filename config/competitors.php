@@ -36,6 +36,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Index card prompts
+    |--------------------------------------------------------------------------
+    | The blue call-to-action line on each card at /compare. Shuffled per page
+    | load and dealt out so neighbouring cards never read the same, instead of
+    | 26 identical "See what we offer" links down the grid.
+    |
+    | Every one has to work under the card's "Alternative to {company}" heading
+    | and describe US — none of them may characterise the other company.
+    */
+    'card_prompts' => [
+        'See what we offer',
+        'See how GS works',
+        'Meet the owners',
+        'See our approach',
+        'What you get with GS',
+        'See how we run a project',
+        'Why homeowners choose GS',
+        'See the GS difference',
+        'How we price the work',
+        'Who runs your project',
+        'See our work',
+        'Get an alternate bid',
+        'How we handle permits',
+        'What our clients say',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Universal Comparison Criteria
     |--------------------------------------------------------------------------
     | These are the rows shown in the comparison table on every per-competitor

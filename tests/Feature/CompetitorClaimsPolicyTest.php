@@ -192,7 +192,12 @@ class CompetitorClaimsPolicyTest extends TestCase
                 continue;
             }
 
-            $html = $this->get("/compare/{$slug}")->assertOk()->getContent();
+            $html = $this->get("/compare/{$slug}")->assertOk()->getContent()
+                // The hub had the identical leak: CompareIndexPage held the
+                // whole config entry in a public property, so all 26
+                // competitors' claims and source URLs rode along in its
+                // wire:snapshot. Check both pages against every statement.
+                . $this->get('/compare')->assertOk()->getContent();
 
             foreach (array_merge($claims, $quotes) as $statement) {
                 $statement = trim((string) $statement);

@@ -238,8 +238,17 @@
     <style>
         .gd-grid {
             background-size: 4rem 4rem;
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 680px, #000 1360px);
-            mask-image: linear-gradient(to bottom, transparent 0, transparent 680px, #000 1360px);
+            /* Fade in below the hero, then stay.
+               These were 680px/1360px, measured from the top of the DOCUMENT —
+               so how much grid you saw depended on how tall the page was. On a
+               long page (a /compare/* alternative page) the content sat well
+               past 1360px and read against a full drafting grid; on the short
+               /compare index the cards landed inside the fade band and sat on
+               near-white. Same component, two different-looking pages.
+               Pulled in to clear a hero (~520px) and reach full strength by the
+               first content block, so every page using the decor looks alike. */
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 320px, #000 760px);
+            mask-image: linear-gradient(to bottom, transparent 0, transparent 320px, #000 760px);
         }
 
         .dark .gd-blobs { opacity: .5; }

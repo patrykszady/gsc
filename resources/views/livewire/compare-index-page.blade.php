@@ -1,10 +1,4 @@
-@php
-    // ?bg=grid|floorplan|mesh|aurora previews the other decor variants locally.
-    $decor = app()->environment('local') ? request()->query('bg', 'grid') : 'grid';
-@endphp
-<div class="relative isolate overflow-x-clip bg-white dark:bg-zinc-950">
-    <x-page-decor :variant="$decor" />
-
+<x-page-canvas>
     <x-breadcrumbs :items="[['label' => 'Alternatives']]" />
 
     <div class="mx-auto max-w-3xl px-6 pt-2 text-center lg:px-8">
@@ -29,16 +23,17 @@
             @foreach($competitors as $competitor)
                 @continue(empty($competitor['slug']))
                 <li>
+                    {{-- Eyebrow, company, prompt — nothing else. The cards also
+                         carried "{city}, IL · {what they do}", which described
+                         the other company on a page that no longer describes
+                         anyone but us, and made 26 cards dense to scan. --}}
                     <x-link-card :href="route('compare.show', ['slug' => $competitor['slug']])">
                         <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">Alternative to</p>
                         <h2 class="mt-1 text-xl font-semibold text-zinc-900 dark:text-white">
                             {{ $competitor['name'] }}
                         </h2>
-                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                            {{ $competitor['location'] ?? '' }} · {{ $competitor['focus'] ?? '' }}
-                        </p>
                         <p class="mt-4 text-sm font-medium text-sky-700 dark:text-sky-400">
-                            See what we offer &rarr;
+                            {{ $competitor['prompt'] }} &rarr;
                         </p>
                     </x-link-card>
                 </li>
@@ -144,4 +139,4 @@
             making a decision.
         </p>
     </div>
-</div>
+</x-page-canvas>
