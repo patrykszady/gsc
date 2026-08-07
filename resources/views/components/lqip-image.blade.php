@@ -38,6 +38,11 @@
         '16/9' => 'aspect-video',
         '3/2' => 'aspect-3/2',
         '2/3' => 'aspect-2/3',
+        '21/9' => 'aspect-[21/9]',
+        // Ratios must be listed above, not fall through here. The default
+        // builds the class by interpolation, so Tailwind's scanner never sees
+        // the literal and never generates the rule — the element then has no
+        // aspect-ratio at all and collapses to zero height. Add a case.
         default => $aspectRatio ? "aspect-[$aspectRatio]" : '',
     };
     

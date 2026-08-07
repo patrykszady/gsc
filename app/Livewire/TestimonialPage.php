@@ -6,6 +6,7 @@ use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
 use App\Services\SeoService;
+use App\Support\SeededRandom;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -49,20 +50,27 @@ class TestimonialPage extends Component
             }
         }
 
+        // Seeded on the review id, not inRandomOrder(): only 9 of the 71
+        // reviews link a project, so for the other 62 this fallback IS the hero
+        // — and a fresh RAND() per request meant the same review showed a
+        // different photo on every reload, and a different one again from the
+        // avatar and the /reviews card. Seeded, each review keeps one photo.
+        $seed = (int) $this->testimonial->getKey();
+
         $projectType = $this->normalizeProjectType($this->testimonial->project_type);
         if ($projectType) {
-            $cached = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                ->inRandomOrder()
-                ->first();
+            $cached = SeededRandom::order(
+                ProjectImage::query()->whereHas('project', fn ($q) => $q->published()->ofType($projectType)),
+                $seed,
+            )->first();
         }
 
-        // Final fallback: any random image from any published project.
+        // Final fallback: any image from any published project, same seed.
         if (! $cached) {
-            $cached = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published())
-                ->inRandomOrder()
-                ->first();
+            $cached = SeededRandom::order(
+                ProjectImage::query()->whereHas('project', fn ($q) => $q->published()),
+                $seed,
+            )->first();
         }
 
         return $cached ?: null;
@@ -83,11 +91,12 @@ class TestimonialPage extends Component
         $heroId = $this->heroImage()?->id;
 
         if ($linkedProjectIds->isNotEmpty()) {
-            $cached = ProjectImage::query()
-                ->whereIn('project_id', $linkedProjectIds)
-                ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId))
-                ->inRandomOrder()
-                ->first()
+            $cached = SeededRandom::order(
+                ProjectImage::query()
+                    ->whereIn('project_id', $linkedProjectIds)
+                    ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId)),
+                (int) $this->testimonial->getKey() + 7919,
+            )->first()
                 ?: $this->heroImage();
 
             if ($cached) {
@@ -95,13 +104,16 @@ class TestimonialPage extends Component
             }
         }
 
+        // Seeded like the hero (offset so it lands on a different photo), so
+        // the avatar is stable per review rather than reshuffling each load.
         $projectType = $this->normalizeProjectType($this->testimonial->project_type);
         if ($projectType) {
-            $cached = ProjectImage::query()
-                ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-                ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId))
-                ->inRandomOrder()
-                ->first();
+            $cached = SeededRandom::order(
+                ProjectImage::query()
+                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                    ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId)),
+                (int) $this->testimonial->getKey() + 7919,
+            )->first();
         }
 
         return $cached ?: null;
