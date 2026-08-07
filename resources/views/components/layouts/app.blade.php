@@ -219,6 +219,16 @@
             }
 
             window.addEventListener('error', function (e) {
+                // Third-party scripts only fail in ways we cannot fix: the log's
+                // standing noise was Cloudflare's analytics beacon missing
+                // Array.prototype.at on a 2020-era browser, plus injected
+                // in-app-browser and extension code. Keep same-origin sources,
+                // inline/eval'd code (no filename), and our own bundles;
+                // drop errors sourced from other origins.
+                var src = e.filename || '';
+                if (src && src.indexOf('://') !== -1 && src.indexOf(window.location.origin + '/') !== 0) {
+                    return;
+                }
                 report('error', {
                     message: e.message,
                     source: e.filename,
