@@ -97,22 +97,22 @@
 
                                 </p>
 
-                                {{-- One internal link per row, as a small blue
-                                     button under the answer. These 26 pages are
+                                {{-- One internal link per row. These 26 pages are
                                      a large share of the crawlable surface and
                                      used to link almost nowhere but /contact.
                                      Anchor text names the destination — "Meet
                                      Greg and Patryk", not "learn more" — so it
-                                     carries weight for the page it points at. --}}
+                                     carries weight for the page it points at.
+
+                                     Styled as the link-card footer on /compare,
+                                     not as a button: fourteen solid buttons down
+                                     a column read as fourteen calls to action
+                                     competing with the estimate CTA. --}}
                                 @if(!empty($row['link']['href']))
-                                    <flux:button
-                                        href="{{ $row['link']['href'] }}"
-                                        wire:navigate
-                                        variant="primary"
-                                        size="sm"
-                                        icon:trailing="arrow-right"
-                                        class="mt-3"
-                                    >{{ $row['link']['text'] }}</flux:button>
+                                    <a href="{{ $row['link']['href'] }}" wire:navigate
+                                       class="mt-3 inline-block text-sm font-medium text-sky-700 hover:underline dark:text-sky-400">
+                                        {{ $row['link']['text'] }} &rarr;
+                                    </a>
                                 @endif
                             </dd>
                         </div>
