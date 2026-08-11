@@ -508,13 +508,21 @@ class PlatformsSettings extends Component
 
     public function verifyYelpLogin(): void
     {
-        // Clear the sticky 12h session_dead banner up-front. Without this, if
-        // the operator successfully logs in but the post-login checkSession
-        // poll fails (DataDome on the headless verifier, network blip), the
-        // banner stays set and every queued upload fails with "session
-        // expired" — even though the cookies are actually fresh.
-        Cache::forget('yelp.session_dead');
-        Log::channel('yelp')->info('Yelp Verify Login: operator initiated, cleared session_dead flag', [
+        // Do NOT clear yelp.session_dead here.
+        //
+        // It used to be forgotten up-front so a failed post-login poll could
+        // not leave a stuck banner. The side effect was worse than the problem:
+        // markSessionFresh() decides whether to re-queue the photos that failed
+        // while the session was down by reading exactly this flag
+        // (YelpBusinessService::markSessionFresh, `$wasDead`). Clearing it first
+        // meant a successful manual login always saw $wasDead === false,
+        // returned 0, and silently stranded every stalled photo — while this
+        // page told the operator they would re-upload by themselves.
+        //
+        // The stuck-banner case it guarded against is now self-correcting: the
+        // 6-hourly keep-alive clears the flag on its next authenticated run,
+        // and any successful upload does the same.
+        Log::channel('yelp')->info('Yelp manual login: operator initiated', [
             'user_id' => auth()->id(),
         ]);
         $this->startYelpRemoteLogin();
@@ -669,14 +677,25 @@ class PlatformsSettings extends Component
     {
         $yelp = app(YelpBusinessService::class);
 
-        $authed = $yelp->checkSession();
+        // keepSessionAlive(), not checkSession(). The bare check could only ever
+        // make things worse from here: on a negative result it calls
+        // markSessionDead() — a 12h upload freeze plus either captcha spend or
+        // an email to the owner — while never writing cookies back, so it could
+        // invalidate the session but never repair it. keepSessionAlive() runs
+        // the same probe and, when authenticated, exports the refreshed cookies
+        // to the jar. This button is now "run the 6-hourly job right now".
+        $authed = $yelp->keepSessionAlive();
         $this->yelpAuthenticated = $authed;
+
         if ($authed === true) {
-            session()->flash('platforms-success', 'Yelp session is active.');
+            session()->flash('platforms-success', 'Yelp session is active — cookies refreshed.');
         } elseif ($authed === false) {
-            session()->flash('platforms-error', 'Yelp session is NOT logged in. Click “Verify Login” to refresh it.');
+            session()->flash('platforms-error', 'Yelp session is NOT logged in. The server will try to sign in again on its own.');
         } else {
-            session()->flash('platforms-error', 'Could not verify Yelp session (script error / timeout).');
+            // Indeterminate: DataDome blocked the probe, so the session flag was
+            // deliberately left untouched. Saying "error" here would send the
+            // operator chasing a bot-wall, not a fault.
+            session()->flash('platforms-error', 'Could not verify the session — Yelp’s bot protection blocked the check. Nothing was changed; try again shortly.');
         }
     }
 
@@ -825,9 +844,17 @@ class PlatformsSettings extends Component
     /** Queue a background login using the stored credentials. */
     public function yelpLoginNow(): void
     {
-        // Clear the rate-limit floor: an operator clicking the button is an
-        // explicit request, not the automatic retry the floor exists to damp.
-        Cache::forget('yelp.auto_login_attempted');
+        // The 30-minute floor stays. It used to be cleared here on the theory
+        // that a click is an explicit request — but the floor exists to cap
+        // real money (a 2captcha solve per attempt) and each click was buying
+        // another one, with nothing to show for it when the failure was
+        // "Yelp wants a verification code" and the retry could not fix that.
+        // The button now reports the wait instead of overriding it.
+        if (Cache::has('yelp.auto_login_attempted')) {
+            session()->flash('platforms-error', 'A sign-in attempt ran in the last 30 minutes. Waiting before spending another captcha solve — check "Last recovery attempt" below for the result.');
+
+            return;
+        }
 
         \App\Jobs\YelpAutoLogin::dispatch()->onQueue('media-sync');
 
