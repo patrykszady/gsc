@@ -489,6 +489,25 @@
                     </div>
                 </div>
 
+                {{-- What the last unattended recovery did. Information, not a
+                     chore — the owner cannot act on it beyond Manual sign-in. --}}
+                @if($yelpAutoLoginResult && ! ($yelpAutoLoginResult['ok'] ?? false))
+                    <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                        Yelp refused the last automatic sign-in{{ $yelpAutoLoginAt ? ' ' . \Carbon\Carbon::parse($yelpAutoLoginAt)->diffForHumans() : '' }}.
+                        Use <strong>Manual sign-in</strong> above to finish it.
+                    </p>
+                @endif
+
+                {{-- Missing captcha key / proxy is a SERVER problem. It used to be
+                     rendered as "Not armed" with instructions telling the owner to
+                     go configure it, which is not their job and not their access. --}}
+                @if(! $yelpCanAutoLogin && $yelpHasPassword)
+                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Automatic recovery is not available on this server yet, so an expired session needs one
+                        manual sign-in. Nothing for you to configure &mdash; this is a server setting.
+                    </p>
+                @endif
+
                 {{-- Install-time prerequisites: silent when fine, loud when not. --}}
                 @php $cfg = config('services.yelp.business'); @endphp
                 @if(empty($cfg['node_binary']) || empty($cfg['user_data_dir']))
@@ -503,61 +522,15 @@
                 </p>
             </div>
 
-            {{-- Was: the browser-extension bridge — install instructions, pairing
-                 dots, token reveal/copy and a "stay logged in to biz.yelp.com as
-                 you normally would" note. All of it described a setup step the
-                 operator no longer has to perform, and the code never required
-                 it (extension_paired_at is a display flag). The ingest endpoint
-                 and its token controls still exist, folded into Manual overrides
-                 below for the rare case where handing over a desktop session is
-                 faster than waiting for automatic sign-in. --}}
-            <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Automatic sign-in</h4>
-                    @if($yelpCanAutoLogin)
-                        <flux:button type="button" wire:click="yelpLoginNow" variant="subtle" size="xs" wire:loading.attr="disabled">
-                            Sign in now
-                        </flux:button>
-                    @endif
-                </div>
-
-                @if($yelpCanAutoLogin)
-                    {{-- "Armed", not "works". Verified on production 2026-08-11:
-                         the attempt runs correctly end to end — Xvfb display,
-                         Chromium, DataDome bypassed, credentials submitted — and
-                         Yelp still held it on the login page for the full 600s
-                         ("still_on_login"). Promising self-repair here would be
-                         the same class of false claim this panel just had removed.
-                         The last-attempt line below is the honest signal. --}}
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                        <span class="inline-block size-2 rounded-full bg-green-500 align-middle"></span>
-                        <span class="align-middle">
-                            Armed &mdash; a dead session triggers an automatic attempt. Yelp may still refuse a
-                            scripted sign-in, in which case you will be emailed to finish it manually.
-                        </span>
-                    </p>
-                @else
-                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                        <span class="inline-block size-2 rounded-full bg-red-500 align-middle"></span>
-                        <span class="align-middle">
-                            Not armed &mdash; if the session dies, uploads stay paused until you act.
-                            Yelp ties a solved captcha to the IP that requested it, so recovery needs
-                            <strong>both</strong> a captcha key and a proxy (set them under Manual overrides).
-                        </span>
-                    </p>
-                @endif
-
-                {{-- The single most useful line on the page when something is
-                     wrong: what the last unattended attempt actually did. --}}
-                @if($yelpAutoLoginResult)
-                    <p class="mt-2 text-xs {{ ($yelpAutoLoginResult['ok'] ?? false) ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400' }}">
-                        Last attempt{{ $yelpAutoLoginAt ? ' ' . \Carbon\Carbon::parse($yelpAutoLoginAt)->diffForHumans() : '' }}:
-                        {{ ($yelpAutoLoginResult['ok'] ?? false) ? 'signed in' : ($yelpAutoLoginResult['code'] ?? 'failed') }}.
-                        {{ $yelpAutoLoginResult['hint'] ?? '' }}
-                    </p>
-                @endif
-            </div>
-
+            {{-- No "Automatic sign-in / Not armed" block here any more.
+                 It told the operator that recovery needed a captcha key and a
+                 proxy and pointed them at a settings fold to go arm it — but
+                 those are server infrastructure, not a business owner's job.
+                 The only thing asked of them is the email and password above.
+                 When the plumbing is genuinely missing, the Status block says
+                 so plainly and names it as a server problem; and whatever the
+                 last recovery attempt did is reported there too, because that
+                 is information, not a chore. --}}
             {{-- Reviews: a genuinely separate pipeline. It reads the PUBLIC
                  yelp.com/biz page and never touches the login session or the
                  cookie jar, so a dead Yelp session does not stop reviews —
@@ -601,7 +574,7 @@
                  working path instead of three competing ones. --}}
             <details class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <summary class="cursor-pointer select-none text-sm font-semibold text-zinc-900 dark:text-white">
-                    Manual overrides <span class="font-normal text-zinc-500">(rarely needed &mdash; only if automatic sign-in fails)</span>
+                    Server settings <span class="font-normal text-zinc-500">(developer use &mdash; nothing here is needed to run Yelp)</span>
                 </summary>
                 <div class="mt-3 space-y-4">
             {{-- Backend login: credentials only, nothing else to install. --}}
