@@ -513,6 +513,25 @@ class YelpBusinessService
     }
 
     /**
+     * The self-healing loop's last resort: automatic re-login ran and could
+     * not recover the session on its own, so a human is genuinely needed.
+     *
+     * This is the ONE thing no automation can clear — Yelp asking for an
+     * emailed/SMS 2FA code, or a rejected password. Everything else the loop
+     * retries silently on the next cycle. Routes through notifySessionDead(),
+     * which throttles to one alert per 12h episode and carries the admin
+     * Platforms link (where "Verify Login" opens the noVNC screen).
+     *
+     * Public so YelpAutoLogin can call it — the alert must fire from the job
+     * that discovered the failure, not only from the checks that mark a
+     * session dead.
+     */
+    public function reportAutoLoginUnrecoverable(?string $reason): void
+    {
+        $this->notifySessionDead($reason);
+    }
+
+    /**
      * Keep the biz.yelp.com session alive from the server, with no human
      * browser and no admin tab open.
      *

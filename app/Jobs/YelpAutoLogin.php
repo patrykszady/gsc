@@ -66,5 +66,20 @@ class YelpAutoLogin implements ShouldQueue, ShouldBeUnique
         // A rejected password or a verification prompt cannot be fixed by
         // trying again — surface it so the admin UI can say what to do.
         Log::channel('yelp')->warning('Yelp auto-login: failed', $result);
+
+        // ...and tell a human, for the codes only a human can clear. Until now
+        // this job logged and stopped: markSessionDead() emails ONLY when it
+        // decides not to auto-login, so once auto-login was viable the operator
+        // heard nothing at all when it then failed. That is the same silent
+        // hole that let a dead session sit from June 14 to July 14 while every
+        // new project photo skipped Yelp.
+        //
+        // 'busy' and 'crashed' are transient — the next keepalive or upload
+        // retries them — so they must not page anyone.
+        if (in_array($result['code'] ?? '', ['needs_verification', 'bad_credentials'], true)) {
+            $service->reportAutoLoginUnrecoverable(
+                sprintf('Automatic re-login failed (%s). %s', $result['code'], $result['hint'] ?? '')
+            );
+        }
     }
 }
