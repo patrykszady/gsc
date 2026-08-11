@@ -370,13 +370,14 @@
                  to this server, so the scrape only works through the same proxy
                  and captcha solver the login uses). --}}
             <div class="rounded-lg bg-sky-50 p-3 text-sm text-sky-800 dark:bg-sky-900/20 dark:text-sky-200">
-                <strong>How this works:</strong> enter the Yelp email and password below &mdash; that is the whole
-                setup. The server signs in on its own and revisits the dashboard every 6 hours to keep the session
-                from expiring. Nothing runs on your computer: no browser to leave open, no extension, nothing to paste.
+                <strong>How this works:</strong> the server holds a logged-in Yelp session and revisits the dashboard
+                every 6 hours to stop it expiring. That runs entirely here &mdash; no browser to leave open, no
+                extension, nothing to paste &mdash; and it is what keeps photo uploads working.
                 <br><br>
-                If the session ever does expire, the server signs in again by itself and re-uploads any photos that
-                were waiting. It only emails you when Yelp asks for something no automation can answer &mdash; a
-                verification code, or a password that no longer works.
+                If the session ever does expire, the server attempts to sign in again with the email and password
+                below and re-uploads any photos that were waiting. <strong>Yelp does not always accept a scripted
+                sign-in</strong>, so if that attempt is refused you will get an email and can finish it yourself with
+                <strong>Manual sign-in</strong> &mdash; the status below always shows what the last attempt actually did.
             </div>
 
             @if($yelpSessionDead)
@@ -451,33 +452,27 @@
                         </flux:button>
                     </div>
                 </div>
+                {{-- Two lines, not six. "Email saved" / "Password saved"
+                     duplicated the form's own saved badge; "Node binary" and
+                     "User data dir" are install-time config that has never been
+                     false on a working box — they earn a red banner if they ever
+                     break, not permanent green dots. What survives is what an
+                     operator can act on: is the session good, and is anything
+                     stuck. --}}
                 <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                    @php
-                        $cfg = config('services.yelp.business');
-                        $checks = [
-                            'Email saved' => $yelpEmail !== '',
-                            'Password saved' => $yelpHasPassword,
-                            'Node binary' => !empty($cfg['node_binary']),
-                            'User data dir' => !empty($cfg['user_data_dir']),
-                        ];
-                    @endphp
-                    @foreach($checks as $label => $ok)
-                        <div class="flex items-center gap-2">
-                            <span class="size-2 rounded-full {{ $ok ? 'bg-green-500' : 'bg-red-500' }}"></span>
-                            <span class="text-zinc-700 dark:text-zinc-300">{{ $label }}</span>
-                        </div>
-                    @endforeach
                     <div class="flex items-center gap-2" wire:target="checkYelpSession,pollYelpRemoteLogin">
-                        <span wire:loading.remove wire:target="checkYelpSession" class="size-2 rounded-full {{ $yelpAuthenticated === true ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                        <span wire:loading.remove wire:target="checkYelpSession" class="size-2 rounded-full {{ $yelpAuthenticated === true ? 'bg-green-500' : ($yelpAuthenticated === false ? 'bg-red-500' : 'bg-amber-500') }}"></span>
                         <svg wire:loading wire:target="checkYelpSession" class="size-3 animate-spin text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                         </svg>
                         <span class="text-zinc-700 dark:text-zinc-300">
                             <span wire:loading.remove wire:target="checkYelpSession">
-                                Browser session: {{ $yelpAuthenticated === true ? 'logged in' : ($yelpAuthenticated === false ? 'NOT logged in' : 'unknown (click Check)') }}
+                                {{-- Amber, not red, for the unknown case: a DataDome-blocked
+                                     probe tells us nothing and is not a fault to chase. --}}
+                                {{ $yelpAuthenticated === true ? 'Connected to Yelp' : ($yelpAuthenticated === false ? 'Not connected — the server is retrying' : 'Connection unknown — last check was blocked') }}
                             </span>
-                            <span wire:loading wire:target="checkYelpSession">Browser session: checking…</span>
+                            <span wire:loading wire:target="checkYelpSession">Checking…</span>
                         </span>
                     </div>
                     @php
@@ -493,6 +488,15 @@
                         </span>
                     </div>
                 </div>
+
+                {{-- Install-time prerequisites: silent when fine, loud when not. --}}
+                @php $cfg = config('services.yelp.business'); @endphp
+                @if(empty($cfg['node_binary']) || empty($cfg['user_data_dir']))
+                    <p class="mt-2 text-xs text-red-600 dark:text-red-400">
+                        Server misconfigured: {{ empty($cfg['node_binary']) ? 'node binary' : 'user data dir' }} is not set. Yelp automation cannot run.
+                    </p>
+                @endif
+
                 <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
                     Use <strong>Manual sign-in</strong> only if automatic sign-in reports it needs a verification code (e.g. after a password change
                     or a long idle period). The embedded browser closes itself once login succeeds.
@@ -518,9 +522,19 @@
                 </div>
 
                 @if($yelpCanAutoLogin)
+                    {{-- "Armed", not "works". Verified on production 2026-08-11:
+                         the attempt runs correctly end to end — Xvfb display,
+                         Chromium, DataDome bypassed, credentials submitted — and
+                         Yelp still held it on the login page for the full 600s
+                         ("still_on_login"). Promising self-repair here would be
+                         the same class of false claim this panel just had removed.
+                         The last-attempt line below is the honest signal. --}}
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
                         <span class="inline-block size-2 rounded-full bg-green-500 align-middle"></span>
-                        <span class="align-middle">Armed &mdash; a dead session repairs itself, usually within a few minutes.</span>
+                        <span class="align-middle">
+                            Armed &mdash; a dead session triggers an automatic attempt. Yelp may still refuse a
+                            scripted sign-in, in which case you will be emailed to finish it manually.
+                        </span>
                     </p>
                 @else
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
