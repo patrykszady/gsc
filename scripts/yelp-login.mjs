@@ -44,6 +44,7 @@ function parseArgs(argv) {
     twocaptchaKey: null,
     anticaptchaKey: null,
     cookiesFile: null,
+    exportCookies: null,
     // Unattended: nobody is watching a VNC viewer, so the script must drive
     // the credential form itself and give up on a bounded schedule rather
     // than waiting out the full interactive timeout.
@@ -63,6 +64,11 @@ function parseArgs(argv) {
     else if (a === '--unattended') args.unattended = true;
     else if (a.startsWith('--anticaptcha-key=')) args.anticaptchaKey = a.slice('--anticaptcha-key='.length);
     else if (a.startsWith('--user-agent=')) args.userAgent = a.slice('--user-agent='.length);
+    // Write the live session back out after a successful check. CDP can read
+    // httpOnly cookies (bse/bsd/s), which page JS cannot — that asymmetry is
+    // the entire reason the browser extension existed. Reading them here lets
+    // the server refresh its own jar with no human browser in the loop.
+    else if (a.startsWith('--export-cookies=')) args.exportCookies = a.slice('--export-cookies='.length);
   }
   return args;
 }
@@ -633,6 +639,43 @@ async function autofillLogin(page, email, password) {
  * which aborts every queued upload for 12h without even trying. Callers must
  * treat 'blocked' as "could not determine", not as "logged out".
  */
+/**
+ * Dump every yelp.com cookie the browser holds, in the shape
+ * App\Support\YelpCookieJar::normalize() already understands (the same shape
+ * the browser extension POSTs). CDP returns httpOnly cookies too, so this
+ * captures bse/bsd/s — the auth cookies a bookmarklet could never reach.
+ *
+ * Best-effort by design: a keepalive run that refreshed the session but failed
+ * to write the file is still a successful keepalive, so never throw.
+ */
+async function exportCookiesTo(page, destPath) {
+  try {
+    const client = await page.target().createCDPSession();
+    const { cookies } = await client.send('Network.getAllCookies');
+    await client.detach().catch(() => {});
+
+    const yelp = (cookies || []).filter((c) => {
+      const d = String(c.domain || '').replace(/^\./, '').toLowerCase();
+      return d === 'yelp.com' || d.endsWith('.yelp.com');
+    });
+    if (!yelp.length) {
+      console.error('[yelp-login] export: no yelp.com cookies in the browser, leaving jar untouched');
+      return 0;
+    }
+
+    // Atomic replace: the upload jobs read this file on every run, and a
+    // half-written jar reads as a dead session.
+    const tmp = `${destPath}.tmp-${process.pid}`;
+    fs.writeFileSync(tmp, JSON.stringify({ cookies: yelp }, null, 0), { mode: 0o600 });
+    fs.renameSync(tmp, destPath);
+    console.error(`[yelp-login] export: wrote ${yelp.length} cookies to ${destPath}`);
+    return yelp.length;
+  } catch (e) {
+    console.error(`[yelp-login] export: FAILED (${e.message}) - jar left as-is`);
+    return 0;
+  }
+}
+
 async function modeCheck(args) {
   const { browser, proxyConfig } = await buildBrowser(args, true);
   try {
@@ -641,7 +684,12 @@ async function modeCheck(args) {
     await page.goto('https://biz.yelp.com/', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {});
     await sleep(2000 + Math.random() * 2000);
     let bypassed = await maybeBypassDataDome(page, proxyConfig, args);
-    if (isAuthedUrl(page.url())) return 'authed';
+    if (isAuthedUrl(page.url())) {
+      // Only ever export from a confirmed-authenticated page. Exporting an
+      // anonymous jar would overwrite a good session with a logged-out one.
+      if (args.exportCookies) await exportCookiesTo(page, args.exportCookies);
+      return 'authed';
+    }
 
     // Yelp sometimes redirects '/' to a regional landing page
     // (e.g. biz.yelp.com.br/landing/signup_fy21) for authenticated US
@@ -652,7 +700,10 @@ async function modeCheck(args) {
     await sleep(1500);
     const bypassed2 = await maybeBypassDataDome(page, proxyConfig, args);
     bypassed = bypassed && bypassed2;
-    if (isAuthedUrl(page.url())) return 'authed';
+    if (isAuthedUrl(page.url())) {
+      if (args.exportCookies) await exportCookiesTo(page, args.exportCookies);
+      return 'authed';
+    }
 
     if (!bypassed) {
       console.error('[yelp-login] check: INDETERMINATE - DataDome blocked the probe, cookie state unknown');

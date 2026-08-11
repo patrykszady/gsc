@@ -108,6 +108,22 @@ Schedule::command('yelp:check-session')->dailyAt('02:15')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Yelp biz: keep the session alive from the SERVER, every 6 hours.
+//
+// This is what replaced "leave Chrome open on your desktop with the Session
+// Bridge extension installed". Loading the dashboard is the activity that
+// stops Yelp ageing the session out, and the run exports whatever cookies Yelp
+// rotated back into the jar the upload jobs read — so the jar cannot rot the
+// way the 2026-06-01 snapshot did (biz_session expired 2026-07-25 and was
+// injected dead on every run for weeks before anyone noticed).
+//
+// Six hours matches the cadence the extension used. Offset from :00 so it
+// never lands on the same minute as the 02:15 check or the nightly batch, and
+// withoutOverlapping because it shares the Chromium profile with uploads.
+Schedule::command('yelp:keep-session')->cron('20 */6 * * *')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+
 // Yelp biz: re-login unattended when the session is known-dead, 15 minutes
 // after the check above has had its say. Only runs when a captcha key AND a
 // proxy are configured (see canAutoLogin) — without both, DataDome cannot be

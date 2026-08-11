@@ -252,6 +252,13 @@ return [
             'node_binary' => env('YELP_NODE_BINARY', 'node'),
             // Run Chromium headed for first-time login / debugging.
             'headed' => env('YELP_BIZ_HEADED', false),
+            // Virtual display for the unattended headed login on a server with
+            // no X session. Deliberately not :99 — that is the noVNC viewer's,
+            // and the two must be able to run without fighting over a display.
+            'headless_display' => env('YELP_HEADLESS_DISPLAY', ':98'),
+            // Read at YelpBusinessService::loginHeadless() but previously never
+            // declared, so only the inline 180000 default ever applied.
+            'login_timeout_ms' => env('YELP_LOGIN_TIMEOUT_MS', 180000),
             // Per-script Chromium budget (ms). Must accommodate the worst
             // case: DataDome JS self-resolve loop (~60s) + 2captcha solve
             // (~30s) + cookie inject + reload + actual upload. 240s gives

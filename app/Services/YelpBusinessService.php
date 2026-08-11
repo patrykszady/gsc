@@ -212,6 +212,66 @@ class YelpBusinessService
         return true;
     }
 
+    /**
+     * Return a usable X display for headed Chromium, starting a headless Xvfb
+     * one if the host has no real session (the normal case on a server).
+     *
+     * Idempotent: if something is already listening on the display's socket we
+     * reuse it rather than starting a second Xvfb on the same number. Uses a
+     * dedicated display so it never collides with the noVNC viewer's :99.
+     */
+    protected function ensureVirtualDisplay(): ?string
+    {
+        if ($existing = $this->detectDisplay()) {
+            return $existing;
+        }
+
+        $cfg = config('services.yelp.business');
+        $display = (string) ($cfg['headless_display'] ?? ':98');
+        $xvfb = (string) (config('services.yelp.remote_login.xvfb_binary') ?: 'Xvfb');
+
+        // Already up from a previous run — Xvfb owns /tmp/.X11-unix/X<n>.
+        $sock = '/tmp/.X11-unix/X' . ltrim($display, ':');
+        if (file_exists($sock)) {
+            return $display;
+        }
+
+        if (! trim((string) @shell_exec('command -v ' . escapeshellarg($xvfb) . ' 2>/dev/null'))) {
+            Log::channel('yelp')->warning('Yelp: no X display and Xvfb is not installed — headed login cannot run', [
+                'install' => 'sudo apt install xvfb',
+            ]);
+
+            return null;
+        }
+
+        // Detached and disowned: it must outlive this PHP request/command so
+        // the browser it hosts is not killed mid-login.
+        $log = storage_path('logs/yelp-xvfb.log');
+        @shell_exec(sprintf(
+            'nohup %s %s -screen 0 1280x900x24 -ac -nolisten tcp >> %s 2>&1 < /dev/null & echo $!',
+            escapeshellarg($xvfb),
+            escapeshellarg($display),
+            escapeshellarg($log)
+        ));
+
+        // Xvfb needs a moment to bind the socket before Chromium connects.
+        for ($i = 0; $i < 20; $i++) {
+            usleep(150000);
+            if (file_exists($sock)) {
+                Log::channel('yelp')->info('Yelp: started virtual display for headed login', ['display' => $display]);
+
+                return $display;
+            }
+        }
+
+        Log::channel('yelp')->warning('Yelp: Xvfb did not bind its socket in time', [
+            'display' => $display,
+            'log' => $log,
+        ]);
+
+        return null;
+    }
+
     protected function detectDisplay(): ?string
     {
         if ($d = getenv('DISPLAY')) {
@@ -453,10 +513,56 @@ class YelpBusinessService
     }
 
     /**
+     * Keep the biz.yelp.com session alive from the server, with no human
+     * browser and no admin tab open.
+     *
+     * This replaces what the Chrome extension did. The extension existed
+     * because page JS cannot read Yelp's httpOnly auth cookies (bse/bsd/s) —
+     * but CDP can, and we already drive Chromium over CDP. So a scheduled
+     * headless visit does both halves of the job in one pass:
+     *
+     *   1. Loading the dashboard is real session activity, which is what stops
+     *      Yelp ageing the session out in the first place.
+     *   2. Whatever cookies Yelp rotated in response are exported straight back
+     *      into the jar every upload reads, so the jar can never rot the way the
+     *      2026-06-01 snapshot did (biz_session expired 2026-07-25, injected
+     *      dead on every run for weeks).
+     *
+     * Deliberately NOT a long-lived browser. Chromium cannot share one
+     * user-data-dir between processes, and scripts/yelp-run-locked.sh SIGKILLs
+     * anything holding that profile when an upload finishes — an always-on
+     * browser and the upload path would fight over the same profile all day.
+     * A short run under the same lock composes with the existing design instead
+     * of subverting it.
+     *
+     * Returns the same tri-state as checkSession(): true authed, false logged
+     * out, null indeterminate (DataDome blocked the probe — never treated as
+     * logged out).
+     */
+    public function keepSessionAlive(): ?bool
+    {
+        $before = \App\Support\YelpCookieJar::path();
+        $sizeBefore = is_file($before) ? filesize($before) : 0;
+
+        $authed = $this->checkSession(exportCookies: true);
+
+        Log::channel('yelp')->info('Yelp: keepalive run', [
+            'authenticated' => $authed,
+            'jar_bytes_before' => $sizeBefore,
+            'jar_bytes_after' => is_file($before) ? filesize($before) : 0,
+        ]);
+
+        return $authed;
+    }
+
+    /**
      * Slow headless check: launches a headless Chromium and visits
      * biz.yelp.com. Returns null if it could not determine.
+     *
+     * $exportCookies writes the live session back to the jar on success — see
+     * keepSessionAlive(). Off by default so a plain probe never rewrites state.
      */
-    public function checkSession(): ?bool
+    public function checkSession(bool $exportCookies = false): ?bool
     {
         $cfg = config('services.yelp.business');
         $script = base_path('scripts/yelp-login.mjs');
@@ -483,6 +589,11 @@ class YelpBusinessService
         }
         if (! empty($cfg['proxy'])) {
             $args[] = '--proxy=' . $cfg['proxy'];
+        }
+        if ($exportCookies) {
+            // Only written when the probe lands on an authenticated URL, so a
+            // logged-out run can never overwrite a good jar.
+            $args[] = '--export-cookies=' . $cookiesFile;
         }
 
         $process = new Process($args, base_path());
@@ -606,6 +717,20 @@ class YelpBusinessService
                 $internal = (int) (($cfg['login_timeout_ms'] ?? 180000) / 1000);
                 $env = $this->browserProcessEnv();
                 $env['YELP_RUN_TIMEOUT'] = (string) ($internal + 300); // flock wrapper hard-kill
+
+                // yelp-login.mjs runs modeLogin HEADED — always, including
+                // --unattended — because Yelp flags headless credential
+                // submits. On a server there is no X display, so the scheduled
+                // 02:30 recovery could never actually paint a browser and the
+                // whole auto-recovery path was dead on production. Give it a
+                // virtual one. Xvfb is already a dependency of the noVNC
+                // viewer, so nothing new to install.
+                if (empty($env['DISPLAY'])) {
+                    $display = $this->ensureVirtualDisplay();
+                    if ($display) {
+                        $env['DISPLAY'] = $display;
+                    }
+                }
                 $process = new Process($this->wrapWithFlock($args), base_path(), $env);
                 $process->setTimeout($internal + 360);
                 $process->run();
