@@ -502,13 +502,26 @@
                     @endif
                 </div>
 
+                {{-- Rewritten once the server took over this job. The old copy
+                     said the extension was "the path that uploads run on",
+                     which stopped being true when yelp:keep-session shipped —
+                     it refreshes the same jar every 6h with no browser open,
+                     so following the old instructions was unnecessary work. --}}
                 <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                    A small Chrome extension shares your Yelp session with the server, on every login and every
-                    6 hours. This is the path that uploads run on.
+                    <span class="font-semibold text-zinc-700 dark:text-zinc-200">The server keeps this alive by itself.</span>
+                    Every 6 hours it opens the dashboard, refreshes the session, and saves the new cookies —
+                    no browser open, nothing to maintain. If the session ever does expire, it logs back in
+                    with the email and password above and only emails you if Yelp asks for a code it cannot answer.
                 </p>
 
-                <div class="rounded-lg bg-sky-50 p-3 mb-3 text-sm dark:bg-sky-900/20">
-                    <p class="font-semibold text-sky-900 dark:text-sky-200 mb-1">Two steps, once:</p>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                    The Chrome extension below is the older path and is <span class="font-semibold">no longer required</span>.
+                    It stays available as a manual fallback: installing it lets your own logged-in browser hand its
+                    session to the server, which is a fast way to recover if automatic login is ever blocked.
+                </p>
+
+                <div class="rounded-lg bg-zinc-50 p-3 mb-3 text-sm dark:bg-zinc-800/40">
+                    <p class="font-semibold text-zinc-700 dark:text-zinc-200 mb-1">Optional fallback — two steps, once:</p>
                     <ol class="list-decimal ml-5 space-y-0.5 text-sky-900/90 dark:text-sky-200/90">
                         <li>Install the extension: <code>chrome://extensions</code> → Developer mode → Load unpacked → <code>extension/yelp-session-bridge</code></li>
                         <li>Reload this page — the extension connects itself (a green "connected" toast appears).</li>
