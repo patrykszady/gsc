@@ -61,8 +61,16 @@ class TestimonialList extends Component
      */
     public function syncYelpReviews(): void
     {
+        // media-sync, not social-media. social-media runs on supervisor-1 with
+        // timeout=60 (config/horizon.php), so this job — which the docblock
+        // above correctly describes as taking 5+ minutes — was SIGKILLed at 60
+        // seconds every single time the button was pressed. The command's own
+        // 300s process timeout could never even fire. media-sync is the
+        // Puppeteer queue (timeout=360, maxProcesses=1) every other browser job
+        // already uses, and its single process also serialises this against
+        // photo uploads that share the Chromium profile.
         \Illuminate\Support\Facades\Artisan::queue('testimonials:sync-yelp-reviews', ['--only-new' => true])
-            ->onQueue('social-media');
+            ->onQueue('media-sync');
 
         session()->flash('success', 'Yelp sync queued — new reviews will appear here within a few minutes. Check storage/logs for details.');
     }

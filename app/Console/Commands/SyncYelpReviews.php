@@ -30,9 +30,15 @@ class SyncYelpReviews extends Command
         $this->info('Fetched '.count($reviews).' review(s).');
 
         if (empty($reviews)) {
-            $this->warn('No Yelp reviews were discovered.');
+            // FAILURE, not SUCCESS. Every tier returning nothing means the
+            // scrape is broken — www.yelp.com answers 403 to this server with
+            // or without cookies, so tier 1 cannot succeed and tier 2 has to
+            // beat DataDome. Reporting success here is why the scheduler's
+            // ->onFailure() hook in routes/console.php never fired while the
+            // job was being SIGKILLed on the wrong queue for weeks.
+            $this->warn('No Yelp reviews were discovered — every tier returned zero.');
 
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
         $stats = [
