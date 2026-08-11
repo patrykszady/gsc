@@ -360,14 +360,23 @@
                 Yelp's Terms of Service and risks account suspension. Credentials below are encrypted at rest.
             </div>
 
+            {{-- Every claim in the previous version of this box was false by the
+                 time it was read: it credited the browser extension for keeping
+                 the session fresh (yelp:keep-session does that now, server-side
+                 every 6h), said Yelp's bot protection "never sees a scripted
+                 login" (it sees one on every keep-alive — hence checkSession()'s
+                 dedicated `blocked` branch), and told the operator reviews need
+                 no login and come from the public page (www.yelp.com answers 403
+                 to this server, so the scrape only works through the same proxy
+                 and captcha solver the login uses). --}}
             <div class="rounded-lg bg-sky-50 p-3 text-sm text-sky-800 dark:bg-sky-900/20 dark:text-sky-200">
-                <strong>How this works:</strong> photo uploads need a logged-in Yelp session. The browser extension
-                below supplies it &mdash; you stay logged in to biz.yelp.com in your normal browser, and it keeps this
-                server's copy fresh. Because the login happens in <em>your</em> browser on <em>your</em> connection,
-                Yelp's bot protection never sees a scripted login.
+                <strong>How this works:</strong> enter the Yelp email and password below &mdash; that is the whole
+                setup. The server signs in on its own and revisits the dashboard every 6 hours to keep the session
+                from expiring. Nothing runs on your computer: no browser to leave open, no extension, nothing to paste.
                 <br><br>
-                <strong>Reviews are separate</strong> and need no login at all &mdash; they are read from the public
-                Yelp business page on a weekly schedule.
+                If the session ever does expire, the server signs in again by itself and re-uploads any photos that
+                were waiting. It only emails you when Yelp asks for something no automation can answer &mdash; a
+                verification code, or a password that no longer works.
             </div>
 
             @if($yelpSessionDead)
@@ -378,7 +387,7 @@
                             <p class="font-semibold">Yelp session expired &mdash; re-login required</p>
                             <p>
                                 The persistent Chromium profile is no longer authenticated, so background photo
-                                uploads are being skipped. Click <strong>Verify Login</strong> below to re-establish
+                                uploads are paused. The server is retrying by itself; use <strong>Manual sign-in</strong> below only to re-establish
                                 the session in the embedded viewer (DataDome blocks unattended scripted logins, so
                                 this step must be interactive).
                             </p>
@@ -438,7 +447,7 @@
                             <span wire:loading wire:target="checkYelpSession">Checking…</span>
                         </flux:button>
                         <flux:button type="button" wire:click="verifyYelpLogin" variant="primary" size="xs" icon="window">
-                            Verify Login
+                            Manual sign-in
                         </flux:button>
                     </div>
                 </div>
@@ -485,113 +494,54 @@
                     </div>
                 </div>
                 <p class="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                    Click <strong>Verify Login</strong> any time Yelp invalidates the session (e.g. after a password change
+                    Use <strong>Manual sign-in</strong> only if automatic sign-in reports it needs a verification code (e.g. after a password change
                     or a long idle period). The embedded browser closes itself once login succeeds.
                 </p>
             </div>
 
-            {{-- Browser extension bridge: alternative path for when the
-                 proxy/captcha route is not wanted. --}}
+            {{-- Was: the browser-extension bridge — install instructions, pairing
+                 dots, token reveal/copy and a "stay logged in to biz.yelp.com as
+                 you normally would" note. All of it described a setup step the
+                 operator no longer has to perform, and the code never required
+                 it (extension_paired_at is a display flag). The ingest endpoint
+                 and its token controls still exist, folded into Manual overrides
+                 below for the rare case where handing over a desktop session is
+                 faster than waiting for automatic sign-in. --}}
             <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Keeping the session alive</h4>
-                    @if($yelpExtensionConfigured)
-                        <flux:button type="button" wire:click="revokeYelpExtensionToken" wire:confirm="Revoke the extension token? The extension will stop sending your Yelp session until you paste a new one." variant="subtle" size="xs">
-                            Revoke token
+                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Automatic sign-in</h4>
+                    @if($yelpCanAutoLogin)
+                        <flux:button type="button" wire:click="yelpLoginNow" variant="subtle" size="xs" wire:loading.attr="disabled">
+                            Sign in now
                         </flux:button>
                     @endif
                 </div>
 
-                {{-- Rewritten once the server took over this job. The old copy
-                     said the extension was "the path that uploads run on",
-                     which stopped being true when yelp:keep-session shipped —
-                     it refreshes the same jar every 6h with no browser open,
-                     so following the old instructions was unnecessary work. --}}
-                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                    <span class="font-semibold text-zinc-700 dark:text-zinc-200">The server keeps this alive by itself.</span>
-                    Every 6 hours it opens the dashboard, refreshes the session, and saves the new cookies —
-                    no browser open, nothing to maintain. If the session ever does expire, it logs back in
-                    with the email and password above and only emails you if Yelp asks for a code it cannot answer.
-                </p>
-
-                <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                    The Chrome extension below is the older path and is <span class="font-semibold">no longer required</span>.
-                    It stays available as a manual fallback: installing it lets your own logged-in browser hand its
-                    session to the server, which is a fast way to recover if automatic login is ever blocked.
-                </p>
-
-                <div class="rounded-lg bg-zinc-50 p-3 mb-3 text-sm dark:bg-zinc-800/40">
-                    <p class="font-semibold text-zinc-700 dark:text-zinc-200 mb-1">Optional fallback — two steps, once:</p>
-                    <ol class="list-decimal ml-5 space-y-0.5 text-sky-900/90 dark:text-sky-200/90">
-                        <li>Install the extension: <code>chrome://extensions</code> → Developer mode → Load unpacked → <code>extension/yelp-session-bridge</code></li>
-                        <li>Reload this page — the extension connects itself (a green "connected" toast appears).</li>
-                    </ol>
-                    <p class="mt-2 text-sky-900/90 dark:text-sky-200/90">
-                        From then on, just stay logged in to
-                        <a href="https://biz.yelp.com" target="_blank" rel="noopener" class="underline">biz.yelp.com</a>
-                        as you normally would. There is nothing to copy and nothing to maintain.
+                @if($yelpCanAutoLogin)
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                        <span class="inline-block size-2 rounded-full bg-green-500 align-middle"></span>
+                        <span class="align-middle">Armed &mdash; a dead session repairs itself, usually within a few minutes.</span>
                     </p>
-                </div>
-
-                <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="size-2 rounded-full {{ $yelpExtensionPairedAt ? 'bg-green-500' : 'bg-zinc-400' }}"></span>
-                        <span class="text-zinc-700 dark:text-zinc-300">
-                            @if($yelpExtensionPairedAt)
-                                Extension connected <span class="text-zinc-500">({{ \Carbon\Carbon::parse($yelpExtensionPairedAt)->diffForHumans() }})</span>
-                            @else
-                                Extension not connected yet
-                            @endif
+                @else
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                        <span class="inline-block size-2 rounded-full bg-red-500 align-middle"></span>
+                        <span class="align-middle">
+                            Not armed &mdash; if the session dies, uploads stay paused until you act.
+                            Yelp ties a solved captcha to the IP that requested it, so recovery needs
+                            <strong>both</strong> a captcha key and a proxy (set them under Manual overrides).
                         </span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        @php
-                            // "Not received yet" must depend on whether a push
-                            // arrived, not on the verification result — those
-                            // are two different facts, and showing the
-                            // never-received label next to a push timestamp
-                            // reads as a contradiction.
-                            $vState = match(true) {
-                                $yelpExtensionVerified === 'ok' => ['bg-green-500', 'Session verified'],
-                                $yelpExtensionVerified === 'failed' => ['bg-red-500', 'Session did not authenticate'],
-                                $yelpExtensionVerified === 'indeterminate' => ['bg-amber-500', 'Could not verify (bot wall)'],
-                                (bool) $yelpExtensionLastPushAt => ['bg-sky-500', 'Received — verifying'],
-                                default => ['bg-zinc-400', 'Not received yet'],
-                            };
-                        @endphp
-                        <span class="size-2 rounded-full {{ $vState[0] }}"></span>
-                        <span class="text-zinc-700 dark:text-zinc-300">
-                            {{ $vState[1] }}
-                            @if($yelpExtensionLastPushAt)
-                                <span class="text-zinc-500">({{ \Carbon\Carbon::parse($yelpExtensionLastPushAt)->diffForHumans() }})</span>
-                            @endif
-                        </span>
-                    </div>
-                </div>
+                    </p>
+                @endif
 
-                {{-- Manual path only for the odd case (another machine, no
-                     admin login in that browser). Auto-pairing makes this
-                     unnecessary day-to-day, so it hides in a details fold. --}}
-                <details class="text-xs text-zinc-500 dark:text-zinc-400">
-                    <summary class="cursor-pointer select-none">Manual setup (advanced)</summary>
-                    <div class="mt-2 space-y-2">
-                        <p>Paste the server URL and this token into the extension's Settings page yourself:</p>
-                        @if($yelpExtensionToken)
-                            <div class="flex items-center gap-2" x-data="{ copied: false }">
-                                <code class="flex-1 select-all break-all rounded bg-zinc-100 px-2 py-1 dark:bg-zinc-800">{{ $yelpExtensionToken }}</code>
-                                <flux:button type="button" size="xs" variant="subtle"
-                                    x-on:click="navigator.clipboard.writeText(@js($yelpExtensionToken)); copied = true; setTimeout(() => copied = false, 2000)">
-                                    <span x-show="!copied">Copy</span>
-                                    <span x-show="copied" x-cloak>Copied</span>
-                                </flux:button>
-                            </div>
-                        @else
-                            <flux:button type="button" wire:click="revealYelpExtensionToken" variant="subtle" size="xs" icon="key">
-                                Reveal token
-                            </flux:button>
-                        @endif
-                    </div>
-                </details>
+                {{-- The single most useful line on the page when something is
+                     wrong: what the last unattended attempt actually did. --}}
+                @if($yelpAutoLoginResult)
+                    <p class="mt-2 text-xs {{ ($yelpAutoLoginResult['ok'] ?? false) ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400' }}">
+                        Last attempt{{ $yelpAutoLoginAt ? ' ' . \Carbon\Carbon::parse($yelpAutoLoginAt)->diffForHumans() : '' }}:
+                        {{ ($yelpAutoLoginResult['ok'] ?? false) ? 'signed in' : ($yelpAutoLoginResult['code'] ?? 'failed') }}.
+                        {{ $yelpAutoLoginResult['hint'] ?? '' }}
+                    </p>
+                @endif
             </div>
 
             {{-- Reviews: a genuinely separate pipeline. It reads the PUBLIC
@@ -637,13 +587,13 @@
                  working path instead of three competing ones. --}}
             <details class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <summary class="cursor-pointer select-none text-sm font-semibold text-zinc-900 dark:text-white">
-                    Other ways to sign in <span class="font-normal text-zinc-500">(not needed if the extension is connected)</span>
+                    Manual overrides <span class="font-normal text-zinc-500">(rarely needed &mdash; only if automatic sign-in fails)</span>
                 </summary>
                 <div class="mt-3 space-y-4">
             {{-- Backend login: credentials only, nothing else to install. --}}
             <div class="border-t border-zinc-200 pt-4 dark:border-zinc-700">
                 <div class="flex items-center justify-between mb-2">
-                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Automatic login (server-side)</h4>
+                    <h4 class="text-sm font-semibold text-zinc-900 dark:text-white">Captcha solver &amp; proxy</h4>
                     <flux:button type="button" wire:click="yelpLoginNow" variant="primary" size="sm" icon="arrow-right-end-on-rectangle">
                         <span wire:loading.remove wire:target="yelpLoginNow">Log in now</span>
                         <span wire:loading wire:target="yelpLoginNow">Starting…</span>
@@ -822,19 +772,15 @@
                             Close viewer
                         </flux:button>
                     </div>
+                    {{-- "Reset browser profile" removed. It rm -rf'd
+                         services.yelp.business.user_data_dir — the exact profile
+                         the 6-hourly keep-alive maintains and repairs for free —
+                         so the best case after a wipe was burning a paid captcha
+                         solve to rebuild what was already working. It was also
+                         the most destructive control on the page, one misread
+                         tooltip away from a self-inflicted outage. Still
+                         available deliberately: `php artisan yelp:reset-profile`. --}}
                     @unless($yelpRemoteFinished)
-                        <div class="mb-2 flex justify-end">
-                            <flux:button
-                                type="button"
-                                wire:click="resetYelpProfile"
-                                wire:confirm="Wipe the saved Chromium profile and start fresh? Use this if DataDome is stuck on the same cookie."
-                                variant="ghost"
-                                size="xs"
-                                icon="arrow-path"
-                            >
-                                Reset browser profile
-                            </flux:button>
-                        </div>
                         <div
                             class="overflow-hidden rounded-lg border border-zinc-300 bg-black dark:border-zinc-600"
                             style="aspect-ratio: 16/10;"
