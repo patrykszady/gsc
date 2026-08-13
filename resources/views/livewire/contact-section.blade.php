@@ -516,9 +516,32 @@
                                     x-ref="calendarWrap"
                                     x-on:click.capture="onCalendarClick($event)"
                                 >
-                                    <flux:calendar 
-                                        multiple 
-                                        wire:model.live="selectedDates" 
+                                    {{-- wire:key is load-bearing, not decoration.
+                                         wire:model.live makes every date click a
+                                         server round-trip, and each response morphs
+                                         this subtree. Flux's calendar is a custom
+                                         element that builds its own grid on boot, so
+                                         without a stable identity morphdom can tear
+                                         it down and re-boot it against a half-built
+                                         tree — which is exactly the pair of errors
+                                         logged from the homepage on 09 Aug: "Cannot
+                                         read properties of null (reading
+                                         '_disableable')" and "...of undefined
+                                         (reading 'value')", both inside flux.min.js
+                                         boot() under Livewire's onMorph.
+
+                                         The key is deliberately CONSTANT. Interpolating
+                                         the selection would change it on every click and
+                                         force the very recreation this prevents.
+
+                                         Not wire:ignore: the server legitimately writes
+                                         back to selectedDates (synced from timeSelections,
+                                         and cleared after submit), so this subtree has to
+                                         keep receiving updates. --}}
+                                    <flux:calendar
+                                        wire:key="contact-availability-calendar"
+                                        multiple
+                                        wire:model.live="selectedDates"
                                         min="{{ $minSelectableDate }}"
                                         max="{{ $maxSelectableDate }}"
                                         :unavailable="$unavailableWeekendDates"
