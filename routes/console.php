@@ -559,45 +559,64 @@ Schedule::command('seo:bing-sync')
  * then nothing for 48h. A day-of-month step also drifts on 31-day months,
  * firing on the 31st and again on the 1st.
  *
- * Both platforms now draw from ONE shuffle of the week seeded by the ISO week
- * number: Instagram takes the first two days, Facebook the next two. Disjoint by
- * construction — they cannot collide — stable within a week (so a re-run or a
- * missed tick lands on the same days), and different every week, which reads as
- * a human posting rather than clockwork. Same technique the GBP schedule below
- * already uses; that one keeps its own independent draw.
+ * Both the DAYS and the TIME OF DAY are redrawn every week from one stream
+ * seeded by the ISO week number. Instagram takes the first two days of the
+ * shuffle, Facebook the next two, so a same-day collision is impossible rather
+ * than merely unlikely; each also gets its own start hour, so the posts do not
+ * land at the same clock time week after week. Seeded rather than live rand()
+ * on purpose: the plan must be identical every time the scheduler re-evaluates
+ * this file (once a minute), or a post could fire twice or never. Same technique
+ * the GBP schedule below uses; that one keeps its own independent draw.
  */
-$metaPostDays = function (string $platform): array {
+$metaPostPlan = function (string $platform): array {
     $week = now('America/Chicago')->format('o-W');
     $randomizer = new \Random\Randomizer(new \Random\Engine\Mt19937(crc32('meta-social-' . $week)));
+
+    // One shuffle, split in two: Instagram takes the first pair of days,
+    // Facebook the next. Drawing both from the same deal is what makes a
+    // same-day collision impossible rather than merely unlikely.
     $days = $randomizer->shuffleArray(range(1, 7));
 
+    // Start hour is drawn per platform per week too, so the time of day moves
+    // as well as the day. Each window is chosen so that start + the command's
+    // own --random-delay jitter still lands inside working hours: Instagram
+    // 10:00-16:00 + up to 3h => 10:00-19:00; Facebook 09:00-15:00 + up to 4h
+    // => 09:00-19:00. Drawn from the SAME seeded stream, so the whole plan is
+    // reproducible for the week — a re-run or a missed tick recomputes the
+    // identical schedule instead of posting twice.
+    $igHour = $randomizer->getInt(10, 16);
+    $fbHour = $randomizer->getInt(9, 15);
+
     return $platform === 'instagram'
-        ? array_slice($days, 0, 2)
-        : array_slice($days, 2, 2);
+        ? ['days' => array_slice($days, 0, 2), 'at' => sprintf('%02d:00', $igHour)]
+        : ['days' => array_slice($days, 2, 2), 'at' => sprintf('%02d:00', $fbHour)];
 };
+
+$igPlan = $metaPostPlan('instagram');
+$fbPlan = $metaPostPlan('facebook');
 
 // Uses --via=puppeteer so the post is also location-tagged via the IG web UI
 // (Graph API can't tag location without App Review).
 Schedule::command('social:post --platform=instagram --via=puppeteer --yes --random-delay=180')
-    ->dailyAt('16:00')
+    ->dailyAt($igPlan['at'])
     ->timezone('America/Chicago')
     ->withoutOverlapping(60 * 4) // command can sleep up to 3h + run ~1m, give it 4h
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Instagram twice-weekly post failed'))
     ->when(fn () => config('services.meta.enabled')
-        && in_array(now('America/Chicago')->dayOfWeekIso, $metaPostDays('instagram'), true));
+        && in_array(now('America/Chicago')->dayOfWeekIso, $igPlan['days'], true));
 
 // Facebook: the other two days of the same shuffle, earlier in the day.
 Schedule::command('social:post --platform=facebook --yes --random-delay=240')
-    ->dailyAt('10:00')
+    ->dailyAt($fbPlan['at'])
     ->timezone('America/Chicago')
     ->withoutOverlapping(60 * 5) // command can sleep up to 4h + run ~1m, give it 5h
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled Facebook twice-weekly post failed'))
     ->when(fn () => config('services.meta.enabled')
-        && in_array(now('America/Chicago')->dayOfWeekIso, $metaPostDays('facebook'), true));
+        && in_array(now('America/Chicago')->dayOfWeekIso, $fbPlan['days'], true));
 
 // Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
 // on TWO RANDOM days each week rather than fixed weekdays, so the cadence looks
