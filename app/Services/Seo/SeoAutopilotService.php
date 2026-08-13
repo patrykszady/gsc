@@ -862,6 +862,20 @@ class SeoAutopilotService
             return ($sample['impressions'] ?? 0) > 0 ? SeoAction::OUTCOME_NO_EFFECT : SeoAction::OUTCOME_INCONCLUSIVE;
         }
 
+        // A page with almost no traffic cannot produce a trustworthy verdict.
+        //
+        // Without this floor, 0 impressions → 1 impression scored +100% and was
+        // filed as WORKED, and 1 → 301 scored +30000%. Every one of the 59
+        // measured "reindex" actions on production started from <= 1 impression,
+        // 11 were recorded as wins, and the dashboard reported an average of
+        // +2818% — while the MEDIAN effect across all of them was exactly 0%.
+        // learnedWeight() then scored the category up on that noise, so the
+        // autopilot kept proposing more of it: a loop that taught itself from
+        // rounding error.
+        if ($before < $this->minMeaningfulBaseline($metric)) {
+            return SeoAction::OUTCOME_INCONCLUSIVE;
+        }
+
         $delta = $this->deltaPct($before, $after, $metric);
         if ($delta >= 15) {
             return SeoAction::OUTCOME_WORKED;
@@ -871,6 +885,23 @@ class SeoAutopilotService
         }
 
         return SeoAction::OUTCOME_NO_EFFECT;
+    }
+
+    /**
+     * Smallest "before" value at which a percentage change means anything.
+     *
+     * Chosen so a single stray impression or click cannot clear the ±15% bar in
+     * judge(). Search Console rounds and samples low-volume data heavily, so
+     * anything under these floors is indistinguishable from noise.
+     */
+    private function minMeaningfulBaseline(string $metric): float
+    {
+        return match ($metric) {
+            'clicks' => 3.0,
+            'ctr' => 3.0,          // a CTR built on 1-2 clicks swings wildly
+            'position' => 10.0,    // average position over <10 impressions is unstable
+            default => 10.0,       // impressions
+        };
     }
 
     /** Signed % improvement (position is inverted so "up" always means better). */

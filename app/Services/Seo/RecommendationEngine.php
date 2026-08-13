@@ -653,24 +653,38 @@ class RecommendationEngine
             return [];
         }
 
+        // Group the wins, then summarise with a MEDIAN rather than a mean.
+        //
+        // This read AVG(delta_pct) and printed "avg +2818%" — a figure produced
+        // almost entirely by one action that went from 1 impression to 301
+        // (+30000%). Percentage changes off near-zero baselines are unbounded
+        // above and cluster at 0 below, so their mean is meaningless; the median
+        // of the same set was 0%. judge() now refuses to call a low-baseline
+        // action a win at all, but this stays median so a single outlier can
+        // never again headline the dashboard.
         $wins = SeoAction::where('outcome', SeoAction::OUTCOME_WORKED)
             ->where('measured_at', '>=', now()->subDays(45))
-            ->selectRaw('category, COUNT(*) n, AVG(COALESCE(delta_pct, 0)) avg_delta')
+            ->get(['category', 'delta_pct'])
             ->groupBy('category')
-            ->orderByDesc('n')
+            ->sortByDesc(fn ($rows) => $rows->count())
             ->first();
 
-        if (! $wins || (int) $wins->n < 2) {
+        if (! $wins || $wins->count() < 2) {
             return [];
         }
+
+        $deltas = $wins->pluck('delta_pct')->filter(fn ($d) => $d !== null)->map(fn ($d) => (float) $d)->sort()->values();
+        $medianDelta = $deltas->isEmpty()
+            ? 0.0
+            : (float) $deltas[intdiv($deltas->count(), 2)];
 
         return [[
             't' => 'Double down on what measurably worked',
             'd' => sprintf(
-                '%d "%s" action(s) measured as wins recently (avg %+.0f%% on their metric). The autopilot keeps generating these — approve open proposals of this type first.',
-                (int) $wins->n,
-                (string) $wins->category,
-                (float) $wins->avg_delta
+                '%d "%s" action(s) measured as wins recently (median %+.0f%% on their metric). The autopilot keeps generating these — approve open proposals of this type first.',
+                $wins->count(),
+                (string) $wins->first()->category,
+                $medianDelta
             ),
             'p' => 'next',
         ]];
