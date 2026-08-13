@@ -329,7 +329,19 @@
 
             {{-- Nearby Areas — internal linking + local SEO signal --}}
             @php
-                $nearbyHomeAreas = $area->nearestCities(8);
+                // 12, not 8. Purely geographic (Haversine over the lat/lng we
+                // already store), so this writes no copy and touches no rows —
+                // it just lets each town link to four more of its actual
+                // neighbours. Measured effect on the striking-distance towns
+                // the SEO dashboard flagged: evanston +4, glenview +8,
+                // kenilworth +4 inbound editorial links, all from the most
+                // topically adjacent pages that exist.
+                //
+                // Honest about the size of this: a handful of internal links
+                // does not move a page from position 12 to 8. It is a cheap,
+                // correctly-aimed nudge, not the fix. The real gap on those
+                // towns is page content, which has to come from the client.
+                $nearbyHomeAreas = $area->nearestCities(12);
                 if ($nearbyHomeAreas->isEmpty()) {
                     $nearbyHomeAreas = \App\Models\AreaServed::where('id', '!=', $area->id)
                         ->inRandomOrder()->take(6)->get();

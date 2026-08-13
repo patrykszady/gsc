@@ -615,20 +615,84 @@ class RecommendationEngine
             return [];
         }
         $end = Carbon::parse($maxDate);
+
+        // Impressions AND impression-weighted position per page. Position is the
+        // half that was missing: without it this fired on pages whose ranking had
+        // not moved at all.
         $agg = fn ($from, $to) => \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$from, $to])
             ->whereNotNull('page')
-            ->selectRaw('page, SUM(impressions) imp')
+            ->selectRaw('page, SUM(impressions) imp, SUM(impressions * position) / NULLIF(SUM(impressions), 0) wpos')
             ->groupBy('page')
-            ->pluck('imp', 'page');
+            ->get()
+            ->keyBy('page');
+
         $prior = $agg((clone $end)->subDays(13)->toDateString(), (clone $end)->subDays(7)->toDateString());
         $recent = $agg((clone $end)->subDays(6)->toDateString(), $end->toDateString());
 
-        $losers = collect($prior)
-            ->map(function ($imp, $page) use ($recent) {
-                return ['path' => parse_url((string) $page, PHP_URL_PATH) ?: (string) $page, 'drop' => (int) $imp - (int) ($recent[$page] ?? 0), 'prior' => (int) $imp];
+        // A page's own typical week, so a drop is judged against its baseline
+        // rather than against whatever last week happened to be. Without this,
+        // any one-week spike guarantees a "decay" alert the following week.
+        $median8w = \App\Support\Tenancy::table('gsc_query_metrics')
+            ->whereBetween('date', [(clone $end)->subDays(69)->toDateString(), (clone $end)->subDays(14)->toDateString()])
+            ->whereNotNull('page')
+            ->selectRaw('page, SUM(impressions) / 8 weekly_avg')
+            ->groupBy('page')
+            ->pluck('weekly_avg', 'page');
+
+        // Pages mid-experiment. Telling someone to rewrite a page whose title is
+        // being measured destroys the experiment and the answer it was going to
+        // give. Applied-but-not-yet-measured is exactly "in flight".
+        $inFlight = Schema::hasTable('seo_actions')
+            ? \App\Models\SeoAction::query()
+                ->where('status', \App\Models\SeoAction::STATUS_APPLIED)
+                ->whereNull('measured_at')
+                ->whereNotNull('target_url')
+                ->pluck('target_url')
+                ->map(fn ($u) => parse_url((string) $u, PHP_URL_PATH) ?: (string) $u)
+                ->all()
+            : [];
+
+        $losers = $prior
+            ->map(function ($row, $page) use ($recent, $median8w) {
+                $recentRow = $recent[$page] ?? null;
+                $priorImp = (int) $row->imp;
+                $recentImp = (int) ($recentRow->imp ?? 0);
+
+                return [
+                    'path' => parse_url((string) $page, PHP_URL_PATH) ?: (string) $page,
+                    'drop' => $priorImp - $recentImp,
+                    'prior' => $priorImp,
+                    'recent' => $recentImp,
+                    // Position rises as ranking worsens, so this is positive when we slipped.
+                    'pos_delta' => ($recentRow && $row->wpos !== null && $recentRow->wpos !== null)
+                        ? (float) $recentRow->wpos - (float) $row->wpos
+                        : 0.0,
+                    'typical_week' => (float) ($median8w[$page] ?? 0),
+                ];
             })
-            ->filter(fn ($r) => $r['drop'] >= 50 && $r['drop'] >= $r['prior'] * 0.5)
+            ->filter(function ($r) use ($inFlight) {
+                // Original volume gate.
+                if ($r['drop'] < 50 || $r['drop'] < $r['prior'] * 0.5) {
+                    return false;
+                }
+
+                // Ranking must actually have worsened. Schaumburg's flagged
+                // "decay" was 1,312 -> 104 impressions at position 3.9 -> 4.0:
+                // the SERP stopped showing it as often, which no amount of
+                // content editing brings back.
+                if ($r['pos_delta'] < 1.5) {
+                    return false;
+                }
+
+                // And it must be below the page's own normal week, not merely
+                // below an unusual one.
+                if ($r['typical_week'] > 0 && $r['recent'] >= $r['typical_week']) {
+                    return false;
+                }
+
+                return ! in_array($r['path'], $inFlight, true);
+            })
             ->sortByDesc('drop')
             ->take(3)
             ->values();

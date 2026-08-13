@@ -92,6 +92,33 @@ Schedule::command('js-errors:resolve --stale=30 --force')->weekly()
 // Google Business Profile: health check + daily media sync
 Schedule::command('google-business-profile:health')->daily()
     ->appendOutputTo(storage_path('logs/schedule.log'));
+
+// GBP service areas + categories: push config/gbp-services.php to the live
+// profile weekly.
+//
+// Both commands existed and neither had ever been scheduled, so the live
+// profile could drift from the repo's intent with nobody noticing. That matters
+// more than it sounds: categories are the strongest documented RELEVANCE signal
+// for local-pack ranking, and for a service-area business the service-area list
+// is the documented coverage signal. Meanwhile GBP is currently returning ~191
+// impressions a month with zero non-brand discovery keywords — i.e. we are not
+// in the pack at all, rather than ranking badly inside it.
+//
+// Idempotent pushes, so a weekly run is a no-op when the profile already
+// matches. Sunday early morning, clear of the nightly media batch.
+Schedule::command('gbp:sync-service-areas')->weeklyOn(7, '04:10')
+    ->timezone('America/Chicago')
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled gbp:sync-service-areas failed'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
+
+Schedule::command('google-business-profile:update-profile --categories')->weeklyOn(7, '04:20')
+    ->timezone('America/Chicago')
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled GBP category sync failed'))
+    ->when(fn () => config('services.google.business_profile.enabled'));
 Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP sync failed'));
