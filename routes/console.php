@@ -549,29 +549,55 @@ Schedule::command('seo:bing-sync')
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
     ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
 
-// Social uploads run every other day in Chicago time (not daily).
-// The random delay keeps the exact publish minute less predictable.
+/*
+ * Meta cadence: each platform posts TWICE a week, and never on the same day as
+ * the other.
+ *
+ * Was an every-other-day cron on both — roughly 3-4 posts a week each, and
+ * because the two crons shared the same day-of-month parity they fired on the
+ * SAME days, so the audience saw Facebook and Instagram light up together and
+ * then nothing for 48h. A day-of-month step also drifts on 31-day months,
+ * firing on the 31st and again on the 1st.
+ *
+ * Both platforms now draw from ONE shuffle of the week seeded by the ISO week
+ * number: Instagram takes the first two days, Facebook the next two. Disjoint by
+ * construction — they cannot collide — stable within a week (so a re-run or a
+ * missed tick lands on the same days), and different every week, which reads as
+ * a human posting rather than clockwork. Same technique the GBP schedule below
+ * already uses; that one keeps its own independent draw.
+ */
+$metaPostDays = function (string $platform): array {
+    $week = now('America/Chicago')->format('o-W');
+    $randomizer = new \Random\Randomizer(new \Random\Engine\Mt19937(crc32('meta-social-' . $week)));
+    $days = $randomizer->shuffleArray(range(1, 7));
+
+    return $platform === 'instagram'
+        ? array_slice($days, 0, 2)
+        : array_slice($days, 2, 2);
+};
+
 // Uses --via=puppeteer so the post is also location-tagged via the IG web UI
 // (Graph API can't tag location without App Review).
 Schedule::command('social:post --platform=instagram --via=puppeteer --yes --random-delay=180')
-    ->cron('0 16 */2 * *')
+    ->dailyAt('16:00')
     ->timezone('America/Chicago')
     ->withoutOverlapping(60 * 4) // command can sleep up to 3h + run ~1m, give it 4h
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Instagram every-other-day post failed'))
-    ->when(fn () => config('services.meta.enabled'));
+    ->onFailure(fn () => logger()->error('Scheduled Instagram twice-weekly post failed'))
+    ->when(fn () => config('services.meta.enabled')
+        && in_array(now('America/Chicago')->dayOfWeekIso, $metaPostDays('instagram'), true));
 
-// Facebook follows the same every-other-day cadence.
-// Random delay spreads the post time across the late morning/afternoon window.
+// Facebook: the other two days of the same shuffle, earlier in the day.
 Schedule::command('social:post --platform=facebook --yes --random-delay=240')
-    ->cron('0 10 */2 * *')
+    ->dailyAt('10:00')
     ->timezone('America/Chicago')
     ->withoutOverlapping(60 * 5) // command can sleep up to 4h + run ~1m, give it 5h
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Facebook every-other-day post failed'))
-    ->when(fn () => config('services.meta.enabled'));
+    ->onFailure(fn () => logger()->error('Scheduled Facebook twice-weekly post failed'))
+    ->when(fn () => config('services.meta.enabled')
+        && in_array(now('America/Chicago')->dayOfWeekIso, $metaPostDays('facebook'), true));
 
 // Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
 // on TWO RANDOM days each week rather than fixed weekdays, so the cadence looks
