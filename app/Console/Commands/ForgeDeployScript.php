@@ -28,11 +28,26 @@ class ForgeDeployScript extends Command
 
     private const API = 'https://forge.laravel.com/api/v1';
 
-    private const MARKER = '# --- seo: sitemap regenerate + Google re-read (managed by forge:deploy-script) ---';
+    private const MARKER = '# --- seo: ask Google to re-read the sitemap (managed by forge:deploy-script) ---';
+
+    /**
+     * Inserted AFTER the script's existing sitemap:generate line — the live
+     * script already regenerates the sitemap and pings IndexNow on deploy, so
+     * appending our own generate would run it twice. Only the Google half is
+     * missing: IndexNow reaches Bing/Yandex but never Google, and the ping
+     * endpoint died June 2023; sitemaps.submit is the supported nudge.
+     */
+    private const SEO_INSERT = <<<'BASH'
+# --- seo: ask Google to re-read the sitemap (managed by forge:deploy-script) ---
+# IndexNow (below/above) never reaches Google. `|| true`: until
+# search-console:auth has been re-run once for the write scope, this reports a
+# 403 — which must never fail a deploy.
+$FORGE_PHP artisan seo:gsc-submit-sitemaps || true
+BASH;
 
     private const SEO_BLOCK = <<<'BASH'
 
-# --- seo: sitemap regenerate + Google re-read (managed by forge:deploy-script) ---
+# --- seo: ask Google to re-read the sitemap (managed by forge:deploy-script) ---
 # Regenerate against the just-deployed code/data, then ask Google to re-read.
 # sitemaps.submit is the supported nudge (the ping endpoint died June 2023 and
 # IndexNow never reaches Google). `|| true`: until search-console:auth has been
@@ -109,7 +124,24 @@ BASH;
             return self::SUCCESS;
         }
 
-        $updated = rtrim($script, "\n") . "\n" . self::SEO_BLOCK . "\n";
+        // Insert after the script's own sitemap:generate when it has one (the
+        // live script does — appending our full block would generate twice);
+        // fall back to appending the complete block when it does not.
+        $lines = preg_split('/\r?\n/', $script);
+        $generateIdx = null;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'artisan sitemap:generate')) {
+                $generateIdx = $i;
+                break;
+            }
+        }
+
+        if ($generateIdx !== null) {
+            array_splice($lines, $generateIdx + 1, 0, explode("\n", self::SEO_INSERT));
+            $updated = rtrim(implode("\n", $lines), "\n") . "\n";
+        } else {
+            $updated = rtrim($script, "\n") . "\n" . self::SEO_BLOCK . "\n";
+        }
 
         if ($this->option('dry-run')) {
             $this->warn('Dry run — script WOULD become:');
