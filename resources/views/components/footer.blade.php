@@ -136,6 +136,16 @@
                         <li><a href="/warranty" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Warranty</a></li>
                         <li><a href="/insurance-claims" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Insurance Claim Repairs</a></li>
                         <li><a href="/how-to-choose-a-remodeling-contractor" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">How to Choose a Contractor</a></li>
+                        {{-- FAQ was missing from its own Resources list and had
+                             exactly two inbound links site-wide (/financing and
+                             the area pricing guide) — no nav, no footer, no hub
+                             page. Google's last crawl of it was 22 Jun and it
+                             still holds a 404 on file for a page that returns
+                             200. An orphan gets crawled rarely; a footer link
+                             puts it on all 700+ pages, which is a real recrawl
+                             signal rather than an IndexNow ping Google never
+                             receives. --}}
+                        <li><a href="/faq" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Remodeling FAQ</a></li>
                         <li><a href="/compare" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Contractor Alternatives</a></li>
                     </ul>
                 </div>

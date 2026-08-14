@@ -454,6 +454,22 @@ class RecommendationEngine
             return [];
         }
 
+        // Only alarm if the recent week is genuinely below normal, not merely
+        // below an unusually good one.
+        //
+        // Same false positive the decay detector had: on production this fired
+        // with weekly clicks of 7, 6, 10, 9, 19, 9 — the "prior" week was the
+        // outlier at 19 and the "collapse" landed on 9, the median. Reverting a
+        // title over that would be chasing noise, and at these volumes a single
+        // click is ~10%.
+        $eightWeekAvg = (float) \App\Support\Tenancy::table('gsc_daily_totals')
+            ->whereBetween('date', [(clone $end)->subDays(69)->toDateString(), (clone $end)->subDays(14)->toDateString()])
+            ->sum('clicks') / 8;
+
+        if ($eightWeekAvg > 0 && $recent >= $eightWeekAvg) {
+            return [];
+        }
+
         $losing = \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), $end->toDateString()])
             ->selectRaw('query, SUM(CASE WHEN date >= ? THEN clicks ELSE 0 END) rc, SUM(CASE WHEN date < ? THEN clicks ELSE 0 END) pc', [
