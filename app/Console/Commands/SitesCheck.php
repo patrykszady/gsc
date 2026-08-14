@@ -157,6 +157,23 @@ class SitesCheck extends Command
             }
         }
 
+        // --- content data files -----------------------------------------
+        // Data a page family depends on must exist on the machine, or whole
+        // families degrade silently. lead-service-lines.json lived only in
+        // storage/app/private (gitignored) for months: production never had
+        // it, LeadLineInfo::all() returned [], and all 66 lead-pipe pages
+        // quietly noindexed themselves while area + ZIP pages kept linking to
+        // them. Google carried 66 "excluded by noindex" URLs nobody wanted.
+        if ($site->slug === 'gsc') {
+            $leadTowns = count(\App\Support\LeadLineInfo::all());
+            if ($leadTowns === 0) {
+                $this->line('  <fg=red>lead-service-lines data missing — every lead-pipe page will noindex itself</>');
+                $failures++;
+            } else {
+                $this->line("  lead-lines   {$leadTowns} towns");
+            }
+        }
+
         return $failures;
     }
 }

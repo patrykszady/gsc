@@ -166,9 +166,14 @@ Route::get('/projects/{type}', function (string $type) {
         abort(404);
     }
 
-    request()->merge(['type' => $typeMap[$type]]);
+    // Pass the type to the view directly — NOT request()->merge(). merge()
+    // writes into the query bag, and the canonical builder echoes unknown
+    // query params, so /projects/kitchens declared
+    // rel=canonical href="/projects/kitchens?type=kitchen" — a URL that is in
+    // nobody's sitemap. Google overrode the canonical on these pages
+    // ("Duplicate, Google chose different canonical than user").
     SeoService::projects(null, $typeMap[$type]);
-    return view('projects');
+    return view('projects', ['projectTypeFilter' => $typeMap[$type]]);
 })->where('type', 'kitchens|bathrooms|home-remodeling')
   ->name('projects.type');
 
@@ -325,6 +330,16 @@ Route::get('/areas-served/{area}/bathroom-remodeling', function (string $area) {
 });
 Route::get('/areas-served/{area}/home-remodeling', function (string $area) {
     return redirect("/areas-served/{$area}/services/home-remodeling", 301);
+});
+// basement-remodeling and home-additions were missing from this group even
+// though the same old URL shape existed for them too. The gap was measurable:
+// 260 distinct /areas-served/{area}/{service} 404 paths in tracked_404s
+// (2,179 hits, Googlebot among them) for exactly these two services.
+Route::get('/areas-served/{area}/basement-remodeling', function (string $area) {
+    return redirect("/areas-served/{$area}/services/basement-remodeling", 301);
+});
+Route::get('/areas-served/{area}/home-additions', function (string $area) {
+    return redirect("/areas-served/{$area}/services/home-additions", 301);
 });
 
 // Service landing pages (canonical keyword-rich URLs)

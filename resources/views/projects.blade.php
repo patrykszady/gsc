@@ -5,14 +5,15 @@
     {{-- Breadcrumb Schema --}}
     @php
         // On /projects/{type} filter pages, deepen the trail to
-        // Home › Projects › {Type} so Google can render a category breadcrumb
-        // (the route merges the internal type into request('type')).
+        // Home › Projects › {Type} so Google can render a category breadcrumb.
+        // The route passes $projectTypeFilter as view data; it used to
+        // request()->merge() it, which leaked ?type= into the canonical URL.
         $projectTypeCrumb = [
             'kitchen'      => ['label' => 'Kitchens',        'slug' => 'kitchens'],
             'bathroom'     => ['label' => 'Bathrooms',       'slug' => 'bathrooms'],
             'home-remodel' => ['label' => 'Home Remodeling', 'slug' => 'home-remodeling'],
         ];
-        $activeType = request('type');
+        $activeType = $projectTypeFilter ?? request('type');
         $activeCrumb = $projectTypeCrumb[$activeType] ?? null;
 
         $projectsCrumbs = [];

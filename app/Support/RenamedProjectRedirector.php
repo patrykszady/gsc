@@ -49,6 +49,23 @@ class RenamedProjectRedirector
         // Rebuild the SAME path with the new slug so /photos/{image} — and any
         // nested route added later — survives the rename untouched.
         $segments[1] = $project->slug;
+
+        // …but only if the rebuilt target actually resolves. Photo slugs were
+        // re-slugged independently of project renames (some gained -1/-3
+        // suffixes) with no history table, so a rebuilt /photos/{old-image}
+        // can be a dead path: Search Console then counts the same URL once in
+        // "Page with redirect" and again in "Not found (404)" — a 301 chain
+        // into a wall (16 paths, 538 hits). When the deep path is gone, send
+        // the visitor to the project page, which is where the photo lives now.
+        if (isset($segments[2]) && $segments[2] === 'photos' && isset($segments[3])) {
+            $imageExists = $project->images()
+                ->where('slug', $segments[3])
+                ->exists();
+            if (! $imageExists) {
+                return new RedirectResponse(url("projects/{$project->slug}"), 301);
+            }
+        }
+
         $target = url(implode('/', $segments));
 
         if ($query = $request->getQueryString()) {

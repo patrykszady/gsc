@@ -671,7 +671,14 @@
                  area services listing page becomes eligible for review-star / offer
                  rich results on "{service} {city}" searches. @id points at each
                  canonical /areas-served/{area}/services/{slug} detail page. --}}
-            @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions', 'mudroom-remodeling'] as $areaServicesSlug)
+            {{-- Five services, matching the route constraint in routes/web.php
+                 exactly. This list carried mudroom-remodeling, which the route
+                 does not allow — so every area page's Product schema advertised
+                 /areas-served/{city}/services/mudroom-remodeling, a hard 404,
+                 to Google: 87 distinct 404 paths, 966 hits, Googlebot
+                 confirmed. The services GRID lower down was already correct;
+                 the two lists had drifted. --}}
+            @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'] as $areaServicesSlug)
                 <x-product-service-schema :service-slug="$areaServicesSlug" :area="$area" />
             @endforeach
 

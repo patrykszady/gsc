@@ -35,9 +35,13 @@ class SeoService
         }
 
         // Set canonical to primary domain (critical for SEO)
-        // This tells search engines the primary domain is authoritative
+        // This tells search engines the primary domain is authoritative.
+        // Path only — getRequestUri() carries the raw query string, so an
+        // alternate-domain hit with ?utm_source=... would have declared that
+        // tracking URL canonical on the primary domain. Same allow-list rule
+        // as buildCleanCanonical(): a canonical is a URL we would sitemap.
         if ($isAlternateDomain) {
-            $canonicalUrl = 'https://' . $primaryDomain . request()->getRequestUri();
+            $canonicalUrl = 'https://' . $primaryDomain . request()->getPathInfo();
             self::seo()->canonical($canonicalUrl)->url($canonicalUrl);
         }
     }
@@ -1087,7 +1091,18 @@ class SeoService
     }
 
     /**
-     * Build a canonical URL stripped of tracking params + pagination noise.
+     * Build a canonical URL: the path, plus ONLY query params a route has
+     * explicitly opted in.
+     *
+     * This was a strip-list (drop utm_*, gclid, page, keep the rest) — which
+     * means every param nobody thought of leaked into the canonical: ?type=
+     * from the projects filter, ?project=, Google's own ?srsltid= it appends
+     * to Merchant listings, and Livewire's historical {hash}_page pagination
+     * params. Each leaked param mints a new "canonical" URL that is in no
+     * sitemap, and Search Console filed the results under "Duplicate, Google
+     * chose different canonical than user" — Google was right every time.
+     * A canonical must be a URL we would put in the sitemap; an allow-list is
+     * the only shape that can guarantee that.
      */
     protected static function buildCleanCanonical(): string
     {
@@ -1096,12 +1111,16 @@ class SeoService
         if (empty($query)) {
             return $url;
         }
-        $strip = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-                  'gclid', 'fbclid', 'msclkid', 'mc_cid', 'mc_eid', '_ga', 'ref', 'page'];
-        foreach ($strip as $key) {
-            unset($query[$key]);
-        }
-        return empty($query) ? $url : $url . '?' . http_build_query($query);
+
+        // Params that legitimately change the page's primary content AND whose
+        // URL-with-param we would sitemap. Currently none — filtered views
+        // (/projects/kitchens) have their own path-based routes. Add here
+        // deliberately, never by default.
+        $allow = [];
+
+        $kept = array_intersect_key($query, array_flip($allow));
+
+        return empty($kept) ? $url : $url . '?' . http_build_query($kept);
     }
 
     /**

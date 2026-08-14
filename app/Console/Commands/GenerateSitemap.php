@@ -113,6 +113,12 @@ class GenerateSitemap extends Command
         $excludeExact = [
             'areas',        // alias of /areas-served (noindex)
             'locations',    // alias of /areas-served (noindex)
+            // On gs.construction /portfolio 301s to /projects (the route only
+            // renders for jpeterson). It sat in this tenant's sitemap anyway,
+            // and Google flagged the contradiction: "Page with redirect",
+            // source sitemap.xml. This filter only sees route ACTIONS, so a
+            // middleware- or closure-issued redirect must be listed here.
+            'portfolio',
             's/{code}',     // short link redirects
             'up',           // health check
             'testimonials', // redirect to /reviews

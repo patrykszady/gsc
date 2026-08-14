@@ -38,10 +38,15 @@ class RedirectLegacyUrls
      */
     protected array $patterns = [
         // Old pattern => New pattern (use {1}, {2} for capture groups)
+        //
+        // Targets are /areas-served/..., NOT /areas/... — /areas is a legacy
+        // alias that unconditionally noindexes itself, so these 301s were
+        // donating whatever equity old backlinks still carry to pages Google
+        // is told to ignore. A redirect should land on the canonical URL.
         '#^/project/([^/]+)$#' => '/projects?project={1}',
-        '#^/area/([^/]+)$#' => '/areas/{1}',
-        '#^/city/([^/]+)$#' => '/areas/{1}',
-        '#^/services/([^/]+)/([^/]+)$#' => '/areas/{2}/services/{1}',
+        '#^/area/([^/]+)$#' => '/areas-served/{1}',
+        '#^/city/([^/]+)$#' => '/areas-served/{1}',
+        '#^/services/([^/]+)/([^/]+)$#' => '/areas-served/{2}/services/{1}',
     ];
 
     /**
