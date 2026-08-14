@@ -688,6 +688,91 @@ class SeoReports extends Component
     }
 
     /**
+     * Microsoft Clarity UX signals: last 7 days vs the prior 7, from the
+     * clarity_daily_metrics rows seo:clarity-sync ingests daily. The sync and
+     * health check existed for months while the dashboard showed none of it —
+     * the only surface was a markdown report nobody opened.
+     *
+     * @return array{available:bool, latest:?string, week:array<string,int|float>, prior:array<string,int|float>, scroll:?float}
+     */
+    #[Computed]
+    public function claritySnapshot(): array
+    {
+        if (! Schema::hasTable('clarity_daily_metrics')) {
+            return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null];
+        }
+
+        return Cache::remember(\App\Support\Tenancy::cacheKey('seo_reports_clarity_v1'), 1800, function (): array {
+            $latest = \App\Support\Tenancy::table('clarity_daily_metrics')->max('date');
+            if (! $latest) {
+                return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null];
+            }
+
+            $end = Carbon::parse($latest);
+            $sum = fn ($from, $to) => (array) \App\Support\Tenancy::table('clarity_daily_metrics')
+                ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+                ->selectRaw('COALESCE(SUM(sessions),0) sessions, COALESCE(SUM(users),0) users,'
+                    . 'COALESCE(SUM(dead_clicks),0) dead_clicks, COALESCE(SUM(rage_clicks),0) rage_clicks,'
+                    . 'COALESCE(SUM(quickbacks),0) quickbacks, COALESCE(SUM(script_errors),0) script_errors,'
+                    . 'AVG(scroll_depth) scroll_depth')
+                ->first();
+
+            $week = $sum((clone $end)->subDays(6), $end);
+            $prior = $sum((clone $end)->subDays(13), (clone $end)->subDays(7));
+
+            return [
+                'available' => true,
+                'latest' => $end->toDateString(),
+                'week' => $week,
+                'prior' => $prior,
+                'scroll' => $week['scroll_depth'] !== null ? round((float) $week['scroll_depth'], 1) : null,
+            ];
+        });
+    }
+
+    /**
+     * GEO / AI-crawler readiness: are the machine-readable feeds the AI
+     * crawlers read actually being served and regenerated? llms.txt and
+     * llms-full.txt are static files rewritten daily at 01:40; the other two
+     * are dynamic routes. Age is the tell — a stale llms.txt means the
+     * schedule died and every AI crawler is reading last month's site.
+     *
+     * @return array{feeds:array<int,array{label:string,url:string,ok:bool,age:?string}>}
+     */
+    #[Computed]
+    public function geoSnapshot(): array
+    {
+        return Cache::remember(\App\Support\Tenancy::cacheKey('seo_reports_geo_v1'), 1800, function (): array {
+            $feeds = [];
+
+            foreach ([['llms.txt', 'llms.txt'], ['llms-full.txt', 'llms-full.txt']] as [$label, $file]) {
+                $path = public_path($file);
+                $mtime = is_file($path) ? filemtime($path) : null;
+                $feeds[] = [
+                    'label' => $label,
+                    'url' => url('/' . $file),
+                    'ok' => $mtime !== null,
+                    // Stale = older than 2 days (the schedule writes daily).
+                    'age' => $mtime ? Carbon::createFromTimestamp($mtime)->diffForHumans() : null,
+                    'stale' => $mtime !== null && $mtime < now()->subDays(2)->getTimestamp(),
+                ];
+            }
+
+            foreach ([['ai-feed.json (dynamic)', '/ai-feed.json'], ['geo/answers.json (dynamic)', '/geo/answers.json']] as [$label, $uri]) {
+                $feeds[] = [
+                    'label' => $label,
+                    'url' => url($uri),
+                    'ok' => true,   // dynamic routes; rendered per-request
+                    'age' => null,
+                    'stale' => false,
+                ];
+            }
+
+            return ['feeds' => $feeds];
+        });
+    }
+
+    /**
      * @return array{
      *   available:bool,
      *   totals:array{tracked:int,problem:int,pass:int},

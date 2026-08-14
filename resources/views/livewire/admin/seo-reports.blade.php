@@ -319,6 +319,83 @@
         </flux:card>
     </div>
 
+    {{-- Clarity + GEO: both pipelines ran for months with no dashboard
+         surface — Clarity synced daily into clarity_daily_metrics that only a
+         markdown report read, and the AI feeds regenerated nightly with
+         nothing checking they still did. --}}
+    <div class="mb-6 grid min-w-0 gap-6 xl:grid-cols-2">
+        @php $clarity = $this->claritySnapshot; @endphp
+        <flux:card class="min-w-0 p-5">
+            <div class="mb-3 flex items-center justify-between">
+                <flux:heading size="md">Microsoft Clarity (UX, 7 days)</flux:heading>
+                @if ($clarity['available'])
+                    <flux:text class="text-xs text-zinc-500">through {{ $clarity['latest'] }}</flux:text>
+                @endif
+            </div>
+            @if (! $clarity['available'])
+                <flux:text class="text-sm text-zinc-500">No Clarity data synced yet — run <code>php artisan seo:clarity-sync</code>.</flux:text>
+            @else
+                @php
+                    $w = $clarity['week']; $p = $clarity['prior'];
+                    $tiles = [
+                        ['label' => 'Sessions', 'now' => (int) ($w['sessions'] ?? 0), 'prior' => (int) ($p['sessions'] ?? 0), 'bad_up' => false],
+                        ['label' => 'Rage clicks', 'now' => (int) ($w['rage_clicks'] ?? 0), 'prior' => (int) ($p['rage_clicks'] ?? 0), 'bad_up' => true],
+                        ['label' => 'Dead clicks', 'now' => (int) ($w['dead_clicks'] ?? 0), 'prior' => (int) ($p['dead_clicks'] ?? 0), 'bad_up' => true],
+                        ['label' => 'Quickbacks', 'now' => (int) ($w['quickbacks'] ?? 0), 'prior' => (int) ($p['quickbacks'] ?? 0), 'bad_up' => true],
+                        ['label' => 'Script errors', 'now' => (int) ($w['script_errors'] ?? 0), 'prior' => (int) ($p['script_errors'] ?? 0), 'bad_up' => true],
+                        ['label' => 'Avg scroll depth', 'now' => ($clarity['scroll'] !== null ? $clarity['scroll'] . '%' : '—'), 'prior' => null, 'bad_up' => false],
+                    ];
+                @endphp
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    @foreach ($tiles as $t)
+                        <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                            <div class="text-xs uppercase tracking-wide text-zinc-500">{{ $t['label'] }}</div>
+                            <div class="mt-1 flex items-baseline gap-2">
+                                <span class="text-xl font-semibold tabular-nums text-zinc-900 dark:text-white">{{ $t['now'] }}</span>
+                                @if ($t['prior'] !== null && $t['prior'] != $t['now'])
+                                    @php $up = $t['now'] > $t['prior']; $isBad = $up === $t['bad_up']; @endphp
+                                    <span class="text-xs font-medium tabular-nums {{ $isBad ? 'text-red-500' : 'text-emerald-500' }}">
+                                        {{ $up ? '▲' : '▼' }} {{ $t['prior'] }}
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <flux:text class="mt-3 block text-xs text-zinc-500">
+                    Rage/dead clicks and quickbacks are frustration signals — where they cluster, a page is losing
+                    visitors the rankings already earned. Script errors here should track /admin/js-errors.
+                </flux:text>
+            @endif
+        </flux:card>
+
+        <flux:card class="min-w-0 p-5">
+            <div class="mb-3 flex items-center justify-between">
+                <flux:heading size="md">GEO — AI crawler feeds</flux:heading>
+                <flux:text class="text-xs text-zinc-500">regenerated nightly 01:40</flux:text>
+            </div>
+            <div class="space-y-2">
+                @foreach ($this->geoSnapshot['feeds'] as $feed)
+                    <div class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-700">
+                        <div class="flex min-w-0 items-center gap-2">
+                            <span class="size-2 shrink-0 rounded-full {{ ! $feed['ok'] ? 'bg-red-500' : ($feed['stale'] ? 'bg-amber-500' : 'bg-green-500') }}"></span>
+                            <a href="{{ $feed['url'] }}" target="_blank" rel="noopener" class="truncate text-sm text-zinc-700 hover:underline dark:text-zinc-300">{{ $feed['label'] }}</a>
+                        </div>
+                        <span class="shrink-0 text-xs text-zinc-500">
+                            @if (! $feed['ok']) missing
+                            @elseif ($feed['age']) {{ $feed['stale'] ? 'STALE — ' : '' }}{{ $feed['age'] }}
+                            @else live @endif
+                        </span>
+                    </div>
+                @endforeach
+            </div>
+            <flux:text class="mt-3 block text-xs text-zinc-500">
+                What ChatGPT, Claude, Perplexity and Gemini crawlers read instead of the HTML. A stale llms.txt
+                means the nightly regen died and AI answers are being built from an old snapshot of the site.
+            </flux:text>
+        </flux:card>
+    </div>
+
     <div class="mb-6 grid min-w-0 gap-6 xl:grid-cols-3">
         <flux:card class="min-w-0 overflow-hidden p-5 xl:col-span-2">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">

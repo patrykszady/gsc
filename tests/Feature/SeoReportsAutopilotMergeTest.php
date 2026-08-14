@@ -30,6 +30,16 @@ class SeoReportsAutopilotMergeTest extends TestCase
             ->assertSee('id="autopilot"', false);
     }
 
+    public function test_seo_reports_renders_clarity_and_geo_cards(): void
+    {
+        $this->actingAs($this->operator())
+            ->get('http://gs.construction/admin/gs.construction/seo-reports')
+            ->assertOk()
+            ->assertSee('Microsoft Clarity')
+            ->assertSee('AI crawler feeds')
+            ->assertSee('llms.txt');
+    }
+
     public function test_the_old_autopilot_url_redirects_permanently(): void
     {
         $response = $this->actingAs($this->operator())
