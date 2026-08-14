@@ -234,9 +234,6 @@ return [
         'api_key' => env('BRAVE_SEARCH_API_KEY'),
     ],
 
-    // IPRoyal is unsubscribed — generic scraping now uses the 2captcha
-    // rotating residential proxy (same one the Yelp stack prefers).
-    // SCRAPER_PROXY_URL still overrides everything when set.
     // Laravel Forge API — used by `php artisan forge:deploy-script` to read and
     // edit this site's deploy script from the repo. The token is created at
     // forge.laravel.com → user profile → API and belongs in the LOCAL .env
@@ -248,6 +245,9 @@ return [
         'site' => env('FORGE_SITE_NAME', 'gs.construction'),
     ],
 
+    // IPRoyal is unsubscribed — generic scraping now uses the 2captcha
+    // rotating residential proxy (same one the Yelp stack prefers).
+    // SCRAPER_PROXY_URL still overrides everything when set.
     'scraper' => [
         'proxy' => env('SCRAPER_PROXY_URL') ?: $compose2captchaProxy(),
     ],
