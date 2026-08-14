@@ -16,7 +16,9 @@ class AdminHubRoutingTest extends TestCase
             ['/admin', [200, 302]],
             ['/admin/gs.construction', [200]],
             ['/admin/gs.construction/projects', [200]],
-            ['/admin/gs.construction/autopilot', [200]],
+            // 301 since the autopilot panel merged into seo-reports; the old
+            // URL forwards there (SeoReportsAutopilotMergeTest pins the target).
+            ['/admin/gs.construction/autopilot', [301]],
             ['/admin/projects', [301]],
             ['/admin/jpeterson-design.com', [200]],
             ['/admin/nope.example', [404]],

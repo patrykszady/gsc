@@ -540,9 +540,17 @@ Route::middleware(['auth', 'noindex', \App\Http\Middleware\ResolveAdminSite::cla
     Route::get('/platforms/extension-pairing', [\App\Http\Controllers\YelpCookieIngestController::class, 'pairing'])
         ->name('platforms.extension-pairing');
 
-    // SEO weekly reports dashboard
+    // SEO weekly reports dashboard — the autopilot panel now lives INSIDE it
+    // (nested Livewire island), so recommendations and the machine acting on
+    // them are one page. The old standalone URL 301s to the merged page; the
+    // route keeps its name so existing route('admin.autopilot.index') links
+    // (dashboard tiles, landing-pages button) keep working and now land on
+    // the panel's anchor.
     Route::get('/seo-reports/{report?}', \App\Livewire\Admin\SeoReports::class)->name('seo-reports.index');
-    Route::get('/autopilot', \App\Livewire\Admin\SeoAutopilotPanel::class)->name('autopilot.index');
+    Route::get('/autopilot', function (string $site) {
+        return redirect()->route('admin.seo-reports.index', ['site' => $site], 301)
+            ->withFragment('autopilot');
+    })->name('autopilot.index');
     Route::get('/landing-pages', \App\Livewire\Admin\LandingPages::class)->name('landing-pages.index');
     Route::get('/gsc-errors', \App\Livewire\Admin\GscErrors::class)->name('gsc-errors.index');
     Route::get('/platforms/gbp/callback', function (\Illuminate\Http\Request $request) {

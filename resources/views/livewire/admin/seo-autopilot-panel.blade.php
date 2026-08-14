@@ -1,7 +1,9 @@
 <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <flux:heading size="xl">SEO Autopilot</flux:heading>
+            {{-- lg, not xl: this panel is nested inside the SEO Reports page
+             now, whose own heading is the xl. --}}
+        <flux:heading size="lg">SEO Autopilot</flux:heading>
             <flux:text class="mt-1 text-zinc-500">
                 Self-improving loop: synthesizes fixes from Search Console signals, auto-applies the safe/reversible
                 ones, measures whether they worked, and learns which action types move the needle on this site.

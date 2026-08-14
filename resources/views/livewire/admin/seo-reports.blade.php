@@ -151,6 +151,17 @@
         </flux:card>
     @endif
 
+    {{-- Autopilot: proposals, applied actions, learned weights. Lived at its
+         own /admin/{site}/autopilot page, which meant the recommendations
+         above and the machine actually acting on them were two pages apart —
+         the operator read "approve open proposals" here, then had to know the
+         other URL existed. Nested as its own Livewire island so its tabs and
+         apply/revert/skip actions round-trip independently of this page's
+         report state. The old route 301s here. --}}
+    <div class="mb-6" id="autopilot">
+        <livewire:admin.seo-autopilot-panel />
+    </div>
+
     @php
         $snapshot = $this->searchSnapshot;
         $gscErrors = $this->gscErrorSnapshot;
@@ -477,7 +488,7 @@
         <flux:card class="min-w-0 overflow-hidden p-5">
             <div class="mb-4 flex items-center justify-between">
                 <flux:heading size="md">Priority Actions</flux:heading>
-                <a href="{{ route('admin.autopilot.index') }}" wire:navigate class="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400">
+                <a href="#autopilot" class="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400">
                     Autopilot ledger &rarr;
                 </a>
             </div>
