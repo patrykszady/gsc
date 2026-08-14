@@ -130,7 +130,14 @@ class ProjectImagePage extends Component
             ''
         );
 
-        $description = $this->localizeText($this->image->seo_caption)
+        // ->caption, not ->seo_caption: seo_caption is not a column on
+        // project_images (the columns are alt_text, caption, seo_alt_text), so
+        // this attribute was always null and every one of the 238 photo pages
+        // fell through to the templated fallback below — near-identical
+        // descriptions across the family Search Console lists as its biggest
+        // not-indexed block (75 of 123 problem URLs). caption is populated on
+        // all 238 with a unique, sentence-form description of the photo.
+        $description = $this->localizeText($this->image->caption)
             ?: "View photo {$this->currentPosition} of {$this->totalImages} from {$this->project->title}. "
                . ($location ? "Located in {$location}. " : '')
                . "Professional remodeling by GS Construction.";
@@ -177,7 +184,7 @@ class ProjectImagePage extends Component
             'contentUrl' => $imageUrl,
             'thumbnail' => $this->image->getThumbnailUrl('thumb'),
             'representativeOfPage' => (bool) $this->image->is_cover,
-            'caption' => $this->image->seo_caption,
+            'caption' => $this->image->caption,
         ];
         if ($googleUrl) {
             $schema['sameAs'] = $googleUrl;
