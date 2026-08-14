@@ -22,7 +22,8 @@ class ForgeDeployScript extends Command
 {
     protected $signature = 'forge:deploy-script
         {--add-seo : Append the sitemap regenerate + submit block if absent}
-        {--dry-run : With --add-seo, show the would-be script without saving}';
+        {--add-maintenance : Wrap the deploy in maintenance mode so the swap window serves 503, not 500}
+        {--dry-run : Show the would-be script without saving}';
 
     protected $description = 'Show or update the Forge deploy script for this site via the Forge API';
 
@@ -55,6 +56,37 @@ BASH;
 # fail a deploy.
 $FORGE_PHP artisan sitemap:generate
 $FORGE_PHP artisan seo:gsc-submit-sitemaps || true
+BASH;
+
+    private const MAINT_MARKER = '# --- deploy window: serve 503 instead of 500s (managed by forge:deploy-script) ---';
+
+    /**
+     * This site deploys IN PLACE: `current` is a symlink that has pointed at
+     * the same release directory since January, and the script `git reset
+     * --hard`s inside it. So the entire codebase swaps under live traffic, and
+     * composer/migrate/npm then run for ~90s while requests keep arriving.
+     * Requests landing in that window execute new code against the old
+     * database — which is exactly where the "Table 'sites' doesn't exist",
+     * "Unknown column hive_project_zip_counts.site_id" and "Unable to locate
+     * component [cta]" 500s on /, /about and /contact came from: every one of
+     * them is timestamped inside a deploy.
+     *
+     * A 503 with Retry-After is the correct answer for a crawler mid-deploy;
+     * a 500 on the homepage is not. The trap guarantees the site comes back up
+     * even if a later deploy step fails.
+     */
+    private const MAINT_HEAD = <<<'BASH'
+# --- deploy window: serve 503 instead of 500s (managed by forge:deploy-script) ---
+# In-place deploy: the code swaps instantly, then composer/migrate/npm run for
+# ~90s. Requests in that window hit new code against the old schema. The trap
+# brings the site back even if a step below fails.
+trap '$FORGE_PHP artisan up || true' EXIT
+$FORGE_PHP artisan down --retry=60 || true
+BASH;
+
+    private const MAINT_TAIL = <<<'BASH'
+# --- deploy window ends (managed by forge:deploy-script) ---
+$FORGE_PHP artisan up
 BASH;
 
     public function handle(): int
@@ -111,36 +143,73 @@ BASH;
         $scriptUrl = self::API . "/servers/{$server['id']}/sites/{$site['id']}/deployment/script";
         $script = (string) $client->get($scriptUrl)->body();
 
-        if (! $this->option('add-seo')) {
+        if (! $this->option('add-seo') && ! $this->option('add-maintenance')) {
             $this->newLine();
             $this->line($script);
 
             return self::SUCCESS;
         }
 
-        if (str_contains($script, self::MARKER)) {
-            $this->info('SEO block already present — nothing to do.');
+        $updated = $script;
+        $changed = false;
 
-            return self::SUCCESS;
-        }
+        if ($this->option('add-seo')) {
+            if (str_contains($updated, self::MARKER)) {
+                $this->info('SEO block already present — skipping.');
+            } else {
+                // Insert after the script's own sitemap:generate when it has
+                // one (the live script does — appending our full block would
+                // generate twice); append the whole block when it does not.
+                $lines = preg_split('/\r?\n/', $updated);
+                $generateIdx = null;
+                foreach ($lines as $i => $line) {
+                    if (str_contains($line, 'artisan sitemap:generate')) {
+                        $generateIdx = $i;
+                        break;
+                    }
+                }
 
-        // Insert after the script's own sitemap:generate when it has one (the
-        // live script does — appending our full block would generate twice);
-        // fall back to appending the complete block when it does not.
-        $lines = preg_split('/\r?\n/', $script);
-        $generateIdx = null;
-        foreach ($lines as $i => $line) {
-            if (str_contains($line, 'artisan sitemap:generate')) {
-                $generateIdx = $i;
-                break;
+                if ($generateIdx !== null) {
+                    array_splice($lines, $generateIdx + 1, 0, explode("\n", self::SEO_INSERT));
+                    $updated = rtrim(implode("\n", $lines), "\n") . "\n";
+                } else {
+                    $updated = rtrim($updated, "\n") . "\n" . self::SEO_BLOCK . "\n";
+                }
+                $changed = true;
             }
         }
 
-        if ($generateIdx !== null) {
-            array_splice($lines, $generateIdx + 1, 0, explode("\n", self::SEO_INSERT));
-            $updated = rtrim(implode("\n", $lines), "\n") . "\n";
-        } else {
-            $updated = rtrim($script, "\n") . "\n" . self::SEO_BLOCK . "\n";
+        if ($this->option('add-maintenance')) {
+            if (str_contains($updated, self::MAINT_MARKER)) {
+                $this->info('Maintenance wrapper already present — skipping.');
+            } else {
+                // Head goes immediately after the `cd` into the site root, so
+                // $FORGE_PHP resolves and artisan is reachable; tail goes last.
+                $lines = preg_split('/\r?\n/', $updated);
+                $cdIdx = null;
+                foreach ($lines as $i => $line) {
+                    if (preg_match('/^\s*cd\s+\S/', $line)) {
+                        $cdIdx = $i;
+                        break;
+                    }
+                }
+
+                if ($cdIdx === null) {
+                    $this->error('No `cd` line found — refusing to guess where maintenance mode should start.');
+
+                    return self::FAILURE;
+                }
+
+                array_splice($lines, $cdIdx + 1, 0, array_merge([''], explode("\n", self::MAINT_HEAD)));
+                $updated = rtrim(implode("\n", $lines), "\n") . "\n\n" . self::MAINT_TAIL . "\n";
+                $changed = true;
+            }
+        }
+
+        if (! $changed) {
+            $this->info('Nothing to do.');
+
+            return self::SUCCESS;
         }
 
         if ($this->option('dry-run')) {
@@ -158,15 +227,23 @@ BASH;
             return self::FAILURE;
         }
 
-        // Read back rather than trusting the 200.
+        // Read back rather than trusting the 200 — verify every marker we were
+        // asked to add actually landed.
         $verify = (string) $client->get($scriptUrl)->body();
-        if (! str_contains($verify, self::MARKER)) {
-            $this->error('Update reported success but the block is not in the script on re-read.');
+        $expected = array_filter([
+            $this->option('add-seo') ? self::MARKER : null,
+            $this->option('add-maintenance') ? self::MAINT_MARKER : null,
+        ]);
 
-            return self::FAILURE;
+        foreach ($expected as $marker) {
+            if (! str_contains($verify, $marker)) {
+                $this->error('Update reported success but a block is missing on re-read: ' . mb_substr($marker, 0, 40));
+
+                return self::FAILURE;
+            }
         }
 
-        $this->info('Deploy script updated and verified. Next deploy will regenerate + submit the sitemap.');
+        $this->info('Deploy script updated and verified on re-read.');
 
         return self::SUCCESS;
     }

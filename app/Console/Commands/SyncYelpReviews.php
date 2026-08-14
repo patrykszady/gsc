@@ -199,7 +199,7 @@ class SyncYelpReviews extends Command
                         'start' => $start,
                     ]);
             } catch (\Throwable $e) {
-                $this->warn('Yelp review feed request failed: '.$e->getMessage());
+                $this->warn('Yelp review feed request failed: '.\App\Support\SecretRedactor::redact($e->getMessage()));
                 break;
             }
 
@@ -303,13 +303,13 @@ class SyncYelpReviews extends Command
         try {
             $process->run();
         } catch (\Throwable $e) {
-            $this->warn('Browser scraper failed to run: '.$e->getMessage());
+            $this->warn('Browser scraper failed to run: '.\App\Support\SecretRedactor::redact($e->getMessage()));
 
             return [];
         }
 
         if (! $process->isSuccessful()) {
-            $this->warn('Browser scraper exited '.$process->getExitCode().': '.mb_substr(trim($process->getErrorOutput()), -300));
+            $this->warn('Browser scraper exited '.$process->getExitCode().': '.\App\Support\SecretRedactor::redact(mb_substr(trim($process->getErrorOutput()), -300)));
 
             return [];
         }
