@@ -46,6 +46,17 @@ Artisan::command('seo:gbp-metrics-sync
 // Schedule sitemap regeneration daily
 Schedule::command('sitemap:generate')->daily();
 
+// Then tell Google to re-fetch it. The ping endpoint died in June 2023 and
+// IndexNow never reaches Google, so without this the regenerated sitemap sat
+// unread for days (the Sitemaps report showed 3-6 day old reads). Runs 30
+// minutes after generation; requires the webmasters (write) OAuth scope —
+// the command reports plainly if the token still carries readonly-only.
+Schedule::command('seo:gsc-submit-sitemaps')->dailyAt('00:30')
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:gsc-submit-sitemaps failed'))
+    ->when(fn () => config('services.google.search_console.enabled'));
+
 // GEO/AI: regenerate AI-crawler feeds daily so llms.txt, llms-full.txt and the
 // product feed stay fresh for ChatGPT/Gemini/Perplexity crawlers as content changes.
 Schedule::command('geo:llms-txt')->dailyAt('01:40')

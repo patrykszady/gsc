@@ -13,11 +13,11 @@ class SearchConsoleAuth extends Command
     protected $signature = 'search-console:auth
         {--code= : Authorization code returned by Google after consent}';
 
-    protected $description = 'OAuth flow for Google Search Console (webmasters.readonly).';
+    protected $description = 'OAuth flow for Google Search Console (webmasters — read + sitemap submit).';
 
     protected const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
     protected const TOKEN_URL = 'https://oauth2.googleapis.com/token';
-    protected const SCOPES = 'https://www.googleapis.com/auth/webmasters.readonly';
+    protected const SCOPES = 'https://www.googleapis.com/auth/webmasters';
     protected const REDIRECT_URI = 'http://127.0.0.1:8003';
 
     public function handle(): int

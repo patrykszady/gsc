@@ -27,7 +27,13 @@ class GoogleSearchConsoleService
     protected const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
     protected const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
     protected const API_BASE = 'https://searchconsole.googleapis.com/webmasters/v3';
-    protected const SCOPES = 'https://www.googleapis.com/auth/webmasters.readonly';
+    // Full webmasters scope, not .readonly. Everything read-only continues to
+    // work, and it additionally allows sitemaps.submit — the supported way to
+    // ask Google to re-fetch a sitemap since the ping endpoint was retired in
+    // June 2023. Tokens issued under the old readonly scope keep working for
+    // reads; submit returns 403 until `php artisan search-console:auth` is
+    // re-run once to grant the wider scope.
+    protected const SCOPES = 'https://www.googleapis.com/auth/webmasters';
     public const PROVIDER = 'google_search_console';
 
     protected ?array $lastError = null;
@@ -154,6 +160,46 @@ class GoogleSearchConsoleService
         }
         $resp = Http::withToken($token)->timeout(20)->get(self::API_BASE . '/sites');
         return $resp->successful() ? $resp->json('siteEntry', []) : null;
+    }
+
+    /**
+     * Ask Google to (re)fetch a sitemap — the supported successor to the ping
+     * endpoint retired in June 2023 (IndexNow never reaches Google, so this is
+     * the only programmatic nudge that does).
+     *
+     * Idempotent: submitting an already-registered sitemap just schedules a
+     * re-fetch. Returns true on success; false with lastError populated —
+     * including the one operator-actionable case, a 403 from a token that was
+     * authorized under the old readonly scope and needs `search-console:auth`
+     * re-run once.
+     */
+    public function submitSitemap(string $siteUrl, string $sitemapUrl): bool
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            $this->lastError = ['message' => 'No access token — run search-console:auth'];
+
+            return false;
+        }
+
+        $resp = Http::withToken($token)->timeout(20)->put(
+            self::API_BASE . '/sites/' . rawurlencode($siteUrl) . '/sitemaps/' . rawurlencode($sitemapUrl)
+        );
+
+        if ($resp->successful()) {
+            $this->lastError = null;
+
+            return true;
+        }
+
+        $this->lastError = [
+            'status' => $resp->status(),
+            'message' => $resp->status() === 403
+                ? 'Insufficient scope: token was granted webmasters.readonly. Re-run `php artisan search-console:auth` once to grant the webmasters scope.'
+                : mb_substr($resp->body(), 0, 300),
+        ];
+
+        return false;
     }
 
     public function getLastError(): ?array
