@@ -61,7 +61,12 @@ class SeoGscInspectBulk extends Command
 
         $inspect = function (string $u) use (&$token, $site) {
             return Http::withToken($token)
-                ->timeout(30)
+                // 60s, not 30: the URL Inspection API intermittently takes
+                // >30s per call (three cURL-28 aborts in the July-August log,
+                // each killing that night's sweep via the schedule's failure
+                // hook). The retry below only covers connection drops; a slow
+                //-but-alive response needs the longer budget.
+                ->timeout(60)
                 ->retry(2, 2000, fn ($e) => $e instanceof \Illuminate\Http\Client\ConnectionException, throw: false)
                 ->post(
                     'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
