@@ -23,6 +23,7 @@ class ForgeDeployScript extends Command
     protected $signature = 'forge:deploy-script
         {--add-seo : Append the sitemap regenerate + submit block if absent}
         {--add-maintenance : Wrap the deploy in maintenance mode so the swap window serves 503, not 500}
+        {--add-env-link : Keep current/.env symlinked to the Forge-managed site-root .env}
         {--dry-run : Show the would-be script without saving}';
 
     protected $description = 'Show or update the Forge deploy script for this site via the Forge API';
@@ -89,6 +90,24 @@ BASH;
 $FORGE_PHP artisan up
 BASH;
 
+    private const ENV_LINK_MARKER = '# --- env: current/.env must BE the Forge-managed file (managed by forge:deploy-script) ---';
+
+    /**
+     * Production had TWO .env files that silently diverged for twelve days:
+     * Forge's dashboard and API write /home/forge/{site}/.env, but this
+     * in-place deploy layout had a plain-file copy at current/.env that the
+     * app actually read — so every Environment-tab edit was discarded. The
+     * symlink was reconciled by hand on 2026-08-14; this line makes the deploy
+     * re-assert it so drift cannot recur.
+     */
+    private function envLinkBlock(string $username, string $siteName): string
+    {
+        return self::ENV_LINK_MARKER . "\n"
+            . "# Forge's dashboard/API edit the site-root .env; the app reads current/.env.\n"
+            . "# They were two diverging files until 2026-08-14. Re-assert the symlink.\n"
+            . sprintf('ln -sfn /home/%s/%s/.env .env', $username, $siteName);
+    }
+
     public function handle(): int
     {
         $token = (string) config('services.forge.token');
@@ -143,7 +162,7 @@ BASH;
         $scriptUrl = self::API . "/servers/{$server['id']}/sites/{$site['id']}/deployment/script";
         $script = (string) $client->get($scriptUrl)->body();
 
-        if (! $this->option('add-seo') && ! $this->option('add-maintenance')) {
+        if (! $this->option('add-seo') && ! $this->option('add-maintenance') && ! $this->option('add-env-link')) {
             $this->newLine();
             $this->line($script);
 
@@ -175,6 +194,35 @@ BASH;
                 } else {
                     $updated = rtrim($updated, "\n") . "\n" . self::SEO_BLOCK . "\n";
                 }
+                $changed = true;
+            }
+        }
+
+        if ($this->option('add-env-link')) {
+            if (str_contains($updated, self::ENV_LINK_MARKER)) {
+                $this->info('Env-link line already present — skipping.');
+            } else {
+                // Directly after the `cd` into current — before maintenance
+                // mode and everything else, so even `artisan down` reads the
+                // authoritative env.
+                $lines = preg_split('/\r?\n/', $updated);
+                $cdIdx = null;
+                foreach ($lines as $i => $line) {
+                    if (preg_match('/^\s*cd\s+\S/', $line)) {
+                        $cdIdx = $i;
+                        break;
+                    }
+                }
+
+                if ($cdIdx === null) {
+                    $this->error('No `cd` line found — refusing to guess where the env link belongs.');
+
+                    return self::FAILURE;
+                }
+
+                $block = $this->envLinkBlock((string) ($site['username'] ?? 'forge'), (string) $site['name']);
+                array_splice($lines, $cdIdx + 1, 0, array_merge([''], explode("\n", $block)));
+                $updated = rtrim(implode("\n", $lines), "\n") . "\n";
                 $changed = true;
             }
         }
@@ -233,6 +281,7 @@ BASH;
         $expected = array_filter([
             $this->option('add-seo') ? self::MARKER : null,
             $this->option('add-maintenance') ? self::MAINT_MARKER : null,
+            $this->option('add-env-link') ? self::ENV_LINK_MARKER : null,
         ]);
 
         foreach ($expected as $marker) {
