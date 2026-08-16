@@ -42,7 +42,7 @@ class TeamPhotoSlider extends Component
         if ($newImage) {
             $this->backgroundImages[$index] = [
                 'id' => $newImage->id,
-                'url' => $newImage->url,
+                'url' => $newImage->getWebpThumbnailUrl('medium') ?? $newImage->getThumbnailUrl('medium') ?? $newImage->url,
                 'thumb' => $newImage->getWebpThumbnailUrl('thumb') ?? $newImage->getThumbnailUrl('thumb') ?? $newImage->url,
             ];
             return $newImage->url;
@@ -62,7 +62,10 @@ class TeamPhotoSlider extends Component
 
         return $images->map(fn ($img) => [
             'id' => $img->id,
-            'url' => $img->url,
+            // medium webp (~37KB) — this was the ORIGINAL upload (300KB-5MB per
+            // slide), which made this decorative rotating box the single
+            // heaviest thing on every page that renders it.
+            'url' => $img->getWebpThumbnailUrl('medium') ?? $img->getThumbnailUrl('medium') ?? $img->url,
             'thumb' => $img->getWebpThumbnailUrl('thumb') ?? $img->getThumbnailUrl('thumb') ?? $img->url,
         ])->toArray();
     }

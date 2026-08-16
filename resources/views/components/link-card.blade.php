@@ -1,3 +1,4 @@
+@blaze
 {{--
     The bordered index-card link — the tile used by every "index of guides"
     page (/costs, /permits, /insurance-claims, /compare, /trades,

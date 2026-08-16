@@ -228,6 +228,7 @@
                     >
                         {{-- Address with Google Places Autocomplete (Flux-styled, new API) --}}
                         <div
+                            x-intersect.once.margin.600px="loadPlacesLibrary()"
                             x-data="{
                                 open: false,
                                 query: $wire.entangle('address'),
@@ -235,9 +236,11 @@
                                 selectedIndex: -1,
                                 placesReady: false,
                                 areasServed: @js($areasServed),
-                            async init() {
-                                await this.loadPlacesLibrary();
-                            },
+                            {{-- No init-time load: this form sits at the bottom of
+                                 every page, and Places (~250KB of Maps JS) was
+                                 fetched on page boot for visitors who never
+                                 scrolled near it. x-intersect below loads it when
+                                 the form approaches the viewport. --}}
                             async waitForGoogle(maxRetries = 20) {
                                 for (let i = 0; i < maxRetries; i++) {
                                     if (window.google?.maps?.importLibrary) return true;
@@ -635,9 +638,12 @@
                     </p>
                     @endif
                     <div
+                        x-intersect.once.margin.600px="loadTurnstile()"
                         x-data="{
-                            init() {
-                                // Load Turnstile script if not already loaded
+                            loadTurnstile() {
+                                // Deferred to viewport approach: Turnstile pulls
+                                // ~500KB (script + challenge iframe) and was doing
+                                // so on page boot on every page of the site.
                                 if (!window.turnstile) {
                                     const script = document.createElement('script');
                                     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';

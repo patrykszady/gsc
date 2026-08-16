@@ -305,7 +305,7 @@ class TestimonialsSection extends Component
             'slug' => $testimonial->slug,
             'name' => $testimonial->display_name,
             'location' => $testimonial->project_location,
-            'area_slug' => AreaServed::where('city', $cityName)->value('slug'),
+            'area_slug' => self::citySlugMap()[mb_strtolower($cityName)] ?? null,
             'project_type' => $testimonial->project_type,
             'description' => $testimonial->review_description,
             'date' => $testimonial->review_date?->format('M Y'),
@@ -345,7 +345,32 @@ class TestimonialsSection extends Component
         });
     }
 
+    /**
+     * City => slug map for testimonial location links. One query per 30
+     * minutes instead of one PER TESTIMONIAL PER RENDER — this was 10 of the
+     * area page's 60 queries.
+     */
+    protected static function citySlugMap(): array
+    {
+        return Cache::remember(
+            \App\Support\Tenancy::cacheKey('testimonials.city-slug-map'),
+            now()->addMinutes(30),
+            fn () => AreaServed::query()->pluck('slug', 'city')
+                ->mapWithKeys(fn ($slug, $city) => [mb_strtolower($city) => $slug])
+                ->all()
+        );
+    }
+
     protected function linkedProjectImageUrl(Testimonial $testimonial): ?string
+    {
+        return Cache::remember(
+            "testimonial.linked-image.{$testimonial->id}.v1",
+            now()->addMinutes(30),
+            fn () => $this->resolveLinkedProjectImageUrl($testimonial) ?? ''
+        ) ?: null;
+    }
+
+    protected function resolveLinkedProjectImageUrl(Testimonial $testimonial): ?string
     {
         $linkedProjectIds = collect([$testimonial->project_id])
             ->filter()

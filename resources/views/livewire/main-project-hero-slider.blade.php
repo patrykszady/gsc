@@ -81,6 +81,11 @@
         loadNextImage() {
             // Only load if visible and there are more images to load
             if (!this.isVisible || this.nextToLoad >= this.slides.length) return;
+            // At most two slides ahead of the visible one — this chain used
+            // to fetch every slide at full size right after first paint,
+            // competing with the rest of the page on mobile bandwidth.
+            // next() re-triggers the chain as the carousel advances.
+            if (this.nextToLoad > this.currentSlide + 2) return;
             
             const index = this.nextToLoad;
             if (this.loadedImages.includes(index)) {
@@ -125,6 +130,7 @@
         next() {
             if (!this.hasMultipleSlides) return;
             this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+            this.loadNextImage();
         },
         prev() {
             if (!this.hasMultipleSlides) return;

@@ -38,6 +38,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Dev guardrail (same as hive2025): surface N+1 lazy loads in the log
+        // during development without ever breaking a page — and never in
+        // production, where an unexpected lazy load must degrade, not throw.
+        if (! app()->isProduction()) {
+            \Illuminate\Database\Eloquent\Model::preventLazyLoading();
+            \Illuminate\Database\Eloquent\Model::handleLazyLoadingViolationUsing(
+                function ($model, string $relation): void {
+                    logger()->warning('Lazy load: ' . $model::class . '::' . $relation);
+                }
+            );
+        }
+
         // Livewire update requests POST to /livewire/update and do NOT re-run
         // the original route's middleware. Without this, ResolveAdminSite never
         // fires on interaction, so every admin action after first paint would

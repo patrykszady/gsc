@@ -1,3 +1,4 @@
+@blaze
 @props([
     // Ordered trail AFTER Home: [['label' => 'Compare', 'url' => '/compare'], ['label' => 'Airoom']]
     // The last item (no url, or url omitted) is the current page.

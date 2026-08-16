@@ -82,6 +82,11 @@
         loadNextBackground() {
             // Only load if visible and there are more backgrounds to load
             if (!this.isVisible || this.nextBgToLoad >= this.backgrounds.length) return;
+            // Stay at most two slides ahead of the one on screen. This used
+            // to run to the end of the list, downloading every slide the
+            // moment the intro finished — megabytes for a box the visitor
+            // may already have scrolled past. next() re-triggers the chain.
+            if (this.nextBgToLoad > this.currentSlide + 2) return;
             
             const index = this.nextBgToLoad;
             if (this.bgLoaded.includes(index)) {
@@ -159,6 +164,7 @@
         async next() {
             this.previousSlide = this.currentSlide;
             this.currentSlide = (this.currentSlide + 1) % this.backgrounds.length;
+            this.loadNextBackground();
             
             // Clear previousSlide after transition completes
             setTimeout(() => {
@@ -201,12 +207,12 @@
                 <source srcset="{{ asset('images/greg-patryk-thumb.webp') }}" type="image/webp">
                 <img
                     x-ref="introThumb"
-                    src="{{ asset('images/greg-patryk-thumb.jpg') }}"
+                    src="{{ asset('images/greg-patryk-thumb.webp') }}"
                     alt=""
                     aria-hidden="true"
                     width="300"
                     height="400"
-                    fetchpriority="high"
+                    loading="lazy"
                     @load="if (typeof introThumbLoaded !== 'undefined') introThumbLoaded = true"
                     :class="(typeof introThumbLoaded !== 'undefined' && introThumbLoaded) ? 'opacity-100' : 'opacity-0'"
                     class="h-full w-full object-cover object-bottom blur-md"
@@ -217,11 +223,11 @@
                 <source srcset="{{ asset('images/greg-patryk.webp') }}" type="image/webp">
                 <img
                     x-ref="introFull"
-                    src="{{ asset('images/greg-patryk.jpg') }}"
+                    src="{{ asset('images/greg-patryk.webp') }}"
                     alt="Gregory and Patryk - GS Construction"
                     width="1200"
                     height="1600"
-                    fetchpriority="high"
+                    loading="lazy"
                     decoding="async"
                     @load="if (typeof introLoaded !== 'undefined') { introLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk.webp') }}', true); startIntroTimer(); }"
                     :class="(typeof introWasCached !== 'undefined' && introWasCached) ? 'opacity-100' : ((typeof introLoaded !== 'undefined' && introLoaded) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
@@ -277,11 +283,11 @@
                 {{-- PNG fallback --}}
                 <img
                     x-ref="noBgImg"
-                    src="{{ asset('images/greg-patryk-no-background.png?v=20260709') }}"
+                    src="{{ asset('images/greg-patryk-no-background.webp?v=20260709') }}"
                     alt="Gregory and Patryk - GS Construction"
                     width="800"
                     height="1000"
-                    loading="eager"
+                    loading="lazy"
                     decoding="async"
                     @load="if (typeof noBgLoaded !== 'undefined') { noBgLoaded = true; window.imageCache?.set('{{ asset('images/greg-patryk-no-background.webp') }}', true); tryEndIntro(); }"
                     class="h-auto max-h-full w-auto max-w-full opacity-0 transition-opacity duration-500"

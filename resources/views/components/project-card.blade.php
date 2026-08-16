@@ -1,3 +1,4 @@
+@blaze
 {{--
     Project card — the single source for how a project is presented in a grid.
 
