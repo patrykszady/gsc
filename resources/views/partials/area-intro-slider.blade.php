@@ -75,6 +75,7 @@
                             @foreach($citySliderImages as $idx => $img)
                                 <div
                                     x-show="current === {{ $idx }}"
+                                    @if ($idx > 0) x-cloak @endif
                                     x-transition:enter="transition ease-out duration-700"
                                     x-transition:enter-start="opacity-0"
                                     x-transition:enter-end="opacity-100"
@@ -85,7 +86,14 @@
                                 >
                                     <x-lqip-image
                                         :image="$img"
-                                        size="large"
+                                        {{-- hero (1200w, ~88KB) not large (2400w,
+                                             ~350KB): before Alpine boots, x-show
+                                             hasn't hidden anything, so every slide's
+                                             lazy image sat "in viewport" and fetched
+                                             — the whole set, at the heaviest size.
+                                             x-cloak above closes that window; hero
+                                             covers the box at any DPR. --}}
+                                        size="hero"
                                         aspectRatio="4/3"
                                         rounded="2xl"
                                         :alt="($img->seo_alt_text ?? $img->alt_text) ?: 'Remodeling project near ' . $area->city . ', IL'"
