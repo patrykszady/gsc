@@ -79,6 +79,12 @@ class SearchConsoleAuth extends Command
             return self::FAILURE;
         }
 
+        // The service caches the access token for its lifetime; a re-auth
+        // must invalidate it or the OLD scope keeps being used for up to an
+        // hour (exactly what happened on first re-auth: fresh webmasters
+        // grant stored, stale readonly token served from cache).
+        \Illuminate\Support\Facades\Cache::forget('gsc_access_token');
+
         OAuthToken::storeTokens(
             provider: self::PROVIDER,
             refreshToken: $refresh,

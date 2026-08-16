@@ -103,7 +103,7 @@ class GoogleSearchConsoleService
             refreshToken: $data['refresh_token'],
             accessToken: $data['access_token'] ?? null,
             expiresIn: (int) ($data['expires_in'] ?? 3600),
-            scopes: explode(' ', self::SCOPES),
+            scopes: explode(' ', (string) ($data['scope'] ?? self::SCOPES)),
         );
 
         Cache::forget('gsc_access_token');
@@ -182,7 +182,13 @@ class GoogleSearchConsoleService
             return false;
         }
 
-        $resp = Http::withToken($token)->timeout(20)->put(
+        // send('PUT') and NOT ->put(): put() attaches an empty JSON array as
+        // the body, and Google rejects it with 400 "Root element must be a
+        // message". sitemaps.submit requires a bodiless PUT (returns 204).
+        // Undetectable before the write-scope token existed: the 403 path was
+        // the only one this code had ever run.
+        $resp = Http::withToken($token)->timeout(20)->send(
+            'PUT',
             self::API_BASE . '/sites/' . rawurlencode($siteUrl) . '/sitemaps/' . rawurlencode($sitemapUrl)
         );
 
@@ -205,6 +211,29 @@ class GoogleSearchConsoleService
     public function getLastError(): ?array
     {
         return $this->lastError;
+    }
+
+    public function getStoredToken(): ?OAuthToken
+    {
+        return OAuthToken::forProvider(self::PROVIDER);
+    }
+
+    /**
+     * True when the stored grant includes the WRITE scope (plain webmasters,
+     * not only webmasters.readonly) — the difference between being able to
+     * read reports and being able to submit sitemaps.
+     */
+    public function hasWriteScope(): bool
+    {
+        $scopes = (array) ($this->getStoredToken()?->scopes ?? []);
+
+        return in_array('https://www.googleapis.com/auth/webmasters', $scopes, true);
+    }
+
+    public function disconnect(): void
+    {
+        $this->getStoredToken()?->delete();
+        Cache::forget('gsc_access_token');
     }
 
     protected function getAccessToken(): ?string

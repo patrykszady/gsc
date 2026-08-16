@@ -20,6 +20,60 @@
         </div>
     @endif
 
+    {{-- ============ Google Search Console ============ --}}
+    <section class="space-y-3">
+        <flux:heading size="lg">Google Search Console</flux:heading>
+
+        <div class="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">
+            <div class="flex items-start gap-4">
+                <div @class([
+                    'flex size-12 shrink-0 items-center justify-center rounded-full',
+                    'bg-green-100 dark:bg-green-900/30' => $gscConnected && $gscWriteScope,
+                    'bg-amber-100 dark:bg-amber-900/30' => $gscConnected && ! $gscWriteScope,
+                    'bg-zinc-100 dark:bg-zinc-700' => ! $gscConnected,
+                ])>
+                    @if($gscConnected && $gscWriteScope)
+                        <flux:icon.check-circle class="size-6 text-green-600 dark:text-green-400" />
+                    @elseif($gscConnected)
+                        <flux:icon.exclamation-triangle class="size-6 text-amber-600 dark:text-amber-400" />
+                    @else
+                        <flux:icon.link class="size-6 text-zinc-400 dark:text-zinc-500" />
+                    @endif
+                </div>
+
+                <div class="flex-1 space-y-1">
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">
+                        @if($gscConnected && $gscWriteScope) Connected (read + sitemap submit)
+                        @elseif($gscConnected) Connected — read-only, re-connect for sitemap submit
+                        @else Not Connected
+                        @endif
+                    </h3>
+
+                    <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                        Powers the SEO reports (queries, coverage, inspections) and lets deploys and the
+                        nightly schedule ask Google to re-read the sitemaps.
+                        @if($gscConnectedAt) &middot; token updated {{ $gscConnectedAt }} @endif
+                    </p>
+
+                    @if($gscSubmitResult)
+                        <pre class="mt-2 max-w-xl overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">{{ $gscSubmitResult }}</pre>
+                    @endif
+                </div>
+
+                <div class="flex shrink-0 flex-col items-end gap-2">
+                    @if($gscConnected && $gscWriteScope)
+                        <flux:button wire:click="submitSitemapsNow" size="sm" variant="subtle" icon="paper-airplane">Submit sitemaps now</flux:button>
+                        <flux:button wire:click="disconnectSearchConsole" size="sm" variant="subtle">Disconnect</flux:button>
+                    @else
+                        <flux:button wire:click="connectSearchConsole" size="sm" variant="primary">
+                            {{ $gscConnected ? 'Re-connect with write scope' : 'Connect' }}
+                        </flux:button>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </section>
+
     {{-- ============ GBP ============ --}}
     <section class="space-y-3">
         <flux:heading size="lg">Google Business Profile</flux:heading>

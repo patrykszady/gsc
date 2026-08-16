@@ -572,6 +572,26 @@ Route::middleware(['auth', 'noindex', \App\Http\Middleware\ResolveAdminSite::cla
         return redirect()->route('admin.platforms.index');
     })->name('platforms.gbp-callback');
 
+    Route::get('/platforms/gsc/callback', function (\Illuminate\Http\Request $request) {
+        $code = $request->query('code');
+        if (! $code) {
+            session()->flash('platforms-error', 'Authorization cancelled or failed — no code returned.');
+
+            return redirect()->route('admin.platforms.index');
+        }
+
+        $result = app(\App\Services\GoogleSearchConsoleService::class)
+            ->exchangeCodeAndStore($code, route('admin.platforms.gsc-callback'));
+
+        if ($result['success']) {
+            session()->flash('platforms-success', 'Search Console connected — sitemap submits are live.');
+        } else {
+            session()->flash('platforms-error', 'OAuth failed: ' . ($result['error'] ?? 'Unknown error'));
+        }
+
+        return redirect()->route('admin.platforms.index');
+    })->name('platforms.gsc-callback');
+
     Route::get('/platforms/meta/callback', function (\Illuminate\Http\Request $request) {
         $code = $request->query('code');
         if (! $code) {

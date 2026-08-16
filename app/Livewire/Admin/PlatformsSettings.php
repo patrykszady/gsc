@@ -144,6 +144,7 @@ class PlatformsSettings extends Component
             }
         }
 
+        $this->refreshGscStatus();
         $this->refreshMetaStatus();
         $this->refreshMetaImageWarnings();
         $this->refreshInstagramPuppeteerStatus();
@@ -466,6 +467,47 @@ class PlatformsSettings extends Component
     }
 
     // ---- GBP actions ----
+    // ---- Google Search Console ------------------------------------------
+
+    public bool $gscConnected = false;
+
+    public bool $gscWriteScope = false;
+
+    public ?string $gscConnectedAt = null;
+
+    public ?string $gscSubmitResult = null;
+
+    public function connectSearchConsole(): mixed
+    {
+        $gsc = app(\App\Services\GoogleSearchConsoleService::class);
+
+        return $this->redirect($gsc->getOAuthUrl(route('admin.platforms.gsc-callback')), navigate: false);
+    }
+
+    public function disconnectSearchConsole(): void
+    {
+        app(\App\Services\GoogleSearchConsoleService::class)->disconnect();
+        session()->flash('platforms-success', 'Search Console disconnected.');
+        $this->refreshGscStatus();
+    }
+
+    /** Submit both sitemaps right now — instant proof the connection works. */
+    public function submitSitemapsNow(): void
+    {
+        \Illuminate\Support\Facades\Artisan::call('seo:gsc-submit-sitemaps');
+        $out = trim(\Illuminate\Support\Facades\Artisan::output());
+        $this->gscSubmitResult = mb_substr($out, 0, 400);
+    }
+
+    public function refreshGscStatus(): void
+    {
+        $gsc = app(\App\Services\GoogleSearchConsoleService::class);
+        $token = $gsc->getStoredToken();
+        $this->gscConnected = (bool) $token?->refresh_token;
+        $this->gscWriteScope = $gsc->hasWriteScope();
+        $this->gscConnectedAt = $token?->updated_at?->diffForHumans();
+    }
+
     public function connectGbp(): mixed
     {
         $gbp = app(GoogleBusinessProfileService::class);
