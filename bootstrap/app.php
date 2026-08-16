@@ -97,6 +97,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // any route group middleware).
         $middleware->append(Track404Responses::class);
 
+        // Counts AI-assistant referrals and AI-crawler fetches (terminate()
+        // only) so GEO work is measurable on the SEO Reports page.
+        $middleware->append(\App\Http\Middleware\TrackAiTraffic::class);
+
         // Local-only tenant badge/switcher, injected into every HTML response,
         // plus X-Dev-Site headers on responses with no body to inject into
         // (redirects, JSON, the Livewire update endpoint).

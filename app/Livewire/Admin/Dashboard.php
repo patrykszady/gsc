@@ -88,10 +88,44 @@ class Dashboard extends Component
         return $out;
     }
 
+    /** Draft emails keyed by project id for the review-request card. */
+    public array $reviewEmails = [];
+
+    /**
+     * Save a homeowner email so the weekly reviews:send-requests run can mail
+     * them a Google review link. This card exists because the whole
+     * review-request pipeline sat idle: the command was built and scheduled,
+     * but 0 of 30 projects had a client_email, so it never sent anything —
+     * while the Google profile sat at 20 reviews against competitors
+     * advertising hundreds. Google review count is the strongest
+     * click-through lever a local contractor has.
+     */
+    public function saveReviewEmail(int $projectId): void
+    {
+        $email = trim((string) ($this->reviewEmails[$projectId] ?? ''));
+
+        $this->validate(
+            ['reviewEmails.' . $projectId => 'required|email'],
+            [],
+            ['reviewEmails.' . $projectId => 'email'],
+        );
+
+        $project = Project::findOrFail($projectId);
+        $project->forceFill(['client_email' => $email])->save();
+
+        unset($this->reviewEmails[$projectId]);
+    }
+
     public function render()
     {
         return view('livewire.admin.dashboard', [
             'automation' => $this->automationSnapshot(),
+            'reviewPipeline' => [
+                'missing' => Project::published()->whereNull('client_email')
+                    ->orderByDesc('completed_at')->get(['id', 'title', 'location', 'completed_at']),
+                'ready' => Project::whereNotNull('client_email')->whereNull('review_request_sent_at')->count(),
+                'sent' => Project::whereNotNull('review_request_sent_at')->count(),
+            ],
             'projectCount' => Project::count(),
             'publishedCount' => Project::published()->count(),
             'imageCount' => ProjectImage::count(),

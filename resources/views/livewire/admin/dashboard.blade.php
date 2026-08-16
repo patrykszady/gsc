@@ -42,6 +42,49 @@
         </div>
     </flux:card>
 
+    {{-- Review-request pipeline: the strongest local-CTR lever is Google
+         review volume, and the automation for it (reviews:send-requests,
+         weekly) only works when projects carry a homeowner email. --}}
+    @if ($reviewPipeline['missing']->isNotEmpty() || $reviewPipeline['ready'] > 0)
+        <flux:card class="mb-8">
+            <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <flux:heading size="md">Google review requests</flux:heading>
+                <flux:text class="text-xs text-zinc-500">
+                    {{ $reviewPipeline['sent'] }} sent · {{ $reviewPipeline['ready'] }} queued for the weekly run ·
+                    {{ $reviewPipeline['missing']->count() }} missing an email
+                </flux:text>
+            </div>
+            <flux:text class="mb-4 block text-sm text-zinc-500">
+                Add the homeowner's email and the weekly job sends them a Google review link automatically.
+                Review volume is the biggest factor in winning the Maps 3-pack.
+            </flux:text>
+            @if ($reviewPipeline['missing']->isNotEmpty())
+                <div class="max-h-80 space-y-2 overflow-y-auto pr-1">
+                    @foreach ($reviewPipeline['missing'] as $rp)
+                        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-700" wire:key="review-email-{{ $rp->id }}">
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-medium text-zinc-900 dark:text-white">{{ $rp->title }}</div>
+                                <div class="text-xs text-zinc-500">{{ $rp->location }} · {{ $rp->completed_at?->format('M Y') ?? 'no date' }}</div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <flux:input
+                                    wire:model="reviewEmails.{{ $rp->id }}"
+                                    wire:keydown.enter="saveReviewEmail({{ $rp->id }})"
+                                    type="email"
+                                    size="sm"
+                                    placeholder="homeowner@email.com"
+                                    class="w-56"
+                                />
+                                <flux:button size="sm" wire:click="saveReviewEmail({{ $rp->id }})">Save</flux:button>
+                            </div>
+                            <flux:error name="reviewEmails.{{ $rp->id }}" />
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </flux:card>
+    @endif
+
     {{-- Stats Grid --}}
     <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <flux:card>

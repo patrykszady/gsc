@@ -393,6 +393,35 @@
                 What ChatGPT, Claude, Perplexity and Gemini crawlers read instead of the HTML. A stale llms.txt
                 means the nightly regen died and AI answers are being built from an old snapshot of the site.
             </flux:text>
+
+            @php $ai = $this->aiTrafficSnapshot; @endphp
+            <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <div class="mb-2 flex items-center justify-between">
+                    <flux:heading size="sm">AI traffic (28 days)</flux:heading>
+                    <flux:text class="text-xs text-zinc-500">{{ $ai['total_referrals'] }} visits · {{ $ai['total_crawls'] }} crawls</flux:text>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-zinc-500">Visitors from assistants</div>
+                        @forelse ($ai['referrals'] as $src => $n)
+                            <div class="mt-1 flex justify-between"><span class="text-zinc-700 dark:text-zinc-300">{{ $src }}</span><span class="tabular-nums font-medium text-zinc-900 dark:text-white">{{ $n }}</span></div>
+                        @empty
+                            <div class="mt-1 text-xs text-zinc-500">None recorded yet.</div>
+                        @endforelse
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-wide text-zinc-500">AI crawler fetches</div>
+                        @forelse (array_slice($ai['crawlers'], 0, 6) as $bot => $n)
+                            <div class="mt-1 flex justify-between"><span class="text-zinc-700 dark:text-zinc-300">{{ $bot }}</span><span class="tabular-nums font-medium text-zinc-900 dark:text-white">{{ $n }}</span></div>
+                        @empty
+                            <div class="mt-1 text-xs text-zinc-500">None recorded yet.</div>
+                        @endforelse
+                    </div>
+                </div>
+                <flux:text class="mt-3 block text-xs text-zinc-500">
+                    Crawls without visits means AI reads us but doesn't cite us; visits are the metric that counts.
+                </flux:text>
+            </div>
         </flux:card>
     </div>
 

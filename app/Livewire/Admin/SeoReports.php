@@ -773,6 +773,47 @@ class SeoReports extends Component
     }
 
     /**
+     * AI-driven traffic, 28 days: humans referred by assistants and pages
+     * fetched by AI crawlers. Populated by the TrackAiTraffic middleware —
+     * before it, GEO investment had no feedback signal at all.
+     *
+     * @return array{referrals:array<string,int>, crawlers:array<string,int>, total_referrals:int, total_crawls:int}
+     */
+    #[Computed]
+    public function aiTrafficSnapshot(): array
+    {
+        if (! Schema::hasTable('ai_traffic_daily')) {
+            return ['referrals' => [], 'crawlers' => [], 'total_referrals' => 0, 'total_crawls' => 0];
+        }
+
+        return Cache::remember(\App\Support\Tenancy::cacheKey('seo_reports_ai_traffic_v1'), 900, function (): array {
+            $rows = \App\Support\Tenancy::table('ai_traffic_daily')
+                ->where('date', '>=', now()->subDays(28)->toDateString())
+                ->select('kind', 'source', DB::raw('SUM(count) total'))
+                ->groupBy('kind', 'source')
+                ->orderByDesc('total')
+                ->get();
+
+            $referrals = [];
+            $crawlers = [];
+            foreach ($rows as $r) {
+                if ($r->kind === 'referral') {
+                    $referrals[$r->source] = (int) $r->total;
+                } else {
+                    $crawlers[$r->source] = (int) $r->total;
+                }
+            }
+
+            return [
+                'referrals' => $referrals,
+                'crawlers' => $crawlers,
+                'total_referrals' => array_sum($referrals),
+                'total_crawls' => array_sum($crawlers),
+            ];
+        });
+    }
+
+    /**
      * @return array{
      *   available:bool,
      *   totals:array{tracked:int,problem:int,pass:int},
