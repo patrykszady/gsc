@@ -146,6 +146,15 @@ Schedule::command('yelp:check-session')->dailyAt('02:15')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Instagram: same daily authenticated-session check as Yelp. The headless
+// visit doubles as the keepalive — the profile otherwise only sees traffic
+// on the twice-a-week posting schedule, and an expired session's first
+// symptom used to be a silently failed post.
+Schedule::command('instagram:check-session')->dailyAt('02:35')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled instagram:check-session failed'));
+
 // Yelp biz: keep the session alive from the SERVER, every 6 hours.
 //
 // This is what replaced "leave Chrome open on your desktop with the Session
