@@ -40,15 +40,27 @@ class SeoGscSubmitSitemaps extends Command
                 continue;
             }
 
-            $failures++;
             $err = $gsc->getLastError();
-            $this->error("  {$sitemap}: " . ($err['message'] ?? 'unknown error'));
 
-            // One 403 means the token lacks the scope; the second submit will
-            // fail identically, so stop after reporting once.
-            if (($err['status'] ?? null) === 403) {
-                break;
+            // No token, 401, and 403 are all the same standing condition —
+            // the one-time interactive `search-console:auth` hasn't been run
+            // (or needs re-running) to grant the write scope. Exiting FAILURE
+            // here made the nightly scheduler log an exception every day
+            // until that happens; a standing condition is a warn-and-skip,
+            // not an incident. The second submit would fail identically.
+            $status = $err['status'] ?? null;
+            $needsAuth = in_array($status, [401, 403], true)
+                || str_contains((string) ($err['message'] ?? ''), 'search-console:auth');
+
+            if ($needsAuth) {
+                $this->warn("  {$sitemap}: " . ($err['message'] ?? 'not authorized'));
+                $this->warn('  Skipping until `php artisan search-console:auth` grants the write scope.');
+
+                return self::SUCCESS;
             }
+
+            $failures++;
+            $this->error("  {$sitemap}: " . ($err['message'] ?? 'unknown error'));
         }
 
         return $failures === 0 ? self::SUCCESS : self::FAILURE;
