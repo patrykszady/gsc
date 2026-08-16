@@ -411,11 +411,11 @@ class GenerateSitemap extends Command
 
             $images = [];
             foreach ($projects as $project) {
-                // images->first(), matching <x-project-card> exactly. Not the
+                // cover(), matching <x-project-card> exactly. Not the
                 // is_cover image: the relation is ordered by sort_order and the
                 // card renders the first of that order, so preferring the cover
                 // declared photos the page does not show.
-                $image = $project->images->first();
+                $image = $project->cover();
                 if (! $image) {
                     continue;
                 }
@@ -555,7 +555,7 @@ class GenerateSitemap extends Command
                 // area's. Shared with the page via ZipCodeService::projectsNear()
                 // so the sitemap can only ever advertise what the page renders.
                 foreach ($zipService->projectsNear((string) $zip, 12) as $project) {
-                    $image = $project->images->first(); // matches <x-project-card>
+                    $image = $project->cover(); // matches <x-project-card>
                     if (! $image) {
                         continue;
                     }

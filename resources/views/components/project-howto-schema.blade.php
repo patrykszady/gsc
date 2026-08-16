@@ -5,7 +5,7 @@
 
     $type   = ucfirst(str_replace('-', ' ', $project->project_type));
     $loc    = $project->location ? ' in '.$project->location.', IL' : '';
-    $coverImage = $project->images->where('is_cover', true)->first() ?? $project->images->first();
+    $coverImage = $project->cover();
 
     /**
      * Generic 6-step remodeling workflow that mirrors how GS Construction actually

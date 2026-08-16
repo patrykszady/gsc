@@ -100,7 +100,12 @@ class ProjectsGrid extends Component
     {
         $projectsQuery = Project::query()
             ->where('is_published', true)
-            ->with(['images' => fn($q) => $q->orderBy('sort_order')->limit(1)])
+            // Cover first, then sort order — one image either way. reorder()
+            // matters: the images() relation bakes in orderBy(sort_order), and
+            // eager-constraint orders APPEND to it, so without the reset the
+            // window function sorts by sort_order first and the admin-chosen
+            // cover can never win.
+            ->with(['images' => fn($q) => $q->reorder()->orderByDesc('is_cover')->orderBy('sort_order')->limit(1)])
             ->when($this->type, fn($q) => $q->where('project_type', $this->type))
             ->orderByDesc('is_featured')
             ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed));

@@ -3,7 +3,7 @@
 
 @if($project)
 @php
-$coverImage = $project->images->where('is_cover', true)->first() ?? $project->images->first();
+$coverImage = $project->cover();
 $coverImageUrl = $coverImage?->getAnyUrl('large');
 $coverThumbUrl = $coverImage?->getAnyUrl('medium');
 

@@ -247,7 +247,7 @@
                 @foreach($projects as $project)
                     @php
                         $cover = $project->relationLoaded('images') && $project->images->isNotEmpty()
-                            ? ($project->images->firstWhere('is_cover', true) ?? $project->images->first())
+                            ? $project->cover()
                             : null;
                     @endphp
                     <a href="{{ route('projects.show', $project) }}" wire:navigate

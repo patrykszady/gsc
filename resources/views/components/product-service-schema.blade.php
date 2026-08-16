@@ -153,7 +153,7 @@
                 ->where('project_type', $projectType)
                 ->with(['images' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
                 ->latest('updated_at')
-                ->first()?->images->first()
+                ->first()?->cover()
         )->getWebpThumbnailUrl('medium')
         ?: secure_url(config('seo.image.fallback', 'images/og-default.jpg'));
 

@@ -80,7 +80,7 @@ class LandingPageContentGenerator
         $sections = $this->sections($serviceLabel, $city, $modLabel, $area, $pricing);
         $faq = $this->faq($serviceLabel, $city);
 
-        $hero = optional($proof->first()->coverImage()->first() ?: $proof->first()->images()->first())->url;
+        $hero = $proof->first()->cover()?->url;
 
         return [
             'slug' => $slug,

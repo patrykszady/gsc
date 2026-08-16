@@ -328,7 +328,7 @@ class SeoService
         // Get cover image
         $image = null;
         if ($project->relationLoaded('images') && $project->images->isNotEmpty()) {
-            $coverImage = $project->images->firstWhere('is_cover', true) ?? $project->images->first();
+            $coverImage = $project->cover();
             $image = $coverImage->getWebpThumbnailUrl('large') ?? $coverImage->getThumbnailUrl('large') ?? $coverImage->url;
         }
 

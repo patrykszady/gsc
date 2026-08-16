@@ -26,9 +26,9 @@
     {{ $attributes->class('group relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10') }}
 >
     <div class="relative aspect-4/3 overflow-hidden">
-        @if($project->images->first())
+        @if($project->cover())
             <x-lqip-image
-                :image="$project->images->first()"
+                :image="$project->cover()"
                 size="medium"
                 width="600"
                 height="450"

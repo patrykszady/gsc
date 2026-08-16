@@ -174,6 +174,20 @@ class Project extends Model
         return $this->hasOne(ProjectImage::class)->where('is_cover', true);
     }
 
+    /**
+     * The image every public surface should lead with: the admin-chosen cover
+     * (is_cover), falling back to the first image by sort order.
+     *
+     * Exists because the site's cards all rendered images->first() while the
+     * admin edit page set is_cover — so featuring an image in admin changed
+     * nothing on the website. Uses the loaded images collection, not a query,
+     * so eager-loaded pages pay nothing extra.
+     */
+    public function cover(): ?ProjectImage
+    {
+        return $this->images->firstWhere('is_cover', true) ?? $this->images->first();
+    }
+
     public function testimonials(): BelongsToMany
     {
         return $this->belongsToMany(Testimonial::class)->withTimestamps();
@@ -220,7 +234,7 @@ class Project extends Model
             'name'         => $this->title,
             'description'  => $this->description,
             'url'          => url('/projects/' . $this->slug),
-            'image'        => optional($this->images()->first())->url,
+            'image'        => $this->cover()?->url,
             'sku'          => 'project-' . $this->id,
             'price'        => 'Contact for quote',
             'currency'     => 'USD',
@@ -261,7 +275,7 @@ class Project extends Model
     public function getDynamicSEOData(): SEOData
     {
         $type  = self::projectTypes()[$this->project_type] ?? 'Remodel';
-        $image = optional($this->coverImage()->first() ?: $this->images()->first())->url;
+        $image = $this->cover()?->url;
         $loc   = $this->location ? " in {$this->location}" : '';
 
         return new SEOData(

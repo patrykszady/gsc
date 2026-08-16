@@ -637,9 +637,9 @@
                     @foreach($relatedProjects as $related)
                         <a href="{{ route('projects.show', $related) }}" wire:navigate class="group block">
                             <div class="relative aspect-4/3 overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800">
-                                @if($related->images->first())
+                                @if($related->cover())
                                     <x-lqip-image 
-                                        :image="$related->images->first()"
+                                        :image="$related->cover()"
                                         size="medium"
                                         aspectRatio="4/3"
                                         class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"

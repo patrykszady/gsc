@@ -136,7 +136,7 @@
     @php
         $homeProjects = \App\Models\Project::query()
             ->where('is_published', true)
-            ->with(['images' => fn ($q) => $q->orderByDesc('is_cover')->orderBy('sort_order')->limit(1)])
+            ->with(['images' => fn ($q) => $q->reorder()->orderByDesc('is_cover')->orderBy('sort_order')->limit(1)])
             ->orderByDesc('is_featured')
             ->latest('completed_at')
             ->take(6)
@@ -167,9 +167,9 @@
                     <a href="{{ route('projects.show', $homeProject) }}" wire:navigate
                        class="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
                         <div class="relative aspect-4/3 overflow-hidden">
-                            @if($homeProject->images->first())
+                            @if($homeProject->cover())
                                 <x-lqip-image
-                                    :image="$homeProject->images->first()"
+                                    :image="$homeProject->cover()"
                                     size="medium" width="600" height="450"
                                     :alt="$hpLabel . ($hpTown !== '' ? ' in ' . $hpTown . ', IL' : '') . ' — ' . $homeProject->title"
                                     class="h-full w-full transition duration-300 group-hover:scale-105" />
