@@ -155,16 +155,16 @@ class SeoReindexProblemPages extends Command
             }
         }
 
-        if (! empty($problems)) {
-            return $problems;
-        }
-
+        // MERGE live + cached, never either/or. The live pass only inspects a
+        // hard-coded priority list (home, services, areas — /faq isn't on it),
+        // while the cached states come from seo:gsc-inspect-bulk, which sweeps
+        // the ENTIRE sitemap daily. Returning early on any live hit meant a
+        // problem page outside the priority list could never be selected:
+        // /faq served 200 for two months while Google kept an old 404 on
+        // file, because the area pages always produced at least one live hit.
         $cached = $this->cachedProblemUrls();
-        if (! empty($cached)) {
-            $this->warn('Live inspection returned no problem URLs; using cached problem states.');
-        }
 
-        return $cached;
+        return array_values(array_unique(array_merge($problems, $cached)));
     }
 
     /**

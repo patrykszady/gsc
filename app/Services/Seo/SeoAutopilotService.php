@@ -244,6 +244,22 @@ class SeoAutopilotService
             $estUplift = round($impressions * $headroom, 1); // est. clicks/28d
             $source = $ctr <= 0.0001 ? 'zero_click' : 'striking_distance';
 
+            // One experiment at a time per page. The fingerprint includes
+            // $source, so a page drifting across the zero-click boundary
+            // between runs got a SECOND concurrent title experiment (Wheeling
+            // Jul 30 zero_click + Aug 13 striking_distance) — the new title
+            // overwrites the old mid-measurement, corrupting both: the first
+            // measures a page that stopped serving its title, and the
+            // second's baseline was taken under the first's title.
+            $inFlight = SeoAction::where('category', 'title_meta')
+                ->where('target_url', (string) $p->page)
+                ->whereIn('status', [SeoAction::STATUS_PROPOSED, SeoAction::STATUS_APPLIED])
+                ->whereNull('measured_at')
+                ->exists();
+            if ($inFlight) {
+                continue;
+            }
+
             $created += $this->upsertAction([
                 'fingerprint' => $this->fp($source, 'title_meta', $model::class . ':' . $model->getKey() . ':' . ($serviceSlug ?? '')),
                 'source' => $source,
