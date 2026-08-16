@@ -38,5 +38,17 @@ return [
          * affects the footer shortlist.
          */
         'exclude_areas' => ['chicago'],
+
+        /*
+         * Towns pinned to the TOP of the footer shortlist regardless of
+         * project count. The shortlist is ordered by completed local projects,
+         * which means the towns where we're trying to WIN rankings — lots of
+         * search impressions, little completed work yet — can never earn a
+         * sitewide internal link from it. These are the current
+         * striking-distance pages from Search Console (position 8–20 with
+         * real demand); a footer link from every page is the cheapest
+         * internal-link push they can get. Revisit when rankings move.
+         */
+        'priority_areas' => ['evanston', 'glenview', 'kenilworth'],
     ],
 ];

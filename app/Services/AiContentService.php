@@ -677,6 +677,88 @@ PROMPT;
     }
 
     /**
+     * Expand an existing area local_intro to the depth of our strongest pages
+     * (~2,000 characters) instead of regenerating at the standard 450–650 target.
+     *
+     * Exists because generateAreaContent() with --force would SHORTEN a page:
+     * its prompt caps local_intro at 650 chars, while the pages that rank at
+     * striking distance (Evanston 2.4k, Glenview 2.2k) earned that depth. The
+     * existing copy is kept as grounding so verified facts survive the rewrite.
+     */
+    public function deepenAreaLocalIntro(\App\Models\AreaServed $area): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $city = $area->city;
+        $existing = trim((string) $area->local_intro);
+        $landmarks = trim((string) $area->landmarks);
+
+        $prompt = <<<PROMPT
+You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom, and
+whole-home remodeling contractor based in Arlington Heights, Illinois. Founded 2015 by
+Gregory and Patryk (father & son), 40+ years combined experience, 5-star rated, English
+& Polish spoken.
+
+Below is the CURRENT "why we fit this city" section of our service-area page for
+**{$city}, Illinois**. Expand it into a substantially deeper piece of 1,600–2,200
+characters (roughly 10–15 sentences). Keep every verifiable fact it already states.
+
+CURRENT TEXT:
+{$existing}
+
+KNOWN LOCAL LANDMARKS (use naturally where relevant, do not just list them):
+{$landmarks}
+
+The expansion should read as genuine local knowledge, covering — where you are
+confident of the facts for {$city}:
+- when and how the housing stock was built (eras, styles, typical construction), and
+  what that means for remodeling them today (layouts, mechanicals, additions)
+- named neighborhoods, subdivisions or districts and how their homes differ
+- anything a remodeler genuinely deals with there: historic-district or appearance
+  review, flood-prone areas, teardown/infill patterns, lot constraints
+- which of our services (kitchens, bathrooms, basements, additions, whole-home
+  remodels) fit the local housing stock and why
+
+Hard rules:
+- Plain text only, one continuous piece (paragraph breaks allowed). No headings,
+  markdown, or emoji.
+- Every concrete claim must be a well-known, verifiable fact about {$city}. If you are
+  not sure of a fact, leave it out — never invent dates, names, ordinances, or fees.
+- Do NOT invent past GS Construction projects or clients in {$city}.
+- Do NOT mention competitors.
+- Banned phrases: "nestled in", "premier", "your trusted", "look no further".
+- Return ONLY the expanded text. No preamble, no quotes.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 1400);
+        if ($raw === null) {
+            return null;
+        }
+
+        $text = trim((string) preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($raw)));
+
+        // A "deepened" intro that came back shorter than the original means the
+        // model ignored the brief — keeping the existing copy beats replacing
+        // it with less.
+        if (mb_strlen($text) <= mb_strlen($existing)) {
+            $this->lastError = sprintf(
+                'Deepened intro for %s came back %d chars (existing: %d) — refusing to shorten.',
+                $city,
+                mb_strlen($text),
+                mb_strlen($existing)
+            );
+
+            return null;
+        }
+
+        return $text;
+    }
+
+    /**
      * Generate unique ZIP landing content for /service-area/{zip} pages.
      *
      * @return array{intro:string,local_context:string,landmarks:string,permit_notes:string}|null

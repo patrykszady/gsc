@@ -758,13 +758,26 @@ class RecommendationEngine
             ? 0.0
             : (float) $deltas[intdiv($deltas->count(), 2)];
 
+        // "Approve open proposals" is only advice when proposals are actually
+        // waiting. This category is usually on the auto-apply allowlist (all
+        // 230 reindex actions on prod applied themselves), so most of the time
+        // there is nothing for a human to click — and a Do-item that resolves
+        // to "no action possible" teaches the operator to ignore the list.
+        $category = (string) $wins->first()->category;
+        $openCount = SeoAction::proposed()->where('category', $category)->count();
+
+        if ($openCount === 0) {
+            return [];
+        }
+
         return [[
             't' => 'Double down on what measurably worked',
             'd' => sprintf(
-                '%d "%s" action(s) measured as wins recently (median %+.0f%% on their metric). The autopilot keeps generating these — approve open proposals of this type first.',
+                '%d "%s" action(s) measured as wins recently (median %+.0f%% on their metric), and %d open proposal(s) of the same type are waiting — approve those first.',
                 $wins->count(),
-                (string) $wins->first()->category,
-                $medianDelta
+                $category,
+                $medianDelta,
+                $openCount
             ),
             'p' => 'next',
         ]];

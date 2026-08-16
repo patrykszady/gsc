@@ -90,9 +90,16 @@
                     // in a six-item shortlist; the area pages stay live either
                     // way. site_config so a tenant can set its own.
                     $footerExcludedAreas = (array) site_config('nav.footer.exclude_areas', []);
+                    // priority_areas pins SEO-target towns first (see
+                    // config/nav.php); the project-count ordering fills the rest.
+                    $footerPriorityAreas = (array) site_config('nav.footer.priority_areas', []);
                     $footerAreas = \App\Models\AreaServed::orderedByLocalProjects()
                         ->reject(fn ($area) => in_array($area->slug, $footerExcludedAreas, true))
-                        ->take(5);
+                        ->sortBy(fn ($area) => array_search($area->slug, $footerPriorityAreas) === false
+                            ? PHP_INT_MAX
+                            : array_search($area->slug, $footerPriorityAreas))
+                        ->take(6)
+                        ->values();
                     $footerLink = 'inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white';
                 @endphp
 

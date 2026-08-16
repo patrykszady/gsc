@@ -25,7 +25,8 @@ class GenerateAreaContent extends Command
         {--limit=0 : Max number of cities to process (0 = no limit)}
         {--dry-run : Print generated content but do not save}
         {--force : Overwrite existing non-empty fields}
-        {--only= : Comma-separated list of fields to keep (intro,local_intro,landmarks,permit_notes)}';
+        {--only= : Comma-separated list of fields to keep (intro,local_intro,landmarks,permit_notes)}
+        {--deepen : Expand the existing local_intro to ~2,000 chars instead of regenerating (implies local_intro only)}';
 
     protected $description = 'Generate unique per-city SEO content for AreaServed pages via Gemini.';
 
@@ -53,6 +54,11 @@ class GenerateAreaContent extends Command
         $force = (bool) $this->option('force');
         $dry = (bool) $this->option('dry-run');
         $limit = (int) $this->option('limit');
+        $deepen = (bool) $this->option('deepen');
+
+        if ($deepen) {
+            return $this->deepen($service, $query->get(), $limit, $dry, $sleepSeconds);
+        }
 
         $areas = $query->get();
 
@@ -139,6 +145,69 @@ class GenerateAreaContent extends Command
 
         $this->line('');
         $this->info("Done. ok={$ok} failed={$fail}");
+        return $fail > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * --deepen: expand existing local_intro copy rather than regenerating it.
+     * Only touches areas that HAVE a local_intro (deepening nothing is just
+     * generation — use the normal mode for that), and the service refuses any
+     * result shorter than the original.
+     */
+    private function deepen(AiContentService $service, $areas, int $limit, bool $dry, int $sleepSeconds): int
+    {
+        $areas = $areas->filter(fn (AreaServed $a) => filled($a->local_intro))->values();
+        if ($limit > 0) {
+            $areas = $areas->take($limit);
+        }
+
+        if ($areas->isEmpty()) {
+            $this->info('Nothing to deepen — no matching areas with existing local_intro.');
+
+            return self::SUCCESS;
+        }
+
+        $this->info(sprintf('Deepening local_intro for %d area(s). Mode: %s.', $areas->count(), $dry ? 'DRY-RUN' : 'WRITE'));
+
+        if (! $dry && ! $this->confirm(sprintf('Overwrite local_intro on %d area(s) with expanded copy?', $areas->count()), false)) {
+            $this->warn('Aborted.');
+
+            return self::SUCCESS;
+        }
+
+        $ok = 0;
+        $fail = 0;
+
+        foreach ($areas as $i => $area) {
+            $before = mb_strlen((string) $area->local_intro);
+            $this->line('');
+            $this->line('[' . ($i + 1) . "/{$areas->count()}] {$area->city} ({$area->slug}) — {$before} chars");
+
+            $text = $service->deepenAreaLocalIntro($area);
+            if ($text === null) {
+                $fail++;
+                $this->warn(' ↳ FAILED: ' . ($service->getLastError() ?: 'unknown'));
+            } else {
+                $this->line('   • local_intro: ' . mb_substr(str_replace(["\n", "\r"], ' ', $text), 0, 140) . '…');
+                $this->line('   • ' . $before . ' → ' . mb_strlen($text) . ' chars');
+
+                if ($dry) {
+                    $this->comment('   (dry-run: not saved)');
+                } else {
+                    $area->forceFill(['local_intro' => $text])->save();
+                    $this->info('   ✓ saved');
+                }
+                $ok++;
+            }
+
+            if ($sleepSeconds > 0 && $i < $areas->count() - 1) {
+                sleep($sleepSeconds);
+            }
+        }
+
+        $this->line('');
+        $this->info("Done. ok={$ok} failed={$fail}");
+
         return $fail > 0 ? self::FAILURE : self::SUCCESS;
     }
 }
