@@ -34,12 +34,21 @@ class ThemedServicesRouteTest extends TestCase
         $this->assertStringNotContainsString('GS Construction', $html);
     }
 
-    public function test_a_tenant_without_one_404s_instead_of_borrowing_gscs_page(): void
-    {
-        // themes/ss has no services.blade.php. Falling through to the shared view
-        // would publish GS Construction's six services under another brand.
-        $this->get('http://ss.systems/services')->assertNotFound();
-    }
+    /*
+     * REMOVED with the ss tenant (2026-08-18):
+     * test_a_tenant_without_one_404s_instead_of_borrowing_gscs_page().
+     *
+     * It asserted that ss.systems 404s on /services rather than serving GS
+     * Construction's six services under another brand — themes/ss had no
+     * services.blade.php. ss.systems is its own application now, and the only
+     * remaining non-gsc tenant (jpeterson) ships its own services view, so
+     * there is no tenant left that the scenario applies to.
+     *
+     * The behaviour it guarded still holds and is still covered: /services is
+     * claimed in config/sites.php 'exclusive_paths', and TenantRouteGuardTest
+     * asserts unclaimed paths 404 on a non-gsc tenant. Re-add a case here if a
+     * future tenant ships without a services view.
+     */
 
     public function test_gs_construction_still_serves_its_own_services_page(): void
     {

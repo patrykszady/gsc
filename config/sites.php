@@ -15,17 +15,12 @@ return [
     // console commands, queue workers, and unknown hosts.
     'default' => env('SITES_DEFAULT', 'gsc'),
 
-    // Hosts where the cross-site admin is mounted, at /admin/{site}/…
-    //
-    // ss.systems is BOTH a public tenant (its own theme, indexable, gets a row
-    // in `sites`) and the admin hub. So this list does not mean "admin only" —
-    // it means "the multi-site admin is reachable here". The /admin/* routes
-    // carry the `noindex` middleware, so the public pages stay indexable while
-    // the admin does not.
-    'admin_hosts' => [
-        'ss.systems',
-        'www.ss.systems',
-    ],
+    // NOTE: 'admin_hosts' used to live here, listing ss.systems as the host
+    // the cross-site admin was mounted on. It is gone with the ss tenant —
+    // and it was already dead config: nothing in app/, routes/ or bootstrap/
+    // ever read it. The /admin/{site}/… routes are registered globally, so
+    // the admin is reachable on any host the app serves (gs.construction
+    // /admin today), which is what made removing the hub a no-op.
 
     /*
     |--------------------------------------------------------------------------

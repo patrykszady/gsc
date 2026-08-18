@@ -12,8 +12,12 @@ class TenantRouteGuardTest extends TestCase
 {
     public function test_gsc_only_paths_404_on_other_tenants(): void
     {
+        // jpeterson via its preview host: ss.systems used to be the second
+        // tenant here, but it runs as its own application now. forPreviewHost
+        // resolves inactive sites, which is what makes jpeterson usable as
+        // the "other tenant" while it is still pre-launch.
         foreach (['compare', 'projects', 'reviews', 'trades', 'permits', 'costs', 'warranty'] as $path) {
-            $this->get("http://ss.systems/{$path}")->assertNotFound();
+            $this->get("http://dev-jpeterson.ss.systems/{$path}")->assertNotFound();
         }
     }
 

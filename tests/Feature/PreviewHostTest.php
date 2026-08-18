@@ -63,6 +63,13 @@ class PreviewHostTest extends TestCase
     public function test_live_tenants_are_unaffected(): void
     {
         $this->assertSame('gsc', Site::forHost('gs.construction')?->slug);
-        $this->assertSame('ss', Site::forHost('ss.systems')?->slug);
+    }
+
+    public function test_a_departed_tenant_no_longer_resolves(): void
+    {
+        // ss.systems runs as its own application now. forHost() only matches
+        // ACTIVE sites, so deactivating the row is what stops this app
+        // answering for that host.
+        $this->assertNull(Site::forHost('ss.systems'));
     }
 }

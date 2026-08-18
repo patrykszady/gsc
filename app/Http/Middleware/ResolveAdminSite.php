@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Binds the site an admin request is *operating on*, taken from the URL:
  *
- *     ss.systems/admin/gs.construction/projects
+ *     gs.construction/admin/jpeterson-design.com/projects
  *                      ^^^^^^^^^^^^^^^
  *
  * This is separate from ResolveSite, which resolves the tenant from the HTTP

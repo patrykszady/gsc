@@ -7,7 +7,6 @@ its own theme, config overlay and scoped data.
 | Slug | Primary host | Theme | Status | Brief |
 | --- | --- | --- | --- | --- |
 | `gsc` | gs.construction | `themes/gsc` (falls through to `resources/views`) | Live | [gsc.md](gsc.md) |
-| `ss` | ss.systems | `themes/ss` | Live | [ss.md](ss.md) |
 | `jpeterson` | jpeterson-design.com | `themes/jpeterson` | In build | [jpeterson.md](jpeterson.md) |
 
 ## Working on one site
@@ -18,7 +17,6 @@ its own theme, config overlay and scoped data.
 # redirect, form post and Livewire request stays on that site. Browsers map
 # *.localhost to loopback themselves; no hosts file to edit.
 http://gsc.localhost:8003/
-http://ss.localhost:8003/
 http://jpeterson.localhost:8003/
 
 # the register: every tenant, its overrides, and what a path does on each
@@ -32,9 +30,6 @@ curl -H "Host: jpeterson.localhost" http://127.0.0.1:8003/portfolio
 
 # still works, and now pins for the rest of the browser session
 http://127.0.0.1:8003/?site=ss
-
-# real hostname via Cloudflare Tunnel → this dev machine
-https://dev.ss.systems/
 
 # admin for a specific site
 http://127.0.0.1:8003/admin/gs.construction/projects
@@ -67,3 +62,12 @@ php artisan tenants:run "sitemap:generate"          # every active site
 - **SEO:** GSC property, GBP location, IndexNow key — per site
 - **Launch checklist:** DNS · Forge alias · cert · theme · is_active · sitemap · GSC verify
 ```
+
+## Sites that left this platform
+
+`ss` (ss.systems) was a tenant here until 2026-08-18. It now runs as its own
+Laravel application — repo `patrykszady/ss-systems`, its own Forge site — so
+its theme and config overlay were removed and its `sites` row deactivated.
+The row itself is kept because it still owns tracked_404s / ai_traffic_daily
+history; `Site::forHost()` matches only active sites, so the host no longer
+resolves here.

@@ -54,9 +54,10 @@ class NoIndexNonProduction
         }
 
         // Multi-tenant: only a host that belongs to a real Site is indexable.
-        // Server aliases (the ss.systems admin hub, a domain parked ahead of
-        // its theme being built, the *.on-forge.com default) all resolve to
-        // the fallback site and would otherwise serve a full duplicate of it.
+        // Server aliases (a domain parked ahead of its theme being built,
+        // the *.on-forge.com default, a host that has left the platform) all
+        // resolve to the fallback site and would otherwise serve a full
+        // duplicate of it.
         return Site::forHost($host) === null;
     }
 }

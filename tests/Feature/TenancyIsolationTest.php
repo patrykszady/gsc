@@ -20,28 +20,32 @@ class TenancyIsolationTest extends TestCase
     public function test_config_does_not_bleed_between_tenants(): void
     {
         $gsc = Site::where('slug', 'gsc')->firstOrFail();
-        $ss = Site::where('slug', 'ss')->firstOrFail();
+        $other = Site::where('slug', 'jpeterson')->firstOrFail();
 
         $gscEmail = Tenancy::for($gsc, fn () => config('brand.email'));
-        $ssEmail = Tenancy::for($ss, fn () => config('brand.email'));
+        $otherEmail = Tenancy::for($other, fn () => config('brand.email'));
 
-        $this->assertNotSame($gscEmail, $ssEmail, 'tenants must not share brand identity');
+        $this->assertNotSame($gscEmail, $otherEmail, 'tenants must not share brand identity');
 
-        // ss first, then gsc: the failing order before the fix.
-        Tenancy::for($ss, fn () => null);
+        // the other tenant first, then gsc: the failing order before the fix.
+        Tenancy::for($other, fn () => null);
         $this->assertSame($gscEmail, Tenancy::for($gsc, fn () => config('brand.email')));
 
         // nested
-        Tenancy::for($ss, function () use ($gsc, $gscEmail, $ssEmail) {
-            $this->assertSame($ssEmail, config('brand.email'));
+        Tenancy::for($other, function () use ($gsc, $gscEmail, $otherEmail) {
+            $this->assertSame($otherEmail, config('brand.email'));
             Tenancy::for($gsc, fn () => $this->assertSame($gscEmail, config('brand.email')));
-            $this->assertSame($ssEmail, config('brand.email'), 'outer context must be restored');
+            $this->assertSame($otherEmail, config('brand.email'), 'outer context must be restored');
         });
     }
 
-    public function test_each_binds_every_active_site(): void
+    public function test_each_binds_every_site(): void
     {
-        $seen = Tenancy::each(fn (Site $s) => [$s->slug, config('brand.email')]);
+        // includeInactive: gsc is the only ACTIVE tenant now that ss.systems
+        // runs as its own application and jpeterson has not launched. The
+        // point of this test is that binding iterates without drifting
+        // between tenants, which needs more than one site to mean anything.
+        $seen = Tenancy::each(fn (Site $s) => [$s->slug, config('brand.email')], includeInactive: true);
 
         $this->assertGreaterThanOrEqual(2, count($seen));
         foreach ($seen as $slug => [$boundSlug, $email]) {
@@ -50,13 +54,13 @@ class TenancyIsolationTest extends TestCase
         }
 
         // running twice must give identical results (no drift)
-        $this->assertSame($seen, Tenancy::each(fn (Site $s) => [$s->slug, config('brand.email')]));
+        $this->assertSame($seen, Tenancy::each(fn (Site $s) => [$s->slug, config('brand.email')], includeInactive: true));
     }
 
     public function test_restore_returns_config_to_shared_defaults(): void
     {
         $base = config('brand.email');
-        Tenancy::for(Site::where('slug', 'ss')->firstOrFail(), fn () => null);
+        Tenancy::for(Site::where('slug', 'jpeterson')->firstOrFail(), fn () => null);
         SiteConfig::restore();
 
         $this->assertSame($base, config('brand.email'));

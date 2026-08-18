@@ -70,9 +70,15 @@ class AdminSiteAuthorizationTest extends TestCase
 
     public function test_admin_root_honours_the_host_for_a_platform_admin(): void
     {
+        // jpeterson via its preview host. This used to run against
+        // ss.systems, which was both a tenant and the admin hub host; that
+        // site left the platform, and its `sites` row is deactivated, so the
+        // host now falls back to the default tenant and proves nothing.
+        // forPreviewHost resolves inactive sites, so jpeterson still works
+        // as a non-default tenant to land in.
         $this->actingAs($this->platformUser())
-            ->get('http://ss.systems/admin')
-            ->assertRedirect('http://ss.systems/admin/ss.systems');
+            ->get('http://dev-jpeterson.ss.systems/admin')
+            ->assertRedirect('http://dev-jpeterson.ss.systems/admin/jpeterson-design.com');
     }
 
     public function test_platform_admin_may_administer_any_tenant(): void

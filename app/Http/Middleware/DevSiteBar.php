@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * a switcher into HTML responses.
  *
  * Injected by middleware rather than added to a Blade layout because the
- * themes share no markup at all — themes/ss's layout is 29 lines whose body is
+ * themes share no markup at all — themes/jpeterson's layout shares no markup with gsc's and is
  * just {{ $slot }}, themes/jpeterson brings its own head, header and footer
  * and includes no shared partial, and resources/views/services.blade.php is a
  * standalone document. A partial would have to be pasted into each one, and
