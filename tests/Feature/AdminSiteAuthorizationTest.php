@@ -9,7 +9,7 @@ use Tests\TestCase;
 /**
  * A client login must reach its own tenant's admin and nothing else.
  *
- * Before users had a site_id, the only guard on /admin/{site}/… was `auth`:
+ * Before users had a site_id, the only guard on /admin-legacy/{site}/… was `auth`:
  * any authenticated user could edit the URL segment and read another tenant's
  * projects, leads and contact submissions. These tests pin that shut.
  */
@@ -36,33 +36,33 @@ class AdminSiteAuthorizationTest extends TestCase
     public function test_scoped_user_is_forbidden_from_another_tenants_admin(): void
     {
         $this->actingAs($this->scopedUser('jpeterson'))
-            ->get('http://ss.systems/admin/gs.construction/projects')
+            ->get('http://ss.systems/admin-legacy/gs.construction/projects')
             ->assertForbidden();
     }
 
     public function test_scoped_user_can_reach_their_own_admin(): void
     {
         $this->actingAs($this->scopedUser('jpeterson'))
-            ->get('http://ss.systems/admin/jpeterson-design.com')
+            ->get('http://ss.systems/admin-legacy/jpeterson-design.com')
             ->assertSuccessful();
     }
 
     public function test_scoped_user_skips_the_picker_and_lands_in_their_own_admin(): void
     {
         $this->actingAs($this->scopedUser('jpeterson'))
-            ->get('http://ss.systems/admin')
-            ->assertRedirect('/admin/jpeterson-design.com');
+            ->get('http://ss.systems/admin-legacy')
+            ->assertRedirect('/admin-legacy/jpeterson-design.com');
     }
 
     public function test_platform_admin_still_sees_every_site(): void
     {
-        // The picker moved to /admin/sites. /admin now honours the host you
+        // The picker moved to /admin-legacy/sites. /admin now honours the host you
         // arrived on, because being asked "which site?" on a URL that already
         // names one is a question with a single sensible answer. A platform
         // admin can still reach every tenant — via the switcher in the admin
         // chrome, which links here.
         $this->actingAs($this->platformUser())
-            ->get('http://ss.systems/admin/sites')
+            ->get('http://ss.systems/admin-legacy/sites')
             ->assertSuccessful()
             ->assertSee('GS Construction')
             ->assertSee('J. Peterson Design');
@@ -77,22 +77,22 @@ class AdminSiteAuthorizationTest extends TestCase
         // forPreviewHost resolves inactive sites, so jpeterson still works
         // as a non-default tenant to land in.
         $this->actingAs($this->platformUser())
-            ->get('http://dev-jpeterson.ss.systems/admin')
-            ->assertRedirect('http://dev-jpeterson.ss.systems/admin/jpeterson-design.com');
+            ->get('http://dev-jpeterson.ss.systems/admin-legacy')
+            ->assertRedirect('http://dev-jpeterson.ss.systems/admin-legacy/jpeterson-design.com');
     }
 
     public function test_platform_admin_may_administer_any_tenant(): void
     {
         $platform = $this->platformUser();
 
-        $this->actingAs($platform)->get('http://ss.systems/admin/gs.construction')->assertSuccessful();
-        $this->actingAs($platform)->get('http://ss.systems/admin/jpeterson-design.com')->assertSuccessful();
+        $this->actingAs($platform)->get('http://ss.systems/admin-legacy/gs.construction')->assertSuccessful();
+        $this->actingAs($platform)->get('http://ss.systems/admin-legacy/jpeterson-design.com')->assertSuccessful();
     }
 
     public function test_the_picker_never_lists_another_tenant(): void
     {
         $this->actingAs($this->scopedUser('jpeterson'))
-            ->get('http://ss.systems/admin/jpeterson-design.com')
+            ->get('http://ss.systems/admin-legacy/jpeterson-design.com')
             ->assertSuccessful()
             ->assertDontSee('gs.construction');
     }

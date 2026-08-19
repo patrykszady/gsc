@@ -10,8 +10,11 @@ class TrackedEvent extends Model
     use BelongsToSite;
 
     public const TYPE_PHONE_CLICK = 'phone_click';
+
     public const TYPE_EMAIL_CLICK = 'email_click';
+
     public const TYPE_FORM_SUBMIT = 'form_submit';
+
     public const TYPE_CTA_CLICK = 'cta_click';
 
     protected $fillable = [
@@ -60,5 +63,23 @@ class TrackedEvent extends Model
             self::TYPE_CTA_CLICK => 'CTA click',
             default => ucfirst(str_replace('_', ' ', $type)),
         };
+    }
+
+    /** Management-API shape — see Project::toApiArray(). */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'type' => $this->type,
+            'type_label' => static::typeLabel($this->type),
+            'label' => $this->label,
+            'page_path' => $this->page_path,
+            'referrer' => $this->referrer,
+            'utm_source' => $this->utm_source,
+            'utm_medium' => $this->utm_medium,
+            'utm_campaign' => $this->utm_campaign,
+            'country' => $this->country,
+            'created_at' => optional($this->created_at)->toIso8601String(),
+        ];
     }
 }

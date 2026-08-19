@@ -10,7 +10,7 @@ use Tests\TestCase;
 /**
  * Login must not generate a route that needs the {site} parameter.
  *
- * /admin/login sits OUTSIDE the admin/{site} group, so ResolveAdminSite never
+ * /admin-legacy/login sits OUTSIDE the admin/{site} group, so ResolveAdminSite never
  * runs and URL::defaults(['site' => ...]) is never set. Any route('admin.*')
  * call here throws UrlGenerationException — which is exactly what a successful
  * login did, turning a correct password into a 500.
@@ -29,7 +29,7 @@ class AdminLoginRedirectTest extends TestCase
             ->set('password', 'secret-Password-1')
             ->call('login')
             ->assertHasNoErrors()
-            ->assertRedirect('/admin');
+            ->assertRedirect('/admin-legacy');
 
         $this->assertAuthenticatedAs($user->fresh());
 

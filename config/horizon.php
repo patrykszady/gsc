@@ -201,7 +201,9 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'ai-content', 'social-media'],
+            // lead-filters FIRST: cross-site spam blocks are tiny and
+            // time-critical, and must never wait behind bulk SEO batches.
+            'queue' => ['lead-filters', 'default', 'ai-content', 'social-media'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,

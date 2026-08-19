@@ -37,11 +37,11 @@ class ProjectTimelapseFrame extends Model
         $publicExists = $disk->exists($this->path);
         $legacyExists = is_file($legacyPath);
 
-        if (!$publicExists && !$legacyExists) {
+        if (! $publicExists && ! $legacyExists) {
             return false;
         }
 
-        if (!$publicExists && $legacyExists) {
+        if (! $publicExists && $legacyExists) {
             $stream = fopen($legacyPath, 'r');
 
             if ($stream === false) {
@@ -59,6 +59,7 @@ class ProjectTimelapseFrame extends Model
 
         if ($publicExists && $legacyExists) {
             @unlink($legacyPath);
+
             return true;
         }
 
@@ -67,7 +68,20 @@ class ProjectTimelapseFrame extends Model
 
     public function legacyPath(): string
     {
-        return storage_path('app/' . ltrim($this->path, '/'));
+        return storage_path('app/'.ltrim($this->path, '/'));
+    }
+
+    /** Management-API shape — see Project::toApiArray(). */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'project_timelapse_id' => $this->project_timelapse_id,
+            'url' => $this->url,
+            'filename' => $this->filename,
+            'original_filename' => $this->original_filename,
+            'sort_order' => (int) $this->sort_order,
+        ];
     }
 
     protected static function booted(): void

@@ -31,5 +31,13 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- GeoapifyService uses a raw Guzzle client, not the Http facade, so
+             Http::fake() cannot intercept it. Blanking the key here is the
+             hard backstop: GeoapifyService::apiKey === '' short-circuits
+             before any network call, for every test — including ones that
+             exercise LeadAddressCompleter without explicitly mocking
+             GeoapifyService. Tests that need real completer behaviour mock
+             GeoapifyService itself instead. -->
+        <env name="GEOAPIFY_API_KEY" value=""/>
     </php>
 </phpunit>

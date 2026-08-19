@@ -28,7 +28,7 @@ class AdminSitePersistenceTest extends TestCase
 
         // Livewire POST: recoverable from the Referer of the originating page
         $req = \Illuminate\Http\Request::create('/livewire/update', 'POST');
-        $req->headers->set('Referer', 'https://ss.systems/admin/jpeterson-design.com/projects');
+        $req->headers->set('Referer', 'https://ss.systems/admin-legacy/jpeterson-design.com/projects');
         $this->assertSame('jpeterson-design.com', $ref->invoke($mw, $req));
     }
 
@@ -39,7 +39,7 @@ class AdminSitePersistenceTest extends TestCase
         $user = User::factory()->create();
 
         foreach ([['gs.construction', 'gsc'], ['jpeterson-design.com', 'jpeterson']] as [$host, $slug]) {
-            $this->actingAs($user)->get("/admin/{$host}/projects")->assertOk();
+            $this->actingAs($user)->get("/admin-legacy/{$host}/projects")->assertOk();
             $this->assertSame($slug, Site::current()->slug, "admin/{$host} must bind {$slug}");
         }
     }

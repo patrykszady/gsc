@@ -52,6 +52,13 @@
                     @endfor
                 </flux:select>
             </div>
+            <div class="w-40">
+                <flux:select wire:model.live="visibility">
+                    <flux:select.option value="">All Reviews</flux:select.option>
+                    <flux:select.option value="shown">Shown</flux:select.option>
+                    <flux:select.option value="hidden">Hidden</flux:select.option>
+                </flux:select>
+            </div>
         </div>
     </flux:card>
 

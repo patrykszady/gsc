@@ -31,6 +31,15 @@ class DevSiteBar
     {
         $response = $next($request);
 
+        // /admin/* is the central-admin proxy: those bytes are ANOTHER
+        // app's HTML (ss-systems'), relayed verbatim. Injecting the bar —
+        // or even the X-Dev-Site headers — into a response this app didn't
+        // render would corrupt it. Kernel-global middleware can't be
+        // excluded per-route, so the guard lives here.
+        if ($request->is('admin') || $request->is('admin/*')) {
+            return $response;
+        }
+
         // Belt and braces: this middleware is only registered in local, and
         // this returns early if that ever changes.
         if (! app()->environment('local')) {

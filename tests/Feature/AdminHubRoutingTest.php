@@ -13,15 +13,15 @@ class AdminHubRoutingTest extends TestCase
         // in-memory DB, so there is no pre-existing user to find.
         $user = User::factory()->create();
         $cases = [
-            ['/admin', [200, 302]],
-            ['/admin/gs.construction', [200]],
-            ['/admin/gs.construction/projects', [200]],
+            ['/admin-legacy', [200, 302]],
+            ['/admin-legacy/gs.construction', [200]],
+            ['/admin-legacy/gs.construction/projects', [200]],
             // 301 since the autopilot panel merged into seo-reports; the old
             // URL forwards there (SeoReportsAutopilotMergeTest pins the target).
-            ['/admin/gs.construction/autopilot', [301]],
-            ['/admin/projects', [301]],
-            ['/admin/jpeterson-design.com', [200]],
-            ['/admin/nope.example', [404]],
+            ['/admin-legacy/gs.construction/autopilot', [301]],
+            ['/admin-legacy/projects', [301]],
+            ['/admin-legacy/jpeterson-design.com', [200]],
+            ['/admin-legacy/nope.example', [404]],
         ];
 
         foreach ($cases as [$url, $expected]) {
@@ -36,7 +36,7 @@ class AdminHubRoutingTest extends TestCase
         // Provision rather than assume: the suite runs on a fresh
         // in-memory DB, so there is no pre-existing user to find.
         $user = User::factory()->create();
-        $this->actingAs($user)->get('/admin/gs.construction/projects');
+        $this->actingAs($user)->get('/admin-legacy/gs.construction/projects');
         $url = route('admin.projects.index', [], false);
         fwrite(STDERR, "  route('admin.projects.index') = {$url}\n");
         $this->assertStringContainsString('gs.construction', $url);

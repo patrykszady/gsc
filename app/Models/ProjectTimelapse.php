@@ -24,4 +24,20 @@ class ProjectTimelapse extends Model
     {
         return $this->hasMany(ProjectTimelapseFrame::class)->orderBy('sort_order');
     }
+
+    /** Management-API shape — see Project::toApiArray(). gsc-only (behind the 'timelapses' ping capability). */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'project_id' => $this->project_id,
+            'title' => $this->title,
+            'display_mode' => $this->display_mode,
+            'sort_order' => (int) $this->sort_order,
+            'frames' => ($this->relationLoaded('frames') ? $this->frames : $this->frames()->get())
+                ->map(fn (ProjectTimelapseFrame $frame) => $frame->toApiArray())
+                ->values()
+                ->all(),
+        ];
+    }
 }

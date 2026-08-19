@@ -2,10 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Jobs\SendLeadToHive;
 use App\Mail\ContactFormAutoReply;
 use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
 use App\Models\ContactSubmission;
+use App\Models\LeadFilterRule;
+use App\Services\LeadAddressCompleter;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -143,7 +147,7 @@ class ContactSection extends Component
             return;
         }
 
-        if (!isset($this->timeSelections[$date])) {
+        if (! isset($this->timeSelections[$date])) {
             $this->timeSelections[$date] = [];
         }
 
@@ -291,7 +295,7 @@ class ContactSection extends Component
         return config('brand.timezone') ?: 'America/Chicago';
     }
 
-    public static function earliestSelectableDate(): \Carbon\Carbon
+    public static function earliestSelectableDate(): Carbon
     {
         $date = now()->setTimezone(static::businessTimezone())->startOfDay();
 
@@ -318,7 +322,7 @@ class ContactSection extends Component
         try {
             // Parsed in the business timezone so the comparison below is
             // day-to-day on the same calendar, not across a UTC offset.
-            $parsed = \Carbon\Carbon::createFromFormat('Y-m-d', $date, static::businessTimezone())?->startOfDay();
+            $parsed = Carbon::createFromFormat('Y-m-d', $date, static::businessTimezone())?->startOfDay();
         } catch (\Throwable) {
             return false;
         }
@@ -372,10 +376,11 @@ class ContactSection extends Component
         }
 
         // Rate limiting: 3 submissions per IP per hour
-        $rateLimitKey = 'contact-form:' . request()->ip();
+        $rateLimitKey = 'contact-form:'.request()->ip();
         if (RateLimiter::tooManyAttempts($rateLimitKey, 3)) {
             $seconds = RateLimiter::availableIn($rateLimitKey);
             $this->addError('form', "Too many submissions. Please try again in {$seconds} seconds.");
+
             return;
         }
         RateLimiter::hit($rateLimitKey, 3600); // 1 hour decay
@@ -394,13 +399,14 @@ class ContactSection extends Component
                 'availability' => $this->availability,
                 'time_taken' => time() - $this->formLoadedAt,
             ]);
-            
+
             // Store spam submission for review
             $this->storeSubmission('spam', $spamReason);
-            
+
             // Show generic success message to not alert spammers
             session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
             $this->reset(['name', 'email', 'phone', 'phoneDigits', 'address', 'message', 'website', 'turnstileToken', 'availability', 'selectedDates', 'selectedDateForTimes', 'timeSelections']);
+
             return;
         }
 
@@ -441,10 +447,10 @@ class ContactSection extends Component
             'ip' => request()->ip(),
             'time_taken' => time() - $this->formLoadedAt,
         ]);
-        
+
         // Server-side GA4 tracking (works even if client blocks GA)
         $this->sendServerSideAnalytics();
-        
+
         session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
 
         // Dispatch browser event for analytics tracking
@@ -491,7 +497,7 @@ class ContactSection extends Component
     {
         // Learned deny rules win first: senders an operator previously flagged as
         // spam are blocked outright (self-healing block list).
-        if (\App\Models\LeadFilterRule::matchDeny($this->email, $this->phoneDigits, request()->ip())) {
+        if (LeadFilterRule::matchDeny($this->email, $this->phoneDigits, request()->ip())) {
             return 'blocklisted';
         }
 
@@ -518,7 +524,7 @@ class ContactSection extends Component
         }
 
         // 1. Honeypot check - if filled, it's a bot
-        if (!empty($this->website)) {
+        if (! empty($this->website)) {
             return 'honeypot_filled';
         }
 
@@ -530,7 +536,7 @@ class ContactSection extends Component
 
         // Learned allow rules: a sender an operator previously converted to a real
         // lead is trusted, so skip the content heuristics below (self-healing).
-        if (\App\Models\LeadFilterRule::isAllowed($this->email, $this->phoneDigits, request()->ip())) {
+        if (LeadFilterRule::isAllowed($this->email, $this->phoneDigits, request()->ip())) {
             return null;
         }
 
@@ -547,9 +553,9 @@ class ContactSection extends Component
         // 5. Check for common spam keywords
         $spamKeywords = [
             // Classic spam
-            'viagra', 'cialis', 'casino', 'lottery', 'bitcoin', 'crypto', 
-            'investment opportunity', 'make money fast', 'click here', 'act now', 
-            'limited time', 'congratulations', 'winner', 'free money', 
+            'viagra', 'cialis', 'casino', 'lottery', 'bitcoin', 'crypto',
+            'investment opportunity', 'make money fast', 'click here', 'act now',
+            'limited time', 'congratulations', 'winner', 'free money',
             'nigerian prince', 'inheritance',
             // SEO/Marketing spam (like "Daniel Wright" email)
             'seo services', 'web traffic', 'backlinks', 'google ranking',
@@ -574,10 +580,10 @@ class ContactSection extends Component
             'would you like me to', 'interested in learning more',
             'free consultation', 'no obligation', 'risk free',
         ];
-        $content = strtolower($this->name . ' ' . $this->message);
+        $content = strtolower($this->name.' '.$this->message);
         foreach ($spamKeywords as $keyword) {
             if (str_contains($content, $keyword)) {
-                return 'spam_keyword: ' . $keyword;
+                return 'spam_keyword: '.$keyword;
             }
         }
 
@@ -607,7 +613,7 @@ class ContactSection extends Component
         }
 
         // 10. Message doesn't mention remodeling-related terms (likely not a real inquiry)
-        if (!$this->mentionsRemodelingTopics($this->message)) {
+        if (! $this->mentionsRemodelingTopics($this->message)) {
             return 'no_remodeling_context';
         }
 
@@ -646,7 +652,7 @@ class ContactSection extends Component
         // Check consonant-to-vowel ratio (gibberish often has unusual ratios)
         $vowels = preg_match_all('/[aeiouAEIOU]/', $text);
         $consonants = preg_match_all('/[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]/', $text);
-        
+
         if ($consonants > 0 && $vowels > 0) {
             $ratio = $consonants / $vowels;
             // Normal English has ~1.5-2 consonants per vowel, gibberish often has 5+
@@ -679,7 +685,7 @@ class ContactSection extends Component
     {
         // Check for random-looking local part (like "osolu.w.i.ci41@")
         $localPart = explode('@', $email)[0] ?? '';
-        
+
         // Multiple dots in local part is suspicious (like "a.b.c.d@")
         if (substr_count($localPart, '.') >= 3) {
             return true;
@@ -718,7 +724,7 @@ class ContactSection extends Component
         ];
 
         $domain = strtolower(explode('@', $email)[1] ?? '');
-        
+
         return in_array($domain, $disposableDomains);
     }
 
@@ -739,16 +745,16 @@ class ContactSection extends Component
         ];
 
         $domain = strtolower(explode('@', $email)[1] ?? '');
-        
+
         // Direct match
         if (in_array($domain, $spamDomains)) {
             return true;
         }
-        
+
         // Pattern match: domains with "service", "mail", "lead", "outreach" in them
         // but not legitimate providers like gmail, hotmail, etc.
         $legitimateMailProviders = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'aol.com', 'icloud.com', 'protonmail.com', 'fastmail.com', 'zoho.com'];
-        if (!in_array($domain, $legitimateMailProviders)) {
+        if (! in_array($domain, $legitimateMailProviders)) {
             if (preg_match('/(jmail|mailservice|emailservice|leadgen|outreach|coldmail|prospecting)/i', $domain)) {
                 return true;
             }
@@ -764,7 +770,7 @@ class ContactSection extends Component
     protected function mentionsRemodelingTopics(string $message): bool
     {
         $message = strtolower($message);
-        
+
         $remodelingKeywords = [
             // Rooms/areas
             'kitchen', 'bathroom', 'bath', 'basement', 'bedroom', 'living room',
@@ -776,7 +782,7 @@ class ContactSection extends Component
             'restore', 'transform', 'convert', 'finish', 'unfinish',
             // Specific work
             'cabinets', 'countertop', 'counters', 'flooring', 'tile', 'tiles',
-            'backsplash', 'sink', 'faucet', 'shower', 'tub', 'bathtub', 
+            'backsplash', 'sink', 'faucet', 'shower', 'tub', 'bathtub',
             'toilet', 'vanity', 'mirror', 'lighting', 'fixtures',
             'appliances', 'island', 'pantry', 'storage',
             'drywall', 'paint', 'painting', 'trim', 'molding', 'crown',
@@ -818,8 +824,8 @@ class ContactSection extends Component
             ]);
 
             $result = $response->json();
-            
-            if (!($result['success'] ?? false)) {
+
+            if (! ($result['success'] ?? false)) {
                 $errorCodes = $result['error-codes'] ?? [];
 
                 Log::channel('submissions')->warning('Turnstile verification failed', [
@@ -838,6 +844,7 @@ class ContactSection extends Component
                     Log::channel('submissions')->error('Turnstile secret key invalid or missing. Allowing submission as fallback.', [
                         'error-codes' => $errorCodes,
                     ]);
+
                     return true;
                 }
 
@@ -855,11 +862,12 @@ class ContactSection extends Component
             Log::channel('submissions')->error('Turnstile verification error', [
                 'error' => $e->getMessage(),
             ]);
+
             // Allow form submission if Turnstile API fails (graceful degradation)
             return true;
         }
     }
-    
+
     /**
      * Send server-side analytics to GA4 via Measurement Protocol.
      * This tracks form submissions even when client-side GA is blocked.
@@ -868,11 +876,11 @@ class ContactSection extends Component
     {
         $measurementId = config('services.google.measurement_id');
         $apiSecret = config('services.google.measurement_api_secret');
-        
+
         if (! $measurementId || ! $apiSecret) {
             return;
         }
-        
+
         try {
             // Try to get GA client_id in order of reliability:
             // 1. GA's own cookie (most reliable)
@@ -891,7 +899,7 @@ class ContactSection extends Component
                 session(['ga_client_id' => $clientId]);
                 $trackingSource = 'generated';
             }
-            
+
             Http::timeout(5)->post("https://www.google-analytics.com/mp/collect?measurement_id={$measurementId}&api_secret={$apiSecret}", [
                 'client_id' => $clientId,
                 'events' => [
@@ -916,18 +924,18 @@ class ContactSection extends Component
             \Log::warning('Server-side GA4 tracking failed', ['error' => $e->getMessage()]);
         }
     }
-    
+
     /**
      * Store form submission in database for reliable tracking.
      * This provides a backup independent of email delivery and analytics.
-     * 
-     * @param string $status 'pending' for legitimate, 'spam' for blocked
-     * @param string|null $spamReason Reason for spam classification
+     *
+     * @param  string  $status  'pending' for legitimate, 'spam' for blocked
+     * @param  string|null  $spamReason  Reason for spam classification
      */
     protected function storeSubmission(string $status = 'pending', ?string $spamReason = null): void
     {
         try {
-            $submission = ContactSubmission::create([
+            $attributes = [
                 'name' => $this->name,
                 'email' => $this->email,
                 'phone' => $this->phoneDigits,
@@ -944,17 +952,47 @@ class ContactSection extends Component
                 'utm_source' => session('utm_source') ?? request()->input('utm_source'),
                 'utm_medium' => session('utm_medium') ?? request()->input('utm_medium'),
                 'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
-            ]);
+            ];
+
+            // Fill in city/state/zip from the street when the sender didn't
+            // give them, so the lead's address is whole rather than a bare
+            // street. Only for real leads — a honeypot-caught bot's address
+            // isn't worth a paid Geoapify call.
+            if ($status === 'pending') {
+                $attributes = $this->completeLeadAddress($attributes);
+            }
+
+            $submission = ContactSubmission::create($attributes);
 
             // Forward clean leads to hive.contractors. Spam stays local.
             // Job no-ops when HIVE_API_TOKEN is missing, so no extra gate needed.
             if ($status === 'pending') {
-                \App\Jobs\SendLeadToHive::dispatch($submission->id)
+                SendLeadToHive::dispatch($submission->id)
                     ->afterCommit();
             }
         } catch (\Exception $e) {
             // Don't let database failure affect form submission
             Log::channel('submissions')->error('Failed to store contact submission', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Run the address through LeadAddressCompleter (city/state/zip via
+     * Geoapify — see App\Services\LeadAddressCompleter). This is on the
+     * contact form's request path, so a geocoder timeout or outage must
+     * NEVER stop the lead from saving: any failure here is swallowed and the
+     * submission proceeds with whatever the sender actually typed.
+     */
+    protected function completeLeadAddress(array $attributes): array
+    {
+        try {
+            return app(LeadAddressCompleter::class)->complete($attributes);
+        } catch (\Throwable $e) {
+            Log::channel('submissions')->warning('Lead address completion failed', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $attributes;
         }
     }
 
@@ -981,7 +1019,7 @@ class ContactSection extends Component
             'turnstileSiteKey' => config('services.turnstile.site_key'),
             'turnstileEnabled' => config('services.turnstile.enabled') && config('services.turnstile.secret_key'),
             // Pass visitor country info for Turnstile visibility decision
-            'isUSVisitor' => session('visitor_country', 'XX') === 'US' 
+            'isUSVisitor' => session('visitor_country', 'XX') === 'US'
                 || in_array(session('visitor_country', 'XX'), ['US', 'PR', 'VI', 'GU', 'AS', 'MP']),
             'visitorCountry' => session('visitor_country', 'XX'),
         ]);

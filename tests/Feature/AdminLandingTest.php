@@ -11,7 +11,7 @@ use Tests\TestCase;
  *
  * The host already names the tenant, so being asked "which site?" on
  * gs.construction/admin is a question with one sensible answer. The picker
- * still exists at /admin/sites, because there is no switcher in the admin
+ * still exists at /admin-legacy/sites, because there is no switcher in the admin
  * chrome and an operator with several sites would otherwise be stranded on
  * whichever one they happened to arrive on.
  */
@@ -34,8 +34,8 @@ class AdminLandingTest extends TestCase
         $user = $this->operator();
 
         $this->actingAs($user)
-            ->get('http://gs.construction/admin')
-            ->assertRedirect('http://gs.construction/admin/gs.construction');
+            ->get('http://gs.construction/admin-legacy')
+            ->assertRedirect('http://gs.construction/admin-legacy/gs.construction');
     }
 
     public function test_each_host_lands_on_its_own_tenant(): void
@@ -58,8 +58,8 @@ class AdminLandingTest extends TestCase
             $host = $site->primary_host;
 
             $this->actingAs($user)
-                ->get("http://{$host}/admin")
-                ->assertRedirect("http://{$host}/admin/{$host}");
+                ->get("http://{$host}/admin-legacy")
+                ->assertRedirect("http://{$host}/admin-legacy/{$host}");
         }
     }
 
@@ -71,21 +71,21 @@ class AdminLandingTest extends TestCase
         $default = Site::default();
 
         $this->actingAs($user)
-            ->get('http://127.0.0.1/admin')
-            ->assertRedirect("http://127.0.0.1/admin/{$default->primary_host}");
+            ->get('http://127.0.0.1/admin-legacy')
+            ->assertRedirect("http://127.0.0.1/admin-legacy/{$default->primary_host}");
     }
 
     public function test_the_picker_is_still_reachable(): void
     {
         $this->actingAs($this->operator())
-            ->get('http://gs.construction/admin/sites')
+            ->get('http://gs.construction/admin-legacy/sites')
             ->assertOk()
             ->assertSee('gs.construction', false);
     }
 
     public function test_admin_requires_a_login(): void
     {
-        $this->get('http://gs.construction/admin')->assertRedirect('/admin/login');
-        $this->get('http://gs.construction/admin/sites')->assertRedirect('/admin/login');
+        $this->get('http://gs.construction/admin-legacy')->assertRedirect('/admin-legacy/login');
+        $this->get('http://gs.construction/admin-legacy/sites')->assertRedirect('/admin-legacy/login');
     }
 }

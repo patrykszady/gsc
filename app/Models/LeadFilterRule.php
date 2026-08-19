@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  *  - converting spam -> real adds `allow` rules (and clears matching `deny`)
  *  - flagging real  -> spam adds `deny`  rules (and clears matching `allow`)
  *
- * @property string $action     allow|deny
+ * @property string $action allow|deny
  * @property string $match_type email|phone|domain|ip
  * @property string $value
  */
@@ -105,8 +105,40 @@ class LeadFilterRule extends Model
      */
     public static function learnAllow(ContactSubmission $submission): void
     {
-        $signals = static::signalsFor($submission->email, $submission->phone, $submission->ip_address);
-        $note = 'allowed from lead #' . $submission->id;
+        static::applyAllow(
+            $submission->email,
+            $submission->phone,
+            $submission->ip_address,
+            'allowed from lead #'.$submission->id,
+            $submission->id,
+        );
+    }
+
+    /**
+     * Learn to block this sender. Adds email + phone (+ ip + non-free domain)
+     * deny rules and removes any conflicting allow rules.
+     */
+    public static function learnDeny(ContactSubmission $submission): void
+    {
+        static::applyDeny(
+            $submission->email,
+            $submission->phone,
+            $submission->ip_address,
+            'blocked from lead #'.$submission->id,
+            $submission->id,
+        );
+    }
+
+    /**
+     * The same allow policy as learnAllow(), from raw signals rather than a
+     * local ContactSubmission — the entry point for a peer site's sync
+     * payload (see Api\LeadFilterSyncController), which has no local
+     * submission row to attach a note to. $submissionId is null in that
+     * case; the note carries the peer's own context instead.
+     */
+    public static function applyAllow(?string $email, ?string $phone, ?string $ip, string $note, ?int $submissionId = null): void
+    {
+        $signals = static::signalsFor($email, $phone, $ip);
 
         $rules = array_filter([
             ['email', $signals['email']],
@@ -119,19 +151,15 @@ class LeadFilterRule extends Model
 
             static::query()->updateOrCreate(
                 ['action' => 'allow', 'match_type' => $type, 'value' => $value],
-                ['note' => $note, 'submission_id' => $submission->id],
+                ['note' => $note, 'submission_id' => $submissionId],
             );
         }
     }
 
-    /**
-     * Learn to block this sender. Adds email + phone (+ ip + non-free domain)
-     * deny rules and removes any conflicting allow rules.
-     */
-    public static function learnDeny(ContactSubmission $submission): void
+    /** The same deny policy as learnDeny(), from raw signals — see applyAllow(). */
+    public static function applyDeny(?string $email, ?string $phone, ?string $ip, string $note, ?int $submissionId = null): void
     {
-        $signals = static::signalsFor($submission->email, $submission->phone, $submission->ip_address);
-        $note = 'blocked from lead #' . $submission->id;
+        $signals = static::signalsFor($email, $phone, $ip);
 
         $rules = array_filter([
             ['email', $signals['email']],
@@ -147,7 +175,7 @@ class LeadFilterRule extends Model
 
             static::query()->updateOrCreate(
                 ['action' => 'deny', 'match_type' => $type, 'value' => $value],
-                ['note' => $note, 'submission_id' => $submission->id],
+                ['note' => $note, 'submission_id' => $submissionId],
             );
         }
     }

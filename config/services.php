@@ -10,7 +10,10 @@ $compose2captchaProxy = static function (): ?string {
     $user = (string) env('CAPTCHA_PROXY_USERNAME', '');
     $pass = (string) env('CAPTCHA_PROXY_PASSWORD', '');
     $host = (string) env('CAPTCHA_PROXY_HOST', '');
-    if ($user === '' || $pass === '' || $host === '') return null;
+    if ($user === '' || $pass === '' || $host === '') {
+        return null;
+    }
+
     return sprintf('http://%s:%s@%s', $user, $pass, $host);
 };
 
@@ -36,6 +39,21 @@ return [
         'url' => env('HIVE_API_URL', 'https://hive.contractors'),
         'token' => env('HIVE_API_TOKEN'),
         'cache_ttl' => (int) env('HIVE_API_CACHE_TTL', 21600), // 6h
+    ],
+
+    // The ss-systems central admin: /admin proxies there (AdminProxyController),
+    // and it calls back into /api/admin/v1 with admin_api.token.
+    'ss' => [
+        'url' => env('SS_URL', 'http://127.0.0.1:8001'),
+        'admin_prefix' => env('SS_ADMIN_PREFIX', 'admin'),
+        'site_key' => env('SS_SITE_KEY'),
+        'service_secret' => env('SS_SERVICE_SECRET'),
+        'timeout' => (int) env('SS_TIMEOUT', 30),
+        'connect_timeout' => (int) env('SS_CONNECT_TIMEOUT', 5),
+    ],
+
+    'admin_api' => [
+        'token' => env('ADMIN_API_TOKEN'),
     ],
 
     'resend' => [
@@ -220,6 +238,29 @@ return [
         ],
     ],
 
+    // Geoapify — fills in city/state/zip on leads whose address arrived
+    // incomplete (contact form street-only, or a crew-email enquiry). See
+    // App\Services\GeoapifyService / LeadAddressCompleter.
+    // Cross-site spam-filter sync (gsc <-> jpeterson-design) — see
+    // App\Jobs\SyncLeadFilterToPeer / Api\LeadFilterSyncController.
+    'lead_filter_sync' => [
+        // Shared secret: the SAME value lives in jpeterson's .env. Each
+        // side's AuthenticateLeadFilterSync middleware checks incoming
+        // requests against it; each side's SyncLeadFilterToPeer job sends
+        // it as the peer's bearer token.
+        'token' => env('LEAD_FILTER_SYNC_TOKEN'),
+        // jpeterson-design's own /api/lead-filters/sync.
+        'peer_url' => env('PEER_JPETERSON_URL', 'http://127.0.0.1:8004'),
+    ],
+
+    'geoapify' => [
+        // Request-path calls must fail fast rather than hold the contact
+        // form open.
+        'timeout' => (float) env('GEOAPIFY_TIMEOUT', 4),
+        'connect_timeout' => (float) env('GEOAPIFY_CONNECT_TIMEOUT', 2),
+        'key' => env('GEOAPIFY_API_KEY'),
+    ],
+
     'anticaptcha' => [
         'api_key' => env('ANTICAPTCHA_API_KEY'),
     ],
@@ -330,8 +371,11 @@ return [
                 $raw = (string) env('YELP_BIZ_PROXY', '');
                 if ($raw !== '') {
                     $list = array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $raw)) ?: []));
-                    if (count($list) > 0) return $list[array_rand($list)];
+                    if (count($list) > 0) {
+                        return $list[array_rand($list)];
+                    }
                 }
+
                 return $compose2captchaProxy();
             })(),
             // Full list (debug / admin UI display).
@@ -340,6 +384,7 @@ return [
                 if ($raw !== '') {
                     return array_values(array_filter(array_map('trim', preg_split('/[,\n]+/', $raw)) ?: []));
                 }
+
                 return array_values(array_filter([$compose2captchaProxy()]));
             })(),
             // Optional pre-known biz_photos URL. Leave empty to auto-detect after login.
@@ -380,7 +425,7 @@ return [
 
     'cloudflare' => [
         // Zone ID: Cloudflare dashboard → <zone> overview → right-hand panel → Zone ID
-        'zone_id'   => env('CLOUDFLARE_ZONE_ID'),
+        'zone_id' => env('CLOUDFLARE_ZONE_ID'),
         // API Token: must have "Cache Purge" permission scoped to this zone
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
     ],

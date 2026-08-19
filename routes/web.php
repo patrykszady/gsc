@@ -1,35 +1,78 @@
 <?php
 
+use App\Http\Controllers\AdminProxyController;
 use App\Http\Controllers\AiFeedController;
 use App\Http\Controllers\ClientErrorController;
 use App\Http\Controllers\GeoAnswersController;
 use App\Http\Controllers\TrackEventController;
+use App\Http\Controllers\YelpCookieIngestController;
+use App\Http\Middleware\CacheStaticAssets;
+use App\Http\Middleware\CaptureUtmParameters;
+use App\Http\Middleware\DetectCountry;
+use App\Http\Middleware\NoIndexNonProduction;
+use App\Http\Middleware\RedirectLegacyUrls;
+use App\Http\Middleware\ResolveAdminSite;
+use App\Http\Middleware\ResolveSite;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TenantRouteGuard;
+use App\Http\Middleware\TrackDomainSource;
+use App\Livewire\Admin\AreaForm;
+use App\Livewire\Admin\AreaList;
+use App\Livewire\Admin\ClientErrors;
+use App\Livewire\Admin\ContactSubmissions;
 use App\Livewire\Admin\Dashboard;
-use App\Livewire\Admin\PlatformsSettings;
+use App\Livewire\Admin\GscErrors;
+use App\Livewire\Admin\LandingPages;
 use App\Livewire\Admin\Login;
+use App\Livewire\Admin\PlatformsSettings;
 use App\Livewire\Admin\ProjectForm;
 use App\Livewire\Admin\ProjectList;
+use App\Livewire\Admin\SeoReports;
+use App\Livewire\Admin\SiteAnalytics;
+use App\Livewire\Admin\SocialMediaPosts;
 use App\Livewire\Admin\TagList;
-use App\Livewire\Admin\ContactSubmissions;
 use App\Livewire\Admin\TestimonialForm;
 use App\Livewire\Admin\TestimonialList;
-use App\Livewire\Admin\AreaList;
-use App\Livewire\Admin\AreaForm;
 use App\Livewire\AreaPage;
 use App\Livewire\AreasServedPage;
 use App\Livewire\CompareCompetitorPage;
 use App\Livewire\CompareIndexPage;
+use App\Livewire\DesignPartnersPage;
 use App\Livewire\JobsPage;
+use App\Livewire\LandingPageShow;
 use App\Livewire\ProjectImagePage;
 use App\Livewire\ProjectPage;
 use App\Livewire\ServiceAreaIndex;
 use App\Livewire\ServicePage;
 use App\Livewire\ServicesPage;
 use App\Livewire\TestimonialPage;
+use App\Livewire\TimelapsesPage;
+use App\Livewire\TradePage;
+use App\Livewire\TradesIndexPage;
 use App\Livewire\ZipCodePage;
+use App\Models\AreaServed;
+use App\Models\Project;
+use App\Models\ProjectImage;
 use App\Models\ShortLink;
+use App\Models\Site;
+use App\Services\GoogleBusinessProfileService;
+use App\Services\GoogleSearchConsoleService;
+use App\Services\MetaSocialService;
 use App\Services\SeoService;
+use App\Support\DevSites;
+use App\Support\LeadLineInfo;
+use App\Support\PermitGuideInfo;
+use App\Support\SEO\SEOBuilder;
+use App\Support\Theme;
+use Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 // Note: robots.txt is served as a static file from public/robots.txt
 // This ensures fastest response and works even if PHP is down.
@@ -37,11 +80,11 @@ use Illuminate\Support\Facades\Route;
 // IndexNow key verification file
 Route::get('/{key}.txt', function (string $key) {
     $indexNowKey = config('indexnow.key');
-    
+
     if (! $indexNowKey || $key !== $indexNowKey) {
         abort(404);
     }
-    
+
     return response($indexNowKey, 200)->header('Content-Type', 'text/plain');
 })->where('key', '[a-z0-9\-]{8,128}');
 
@@ -55,6 +98,7 @@ Route::get('/s/{code}', function (string $code) {
 
 Route::get('/', function () {
     SeoService::home();
+
     return view('home');
 })->name('home');
 
@@ -81,7 +125,7 @@ Route::post('/client-error', ClientErrorController::class)
 // fires) and the extension posts the resulting cookies here; a queued job
 // injects them into the automation profile. Bearer-token auth, CSRF-exempt in
 // bootstrap/app.php. Throttled because it is internet-reachable.
-Route::post('/api/yelp/cookies', \App\Http\Controllers\YelpCookieIngestController::class)
+Route::post('/api/yelp/cookies', YelpCookieIngestController::class)
     ->middleware('throttle:20,1')
     ->name('yelp.cookies.ingest');
 
@@ -90,6 +134,7 @@ Route::post('/api/yelp/cookies', \App\Http\Controllers\YelpCookieIngestControlle
 // and aligns with how AI assistants phrase queries.
 Route::get('/reviews', function () {
     SeoService::testimonials();
+
     return view('testimonials');
 })->name('reviews.index');
 
@@ -101,8 +146,8 @@ Route::get('/reviews/{testimonial}', TestimonialPage::class)->name('reviews.show
 Route::get('/review', function () {
     $placeId = (string) config('services.google.business_profile.place_id');
     $target = $placeId !== ''
-        ? 'https://search.google.com/local/writereview?placeid=' . urlencode($placeId)
-        : 'https://www.google.com/maps/search/?api=1&query=' . urlencode('GS Construction Remodeling');
+        ? 'https://search.google.com/local/writereview?placeid='.urlencode($placeId)
+        : 'https://www.google.com/maps/search/?api=1&query='.urlencode('GS Construction Remodeling');
 
     return redirect()->away($target, 302);
 })->name('review.write');
@@ -111,7 +156,7 @@ Route::get('/review', function () {
 Route::get('/testimonials', function () {
     // gs.construction canonicalised testimonials into /reviews years of links
     // ago — keep that 301. jpeterson has a first-class testimonials page.
-    if (\App\Models\Site::current()->slug === 'jpeterson') {
+    if (Site::current()->slug === 'jpeterson') {
         return view('testimonials-page');
     }
 
@@ -123,7 +168,7 @@ Route::get('/testimonials/{testimonial}', function (string $testimonial) {
 
 Route::get('/about', function () {
     // SeoService writes GS-specific meta; other tenants set titles in-view.
-    if (\App\Models\Site::current()->slug === 'gsc') {
+    if (Site::current()->slug === 'gsc') {
         SeoService::about();
     }
 
@@ -131,7 +176,7 @@ Route::get('/about', function () {
 })->name('about');
 
 Route::get('/contact', function () {
-    if (\App\Models\Site::current()->slug === 'gsc') {
+    if (Site::current()->slug === 'gsc') {
         SeoService::contact();
     }
 
@@ -152,6 +197,7 @@ Route::redirect('/partnerships', '/jobs', 301);
 
 Route::get('/projects', function () {
     SeoService::projects(null, request('type'));
+
     return view('projects');
 })->name('projects.index');
 
@@ -162,7 +208,7 @@ Route::get('/projects/{type}', function (string $type) {
         'home-remodeling' => 'home-remodel',
     ];
 
-    if (!isset($typeMap[$type])) {
+    if (! isset($typeMap[$type])) {
         abort(404);
     }
 
@@ -173,33 +219,39 @@ Route::get('/projects/{type}', function (string $type) {
     // nobody's sitemap. Google overrode the canonical on these pages
     // ("Duplicate, Google chose different canonical than user").
     SeoService::projects(null, $typeMap[$type]);
+
     return view('projects', ['projectTypeFilter' => $typeMap[$type]]);
 })->where('type', 'kitchens|bathrooms|home-remodeling')
-  ->name('projects.type');
+    ->name('projects.type');
 
 // API endpoint for background image preloading
 Route::get('/api/project-images', function () {
-    $images = \App\Models\ProjectImage::all()
+    $images = ProjectImage::all()
         ->flatMap(function ($image) {
             $urls = [];
             // Get medium size (most commonly used)
             $url = $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium');
-            if ($url) $urls[] = $url;
+            if ($url) {
+                $urls[] = $url;
+            }
             // Get thumb for blur placeholders
             $thumb = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
-            if ($thumb) $urls[] = $thumb;
+            if ($thumb) {
+                $urls[] = $thumb;
+            }
+
             return $urls;
         })
         ->unique()
         ->values();
-    
+
     return response()->json($images)
         ->header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
 })->name('api.project-images');
 
 // Every before/after timelapse on one page. Declared BEFORE /projects/{project}
 // so "timelapses" is not swallowed as a project slug.
-Route::get('/timelapses', \App\Livewire\TimelapsesPage::class)->name('timelapses.index');
+Route::get('/timelapses', TimelapsesPage::class)->name('timelapses.index');
 
 Route::get('/projects/{project}', ProjectPage::class)->name('projects.show');
 // Scope {image} to its parent {project} so photo slugs that are duplicated
@@ -210,7 +262,7 @@ Route::get('/projects/{project}/photos/{image:slug}', ProjectImagePage::class)
     ->name('projects.image');
 
 Route::get('/services', function () {
-    $site = \App\Models\Site::current();
+    $site = Site::current();
 
     if ($site->slug !== 'gsc') {
         // A THEMED view only. resources/views/services.blade.php is GS
@@ -223,7 +275,7 @@ Route::get('/services', function () {
         // so themed views resolve under their plain name — the path-style name
         // resolved to nothing and every non-gsc tenant 404'd here, jpeterson
         // included, despite having services.blade.php in its theme.
-        abort_unless(is_file(\App\Support\Theme::path($site) . '/services.blade.php'), 404);
+        abort_unless(is_file(Theme::path($site).'/services.blade.php'), 404);
 
         // Theme-first via the finder; the abort above is what keeps a
         // theme-less tenant from falling through to GSC's shared page.
@@ -231,7 +283,7 @@ Route::get('/services', function () {
     }
 
     // Livewire full-page components are invokable controllers.
-    return app()->call(ServicesPage::class . '@__invoke');
+    return app()->call(ServicesPage::class.'@__invoke');
 })->name('services.index');
 
 Route::redirect('/contact-us', '/contact', 301);
@@ -281,12 +333,12 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
 // (App\Support\LeadLineInfo); areas without verified official info render
 // generic Illinois-law content and are noindexed.
 Route::get('/areas-served/{area}/lead-pipe-replacement', function (string $area) {
-    $model = \App\Models\AreaServed::where('slug', $area)->firstOrFail();
-    $info = \App\Support\LeadLineInfo::forSlug($area);
+    $model = AreaServed::where('slug', $area)->firstOrFail();
+    $info = LeadLineInfo::forSlug($area);
 
-    $seo = app(\App\Support\SEO\SEOBuilder::class);
+    $seo = app(SEOBuilder::class);
     $seo->title("Lead Pipe Replacement in {$model->city}, IL — Who Pays & How It Works")
-        ->description(\Illuminate\Support\Str::limit(
+        ->description(Str::limit(
             ($info['found_official_info'] ?? false) && ! empty($info['cost_coverage']) && ! preg_match('/not published/i', (string) $info['cost_coverage'])
                 ? "{$model->city} lead service line replacement: {$info['cost_coverage']} How to check your line, apply, and what remodelers should know."
                 : "Lead water service line replacement in {$model->city}, IL — how to check your line, what Illinois law requires, and how replacement gets coordinated during a remodel.",
@@ -294,7 +346,7 @@ Route::get('/areas-served/{area}/lead-pipe-replacement', function (string $area)
         ))
         ->canonical(url("/areas-served/{$area}/lead-pipe-replacement"));
 
-    if (! \App\Support\LeadLineInfo::hasOfficialInfo($area)) {
+    if (! LeadLineInfo::hasOfficialInfo($area)) {
         $seo->markNoindex();
     }
 
@@ -401,32 +453,32 @@ Route::get('/process', fn () => view('process'))->name('process');
 // fetch this feed within minutes and discover the changed URLs.
 Route::get('/feed/updates.atom', function () {
     $entries = collect()
-        ->concat(\App\Models\AreaServed::orderByDesc('updated_at')->limit(30)->get()
-            ->map(fn ($a) => ['url' => url('/areas-served/' . $a->slug), 'title' => $a->city . ' Remodeling — GS Construction', 'updated' => $a->updated_at]))
-        ->concat(\App\Models\Project::where('is_published', true)->orderByDesc('updated_at')->limit(30)->get()
-            ->map(fn ($p) => ['url' => url('/projects/' . $p->slug), 'title' => $p->title, 'updated' => $p->updated_at]))
+        ->concat(AreaServed::orderByDesc('updated_at')->limit(30)->get()
+            ->map(fn ($a) => ['url' => url('/areas-served/'.$a->slug), 'title' => $a->city.' Remodeling — GS Construction', 'updated' => $a->updated_at]))
+        ->concat(Project::where('is_published', true)->orderByDesc('updated_at')->limit(30)->get()
+            ->map(fn ($p) => ['url' => url('/projects/'.$p->slug), 'title' => $p->title, 'updated' => $p->updated_at]))
         ->filter(fn ($e) => $e['updated'] !== null)
         ->sortByDesc('updated')
         ->take(40)
         ->values();
 
-    $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
-        . '<feed xmlns="http://www.w3.org/2005/Atom">' . "\n"
-        . '  <title>GS Construction — Recently Updated Pages</title>' . "\n"
-        . '  <id>' . url('/feed/updates.atom') . '</id>' . "\n"
-        . '  <link rel="self" href="' . url('/feed/updates.atom') . '"/>' . "\n"
-        . '  <link rel="hub" href="https://pubsubhubbub.appspot.com/"/>' . "\n"
-        . '  <link rel="alternate" href="' . url('/') . '"/>' . "\n"
-        . '  <updated>' . ($entries->first()['updated'] ?? now())->toAtomString() . '</updated>' . "\n";
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+        .'<feed xmlns="http://www.w3.org/2005/Atom">'."\n"
+        .'  <title>GS Construction — Recently Updated Pages</title>'."\n"
+        .'  <id>'.url('/feed/updates.atom').'</id>'."\n"
+        .'  <link rel="self" href="'.url('/feed/updates.atom').'"/>'."\n"
+        .'  <link rel="hub" href="https://pubsubhubbub.appspot.com/"/>'."\n"
+        .'  <link rel="alternate" href="'.url('/').'"/>'."\n"
+        .'  <updated>'.($entries->first()['updated'] ?? now())->toAtomString().'</updated>'."\n";
     foreach ($entries as $e) {
-        $xml .= '  <entry>' . "\n"
-            . '    <id>' . e($e['url']) . '</id>' . "\n"
-            . '    <title>' . e($e['title']) . '</title>' . "\n"
-            . '    <link rel="alternate" href="' . e($e['url']) . '"/>' . "\n"
-            . '    <updated>' . $e['updated']->toAtomString() . '</updated>' . "\n"
-            . '  </entry>' . "\n";
+        $xml .= '  <entry>'."\n"
+            .'    <id>'.e($e['url']).'</id>'."\n"
+            .'    <title>'.e($e['title']).'</title>'."\n"
+            .'    <link rel="alternate" href="'.e($e['url']).'"/>'."\n"
+            .'    <updated>'.$e['updated']->toAtomString().'</updated>'."\n"
+            .'  </entry>'."\n";
     }
-    $xml .= '</feed>' . "\n";
+    $xml .= '</feed>'."\n";
 
     return response($xml, 200, ['Content-Type' => 'application/atom+xml; charset=UTF-8'])
         ->setMaxAge(300)->setPublic();
@@ -444,7 +496,7 @@ Route::get('/costs/{slug}', function (string $slug) {
 // official-source data (see app/Support/PermitGuideInfo.php).
 Route::get('/permits', fn () => view('permits-index'))->name('permits.index');
 Route::get('/permits/{slug}', function (string $slug) {
-    $guide = \App\Support\PermitGuideInfo::forSlug($slug);
+    $guide = PermitGuideInfo::forSlug($slug);
     abort_unless((bool) $guide, 404);
 
     return view('permit-guide-page', ['slug' => $slug, 'guide' => $guide]);
@@ -462,174 +514,244 @@ Route::get('/insurance-claims/{slug}', function (string $slug) {
 
 // Design studios whose work we build. Sibling to /trades: that page is who
 // does the work, this one is who designed it.
-Route::get('/design-partners', \App\Livewire\DesignPartnersPage::class)->name('design-partners.index');
+Route::get('/design-partners', DesignPartnersPage::class)->name('design-partners.index');
 
 // Trade-partner pages: how GS (as GC) works with its licensed/vetted trades.
-Route::get('/trades', \App\Livewire\TradesIndexPage::class)->name('trades.index');
-Route::get('/trades/{slug}', \App\Livewire\TradePage::class)
+Route::get('/trades', TradesIndexPage::class)->name('trades.index');
+Route::get('/trades/{slug}', TradePage::class)
     ->where('slug', '[a-z0-9\-]+')
     ->name('trades.show');
 
 // Demand-driven programmatic landing pages (Autopilot-generated, proof-gated).
-Route::get('/remodeling/{slug}', \App\Livewire\LandingPageShow::class)
+Route::get('/remodeling/{slug}', LandingPageShow::class)
     ->where('slug', '[a-z0-9\-]+')
     ->name('landing.show');
 
-// Admin auth
-Route::get('/admin/login', Login::class)->name('admin.login')->middleware(['guest', 'noindex']);
-Route::post('/admin/logout', function () {
-    auth()->logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect()->route('admin.login');
-})->name('admin.logout')->middleware('noindex');
-
-// Admin routes (protected by auth)
-// Admin is site-scoped by URL: /admin/{site}/…  e.g. /admin/gs.construction/projects
-//
-// {site} is constrained to hostname-shaped segments (must contain a dot), which
-// is what lets the legacy /admin/projects paths below fall through to a redirect
-// instead of being mis-parsed as a site key named "projects".
-//
-// ResolveAdminSite sets URL::defaults(['site' => …]), so every existing
-// route('admin.*') call keeps working untouched.
-Route::middleware(['auth', 'noindex', \App\Http\Middleware\ResolveAdminSite::class])
+/*
+| OAuth callbacks — deliberately at the ORIGINAL /admin/{site}/… paths, not
+| /admin-legacy. These exact URLs are registered as authorized redirect URIs
+| in the Google Cloud and Meta developer consoles; moving them with the rest
+| of the legacy admin would have broken every OAuth flow with a
+| redirect_uri_mismatch. Registered BEFORE the /admin/{path?} proxy
+| catch-all below, so they match first and never get proxied. route()
+| generation (used for the redirect_uri parameter) keeps producing these
+| same /admin/… URLs because the names are unchanged.
+*/
+Route::middleware(['auth', 'noindex', ResolveAdminSite::class])
     ->prefix('admin/{site}')
     ->where(['site' => '[a-z0-9\-]+\.[a-z0-9.\-]+'])
     ->name('admin.')
     ->group(function () {
-    Route::get('/', Dashboard::class)->name('dashboard');
-    
-    // Projects
-    Route::get('/projects', ProjectList::class)->name('projects.index');
-    Route::get('/projects/create', ProjectForm::class)->name('projects.create');
-    Route::get('/projects/{project}/edit', ProjectForm::class)->name('projects.edit');
-    
-    // Tags
-    Route::get('/tags', TagList::class)->name('tags.index');
-    
-    // Contact Submissions / Leads
-    Route::get('/leads', ContactSubmissions::class)->name('leads.index');
-
-    // First-party analytics (phone/email/form click tracking)
-    Route::get('/analytics', \App\Livewire\Admin\SiteAnalytics::class)->name('analytics.index');
-
-    // Client-side JavaScript errors captured from real visitors
-    Route::get('/js-errors', \App\Livewire\Admin\ClientErrors::class)->name('js-errors.index');
-
-    // Testimonials / Reviews
-    Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');
-    Route::get('/testimonials/create', TestimonialForm::class)->name('testimonials.create');
-    Route::get('/testimonials/{testimonial}/edit', TestimonialForm::class)->name('testimonials.edit');
-
-    // Service Areas
-    Route::get('/areas', AreaList::class)->name('areas.index');
-    Route::get('/areas/create', AreaForm::class)->name('areas.create');
-    Route::get('/areas/{area}/edit', AreaForm::class)->name('areas.edit');
-
-    // Social Media
-    Route::get('/social-media', \App\Livewire\Admin\SocialMediaPosts::class)->name('social-media.index');
-
-    // Platforms (Google Business Profile, Yelp, etc.)
-    Route::get('/platforms', PlatformsSettings::class)->name('platforms.index');
-
-    // Self-pairing for the Yelp Session Bridge extension. Its content script
-    // calls this same-origin (with the admin session cookie) while you view
-    // the platforms page, and configures itself with the returned token —
-    // nobody copies tokens by hand. Session-authed via this group's `auth`.
-    Route::get('/platforms/extension-pairing', [\App\Http\Controllers\YelpCookieIngestController::class, 'pairing'])
-        ->name('platforms.extension-pairing');
-
-    // SEO weekly reports dashboard — the autopilot panel now lives INSIDE it
-    // (nested Livewire island), so recommendations and the machine acting on
-    // them are one page. The old standalone URL 301s to the merged page; the
-    // route keeps its name so existing route('admin.autopilot.index') links
-    // (dashboard tiles, landing-pages button) keep working and now land on
-    // the panel's anchor.
-    Route::get('/seo-reports/{report?}', \App\Livewire\Admin\SeoReports::class)->name('seo-reports.index');
-    Route::get('/autopilot', function (string $site) {
-        return redirect()->route('admin.seo-reports.index', ['site' => $site], 301)
-            ->withFragment('autopilot');
-    })->name('autopilot.index');
-    Route::get('/landing-pages', \App\Livewire\Admin\LandingPages::class)->name('landing-pages.index');
-    Route::get('/gsc-errors', \App\Livewire\Admin\GscErrors::class)->name('gsc-errors.index');
-    Route::get('/platforms/gbp/callback', function (\Illuminate\Http\Request $request) {
-        $code = $request->query('code');
-        if (! $code) {
-            session()->flash('platforms-error', 'Authorization cancelled or failed — no code returned.');
-            return redirect()->route('admin.platforms.index');
-        }
-
-        $service = app(\App\Services\GoogleBusinessProfileService::class);
-        $result = $service->exchangeCodeAndStore($code, route('admin.platforms.gbp-callback'));
-
-        if ($result['success']) {
-            session()->flash('platforms-success', 'Google Business Profile connected successfully!');
-        } else {
-            session()->flash('platforms-error', 'OAuth failed: ' . ($result['error'] ?? 'Unknown error'));
-        }
-
-        return redirect()->route('admin.platforms.index');
-    })->name('platforms.gbp-callback');
-
-    Route::get('/platforms/gsc/callback', function (\Illuminate\Http\Request $request) {
-        $code = $request->query('code');
-        if (! $code) {
-            session()->flash('platforms-error', 'Authorization cancelled or failed — no code returned.');
-
-            return redirect()->route('admin.platforms.index');
-        }
-
-        $result = app(\App\Services\GoogleSearchConsoleService::class)
-            ->exchangeCodeAndStore($code, route('admin.platforms.gsc-callback'));
-
-        if ($result['success']) {
-            session()->flash('platforms-success', 'Search Console connected — sitemap submits are live.');
-        } else {
-            session()->flash('platforms-error', 'OAuth failed: ' . ($result['error'] ?? 'Unknown error'));
-        }
-
-        return redirect()->route('admin.platforms.index');
-    })->name('platforms.gsc-callback');
-
-    Route::get('/platforms/meta/callback', function (\Illuminate\Http\Request $request) {
-        $code = $request->query('code');
-        if (! $code) {
-            $err = $request->query('error_description') ?? $request->query('error') ?? 'No authorisation code returned.';
-            session()->flash('platforms-error', 'Meta connection cancelled: ' . $err);
-            return redirect()->route('admin.platforms.index');
-        }
-
-        $result = app(\App\Services\MetaSocialService::class)
-            ->exchangeCodeAndStore($code, route('admin.platforms.meta-callback'));
-
-        if ($result['success']) {
-            $msg = 'Meta connected: ' . ($result['page_name'] ?? 'Facebook Page');
-            if (! empty($result['ig_username'])) {
-                $msg .= ' · @' . $result['ig_username'];
+        Route::get('/platforms/gbp/callback', function (Request $request) {
+            $code = $request->query('code');
+            if (! $code) {
+                // Post-callback landing is the CENTRAL admin now, not this app's
+                // own session — session()->flash() can't cross apps, so the
+                // outcome travels as a query param instead. The central
+                // Platforms screen (ss-systems) reads it once and shows the
+                // banner. See routes/api-admin/platforms.php for the read side.
+                return redirect('/admin/gsc/platforms?error='.urlencode('Authorization cancelled or failed — no code returned.'));
             }
-            session()->flash('platforms-success', $msg);
-        } else {
-            session()->flash('platforms-error', 'Meta connection failed: ' . ($result['error'] ?? 'unknown'));
-        }
 
-        return redirect()->route('admin.platforms.index');
-    })->name('platforms.meta-callback');
-});
+            $service = app(GoogleBusinessProfileService::class);
+            $result = $service->exchangeCodeAndStore($code, route('admin.platforms.gbp-callback'));
+
+            if ($result['success']) {
+                return redirect('/admin/gsc/platforms?connected=gbp');
+            }
+
+            return redirect('/admin/gsc/platforms?error='.urlencode('OAuth failed: '.($result['error'] ?? 'Unknown error')));
+        })->name('platforms.gbp-callback');
+
+        Route::get('/platforms/gsc/callback', function (Request $request) {
+            $code = $request->query('code');
+            if (! $code) {
+                // See the gbp callback above: outcome travels as a query param,
+                // not a session flash, because the landing page is the central
+                // admin (a different app / session) now.
+                return redirect('/admin/gsc/platforms?error='.urlencode('Authorization cancelled or failed — no code returned.'));
+            }
+
+            $result = app(GoogleSearchConsoleService::class)
+                ->exchangeCodeAndStore($code, route('admin.platforms.gsc-callback'));
+
+            if ($result['success']) {
+                return redirect('/admin/gsc/platforms?connected=gsc');
+            }
+
+            return redirect('/admin/gsc/platforms?error='.urlencode('OAuth failed: '.($result['error'] ?? 'Unknown error')));
+        })->name('platforms.gsc-callback');
+
+        Route::get('/platforms/meta/callback', function (Request $request) {
+            $code = $request->query('code');
+            if (! $code) {
+                $err = $request->query('error_description') ?? $request->query('error') ?? 'No authorisation code returned.';
+
+                // See the gbp callback above: outcome travels as a query param,
+                // not a session flash, because the landing page is the central
+                // admin (a different app / session) now.
+                return redirect('/admin/gsc/platforms?error='.urlencode('Meta connection cancelled: '.$err));
+            }
+
+            $result = app(MetaSocialService::class)
+                ->exchangeCodeAndStore($code, route('admin.platforms.meta-callback'));
+
+            if ($result['success']) {
+                return redirect('/admin/gsc/platforms?connected=meta');
+            }
+
+            return redirect('/admin/gsc/platforms?error='.urlencode('Meta connection failed: '.($result['error'] ?? 'unknown')));
+        })->name('platforms.meta-callback');
+
+        // Self-pairing for the Yelp Session Bridge extension. Its content
+        // script calls this same-origin (with the admin session cookie) and
+        // configures itself with the returned token — nobody copies tokens
+        // by hand. Kept at the ORIGINAL /admin/{site}/… path for the same
+        // reason as the OAuth callbacks above: the URL is baked into the
+        // shipped extension.
+        Route::get('/platforms/extension-pairing', [\App\Http\Controllers\YelpCookieIngestController::class, 'pairing'])
+            ->name('platforms.extension-pairing');
+    });
+
+// Signed, unauthenticated Yelp/Instagram remote-login viewer redirect for the
+// central admin's Platforms screen — kept in its own file (not inline here)
+// so this one central-admin-facing, non-'auth' route is obvious at a glance;
+// see routes/platforms-viewer.php for the full rationale. MUST be registered
+// here, before the /admin/{path?} proxy catch-all below — same reason the
+// OAuth callbacks and extension-pairing route above are: a route registered
+// after that catch-all never gets a chance to match, since Route::any(
+// '/admin/{path?}') greedily matches every /admin/... GET first.
+require __DIR__.'/platforms-viewer.php';
+
+/*
+| /admin belongs to the CENTRAL admin now: a transparent proxy relaying
+| every request byte-for-byte to ss-systems (see AdminProxyController — the
+| session cookie and CSRF token in play are ss-systems', which is why the
+| route strips this app's whole web-group session/cookie/CSRF stack plus
+| the tenant/tracking middleware appended in bootstrap/app.php; if the web
+| group gains new middleware later, review whether it belongs in this
+| exclusion list). This app's own admin — including the ops screens the
+| central admin doesn't cover yet (SEO, social, platforms, analytics,
+| JS errors) — lives on at /admin-legacy below, unchanged except for the
+| prefix; route names stay admin.* so nothing else moved.
+*/
+Route::any('/admin/{path?}', [AdminProxyController::class, 'handle'])
+    ->where('path', '.*')
+    // 2000/min: every admin page load now rides this route several times
+    // (HTML + Livewire endpoints + proxied assets) — 120/min throttled
+    // ordinary clicking-around.
+    ->middleware('throttle:2000,1')
+    ->withoutMiddleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        ValidateCsrfToken::class,
+        ResolveSite::class,
+        TenantRouteGuard::class,
+        DetectCountry::class,
+        TrackDomainSource::class,
+        RedirectLegacyUrls::class,
+        CacheStaticAssets::class,
+        CaptureUtmParameters::class,
+        SecurityHeaders::class,
+        NoIndexNonProduction::class,
+        InjectGeoHeaders::class,
+    ]);
+
+// Legacy admin auth
+Route::get('/admin-legacy/login', Login::class)->name('admin.login')->middleware(['guest', 'noindex']);
+Route::post('/admin-legacy/logout', function () {
+    auth()->logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect()->route('admin.login');
+})->name('admin.logout')->middleware('noindex');
+
+// Legacy admin routes (protected by auth)
+// Admin is site-scoped by URL: /admin-legacy/{site}/…  e.g. /admin-legacy/gs.construction/projects
+//
+// {site} is constrained to hostname-shaped segments (must contain a dot), which
+// is what lets the legacy /admin-legacy/projects paths below fall through to a
+// redirect instead of being mis-parsed as a site key named "projects".
+//
+// ResolveAdminSite sets URL::defaults(['site' => …]), so every existing
+// route('admin.*') call keeps working untouched.
+Route::middleware(['auth', 'noindex', ResolveAdminSite::class])
+    ->prefix('admin-legacy/{site}')
+    ->where(['site' => '[a-z0-9\-]+\.[a-z0-9.\-]+'])
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/', Dashboard::class)->name('dashboard');
+
+        // Projects
+        Route::get('/projects', ProjectList::class)->name('projects.index');
+        Route::get('/projects/create', ProjectForm::class)->name('projects.create');
+        Route::get('/projects/{project}/edit', ProjectForm::class)->name('projects.edit');
+
+        // Tags
+        Route::get('/tags', TagList::class)->name('tags.index');
+
+        // Contact Submissions / Leads
+        Route::get('/leads', ContactSubmissions::class)->name('leads.index');
+
+        // First-party analytics (phone/email/form click tracking)
+        Route::get('/analytics', SiteAnalytics::class)->name('analytics.index');
+
+        // Client-side JavaScript errors captured from real visitors
+        Route::get('/js-errors', ClientErrors::class)->name('js-errors.index');
+
+        // Testimonials / Reviews
+        Route::get('/testimonials', TestimonialList::class)->name('testimonials.index');
+        Route::get('/testimonials/create', TestimonialForm::class)->name('testimonials.create');
+        Route::get('/testimonials/{testimonial}/edit', TestimonialForm::class)->name('testimonials.edit');
+
+        // Service Areas
+        Route::get('/areas', AreaList::class)->name('areas.index');
+        Route::get('/areas/create', AreaForm::class)->name('areas.create');
+        Route::get('/areas/{area}/edit', AreaForm::class)->name('areas.edit');
+
+        // Social Media
+        Route::get('/social-media', SocialMediaPosts::class)->name('social-media.index');
+
+        // Platforms (Google Business Profile, Yelp, etc.)
+        Route::get('/platforms', PlatformsSettings::class)->name('platforms.index');
+
+        // (Yelp extension self-pairing moved to the pinned /admin/{site}
+        // group next to the OAuth callbacks — the extension's content script
+        // has the /admin/… URL baked in, so it must not move with the
+        // legacy rename.)
+
+        // SEO weekly reports dashboard — the autopilot panel now lives INSIDE it
+        // (nested Livewire island), so recommendations and the machine acting on
+        // them are one page. The old standalone URL 301s to the merged page; the
+        // route keeps its name so existing route('admin.autopilot.index') links
+        // (dashboard tiles, landing-pages button) keep working and now land on
+        // the panel's anchor.
+        Route::get('/seo-reports/{report?}', SeoReports::class)->name('seo-reports.index');
+        Route::get('/autopilot', function (string $site) {
+            return redirect()->route('admin.seo-reports.index', ['site' => $site], 301)
+                ->withFragment('autopilot');
+        })->name('autopilot.index');
+        Route::get('/landing-pages', LandingPages::class)->name('landing-pages.index');
+        Route::get('/gsc-errors', GscErrors::class)->name('gsc-errors.index');
+    });
 
 /*
 |--------------------------------------------------------------------------
-| Admin hub entry points
+| Legacy admin hub entry points
 |--------------------------------------------------------------------------
-| /admin            -> site picker (the hub landing page)
-| /admin/anything   -> legacy path from before admin was site-scoped; sent to
-|                      the same page under the current site so old bookmarks
-|                      and any hardcoded /admin/... links keep working.
+| /admin-legacy          -> site picker (the hub landing page)
+| /admin-legacy/anything -> legacy path from before admin was site-scoped;
+|                           sent to the same page under the current site so
+|                           old bookmarks keep working. (/admin bookmarks now
+|                           land on the central admin's login instead.)
 |
 | Both live OUTSIDE the {site} group. The group's constraint requires a dot in
 | the segment, so "projects" can never be mistaken for a site key.
 */
-Route::get('/admin', function (\Illuminate\Http\Request $request) {
+Route::get('/admin-legacy', function (Request $request) {
     // Only what this user may administer. A client login is scoped to one
     // tenant, so it must never be shown a menu of everybody else's sites —
     // the picker was leaking the full client list to anyone who logged in.
@@ -640,7 +762,7 @@ Route::get('/admin', function (\Illuminate\Http\Request $request) {
     // Nothing to choose from: go straight in. This is the normal path for a
     // client login, which should never see a picker at all.
     if ($sites->count() === 1) {
-        return redirect("/admin/{$sites->first()->primary_host}");
+        return redirect("/admin-legacy/{$sites->first()->primary_host}");
     }
 
     // The host already answered the question. Arriving at gs.construction/admin
@@ -648,9 +770,9 @@ Route::get('/admin', function (\Illuminate\Http\Request $request) {
     // honour the tenant this request came in on. Reached over a host that
     // names no tenant (127.0.0.1, a bare IP) this is the default site, which
     // is the right guess for the same reason.
-    $current = \App\Models\Site::current();
+    $current = Site::current();
     if ($site = $sites->firstWhere('id', $current->id)) {
-        return redirect("/admin/{$site->primary_host}");
+        return redirect("/admin-legacy/{$site->primary_host}");
     }
 
     // The current tenant is not one this user administers — the picker is a
@@ -661,7 +783,7 @@ Route::get('/admin', function (\Illuminate\Http\Request $request) {
 // The picker, kept reachable on purpose. /admin now goes straight to the
 // tenant you arrived on, so without this an operator with several sites would
 // have no route to the others — there is no switcher in the admin chrome.
-Route::get('/admin/sites', function (\Illuminate\Http\Request $request) {
+Route::get('/admin-legacy/sites', function (Request $request) {
     $sites = $request->user()->accessibleSites();
 
     abort_if($sites->isEmpty(), 403, 'Your account is not linked to a site.');
@@ -669,10 +791,9 @@ Route::get('/admin/sites', function (\Illuminate\Http\Request $request) {
     return view('admin.site-picker', ['sites' => $sites]);
 })->middleware(['auth', 'noindex'])->name('admin.sites');
 
-Route::get('/admin/{path}', function (string $path) {
-    return redirect('/admin/' . \App\Models\Site::current()->primary_host . '/' . ltrim($path, '/'), 301);
+Route::get('/admin-legacy/{path}', function (string $path) {
+    return redirect('/admin-legacy/'.Site::current()->primary_host.'/'.ltrim($path, '/'), 301);
 })->where('path', '.*')->middleware(['auth', 'noindex']);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -714,22 +835,22 @@ if ($jpMarketSlugs !== []) {
 | host, what it overrides, and what a given path would do on each.
 */
 if (app()->environment('local')) {
-    Route::get('/_sites', function (\Illuminate\Http\Request $request) {
-        $path = '/' . ltrim((string) $request->query('path', '/'), '/');
+    Route::get('/_sites', function (Request $request) {
+        $path = '/'.ltrim((string) $request->query('path', '/'), '/');
 
         return view('dev.sites-index', [
-            'sites' => \App\Support\DevSites::register($path),
-            'current' => \App\Models\Site::current(),
-            'via' => \App\Support\DevSites::resolvedVia(),
+            'sites' => DevSites::register($path),
+            'current' => Site::current(),
+            'via' => DevSites::resolvedVia(),
             'path' => $path,
-            'port' => \App\Support\DevSites::port(),
+            'port' => DevSites::port(),
         ]);
     })->name('dev.sites');
 
     // Toggle the injected dev bar. A cookie rather than a query param so it
     // survives navigation — the bar is genuinely intrusive in the screenshots
     // this repo verifies theme work with.
-    Route::get('/_sites/bar', function (\Illuminate\Http\Request $request) {
+    Route::get('/_sites/bar', function (Request $request) {
         $off = $request->query('state') === 'off';
         $back = (string) $request->query('back', '/');
 

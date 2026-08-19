@@ -4,7 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\ContactSubmission;
 use App\Services\HiveProjectsClient;
+use App\Services\LeadAddressCompleter;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -30,7 +32,7 @@ class PullLeadsFromHive extends Command
 
     protected $description = 'Mirror leads captured by hive (e.g. crew@ inbox enquiries) into this site\'s leads admin.';
 
-    public function handle(HiveProjectsClient $hive): int
+    public function handle(HiveProjectsClient $hive, LeadAddressCompleter $completer): int
     {
         $source = (string) $this->option('source');
 
@@ -75,6 +77,15 @@ class PullLeadsFromHive extends Command
                 'phone' => ($d['phone'] ?? null) ? Str::limit((string) $d['phone'], 20, '') : null,
                 'address' => $d['address'] ?? null,
                 'city' => $d['city'] ?? null,
+                // hive runs its own LeadAddressCompleter at ingest (crew-email
+                // leads go through CrewLeadEmailService there), so state/zip
+                // are usually already resolved — mirror them rather than
+                // re-deriving. completeAddress() below is only a safety net
+                // for the rare gap, and no-ops (no Geoapify call) when these
+                // are already filled.
+                'state' => $d['state'] ?? null,
+                'zip' => $d['zip'] ?? null,
+                'address_candidates' => $d['address_candidates'] ?? null,
                 // Prefer the full original email over the summary.
                 'message' => (string) ($d['message'] ?? $lead['notes'] ?? ''),
                 'source' => $source,
@@ -83,16 +94,19 @@ class PullLeadsFromHive extends Command
                 'hive_sent_at' => now(),
             ];
 
+            $attributes = $this->completeAddress($attributes, $completer);
+
             // Not mass-assignable, and it matters: the leads admin sorts by
             // created_at, so mirroring with now() would file a week-old
             // enquiry at the top as if it just arrived.
             $receivedAt = ! empty($lead['date'])
-                ? \Illuminate\Support\Carbon::parse($lead['date'])
+                ? Carbon::parse($lead['date'])
                 : now();
 
             if ($existing) {
                 $existing->fill($attributes)->save();
                 $updated++;
+
                 continue;
             }
 
@@ -104,5 +118,23 @@ class PullLeadsFromHive extends Command
         $this->info(sprintf('%s: %d fetched · %d new · %d updated', $source, count($leads), $created, $updated));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Defensive gap-fill only: complete() is a no-op (no Geoapify call) once
+     * city/state/zip are all present, which they normally already are —
+     * hive completed this lead at its own ingest. Never allowed to fail the
+     * whole sync: one bad address in a batch of otherwise-fine leads should
+     * not lose the rest.
+     */
+    protected function completeAddress(array $attributes, LeadAddressCompleter $completer): array
+    {
+        try {
+            return $completer->complete($attributes);
+        } catch (\Throwable $e) {
+            Log::warning('leads:pull-from-hive address completion failed', ['error' => $e->getMessage()]);
+
+            return $attributes;
+        }
     }
 }

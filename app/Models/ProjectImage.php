@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
+use App\Services\GoogleBusinessProfileService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -20,7 +22,7 @@ class ProjectImage extends Model
      * Do NOT store objects in $this->attributes because Eloquent will attempt
      * to persist them on save(), producing unknown-column SQL errors.
      *
-     * @var array<string, \App\Models\ImagePlatformUpload|null>
+     * @var array<string, ImagePlatformUpload|null>
      */
     protected array $platformUploadCache = [];
 
@@ -47,7 +49,6 @@ class ProjectImage extends Model
         'thumbnails' => 'array',
     ];
 
-
     /**
      * Get the route key for the model.
      */
@@ -65,7 +66,7 @@ class ProjectImage extends Model
         return $this->where('slug', $value)->first()
             ?? $this->where('id', $value)->first();
     }
-    
+
     /**
      * Resolve child route binding (when scoped to a parent model like Project).
      */
@@ -83,13 +84,13 @@ class ProjectImage extends Model
     public function generateSlug(): string
     {
         $text = $this->alt_text ?: $this->seo_alt_text ?: pathinfo($this->original_filename, PATHINFO_FILENAME);
-        
+
         // Get project location (e.g., "Palatine, IL" -> "palatine-il")
         $location = '';
         if ($this->project && $this->project->location) {
             $location = Str::slug($this->project->location);
         }
-        
+
         // Clean up common filler words and location from text (to avoid duplication)
         $text = preg_replace('/\b(featuring|with|and|the|in|a|an|for)\b/i', '', $text);
         // Remove location mentions from the text since we'll add it at the end
@@ -100,18 +101,18 @@ class ProjectImage extends Model
             $text = preg_replace('/\b(il|illinois)\b/i', '', $text);
         }
         $text = preg_replace('/\s+/', ' ', trim($text));
-        
+
         // Limit description to ~5 words, then append location
         $descSlug = Str::slug(Str::words($text, 5, ''));
-        
+
         // Fallback if too short
         if (strlen($descSlug) < 5) {
             $descSlug = Str::slug(pathinfo($this->original_filename, PATHINFO_FILENAME));
         }
-        
+
         // Combine description with location
         $baseSlug = $location ? "{$descSlug}-{$location}" : $descSlug;
-        
+
         // GLOBAL uniqueness: route binding resolves {image:slug} across all
         // projects, so a slug reused in two projects makes one of the two
         // sitemap URLs 404 (binding finds the other project's image, the
@@ -145,9 +146,9 @@ class ProjectImage extends Model
      * empty or stock imagery when real project work is available. Mark more
      * projects as "featured" in the admin to fully curate what sliders show.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, self>
+     * @return Collection<int, self>
      */
-    public static function curatedCovers(?string $type = null, int $limit = 12): \Illuminate\Database\Eloquent\Collection
+    public static function curatedCovers(?string $type = null, int $limit = 12): Collection
     {
         $build = function (bool $featuredOnly) use ($type, $limit) {
             return static::query()
@@ -214,6 +215,7 @@ class ProjectImage extends Model
             ->whereColumn('project_image_id', 'project_images.id')
             ->where('platform', $platform)
             ->limit(1);
+
         return $query->orderBy($sub, $direction);
     }
 
@@ -222,7 +224,7 @@ class ProjectImage extends Model
      */
     public function platformUpload(string $platform): ?ImagePlatformUpload
     {
-        $key = '__platformUpload_' . $platform;
+        $key = '__platformUpload_'.$platform;
         if (! array_key_exists($key, $this->platformUploadCache)) {
             $this->platformUploadCache[$key] = $this->relationLoaded('platformUploads')
                 ? $this->platformUploads->firstWhere('platform', $platform)
@@ -294,21 +296,21 @@ class ProjectImage extends Model
         if (Storage::disk('public')->exists($this->path)) {
             return Storage::disk('public')->url($this->path);
         }
-        
+
         return null;
     }
 
     public function getThumbnailUrl(string $size = 'medium'): ?string
     {
         $thumbnails = $this->thumbnails ?? [];
-        
+
         if (isset($thumbnails[$size])) {
             $thumbnailPath = $thumbnails[$size];
             if (Storage::disk('public')->exists($thumbnailPath)) {
                 return Storage::disk('public')->url($thumbnailPath);
             }
         }
-        
+
         if (Storage::disk('public')->exists($this->path)) {
             return $this->url;
         }
@@ -322,11 +324,11 @@ class ProjectImage extends Model
     public function getWebpUrlAttribute(): ?string
     {
         $webpPath = $this->webp_path ?? null;
-        
+
         if ($webpPath && Storage::disk('public')->exists($webpPath)) {
             return Storage::disk('public')->url($webpPath);
         }
-        
+
         return null;
     }
 
@@ -337,14 +339,14 @@ class ProjectImage extends Model
     {
         $thumbnails = $this->thumbnails ?? [];
         $webpKey = "{$size}_webp";
-        
+
         if (isset($thumbnails[$webpKey])) {
             $webpPath = $thumbnails[$webpKey];
             if (Storage::disk('public')->exists($webpPath)) {
                 return Storage::disk('public')->url($webpPath);
             }
         }
-        
+
         return null;
     }
 
@@ -430,7 +432,7 @@ class ProjectImage extends Model
     {
         // Delete main image
         Storage::disk('public')->delete($this->path);
-        
+
         // Delete thumbnails
         foreach ($this->thumbnails ?? [] as $thumbnail) {
             Storage::disk('public')->delete($thumbnail);
@@ -460,9 +462,62 @@ class ProjectImage extends Model
      */
     public function googleMediaUrl(string $size = 's0'): ?string
     {
-        return \App\Services\GoogleBusinessProfileService::sizedMediaUrl(
+        return GoogleBusinessProfileService::sizedMediaUrl(
             $this->google_places_media_url,
             $size,
         );
+    }
+
+    /**
+     * Management-API shape — see Project::toApiArray(). "tags" reads from
+     * the loaded relation when present (callers should eager-load
+     * 'tags' — see ProjectController/ProjectImageController — to avoid an
+     * N+1); falls back to a query otherwise so this never errors.
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'project_id' => $this->project_id,
+            'url' => $this->url,
+            'filename' => $this->filename,
+            'original_filename' => $this->original_filename,
+            'alt_text' => $this->alt_text,
+            'caption' => $this->caption,
+            'is_cover' => (bool) $this->is_cover,
+            'sort_order' => (int) $this->sort_order,
+            'width' => $this->width,
+            'height' => $this->height,
+            'mime_type' => $this->mime_type,
+            'size' => $this->size,
+            'tags' => ($this->relationLoaded('tags') ? $this->tags : $this->tags()->get())
+                ->map(fn (Tag $tag) => ['id' => $tag->id, 'name' => $tag->name])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * Compact shape for the Social Media admin screen — carries the project
+     * title and per-platform upload context (Google Business / Yelp) that
+     * toApiArray()'s stable Project/ProjectImage management-API contract does
+     * not. A separate method rather than extending toApiArray() so that
+     * existing contract is untouched.
+     */
+    public function toSocialApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'project_id' => $this->project_id,
+            'project_title' => $this->project?->title,
+            'url' => $this->url,
+            'thumbnail_url' => $this->getThumbnailUrl('thumb'),
+            'alt_text' => $this->alt_text,
+            'caption' => $this->caption,
+            'is_cover' => (bool) $this->is_cover,
+            'google_places_uploaded_at' => optional($this->google_places_uploaded_at)->toIso8601String(),
+            'google_places_media_name' => $this->google_places_media_name,
+            'yelp_biz_uploaded_at' => optional($this->yelp_biz_uploaded_at)->toIso8601String(),
+        ];
     }
 }

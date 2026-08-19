@@ -28,6 +28,10 @@ class TestimonialList extends Component
     #[Url]
     public string $star_rating = '';
 
+    /** '' = all, 'shown' or 'hidden'. */
+    #[Url]
+    public string $visibility = '';
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -44,6 +48,11 @@ class TestimonialList extends Component
     }
 
     public function updatingStarRating(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingVisibility(): void
     {
         $this->resetPage();
     }
@@ -112,6 +121,10 @@ class TestimonialList extends Component
                     $q->where('platform', $this->platform);
                 });
             }
+        }
+
+        if ($this->visibility !== '') {
+            $query->where('is_hidden', $this->visibility === 'hidden');
         }
 
         if ($this->star_rating !== '') {

@@ -30,7 +30,7 @@ class ImageSocialPost extends Model
     ];
 
     /* ------------------------------------------------------------------ */
-    /*  Relationships                                                      */
+    /*  Relationships */
     /* ------------------------------------------------------------------ */
 
     public function projectImage(): BelongsTo
@@ -39,7 +39,7 @@ class ImageSocialPost extends Model
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Scopes                                                            */
+    /*  Scopes */
     /* ------------------------------------------------------------------ */
 
     public function scopePlatform($query, string $platform)
@@ -63,7 +63,7 @@ class ImageSocialPost extends Model
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Helpers                                                           */
+    /*  Helpers */
     /* ------------------------------------------------------------------ */
 
     public function markPublished(string $platformPostId, ?string $permalink = null): void
@@ -144,5 +144,25 @@ class ImageSocialPost extends Model
         }
 
         return implode("\n", $parts);
+    }
+
+    /** Management-API shape — see Project::toApiArray(). */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'platform' => $this->platform,
+            'status' => $this->status,
+            'caption' => $this->caption,
+            'hashtags' => $this->hashtags,
+            'link_url' => $this->link_url,
+            'platform_post_id' => $this->platform_post_id,
+            'platform_permalink' => $this->platform_permalink,
+            'error_message' => $this->error_message,
+            'published_at' => optional($this->published_at)->toIso8601String(),
+            'scheduled_for' => optional($this->scheduled_for)->toIso8601String(),
+            'created_at' => optional($this->created_at)->toIso8601String(),
+            'project_image' => $this->projectImage?->toSocialApiArray(),
+        ];
     }
 }

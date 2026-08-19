@@ -236,12 +236,6 @@
                                             <flux:menu.item icon="eye" wire:click="view({{ $submission->id }})">
                                                 Open
                                             </flux:menu.item>
-                                            <flux:menu.item icon="envelope" href="mailto:{{ $submission->email }}">
-                                                Email
-                                            </flux:menu.item>
-                                            <flux:menu.item icon="phone" href="tel:{{ $submission->phone }}">
-                                                Call
-                                            </flux:menu.item>
                                             <flux:menu.separator />
                                             @if($submission->isSpam())
                                                 <flux:menu.item

@@ -107,6 +107,43 @@ class PullLeadsFromHiveTest extends TestCase
         $this->assertNull(ContactSubmission::where('source', 'crew-email')->firstOrFail()->phone);
     }
 
+    public function test_it_mirrors_address_parts_hive_already_completed(): void
+    {
+        // hive runs its own LeadAddressCompleter at ingest (CrewLeadEmailService),
+        // so a crew-email lead usually already carries state/zip — mirror them
+        // rather than re-deriving with a second, redundant Geoapify call.
+        $this->fakeHiveReturns([$this->lead(139, [
+            'address' => '511 Sherwood Dr',
+            'city' => 'Addison',
+            'state' => 'IL',
+            'zip' => '60101',
+        ])]);
+
+        $this->artisan('leads:pull-from-hive --source=crew-email')->assertSuccessful();
+
+        $row = ContactSubmission::where('source', 'crew-email')->firstOrFail();
+        $this->assertSame('IL', $row->state);
+        $this->assertSame('60101', $row->zip);
+    }
+
+    public function test_it_mirrors_ambiguous_address_candidates_from_hive(): void
+    {
+        $candidates = [
+            ['address' => '511 Sherwood Dr', 'city' => 'Addison', 'state' => 'IL', 'zip_code' => '60101', 'miles' => 12.3],
+            ['address' => '511 Sherwood Dr', 'city' => 'Streamwood', 'state' => 'IL', 'zip_code' => '60107', 'miles' => 13.4],
+        ];
+        $this->fakeHiveReturns([$this->lead(139, [
+            'address' => '511 Sherwood Dr',
+            'city' => null,
+            'address_candidates' => $candidates,
+        ])]);
+
+        $this->artisan('leads:pull-from-hive --source=crew-email')->assertSuccessful();
+
+        $row = ContactSubmission::where('source', 'crew-email')->firstOrFail();
+        $this->assertSame($candidates, $row->address_candidates);
+    }
+
     public function test_it_files_the_lead_at_the_time_it_was_received(): void
     {
         // The admin sorts by created_at; stamping now() would file a week-old

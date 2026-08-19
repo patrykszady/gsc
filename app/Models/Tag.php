@@ -47,4 +47,21 @@ class Tag extends Model
             'color' => 'Color',
         ];
     }
+
+    /**
+     * Management-API shape — see Project::toApiArray(). "images_count"
+     * mirrors the legacy admin's TagList (withCount('images')) — reads the
+     * eager-counted attribute when the caller loaded it, otherwise falls
+     * back to a live count so this never errors.
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
+            'type' => $this->type,
+            'images_count' => $this->images_count ?? $this->images()->count(),
+        ];
+    }
 }

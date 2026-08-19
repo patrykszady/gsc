@@ -81,7 +81,12 @@ class ResolveAdminSite
                 continue;
             }
 
-            if (preg_match('#/?admin/([a-z0-9\-]+\.[a-z0-9.\-]+)#i', $candidate, $m)) {
+            // Both prefixes: the legacy admin lives at /admin-legacy/{site},
+            // while the OAuth callbacks and extension pairing stayed at
+            // /admin/{site} (externally-registered URLs). Without the
+            // alternation, Livewire updates on legacy pages lost their site
+            // binding after the rename — caught by AdminSitePersistenceTest.
+            if (preg_match('#/?admin(?:-legacy)?/([a-z0-9\-]+\.[a-z0-9.\-]+)#i', $candidate, $m)) {
                 return $m[1];
             }
         }

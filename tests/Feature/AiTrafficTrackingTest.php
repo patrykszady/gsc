@@ -50,7 +50,7 @@ class AiTrafficTrackingTest extends TestCase
     public function test_seo_reports_renders_the_ai_traffic_section(): void
     {
         $this->actingAs(User::factory()->create(['site_id' => null]))
-            ->get('http://gs.construction/admin/gs.construction/seo-reports')
+            ->get('http://gs.construction/admin-legacy/gs.construction/seo-reports')
             ->assertOk()
             ->assertSee('AI traffic (28 days)');
     }

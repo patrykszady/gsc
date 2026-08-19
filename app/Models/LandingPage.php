@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
-use App\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +24,7 @@ class LandingPage extends Model
     use BelongsToSite;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_PUBLISHED = 'published';
 
     protected $guarded = [];
@@ -62,7 +62,7 @@ class LandingPage extends Model
 
     public function url(): string
     {
-        return url('/remodeling/' . $this->slug);
+        return url('/remodeling/'.$this->slug);
     }
 
     /** Real projects backing this page (the unique, non-thin content). */
@@ -70,12 +70,32 @@ class LandingPage extends Model
     {
         $ids = $this->proof_project_ids ?: [];
         if (empty($ids)) {
-            return new Collection();
+            return new Collection;
         }
 
         return Project::whereIn('id', $ids)
             ->where('is_published', true)
-            ->orderByRaw('FIELD(id, ' . implode(',', array_map('intval', $ids)) . ')')
+            ->orderByRaw('FIELD(id, '.implode(',', array_map('intval', $ids)).')')
             ->get();
+    }
+
+    /** Management-API shape — see Project::toApiArray(). */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'slug' => $this->slug,
+            'title' => $this->title,
+            'h1' => $this->h1,
+            'status' => $this->status,
+            'source' => $this->source,
+            'indexed' => (bool) $this->indexed,
+            'has_proof' => $this->hasProof(),
+            'should_index' => $this->shouldIndex(),
+            'proof_count' => count($this->proof_project_ids ?? []),
+            'url' => '/remodeling/'.$this->slug,
+            'published_at' => optional($this->published_at)->toIso8601String(),
+            'created_at' => optional($this->created_at)->toIso8601String(),
+        ];
     }
 }

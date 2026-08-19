@@ -38,4 +38,25 @@ class ClientError extends Model
     {
         return $this->resolved_at !== null;
     }
+
+    /** Management-API shape — see Project::toApiArray(). */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'kind' => $this->kind,
+            'message' => $this->message,
+            'source' => $this->source,
+            'line' => $this->line,
+            'column' => $this->column,
+            'stack' => $this->stack,
+            'page_path' => $this->page_path,
+            'user_agent' => $this->user_agent,
+            'occurrences' => (int) $this->occurrences,
+            'is_resolved' => $this->is_resolved,
+            'first_seen_at' => optional($this->first_seen_at)->toIso8601String(),
+            'last_seen_at' => optional($this->last_seen_at)->toIso8601String(),
+            'resolved_at' => optional($this->resolved_at)->toIso8601String(),
+        ];
+    }
 }

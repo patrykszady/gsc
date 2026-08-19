@@ -1,0 +1,16 @@
+{
+    "generated_at": "2026-08-19T20:52:40+00:00",
+    "healed": [],
+    "action_items": [
+        "Google metrics are stale (latest: never). The daily refresh re-queues the sync when stale \u2014 if this persists more than a day, check API credentials.",
+        "Bing metrics are stale (latest: never). The daily refresh re-queues the sync when stale \u2014 if this persists more than a day, check API credentials.",
+        "GBP metrics are stale (latest: never). The daily refresh re-queues the sync when stale \u2014 if this persists more than a day, check API credentials."
+    ],
+    "recommendations": [
+        {
+            "t": "Keep compounding what works",
+            "d": "No open strategic gaps detected this cycle. Review volume, local content depth, and citations remain the long-term levers.",
+            "p": "next"
+        }
+    ]
+}

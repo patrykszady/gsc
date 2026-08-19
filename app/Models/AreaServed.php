@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
+use App\Services\HiveProjectsClient;
 use App\Support\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
 use RalphJSmit\Laravel\SEO\Support\SEOData;
 
@@ -13,6 +15,7 @@ class AreaServed extends Model
 {
     use BelongsToSite;
     use HasSEO;
+
     protected $table = 'areas_served';
 
     protected $fillable = [
@@ -38,7 +41,7 @@ class AreaServed extends Model
     }
 
     protected $casts = [
-        'latitude'  => 'float',
+        'latitude' => 'float',
         'longitude' => 'float',
     ];
 
@@ -132,7 +135,7 @@ class AreaServed extends Model
         }
 
         return cache()->remember("area:{$this->id}:hive_nearby:{$radius}", 21600, function () use ($radius) {
-            $points = collect(app(\App\Services\HiveProjectsClient::class)->storedZipPoints());
+            $points = collect(app(HiveProjectsClient::class)->storedZipPoints());
             if ($points->isEmpty()) {
                 return null;
             }
@@ -183,8 +186,8 @@ class AreaServed extends Model
         return cache()->remember($key, 86400, function () use ($limit) {
             // Haversine in SQL: 3959 = Earth radius in miles.
             $haversine = '(3959 * acos(cos(radians(?)) * cos(radians(latitude)) '
-                . '* cos(radians(longitude) - radians(?)) '
-                . '+ sin(radians(?)) * sin(radians(latitude))))';
+                .'* cos(radians(longitude) - radians(?)) '
+                .'+ sin(radians(?)) * sin(radians(latitude))))';
 
             return static::query()
                 ->select('*')
@@ -206,7 +209,7 @@ class AreaServed extends Model
      * Cached 6h. Used to surface genuinely local project photos on the area page
      * and to compute an honest per-city sitemap lastmod.
      *
-     * @return Collection<int, \App\Models\Project>
+     * @return Collection<int, Project>
      */
     public function localProjects(int $limit = 12, ?string $projectType = null): Collection
     {
@@ -215,7 +218,7 @@ class AreaServed extends Model
             return new Collection;
         }
 
-        $key = "area:{$this->id}:local_projects:{$limit}:" . ($projectType ?: 'all');
+        $key = "area:{$this->id}:local_projects:{$limit}:".($projectType ?: 'all');
 
         return cache()->remember($key, 21600, function () use ($city, $limit, $projectType) {
             $needle = mb_strtolower($city);
@@ -246,7 +249,7 @@ class AreaServed extends Model
      * area's city, using the same leading-token match as localProjects().
      * Cached 6h. Used for the per-town proof block on area pages.
      *
-     * @return Collection<int, \App\Models\Testimonial>
+     * @return Collection<int, Testimonial>
      */
     public function localTestimonials(int $limit = 3): Collection
     {
@@ -311,7 +314,7 @@ class AreaServed extends Model
      * the geographically nearest served towns, honestly labeled by their real
      * town on the area page (never presented as reviews from this city).
      *
-     * @return Collection<int, \App\Models\Testimonial>
+     * @return Collection<int, Testimonial>
      */
     public function nearbyTestimonials(int $limit = 3): Collection
     {
@@ -342,7 +345,7 @@ class AreaServed extends Model
      * high-demand town has real projects within ~12 miles). Cards must label
      * each project with its real town — never presented as work in this city.
      *
-     * @return Collection<int, \App\Models\Project>
+     * @return Collection<int, Project>
      */
     public function nearbyProjects(int $limit = 6): Collection
     {
@@ -371,7 +374,7 @@ class AreaServed extends Model
      * One representative image per local project (cover first, else first image),
      * for the area-page project slider. Empty when the city has no local projects.
      *
-     * @return Collection<int, \App\Models\ProjectImage>
+     * @return Collection<int, ProjectImage>
      */
     public function localProjectImages(int $limit = 6, ?string $projectType = null): Collection
     {
@@ -389,14 +392,14 @@ class AreaServed extends Model
      * the area row itself and any project completed in this city. Falls back to
      * now() only when there is no local signal at all.
      */
-    public function lastmod(): \Illuminate\Support\Carbon
+    public function lastmod(): Carbon
     {
         $localMax = $this->localProjects()->max('updated_at');
 
         $dates = collect([$this->updated_at, $localMax])->filter();
 
         return $dates->isNotEmpty()
-            ? \Illuminate\Support\Carbon::parse($dates->max())
+            ? Carbon::parse($dates->max())
             : now();
     }
 
@@ -410,29 +413,29 @@ class AreaServed extends Model
     public function postalCodes(): array
     {
         return cache()->remember("area:{$this->id}:zipcodes", 86400, function (): array {
-            return app(\App\Services\HiveProjectsClient::class)->zipsForCity($this->city);
+            return app(HiveProjectsClient::class)->zipsForCity($this->city);
         });
     }
 
     /**
      * Get areas with their project/testimonial counts, sorted by total count descending.
      * Used on homepage to display "most-served" cities with counts.
-     * 
-     * @param int $limit Number of areas to return
+     *
+     * @param  int  $limit  Number of areas to return
      * @return Collection<int, AreaServed>
      */
     public static function withProjectCounts(int $limit = 14): Collection
     {
         $areas = static::all();
-        
+
         $areasWithCounts = $areas->map(function (AreaServed $area) {
             $city = trim((string) $area->city);
             if ($city === '') {
                 return null;
             }
-            
+
             $needle = mb_strtolower($city);
-            
+
             // Count projects in this city
             $projectCount = Project::query()
                 ->where('is_published', true)
@@ -442,10 +445,11 @@ class AreaServed extends Model
                 ->filter(function (Project $project) use ($needle): bool {
                     $parts = preg_split('/[,.]/', (string) $project->location) ?: [];
                     $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
                     return $token === $needle;
                 })
                 ->count();
-            
+
             // Count testimonials in this city
             $testimonialCount = Testimonial::query()
                 ->where('is_hidden', false)
@@ -453,18 +457,20 @@ class AreaServed extends Model
                 ->filter(function (Testimonial $t) use ($needle): bool {
                     $parts = preg_split('/[,.]/', (string) $t->project_location) ?: [];
                     $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
                     return $token === $needle;
                 })
                 ->count();
-            
+
             $area->project_count = $projectCount + $testimonialCount;
+
             return $area;
         })
-        ->filter()
-        ->sortByDesc('project_count')
-        ->take($limit)
-        ->values();
-        
+            ->filter()
+            ->sortByDesc('project_count')
+            ->take($limit)
+            ->values();
+
         return $areasWithCounts;
     }
 
@@ -474,11 +480,34 @@ class AreaServed extends Model
     public function getDynamicSEOData(): SEOData
     {
         return new SEOData(
-            title:        "{$this->city} Home Remodeling, Kitchen & Bath | GS Construction",
-            description:  "Family-owned remodeling contractor serving {$this->city}, IL. Kitchen, bathroom & whole-home renovations with free in-home estimates. 40+ years of experience.",
-            url:          url('/areas-served/' . $this->slug),
-            type:         'website',
-            locale:       'en_US',
+            title: "{$this->city} Home Remodeling, Kitchen & Bath | GS Construction",
+            description: "Family-owned remodeling contractor serving {$this->city}, IL. Kitchen, bathroom & whole-home renovations with free in-home estimates. 40+ years of experience.",
+            url: url('/areas-served/'.$this->slug),
+            type: 'website',
+            locale: 'en_US',
         );
+    }
+
+    /**
+     * Management-API shape. The shared contract calls this field "name";
+     * this app's column is "city" (see AreaController for the inbound
+     * mapping). latitude/longitude restored for pixel parity with the
+     * legacy AreaForm/AreaList coverage map (Coordinates column, lat/lng
+     * fields) — gsc-only, since the map itself is gated on the
+     * 'areas-map' ping capability jpeterson doesn't declare.
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->city,
+            'slug' => $this->slug,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+            'intro' => $this->intro,
+            'local_intro' => $this->local_intro,
+            'landmarks' => $this->landmarks,
+            'permit_notes' => $this->permit_notes,
+        ];
     }
 }
