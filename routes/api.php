@@ -46,7 +46,13 @@ Route::post('lead-filters/sync', LeadFilterSyncController::class)
 // server-to-server caller (ss-systems), whose admin screens fan out many
 // requests per page. 60/min throttled a normally-browsing operator (429s
 // in the central admin); the limit now exists only as an abuse ceiling.
-Route::prefix('admin/v1')->middleware(['throttle:6000,1', 'admin.api.auth', 'admin.api.tenant'])->group(function () {
+// name('api.admin.v1.') is not decoration: apiResource() derives route names
+// from the resource, so 'testimonials' here generated a bare
+// testimonials.index that collided with the PUBLIC /testimonials route of the
+// same name. Laravel tolerates duplicate names until route:cache, which then
+// refuses to serialize — taking the whole deploy down — and before that,
+// route('testimonials.index') silently resolved to whichever registered last.
+Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1', 'admin.api.auth', 'admin.api.tenant'])->group(function () {
     Route::get('ping', PingController::class);
     Route::get('dashboard-stats', DashboardStatsController::class);
 
