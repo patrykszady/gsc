@@ -198,6 +198,13 @@
             <p class="mt-1 text-center text-xs text-gray-600 dark:text-gray-400">
                 <span class="font-medium">Grzegorz Szady: I Love You dad!</span> <span class="italic">— You encourage and challenge me to strive every day. -Patryk Szady</span>
             </p>
+            {{-- Build credit. rel="noopener" because of target=_blank; no
+                 "nofollow" — this is a genuine attribution link. --}}
+            <p class="mt-2 text-center text-xs text-gray-600 dark:text-gray-400">
+                Built by
+                <a href="https://www.ss.systems" target="_blank" rel="noopener"
+                   class="font-medium underline underline-offset-2 hover:text-gray-900 dark:hover:text-white">www.ss.systems</a>
+            </p>
         </div>
 
         {{-- Areas Served Accordion (Livewire) --}}
