@@ -229,6 +229,17 @@
                 if (src && src.indexOf('://') !== -1 && src.indexOf(window.location.origin + '/') !== 0) {
                     return;
                 }
+
+                // Benign and not ours to fix: Safari re-executes the Flux
+                // vendor bundle after a back/forward-cache restore, and its
+                // customElements.define() calls throw the second time round.
+                // The elements are already registered, so the page keeps
+                // working — the throw IS the whole symptom. Reported once,
+                // from one Safari session, and then sat at the top of the
+                // dashboard for days looking like a live defect.
+                if (/Cannot define multiple custom elements/i.test(e.message || '')) {
+                    return;
+                }
                 report('error', {
                     message: e.message,
                     source: e.filename,
