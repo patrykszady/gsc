@@ -124,6 +124,13 @@ class AdminProxyController extends Controller
         // drops :8004 and every relayed redirect ends up pointed at the
         // wrong port.
         $headers['X-Forwarded-Host'] = $request->getHttpHost();
+        // Explicit, even though X-Forwarded-Host carries host:port: Symfony
+        // only recovers a port from the forwarded HOST when no forwarded PORT
+        // is present, and ss-systems dropped it either way — every relayed
+        // redirect came back as http://gsc.localhost/admin/login (port 80),
+        // which nothing serves, so /admin looked dead in local dev. Invisible
+        // in production, where both apps sit on 443.
+        $headers['X-Forwarded-Port'] = (string) $request->getPort();
         $headers['X-Forwarded-Proto'] = $request->getScheme();
         $headers['X-Forwarded-For'] = (string) $request->ip();
         $headers['X-Site-Key'] = (string) config('services.ss.site_key');
