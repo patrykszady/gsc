@@ -1,5 +1,5 @@
 {
-    "generated_at": "2026-08-19T20:52:40+00:00",
+    "generated_at": "2026-08-22T04:20:54+00:00",
     "healed": [],
     "action_items": [
         "Google metrics are stale (latest: never). The daily refresh re-queues the sync when stale \u2014 if this persists more than a day, check API credentials.",
