@@ -45,6 +45,12 @@ class ForgeDeployScript extends Command
 # search-console:auth has been re-run once for the write scope, this reports a
 # 403 — which must never fail a deploy.
 $FORGE_PHP artisan seo:gsc-submit-sitemaps || true
+# Rebuild the AI-crawler feeds against the code and content just deployed.
+# They also regenerate nightly at 01:40; doing it here means a deploy that
+# changes services, towns or copy is reflected for ChatGPT/Claude/Perplexity
+# immediately instead of up to a day later.
+$FORGE_PHP artisan geo:llms-txt || true
+$FORGE_PHP artisan geo:llms-txt --full || true
 BASH;
 
     private const SEO_BLOCK = <<<'BASH'

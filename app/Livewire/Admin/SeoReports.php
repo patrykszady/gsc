@@ -745,6 +745,15 @@ class SeoReports extends Component
         return Cache::remember(\App\Support\Tenancy::cacheKey('seo_reports_geo_v1'), 1800, function (): array {
             $feeds = [];
 
+            // Prefer the DB stamp written when geo:llms-txt last succeeded
+            // (see AppServiceProvider). File mtimes describe whichever machine
+            // renders this page, which made the card shout "STALE" in local
+            // dev — where no scheduler runs — while production was current.
+            $stamp = \App\Support\Tenancy::table('platform_settings')
+                ->where('key', 'geo.llms_txt_generated_at')
+                ->value('value');
+            $generatedAt = $stamp ? Carbon::parse($stamp) : null;
+
             foreach ([['llms.txt', 'llms.txt'], ['llms-full.txt', 'llms-full.txt']] as [$label, $file]) {
                 $path = public_path($file);
                 $mtime = is_file($path) ? filemtime($path) : null;
@@ -753,8 +762,11 @@ class SeoReports extends Component
                     'url' => url('/' . $file),
                     'ok' => $mtime !== null,
                     // Stale = older than 2 days (the schedule writes daily).
-                    'age' => $mtime ? Carbon::createFromTimestamp($mtime)->diffForHumans() : null,
-                    'stale' => $mtime !== null && $mtime < now()->subDays(2)->getTimestamp(),
+                    'age' => $generatedAt?->diffForHumans()
+                        ?? ($mtime ? Carbon::createFromTimestamp($mtime)->diffForHumans() : null),
+                    'stale' => $generatedAt
+                        ? $generatedAt->lt(now()->subDays(2))
+                        : ($mtime !== null && $mtime < now()->subDays(2)->getTimestamp()),
                 ];
             }
 

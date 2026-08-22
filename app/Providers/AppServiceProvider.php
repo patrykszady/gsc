@@ -50,6 +50,33 @@ class AppServiceProvider extends ServiceProvider
             );
         }
 
+        // Record when the AI feeds were last rebuilt, in the DATABASE rather
+        // than leaving the dashboard to read file mtimes.
+        //
+        // The GEO card used to stat public/llms.txt on whichever machine
+        // rendered the page — so browsing the admin locally reported "STALE —
+        // 1 month ago" while production had regenerated it that morning. A
+        // monitor that cries wolf in dev is a monitor people learn to ignore.
+        // The stamp travels with the DB (dev pulls production), so the card
+        // reports whether the JOB ran, which is the actual question.
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Console\Events\CommandFinished::class,
+            function ($event): void {
+                if ($event->command !== 'geo:llms-txt' || $event->exitCode !== 0) {
+                    return;
+                }
+
+                try {
+                    \App\Support\Tenancy::table('platform_settings')->updateOrInsert(
+                        ['site_id' => \App\Models\Site::current()?->id, 'key' => 'geo.llms_txt_generated_at'],
+                        ['value' => now()->toIso8601String(), 'updated_at' => now(), 'created_at' => now()],
+                    );
+                } catch (\Throwable) {
+                    // Never let bookkeeping fail a generation run.
+                }
+            }
+        );
+
         // Livewire update requests POST to /livewire/update and do NOT re-run
         // the original route's middleware. Without this, ResolveAdminSite never
         // fires on interaction, so every admin action after first paint would

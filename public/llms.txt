@@ -30,23 +30,50 @@ Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority citi
 - 5-star rated with a large portfolio of completed local remodels
 - English & Polish speaking
 
+## By the numbers
+- 71 customer reviews across Google, Houzz, Yelp and Angi
+- 400 completed remodeling projects
+- 60 Chicago-area cities and villages served
+- Operating since 2015; 40+ years combined experience
+
+## Cost guides (researched price ranges by project type)
+- [Kitchen Remodel Cost](http://127.0.0.1:8003/costs/kitchen-remodel-cost) — A mid-range kitchen remodel in the Chicago suburbs typically runs $35,000–$80,000 depending on cabinets, countertops, and layout changes. Hi...
+- [Bathroom Remodel Cost](http://127.0.0.1:8003/costs/bathroom-remodel-cost) — A standard hall bathroom remodel in the Chicago suburbs runs $15,000–$30,000. Primary bathrooms with custom showers and tile typically cost...
+- [Basement Finishing Cost](http://127.0.0.1:8003/costs/basement-finishing-cost) — A finished basement in the Chicago suburbs typically runs $45,000–$90,000 for a standard build-out, and $90,000–$150,000+ when adding a full...
+- [Home Addition Cost](http://127.0.0.1:8003/costs/home-addition-cost) — Most home additions in the Chicago suburbs cost $200–$400 per square foot — roughly $60,000–$120,000 for a 300 sq ft bump-out and $150,000–$...
+
+## Building permit guides (per town: what needs a permit, fees, review times)
+- [Arlington Heights permits](http://127.0.0.1:8003/permits/arlington-heights)
+- [Barrington permits](http://127.0.0.1:8003/permits/barrington)
+- [Glenview permits](http://127.0.0.1:8003/permits/glenview)
+- [Highland Park permits](http://127.0.0.1:8003/permits/highland-park)
+- [Mount Prospect permits](http://127.0.0.1:8003/permits/mount-prospect)
+- [Northbrook permits](http://127.0.0.1:8003/permits/northbrook)
+- [Palatine permits](http://127.0.0.1:8003/permits/palatine)
+- [Schaumburg permits](http://127.0.0.1:8003/permits/schaumburg)
+- [Wilmette permits](http://127.0.0.1:8003/permits/wilmette)
+- [Winnetka permits](http://127.0.0.1:8003/permits/winnetka)
+
 ## Key pages
-- [Services](https://gs.construction/services)
-- [Project portfolio](https://gs.construction/projects)
-- [Reviews](https://gs.construction/reviews)
-- [FAQ](https://gs.construction/faq)
-- [How to choose a remodeling contractor](https://gs.construction/how-to-choose-a-remodeling-contractor)
-- [Areas served](https://gs.construction/areas-served)
-- [Contact & free estimate](https://gs.construction/contact)
+- [Services](http://127.0.0.1:8003/services)
+- [Project portfolio](http://127.0.0.1:8003/projects)
+- [Reviews](http://127.0.0.1:8003/reviews)
+- [FAQ](http://127.0.0.1:8003/faq)
+- [How to choose a remodeling contractor](http://127.0.0.1:8003/how-to-choose-a-remodeling-contractor)
+- [Areas served](http://127.0.0.1:8003/areas-served)
+- [Remodeling cost guides](http://127.0.0.1:8003/costs)
+- [Building permit guides](http://127.0.0.1:8003/permits)
+- [Contact & free estimate](http://127.0.0.1:8003/contact)
 
 ## Contact
 - Phone: +1-224-735-4200
 - Email: crew@gs.construction
-- Website: https://gs.construction
+- Website: http://127.0.0.1:8003
 - Google Maps: https://www.google.com/maps/place/?q=place_id:ChIJ1VmJQHm5D4gRZDQlQNkLz2A
 
 ## Metadata
-- Full version: https://gs.construction/llms-full.txt
-- Feed URL: https://gs.construction/ai-feed.json
-- Sitemap URL: https://gs.construction/ai-sitemap.xml
-- Generated At: 2026-07-10T20:35:26+00:00
+- Generated: 2026-08-22
+- Full version: http://127.0.0.1:8003/llms-full.txt
+- Feed URL: http://127.0.0.1:8003/ai-feed.json
+- Sitemap URL: http://127.0.0.1:8003/ai-sitemap.xml
+- Generated At: 2026-08-22T04:15:39+00:00

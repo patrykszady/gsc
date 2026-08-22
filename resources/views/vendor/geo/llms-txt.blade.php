@@ -7,6 +7,17 @@
     $cities = collect(array_keys(\App\Support\SEO\AreaSeoPolicy::priorityCities()))
         ->map(fn ($c) => \Illuminate\Support\Str::of($c)->title())
         ->take(18)->implode(', ');
+
+    // Verifiable figures rather than adjectives: an AI answer engine can cite
+    // "71 reviews across Google, Houzz and Yelp" but has nothing to do with
+    // "highly rated". Same reason the cost and permit guides are deep-linked
+    // below — those pages hold researched, town-specific facts (fees, review
+    // timelines, licence rules) that nothing else in the feed exposed.
+    $reviewsTotal = \App\Support\CompanyStats::reviewsTotal();
+    $projectsCompleted = \App\Support\CompanyStats::projectsCompleted();
+    $citiesServed = \App\Support\CompanyStats::citiesServed();
+    $costGuides = collect(config('remodel-costs.guides', []));
+    $permitGuides = collect(\App\Support\PermitGuideInfo::all());
 @endphp# llms.txt for {{ $site_name }}
 
 > {{ $description ?: 'Family-owned kitchen, bathroom, and whole-home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English & Polish.' }}
@@ -39,6 +50,22 @@
 - 5-star rated with a large portfolio of completed local remodels
 - English & Polish speaking
 
+## By the numbers
+- {{ $reviewsTotal }} customer reviews across Google, Houzz, Yelp and Angi
+- {{ $projectsCompleted }} completed remodeling projects
+- {{ $citiesServed }} Chicago-area cities and villages served
+- Operating since 2015; 40+ years combined experience
+
+## Cost guides (researched price ranges by project type)
+@foreach($costGuides as $guide)
+- [{{ $guide['name'] }}]({{ $siteUrl }}/costs/{{ $guide['slug'] }}){{ isset($guide['answer']) ? ' — ' . \Illuminate\Support\Str::limit(strip_tags($guide['answer']), 140) : '' }}
+@endforeach
+
+## Building permit guides (per town: what needs a permit, fees, review times)
+@foreach($permitGuides as $slug => $guide)
+- [{{ $guide['town'] ?? \Illuminate\Support\Str::of($slug)->replace('-', ' ')->title() }} permits]({{ $siteUrl }}/permits/{{ $slug }})
+@endforeach
+
 ## Key pages
 - [Services]({{ $siteUrl }}/services)
 - [Project portfolio]({{ $siteUrl }}/projects)
@@ -46,6 +73,8 @@
 - [FAQ]({{ $siteUrl }}/faq)
 - [How to choose a remodeling contractor]({{ $siteUrl }}/how-to-choose-a-remodeling-contractor)
 - [Areas served]({{ $siteUrl }}/areas-served)
+- [Remodeling cost guides]({{ $siteUrl }}/costs)
+- [Building permit guides]({{ $siteUrl }}/permits)
 - [Contact & free estimate]({{ $siteUrl }}/contact)
 
 ## Contact
@@ -55,6 +84,7 @@
 - Google Maps: {{ config('socials.google.url') }}
 
 ## Metadata
+- Generated: {{ now()->toDateString() }}
 - Full version: {{ $siteUrl }}/llms-full.txt
 - Feed URL: {{ $feed_url }}
 - Sitemap URL: {{ $sitemap_url }}
