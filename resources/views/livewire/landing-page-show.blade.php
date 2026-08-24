@@ -34,23 +34,28 @@
     @endif
 
     {{-- Hero: the same slider the homepage leads with, filtered to this
-         page's service so every slide is a real project of the kind the
-         searcher asked for. The H1 is the landing page's own. --}}
-    <div class="mx-auto max-w-7xl px-6 pt-4 lg:px-8">
+         page's service. Filtered mode maps images onto caller-provided slide
+         stubs (see service-page.blade.php) — without them it renders nothing,
+         which is exactly the empty hero this replaced. --}}
+    @php
+        $heroSlides = array_fill(0, 4, [
+            'heading' => $p->h1,
+            'subheading' => 'Family-owned · Licensed & insured · 5-star rated · Free estimates',
+            'type' => $projectType,
+        ]);
+    @endphp
+    <section class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <livewire:main-project-hero-slider
             :project-type="$projectType"
+            :slides="$heroSlides"
             :slide-count="4"
             :heading="$p->h1"
-            :label="$serviceLabel . ($p->city ? ' · ' . $p->city . ', IL' : '')"
             primary-cta-text="Get a free estimate"
             :primary-cta-url="route('contact')"
             :secondary-cta-text="'Call ' . $phone"
             :secondary-cta-url="$phoneHref"
         />
-        <p class="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            Family-owned · Licensed, bonded &amp; insured · 5-star rated · 40+ yrs combined experience
-        </p>
-    </div>
+    </section>
 
     {{-- Intro prose --}}
     @if ($p->intro)
@@ -121,14 +126,15 @@
     <livewire:about-section lazy />
     <livewire:testimonials-section lazy />
 
-    {{-- FAQ --}}
+    {{-- FAQ — the shared component owns its heading, width and section
+         chrome; wrapping it in another narrower section double-headed and
+         double-boxed it. --}}
     @if (! empty($p->faq))
-        <section class="mx-auto max-w-3xl px-6 py-14">
-            <h2 class="mb-6 text-2xl font-bold text-zinc-900 dark:text-white">
-                {{ $serviceLabel }}{{ $p->city ? ' in '.$p->city : '' }} — common questions
-            </h2>
-            <x-faq-section :faqs="$faqForComponent" :collapsed="false" />
-        </section>
+        <x-faq-section
+            :faqs="$faqForComponent"
+            :heading="$serviceLabel . ($p->city ? ' in ' . $p->city : '') . ' — Common Questions'"
+            :collapsed="false"
+        />
     @endif
 
     {{-- Service area map + the actual contact form — the homepage's
