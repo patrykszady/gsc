@@ -36,6 +36,12 @@ class RegenSitemapsAndNotifyJob implements ShouldQueue
         Artisan::call('sitemap:generate');
         Artisan::call('seo:image-sitemap-build');
 
+        // Re-submit both sitemaps to Google Search Console so the regenerated
+        // lastmod values (and any new URLs, e.g. auto-published landing pages)
+        // get a re-read request instead of waiting for Google's own cadence.
+        // Idempotent and quota-cheap; exits cleanly pre-auth.
+        Artisan::call('seo:gsc-submit-sitemaps');
+
         // WebSub publish ping — tells the hub the updates feed changed;
         // subscribed crawlers (Google among them) re-fetch it within minutes.
         try {

@@ -97,6 +97,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Models\Project::class,
             \App\Models\ProjectImage::class,
             \App\Models\Testimonial::class,
+            \App\Models\LandingPage::class,
         ] as $model) {
             $model::saved($recrawlNudge);
             $model::deleted($recrawlNudge);

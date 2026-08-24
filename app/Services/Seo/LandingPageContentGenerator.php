@@ -76,15 +76,46 @@ class LandingPageContentGenerator
             158
         );
 
-        $intro = $this->intro($serviceLabel, $city, $modLabel, $count, $pricing);
-        $sections = $this->sections($serviceLabel, $city, $modLabel, $area, $pricing);
-        $faq = $this->faq($serviceLabel, $city);
+        // AI-first: copy written by Gemini from the REAL query and REAL proof
+        // projects, so every page reads specifically instead of templated —
+        // Google's whole objection to programmatic pages is sameness. The
+        // template path stays as the fallback: an AI outage or a rejected
+        // response must never block page creation.
+        $ai = app(\App\Services\AiContentService::class)->generateLandingPageCopy(
+            $serviceLabel,
+            $city,
+            $modLabel,
+            (string) ($targetQuery ?: trim(($modLabel ? "$modLabel " : '') . "$serviceLabel $city")),
+            $proof->map(fn ($p) => [
+                'title' => (string) $p->title,
+                'location' => $p->location,
+                'description' => $p->description,
+            ])->all(),
+            $pricing,
+        );
+
+        if ($ai !== null) {
+            $intro = $ai['intro'];
+            $sections = $ai['sections'];
+            $faq = $ai['faq'];
+            // The town-coverage FAQ stays — it's the one answer that must
+            // always be present, and the AI is not asked to write it.
+            array_unshift($faq, [
+                'q' => "Do you do {$serviceLabel} in {$city}?",
+                'a' => "Yes. {$city} is in our service area — we've completed {$serviceLabel} and related projects throughout the nearby suburbs, and we offer free in-home estimates in {$city}.",
+            ]);
+        } else {
+            $intro = $this->intro($serviceLabel, $city, $modLabel, $count, $pricing);
+            $sections = $this->sections($serviceLabel, $city, $modLabel, $area, $pricing);
+            $faq = $this->faq($serviceLabel, $city);
+        }
 
         $hero = $proof->first()->cover()?->url;
 
         return [
             'slug' => $slug,
             'template' => 'service_modifier_city',
+            'writer' => $ai !== null ? 'ai' : 'template',
             'service' => $service,
             'city' => $city,
             'modifier' => $modifier,

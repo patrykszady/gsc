@@ -759,6 +759,125 @@ PROMPT;
     }
 
     /**
+     * Write the copy for a demand-driven landing page (/remodeling/{slug})
+     * from the REAL query that earned it, grounded in real proof projects.
+     *
+     * Shape matches LandingPageContentGenerator exactly (sections[], faq[]),
+     * so the caller can fall back to its templates whenever this returns null
+     * — an AI outage or a bad response must never block page creation.
+     *
+     * @param array<int,array{title:string,location:?string,description:?string}> $proof
+     * @return array{intro:string,sections:array<int,array{heading:string,body:string}>,faq:array<int,array{q:string,a:string}>}|null
+     */
+    public function generateLandingPageCopy(
+        string $serviceLabel,
+        string $city,
+        ?string $modifierLabel,
+        string $targetQuery,
+        array $proof,
+        string $pricing,
+    ): ?array {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $proofLines = collect($proof)->take(6)->map(function (array $p): string {
+            $line = '- ' . $p['title'];
+            if (! empty($p['location'])) {
+                $line .= ' (' . $p['location'] . ')';
+            }
+            if (! empty($p['description'])) {
+                $line .= ': ' . mb_substr($p['description'], 0, 200);
+            }
+
+            return $line;
+        })->implode("
+");
+
+        $angle = trim(($modifierLabel ? $modifierLabel . ' ' : '') . $serviceLabel);
+
+        $prompt = <<<PROMPT
+You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom, and
+whole-home remodeling contractor based in Arlington Heights, Illinois. Founded 2015 by
+Gregory and Patryk (father & son), 40+ years combined experience, 5-star rated, English
+& Polish spoken. Licensed and insured; we handle design, permits, and construction with
+one dedicated project lead per job.
+
+Write the copy for a landing page targeting the real Google search
+"{$targetQuery}" — i.e. {$angle} in {$city}, Illinois. Typical investment: {$pricing}.
+
+These are REAL completed GS Construction projects to ground the copy in (never invent
+others, never invent client names):
+{$proofLines}
+
+Return ONLY a valid JSON object with EXACTLY these keys:
+
+- "intro": 3–5 sentences (500–800 characters). Directly answer the searcher's intent for
+  "{$targetQuery}". Mention {$city} naturally, reference our real project experience, and
+  state the typical investment range. No "welcome to", no fluff.
+
+- "sections": array of EXACTLY 3 objects, each {"heading": "...", "body": "..."}.
+  Headings are concrete and specific (not "Why choose us"). Bodies are 400–700 characters,
+  factual, written for a {$city} homeowner comparing contractors. One section must cover
+  what the project includes and how pricing/scope works; one must speak to the specific
+  angle of "{$targetQuery}" (the modifier, the town, or both); one must cover process:
+  design, permits through the local building department, timeline, and a single point of
+  contact.
+
+- "faq": array of EXACTLY 4 objects, each {"q": "...", "a": "..."}. Questions a {$city}
+  homeowner actually asks before hiring for {$angle}. Answers 150–350 characters, honest
+  and specific. Never invent permit fees, exact timelines you cannot know, or guarantees.
+
+Hard rules:
+- Plain text values only. No markdown, no emoji.
+- Do NOT mention competitors. Do NOT invent projects, reviews, or statistics.
+- Banned phrases: "nestled in", "premier", "your trusted", "look no further", "dream home".
+- Return ONLY the JSON object. No code fences, no preamble.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 2200);
+        if ($raw === null) {
+            return null;
+        }
+
+        $raw = preg_replace('/^```json\s*|^```\s*|\s*```$/im', '', trim($raw));
+        $decoded = json_decode(trim((string) $raw), true);
+
+        if (! is_array($decoded)
+            || ! is_string($decoded['intro'] ?? null) || mb_strlen($decoded['intro']) < 200
+            || ! is_array($decoded['sections'] ?? null) || count($decoded['sections']) < 3
+            || ! is_array($decoded['faq'] ?? null) || count($decoded['faq']) < 3
+        ) {
+            $this->lastError = 'Landing-page copy failed validation: ' . mb_substr((string) $raw, 0, 200);
+
+            return null;
+        }
+
+        $sections = [];
+        foreach ($decoded['sections'] as $sec) {
+            if (is_string($sec['heading'] ?? null) && is_string($sec['body'] ?? null) && mb_strlen($sec['body']) >= 150) {
+                $sections[] = ['heading' => trim($sec['heading']), 'body' => trim($sec['body'])];
+            }
+        }
+        $faq = [];
+        foreach ($decoded['faq'] as $f) {
+            if (is_string($f['q'] ?? null) && is_string($f['a'] ?? null) && mb_strlen($f['a']) >= 60) {
+                $faq[] = ['q' => trim($f['q']), 'a' => trim($f['a'])];
+            }
+        }
+
+        if (count($sections) < 3 || count($faq) < 3) {
+            $this->lastError = 'Landing-page copy too thin after validation.';
+
+            return null;
+        }
+
+        return ['intro' => trim($decoded['intro']), 'sections' => $sections, 'faq' => $faq];
+    }
+
+    /**
      * Generate unique ZIP landing content for /service-area/{zip} pages.
      *
      * @return array{intro:string,local_context:string,landmarks:string,permit_notes:string}|null
