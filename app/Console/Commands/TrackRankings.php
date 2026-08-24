@@ -106,6 +106,64 @@ class TrackRankings extends Command
         $this->newLine();
         $this->info("Done. found={$found}  no-data={$missed}" . ($dryRun ? '  (dry-run)' : ''));
 
+        // Real SERP observations via DataForSEO, when credentials exist.
+        // engine='google' rows resume the series the retired scraper left off
+        // (last real observation before this: 2026-07-06). The GSC-derived
+        // pass above stays: two instruments, clearly labeled by engine.
+        $dfs = app(\App\Services\DataForSeoService::class);
+        if ($dfs->isConfigured()) {
+            $this->newLine();
+            $this->info('DataForSEO live SERP checks (engine=google):');
+            $rf = $rm = 0;
+
+            foreach ((array) config('seo.rank_tracker.web_queries', []) as $cfg) {
+                $query = (string) $cfg['q'];
+                if ($filter !== '' && stripos($query, $filter) === false) {
+                    continue;
+                }
+
+                $obs = $dfs->googleOrganicPosition($query, 'gs.construction');
+                if ($obs === null) {
+                    $this->warn("  [google] {$query}: " . ($dfs->getLastError() ?? 'failed'));
+
+                    continue;
+                }
+
+                if (! $dryRun) {
+                    SeoRankSnapshot::create([
+                        'engine' => 'google',
+                        'query' => $query,
+                        'location' => 'Chicago,Illinois,United States',
+                        'city_slug' => (string) ($cfg['city_slug'] ?? '') ?: null,
+                        'gsc_position' => $obs['position'],
+                        'gsc_match_title' => null,
+                        'result_count' => null,
+                        'top_results' => array_slice($obs['top_domains'], 0, 10),
+                        'meta' => [
+                            'source' => 'dataforseo_live_advanced',
+                            'matched_url' => $obs['url'],
+                            'local_pack_present' => $obs['local_pack'],
+                        ],
+                        'fetched_at' => Carbon::now(),
+                    ]);
+                }
+
+                $obs['position'] !== null ? $rf++ : $rm++;
+                $this->line(sprintf(
+                    '  [google] %-48s %s%s',
+                    Str::limit($query, 48, ''),
+                    $obs['position'] === null ? 'not in top 100' : '#' . $obs['position'],
+                    $obs['local_pack'] ? '  (local pack on SERP)' : ''
+                ));
+
+                usleep(400_000); // stay polite on the live endpoint
+            }
+
+            $this->info("Real SERP done. ranked={$rf}  not-in-top-100={$rm}");
+        } else {
+            $this->comment('DataForSEO not configured (DATAFORSEO_LOGIN/PASSWORD) — real SERP pass skipped.');
+        }
+
         return self::SUCCESS;
     }
 }

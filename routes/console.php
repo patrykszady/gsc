@@ -232,6 +232,12 @@ Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:
 // SEO: weekly rank snapshot from Search Console data. GSC gives real Google
 // positions for queries with impressions; map-pack visibility is covered by
 // gbp:metrics-sync.
+// Local Falcon geo-grid results, daily mirror (scans run on their side).
+// Skips silently until LOCALFALCON_API_KEY exists.
+Schedule::command('localfalcon:sync')->dailyAt('05:20')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+
 Schedule::command('seo:track-rankings')
     ->weeklyOn(1, '08:00') // Mondays 08:00 CT
     ->timezone('America/Chicago')

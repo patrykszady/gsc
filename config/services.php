@@ -289,6 +289,20 @@ return [
     // IPRoyal is unsubscribed — generic scraping now uses the 2captcha
     // rotating residential proxy (same one the Yelp stack prefers).
     // SCRAPER_PROXY_URL still overrides everything when set.
+    // DataForSEO — real SERP observations for seo:track-rankings --real.
+    // Basic-auth login/password from app.dataforseo.com. ~$0.002/check on the
+    // live endpoint: 31 queries weekly ≈ $0.25/month.
+    'dataforseo' => [
+        'login' => env('DATAFORSEO_LOGIN'),
+        'password' => env('DATAFORSEO_PASSWORD'),
+    ],
+
+    // Local Falcon — geo-grid map-pack visibility. API key from
+    // localfalcon.com account settings (paid plans).
+    'localfalcon' => [
+        'key' => env('LOCALFALCON_API_KEY'),
+    ],
+
     'scraper' => [
         'proxy' => env('SCRAPER_PROXY_URL') ?: $compose2captchaProxy(),
     ],
