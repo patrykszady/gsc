@@ -130,7 +130,7 @@ class SeoAutopilotService
         $queries = \App\Support\Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->groupBy('query')
-            ->havingRaw('SUM(impressions) >= 60')
+            ->havingRaw('SUM(impressions) >= 30')
             ->selectRaw('query, SUM(impressions) impressions, SUM(clicks) clicks, AVG(position) position')
             ->orderByDesc(DB::raw('SUM(impressions)'))
             ->limit(400)
@@ -154,6 +154,13 @@ class SeoAutopilotService
             // area page. Never duplicate an existing /areas-served/{city} page.
             $cityIsCovered = isset($areaCities[Str::lower($city)]);
             if ($modifier === null && $cityIsCovered) {
+                continue;
+            }
+
+            // Covered-city modifier plays need real volume (the area page
+            // already serves the head term); an UNCOVERED town is a genuine
+            // gap, so the 30-impression floor from the query is enough.
+            if ($cityIsCovered && (int) $q->impressions < 60) {
                 continue;
             }
 
@@ -947,7 +954,14 @@ class SeoAutopilotService
      */
     private function parseQuery(string $query, array $knownCities): ?array
     {
-        $q = ' ' . Str::lower($query) . ' ';
+        // Real queries arrive as "barrington, il", "mt. prospect", "park
+        // ridge, illinois" — commas glued to the city name made every one of
+        // them unmatchable, and "mt."/"ft." never equal "mount"/"fort".
+        $q = Str::lower($query);
+        $q = str_replace([',', '.'], ' ', $q);
+        $q = preg_replace('/\bmt\b/', 'mount', $q);
+        $q = preg_replace('/\bft\b/', 'fort', $q);
+        $q = ' ' . preg_replace('/\s+/', ' ', trim($q)) . ' ';
 
         $service = null;
         foreach (self::SERVICE_KEYWORDS as $kw => $slug) {
@@ -984,11 +998,33 @@ class SeoAutopilotService
     }
 
     /** @return array<string,string> lower => Display, longest-first for matching */
+    /**
+     * Real towns bordering the service area that have no AreaServed row.
+     * CURATED on purpose: parseQuery only ever matches against this list plus
+     * our own tables, so a query like "bathroom remodel tarzana" (a far-away
+     * town we accidentally rank #71 for) can never spawn a page. The proof
+     * gate would pass it — proof falls back to nearby same-type projects —
+     * so the lexicon is the geographic fence.
+     */
+    private const ADJACENT_CITIES = [
+        'Wauconda', 'Island Lake', 'Cary', 'Fox River Valley Gardens', 'Grayslake',
+        'Round Lake', 'Lake Villa', 'Lindenhurst', 'Waukegan', 'North Chicago',
+        'Highwood', 'Golf', 'Bannockburn', 'Mettawa',
+        'Itasca', 'Wood Dale', 'Bensenville', 'Addison', 'Villa Park', 'Lombard',
+        'Elmhurst', 'Roselle', 'Bloomingdale', 'Medinah', 'Hanover Park', 'Bartlett',
+        'Carol Stream', 'Franklin Park', 'Stone Park', 'Berkeley', 'Hillside',
+        'Westchester', 'Bellwood', 'Maywood', 'Broadview', 'La Grange',
+        'La Grange Park', 'Brookfield', 'Riverside', 'Berwyn',
+    ];
+
     private function knownCities(): array
     {
         $cities = [];
         foreach (AreaServed::pluck('city') as $c) {
             $cities[Str::lower(trim((string) $c))] = trim((string) $c);
+        }
+        foreach (self::ADJACENT_CITIES as $c) {
+            $cities[Str::lower($c)] = $cities[Str::lower($c)] ?? $c;
         }
         // Cities we have project proof in but that may not be AreaServed rows.
         foreach (\App\Models\Project::whereNotNull('location')->pluck('location') as $loc) {
