@@ -87,6 +87,10 @@ class TrackAiTraffic
             }
 
             $siteId = \App\Models\Site::current()->id;
+            // Per-path rows answer "WHICH pages do AI assistants read/cite" —
+            // the one GEO metric only the origin can measure. Path capped and
+            // query-stripped so cardinality stays bounded by real page count.
+            $trackPath = mb_substr($path, 0, 191);
 
             // Increment-or-insert without read-modify-write races. The tiny
             // duplicate-insert race between the two statements is absorbed by
@@ -106,6 +110,7 @@ class TrackAiTraffic
                         'date' => now()->toDateString(),
                         'kind' => $kind,
                         'source' => $source,
+                        'path' => $trackPath,
                         'count' => 1,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -116,6 +121,7 @@ class TrackAiTraffic
                         ->where('date', now()->toDateString())
                         ->where('kind', $kind)
                         ->where('source', $source)
+                        ->where('path', $trackPath)
                         ->increment('count');
                 }
             }

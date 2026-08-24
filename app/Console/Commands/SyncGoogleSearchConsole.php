@@ -134,6 +134,7 @@ class SyncGoogleSearchConsole extends Command
         // returns the real totals, which /admin/seo-reports uses for headline
         // numbers and the daily trend.
         $this->syncDailyTotals($svc, $siteUrl, $start, $end, $dry);
+        $this->syncSearchAppearance($svc, $siteUrl, $start, $end, $dry);
 
         return self::SUCCESS;
     }
@@ -187,5 +188,60 @@ class SyncGoogleSearchConsole extends Command
         }
 
         $this->info("Daily totals upserted: {$written} day(s)" . ($dry ? ' (dry-run)' : ''));
+    }
+
+    /**
+     * Daily totals split by searchAppearance (AI Overview, review snippet,
+     * FAQ rich result, …). AI Overviews now show on roughly half of Google
+     * queries; this is the only way to see whether impressions are landing
+     * inside them — and whether that is where the thin non-brand CTR lives.
+     */
+    protected function syncSearchAppearance(
+        GoogleSearchConsoleService $svc,
+        string $siteUrl,
+        Carbon $start,
+        Carbon $end,
+        bool $dry,
+    ): void {
+        $rows = $svc->querySearchAnalytics(
+            siteUrl: $siteUrl,
+            startDate: $start->toDateString(),
+            endDate: $end->toDateString(),
+            dimensions: ['date', 'searchAppearance'],
+            rowLimit: 5000,
+            startRow: 0,
+        );
+
+        if ($rows === null) {
+            // Older properties can reject the dimension; warn, never fail the sync.
+            $this->warn('searchAppearance query failed: ' . json_encode($svc->getLastError()));
+
+            return;
+        }
+
+        $written = 0;
+        foreach ($rows as $r) {
+            [$date, $appearance] = [$r['keys'][0] ?? null, $r['keys'][1] ?? null];
+            if (! $date || ! $appearance) {
+                continue;
+            }
+
+            if (! $dry) {
+                \App\Support\Tenancy::table('gsc_search_appearance_metrics')->updateOrInsert(
+                    ['site_id' => \App\Models\Site::current()?->id, 'date' => $date, 'appearance' => mb_substr($appearance, 0, 64)],
+                    [
+                        'clicks' => (int) ($r['clicks'] ?? 0),
+                        'impressions' => (int) ($r['impressions'] ?? 0),
+                        'ctr' => round((float) ($r['ctr'] ?? 0), 5),
+                        'position' => round((float) ($r['position'] ?? 0), 2),
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+            }
+            $written++;
+        }
+
+        $this->info("Search-appearance rows: {$written}");
     }
 }
