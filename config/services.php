@@ -289,6 +289,16 @@ return [
     // IPRoyal is unsubscribed — generic scraping now uses the 2captcha
     // rotating residential proxy (same one the Yelp stack prefers).
     // SCRAPER_PROXY_URL still overrides everything when set.
+    // Platform GCP project for per-site Search Console BigQuery exports.
+    // ONE project owned by SS Systems; one dataset per tenant site. The
+    // service-account JSON needs roles: Service Usage Admin, Project IAM
+    // Admin, BigQuery Admin — on this project only.
+    'gcp' => [
+        'project_id' => env('GCP_PROJECT_ID'),
+        // Path to the service-account key JSON (local/secret storage, never the repo).
+        'credentials' => env('GCP_CREDENTIALS_PATH'),
+    ],
+
     // DataForSEO — real SERP observations for seo:track-rankings --real.
     // Basic-auth login/password from app.dataforseo.com. ~$0.002/check on the
     // live endpoint: 31 queries weekly ≈ $0.25/month.
