@@ -43,16 +43,25 @@ class DataForSeoService
      */
     public function googleOrganicPosition(string $query, string $targetDomain, string $locationName = 'Chicago,Illinois,United States'): ?array
     {
-        $resp = Http::withBasicAuth(
-            (string) config('services.dataforseo.login'),
-            (string) config('services.dataforseo.password'),
-        )->timeout(60)->post(self::BASE . '/serp/google/organic/live/advanced', [[
+        try {
+            $resp = Http::withBasicAuth(
+                (string) config('services.dataforseo.login'),
+                (string) config('services.dataforseo.password'),
+            )->timeout(90)->retry(2, 1500, throw: false)
+                ->post(self::BASE . '/serp/google/organic/live/advanced', [[
             'keyword' => $query,
             'location_name' => $locationName,
             'language_code' => 'en',
             'device' => 'desktop',
             'depth' => 100,
-        ]]);
+            ]]);
+        } catch (\Throwable $e) {
+            // A single slow SERP must never abort the whole weekly run — the
+            // live endpoint occasionally exceeds a minute under load.
+            $this->lastError = 'request failed: ' . mb_substr($e->getMessage(), 0, 160);
+
+            return null;
+        }
 
         if (! $resp->successful()) {
             $this->lastError = 'HTTP ' . $resp->status() . ': ' . mb_substr($resp->body(), 0, 200);
