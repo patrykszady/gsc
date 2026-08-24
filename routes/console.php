@@ -238,6 +238,12 @@ Schedule::command('localfalcon:sync')->dailyAt('05:20')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Mirror Local Falcon geo-grid results daily (scans run on their scheduler;
+// this only pulls what exists — free of credits, skips cleanly without a key).
+Schedule::command('localfalcon:sync')->dailyAt('05:20')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+
 Schedule::command('seo:track-rankings')
     ->weeklyOn(1, '08:00') // Mondays 08:00 CT
     ->timezone('America/Chicago')
