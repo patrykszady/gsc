@@ -114,7 +114,8 @@ class SeoReportController extends Controller
             'trend' => $this->trendChartData($search, $trendMetric),
             'top_queries' => $this->topRows('query', $topQueriesSort, $topQueriesDir, $topDays),
             'top_pages' => $this->topRows('page', $topPagesSort, $topPagesDir, $topDays),
-            'clarity' => $this->claritySnapshot(),
+            'clarity' => $this->claritySnapshot($this->normalizeWindowDays((int) $request->integer('clarity_days', 7))),
+            'rankings' => $this->rankingSnapshot($this->normalizeWindowDays((int) $request->integer('rank_days', 7))),
             'geo' => $this->geoSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
             'gsc_errors' => $this->gscErrorSnapshot(),
@@ -513,16 +514,22 @@ class SeoReportController extends Controller
         });
     }
 
-    protected function claritySnapshot(): array
+    /** Allowed comparison windows for the Clarity and Ranking cards. */
+    protected function normalizeWindowDays(int $days): int
+    {
+        return in_array($days, [7, 14, 28], true) ? $days : 7;
+    }
+
+    protected function claritySnapshot(int $days = 7): array
     {
         if (! Schema::hasTable('clarity_daily_metrics')) {
-            return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null];
+            return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days];
         }
 
-        return Cache::remember(Tenancy::cacheKey('seo_reports_clarity_v1'), 1800, function (): array {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_clarity_v2_' . $days), 1800, function () use ($days): array {
             $latest = Tenancy::table('clarity_daily_metrics')->max('date');
             if (! $latest) {
-                return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null];
+                return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days];
             }
 
             $end = Carbon::parse($latest);
@@ -534,8 +541,8 @@ class SeoReportController extends Controller
                     .'AVG(scroll_depth) scroll_depth')
                 ->first();
 
-            $week = $sum((clone $end)->subDays(6), $end);
-            $prior = $sum((clone $end)->subDays(13), (clone $end)->subDays(7));
+            $week = $sum((clone $end)->subDays($days - 1), $end);
+            $prior = $sum((clone $end)->subDays(2 * $days - 1), (clone $end)->subDays($days));
 
             return [
                 'available' => true,
@@ -543,6 +550,61 @@ class SeoReportController extends Controller
                 'week' => $week,
                 'prior' => $prior,
                 'scroll' => $week['scroll_depth'] !== null ? round((float) $week['scroll_depth'], 1) : null,
+                'days' => $days,
+            ];
+        });
+    }
+
+    /**
+     * Ranking distribution now vs `daysBack` ago, from the weekly
+     * seo:track-rankings snapshots. The card looked frozen because it never
+     * said WHEN its numbers were from — the tracker runs weekly (Sundays), so
+     * mid-week the data is legitimately up to 6 days old. as_of makes that
+     * visible; prior powers the better/worse chevrons.
+     */
+    protected function rankingSnapshot(int $daysBack = 7): array
+    {
+        if (! Schema::hasTable('seo_rank_snapshots')) {
+            return ['available' => false];
+        }
+
+        return Cache::remember(Tenancy::cacheKey('seo_reports_rankdist_v1_' . $daysBack), 1800, function () use ($daysBack): array {
+            $distribution = function (?string $before) {
+                $q = Tenancy::table('seo_rank_snapshots as r1')
+                    ->selectRaw('r1.gsc_position as position')
+                    ->whereRaw(
+                        'r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine'
+                        . ' AND COALESCE(r2.location, "") = COALESCE(r1.location, "")'
+                        . ' AND (r2.site_id = ? OR r2.site_id IS NULL)'
+                        . ($before ? ' AND r2.created_at <= ?' : '') . ')',
+                        $before ? [Tenancy::currentId(), $before] : [Tenancy::currentId()],
+                    );
+                if ($before) {
+                    $q->where('r1.created_at', '<=', $before);
+                }
+                $rows = $q->get();
+
+                $b = fn ($max) => $rows->filter(fn ($r) => $r->position !== null && $r->position <= $max)->count();
+
+                return [
+                    'tracked' => $rows->count(),
+                    'top3' => $b(3),
+                    'top10' => $b(10),
+                    'top20' => $b(20),
+                    'below20' => max(0, $rows->count() - $b(20)),
+                ];
+            };
+
+            $asOf = Tenancy::table('seo_rank_snapshots')->max('created_at');
+            $current = $distribution(null);
+            $prior = $distribution($asOf ? Carbon::parse($asOf)->subDays($daysBack)->toDateTimeString() : null);
+
+            return [
+                'available' => $current['tracked'] > 0,
+                'as_of' => $asOf ? Carbon::parse($asOf)->toDateString() : null,
+                'days' => $daysBack,
+                'current' => $current,
+                'prior' => $prior,
             ];
         });
     }
