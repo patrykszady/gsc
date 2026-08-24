@@ -3,6 +3,8 @@
     $phone = config('geo-answers.meta.phone', '+1-224-735-4200');
     $phoneHref = 'tel:' . preg_replace('/[^0-9+]/', '', $phone);
     $serviceLabel = $p->service ? \Illuminate\Support\Str::of($p->service)->replace('-', ' ')->title() : 'Remodeling';
+    // Same slides the homepage hero uses, filtered to this page's service.
+    $projectType = \App\Services\Seo\LandingPageContentGenerator::SERVICE_PROJECT_TYPE[$p->service] ?? null;
 
     // Service structured data (proof-gated pages only, matching robots). The
     // FAQ schema is emitted by <x-faq-section> below, so it isn't repeated here.
@@ -31,32 +33,24 @@
         <script type="application/ld+json">{!! json_encode($serviceSchema, JSON_UNESCAPED_SLASHES) !!}</script>
     @endif
 
-    {{-- Hero --}}
-    <section class="relative overflow-hidden bg-zinc-900 text-white">
-        @if ($p->hero_image)
-            <img src="{{ $p->hero_image }}" alt="{{ $p->h1 }}" class="absolute inset-0 h-full w-full object-cover opacity-40" />
-        @endif
-        <div class="relative mx-auto max-w-5xl px-6 py-20 sm:py-28">
-            <p class="mb-3 text-sm font-semibold uppercase tracking-wide text-sky-300">
-                {{ $serviceLabel }}{{ $p->city ? ' · '.$p->city.', IL' : '' }}
-            </p>
-            <h1 class="text-3xl font-bold leading-tight sm:text-5xl">{{ $p->h1 }}</h1>
-            @if ($p->intro)
-                <p class="mt-5 max-w-2xl text-lg text-zinc-200">{{ \Illuminate\Support\Str::of($p->intro)->limit(220) }}</p>
-            @endif
-            <div class="mt-8 flex flex-wrap gap-3">
-                <a href="{{ route('contact') }}" wire:navigate
-                   class="inline-flex items-center rounded-lg bg-sky-500 px-6 py-3 font-semibold text-white transition hover:bg-sky-400">
-                    Get a free estimate
-                </a>
-                <a href="{{ $phoneHref }}"
-                   class="inline-flex items-center rounded-lg bg-white/10 px-6 py-3 font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/20">
-                    Call {{ $phone }}
-                </a>
-            </div>
-            <p class="mt-6 text-sm text-zinc-300">Family-owned · Licensed, bonded &amp; insured · 5-star rated · 40+ yrs combined experience</p>
-        </div>
-    </section>
+    {{-- Hero: the same slider the homepage leads with, filtered to this
+         page's service so every slide is a real project of the kind the
+         searcher asked for. The H1 is the landing page's own. --}}
+    <div class="mx-auto max-w-7xl px-6 pt-4 lg:px-8">
+        <livewire:main-project-hero-slider
+            :project-type="$projectType"
+            :slide-count="4"
+            :heading="$p->h1"
+            :label="$serviceLabel . ($p->city ? ' · ' . $p->city . ', IL' : '')"
+            primary-cta-text="Get a free estimate"
+            :primary-cta-url="route('contact')"
+            :secondary-cta-text="'Call ' . $phone"
+            :secondary-cta-url="$phoneHref"
+        />
+        <p class="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            Family-owned · Licensed, bonded &amp; insured · 5-star rated · 40+ yrs combined experience
+        </p>
+    </div>
 
     {{-- Intro prose --}}
     @if ($p->intro)
@@ -122,6 +116,11 @@
         </section>
     @endif
 
+    {{-- The homepage's trust stack: who we are, then rotating reviews.
+         Lazy like on the homepage — all below the fold. --}}
+    <livewire:about-section lazy />
+    <livewire:testimonials-section lazy />
+
     {{-- FAQ --}}
     @if (! empty($p->faq))
         <section class="mx-auto max-w-3xl px-6 py-14">
@@ -132,9 +131,20 @@
         </section>
     @endif
 
+    {{-- Service area map + the actual contact form — the homepage's
+         conversion pair, so the searcher never has to leave to convert. --}}
+    <livewire:map-section lazy />
+    <livewire:contact-section lazy />
+
     {{-- CTA --}}
     <x-cta-section
         variant="blue"
         heading="Ready to scope your {{ strtolower($serviceLabel) }}?"
     />
+
+    {{-- Town links, same block as the homepage — internal linking a brand-new
+         URL needs so it isn't an orphan. --}}
+    <div class="mx-auto max-w-7xl px-6 pb-12 lg:px-8">
+        <x-area-chips :limit="18" class="mt-4" />
+    </div>
 </div>

@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 class LandingPageContentGenerator
 {
     /** service slug => Project.project_type used as proof. */
-    private const SERVICE_PROJECT_TYPE = [
+    public const SERVICE_PROJECT_TYPE = [
         'kitchen-remodeling' => 'kitchen',
         'bathroom-remodeling' => 'bathroom',
         'home-remodeling' => 'home-remodel',
