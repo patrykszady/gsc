@@ -794,13 +794,17 @@ class SeoReportController extends Controller
             $avg = fn ($c, $f) => $c->count() ? (int) round($c->avg($f)) : 0;
             $peakRow = $rows->sortByDesc('impressions')->first();
 
-            $nb = Tenancy::table('gsc_query_metrics')
-                ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            $nbWindow = fn (string $from, string $to) => Tenancy::table('gsc_query_metrics')
+                ->whereBetween('date', [$from, $to])
                 ->where('query', 'not like', '%gs construction%')
                 ->where('query', 'not like', '%gs builder%')
                 ->selectRaw('SUM(impressions) imp, SUM(clicks) clk')
                 ->first();
+            $nb = $nbWindow($start->toDateString(), $end->toDateString());
+            // Same-length window immediately before, for the trend chevron.
+            $nbPrior = $nbWindow((clone $start)->subDays(28)->toDateString(), (clone $start)->subDay()->toDateString());
             $nbCtr = ($nb && $nb->imp > 0) ? round(($nb->clk / $nb->imp) * 100, 3) : 0.0;
+            $nbPriorCtr = ($nbPrior && $nbPrior->imp > 0) ? round(($nbPrior->clk / $nbPrior->imp) * 100, 3) : 0.0;
 
             $aggPage = fn ($from, $to) => Tenancy::table('gsc_query_metrics')
                 ->whereBetween('date', [$from, $to])
@@ -861,6 +865,9 @@ class SeoReportController extends Controller
                     'nonbrand_ctr' => $nbCtr,
                     'nonbrand_clicks' => (int) ($nb->clk ?? 0),
                     'nonbrand_impr' => (int) ($nb->imp ?? 0),
+                    'nonbrand_prior_ctr' => $nbPriorCtr,
+                    'nonbrand_prior_clicks' => (int) ($nbPrior->clk ?? 0),
+                    'nonbrand_prior_impr' => (int) ($nbPrior->imp ?? 0),
                 ],
                 'losers' => $losers,
                 'coverage' => $coverage,
