@@ -70,6 +70,29 @@ class DataForSeoService
         }
 
         $task = $resp->json('tasks.0');
+
+        // 40101 "Internal SE Server Error" is DataForSEO's transient upstream
+        // failure — 8 of 31 queries hit it on the first baseline sweep. One
+        // in-place retry clears most of them; persistent ones stay null and
+        // the next weekly run fills the hole.
+        if (($task['status_code'] ?? 0) === 40101) {
+            sleep(2);
+            $retry = Http::withBasicAuth(
+                (string) config('services.dataforseo.login'),
+                (string) config('services.dataforseo.password'),
+            )->timeout(90)->retry(2, 1500, throw: false)
+                ->post(self::BASE . '/serp/google/organic/live/advanced', [[
+                    'keyword' => $query,
+                    'location_name' => $locationName,
+                    'language_code' => 'en',
+                    'device' => 'desktop',
+                    'depth' => 100,
+                ]]);
+            if ($retry->successful()) {
+                $task = $retry->json('tasks.0');
+            }
+        }
+
         if (($task['status_code'] ?? 0) !== 20000) {
             $this->lastError = ($task['status_code'] ?? '?') . ' ' . ($task['status_message'] ?? 'unknown');
 
