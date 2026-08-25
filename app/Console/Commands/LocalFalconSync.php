@@ -125,6 +125,90 @@ class LocalFalconSync extends Command
 
         $this->info("Mirrored {$written} scan(s).");
 
+        $this->mirrorReportFamilies($key);
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Mirror every other report family the paid tier exposes. Generic on
+     * purpose: one loop, one table, full payload archived — each family's
+     * dashboard treatment can pick fields later without another API round.
+     */
+    protected function mirrorReportFamilies(string $key): void
+    {
+        $families = [
+            'trend' => '/v1/trend-reports/',
+            'competitor' => '/v1/competitor-reports/',
+            'keyword' => '/v1/keyword-reports/',
+            'location' => '/v1/location-reports/',
+            'campaign' => '/v1/campaigns/',
+            'guard' => '/v1/guard/',
+            'reviews' => '/v1/reviews/',
+        ];
+
+        foreach ($families as $family => $path) {
+            $resp = Http::timeout(30)->get('https://api.localfalcon.com' . $path, [
+                'api_key' => $key,
+                'limit' => 25,
+            ]);
+            if (! $resp->successful()) {
+                $this->warn("  {$family}: HTTP {$resp->status()}");
+
+                continue;
+            }
+
+            $data = (array) ($resp->json('data') ?? []);
+            $rows = null;
+            foreach ($data as $v) {
+                if (is_array($v) && array_is_list($v)) {
+                    $rows = $v;
+                    break;
+                }
+            }
+
+            $new = 0;
+            foreach ((array) $rows as $r) {
+                if (! is_array($r)) {
+                    continue;
+                }
+                $rk = (string) ($r['report_key'] ?? $r['place_id'] ?? $r['id'] ?? '');
+                if ($rk === '') {
+                    continue;
+                }
+
+                $reportedAt = null;
+                if (! empty($r['timestamp']) && is_numeric($r['timestamp'])) {
+                    $reportedAt = Carbon::createFromTimestamp((int) $r['timestamp']);
+                } elseif (! empty($r['date'])) {
+                    try {
+                        $reportedAt = Carbon::parse($r['date']);
+                    } catch (\Throwable) {
+                    }
+                }
+
+                $exists = \App\Support\Tenancy::table('local_falcon_reports')
+                    ->where('family', $family)->where('report_key', $rk)->exists();
+                if ($exists) {
+                    continue;
+                }
+
+                \App\Support\Tenancy::table('local_falcon_reports')->insert([
+                    'site_id' => \App\Models\Site::current()?->id,
+                    'family' => $family,
+                    'report_key' => $rk,
+                    'keyword' => mb_substr((string) ($r['keyword'] ?? $r['search_term'] ?? ''), 0, 191) ?: null,
+                    'reported_at' => $reportedAt,
+                    'payload' => json_encode($r),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $new++;
+            }
+
+            if ($new > 0 || is_array($rows)) {
+                $this->line("  {$family}: " . ($new > 0 ? "+{$new} new" : 'up to date'));
+            }
+        }
     }
 }
