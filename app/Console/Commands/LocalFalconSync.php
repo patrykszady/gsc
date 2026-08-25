@@ -63,6 +63,47 @@ class LocalFalconSync extends Command
                 continue;
             }
 
+            $isNew = ! \App\Support\Tenancy::table('local_falcon_scans')->where('scan_id', $scanId)->exists();
+
+            // Full report detail for NEW scans: the list rows carry only the
+            // aggregates, but the paid tier includes the complete per-point
+            // grid — rank at every coordinate plus who occupies the pack.
+            // Slimmed before storing (rank-per-point + top pack occupants),
+            // since the raw detail repeats every competitor at every point.
+            $detail = null;
+            if ($isNew) {
+                $d = Http::asForm()->timeout(60)->post("https://api.localfalcon.com/v1/reports/{$scanId}/", [
+                    'api_key' => $key,
+                ]);
+                if ($d->successful() && is_array($d->json('data'))) {
+                    // Real shape (verified against a live report 2026-08-24):
+                    // data_points[] = {lat,lng,found,rank,count,results[]},
+                    // found_in = points where the business appeared, plus
+                    // ready-made heatmap/image/public_url renders.
+                    $data = $d->json('data');
+                    $points = collect($data['data_points'] ?? [])->map(fn ($pt) => [
+                        'lat' => $pt['lat'] ?? null,
+                        'lng' => $pt['lng'] ?? null,
+                        'rank' => ($pt['found'] ?? false) ? ($pt['rank'] ?? false) : false,
+                    ])->all();
+                    $leaders = collect($data['data_points'] ?? [])
+                        ->flatMap(fn ($pt) => array_slice((array) ($pt['results'] ?? []), 0, 3))
+                        ->groupBy('place_id')
+                        ->map(fn ($g) => ['business' => $g->first()['name'] ?? $g->first()['business'] ?? '?', 'appearances' => $g->count()])
+                        ->sortByDesc('appearances')->take(8)->values()->all();
+                    $detail = [
+                        'grid' => $points,
+                        'pack_leaders' => $leaders,
+                        'found' => $data['found_in'] ?? null,
+                        'points_total' => $data['points'] ?? null,
+                        'center' => ['lat' => $data['lat'] ?? null, 'lng' => $data['lng'] ?? null],
+                        'radius' => ($data['radius'] ?? null) . ($data['measurement'] ?? ''),
+                        'heatmap' => $data['heatmap'] ?? $data['image'] ?? null,
+                        'public_url' => $data['public_url'] ?? null,
+                    ];
+                }
+            }
+
             \App\Support\Tenancy::table('local_falcon_scans')->updateOrInsert(
                 ['scan_id' => $scanId],
                 [
@@ -74,7 +115,7 @@ class LocalFalconSync extends Command
                     'solv' => is_numeric(str_replace('%', '', (string) ($r['solv'] ?? ''))) ? (float) str_replace('%', '', (string) $r['solv']) : null,
                     'grid_points' => is_numeric($r['grid_size'] ?? null) ? (int) $r['grid_size'] : null,
                     'in_top3' => is_numeric($r['in_top3'] ?? null) ? (int) $r['in_top3'] : null,
-                    'raw' => json_encode($r),
+                    'raw' => json_encode($detail ? array_merge($r, ['detail' => $detail]) : $r),
                     'updated_at' => now(),
                     'created_at' => now(),
                 ]
