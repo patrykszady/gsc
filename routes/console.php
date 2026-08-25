@@ -234,6 +234,18 @@ Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:
 // gbp:metrics-sync.
 // Local Falcon geo-grid results, daily mirror (scans run on their side).
 // Skips silently until LOCALFALCON_API_KEY exists.
+// Originate the weekly geo-grid scans via the On-Demand API (Mon 04:50).
+// Gated: needs the plan's on_demand_api_access — flip LOCALFALCON_ONDEMAND=true
+// when available. Until then, recurring scans scheduled inside Local Falcon's
+// UI reach the same tables through localfalcon:sync below.
+Schedule::command('localfalcon:scan')->weeklyOn(1, '04:50')
+    ->timezone('America/Chicago')
+    ->onOneServer()
+    ->withoutOverlapping(30)
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled localfalcon:scan failed'))
+    ->when(fn () => (bool) env('LOCALFALCON_ONDEMAND', false));
+
 Schedule::command('localfalcon:sync')->dailyAt('05:20')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
