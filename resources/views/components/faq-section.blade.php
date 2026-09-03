@@ -44,12 +44,16 @@
                     </span>
                 </button>
 
+                {{-- hidden="until-found" instead of display:none: the browser's
+                     find-in-page (Ctrl/⌘F) can still search the collapsed answers
+                     and fires `beforematch`, which opens the card on a hit — the
+                     same behaviour Flux 2.x gives its own accordion. Chrome/Edge
+                     honour until-found; other browsers treat it as plain hidden. --}}
                 <div
-                    x-show="open"
-                    x-transition.duration.150ms
-                    x-cloak
+                    x-bind:hidden="open ? false : 'until-found'"
+                    x-on:beforematch="open = true"
+                    hidden="until-found"
                     class="border-t border-zinc-200/80 px-0 py-5 dark:border-white/10"
-                    style="display: none;"
                 >
                     <dl class="space-y-4 px-5 sm:px-6">
             @else
