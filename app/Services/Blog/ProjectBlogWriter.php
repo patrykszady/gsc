@@ -305,7 +305,7 @@ PARTNERS;
                 'open with a plain statement of what changed — one sentence, no build-up',
             ]),
             'extras' => implode('; and ', array_slice($extras, 0, mt_rand(1, 2))),
-            'length' => $pick(['650–850', '800–1000', '950–1200', '1100–1400']),
+            'length' => $pick(['950–1150', '1050–1300', '1200–1450', '1350–1650']),
             'headings' => $pick(['2–3', '3–4', '4–5', '5–6']),
             'closing' => $pick([
                 'a single sentence inviting readers to request a free in-home estimate',
