@@ -141,6 +141,22 @@
                 </div>
             @endif
 
+            @php $story = $project->relationLoaded('blogPost') && $project->blogPost?->isPublished() ? $project->blogPost : null; @endphp
+            @if ($story)
+                <div class="mt-8 rounded-2xl border border-sky-200 bg-sky-50 p-5 dark:border-sky-900 dark:bg-sky-950/40">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">Project story</p>
+                    <p class="mt-1 font-heading text-lg font-bold text-zinc-900 dark:text-white">{{ $story->title }}</p>
+                    @if ($story->excerpt)
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ $story->excerpt }}</p>
+                    @endif
+                    <div class="mt-3">
+                        <x-buttons.cta :href="$story->url()" variant="outline-primary" size="sm">Read how we did it</x-buttons.cta>
+                    </div>
+                </div>
+            @endif
+
+            <x-project-team :project="$project" class="mt-8" />
+
             <div class="mt-6">
                 <flux:button href="{{ route('projects.index') }}" variant="primary" size="sm">
                     Show More Projects

@@ -228,8 +228,10 @@ PROMPT;
 
 PEOPLE WE WORKED WITH on this project (credit each one where their work comes up — the
 designer when design decisions are discussed, the architect at plans and permits, a trade
-where that trade's work is described). Mention each at least once by name and role. Where a
-Website is given, make the FIRST mention a Markdown link to it, e.g. [Name](https://…).
+where that trade's work is described). Mention each at least once by name and role, and say
+HOW they helped on this job — "On this job:" below is what they actually did; build that into
+the story as a concrete contribution, not a name-drop. Where a Website is given, make the
+FIRST mention a Markdown link to it, e.g. [Name](https://…).
 Never invent partners or roles beyond this list:
 {$lines}
 PARTNERS;

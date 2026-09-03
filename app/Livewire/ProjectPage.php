@@ -20,7 +20,7 @@ class ProjectPage extends Component
             abort(404);
         }
 
-        $this->project = $project->load(['images', 'timelapses.frames', 'beforeAfters']);
+        $this->project = $project->load(['images', 'timelapses.frames', 'beforeAfters', 'collaborators', 'blogPost']);
         
         // Sort images: featured (is_cover) first, then randomize the rest
         $this->project->setRelation('images', 
