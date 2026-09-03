@@ -223,9 +223,13 @@ PROMPT;
             if ($c->url) {
                 $line .= ". Website: {$c->url}";
             }
-            $about = trim(implode(' ', array_filter([$c->site_title, $c->site_description, Str::limit((string) $c->site_excerpt, 600, '')])));
+            $about = trim(implode("\n", array_filter([
+                $c->site_title ? "Title: {$c->site_title}" : null,
+                $c->site_description ? "Description: {$c->site_description}" : null,
+                $c->site_excerpt ? 'Text: ' . Str::limit((string) $c->site_excerpt, 3500, '') : null,
+            ])));
             if ($about !== '') {
-                $line .= "\n  What their site says (context only — describe them in your own words, copy nothing): " . Str::limit($about, 900, '');
+                $line .= "\n  What their website says (context only — describe them in your own words, copy no sentence):\n  " . str_replace("\n", "\n  ", $about);
             }
 
             return $line;
@@ -233,15 +237,20 @@ PROMPT;
 
         return <<<PARTNERS
 
-PEOPLE WE WORKED WITH on this project (credit each one where their work comes up — the
-designer when design decisions are discussed, the architect at plans and permits, a trade
-where that trade's work is described). Mention each at least once by name and role, and say
+PEOPLE WE WORKED WITH on this project. Give each one real space, not a name-drop: a designer or
+architect gets at least one full paragraph of their own (a "##" section is fine) covering who they
+are and what they specialise in (from their website, in your own words), what they delivered on
+this job, and how the handoff with us worked — their drawings and selections became our scope,
+we built to them, and we coordinated with them through the build. A trade partner gets a few
+sentences where their work is described. Weave the partner back in wherever their work shows
+up later (e.g. the cabinetry, the layout, the finishes). Mention each by name and role, and say
 HOW they helped on this job — "On this job:" below is what they did (confirmed by us, or our
 estimate from the services they offer); build that into the story as a concrete contribution,
 not a name-drop, and keep the division of work clear: GS Construction did the consultation,
 estimate, permits, scheduling and construction; the partner did what is listed for them. Where a Website is given, make the
 FIRST mention a Markdown link to it, e.g. [Name](https://…).
-Never invent partners or roles beyond this list:
+Never invent partners or roles beyond this list, and never say who brought the partner in (the
+homeowners or us) unless the note says so — just that we worked together on it:
 {$lines}
 PARTNERS;
     }
