@@ -45,7 +45,7 @@
             </p>
             @if ($project)
                 <div class="mt-5">
-                    <x-buttons.cta :href="route('projects.show', $project)" variant="outline-primary" size="lg">See the full project</x-buttons.cta>
+                    <x-buttons.cta :href="route('projects.show', $project)" variant="outline-primary" size="sm">See the full project</x-buttons.cta>
                 </div>
             @endif
         </header>
