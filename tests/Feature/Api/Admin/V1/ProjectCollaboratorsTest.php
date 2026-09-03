@@ -85,7 +85,33 @@ class ProjectCollaboratorsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.collaborator_roles.architects', 'Architect')
             ->assertJsonPath('data.collaborator_roles.other', 'Other partner')
-            ->assertJsonFragment(['name' => 'J. Peterson Design']);
+            ->assertJsonFragment(['name' => 'J. Peterson Design', 'source' => 'design-partners']);
+    }
+
+    public function test_directory_remembers_every_partner_added_on_any_project_and_reuses_the_site_read(): void
+    {
+        Queue::fake();
+        $first = $this->project();
+        $first->collaborators()->create(['role' => 'architects', 'name' => 'Plan Studio', 'url' => 'https://plan.test', 'note' => 'Permit drawings', 'site_title' => 'Plan Studio Architects', 'site_fetched_at' => now()]);
+
+        $directory = $this->getJson('/api/admin/v1/projects/types', $this->adminApiHeaders())->json('data.collaborator_suggestions');
+        $this->assertSame('Plan Studio', $directory[0]['name']);
+        $this->assertSame('Permit drawings', $directory[0]['note']);
+        $this->assertSame('projects', $directory[0]['source']);
+
+        // Adding the same partner to another project copies the cached site read; no new fetch.
+        $second = Project::create(['title' => 'Second Job', 'project_type' => 'bathroom', 'is_published' => true]);
+        $this->putJson("/api/admin/v1/projects/{$second->id}", [
+            'title' => 'Second Job', 'project_type' => 'bathroom',
+            'collaborators' => [['role' => 'architects', 'name' => 'Plan Studio', 'url' => 'https://plan.test']],
+        ], $this->adminApiHeaders())->assertOk();
+
+        $this->assertSame('Plan Studio Architects', $second->collaborators()->first()->site_title);
+        Queue::assertNotPushed(FetchCollaboratorSiteJob::class);
+
+        // Still one directory entry for them.
+        $names = collect($this->getJson('/api/admin/v1/projects/types', $this->adminApiHeaders())->json('data.collaborator_suggestions'))->pluck('name');
+        $this->assertSame(1, $names->filter(fn ($n) => $n === 'Plan Studio')->count());
     }
 
     public function test_site_fetcher_parses_title_description_and_text(): void

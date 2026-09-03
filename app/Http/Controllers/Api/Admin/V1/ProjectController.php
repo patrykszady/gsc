@@ -93,18 +93,12 @@ class ProjectController extends Controller
                 'project_types' => Project::projectTypes(),
                 'tag_types' => Tag::tagTypes(),
                 // "Worked with" vocabulary for the project form: role select
-                // options, and the design partners we already list on
-                // /design-partners as name suggestions (with their URL and
-                // role, so picking one fills the row).
+                // options, and the partner directory — everyone ever added on
+                // any of this site's projects (most recently used first) plus
+                // the design partners listed on /design-partners. Picking one
+                // fills the row.
                 'collaborator_roles' => ProjectCollaborator::roles(),
-                'collaborator_suggestions' => collect(config('design-partners.groups', []))
-                    ->flatMap(fn ($g) => collect($g['partners'] ?? [])->map(fn ($p) => [
-                        'name' => $p['name'],
-                        'url' => $p['url'] ?? null,
-                        'role' => $g['trade_slug'] ?? 'other',
-                    ]))
-                    ->values()
-                    ->all(),
+                'collaborator_suggestions' => $this->partnerDirectory(),
             ],
         ]);
     }
@@ -145,6 +139,46 @@ class ProjectController extends Controller
         unset($data['testimonial_ids']);
 
         return $ids;
+    }
+
+    /**
+     * The partner directory: distinct partners across all of this site's
+     * projects, newest use first, then the site's listed design partners
+     * that haven't been used on a project yet.
+     *
+     * @return array<int, array{name: string, url: ?string, role: string, note: ?string, source: string}>
+     */
+    protected function partnerDirectory(): array
+    {
+        $key = fn (string $name, ?string $url) => mb_strtolower(trim($name)) . '|' . mb_strtolower(trim((string) $url));
+
+        $used = ProjectCollaborator::query()
+            ->whereIn('project_id', Project::query()->select('id'))
+            ->orderByDesc('updated_at')
+            ->get()
+            ->unique(fn ($c) => $key($c->name, $c->url))
+            ->map(fn ($c) => [
+                'name' => $c->name,
+                'url' => $c->url,
+                'role' => $c->role,
+                'note' => $c->note,
+                'source' => 'projects',
+            ])
+            ->values();
+
+        $seenNames = $used->map(fn ($p) => mb_strtolower($p['name']))->all();
+
+        $listed = collect(config('design-partners.groups', []))
+            ->flatMap(fn ($g) => collect($g['partners'] ?? [])->map(fn ($p) => [
+                'name' => $p['name'],
+                'url' => $p['url'] ?? null,
+                'role' => $g['trade_slug'] ?? 'other',
+                'note' => null,
+                'source' => 'design-partners',
+            ]))
+            ->reject(fn ($p) => in_array(mb_strtolower($p['name']), $seenNames, true));
+
+        return $used->concat($listed)->values()->all();
     }
 
     /** Same absent-vs-empty rule as testimonial_ids. */
@@ -192,9 +226,18 @@ class ProjectController extends Controller
                 continue;
             }
 
+            // A partner we've read before (same URL on another project) keeps
+            // that read — no second fetch of the same homepage.
+            $cached = $url
+                ? ProjectCollaborator::query()->where('url', $url)->whereNotNull('site_fetched_at')->orderByDesc('site_fetched_at')->first()
+                : null;
+            if ($cached) {
+                $attrs += $cached->only(['site_title', 'site_description', 'site_excerpt', 'site_fetched_at']);
+            }
+
             $created = $project->collaborators()->create($attrs);
             $keep[] = $created->id;
-            if ($created->url) {
+            if ($created->url && ! $cached) {
                 FetchCollaboratorSiteJob::dispatch($created);
             }
         }
