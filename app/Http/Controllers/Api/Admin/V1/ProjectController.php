@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
+use App\Jobs\FetchCollaboratorSiteJob;
 use App\Models\Project;
+use App\Models\ProjectCollaborator;
 use App\Models\Tag;
 use App\Models\Testimonial;
 use Illuminate\Http\JsonResponse;
@@ -47,11 +49,13 @@ class ProjectController extends Controller
     {
         $data = $request->validate($this->rules());
         $testimonialIds = $this->pullTestimonialIds($data);
+        $collaborators = $this->pullCollaborators($data);
 
         $project = Project::create($data);
         $this->syncTestimonials($project, $testimonialIds);
+        $this->syncCollaborators($project, $collaborators);
 
-        return $this->itemResponse($this->withCrmFields($project->fresh(['images.tags', 'testimonials'])->toApiArray(), $project), 201);
+        return $this->itemResponse($this->withCrmFields($project->fresh(['images.tags', 'testimonials', 'collaborators'])->toApiArray(), $project), 201);
     }
 
     public function show(int $project): JsonResponse
@@ -67,11 +71,13 @@ class ProjectController extends Controller
 
         $data = $request->validate($this->rules($model->id));
         $testimonialIds = $this->pullTestimonialIds($data);
+        $collaborators = $this->pullCollaborators($data);
 
         $model->update($data);
         $this->syncTestimonials($model, $testimonialIds);
+        $this->syncCollaborators($model, $collaborators);
 
-        return $this->itemResponse($this->withCrmFields($model->fresh(['images.tags', 'testimonials'])->toApiArray(), $model));
+        return $this->itemResponse($this->withCrmFields($model->fresh(['images.tags', 'testimonials', 'collaborators'])->toApiArray(), $model));
     }
 
     /**
@@ -86,6 +92,19 @@ class ProjectController extends Controller
             'data' => [
                 'project_types' => Project::projectTypes(),
                 'tag_types' => Tag::tagTypes(),
+                // "Worked with" vocabulary for the project form: role select
+                // options, and the design partners we already list on
+                // /design-partners as name suggestions (with their URL and
+                // role, so picking one fills the row).
+                'collaborator_roles' => ProjectCollaborator::roles(),
+                'collaborator_suggestions' => collect(config('design-partners.groups', []))
+                    ->flatMap(fn ($g) => collect($g['partners'] ?? [])->map(fn ($p) => [
+                        'name' => $p['name'],
+                        'url' => $p['url'] ?? null,
+                        'role' => $g['trade_slug'] ?? 'other',
+                    ]))
+                    ->values()
+                    ->all(),
             ],
         ]);
     }
@@ -109,6 +128,7 @@ class ProjectController extends Controller
             // form already writes. Serialized here (not in toApiArray) for
             // the same reason as the CRM fields: jpeterson has no pivot.
             'testimonial_ids' => $project->testimonials->pluck('id')->values()->all(),
+            'collaborators' => $project->collaborators->map(fn ($c) => $c->toApiArray())->values()->all(),
             'testimonials' => $project->testimonials->map(fn ($t) => [
                 'id' => $t->id,
                 'reviewer_name' => $t->reviewer_name,
@@ -129,6 +149,61 @@ class ProjectController extends Controller
         unset($data['testimonial_ids']);
 
         return $ids;
+    }
+
+    /** Same absent-vs-empty rule as testimonial_ids. */
+    protected function pullCollaborators(array &$data): ?array
+    {
+        $rows = array_key_exists('collaborators', $data) ? ($data['collaborators'] ?? []) : null;
+        unset($data['collaborators']);
+
+        return $rows;
+    }
+
+    /**
+     * Replace the project's partner credits with the submitted rows. A row
+     * whose name+url matches an existing credit keeps its cached site_*
+     * columns; anything new with a URL gets its site read in the background
+     * so the blog writer has it by the time the draft is written.
+     */
+    protected function syncCollaborators(Project $project, ?array $rows): void
+    {
+        if ($rows === null) {
+            return;
+        }
+
+        $existing = $project->collaborators()->get();
+        $keep = [];
+
+        foreach (array_values($rows) as $i => $row) {
+            $url = isset($row['url']) && trim((string) $row['url']) !== '' ? trim((string) $row['url']) : null;
+            if ($url && ! preg_match('#^https?://#i', $url)) {
+                $url = 'https://' . $url;
+            }
+            $attrs = [
+                'role' => $row['role'] ?? 'other',
+                'name' => trim((string) $row['name']),
+                'url' => $url,
+                'note' => isset($row['note']) && trim((string) $row['note']) !== '' ? trim((string) $row['note']) : null,
+                'sort_order' => $i,
+            ];
+
+            $match = $existing->first(fn ($c) => $c->name === $attrs['name'] && $c->url === $attrs['url']);
+            if ($match) {
+                $match->update($attrs);
+                $keep[] = $match->id;
+
+                continue;
+            }
+
+            $created = $project->collaborators()->create($attrs);
+            $keep[] = $created->id;
+            if ($created->url) {
+                FetchCollaboratorSiteJob::dispatch($created);
+            }
+        }
+
+        $project->collaborators()->whereNotIn('id', $keep)->delete();
     }
 
     protected function syncTestimonials(Project $project, ?array $testimonialIds): void
@@ -195,6 +270,11 @@ class ProjectController extends Controller
             'sort_order' => ['sometimes', 'integer'],
             'testimonial_ids' => ['sometimes', 'nullable', 'array'],
             'testimonial_ids.*' => ['integer', 'exists:testimonials,id'],
+            'collaborators' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'collaborators.*.role' => ['required', 'string', Rule::in(array_keys(ProjectCollaborator::roles()))],
+            'collaborators.*.name' => ['required', 'string', 'max:255'],
+            'collaborators.*.url' => ['nullable', 'string', 'max:500'],
+            'collaborators.*.note' => ['nullable', 'string', 'max:500'],
             // gsc-only CRM fields — never shown/set on jpeterson.
             // review_request_sent_at is deliberately absent: it's set only by
             // the automated post-completion review-request mailer, never by

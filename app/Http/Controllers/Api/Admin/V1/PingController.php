@@ -26,6 +26,8 @@ class PingController extends Controller
                     // timelapses/before-afters, the areas coverage map,
                     // multi-platform review URLs, testimonial↔project links.
                     'crm', 'timelapses', 'before-afters', 'image-tags', 'areas-map', 'review-platforms', 'testimonial-projects',
+                    // Partner credits on the project form (designer / architect / trade), used by the blog writer.
+                    'collaborators',
                 ],
                 // This site's identity inside the central admin: GS blue is
                 // Tailwind's stock sky ramp (accent null = leave it alone,

@@ -494,7 +494,7 @@ Route::get('/blog', function () {
 Route::get('/blog/{post:slug}', function (\App\Models\BlogPost $post) {
     abort_unless($post->isPublished() || request()->boolean('preview'), 404);
 
-    return view('blog-show', ['post' => $post->load(['project.images', 'project.testimonials'])]);
+    return view('blog-show', ['post' => $post->load(['project.images', 'project.testimonials', 'project.collaborators'])]);
 })->name('blog.show');
 
 Route::get('/costs', fn () => view('costs-index'))->name('costs.index');

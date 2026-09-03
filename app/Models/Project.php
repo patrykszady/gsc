@@ -193,6 +193,12 @@ class Project extends Model
         return $this->hasOne(BlogPost::class);
     }
 
+    /** Designer / architect / engineer / trade partner credits, admin-entered. */
+    public function collaborators(): HasMany
+    {
+        return $this->hasMany(ProjectCollaborator::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function testimonials(): BelongsToMany
     {
         return $this->belongsToMany(Testimonial::class)->withTimestamps();

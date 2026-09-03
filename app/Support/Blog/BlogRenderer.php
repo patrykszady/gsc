@@ -60,11 +60,16 @@ class BlogRenderer
         // Pull photos: float one image beside every second paragraph.
         if ($project) {
             $pool = $project->images->reject(fn ($i) => in_array($i->id, $used, true))->values();
-            $side = 'right';
+            // Cadence and starting side vary per project, so two posts read
+        // side by side do not share one rhythm.
+        mt_srand((int) $project->id * 31 + 5);
+        $every = mt_rand(2, 3);
+        $side = mt_rand(0, 1) ? 'right' : 'left';
+        mt_srand();
             $n = 0;
-            $html = preg_replace_callback('#<p>(?!\s*@@)#', function ($m) use (&$pool, &$side, &$n, &$used, $project) {
+            $html = preg_replace_callback('#<p>(?!\s*@@)#', function ($m) use (&$pool, &$side, &$n, &$used, $project, $every) {
                 $n++;
-                if ($n % 2 === 0 && $pool->isNotEmpty()) {
+                if ($n % $every === 0 && $pool->isNotEmpty()) {
                     $img = $pool->shift();
                     $used[] = $img->id;
                     $fig = view('blog.media.pull', ['project' => $project, 'image' => $img, 'side' => $side, 'index' => self::lightboxIndex($project, $img)])->render();

@@ -4,6 +4,7 @@ namespace App\Services\Blog;
 
 use App\Models\BlogPost;
 use App\Models\Project;
+use App\Services\Blog\PartnerSiteFetcher;
 use App\Services\AiContentService;
 use Illuminate\Support\Str;
 
@@ -37,7 +38,7 @@ class ProjectBlogWriter
 
     public function write(Project $project): ?BlogPost
     {
-        $project->loadMissing(['images', 'beforeAfters', 'timelapses.frames', 'testimonials']);
+        $project->loadMissing(['images', 'beforeAfters', 'timelapses.frames', 'testimonials', 'collaborators']);
 
         $typeLabel = Project::projectTypes()[$project->project_type] ?? Str::of((string) $project->project_type)->replace('-', ' ')->title();
         $city = trim((string) Str::of((string) $project->location)->before(','));
@@ -70,6 +71,10 @@ words, and never present the review as saying something it does not say.
 REVIEW;
         }
 
+        $partnerBlock = $this->partnerBlock($project);
+        $recipe = $this->recipe($project);
+        $avoid = $this->avoidBlock($project);
+
         $steps = $this->processSteps($project);
         $stepLines = collect($steps)->map(fn ($s) => '- ' . ($s['title'] ?? '') . ': ' . ($s['body'] ?? $s['description'] ?? ''))->implode("\n");
 
@@ -97,6 +102,7 @@ beyond what is stated, no dates):
 - Photo notes (what our photos actually show):
 {$photoNotes}
 {$reviewBlock}
+{$partnerBlock}
 
 OUR PROCESS (structure the middle of the post around the steps that plausibly applied;
 do not claim a step happened in a way the facts contradict):
@@ -106,19 +112,30 @@ MEDIA SHORTCODES you may place on their own line between paragraphs — each at 
 only the ones listed here exist for this project:
 {$mediaMenu}
 
+THIS POST'S SHAPE (every project's story is told differently — follow this, not a template):
+- Angle: {$recipe['angle']}
+- Structure: {$recipe['structure']}
+- Opening: {$recipe['opening']}
+- Include: {$recipe['extras']}
+- Length: {$recipe['length']} words, with {$recipe['headings']} "##" headings. Headings must be specific
+  to this project (a detail, a decision, a material) — never generic labels like
+  "The Vision", "The Build", "The Result", "The Reveal", "Conclusion", and never the
+  "Label: detail" colon pattern. Use "##" for every heading.
+- Closing: {$recipe['closing']}
+{$avoid}
 Return ONLY a JSON object with EXACTLY these keys:
 - "title": 55–70 characters, specific to this project and town, no clickbait.
 - "excerpt": 1–2 sentences, 140–200 characters, plain text.
 - "meta_title": ≤ 60 characters, includes the town.
 - "meta_description": 140–158 characters.
-- "body": Markdown, 700–1100 words. Use ## headings (3–5 of them);
-  do NOT start with the title or any # heading — the page renders the title itself. Place the media
-  shortcodes on their own lines where they make narrative sense. Write in first person
-  plural ("we"). Mention {$city} naturally. End with a short paragraph inviting readers
-  to request a free in-home estimate.
+- "body": Markdown following the shape above. Place the media shortcodes on their own
+  lines where they make narrative sense; do NOT start with the title or any # heading —
+  the page renders the title itself. Write in first person plural ("we"). Mention {$city}
+  naturally.
 
-Hard rules: no invented facts; no client names other than the reviewer's display name given above; no exact prices unless in the description;
-no emoji; no phrases "nestled in", "dream home", "look no further", "your trusted".
+Hard rules: no invented facts; no client names other than the reviewer's display name given above; no exact prices
+unless in the description; no emoji; no phrases "nestled in", "dream home", "look no further", "your trusted",
+"testament to", "elevate", "seamlessly", "breathtaking", "stunning".
 Return ONLY the JSON. No code fences.
 PROMPT;
 
@@ -169,6 +186,139 @@ PROMPT;
                 'published_at' => null,
             ]
         );
+    }
+
+    /**
+     * Partners on the job, with what their own site says they do — so the
+     * writer can describe their role accurately and link to them. A site not
+     * yet read (the queued fetch hasn't run) is read now, best-effort.
+     */
+    protected function partnerBlock(Project $project): string
+    {
+        if ($project->collaborators->isEmpty()) {
+            return '';
+        }
+
+        $fetcher = app(PartnerSiteFetcher::class);
+        $lines = $project->collaborators->map(function ($c) use ($fetcher) {
+            if ($c->url && ! $c->site_fetched_at) {
+                $fetcher->fetch($c);
+            }
+            $line = "- {$c->name} — {$c->roleLabel()}";
+            if ($c->note) {
+                $line .= ". On this job: {$c->note}";
+            }
+            if ($c->url) {
+                $line .= ". Website: {$c->url}";
+            }
+            $about = trim(implode(' ', array_filter([$c->site_title, $c->site_description, Str::limit((string) $c->site_excerpt, 600, '')])));
+            if ($about !== '') {
+                $line .= "\n  What their site says (context only — describe them in your own words, copy nothing): " . Str::limit($about, 900, '');
+            }
+
+            return $line;
+        })->implode("\n");
+
+        return <<<PARTNERS
+
+PEOPLE WE WORKED WITH on this project (credit each one where their work comes up — the
+designer when design decisions are discussed, the architect at plans and permits, a trade
+where that trade's work is described). Mention each at least once by name and role. Where a
+Website is given, make the FIRST mention a Markdown link to it, e.g. [Name](https://…).
+Never invent partners or roles beyond this list:
+{$lines}
+PARTNERS;
+    }
+
+    /**
+     * A per-project recipe — angle, structure, opening, extras, length,
+     * closing — seeded from the project id, so the shape is stable across
+     * regenerations of one post yet differs from project to project.
+     *
+     * @return array<string, string>
+     */
+    protected function recipe(Project $project): array
+    {
+        mt_srand((int) $project->id * 104729 + 7);
+        $pick = fn (array $options) => $options[mt_rand(0, count($options) - 1)];
+
+        $extras = [
+            'a short bulleted "At a glance" list (type, town, scope) near the top',
+            'a "Materials & finishes" bulleted list where the finishes are discussed',
+            'one paragraph on what we would do the same way again, and why',
+            'one short numbered list of the steps, in the order they happened',
+            'a one-line excerpt from the review as its own italic paragraph',
+            'no lists at all — prose only',
+            'one paragraph on what the homeowners were most worried about, and how it went',
+            'one paragraph on a detail most people would never notice',
+        ];
+        shuffle($extras);
+        $recipe = [
+            'angle' => $pick([
+                'the problem the homeowners came to us with, and how the plan solved it',
+                'one decision that changed the whole project',
+                'the materials and finishes, and why each was chosen',
+                'the sequence of trades — who came in when, and why that order',
+                'what the space is like to live in now',
+                'what we would tell a homeowner planning the same remodel',
+                'the constraints of the existing house, and how the design worked around them',
+            ]),
+            'structure' => $pick([
+                'chronological — plan, build, finished room',
+                'problem → options → what we chose → how it turned out',
+                'finished room first, then how we got there',
+                'three lessons from this project, each its own section',
+                'question-and-answer: every heading is a question a homeowner would ask, answered from this project',
+                'a walk through the room — each section is one part of the space',
+            ]),
+            'opening' => $pick([
+                'open on a specific detail visible in one of the photos',
+                'open with what the homeowners originally asked for',
+                'open with a short excerpt from the review, if one is given; otherwise with the first decision we made',
+                'open with a question a homeowner would ask',
+                'open with the moment the homeowners saw the finished room',
+                'open with a plain statement of what changed — one sentence, no build-up',
+            ]),
+            'extras' => implode('; and ', array_slice($extras, 0, mt_rand(1, 2))),
+            'length' => $pick(['650–850', '800–1000', '950–1200', '1100–1400']),
+            'headings' => $pick(['2–3', '3–4', '4–5', '5–6']),
+            'closing' => $pick([
+                'a single sentence inviting readers to request a free in-home estimate',
+                'a question to the reader, then the invitation to request a free in-home estimate',
+                'what to bring to a first meeting, then the invitation to request a free in-home estimate',
+                'how long this kind of project usually takes, then the invitation to request a free in-home estimate',
+            ]),
+        ];
+        mt_srand();
+
+        return $recipe;
+    }
+
+    /**
+     * Openings and titles already used by other posts, so the model does not
+     * fall back on the same first sentence or title pattern every time.
+     */
+    protected function avoidBlock(Project $project): string
+    {
+        $others = BlogPost::query()->where('project_id', '!=', $project->id)->latest('updated_at')->take(8)->get(['title', 'body']);
+        if ($others->isEmpty()) {
+            return '';
+        }
+
+        $openings = $others->map(function ($p) {
+            $text = trim(preg_replace('/^\s*#.*$/m', '', (string) $p->body) ?? '');
+            $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+
+            return Str::limit(trim((string) Str::before($text, '. ')), 140, '');
+        })->filter()->map(fn ($o) => "  - \"{$o}\"")->implode("\n");
+        $titles = $others->pluck('title')->map(fn ($t) => "  - \"{$t}\"")->implode("\n");
+
+        return <<<AVOID
+- Do NOT open with a sentence like any of these (other posts already did):
+{$openings}
+- Do NOT reuse the pattern of these titles:
+{$titles}
+AVOID;
     }
 
     /** The published process steps, loaded straight from the site's config file when the request-scoped config isn't present (queue workers). */
