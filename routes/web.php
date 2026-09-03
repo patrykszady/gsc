@@ -487,7 +487,7 @@ Route::get('/feed/updates.atom', function () {
 // Blog: one post per project, AI-drafted on project creation, published by a
 // human in the central admin. Drafts stay reachable for preview (noindex).
 Route::get('/blog', function () {
-    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->paginate(12);
+    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('dated_at')->orderByDesc('published_at')->paginate(12);
 
     return view('blog-index', ['posts' => $posts]);
 })->name('blog.index');

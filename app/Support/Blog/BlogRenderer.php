@@ -89,6 +89,42 @@ class BlogRenderer
     }
 
     /** Position of an image inside the page-level lightbox array (all project images, sort order). */
+    /**
+     * The review to show with a post, with what the shared review card needs:
+     * the newest visible testimonial linked to the project, and an avatar
+     * picked the way /reviews/* picks it (a seeded non-cover project photo).
+     *
+     * @return array{testimonial: \App\Models\Testimonial, paragraphs: array, imageUrl: string, areaSlug: ?string}|null
+     */
+    public static function review(?Project $project): ?array
+    {
+        if (! $project) {
+            return null;
+        }
+
+        $testimonial = $project->testimonials->where('is_hidden', false)->sortByDesc('review_date')->first();
+        if (! $testimonial) {
+            return null;
+        }
+
+        $coverId = $project->cover()?->id;
+        $avatar = \App\Support\SeededRandom::order(
+            ProjectImage::query()->where('project_id', $project->id)->when($coverId, fn ($q) => $q->where('id', '!=', $coverId)),
+            (int) $testimonial->getKey() + 7919,
+        )->first() ?: $project->cover();
+
+        $imageUrl = $avatar
+            ? ($avatar->getWebpThumbnailUrl('medium') ?? $avatar->getThumbnailUrl('medium') ?? $avatar->url)
+            : asset('images/greg-patryk-thumb.jpg');
+
+        return [
+            'testimonial' => $testimonial,
+            'paragraphs' => $testimonial->paragraphs(),
+            'imageUrl' => $imageUrl,
+            'areaSlug' => $testimonial->areaSlug(),
+        ];
+    }
+
     public static function lightboxIndex(Project $project, ProjectImage $image): int
     {
         return (int) $project->images->search(fn ($i) => $i->id === $image->id);

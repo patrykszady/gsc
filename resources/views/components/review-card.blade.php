@@ -1,0 +1,136 @@
+{{--
+    The full review tile — stars, quote decoration, the review in paragraphs,
+    avatar and reviewer details. Extracted from /reviews/{testimonial} so the
+    blog (and anything else that shows one review in full) renders the exact
+    same thing rather than a look-alike.
+
+    Props
+      testimonial  The Testimonial.
+      paragraphs   $testimonial->paragraphs() — passed in so a caller can
+                   trim or alter the split without touching the model.
+      imageUrl     Avatar URL (a project photo, picked by the caller).
+      areaSlug     Slug of the town's area page, or null for plain text.
+      title        sr-only H1 text (the review page); null renders no heading.
+      stars        Whether to show the five-star image above the card.
+--}}
+@props([
+    'testimonial',
+    'paragraphs',
+    'imageUrl',
+    'areaSlug' => null,
+    'title' => null,
+    'stars' => true,
+])
+{{-- Stars sit above the card, at size, so the rating reads before the
+     text rather than as a small mark inside it. --}}
+@if ($stars)
+    <div class="mb-4 flex justify-center sm:justify-start">
+        <x-five-stars size="h-10 sm:h-12" />
+    </div>
+@endif
+
+{{-- The same tile as the /compare cards, via the shared component
+     rather than a copy of its class string — link-card renders a plain
+     div when given no href, which is exactly this case. Copying the
+     chrome is how those six call sites forked in the first place. --}}
+<x-link-card class="relative">
+    {{-- H1 for SEO --}}
+    @if ($title)
+        <h1 class="sr-only">{{ $title }}</h1>
+    @endif
+
+    {{-- Quote decoration --}}
+    <svg viewBox="0 0 162 128" fill="none" aria-hidden="true" class="absolute -top-4 -left-8 -z-10 h-24 stroke-gray-200 dark:stroke-gray-700">
+        <path id="testimonial-quote-path" d="M65.5697 118.507L65.8918 118.89C68.9503 116.314 71.367 113.253 73.1386 109.71C74.9162 106.155 75.8027 102.28 75.8027 98.0919C75.8027 94.237 75.16 90.6155 73.8708 87.2314C72.5851 83.8565 70.8137 80.9533 68.553 78.5292C66.4529 76.1079 63.9476 74.2482 61.0407 72.9536C58.2795 71.4949 55.276 70.767 52.0386 70.767C48.9935 70.767 46.4686 71.1668 44.4872 71.9924L44.4799 71.9955L44.4726 71.9988C42.7101 72.7999 41.1035 73.6831 39.6544 74.6492C38.2407 75.5916 36.8279 76.455 35.4159 77.2394L35.4047 77.2457L35.3938 77.2525C34.2318 77.9787 32.6713 78.3634 30.6736 78.3634C29.0405 78.3634 27.5131 77.2868 26.1274 74.8257C24.7483 72.2185 24.0519 69.2166 24.0519 65.8071C24.0519 60.0311 25.3782 54.4081 28.0373 48.9335C30.703 43.4454 34.3114 38.345 38.8667 33.6325C43.5812 28.761 49.0045 24.5159 55.1389 20.8979C60.1667 18.0071 65.4966 15.6179 71.1291 13.7305C73.8626 12.8145 75.8027 10.2968 75.8027 7.38572C75.8027 3.6497 72.6341 0.62247 68.8814 1.1527C61.1635 2.2432 53.7398 4.41426 46.6119 7.66522C37.5369 11.6459 29.5729 17.0612 22.7236 23.9105C16.0322 30.6019 10.618 38.4859 6.47981 47.558L6.47976 47.558L6.47682 47.5647C2.4901 56.6544 0.5 66.6148 0.5 77.4391C0.5 84.2996 1.61702 90.7679 3.85425 96.8404L3.8558 96.8445C6.08991 102.749 9.12394 108.02 12.959 112.654L12.959 112.654L12.9646 112.661C16.8027 117.138 21.2829 120.739 26.4034 123.459L26.4033 123.459L26.4144 123.465C31.5505 126.033 37.0873 127.316 43.0178 127.316C47.5035 127.316 51.6783 126.595 55.5376 125.148L55.5376 125.148L55.5477 125.144C59.5516 123.542 63.0052 121.456 65.9019 118.881L65.5697 118.507Z" />
+        <use x="86" href="#testimonial-quote-path" />
+    </svg>
+
+    {{-- Review text.
+         max-w-[68ch] regardless of the 64rem column: at full width a
+         long review runs past 100 characters a line, which is where
+         the eye starts losing its place on the return sweep. The
+         reviews average ~530 characters and reach 2,272, so this is
+         the difference between readable and a wall. --}}
+    {{-- text-base/leading-7 is the site's long-form setting — 27 blocks
+         use it, including the FAQ answers and the /compare criteria.
+         This was text-lg/leading-8 rising to text-xl/leading-9 (20px on
+         36px), which set the review looser and larger than any other
+         body copy on the site and made long ones harder to read, not
+         easier. --}}
+    <blockquote class="max-w-[68ch] text-base leading-7 text-zinc-700 dark:text-zinc-200">
+        @foreach($paragraphs as $paragraph)
+            <p @class(['mt-5' => ! $loop->first])>{{ $paragraph }}</p>
+        @endforeach
+    </blockquote>
+
+    {{-- Reviewer info --}}
+    <figcaption class="mt-6 flex items-center gap-x-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+        <div 
+            x-data="{
+                loaded: window.imageCache?.has('{{ $imageUrl }}') ?? false,
+                init() {
+                    this.$nextTick(() => {
+                        const img = this.$refs.avatarImg;
+                        if (img?.complete && img?.naturalWidth > 0) {
+                            this.onLoad();
+                        }
+                    });
+                },
+                onLoad() {
+                    this.loaded = true;
+                    window.imageCache?.set('{{ $imageUrl }}', '{{ $imageUrl }}');
+                }
+            }"
+            class="relative size-16 overflow-hidden rounded-full bg-gray-50 dark:bg-zinc-700"
+        >
+            <img
+                x-ref="avatarImg"
+                src="{{ $imageUrl }}"
+                alt="{{ $testimonial->display_name }}"
+                width="64"
+                height="64"
+                loading="lazy"
+                class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+                :class="loaded ? 'opacity-100' : 'opacity-0'"
+                @load="onLoad()"
+            />
+        </div>
+        <div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ $testimonial->display_name }}</div>
+            <div class="mt-1 text-base text-gray-600 dark:text-gray-400">
+                @if($areaSlug)
+                    <a href="{{ route('areas.show', $areaSlug) }}" wire:navigate class="hover:text-sky-600 hover:underline dark:hover:text-sky-400">{{ $testimonial->project_location }}</a>
+                @else
+                    {{ $testimonial->project_location }}
+                @endif
+                @if($testimonial->review_date)
+                    <span class="mx-2">·</span>
+                    <span>{{ $testimonial->review_date->format('F Y') }}</span>
+                @endif
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+                @if($testimonial->project_type)
+                    <span class="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:bg-sky-900/30 dark:text-sky-300 dark:ring-sky-500/30">
+                        {{ ucfirst($testimonial->project_type) }}
+                    </span>
+                @endif
+                @if($testimonial->reviewUrls->count())
+                    @foreach($testimonial->reviewUrls as $reviewUrl)
+                        <a 
+                            href="{{ $reviewUrl->url }}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
+                        >
+                            {{ ucfirst($reviewUrl->platform) }} Review
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </a>
+                    @endforeach
+                @endif
+            </div>
+        </div>
+    </figcaption>
+
+</x-link-card>

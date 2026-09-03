@@ -18,11 +18,12 @@ class BlogPost extends Model
 
     protected $fillable = [
         'project_id', 'slug', 'title', 'excerpt', 'body', 'meta_title', 'meta_description',
-        'status', 'writer', 'published_at',
+        'status', 'writer', 'published_at', 'dated_at',
     ];
 
     protected $casts = [
         'published_at' => 'datetime',
+        'dated_at' => 'date',
     ];
 
     protected static function booted(): void
@@ -32,6 +33,31 @@ class BlogPost extends Model
                 $post->slug = static::uniqueSlug($post->title);
             }
         });
+    }
+
+    /**
+     * The date a story is shown with: the month the project was completed,
+     * on a day picked deterministically from the project id — so every
+     * regeneration keeps the same date. Never in the future.
+     */
+    public static function dateFor(Project $project): \Illuminate\Support\Carbon
+    {
+        $anchor = $project->completed_at ?? $project->created_at ?? now();
+        $month = $anchor->copy()->startOfMonth();
+
+        mt_srand((int) $project->id * 7919 + 17);
+        $day = mt_rand(1, $month->daysInMonth);
+        mt_srand();
+
+        $date = $month->copy()->day($day)->startOfDay();
+
+        return $date->isFuture() ? now()->startOfDay() : $date;
+    }
+
+    /** The date shown on the post and the index. */
+    public function displayDate(): ?\Illuminate\Support\Carbon
+    {
+        return $this->dated_at ?? $this->published_at ?? $this->created_at;
     }
 
     public static function uniqueSlug(string $title, ?int $ignoreId = null): string
@@ -86,6 +112,7 @@ class BlogPost extends Model
             'status' => $this->status,
             'writer' => $this->writer,
             'published_at' => $this->published_at?->toIso8601String(),
+            'dated_at' => $this->dated_at?->toDateString(),
             'url' => $this->url(),
             'cover_url' => $this->project?->cover()?->getWebpThumbnailUrl('medium'),
             'created_at' => $this->created_at?->toIso8601String(),

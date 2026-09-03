@@ -19,6 +19,7 @@ return [
         ['label' => 'Services', 'href' => '/services', 'bold' => false],
         ['label' => 'About', 'href' => '/about', 'bold' => false],
         ['label' => 'Reviews', 'href' => '/reviews', 'bold' => true],
+        ['label' => 'Blog', 'href' => '/blog', 'bold' => false],
         ['label' => 'Careers', 'href' => '/jobs', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Contact', 'href' => '/contact', 'bold' => false],
     ],

@@ -178,42 +178,13 @@ class TestimonialPage extends Component
 
     protected function getAreaSlug(): ?string
     {
-        $cityName = preg_replace('/,\s*[A-Z]{2}$/', '', $this->testimonial->project_location);
-        return AreaServed::where('city', $cityName)->value('slug');
+        return $this->testimonial->areaSlug();
     }
 
-    /**
-     * The review body, split into paragraphs.
-     *
-     * This used to collapse `\s+` to a single space, which flattened the blank
-     * lines the reviewer actually typed — 8 of the 71 reviews are written in
-     * paragraphs and every one of them rendered as a single wall of text. Runs
-     * of horizontal whitespace still collapse; blank lines now survive as the
-     * paragraph breaks they were.
-     *
-     * No breaks are invented for the reviews that genuinely have none: those
-     * are handled by measure and leading in the template, not by guessing where
-     * someone meant to pause.
-     *
-     * @return array<int, string>
-     */
+    /** @return array<int, string> */
     protected function getReviewParagraphs(): array
     {
-        $text = (string) $this->testimonial->review_description;
-
-        // Remove pasted source URLs that can make the review block look noisy.
-        $text = preg_replace('/https?:\/\/\S+/i', '', $text) ?? $text;
-
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-        // Horizontal whitespace only — \s would take the newlines with it.
-        $text = preg_replace('/[^\S\n]+/', ' ', $text) ?? $text;
-
-        $paragraphs = preg_split('/\n\s*\n+/', trim($text)) ?: [];
-
-        return array_values(array_filter(array_map(
-            static fn (string $p): string => trim(preg_replace('/\n+/', ' ', $p) ?? $p),
-            $paragraphs,
-        ), static fn (string $p): bool => $p !== ''));
+        return $this->testimonial->paragraphs();
     }
 
     protected function normalizeProjectType(?string $testimonialProjectType): ?string

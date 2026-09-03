@@ -69,9 +69,7 @@
                         <li><a href="/about" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">About Greg &amp; Patryk</a></li>
                         <li><a href="/process" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Our Process</a></li>
                         <li><a href="/reviews" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Reviews</a></li>
-                        @if (\Illuminate\Support\Facades\Schema::hasTable('blog_posts') && \App\Models\BlogPost::published()->exists())
-                            <li><a href="/blog" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Project Stories</a></li>
-                        @endif
+                        <li><a href="/blog" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Blog</a></li>
                         <li><a href="/trades" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Our Trade Partners</a></li>
                         <li><a href="/design-partners" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Design Professionals</a></li>
                         <li><a href="/jobs" wire:navigate.hover class="inline-block py-2 text-sm/6 text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Careers &amp; Partners</a></li>

@@ -37,7 +37,7 @@ class ProjectBlogWriter
 
     public function write(Project $project): ?BlogPost
     {
-        $project->loadMissing(['images', 'beforeAfters', 'timelapses.frames']);
+        $project->loadMissing(['images', 'beforeAfters', 'timelapses.frames', 'testimonials']);
 
         $typeLabel = Project::projectTypes()[$project->project_type] ?? Str::of((string) $project->project_type)->replace('-', ' ')->title();
         $city = trim((string) Str::of((string) $project->location)->before(','));
@@ -51,6 +51,24 @@ class ProjectBlogWriter
         $hasBeforeAfter = $project->beforeAfters->isNotEmpty();
         $hasTimelapse = $project->timelapses->contains(fn ($t) => $t->frames->count() >= 3);
         $beforeAfterTitles = $project->beforeAfters->pluck('title')->filter()->take(4)->implode('; ');
+
+        $review = $project->testimonials->where('is_hidden', false)->sortByDesc('review_date')->first();
+        $reviewBlock = '';
+        if ($review) {
+            $reviewer = $review->display_name;
+            $reviewText = trim((string) $review->review_description);
+            $reviewBlock = <<<REVIEW
+
+HOMEOWNER REVIEW of this project, verbatim, written by {$reviewer}:
+"""
+{$reviewText}
+"""
+Weave 2–3 short excerpts from this review into the story (one sentence or clause
+each), quoted EXACTLY as written, in quotation marks, attributed to {$reviewer}
+(e.g. after the build, or in the reveal). Never alter, trim mid-word, or invent quoted
+words, and never present the review as saying something it does not say.
+REVIEW;
+        }
 
         $steps = $this->processSteps($project);
         $stepLines = collect($steps)->map(fn ($s) => '- ' . ($s['title'] ?? '') . ': ' . ($s['body'] ?? $s['description'] ?? ''))->implode("\n");
@@ -78,6 +96,7 @@ beyond what is stated, no dates):
 - Description: {$project->description}
 - Photo notes (what our photos actually show):
 {$photoNotes}
+{$reviewBlock}
 
 OUR PROCESS (structure the middle of the post around the steps that plausibly applied;
 do not claim a step happened in a way the facts contradict):
@@ -92,12 +111,13 @@ Return ONLY a JSON object with EXACTLY these keys:
 - "excerpt": 1–2 sentences, 140–200 characters, plain text.
 - "meta_title": ≤ 60 characters, includes the town.
 - "meta_description": 140–158 characters.
-- "body": Markdown, 700–1100 words. Use ## headings (3–5 of them). Place the media
+- "body": Markdown, 700–1100 words. Use ## headings (3–5 of them);
+  do NOT start with the title or any # heading — the page renders the title itself. Place the media
   shortcodes on their own lines where they make narrative sense. Write in first person
   plural ("we"). Mention {$city} naturally. End with a short paragraph inviting readers
   to request a free in-home estimate.
 
-Hard rules: no invented facts; no client names; no exact prices unless in the description;
+Hard rules: no invented facts; no client names other than the reviewer's display name given above; no exact prices unless in the description;
 no emoji; no phrases "nestled in", "dream home", "look no further", "your trusted".
 Return ONLY the JSON. No code fences.
 PROMPT;
@@ -120,6 +140,9 @@ PROMPT;
         // Strip any shortcode the project cannot back, so the renderer never
         // meets a promise the media can't keep.
         $body = (string) $data['body'];
+        // The page renders the title as its H1; a leading heading in the body
+        // would print it twice.
+        $body = preg_replace('/\A\s*#{1,2}\s+[^\n]+\n+/', '', $body);
         if (! $hasBeforeAfter) {
             $body = preg_replace('/^\s*\[before-after\]\s*$/m', '', $body);
         }
@@ -130,9 +153,12 @@ PROMPT;
             $body = preg_replace('/^\s*\[gallery\]\s*$/m', '', $body);
         }
 
+        $existing = BlogPost::where('project_id', $project->id)->first();
+
         return BlogPost::updateOrCreate(
             ['project_id' => $project->id],
             [
+                'dated_at' => $existing?->dated_at ?? BlogPost::dateFor($project),
                 'title' => mb_substr(trim((string) $data['title']), 0, 191),
                 'excerpt' => mb_substr(trim((string) ($data['excerpt'] ?? '')), 0, 500),
                 'body' => trim($body),
