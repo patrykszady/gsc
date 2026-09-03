@@ -73,18 +73,16 @@ class BlogRenderer
 
             $beforeKey = array_search(true, array_map(fn ($h) => str_contains($h, 'aria-label="Open the before photo"'), $placeholders), true) ?: null;
 
-            $html = self::layout($html, $placeholders, function (array $paragraphs) use (&$pool, &$side, &$used, $project) {
+            $html = self::layout($html, $placeholders, function (array $paragraphs, string $side) use (&$pool, &$used, $project) {
                 if ($pool->isEmpty()) {
                     return null;
                 }
                 $img = $pool->shift();
                 $used[] = $img->id;
                 $fig = view('blog.media.pull', ['project' => $project, 'image' => $img, 'index' => self::lightboxIndex($project, $img)])->render();
-                $row = self::row($fig, $paragraphs, $side);
-                $side = $side === 'right' ? 'left' : 'right';
 
-                return $row;
-            }, $every, $beforeKey);
+                return self::row($fig, $paragraphs, $side);
+            }, $every, $beforeKey, $side);
 
             foreach ($placeholders as $key => $media) {
                 if ($media === '@@GALLERY@@') {
@@ -113,10 +111,21 @@ class BlogRenderer
      *   always plain text — photos never sit directly on top of each other.
      *
      * @param  array<string, string>  $placeholders
-     * @param  callable(array<int, string>): ?string  $pull  builds a row for the given paragraphs, or null when out of photos
+     * Every side photo — the Before included — takes the next side in one
+     * left/right alternation, and no pull photo appears until the Before
+     * row has been placed.
+     *
+     * @param  callable(array<int, string>, string): ?string  $pull  builds a row for the given paragraphs on the given side, or null when out of photos
      */
-    protected static function layout(string $html, array $placeholders, callable $pull, int $every, ?string $beforeKey): string
+    protected static function layout(string $html, array $placeholders, callable $pull, int $every, ?string $beforeKey, string $side): string
     {
+        $takeSide = function () use (&$side): string {
+            $current = $side;
+            $side = $side === 'right' ? 'left' : 'right';
+
+            return $current;
+        };
+        $beforePending = $beforeKey !== null;
         preg_match_all('#<(p|h[1-6]|ul|ol|blockquote|pre|table)\b[^>]*>.*?</\1>|<hr\s*/?>#s', $html, $m);
         $blocks = $m[0];
         $isPara = fn (?string $b) => $b !== null && str_starts_with($b, '<p') && ! preg_match('#^<p>\s*@@MEDIA\d+@@\s*</p>$#', $b);
@@ -133,7 +142,8 @@ class BlogRenderer
                 while (count($paras) < 2 && $isPara($blocks[$i + 1] ?? null)) {
                     $paras[] = $blocks[++$i];
                 }
-                $out[] = self::row($placeholders[$beforeKey], $paras, 'right');
+                $out[] = self::row($placeholders[$beforeKey], $paras, $takeSide());
+                $beforePending = false;
                 $since = 0;
 
                 continue;
@@ -149,12 +159,12 @@ class BlogRenderer
             }
 
             $next = $blocks[$i + 1] ?? null;
-            if ($since >= $every) {
+            if ($since >= $every && ! $beforePending) {
                 $paras = [$b];
                 if ($isPara($next)) {
                     $paras[] = $next;
                 }
-                $row = $pull($paras);
+                $row = $pull($paras, $takeSide());
                 if ($row !== null) {
                     $out[] = $row;
                     $i += count($paras) - 1;
@@ -240,7 +250,9 @@ class BlogRenderer
         // The "before" sits in the first section, beside the paragraph that
         // describes the space as we found it: right after the cover when the
         // writer placed one, otherwise after the opening paragraph.
-        if (self::beforeImage($project) && ! $has('before')) {
+        if (self::beforeImage($project)) {
+            // Wherever the writer put it, the Before is the first side photo.
+            $markdown = preg_replace('/^[ \t]*\[before\][ \t]*$\n?/m', '', $markdown);
             if (preg_match('/^[ \t]*\[cover\][ \t]*$/m', $markdown, $m, PREG_OFFSET_CAPTURE)) {
                 $pos = $m[0][1] + strlen($m[0][0]);
                 $markdown = substr($markdown, 0, $pos) . "\n\n[before]" . substr($markdown, $pos);
