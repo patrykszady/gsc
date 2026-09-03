@@ -54,6 +54,15 @@ class BlogPost extends Model
         return $date->isFuture() ? now()->startOfDay() : $date;
     }
 
+    /**
+     * A signed link that shows the post even while unpublished. Seven days,
+     * then it 404s like any other draft. This is the only way to see a draft.
+     */
+    public function previewUrl(): string
+    {
+        return \Illuminate\Support\Facades\URL::temporarySignedRoute('blog.show', now()->addDays(7), ['post' => $this->slug, 'preview' => 1]);
+    }
+
     /** The date shown on the post and the index. */
     public function displayDate(): ?\Illuminate\Support\Carbon
     {
@@ -114,6 +123,7 @@ class BlogPost extends Model
             'published_at' => $this->published_at?->toIso8601String(),
             'dated_at' => $this->dated_at?->toDateString(),
             'url' => $this->url(),
+            'preview_url' => $this->previewUrl(),
             'cover_url' => $this->project?->cover()?->getWebpThumbnailUrl('medium'),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

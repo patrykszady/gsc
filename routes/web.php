@@ -485,14 +485,16 @@ Route::get('/feed/updates.atom', function () {
 })->name('feed.updates');
 
 // Blog: one post per project, AI-drafted on project creation, published by a
-// human in the central admin. Drafts stay reachable for preview (noindex).
+// human in the central admin. Drafts are reachable only through the signed,
+// expiring preview link the admin hands out (BlogPost::previewUrl) — a bare
+// ?preview=1 is a 404 like any other unpublished post.
 Route::get('/blog', function () {
     $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('dated_at')->orderByDesc('published_at')->paginate(12);
 
     return view('blog-index', ['posts' => $posts]);
 })->name('blog.index');
 Route::get('/blog/{post:slug}', function (\App\Models\BlogPost $post) {
-    abort_unless($post->isPublished() || request()->boolean('preview'), 404);
+    abort_unless($post->isPublished() || (request()->boolean('preview') && request()->hasValidSignature()), 404);
 
     return view('blog-show', ['post' => $post->load(['project.images', 'project.testimonials', 'project.collaborators'])]);
 })->name('blog.show');

@@ -90,4 +90,23 @@ class BlogPostControllerTest extends TestCase
 
         $this->assertDatabaseMissing('blog_posts', ['id' => $post->id]);
     }
+
+    public function test_drafts_are_not_public_but_open_with_the_signed_preview_link(): void
+    {
+        $draft = $this->draft();
+
+        $this->get('/blog/' . $draft->slug)->assertNotFound();
+        $this->get('/blog/' . $draft->slug . '?preview=1')->assertNotFound();
+        $this->get($draft->previewUrl())->assertOk()->assertSee('Draft preview');
+
+        $tampered = preg_replace('/signature=\w+/', 'signature=deadbeef', $draft->previewUrl());
+        $this->get($tampered)->assertNotFound();
+
+        $this->getJson("/api/admin/v1/blog-posts/{$draft->id}", $this->adminApiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.preview_url', fn ($url) => str_contains($url, 'signature='));
+
+        $draft->update(['status' => BlogPost::STATUS_PUBLISHED, 'published_at' => now()->subMinute()]);
+        $this->get('/blog/' . $draft->slug)->assertOk();
+    }
 }
