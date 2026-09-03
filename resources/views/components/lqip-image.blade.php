@@ -7,6 +7,7 @@
     'alt' => '',
     'class' => '',
     'eager' => false,          // fetchpriority="high" and no lazy loading
+    'loading' => null,         // 'eager' to load off-screen without raising fetch priority (carousel pages)
     'aspectRatio' => null,     // e.g., '4/3', '16/9', 'square'
     'width' => null,
     'height' => null,
@@ -53,7 +54,7 @@
     $objectClass = "object-$objectFit";
     
     // Loading strategy
-    $loading = $eager ? 'eager' : 'lazy';
+    $loading = $eager ? 'eager' : ($loading === 'eager' ? 'eager' : 'lazy');
     $fetchpriority = $eager ? 'high' : 'low';
 @endphp
 

@@ -1,46 +1,35 @@
-{{-- The mid-post gallery: always one row of three, paged with the arrows, so
-     moving between pages never changes the page height and jumps the scroll.
-     Every tile opens the lightbox. --}}
+{{-- The mid-post gallery: the Flux carousel, one 1×3 page per slide, so an
+     arrow press is exactly one page — native smooth snap scrolling, arrows
+     and indicators from Flux. The track is one fixed-height row, so paging
+     never moves the page. Pages beyond the first load eagerly (at normal
+     priority) so a page you scroll to is already painted. Every tile opens
+     the lightbox. --}}
 @php
     $images = ($images ?? $project->images)->values();
-    $per = 3;
-    $chunks = $images->chunk($per)->values();
-    $paged = $chunks->count() > 1;
+    $pages = $images->chunk(3)->values();
 @endphp
 @if ($images->isNotEmpty())
-    <div class="not-prose clear-both my-8" x-data="{ page: 0, pages: {{ $chunks->count() }} }" @if ($paged) @keydown.arrow-right="if (!lightbox) page = (page + 1) % pages" @keydown.arrow-left="if (!lightbox) page = (page - 1 + pages) % pages" tabindex="0" aria-roledescription="carousel" @endif>
-        {{-- Every page sits in the same grid cell, so the box never collapses
-             between pages and there is no fade to flash through. Hidden pages
-             are invisible rather than display:none, so their lazy images load
-             as soon as the gallery scrolls into view — a page you flip to is
-             already painted. --}}
-        <div class="relative grid">
-            @foreach ($chunks as $ci => $chunk)
-                <div class="grid grid-cols-3 gap-3 [grid-area:1/1]" :style="{ visibility: page === {{ $ci }} ? 'visible' : 'hidden' }" :aria-hidden="page !== {{ $ci }}" @if ($ci > 0) style="visibility: hidden" @endif>
-                    @foreach ($chunk as $img)
-                        <button type="button" @click="open({{ \App\Support\Blog\BlogRenderer::lightboxIndex($project, $img) }})" class="group block overflow-hidden rounded-xl text-left" aria-label="Open photo">
-                            <x-lqip-image :image="$img" size="medium" width="600" height="450" aspectRatio="4/3" rounded="xl" class="w-full transition duration-300 group-hover:scale-105" />
-                        </button>
-                    @endforeach
-                </div>
+    <div class="not-prose clear-both my-8">
+        <flux:carousel
+            snap="mandatory"
+            wrap="rewind"
+            :indicators="$pages->count() > 1"
+            :arrows="$pages->count() > 1"
+            arrows:position="inside"
+            aria-label="Project photos"
+            track:class="gap-3 rounded-xl"
+        >
+            @foreach ($pages as $pi => $page)
+                <flux:carousel.slide class="w-full">
+                    <div class="grid grid-cols-3 gap-3">
+                        @foreach ($page as $img)
+                            <button type="button" @click="open({{ \App\Support\Blog\BlogRenderer::lightboxIndex($project, $img) }})" class="group block w-full overflow-hidden rounded-xl text-left" aria-label="Open photo">
+                                <x-lqip-image :image="$img" size="medium" width="600" height="450" aspectRatio="4/3" rounded="xl" :loading="$pi > 0 ? 'eager' : null" class="w-full transition duration-300 group-hover:scale-105" />
+                            </button>
+                        @endforeach
+                    </div>
+                </flux:carousel.slide>
             @endforeach
-
-            @if ($paged)
-                <button type="button" @click="page = (page - 1 + pages) % pages" class="absolute top-1/2 -left-3 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-zinc-800 shadow-lg ring-1 ring-zinc-900/10 transition hover:bg-white sm:-left-5 dark:bg-zinc-800 dark:text-white dark:ring-white/10" aria-label="Previous photos">
-                    <flux:icon.chevron-left class="size-5" />
-                </button>
-                <button type="button" @click="page = (page + 1) % pages" class="absolute top-1/2 -right-3 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-zinc-800 shadow-lg ring-1 ring-zinc-900/10 transition hover:bg-white sm:-right-5 dark:bg-zinc-800 dark:text-white dark:ring-white/10" aria-label="Next photos">
-                    <flux:icon.chevron-right class="size-5" />
-                </button>
-            @endif
-        </div>
-
-        @if ($paged)
-            <div class="mt-3 flex items-center justify-center gap-2" aria-hidden="true">
-                @foreach ($chunks as $ci => $chunk)
-                    <button type="button" @click="page = {{ $ci }}" class="h-2 rounded-full transition-all" :class="page === {{ $ci }} ? 'w-6 bg-sky-600' : 'w-2 bg-zinc-300 hover:bg-zinc-400 dark:bg-zinc-600'"></button>
-                @endforeach
-            </div>
-        @endif
+        </flux:carousel>
     </div>
 @endif
