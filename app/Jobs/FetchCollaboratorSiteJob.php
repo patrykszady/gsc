@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\ProjectCollaborator;
+use App\Services\Blog\PartnerContributionEstimator;
 use App\Services\Blog\PartnerSiteFetcher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,8 +22,11 @@ class FetchCollaboratorSiteJob implements ShouldQueue
         $this->onQueue('ai-content');
     }
 
-    public function handle(PartnerSiteFetcher $fetcher): void
+    public function handle(PartnerSiteFetcher $fetcher, PartnerContributionEstimator $estimator): void
     {
         $fetcher->fetch($this->collaborator);
+        if (! $this->collaborator->note) {
+            $estimator->estimate($this->collaborator->fresh());
+        }
     }
 }

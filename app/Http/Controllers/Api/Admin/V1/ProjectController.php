@@ -237,7 +237,9 @@ class ProjectController extends Controller
 
             $created = $project->collaborators()->create($attrs);
             $keep[] = $created->id;
-            if ($created->url && ! $cached) {
+            // Site read still needed, or an estimate of what they did here
+            // (the estimate is per project, so it is never copied over).
+            if ($created->url && (! $cached || ! $created->note)) {
                 FetchCollaboratorSiteJob::dispatch($created);
             }
         }

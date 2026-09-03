@@ -4,6 +4,7 @@ namespace App\Services\Blog;
 
 use App\Models\BlogPost;
 use App\Models\Project;
+use App\Services\Blog\PartnerContributionEstimator;
 use App\Services\Blog\PartnerSiteFetcher;
 use App\Services\AiContentService;
 use Illuminate\Support\Str;
@@ -205,13 +206,19 @@ PROMPT;
         }
 
         $fetcher = app(PartnerSiteFetcher::class);
-        $lines = $project->collaborators->map(function ($c) use ($fetcher) {
+        $estimator = app(PartnerContributionEstimator::class);
+        $lines = $project->collaborators->map(function ($c) use ($fetcher, $estimator, $project) {
             if ($c->url && ! $c->site_fetched_at) {
                 $fetcher->fetch($c);
             }
+            if (! $c->note && ! $c->inferred_note) {
+                $estimator->estimate($c, $project);
+            }
             $line = "- {$c->name} — {$c->roleLabel()}";
             if ($c->note) {
-                $line .= ". On this job: {$c->note}";
+                $line .= ". On this job (confirmed): {$c->note}";
+            } elseif ($c->inferred_note) {
+                $line .= ". On this job (our estimate from their services): {$c->inferred_note}";
             }
             if ($c->url) {
                 $line .= ". Website: {$c->url}";
@@ -229,8 +236,10 @@ PROMPT;
 PEOPLE WE WORKED WITH on this project (credit each one where their work comes up — the
 designer when design decisions are discussed, the architect at plans and permits, a trade
 where that trade's work is described). Mention each at least once by name and role, and say
-HOW they helped on this job — "On this job:" below is what they actually did; build that into
-the story as a concrete contribution, not a name-drop. Where a Website is given, make the
+HOW they helped on this job — "On this job:" below is what they did (confirmed by us, or our
+estimate from the services they offer); build that into the story as a concrete contribution,
+not a name-drop, and keep the division of work clear: GS Construction did the consultation,
+estimate, permits, scheduling and construction; the partner did what is listed for them. Where a Website is given, make the
 FIRST mention a Markdown link to it, e.g. [Name](https://…).
 Never invent partners or roles beyond this list:
 {$lines}

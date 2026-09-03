@@ -9,12 +9,13 @@ use Illuminate\Support\Str;
 class ProjectCollaborator extends Model
 {
     protected $fillable = [
-        'project_id', 'role', 'name', 'url', 'note',
+        'project_id', 'role', 'name', 'url', 'note', 'inferred_note', 'inferred_at',
         'site_title', 'site_description', 'site_excerpt', 'site_fetched_at', 'sort_order',
     ];
 
     protected $casts = [
         'site_fetched_at' => 'datetime',
+        'inferred_at' => 'datetime',
     ];
 
     public function project(): BelongsTo
@@ -53,6 +54,15 @@ class ProjectCollaborator extends Model
         return $this->role !== 'other' && array_key_exists($this->role, static::roles()) ? $this->role : null;
     }
 
+    /**
+     * What they did on the job: the admin's note when there is one, otherwise
+     * what we estimated from their website against this project.
+     */
+    public function contribution(): ?string
+    {
+        return $this->note ?: $this->inferred_note;
+    }
+
     /** Host of the partner's site, for display ("jpeterson-design.com"). */
     public function host(): ?string
     {
@@ -70,6 +80,7 @@ class ProjectCollaborator extends Model
             'name' => $this->name,
             'url' => $this->url,
             'note' => $this->note,
+            'inferred_note' => $this->inferred_note,
             'site_title' => $this->site_title,
             'site_fetched_at' => $this->site_fetched_at?->toIso8601String(),
             'sort_order' => (int) $this->sort_order,

@@ -103,7 +103,7 @@ class ProjectCollaboratorsTest extends TestCase
         $second = Project::create(['title' => 'Second Job', 'project_type' => 'bathroom', 'is_published' => true]);
         $this->putJson("/api/admin/v1/projects/{$second->id}", [
             'title' => 'Second Job', 'project_type' => 'bathroom',
-            'collaborators' => [['role' => 'architects', 'name' => 'Plan Studio', 'url' => 'https://plan.test']],
+            'collaborators' => [['role' => 'architects', 'name' => 'Plan Studio', 'url' => 'https://plan.test', 'note' => 'Permit drawings again']],
         ], $this->adminApiHeaders())->assertOk();
 
         $this->assertSame('Plan Studio Architects', $second->collaborators()->first()->site_title);
@@ -120,6 +120,36 @@ class ProjectCollaboratorsTest extends TestCase
 
         $this->assertSame('Plan Studio & Co', $parsed['site_title']);
         $this->assertSame('Residential architects in Evanston.', $parsed['site_description']);
-        $this->assertSame('Plan Studio We draw additions.', $parsed['site_excerpt']);
+        $this->assertSame('Plan Studio — Plan Studio We draw additions.', $parsed['site_excerpt']);
+    }
+
+    public function test_fetcher_follows_services_and_about_pages_and_collapses_repeated_labels(): void
+    {
+        $fetcher = app(PartnerSiteFetcher::class);
+        $links = $fetcher->followUpLinks('<a href="/services">S</a><a href="/about">A</a><a href="https://other.test/services">X</a><a href="/contact">C</a><a href="/portfolio">P</a><a href="/blog">B</a>', 'https://www.jpd.test/');
+
+        $this->assertSame(['https://www.jpd.test/services', 'https://www.jpd.test/about', 'https://www.jpd.test/portfolio'], $links);
+
+        $parsed = $fetcher->parse('<html><body><h2>Kitchen &amp; Bath interior design</h2><p>View fullsize View fullsize View fullsize View fullsize</p></body></html>');
+        $this->assertSame('Kitchen & Bath interior design — Kitchen & Bath interior design View fullsize', $parsed['site_excerpt']);
+    }
+
+    public function test_estimator_writes_an_inferred_contribution_from_the_site_read(): void
+    {
+        $this->mock(\App\Services\AiContentService::class, function ($mock) {
+            $mock->shouldReceive('generateText')->once()->andReturn('{"services":["Interior design","Cabinetry"],"contribution":"They handled the interior design and cabinetry selections while we handled the build."}');
+        });
+
+        $project = $this->project();
+        $partner = $project->collaborators()->create(['role' => 'interior-designers', 'name' => 'JPD', 'url' => 'https://jpd.test', 'site_title' => 'JPD | Kitchen & Bath interior design', 'site_fetched_at' => now()]);
+
+        $sentence = app(\App\Services\Blog\PartnerContributionEstimator::class)->estimate($partner, $project);
+
+        $this->assertSame('They handled the interior design and cabinetry selections while we handled the build.', $sentence);
+        $this->assertSame($sentence, $partner->fresh()->contribution());
+
+        // An admin note always wins over the estimate.
+        $partner->update(['note' => 'Layout only']);
+        $this->assertSame('Layout only', $partner->fresh()->contribution());
     }
 }
