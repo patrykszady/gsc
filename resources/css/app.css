@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Article typography for /blog (prose classes). */
+@plugin '@tailwindcss/typography';
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 /* Local, bundled fonts (minimal subsets) */
