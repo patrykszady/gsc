@@ -67,9 +67,13 @@ class BlogRenderer
         $side = mt_rand(0, 1) ? 'right' : 'left';
         mt_srand();
             $n = 0;
-            $html = preg_replace_callback('#<p>(?!\s*@@)#', function ($m) use (&$pool, &$side, &$n, &$used, $project, $every) {
+            $html = preg_replace_callback('#<p>(?!\s*@@)#', function ($m) use (&$pool, &$side, &$n, &$used, $project, $every, &$html) {
                 $n++;
-                if ($n % $every === 0 && $pool->isNotEmpty()) {
+                // The paragraph right after a media block (cover, before,
+                // timelapse…) keeps its side clear: a pull photo there would
+                // stack under that block and leave the text beside a gap.
+                $afterMedia = (bool) preg_match('#@@MEDIA\d+@@\s*</p>\s*$#', substr($html, 0, $m[0][1]));
+                if (! $afterMedia && $n % $every === 0 && $pool->isNotEmpty()) {
                     $img = $pool->shift();
                     $used[] = $img->id;
                     $fig = view('blog.media.pull', ['project' => $project, 'image' => $img, 'side' => $side, 'index' => self::lightboxIndex($project, $img)])->render();
@@ -79,7 +83,7 @@ class BlogRenderer
                 }
 
                 return '<p>';
-            }, $html);
+            }, $html, -1, $count, PREG_OFFSET_CAPTURE);
 
             foreach ($placeholders as $key => $media) {
                 if ($media === '@@GALLERY@@') {
@@ -144,7 +148,7 @@ class BlogRenderer
     {
         $has = fn (string $tag) => (bool) preg_match('/^\s*\[' . preg_quote($tag, '/') . '\]\s*$/m', $markdown);
         $insert = function (string $md, string $tag, int $nthHeading): string {
-            preg_match_all('/^##\s.*$/m', $md, $m, PREG_OFFSET_CAPTURE);
+            preg_match_all('/^#{2,3}\s.*$/m', $md, $m, PREG_OFFSET_CAPTURE);
             if (isset($m[0][$nthHeading])) {
                 $pos = $m[0][$nthHeading][1];
 
@@ -154,14 +158,18 @@ class BlogRenderer
             return rtrim($md) . "\n\n[{$tag}]\n";
         };
 
-        // The big "before" leads: ahead of the cover when the writer placed
-        // one, otherwise ahead of the first heading.
+        // The "before" sits in the first section, beside the paragraph that
+        // describes the space as we found it: right after the cover when the
+        // writer placed one, otherwise after the opening paragraph.
         if (self::beforeImage($project) && ! $has('before')) {
-            if (preg_match('/^\s*\[cover\]\s*$/m', $markdown, $m, PREG_OFFSET_CAPTURE)) {
+            if (preg_match('/^[ \t]*\[cover\][ \t]*$/m', $markdown, $m, PREG_OFFSET_CAPTURE)) {
+                $pos = $m[0][1] + strlen($m[0][0]);
+                $markdown = substr($markdown, 0, $pos) . "\n\n[before]" . substr($markdown, $pos);
+            } elseif (preg_match('/\n\s*\n/', $markdown, $m, PREG_OFFSET_CAPTURE)) {
                 $pos = $m[0][1];
-                $markdown = substr($markdown, 0, $pos) . "[before]\n\n" . substr($markdown, $pos);
+                $markdown = substr($markdown, 0, $pos) . "\n\n[before]" . substr($markdown, $pos);
             } else {
-                $markdown = $insert($markdown, 'before', 0);
+                $markdown = rtrim($markdown) . "\n\n[before]\n";
             }
         }
         if ($project->beforeAfters->isNotEmpty() && ! $has('before-after')) {

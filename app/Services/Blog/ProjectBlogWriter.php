@@ -80,7 +80,7 @@ REVIEW;
         $stepLines = collect($steps)->map(fn ($s) => '- ' . ($s['title'] ?? '') . ': ' . ($s['body'] ?? $s['description'] ?? ''))->implode("\n");
 
         $mediaMenu = collect([
-            $hasBefore ? '[before] — the large "before" photo of the space as we found it (use once, early — before the cover)' : null,
+            $hasBefore ? '[before] — the "before" photo, shown beside the text (use once, in the first section, right before the paragraph that describes the space as we found it)' : null,
             '[cover] — the project cover photo (use once, right after the intro)',
             $hasBeforeAfter ? '[before-after] — side-by-side before/after pair(s)' . ($beforeAfterTitles ? " ({$beforeAfterTitles})" : '') : null,
             $hasTimelapse ? '[timelapse] — the construction timelapse frames' : null,
