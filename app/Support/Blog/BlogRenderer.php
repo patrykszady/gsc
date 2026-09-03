@@ -31,7 +31,11 @@ class BlogRenderer
         $placeholders = [];
         $used = []; // image ids already shown by cover/gallery, so pull-photos don't repeat them
 
-        $markdown = preg_replace_callback('/^\s*\[(cover|before-after|timelapse|gallery)\]\s*$/m', function ($m) use (&$placeholders, &$used, $project) {
+        if ($project) {
+        $markdown = self::ensureMediaShortcodes($markdown, $project);
+    }
+
+    $markdown = preg_replace_callback('/^\s*\[(cover|before-after|timelapse|gallery)\]\s*$/m', function ($m) use (&$placeholders, &$used, $project) {
             $html = '';
             if ($project) {
                 if ($m[1] === 'cover' && ($cover = $project->cover())) {
@@ -123,6 +127,36 @@ class BlogRenderer
             'imageUrl' => $imageUrl,
             'areaSlug' => $testimonial->areaSlug(),
         ];
+    }
+
+    /**
+     * A project's "before" — its before/after pairs and its timelapses — is
+     * shown whether or not the writer placed the shortcode. A missing
+     * [before-after] goes in front of the second heading, a missing
+     * [timelapse] in front of the third; with fewer headings they go at the end.
+     */
+    public static function ensureMediaShortcodes(string $markdown, Project $project): string
+    {
+        $has = fn (string $tag) => (bool) preg_match('/^\s*\[' . preg_quote($tag, '/') . '\]\s*$/m', $markdown);
+        $insert = function (string $md, string $tag, int $nthHeading): string {
+            preg_match_all('/^##\s.*$/m', $md, $m, PREG_OFFSET_CAPTURE);
+            if (isset($m[0][$nthHeading])) {
+                $pos = $m[0][$nthHeading][1];
+
+                return substr($md, 0, $pos) . "[{$tag}]\n\n" . substr($md, $pos);
+            }
+
+            return rtrim($md) . "\n\n[{$tag}]\n";
+        };
+
+        if ($project->beforeAfters->isNotEmpty() && ! $has('before-after')) {
+            $markdown = $insert($markdown, 'before-after', 1);
+        }
+        if ($project->timelapses->contains(fn ($t) => $t->frames->count() >= 2) && ! $has('timelapse')) {
+            $markdown = $insert($markdown, 'timelapse', 2);
+        }
+
+        return $markdown;
     }
 
     public static function lightboxIndex(Project $project, ProjectImage $image): int
