@@ -57,33 +57,34 @@ class BlogRenderer
         $converter = new GithubFlavoredMarkdownConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]);
         $html = (string) $converter->convert($markdown);
 
-        // Pull photos: float one image beside every second paragraph.
+        // Photos beside the text. Not floats: a float lets a second figure
+        // stack against the first and drops a paragraph's last line under the
+        // picture once the float ends. Each photo instead gets an explicit
+        // row — a text column holding one or two paragraphs and the photo —
+        // so nothing overlaps and no line is ever stranded.
         if ($project) {
             $pool = $project->images->reject(fn ($i) => in_array($i->id, $used, true))->values();
             // Cadence and starting side vary per project, so two posts read
-        // side by side do not share one rhythm.
-        mt_srand((int) $project->id * 31 + 5);
-        $every = mt_rand(2, 3);
-        $side = mt_rand(0, 1) ? 'right' : 'left';
-        mt_srand();
-            $n = 0;
-            $html = preg_replace_callback('#<p>(?!\s*@@)#', function ($m) use (&$pool, &$side, &$n, &$used, $project, $every, &$html) {
-                $n++;
-                // The paragraph right after a media block (cover, before,
-                // timelapse…) keeps its side clear: a pull photo there would
-                // stack under that block and leave the text beside a gap.
-                $afterMedia = (bool) preg_match('#@@MEDIA\d+@@\s*</p>\s*$#', substr($html, 0, $m[0][1]));
-                if (! $afterMedia && $n % $every === 0 && $pool->isNotEmpty()) {
-                    $img = $pool->shift();
-                    $used[] = $img->id;
-                    $fig = view('blog.media.pull', ['project' => $project, 'image' => $img, 'side' => $side, 'index' => self::lightboxIndex($project, $img)])->render();
-                    $side = $side === 'right' ? 'left' : 'right';
+            // side by side do not share one rhythm.
+            mt_srand((int) $project->id * 31 + 5);
+            $every = mt_rand(1, 2);
+            $side = mt_rand(0, 1) ? 'right' : 'left';
+            mt_srand();
 
-                    return $fig . '<p>';
+            $beforeKey = array_search(true, array_map(fn ($h) => str_contains($h, 'aria-label="Open the before photo"'), $placeholders), true) ?: null;
+
+            $html = self::layout($html, $placeholders, function (array $paragraphs) use (&$pool, &$side, &$used, $project) {
+                if ($pool->isEmpty()) {
+                    return null;
                 }
+                $img = $pool->shift();
+                $used[] = $img->id;
+                $fig = view('blog.media.pull', ['project' => $project, 'image' => $img, 'index' => self::lightboxIndex($project, $img)])->render();
+                $row = self::row($fig, $paragraphs, $side);
+                $side = $side === 'right' ? 'left' : 'right';
 
-                return '<p>';
-            }, $html, -1, $count, PREG_OFFSET_CAPTURE);
+                return $row;
+            }, $every, $beforeKey);
 
             foreach ($placeholders as $key => $media) {
                 if ($media === '@@GALLERY@@') {
@@ -99,6 +100,84 @@ class BlogRenderer
         }
 
         return $html;
+    }
+
+    /**
+     * Walk the converted HTML block by block and lay photos beside text.
+     *
+     * - The Before placeholder becomes a row with the one or two paragraphs
+     *   that follow it (the paragraph describing the space as we found it).
+     * - After \$every plain paragraphs, the next paragraph gets a pull-photo
+     *   row with itself and the paragraph after it. The count restarts after
+     *   any media block or row, so the paragraph right after a photo is
+     *   always plain text — photos never sit directly on top of each other.
+     *
+     * @param  array<string, string>  $placeholders
+     * @param  callable(array<int, string>): ?string  $pull  builds a row for the given paragraphs, or null when out of photos
+     */
+    protected static function layout(string $html, array $placeholders, callable $pull, int $every, ?string $beforeKey): string
+    {
+        preg_match_all('#<(p|h[1-6]|ul|ol|blockquote|pre|table)\b[^>]*>.*?</\1>|<hr\s*/?>#s', $html, $m);
+        $blocks = $m[0];
+        $isPara = fn (?string $b) => $b !== null && str_starts_with($b, '<p') && ! preg_match('#^<p>\s*@@MEDIA\d+@@\s*</p>$#', $b);
+        $isMedia = fn (?string $b) => $b !== null && (bool) preg_match('#^<p>\s*@@MEDIA\d+@@\s*</p>$#', $b);
+        $mediaKey = fn (string $b) => preg_match('#(@@MEDIA\d+@@)#', $b, $k) ? $k[1] : null;
+
+        $out = [];
+        $since = 0; // plain paragraphs emitted since the last photo or media block
+        for ($i = 0; $i < count($blocks); $i++) {
+            $b = $blocks[$i];
+
+            if ($isMedia($b) && $beforeKey && $mediaKey($b) === $beforeKey) {
+                $paras = [];
+                while (count($paras) < 2 && $isPara($blocks[$i + 1] ?? null)) {
+                    $paras[] = $blocks[++$i];
+                }
+                $out[] = self::row($placeholders[$beforeKey], $paras, 'right');
+                $since = 0;
+
+                continue;
+            }
+
+            if (! $isPara($b)) {
+                $out[] = $b;
+                if ($isMedia($b)) {
+                    $since = 0;
+                }
+
+                continue;
+            }
+
+            $next = $blocks[$i + 1] ?? null;
+            if ($since >= $every) {
+                $paras = [$b];
+                if ($isPara($next)) {
+                    $paras[] = $next;
+                }
+                $row = $pull($paras);
+                if ($row !== null) {
+                    $out[] = $row;
+                    $i += count($paras) - 1;
+                    $since = 0;
+
+                    continue;
+                }
+            }
+
+            $out[] = $b;
+            $since++;
+        }
+
+        return implode("\n", $out);
+    }
+
+    /** A text column and a photo, side by side from the sm breakpoint; stacked below it. */
+    protected static function row(string $figure, array $paragraphs, string $side): string
+    {
+        $text = '<div class="min-w-0 flex-1">' . implode("\n", $paragraphs) . '</div>';
+        $fig = '<div class="w-full shrink-0 sm:w-[46%]">' . $figure . '</div>';
+
+        return '<div class="my-6 sm:flex sm:items-start sm:gap-8">' . ($side === 'left' ? $fig . $text : $text . $fig) . '</div>';
     }
 
     /** Position of an image inside the page-level lightbox array (all project images, sort order). */

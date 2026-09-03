@@ -1,9 +1,9 @@
-{{-- The mid-post gallery: one page of 3 columns × 2 rows when the project has
-     six or more photos, a single row of three when it has fewer. Anything
-     beyond a page is reached with the arrows; every tile opens the lightbox. --}}
+{{-- The mid-post gallery: always one row of three, paged with the arrows, so
+     moving between pages never changes the page height and jumps the scroll.
+     Every tile opens the lightbox. --}}
 @php
     $images = ($images ?? $project->images)->values();
-    $per = $images->count() >= 6 ? 6 : 3;
+    $per = 3;
     $chunks = $images->chunk($per)->values();
     $paged = $chunks->count() > 1;
 @endphp
