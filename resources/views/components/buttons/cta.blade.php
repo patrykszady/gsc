@@ -37,7 +37,7 @@
         'outline' => 'uppercase border border-zinc-300 text-zinc-700 hover:border-zinc-500 hover:bg-zinc-50 dark:border-white/30 dark:text-white dark:hover:border-white dark:hover:bg-white/10',
         'white' => 'uppercase bg-white text-sky-600 shadow-lg hover:bg-sky-50 hover:shadow-xl',
         // White with a blue border: the outlined CTA on a light background.
-        'outline-primary' => 'uppercase border-2 border-sky-600 bg-white text-sky-700 shadow-sm hover:bg-sky-50 dark:bg-zinc-900 dark:text-sky-400 dark:hover:bg-sky-950',
+        'outline-primary' => 'uppercase border border-sky-600 bg-white text-sky-600 shadow-lg hover:bg-sky-50 hover:shadow-xl dark:bg-zinc-900 dark:text-sky-400 dark:hover:bg-sky-950',
         'white-secondary' => 'capitalize border border-white/60 text-white hover:border-white hover:bg-white/10',
     ];
     

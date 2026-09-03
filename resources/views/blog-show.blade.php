@@ -18,7 +18,7 @@
          places — cover, pull photos, gallery — opens the same viewer, with
          arrow-key navigation across all of the project's images. --}}
     <article
-        class="mx-auto max-w-6xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8"
+        class="mx-auto max-w-6xl px-4 pt-10 pb-16 sm:px-6 sm:pt-14 lg:px-8"
         x-data="{
             lightbox: false,
             currentIndex: 0,
@@ -45,7 +45,7 @@
             </p>
             @if ($project)
                 <div class="mt-5">
-                    <x-buttons.cta :href="route('projects.show', $project)" variant="outline-primary" size="md">See the full project</x-buttons.cta>
+                    <x-buttons.cta :href="route('projects.show', $project)" variant="outline-primary" size="lg">See the full project</x-buttons.cta>
                 </div>
             @endif
         </header>
@@ -62,6 +62,7 @@
                     :paragraphs="$review['paragraphs']"
                     :image-url="$review['imageUrl']"
                     :area-slug="$review['areaSlug']"
+                    :wide="true"
                 />
             </aside>
         @endif

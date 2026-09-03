@@ -20,6 +20,8 @@
     'areaSlug' => null,
     'title' => null,
     'stars' => true,
+    // Full-width review text (the blog column); the review page keeps 68ch.
+    'wide' => false,
 ])
 {{-- Stars sit above the card, at size, so the rating reads before the
      text rather than as a small mark inside it. --}}
@@ -57,7 +59,7 @@
          36px), which set the review looser and larger than any other
          body copy on the site and made long ones harder to read, not
          easier. --}}
-    <blockquote class="max-w-[68ch] text-base leading-7 text-zinc-700 dark:text-zinc-200">
+    <blockquote class="{{ $wide ? 'max-w-none' : 'max-w-[68ch]' }} text-base leading-7 text-zinc-700 dark:text-zinc-200">
         @foreach($paragraphs as $paragraph)
             <p @class(['mt-5' => ! $loop->first])>{{ $paragraph }}</p>
         @endforeach
