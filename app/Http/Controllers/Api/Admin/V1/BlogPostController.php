@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
+use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\BlogPost;
 use App\Models\Project;
@@ -13,6 +14,8 @@ use Illuminate\Http\Response;
 /** Blog posts for the central admin: list, edit, publish/unpublish, regenerate. */
 class BlogPostController extends Controller
 {
+    use BuildsApiResponses;
+
     public function index(Request $request): JsonResponse
     {
         $query = BlogPost::query()->with('project.images')->orderByDesc('updated_at');
