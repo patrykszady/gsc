@@ -74,6 +74,8 @@ REVIEW;
         }
 
         $partnerBlock = $this->partnerBlock($project);
+        $towns = $this->towns($project, $city);
+        $townList = implode(', ', $towns);
         $recipe = $this->recipe($project);
         $avoid = $this->avoidBlock($project);
 
@@ -134,7 +136,9 @@ Return ONLY a JSON object with EXACTLY these keys:
 - "body": Markdown following the shape above. Place the media shortcodes on their own
   lines where they make narrative sense; do NOT start with the title or any # heading —
   the page renders the title itself. Write in first person plural ("we"). Mention {$city}
-  naturally.
+  naturally. Whenever you list towns (the closing invitation especially), the project's own
+  town comes FIRST, then nearby ones, in exactly this order: {$townList}. Never lead with
+  another town.
 
 Hard rules: no invented facts; no client names other than the reviewer's display name given above; no exact prices
 unless in the description; no emoji; no phrases "nestled in", "dream home", "look no further", "your trusted",
@@ -192,6 +196,38 @@ PROMPT;
                 'published_at' => null,
             ]
         );
+    }
+
+    /**
+     * The towns a post may name, in order: the project's own town first, then
+     * the two nearest towns we serve (by distance between the areas' stored
+     * coordinates). Falls back to just the project town.
+     *
+     * @return array<int, string>
+     */
+    protected function towns(Project $project, string $city): array
+    {
+        $city = trim($city);
+        if ($city === '') {
+            return [];
+        }
+
+        $home = \App\Models\AreaServed::query()->where('city', $city)->first();
+        if (! $home || $home->latitude === null || $home->longitude === null) {
+            return [$city];
+        }
+
+        $near = \App\Models\AreaServed::query()
+            ->whereKeyNot($home->getKey())
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get()
+            ->sortBy(fn ($a) => (($a->latitude - $home->latitude) ** 2) + ((($a->longitude - $home->longitude) * cos(deg2rad((float) $home->latitude))) ** 2))
+            ->take(2)
+            ->pluck('city')
+            ->all();
+
+        return array_merge([$home->city], $near);
     }
 
     /**

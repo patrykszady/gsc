@@ -9,9 +9,14 @@
 @endphp
 @if ($images->isNotEmpty())
     <div class="not-prose clear-both my-8" x-data="{ page: 0, pages: {{ $chunks->count() }} }" @if ($paged) @keydown.arrow-right="if (!lightbox) page = (page + 1) % pages" @keydown.arrow-left="if (!lightbox) page = (page - 1 + pages) % pages" tabindex="0" aria-roledescription="carousel" @endif>
-        <div class="relative">
+        {{-- Every page sits in the same grid cell, so the box never collapses
+             between pages and there is no fade to flash through. Hidden pages
+             are invisible rather than display:none, so their lazy images load
+             as soon as the gallery scrolls into view — a page you flip to is
+             already painted. --}}
+        <div class="relative grid">
             @foreach ($chunks as $ci => $chunk)
-                <div class="grid grid-cols-3 gap-3" x-show="page === {{ $ci }}" @if ($ci > 0) x-cloak @endif x-transition.opacity.duration.200ms>
+                <div class="grid grid-cols-3 gap-3 [grid-area:1/1]" :style="{ visibility: page === {{ $ci }} ? 'visible' : 'hidden' }" :aria-hidden="page !== {{ $ci }}" @if ($ci > 0) style="visibility: hidden" @endif>
                     @foreach ($chunk as $img)
                         <button type="button" @click="open({{ \App\Support\Blog\BlogRenderer::lightboxIndex($project, $img) }})" class="group block overflow-hidden rounded-xl text-left" aria-label="Open photo">
                             <x-lqip-image :image="$img" size="medium" width="600" height="450" aspectRatio="4/3" rounded="xl" class="w-full transition duration-300 group-hover:scale-105" />
