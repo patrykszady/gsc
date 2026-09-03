@@ -22,6 +22,11 @@ class ProjectObserver
 
     public function created(Project $project): void
     {
+        // Draft a blog post for every new project — delayed so the AI
+        // description and image captions (queued just below) exist first;
+        // the writer grounds the post in them. Draft only; a human publishes.
+        \App\Jobs\GenerateProjectBlogPostJob::dispatch($project)->delay(now()->addMinutes(12));
+
         $this->syncAreaCoordinatesFromProjectLocation($project);
 
         $this->regenerateSitemap();

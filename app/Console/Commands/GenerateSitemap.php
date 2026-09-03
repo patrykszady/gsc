@@ -527,6 +527,18 @@ class GenerateSitemap extends Command
             $this->comment('  Skipped area-service URLs (SITEMAP_INCLUDE_AREA_SERVICE_PAGES=false)');
         }
 
+        // Blog posts (published only — drafts are preview-only and noindex).
+        if (\Illuminate\Support\Facades\Schema::hasTable('blog_posts')) {
+            $posts = \App\Models\BlogPost::published()->get();
+            if ($posts->isNotEmpty()) {
+                $this->info('Adding blog posts to sitemap...');
+                $sitemap->add(Url::create("{$baseUrl}/blog")->setLastModificationDate($posts->max('updated_at'))->setChangeFrequency('weekly')->setPriority(0.6));
+                foreach ($posts as $post) {
+                    $sitemap->add(Url::create("{$baseUrl}/blog/{$post->slug}")->setLastModificationDate($post->updated_at)->setChangeFrequency('monthly')->setPriority(0.6));
+                }
+            }
+        }
+
         // Add ZIP-code service-area landing pages
         $this->info("Adding ZIP-code service-area pages to sitemap...");
         // servedZipMap, not getZipMap: ZIPs for towns outside the admin area

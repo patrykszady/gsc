@@ -188,6 +188,11 @@ class Project extends Model
         return $this->images->firstWhere('is_cover', true) ?? $this->images->first();
     }
 
+    public function blogPost(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(BlogPost::class);
+    }
+
     public function testimonials(): BelongsToMany
     {
         return $this->belongsToMany(Testimonial::class)->withTimestamps();

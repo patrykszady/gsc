@@ -168,6 +168,22 @@ PROMPT;
     }
 
     /**
+     * Public prompt-in / text-out entry for callers that own their own prompt
+     * (the project blog writer). Same transport, rate-limit and error handling
+     * as every other generator here.
+     */
+    public function generateText(string $prompt, int $maxOutputTokens = 2000, float $temperature = 0.7): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        return $this->callGeminiMultiImage($prompt, [], $maxOutputTokens, $temperature);
+    }
+
+    /**
      * Call Gemini API with optional single image.
      */
     protected function callGemini(string $prompt, ?array $imageData = null): ?string

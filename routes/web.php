@@ -484,6 +484,19 @@ Route::get('/feed/updates.atom', function () {
         ->setMaxAge(300)->setPublic();
 })->name('feed.updates');
 
+// Blog: one post per project, AI-drafted on project creation, published by a
+// human in the central admin. Drafts stay reachable for preview (noindex).
+Route::get('/blog', function () {
+    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->paginate(12);
+
+    return view('blog-index', ['posts' => $posts]);
+})->name('blog.index');
+Route::get('/blog/{post:slug}', function (\App\Models\BlogPost $post) {
+    abort_unless($post->isPublished() || request()->boolean('preview'), 404);
+
+    return view('blog-show', ['post' => $post->load('project.images')]);
+})->name('blog.show');
+
 Route::get('/costs', fn () => view('costs-index'))->name('costs.index');
 Route::get('/costs/{slug}', function (string $slug) {
     $guide = collect(config('remodel-costs.guides', []))->firstWhere('slug', $slug);
