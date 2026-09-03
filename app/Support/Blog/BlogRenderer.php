@@ -35,7 +35,7 @@ class BlogRenderer
         $markdown = self::ensureMediaShortcodes($markdown, $project);
     }
 
-    $markdown = preg_replace_callback('/^\s*\[(cover|before-after|timelapse|gallery)\]\s*$/m', function ($m) use (&$placeholders, &$used, $project) {
+    $markdown = preg_replace_callback('/^\s*\[(before|cover|before-after|timelapse|gallery)\]\s*$/m', function ($m) use (&$placeholders, &$used, $project) {
             $html = '';
             if ($project) {
                 if ($m[1] === 'cover' && ($cover = $project->cover())) {
@@ -154,6 +154,16 @@ class BlogRenderer
             return rtrim($md) . "\n\n[{$tag}]\n";
         };
 
+        // The big "before" leads: ahead of the cover when the writer placed
+        // one, otherwise ahead of the first heading.
+        if (self::beforeImage($project) && ! $has('before')) {
+            if (preg_match('/^\s*\[cover\]\s*$/m', $markdown, $m, PREG_OFFSET_CAPTURE)) {
+                $pos = $m[0][1];
+                $markdown = substr($markdown, 0, $pos) . "[before]\n\n" . substr($markdown, $pos);
+            } else {
+                $markdown = $insert($markdown, 'before', 0);
+            }
+        }
         if ($project->beforeAfters->isNotEmpty() && ! $has('before-after')) {
             $markdown = $insert($markdown, 'before-after', 1);
         }
@@ -176,7 +186,7 @@ class BlogRenderer
             return [];
         }
 
-        return $project->images->map(fn ($img) => [
+        $images = $project->images->map(fn ($img) => [
             'id' => $img->id,
             'url' => $img->getThumbnailUrl('large'),
             'webpUrl' => $img->getWebpThumbnailUrl('large'),
@@ -185,5 +195,61 @@ class BlogRenderer
             'caption' => $img->caption,
             'pageUrl' => route('projects.image', ['project' => $project, 'image' => $img->slug ?: $img->id]),
         ])->values()->all();
+
+        // The "before" shot rides along at the end, so the big Before block
+        // opens in the same viewer as everything else.
+        if ($before = self::beforeImage($project)) {
+            $images[] = [
+                'id' => 'before',
+                'url' => $before['url'],
+                'webpUrl' => null,
+                'originalUrl' => $before['url'],
+                'alt' => $before['alt'],
+                'caption' => $before['caption'],
+                'pageUrl' => route('projects.show', $project) . '#timelapse',
+            ];
+        }
+
+        return $images;
+    }
+
+    /**
+     * The project's "before": the first frame of its first timelapse, or the
+     * before half of its first before/after pair. Null when it has neither.
+     *
+     * @return array{url: string, alt: string, caption: string}|null
+     */
+    public static function beforeImage(Project $project): ?array
+    {
+        $type = strtolower(Project::projectTypes()[$project->project_type] ?? 'project');
+        $where = $project->location ? " in {$project->location}" : '';
+
+        $timelapse = $project->timelapses->first(fn ($t) => $t->frames->count() >= 2);
+        if ($timelapse) {
+            $frame = $timelapse->frames->sortBy('sort_order')->first();
+
+            return [
+                'url' => $frame->url,
+                'alt' => "Before: {$project->title}{$where}, ahead of the {$type}",
+                'caption' => 'Before — the space the day we started',
+            ];
+        }
+
+        $pair = $project->beforeAfters->first();
+        if ($pair && $pair->before_url) {
+            return [
+                'url' => $pair->before_url,
+                'alt' => "Before: {$project->title}{$where}, ahead of the {$type}",
+                'caption' => 'Before — the space as we found it',
+            ];
+        }
+
+        return null;
+    }
+
+    /** Lightbox index of the before shot: it is appended after the project images. */
+    public static function beforeLightboxIndex(Project $project): int
+    {
+        return $project->images->count();
     }
 }

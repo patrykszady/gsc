@@ -50,6 +50,7 @@ class ProjectBlogWriter
         })->implode("\n");
 
         $hasBeforeAfter = $project->beforeAfters->isNotEmpty();
+        $hasBefore = \App\Support\Blog\BlogRenderer::beforeImage($project) !== null;
         $hasTimelapse = $project->timelapses->contains(fn ($t) => $t->frames->count() >= 3);
         $beforeAfterTitles = $project->beforeAfters->pluck('title')->filter()->take(4)->implode('; ');
 
@@ -79,6 +80,7 @@ REVIEW;
         $stepLines = collect($steps)->map(fn ($s) => '- ' . ($s['title'] ?? '') . ': ' . ($s['body'] ?? $s['description'] ?? ''))->implode("\n");
 
         $mediaMenu = collect([
+            $hasBefore ? '[before] — the large "before" photo of the space as we found it (use once, early — before the cover)' : null,
             '[cover] — the project cover photo (use once, right after the intro)',
             $hasBeforeAfter ? '[before-after] — side-by-side before/after pair(s)' . ($beforeAfterTitles ? " ({$beforeAfterTitles})" : '') : null,
             $hasTimelapse ? '[timelapse] — the construction timelapse frames' : null,
@@ -160,6 +162,9 @@ PROMPT;
         // The page renders the title as its H1; a leading heading in the body
         // would print it twice.
         $body = preg_replace('/\A\s*#{1,2}\s+[^\n]+\n+/', '', $body);
+        if (! $hasBefore) {
+            $body = preg_replace('/^\s*\[before\]\s*$/m', '', $body);
+        }
         if (! $hasBeforeAfter) {
             $body = preg_replace('/^\s*\[before-after\]\s*$/m', '', $body);
         }
