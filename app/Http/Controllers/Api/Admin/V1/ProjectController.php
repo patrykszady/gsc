@@ -110,19 +110,15 @@ class ProjectController extends Controller
     }
 
     /**
-     * gsc-only CRM fields (client_name, client_email, review_request_sent_at,
-     * yelp_portfolio_url) layered onto Project::toApiArray() here, in the
+     * gsc-only fields (yelp_portfolio_url, testimonial links, partner credits) layered onto Project::toApiArray() here, in the
      * controller, rather than in the model — that method's contract
      * deliberately matches jpeterson's (see its docblock), and these columns
      * don't exist on jpeterson at all. The central admin's ProjectForm shows
-     * them only behind the 'crm' ping capability, which only gsc declares.
+     * each behind its own ping capability, which only gsc declares.
      */
     protected function withCrmFields(array $data, Project $project): array
     {
         return $data + [
-            'client_name' => $project->client_name,
-            'client_email' => $project->client_email,
-            'review_request_sent_at' => optional($project->review_request_sent_at)->toIso8601String(),
             'yelp_portfolio_url' => $project->yelp_portfolio_url,
             // The other end of the testimonial<->project pivot the review
             // form already writes. Serialized here (not in toApiArray) for
@@ -275,12 +271,6 @@ class ProjectController extends Controller
             'collaborators.*.name' => ['required', 'string', 'max:255'],
             'collaborators.*.url' => ['nullable', 'string', 'max:500'],
             'collaborators.*.note' => ['nullable', 'string', 'max:500'],
-            // gsc-only CRM fields — never shown/set on jpeterson.
-            // review_request_sent_at is deliberately absent: it's set only by
-            // the automated post-completion review-request mailer, never by
-            // an admin API client.
-            'client_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'client_email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'yelp_portfolio_url' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }

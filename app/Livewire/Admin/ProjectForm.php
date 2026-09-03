@@ -43,10 +43,8 @@ class ProjectForm extends Component
     public ?string $completed_month = null;
 
     #[Validate('nullable|string|max:255')]
-    public string $client_name = '';
 
     #[Validate('nullable|email|max:255')]
-    public string $client_email = '';
 
     public bool $is_featured = false;
     public bool $is_published = true;
@@ -93,8 +91,6 @@ class ProjectForm extends Component
             $this->project_type = $project->project_type;
             $this->location = $project->location ?? '';
             $this->completed_month = $project->completed_at?->format('Y-m');
-            $this->client_name = $project->client_name ?? '';
-            $this->client_email = $project->client_email ?? '';
             $this->is_featured = $project->is_featured;
             $this->is_published = $project->is_published;
             
@@ -601,8 +597,6 @@ class ProjectForm extends Component
             'description' => $this->description ?: null,
             'project_type' => $this->project_type,
             'location' => $this->location ?: null,
-            'client_name' => $this->client_name ?: null,
-            'client_email' => $this->client_email ?: null,
             'completed_at' => $completedAt,
             'is_featured' => $this->is_featured,
             'is_published' => $this->is_published,

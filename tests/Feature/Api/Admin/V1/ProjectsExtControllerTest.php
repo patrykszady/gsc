@@ -55,56 +55,23 @@ class ProjectsExtControllerTest extends TestCase
         $this->assertSame('General', $data['tag_types']['general']);
     }
 
-    // -- CRM fields --------------------------------------------------------
+    // -- gsc-only fields ---------------------------------------------------
 
-    public function test_project_store_and_show_expose_crm_fields(): void
-    {
-        $project = $this->createProject([
-            'client_name' => 'Jane Homeowner',
-            'client_email' => 'jane@example.com',
-        ]);
-
-        $this->assertSame('Jane Homeowner', $project['client_name']);
-        $this->assertSame('jane@example.com', $project['client_email']);
-        $this->assertNull($project['review_request_sent_at']);
-        $this->assertNull($project['yelp_portfolio_url']);
-
-        $shown = $this->getJson("/api/admin/v1/projects/{$project['id']}", $this->adminApiHeaders())
-            ->assertOk()->json('data');
-
-        $this->assertSame('Jane Homeowner', $shown['client_name']);
-    }
-
-    public function test_project_update_can_change_crm_fields(): void
+    public function test_project_update_can_change_the_yelp_portfolio_url(): void
     {
         $project = $this->createProject();
+        $this->assertNull($project['yelp_portfolio_url']);
 
         $updated = $this->putJson("/api/admin/v1/projects/{$project['id']}", [
             'title' => $project['title'],
             'project_type' => $project['project_type'],
-            'client_name' => 'Updated Client',
-            'client_email' => 'updated@example.com',
             'yelp_portfolio_url' => 'https://biz.yelp.com/portfolio/gsc/1/edit',
         ], $this->adminApiHeaders())
             ->assertOk()
             ->json('data');
 
-        $this->assertSame('Updated Client', $updated['client_name']);
-        $this->assertSame('updated@example.com', $updated['client_email']);
         $this->assertSame('https://biz.yelp.com/portfolio/gsc/1/edit', $updated['yelp_portfolio_url']);
-    }
-
-    public function test_project_update_rejects_an_invalid_client_email(): void
-    {
-        $project = $this->createProject();
-
-        $this->putJson("/api/admin/v1/projects/{$project['id']}", [
-            'title' => $project['title'],
-            'project_type' => $project['project_type'],
-            'client_email' => 'not-an-email',
-        ], $this->adminApiHeaders())
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['client_email']);
+        $this->assertArrayNotHasKey('client_email', $updated);
     }
 
     // -- Tags: images_count + image tag sync --------------------------------

@@ -23,9 +23,6 @@ class Project extends Model
         'description',
         'project_type',
         'location',
-        'client_name',
-        'client_email',
-        'review_request_sent_at',
         'completed_at',
         'is_featured',
         'is_published',
@@ -35,7 +32,6 @@ class Project extends Model
 
     protected $casts = [
         'completed_at' => 'date',
-        'review_request_sent_at' => 'datetime',
         'is_featured' => 'boolean',
         'is_published' => 'boolean',
     ];
@@ -305,34 +301,10 @@ class Project extends Model
     }
 
     /**
-     * Lazy-create (and reuse) a short URL homeowners can use to leave a Google review.
-     * Uses ShortLink dedup so calling this repeatedly for the same destination URL
-     * always returns the same /s/{code}.
-     */
-    public function getReviewRequestUrl(): ?string
-    {
-        // The writereview deep link opens the review dialog directly, unlike
-        // the Maps place URL, which lands on the listing.
-        $placeId = config('services.google.business_profile.place_id');
-
-        $destination = config('services.google.review_request_url')
-            ?: ($placeId ? 'https://search.google.com/local/writereview?placeid='.$placeId : null)
-            ?: config('socials.google.url');
-
-        if (! $destination) {
-            return null;
-        }
-
-        $link = ShortLink::shorten($destination);
-
-        return url('/s/'.$link->code);
-    }
-
-    /**
      * Serialization for the /api/admin/v1 management API (called by the
      * ss-systems central admin). Field set matches jpeterson-design's
      * Project::toApiArray() — the two sites' APIs present one contract.
-     * gsc-only CRM columns (client_name, yelp_portfolio_url, …) are
+     * gsc-only extras (yelp_portfolio_url, testimonial links, partners) are
      * deliberately not exposed.
      */
     public function toApiArray(): array

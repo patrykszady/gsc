@@ -22,10 +22,10 @@ class PingController extends Controller
                     // Ops domains — the central admin shows these screens
                     // only for sites that declare them (jpeterson doesn't).
                     'landing-pages', 'social-media', 'analytics', 'js-errors', 'seo', 'platforms',
-                    // Legacy-parity extras, all gsc-only: project CRM fields,
+                    // Legacy-parity extras, all gsc-only:
                     // timelapses/before-afters, the areas coverage map,
                     // multi-platform review URLs, testimonial↔project links.
-                    'crm', 'timelapses', 'before-afters', 'image-tags', 'areas-map', 'review-platforms', 'testimonial-projects',
+                    'timelapses', 'before-afters', 'image-tags', 'areas-map', 'review-platforms', 'testimonial-projects',
                     // Partner credits on the project form (designer / architect / trade), used by the blog writer.
                     'collaborators',
                 ],

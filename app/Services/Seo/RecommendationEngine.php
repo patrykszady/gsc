@@ -799,16 +799,9 @@ class RecommendationEngine
             return [];
         }
 
-        $missingEmails = Schema::hasColumn('projects', 'client_email')
-            ? (int) \App\Support\Tenancy::table('projects')->where('is_published', 1)->whereNull('client_email')->count()
-            : null;
-
         return [[
             't' => 'Review velocity is slowing',
-            'd' => "{$recent} new reviews in the last 60 days vs {$prior} in the prior 60. Review volume is the #1 local-pack lever."
-                . ($missingEmails !== null && $missingEmails > 0
-                    ? " The automated review-request emails can cover more: {$missingEmails} published project(s) have no client email on file."
-                    : ' Automated review-request emails are running — consider a personal follow-up round.'),
+            'd' => "{$recent} new reviews in the last 60 days vs {$prior} in the prior 60. Review volume is the #1 local-pack lever — run a follow-up round with recent homeowners.",
             'p' => 'now',
         ]];
     }

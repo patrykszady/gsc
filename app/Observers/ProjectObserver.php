@@ -45,27 +45,6 @@ class ProjectObserver
         $this->regenerateSitemap();
         $this->submitToIndexNow($project);
 
-        // First time the project is marked completed → generate a review-request shortlink
-        // and log it so the team can include it in follow-up messages to the homeowner.
-        if ($project->wasChanged('completed_at')
-            && ! is_null($project->completed_at)
-            && is_null($project->getOriginal('completed_at'))) {
-            try {
-                $shortUrl = $project->getReviewRequestUrl();
-                if ($shortUrl) {
-                    Log::channel('single')->info('[ReviewRequest] Project completed; share this link with the homeowner.', [
-                        'project_id'   => $project->id,
-                        'project_slug' => $project->slug,
-                        'short_url'    => $shortUrl,
-                    ]);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('[ReviewRequest] Failed to generate shortlink: '.$e->getMessage(), [
-                    'project_id' => $project->id,
-                ]);
-            }
-        }
-        
         // Re-queue AI description if it was cleared
         if ($project->wasChanged('description') && empty($project->description) && config('services.google.gemini_api_key')) {
             GenerateAiContentJob::dispatch($project, overwrite: false, regenerateSitemap: true)
