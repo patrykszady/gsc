@@ -1,0 +1,12 @@
+# Forge → gs.construction → Deployments → Deploy Script. Paste exactly this.
+# Everything else lives in deploy/forge-deploy.sh in the repo (zero-downtime:
+# builds a new release beside the live one, switches the symlink at the end).
+cd /home/forge/gs.construction
+if [ ! -d repo/.git ]; then
+    git clone "$(git -C current remote get-url origin)" repo
+fi
+cd repo
+git fetch origin
+git reset --hard origin/main
+export FORGE_PHP FORGE_COMPOSER FORGE_PHP_FPM
+bash deploy/forge-deploy.sh
