@@ -54,6 +54,11 @@
     },
     "scripts": {
         "storage:pull": "bash scripts/pull-prod-storage.sh",
+        "prod:pull": [
+            "@storage:pull",
+            "@php artisan db:pull-production",
+            "@php artisan migrate --force --ansi"
+        ],
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
