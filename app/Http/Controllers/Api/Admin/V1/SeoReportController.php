@@ -835,10 +835,11 @@ class SeoReportController extends Controller
                 // prospect (directory, local press, association) links to a few.
                 $gapQuery = fn () => Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])
                     ->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30));
-                $out['link_gap'] = $gapQuery()
-                    ->orderByDesc('competitor_count')->orderByDesc('rank')->limit(20)->get()
-                    ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->all();
-                $out['link_gap_total'] = (int) $gapQuery()->count();
+                $freeHost = fn ($d) => (bool) preg_match('/\\.(web\\.app|blogspot\\.com|wordpress\\.com|weebly\\.com|wixsite\\.com|github\\.io|netlify\\.app|vercel\\.app|pages\\.dev)$/', (string) $d);
+                $rows = $gapQuery()->orderByDesc('competitor_count')->orderByDesc('rank')->limit(80)->get()->reject(fn ($p) => $freeHost($p->domain));
+                $out['link_gap'] = $rows->take(20)
+                    ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->values()->all();
+                $out['link_gap_total'] = $rows->count();
             }
 
             if (Schema::hasTable('seo_ai_mentions') && ($latestDay = Tenancy::table('seo_ai_mentions')->max('asked_on'))) {

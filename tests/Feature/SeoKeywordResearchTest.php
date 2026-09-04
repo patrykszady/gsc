@@ -41,12 +41,14 @@ class SeoKeywordResearchTest extends TestCase
             '*/ranked_keywords/live' => Http::response(['tasks' => [['cost' => 0.02, 'status_code' => 20000, 'result' => [['items' => [
                 ['keyword_data' => ['keyword' => 'luxury kitchen remodel kenilworth', 'keyword_info' => ['search_volume' => 90], 'keyword_properties' => ['keyword_difficulty' => 22]], 'ranked_serp_element' => ['serp_item' => ['rank_absolute' => 4, 'url' => 'https://prism.test/kenilworth']]],
                 ['keyword_data' => ['keyword' => 'kitchen cabinets', 'keyword_info' => ['search_volume' => 246000]], 'ranked_serp_element' => ['serp_item' => ['rank_absolute' => 40]]],
+                ['keyword_data' => ['keyword' => 'concrete slab contractors', 'keyword_info' => ['search_volume' => 14800]], 'ranked_serp_element' => ['serp_item' => ['rank_absolute' => 12]]],
                 ['keyword_data' => ['keyword' => 'pizza kenilworth', 'keyword_info' => ['search_volume' => 900]], 'ranked_serp_element' => ['serp_item' => ['rank_absolute' => 1]]],
             ]]]]]]),
             '*/search_volume/live' => Http::response(['tasks' => [['cost' => 0.08, 'status_code' => 20000, 'result' => [
                 ['keyword' => 'kenilworth home remodeling', 'search_volume' => 320, 'cpc' => 12.5, 'competition_index' => 40],
                 ['keyword' => 'kitchen remodeling kenilworth', 'search_volume' => 50, 'cpc' => null, 'competition_index' => 10],
                 ['keyword' => 'kitchen cabinets', 'search_volume' => 246000, 'cpc' => 2.0, 'competition_index' => 80],
+                ['keyword' => 'concrete slab contractors', 'search_volume' => 14800, 'cpc' => 3.0, 'competition_index' => 20],
             ]]]]),
         ]);
 
@@ -70,6 +72,7 @@ class SeoKeywordResearchTest extends TestCase
         $national = DB::table('seo_keywords')->where('keyword', 'kitchen cabinets')->first();
         $this->assertSame(246000, (int) $national->volume);
         $this->assertSame(0.0, (float) $national->opportunity, 'a national head term is stored but is no opportunity');
+        $this->assertSame(0.0, (float) DB::table('seo_keywords')->where('keyword', 'concrete slab contractors')->value('opportunity'), 'not our trade');
         $this->assertNotNull(DB::table('seo_keywords')->where('keyword', 'kitchen remodeling kenilworth')->first(), 'generated town×service phrases are in the universe');
     }
 }

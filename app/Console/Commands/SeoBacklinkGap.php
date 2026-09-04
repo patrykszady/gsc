@@ -53,6 +53,10 @@ class SeoBacklinkGap extends Command
                 if ($d === $ours || $d === $c || str_ends_with($d, '.' . $c)) {
                     continue;
                 }
+                // Free-host spam networks ("housesbathroom.web.app", blogspot farms) are not prospects.
+                if (preg_match('/\.(web\.app|blogspot\.com|wordpress\.com|weebly\.com|wixsite\.com|github\.io|netlify\.app|vercel\.app|pages\.dev)$/', $d)) {
+                    continue;
+                }
                 $p = $prospects[$d] ?? ['domain' => $d, 'rank' => 0, 'links_to' => [], 'platform' => $r['platform'], 'spam' => null];
                 $p['rank'] = max($p['rank'], $r['rank']);
                 $p['spam'] = max((int) $p['spam'], (int) ($r['spam_score'] ?? 0));

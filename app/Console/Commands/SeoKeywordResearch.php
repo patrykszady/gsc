@@ -277,7 +277,10 @@ class SeoKeywordResearch extends Command
         $local = $city !== null
             || in_array('gsc', $sources, true)
             || (preg_match('/\b(contractor|remodel|renovat|near me)/i', $keyword) && $volume <= 20000);
-        if (! $local) {
+        // …and it must be our trade: "concrete slab contractors" and "exterior
+        // painting contractor" carry the marker but are not work we sell.
+        $ourTrade = (bool) preg_match('/\b(kitchen|bath|basement|addition|mudroom|remodel|renovat|whole[- ]home|home improvement)/i', $keyword);
+        if (! $local || ! $ourTrade) {
             return 0.0;
         }
         $distance = $ourPos === null ? 1.0 : ($ourPos <= 3 ? 0.0 : min(1.0, ($ourPos - 3) / 17));
