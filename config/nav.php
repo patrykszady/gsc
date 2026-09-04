@@ -50,6 +50,6 @@ return [
          * real demand); a footer link from every page is the cheapest
          * internal-link push they can get. Revisit when rankings move.
          */
-        'priority_areas' => ['evanston', 'glenview', 'kenilworth'],
+        'priority_areas' => ['schaumburg', 'kenilworth', 'evanston', 'glenview'],
     ],
 ];

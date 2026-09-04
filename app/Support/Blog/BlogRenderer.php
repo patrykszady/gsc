@@ -92,6 +92,13 @@ class BlogRenderer
             }
         }
 
+        // Internal links: the first mention of each town we serve links to its
+        // area page — a post about a Mount Prospect kitchen that mentions
+        // Arlington Heights and Prospect Heights hands each of those pages a
+        // contextual, editorial link. Only inside paragraphs, never inside an
+        // existing link or heading, at most four towns per post.
+        $html = self::linkTowns($html);
+
         foreach ($placeholders as $key => $media) {
             $html = preg_replace('#<p>\s*' . preg_quote($key, '#') . '\s*</p>#', $media, $html, 1);
             $html = str_replace($key, $media, $html);
@@ -188,6 +195,43 @@ class BlogRenderer
         $fig = '<div class="w-full shrink-0 sm:w-[46%]">' . $figure . '</div>';
 
         return '<div class="my-6 sm:flex sm:items-start sm:gap-8">' . ($side === 'left' ? $fig . $text : $text . $fig) . '</div>';
+    }
+
+    /** Link the first in-paragraph mention of up to four served towns to their area pages. */
+    public static function linkTowns(string $html, int $max = 4): string
+    {
+        $towns = \Illuminate\Support\Facades\Cache::remember('blog:town-links', 3600, function () {
+            return \App\Models\AreaServed::query()->get(['city', 'slug'])
+                ->filter(fn ($a) => trim((string) $a->city) !== '')
+                ->sortByDesc(fn ($a) => mb_strlen($a->city))
+                ->map(fn ($a) => ['city' => $a->city, 'url' => route('areas.show', $a->slug)])
+                ->values()->all();
+        });
+        if ($towns === []) {
+            return $html;
+        }
+
+        $linked = 0;
+        foreach ($towns as $town) {
+            if ($linked >= $max) {
+                break;
+            }
+            $pattern = '/(<p\b[^>]*>)((?:(?!<\/p>).)*?)\b(' . preg_quote($town['city'], '/') . ')\b(?![^<]*<\/a>)/su';
+            $done = false;
+            $html = preg_replace_callback($pattern, function ($m) use ($town, &$done) {
+                if ($done || str_contains($m[2], '<a ')) {
+                    return $m[0];
+                }
+                $done = true;
+
+                return $m[1] . $m[2] . '<a href="' . e($town['url']) . '">' . $m[3] . '</a>';
+            }, $html, 1);
+            if ($done) {
+                $linked++;
+            }
+        }
+
+        return $html;
     }
 
     /** Position of an image inside the page-level lightbox array (all project images, sort order). */
