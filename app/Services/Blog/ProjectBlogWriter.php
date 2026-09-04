@@ -146,7 +146,9 @@ unless in the description; no emoji; no phrases "nestled in", "dream home", "loo
 Return ONLY the JSON. No code fences.
 PROMPT;
 
-        $raw = $this->ai->generateText($prompt, 3500, 0.7);
+        // Long enough for the top length band plus the JSON wrapper; a cap
+        // that truncates the JSON fails validation and writes nothing.
+        $raw = $this->ai->generateText($prompt, 6000, 0.7);
         if ($raw === null) {
             $this->lastError = $this->ai->getLastError() ?? 'AI call failed';
 

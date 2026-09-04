@@ -109,4 +109,28 @@ class BlogPostControllerTest extends TestCase
         $draft->update(['status' => BlogPost::STATUS_PUBLISHED, 'published_at' => now()->subMinute()]);
         $this->get('/blog/' . $draft->slug)->assertOk();
     }
+
+    public function test_generate_for_project_queues_the_writer_and_status_reports_progress(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $project = Project::create(['title' => 'Bath', 'project_type' => 'bathroom', 'location' => 'Palatine, IL', 'is_published' => true]);
+
+        $this->getJson("/api/admin/v1/projects/{$project->id}/blog-post", $this->adminApiHeaders())
+            ->assertOk()->assertJsonPath('data.post', null)->assertJsonPath('data.generating', false);
+
+        $this->postJson("/api/admin/v1/projects/{$project->id}/blog-post", [], $this->adminApiHeaders())
+            ->assertStatus(202)->assertJsonPath('data.generating', true);
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\GenerateProjectBlogPostJob::class, fn ($job) => $job->project->is($project) && $job->force);
+
+        // The project payload carries the same summary for the form's card.
+        $this->getJson("/api/admin/v1/projects/{$project->id}", $this->adminApiHeaders())
+            ->assertOk()->assertJsonPath('data.blog.generating', true);
+
+        // Once the job finishes, the flag is gone and the post is reported.
+        \Illuminate\Support\Facades\Cache::forget(\App\Jobs\GenerateProjectBlogPostJob::generatingKey($project));
+        $this->draft(['project_id' => $project->id, 'title' => 'A Palatine bath']);
+        $this->getJson("/api/admin/v1/projects/{$project->id}/blog-post", $this->adminApiHeaders())
+            ->assertOk()->assertJsonPath('data.post.title', 'A Palatine bath')->assertJsonPath('data.generating', false)
+            ->assertJsonPath('data.post.preview_url', fn ($u) => str_contains($u, 'signature='));
+    }
 }

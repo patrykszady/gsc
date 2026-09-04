@@ -119,6 +119,8 @@ class ProjectController extends Controller
             // the same reason as the CRM fields: jpeterson has no pivot.
             'testimonial_ids' => $project->testimonials->pluck('id')->values()->all(),
             'collaborators' => $project->collaborators->map(fn ($c) => $c->toApiArray())->values()->all(),
+            // The project's blog post (summary) + whether a draft is being written; the form's Blog card.
+            'blog' => BlogPostController::status($project),
             'testimonials' => $project->testimonials->map(fn ($t) => [
                 'id' => $t->id,
                 'reviewer_name' => $t->reviewer_name,

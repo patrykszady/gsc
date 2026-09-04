@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -28,6 +29,12 @@ class GenerateProjectBlogPostJob implements ShouldQueue
         $this->onQueue('ai-content');
     }
 
+    /** Cache key set while a draft is being written for the project (the admin polls it). */
+    public static function generatingKey(Project $project): string
+    {
+        return "blog:generating:{$project->id}";
+    }
+
     public function handle(ProjectBlogWriter $writer): void
     {
         $run = function () use ($writer): void {
@@ -36,7 +43,8 @@ class GenerateProjectBlogPostJob implements ShouldQueue
             }
             // Wait for the description the AI-content pipeline writes on
             // create — the post is far better with it. Retry once later.
-            if (empty($this->project->fresh()->description) && $this->attempts() < 2) {
+            // A forced run (the admin's button) writes with whatever exists.
+            if (! $this->force && empty($this->project->fresh()->description) && $this->attempts() < 2) {
                 $this->release(600);
 
                 return;
@@ -56,6 +64,15 @@ class GenerateProjectBlogPostJob implements ShouldQueue
         };
 
         $site = $this->project->site;
-        $site ? \App\Support\Tenancy::for($site, $run) : $run();
+        try {
+            $site ? \App\Support\Tenancy::for($site, $run) : $run();
+        } finally {
+            Cache::forget(static::generatingKey($this->project));
+        }
+    }
+
+    public function failed(?\Throwable $e = null): void
+    {
+        Cache::forget(static::generatingKey($this->project));
     }
 }

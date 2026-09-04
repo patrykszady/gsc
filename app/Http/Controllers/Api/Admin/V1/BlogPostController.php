@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateProjectBlogPostJob;
 use App\Models\BlogPost;
 use App\Models\Project;
 use App\Services\Blog\ProjectBlogWriter;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -74,19 +76,58 @@ class BlogPostController extends Controller
         return $this->itemResponse($fresh->fresh('project.images')->toApiArray());
     }
 
-    /** Draft a post for a project that has none. */
-    public function generateForProject(int $project, ProjectBlogWriter $writer): JsonResponse
+    /**
+     * Write (or rewrite) the project's draft in the background. The writer
+     * takes 30–60s — longer than the admin proxy allows a request — so this
+     * queues the job and answers at once; the admin polls status() until the
+     * flag clears. A rewrite always lands as a draft.
+     */
+    public function generateForProject(int $project): JsonResponse
     {
         $model = Project::findOrFail($project);
-        $post = $model->blogPost ?: $writer->write($model);
-        abort_if($post === null, 502, 'AI writer failed: ' . ($writer->getLastError() ?? 'unknown'));
 
-        return $this->itemResponse($post->fresh('project.images')->toApiArray(), 201);
+        Cache::put(GenerateProjectBlogPostJob::generatingKey($model), now()->toIso8601String(), now()->addMinutes(10));
+        GenerateProjectBlogPostJob::dispatch($model, force: true);
+
+        return response()->json(['data' => $this->status($model)], 202);
     }
 
-    public function destroy(int $post): Response
+    /** The project's post (summary) and whether a draft is being written right now. */
+    public function statusForProject(int $project): JsonResponse
     {
-        BlogPost::findOrFail($post)->delete();
+        return response()->json(['data' => $this->status(Project::findOrFail($project))]);
+    }
+
+    /** @return array{post: ?array, generating: bool} */
+    public static function status(Project $project): array
+    {
+        $post = $project->blogPost()->first();
+
+        return [
+            'post' => $post ? [
+                'id' => $post->id,
+                'title' => $post->title,
+                'status' => $post->status,
+                'writer' => $post->writer,
+                'url' => $post->url(),
+                'preview_url' => $post->previewUrl(),
+                'published_at' => $post->published_at?->toIso8601String(),
+                'updated_at' => $post->updated_at?->toIso8601String(),
+            ] : null,
+            'generating' => Cache::has(GenerateProjectBlogPostJob::generatingKey($project)),
+        ];
+    }
+
+    public function destroy(int $post, \Illuminate\Http\Request $request): Response
+    {
+        $model = BlogPost::findOrFail($post);
+        // The only code path that removes a post. Logged so a vanished draft
+        // can be traced to the click that removed it.
+        \Illuminate\Support\Facades\Log::channel('ai_content')->info('Blog post deleted via admin API', [
+            'post_id' => $model->id, 'project_id' => $model->project_id, 'title' => $model->title, 'status' => $model->status,
+            'ip' => $request->ip(), 'user_agent' => (string) $request->userAgent(),
+        ]);
+        $model->delete();
 
         return response()->noContent();
     }

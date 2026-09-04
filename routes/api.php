@@ -77,6 +77,7 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
 
     Route::post('blog-posts/{post}/regenerate', [\App\Http\Controllers\Api\Admin\V1\BlogPostController::class, 'regenerate']);
     Route::post('projects/{project}/blog-post', [\App\Http\Controllers\Api\Admin\V1\BlogPostController::class, 'generateForProject']);
+    Route::get('projects/{project}/blog-post', [\App\Http\Controllers\Api\Admin\V1\BlogPostController::class, 'statusForProject']);
     Route::apiResource('blog-posts', \App\Http\Controllers\Api\Admin\V1\BlogPostController::class)->except(['store']);
 
     Route::get('testimonials/filters', [TestimonialController::class, 'filters']);
