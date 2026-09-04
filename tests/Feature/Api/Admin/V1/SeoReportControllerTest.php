@@ -152,8 +152,8 @@ class SeoReportControllerTest extends TestCase
         $this->assertTrue($lf['available']);
         $k = $lf['keywords'][0];
         $this->assertSame('bathroom remodeling', $k['keyword']);
-        $this->assertSame(4.0, $k['arp']);
-        $this->assertSame(9.0, $k['prev']['arp']);
+        $this->assertEquals(4.0, $k['arp']);
+        $this->assertEquals(9.0, $k['prev']['arp']);
         $this->assertSame(1, $k['found']);
         $this->assertSame('Prospect Heights', $k['towns'][0]['city']);
         $this->assertSame(4, $k['towns'][0]['best_rank']);

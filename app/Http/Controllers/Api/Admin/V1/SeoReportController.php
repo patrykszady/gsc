@@ -674,6 +674,9 @@ class SeoReportController extends Controller
                 $detail = $raw['detail'] ?? [];
                 $grid = (array) ($detail['grid'] ?? []);
                 $points = count($grid) ?: (int) ($detail['points_total'] ?? 0);
+                if ($points === 0) {
+                    continue; // pre-campaign scans mirrored without per-point data (and the misspelled keyword)
+                }
                 $found = array_values(array_filter($grid, fn ($pt) => ($pt['rank'] ?? false) !== false));
 
                 $towns = [];
