@@ -34,7 +34,7 @@ sourced from the business's own site; ranges are typical Chicago-suburb project 
 - Home addition: $60,000–$350,000+
 
 ## Cities served (with completed work or reviews)
-Palatine, Inverness, Arlington Heights, Hoffman Estates, Chicago, Western Springs, Lake Zurich, Barrington, Long Grove, Prospect Heights, Mount Prospect, Glencoe, Vernon Hills, Wheeling, Rolling Meadows, Evanston, Buffalo Grove, Kildeer, Wilmette, Arlingotn Heights, Deer Park
+Mount Prospect
 
 ## Frequently asked questions
 ### Who is GS Construction?
@@ -47,7 +47,7 @@ GS Construction serves Chicago and the surrounding suburbs in Cook, Lake, and Du
 Kitchen remodeling, bathroom remodeling, whole-home renovations, basement finishing, and home additions. We handle design, demolition, plumbing, electrical, tile, cabinetry, and finishes end-to-end.
 
 ### Is GS Construction a general contractor?
-Yes. GS Construction is a fully licensed and insured general contractor serving Chicago&#039;s northwest suburbs. We self-perform most trades and manage permits, design, plumbing, electrical, framing, and finishes under one contract.
+Yes. GS Construction is a fully licensed and insured general contractor serving Chicago&#039;s northwest suburbs. Every trade works under our daily supervision — long-standing trade partners we schedule, pay, and stand behind — with permits, design, plumbing, electrical, framing, and finishes managed under one contract.
 
 ### Do you offer basement finishing in the Chicago suburbs?
 Yes — GS Construction finishes basements throughout Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove and surrounding suburbs. Includes egress windows, waterproofing, framing, electrical, plumbing for wet bars or full bathrooms, and full code-compliant build-outs.
@@ -68,7 +68,7 @@ A mid-range kitchen remodel in the Chicago suburbs typically runs $35,000–$80,
 A standard hall bathroom remodel runs $15,000–$30,000. Primary/master bathrooms with custom showers and tile typically cost $30,000–$60,000+. GS Construction provides itemized estimates with no hidden fees.
 
 ### How long does a kitchen remodel take?
-Most kitchen remodels take 6–10 weeks from demo to final walkthrough. Custom-cabinet projects can take 12+ weeks due to lead times. GS Construction provides a written schedule before work begins.
+Most kitchen remodels take 8–12 weeks from demo to final walkthrough. Custom-cabinet projects can take 14+ weeks due to lead times. GS Construction provides a written schedule before work begins.
 
 ### How long does a bathroom remodel take?
 A typical bathroom remodel takes 3–5 weeks. Larger primary bathrooms with custom tile and glass enclosures can take 6–8 weeks. Permits in some Chicago suburbs add 1–2 weeks.
@@ -98,26 +98,32 @@ Family-owned with the same crew on every job, no subcontractor handoffs, fixed-p
 GS Construction does not offer in-house financing but works with homeowners using HELOCs, home-equity loans, and third-party renovation loans. We can recommend trusted local lenders.
 
 ### Can you work with my designer or architect?
-Yes. We collaborate regularly with kitchen designers, interior designers, and architects, and can also handle full design-build in-house if you prefer a single point of contact.
+Yes. We collaborate regularly with kitchen designers, interior designers, and architects — and if you don&#039;t have one, we can connect you with our trusted architects, engineers, or designers. We can also handle full design-build in-house if you prefer a single point of contact.
 
 ### What warranty do you provide?
-GS Construction provides a 1-year workmanship warranty on all labor, on top of any manufacturer warranties on cabinets, countertops, and appliances. Warranty terms are spelled out in every contract.
+GS Construction provides a written workmanship warranty on all labor in every contract, on top of any manufacturer warranties on cabinets, countertops, and appliances. Our commitment never expires — call us years later and we still come out, evaluate the issue, and give you honest answers until it is resolved.
 
 ### Do you remove and dispose of old materials?
 Yes. Demolition, debris removal, and dumpster fees are included in every GS Construction estimate — no surprise charges on the final invoice.
 
+## Project stories
+Each is a first-person account of one completed project: what the homeowners asked for, the plan, the build, materials, partners, and the homeowners' own review.
+- A Modern Grand Room in Mount Prospect (September 2026): http://gs.construction/blog/a-modern-grand-room-in-mount-prospect
+  How we did it.
+
 ## Key pages
-- Services: https://gs.construction/services
-- Project portfolio: https://gs.construction/projects
-- Reviews: https://gs.construction/reviews
-- FAQ: https://gs.construction/faq
-- How to choose a remodeling contractor: https://gs.construction/how-to-choose-a-remodeling-contractor
-- Compare contractors: https://gs.construction/compare
-- Areas served: https://gs.construction/areas-served
-- Contact & free estimate: https://gs.construction/contact
+- Project stories (blog): http://127.0.0.1:8003/blog
+- Services: http://127.0.0.1:8003/services
+- Project portfolio: http://127.0.0.1:8003/projects
+- Reviews: http://127.0.0.1:8003/reviews
+- FAQ: http://127.0.0.1:8003/faq
+- How to choose a remodeling contractor: http://127.0.0.1:8003/how-to-choose-a-remodeling-contractor
+- Compare contractors: http://127.0.0.1:8003/compare
+- Areas served: http://127.0.0.1:8003/areas-served
+- Contact & free estimate: http://127.0.0.1:8003/contact
 
 ## Metadata
-- Site URL: https://gs.construction
-- Feed URL: https://gs.construction/ai-feed.json
-- Sitemap URL: https://gs.construction/ai-sitemap.xml
-- Generated At: 2026-07-10T20:35:26+00:00
+- Site URL: http://127.0.0.1:8003
+- Feed URL: http://gs.construction/ai-feed.json
+- Sitemap URL: http://gs.construction/ai-sitemap.xml
+- Generated At: 2026-09-04T02:58:50+00:00

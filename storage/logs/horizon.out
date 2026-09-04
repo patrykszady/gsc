@@ -1,0 +1,1450 @@
+
+   INFO  Horizon started successfully.  
+
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow ............ 186.69ms DONE
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow ............ 118.31ms DONE
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow ............ 154.82ms DONE
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow ............ 193.02ms DONE
+  2026-09-04 00:19:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:40 App\Jobs\SubmitUrlsToIndexNow ............ 152.76ms DONE
+  2026-09-04 00:19:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:39 App\Jobs\FetchCollaboratorSiteJob .............. RUNNING
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ..................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ................ 27.49ms DONE
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ..................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ................. 1.16ms DONE
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ..................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ................. 0.93ms DONE
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ..................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ................. 1.00ms DONE
+  2026-09-04 00:19:39 App\Jobs\YelpAutoLogin ......................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\YelpAutoLogin ..................... 1.85ms DONE
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ..................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\VerifyYelpCookies ................. 1.13ms DONE
+  2026-09-04 00:19:39 App\Jobs\YelpAutoLogin ......................... RUNNING
+  2026-09-04 00:19:39 App\Jobs\YelpAutoLogin ..................... 0.57ms DONE
+  2026-09-04 00:19:40 App\Jobs\SubmitUrlsToIndexNow ............ 130.33ms DONE
+  2026-09-04 00:19:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:40 App\Jobs\SubmitUrlsToIndexNow ............ 661.79ms DONE
+  2026-09-04 00:19:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:40 App\Jobs\FetchCollaboratorSiteJob .............. 1s DONE
+  2026-09-04 00:19:40 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:19:41 App\Jobs\SubmitUrlsToIndexNow ............ 478.74ms DONE
+  2026-09-04 00:19:41 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:42 App\Jobs\SubmitUrlsToIndexNow ............ 678.11ms DONE
+  2026-09-04 00:19:42 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:42 App\Jobs\SubmitUrlsToIndexNow ............ 713.72ms DONE
+  2026-09-04 00:19:42 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:43 App\Jobs\SubmitUrlsToIndexNow ............ 659.85ms DONE
+  2026-09-04 00:19:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:43 App\Jobs\SubmitUrlsToIndexNow ............ 454.07ms DONE
+  2026-09-04 00:19:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:44 App\Jobs\SubmitUrlsToIndexNow ............ 652.57ms DONE
+  2026-09-04 00:19:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:45 App\Jobs\SubmitUrlsToIndexNow ............ 469.47ms DONE
+  2026-09-04 00:19:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:44 App\Jobs\GenerateAiContentJob .................. 3s DONE
+  2026-09-04 00:19:44 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:19:45 App\Jobs\SubmitUrlsToIndexNow ............ 446.14ms DONE
+  2026-09-04 00:19:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:46 App\Jobs\SubmitUrlsToIndexNow ............ 667.93ms DONE
+  2026-09-04 00:19:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:46 App\Jobs\SubmitUrlsToIndexNow ............ 470.26ms DONE
+  2026-09-04 00:19:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:47 App\Jobs\SubmitUrlsToIndexNow ............ 663.99ms DONE
+  2026-09-04 00:19:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:47 App\Jobs\SubmitUrlsToIndexNow ............ 699.74ms DONE
+  2026-09-04 00:19:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:48 App\Jobs\SubmitUrlsToIndexNow ............ 509.92ms DONE
+  2026-09-04 00:19:48 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:49 App\Jobs\SubmitUrlsToIndexNow ............ 522.71ms DONE
+  2026-09-04 00:19:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:49 App\Jobs\SubmitUrlsToIndexNow ............ 517.00ms DONE
+  2026-09-04 00:19:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:50 App\Jobs\SubmitUrlsToIndexNow ............ 499.39ms DONE
+  2026-09-04 00:19:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:49 App\Jobs\GenerateAiContentJob .................. 5s DONE
+  2026-09-04 00:19:49 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:19:50 App\Jobs\SubmitUrlsToIndexNow ............ 521.42ms DONE
+  2026-09-04 00:19:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:51 App\Jobs\SubmitUrlsToIndexNow ............ 458.12ms DONE
+  2026-09-04 00:19:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:51 App\Jobs\SubmitUrlsToIndexNow ............ 669.09ms DONE
+  2026-09-04 00:19:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:52 App\Jobs\SubmitUrlsToIndexNow ............ 654.70ms DONE
+  2026-09-04 00:19:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:52 App\Jobs\SubmitUrlsToIndexNow ............ 667.96ms DONE
+  2026-09-04 00:19:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:53 App\Jobs\SubmitUrlsToIndexNow ............ 676.44ms DONE
+  2026-09-04 00:19:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:53 App\Jobs\GenerateAiContentJob .................. 4s DONE
+  2026-09-04 00:19:53 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:19:54 App\Jobs\SubmitUrlsToIndexNow ............ 497.14ms DONE
+  2026-09-04 00:19:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:54 App\Jobs\SubmitUrlsToIndexNow ............ 691.07ms DONE
+  2026-09-04 00:19:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:55 App\Jobs\SubmitUrlsToIndexNow ............ 460.76ms DONE
+  2026-09-04 00:19:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:55 App\Jobs\SubmitUrlsToIndexNow ............ 469.56ms DONE
+  2026-09-04 00:19:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:56 App\Jobs\SubmitUrlsToIndexNow ............ 537.38ms DONE
+  2026-09-04 00:19:56 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:57 App\Jobs\SubmitUrlsToIndexNow ............ 688.63ms DONE
+  2026-09-04 00:19:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:57 App\Jobs\SubmitUrlsToIndexNow ............ 681.28ms DONE
+  2026-09-04 00:19:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:57 App\Jobs\GenerateAiContentJob .................. 3s DONE
+  2026-09-04 00:19:57 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:19:58 App\Jobs\SubmitUrlsToIndexNow ............ 665.35ms DONE
+  2026-09-04 00:19:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:58 App\Jobs\SubmitUrlsToIndexNow ............ 477.52ms DONE
+  2026-09-04 00:19:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:19:59 App\Jobs\SubmitUrlsToIndexNow ............ 659.71ms DONE
+  2026-09-04 00:19:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:00 App\Jobs\SubmitUrlsToIndexNow ............ 706.38ms DONE
+  2026-09-04 00:20:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:00 App\Jobs\SubmitUrlsToIndexNow ............ 677.29ms DONE
+  2026-09-04 00:20:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:01 App\Jobs\SubmitUrlsToIndexNow ............ 421.87ms DONE
+  2026-09-04 00:20:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:01 App\Jobs\SubmitUrlsToIndexNow ............ 663.67ms DONE
+  2026-09-04 00:20:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:01 App\Jobs\GenerateAiContentJob .................. 3s DONE
+  2026-09-04 00:20:01 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:02 App\Jobs\SubmitUrlsToIndexNow ............ 656.02ms DONE
+  2026-09-04 00:20:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:03 App\Jobs\SubmitUrlsToIndexNow ............ 692.59ms DONE
+  2026-09-04 00:20:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:03 App\Jobs\SubmitUrlsToIndexNow ............ 479.58ms DONE
+  2026-09-04 00:20:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:04 App\Jobs\SubmitUrlsToIndexNow ............ 712.36ms DONE
+  2026-09-04 00:20:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:04 App\Jobs\SubmitUrlsToIndexNow ............ 460.00ms DONE
+  2026-09-04 00:20:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:05 App\Jobs\SubmitUrlsToIndexNow ............ 685.12ms DONE
+  2026-09-04 00:20:05 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\SubmitUrlsToIndexNow ............ 495.78ms DONE
+  2026-09-04 00:20:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\SubmitUrlsToIndexNow ............ 701.07ms DONE
+  2026-09-04 00:20:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. 4s DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 1.47ms DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 0.69ms DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 0.78ms DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 0.69ms DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 0.53ms DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 0.63ms DONE
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:06 App\Jobs\GenerateAiContentJob .............. 0.54ms DONE
+  2026-09-04 00:20:07 App\Jobs\SubmitUrlsToIndexNow ............ 455.19ms DONE
+  2026-09-04 00:20:07 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:07 App\Jobs\SubmitUrlsToIndexNow ............ 461.16ms DONE
+  2026-09-04 00:20:07 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:08 App\Jobs\SubmitUrlsToIndexNow ............ 710.71ms DONE
+  2026-09-04 00:20:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:08 App\Jobs\SubmitUrlsToIndexNow ............ 443.68ms DONE
+  2026-09-04 00:20:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:09 App\Jobs\SubmitUrlsToIndexNow ............ 506.71ms DONE
+  2026-09-04 00:20:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:09 App\Jobs\SubmitUrlsToIndexNow ............ 443.17ms DONE
+  2026-09-04 00:20:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:10 App\Jobs\SubmitUrlsToIndexNow ............ 679.34ms DONE
+  2026-09-04 00:20:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:11 App\Jobs\SubmitUrlsToIndexNow ............ 697.75ms DONE
+  2026-09-04 00:20:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:11 App\Jobs\SubmitUrlsToIndexNow ............ 701.51ms DONE
+  2026-09-04 00:20:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:12 App\Jobs\SubmitUrlsToIndexNow ............ 537.41ms DONE
+  2026-09-04 00:20:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:13 App\Jobs\SubmitUrlsToIndexNow ............ 492.71ms DONE
+  2026-09-04 00:20:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:13 App\Jobs\SubmitUrlsToIndexNow ............ 730.84ms DONE
+  2026-09-04 00:20:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:14 App\Jobs\SubmitUrlsToIndexNow ............ 721.80ms DONE
+  2026-09-04 00:20:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:15 App\Jobs\SubmitUrlsToIndexNow ............ 696.54ms DONE
+  2026-09-04 00:20:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:15 App\Jobs\SubmitUrlsToIndexNow ............ 498.99ms DONE
+  2026-09-04 00:20:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:16 App\Jobs\SubmitUrlsToIndexNow ............ 510.63ms DONE
+  2026-09-04 00:20:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:17 App\Jobs\SubmitUrlsToIndexNow ............ 938.63ms DONE
+  2026-09-04 00:20:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:17 App\Jobs\SubmitUrlsToIndexNow ............ 694.26ms DONE
+  2026-09-04 00:20:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:18 App\Jobs\SubmitUrlsToIndexNow ............ 699.06ms DONE
+  2026-09-04 00:20:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:19 App\Jobs\SubmitUrlsToIndexNow ............ 688.69ms DONE
+  2026-09-04 00:20:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:19 App\Jobs\SubmitUrlsToIndexNow ............ 517.47ms DONE
+  2026-09-04 00:20:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:20 App\Jobs\SubmitUrlsToIndexNow ............ 500.45ms DONE
+  2026-09-04 00:20:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:20 App\Jobs\SubmitUrlsToIndexNow ............ 492.20ms DONE
+  2026-09-04 00:20:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:21 App\Jobs\SubmitUrlsToIndexNow ............ 690.30ms DONE
+  2026-09-04 00:20:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:21 App\Jobs\SubmitUrlsToIndexNow ............ 540.70ms DONE
+  2026-09-04 00:20:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:22 App\Jobs\SubmitUrlsToIndexNow ............ 483.10ms DONE
+  2026-09-04 00:20:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:23 App\Jobs\SubmitUrlsToIndexNow ............ 687.08ms DONE
+  2026-09-04 00:20:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:23 App\Jobs\SubmitUrlsToIndexNow ............ 679.22ms DONE
+  2026-09-04 00:20:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:24 App\Jobs\SubmitUrlsToIndexNow ............ 461.36ms DONE
+  2026-09-04 00:20:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:24 App\Jobs\SubmitUrlsToIndexNow ............ 696.12ms DONE
+  2026-09-04 00:20:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:25 App\Jobs\SubmitUrlsToIndexNow ............ 692.94ms DONE
+  2026-09-04 00:20:25 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:26 App\Jobs\SubmitUrlsToIndexNow ............ 519.62ms DONE
+  2026-09-04 00:20:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:26 App\Jobs\SubmitUrlsToIndexNow ............ 506.42ms DONE
+  2026-09-04 00:20:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:27 App\Jobs\SubmitUrlsToIndexNow ............ 687.05ms DONE
+  2026-09-04 00:20:27 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:27 App\Jobs\SubmitUrlsToIndexNow ............ 485.23ms DONE
+  2026-09-04 00:20:27 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:28 App\Jobs\SubmitUrlsToIndexNow ............ 667.79ms DONE
+  2026-09-04 00:20:28 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:29 App\Jobs\SubmitUrlsToIndexNow ............ 521.73ms DONE
+  2026-09-04 00:20:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:29 App\Jobs\SubmitUrlsToIndexNow ............ 696.38ms DONE
+  2026-09-04 00:20:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:30 App\Jobs\SubmitUrlsToIndexNow ............ 458.85ms DONE
+  2026-09-04 00:20:30 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:30 App\Jobs\SubmitUrlsToIndexNow ............ 686.78ms DONE
+  2026-09-04 00:20:30 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:31 App\Jobs\SubmitUrlsToIndexNow ............ 676.11ms DONE
+  2026-09-04 00:20:31 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:32 App\Jobs\SubmitUrlsToIndexNow ............ 709.14ms DONE
+  2026-09-04 00:20:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:32 App\Jobs\SubmitUrlsToIndexNow ............ 646.65ms DONE
+  2026-09-04 00:20:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:33 App\Jobs\SubmitUrlsToIndexNow ............ 668.39ms DONE
+  2026-09-04 00:20:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:34 App\Jobs\SubmitUrlsToIndexNow ............ 544.84ms DONE
+  2026-09-04 00:20:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:34 App\Jobs\SubmitUrlsToIndexNow ............ 495.30ms DONE
+  2026-09-04 00:20:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:35 App\Jobs\SubmitUrlsToIndexNow ............ 472.64ms DONE
+  2026-09-04 00:20:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:35 App\Jobs\SubmitUrlsToIndexNow ............ 472.06ms DONE
+  2026-09-04 00:20:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:36 App\Jobs\SubmitUrlsToIndexNow ............ 462.93ms DONE
+  2026-09-04 00:20:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:36 App\Jobs\SubmitUrlsToIndexNow ............ 452.12ms DONE
+  2026-09-04 00:20:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:37 App\Jobs\SubmitUrlsToIndexNow ............ 475.24ms DONE
+  2026-09-04 00:20:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:37 App\Jobs\SubmitUrlsToIndexNow ............ 465.18ms DONE
+  2026-09-04 00:20:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:37 App\Jobs\SubmitUrlsToIndexNow ............ 523.65ms DONE
+  2026-09-04 00:20:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:38 App\Jobs\SubmitUrlsToIndexNow ............ 457.70ms DONE
+  2026-09-04 00:20:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:39 App\Jobs\SubmitUrlsToIndexNow ............ 682.92ms DONE
+  2026-09-04 00:20:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:39 App\Jobs\SubmitUrlsToIndexNow ............ 660.86ms DONE
+  2026-09-04 00:20:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:40 App\Jobs\SubmitUrlsToIndexNow ............ 471.77ms DONE
+  2026-09-04 00:20:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:40 App\Jobs\SubmitUrlsToIndexNow ............ 492.90ms DONE
+  2026-09-04 00:20:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:41 App\Jobs\SubmitUrlsToIndexNow ............ 649.25ms DONE
+  2026-09-04 00:20:41 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:41 App\Jobs\SubmitUrlsToIndexNow ............ 451.38ms DONE
+  2026-09-04 00:20:41 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:42 App\Jobs\SubmitUrlsToIndexNow ............ 668.31ms DONE
+  2026-09-04 00:20:42 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:43 App\Jobs\SubmitUrlsToIndexNow ............ 784.86ms DONE
+  2026-09-04 00:20:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:43 App\Jobs\SubmitUrlsToIndexNow ............ 621.32ms DONE
+  2026-09-04 00:20:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:44 App\Jobs\SubmitUrlsToIndexNow ............ 473.10ms DONE
+  2026-09-04 00:20:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:45 App\Jobs\SubmitUrlsToIndexNow ............ 672.09ms DONE
+  2026-09-04 00:20:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:45 App\Jobs\SubmitUrlsToIndexNow ............ 497.65ms DONE
+  2026-09-04 00:20:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:46 App\Jobs\SubmitUrlsToIndexNow ............ 455.81ms DONE
+  2026-09-04 00:20:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:45 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:46 App\Jobs\SubmitUrlsToIndexNow ............ 546.19ms DONE
+  2026-09-04 00:20:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:47 App\Jobs\SubmitUrlsToIndexNow ............ 439.51ms DONE
+  2026-09-04 00:20:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:47 App\Jobs\SubmitUrlsToIndexNow ............ 455.20ms DONE
+  2026-09-04 00:20:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:47 App\Jobs\SubmitUrlsToIndexNow ............ 444.33ms DONE
+  2026-09-04 00:20:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:48 App\Jobs\SubmitUrlsToIndexNow ............ 790.82ms DONE
+  2026-09-04 00:20:48 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:49 App\Jobs\SubmitUrlsToIndexNow ............ 440.54ms DONE
+  2026-09-04 00:20:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:48 App\Jobs\GenerateAiContentJob .................. 3s DONE
+  2026-09-04 00:20:48 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:49 App\Jobs\SubmitUrlsToIndexNow ............ 662.51ms DONE
+  2026-09-04 00:20:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:50 App\Jobs\SubmitUrlsToIndexNow ............ 474.39ms DONE
+  2026-09-04 00:20:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:50 App\Jobs\SubmitUrlsToIndexNow ............ 520.24ms DONE
+  2026-09-04 00:20:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:51 App\Jobs\SubmitUrlsToIndexNow ............ 482.45ms DONE
+  2026-09-04 00:20:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:51 App\Jobs\SubmitUrlsToIndexNow ............ 471.74ms DONE
+  2026-09-04 00:20:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:52 App\Jobs\SubmitUrlsToIndexNow ............ 679.14ms DONE
+  2026-09-04 00:20:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:53 App\Jobs\SubmitUrlsToIndexNow ............ 700.98ms DONE
+  2026-09-04 00:20:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:53 App\Jobs\SubmitUrlsToIndexNow ............ 680.74ms DONE
+  2026-09-04 00:20:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:53 App\Jobs\GenerateAiContentJob .................. 4s DONE
+  2026-09-04 00:20:53 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:54 App\Jobs\SubmitUrlsToIndexNow ............ 460.02ms DONE
+  2026-09-04 00:20:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:54 App\Jobs\SubmitUrlsToIndexNow ............ 501.79ms DONE
+  2026-09-04 00:20:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:55 App\Jobs\SubmitUrlsToIndexNow ............ 466.57ms DONE
+  2026-09-04 00:20:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:56 App\Jobs\SubmitUrlsToIndexNow ............ 792.16ms DONE
+  2026-09-04 00:20:56 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:57 App\Jobs\SubmitUrlsToIndexNow ............ 932.05ms DONE
+  2026-09-04 00:20:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:57 App\Jobs\SubmitUrlsToIndexNow ............ 444.20ms DONE
+  2026-09-04 00:20:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:57 App\Jobs\GenerateAiContentJob .................. 3s DONE
+  2026-09-04 00:20:57 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:20:58 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:20:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:59 App\Jobs\SubmitUrlsToIndexNow ............ 770.26ms DONE
+  2026-09-04 00:20:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:20:59 App\Jobs\SubmitUrlsToIndexNow ............ 474.07ms DONE
+  2026-09-04 00:20:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:00 App\Jobs\SubmitUrlsToIndexNow ............ 479.30ms DONE
+  2026-09-04 00:21:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:00 App\Jobs\SubmitUrlsToIndexNow ............ 496.73ms DONE
+  2026-09-04 00:21:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:01 App\Jobs\SubmitUrlsToIndexNow ............ 584.54ms DONE
+  2026-09-04 00:21:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:01 App\Jobs\SubmitUrlsToIndexNow ............ 501.94ms DONE
+  2026-09-04 00:21:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:01 App\Jobs\GenerateAiContentJob .................. 4s DONE
+  2026-09-04 00:21:01 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:21:02 App\Jobs\SubmitUrlsToIndexNow ............ 534.27ms DONE
+  2026-09-04 00:21:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:02 App\Jobs\SubmitUrlsToIndexNow ............ 457.35ms DONE
+  2026-09-04 00:21:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:03 App\Jobs\SubmitUrlsToIndexNow ............ 538.26ms DONE
+  2026-09-04 00:21:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:03 App\Jobs\SubmitUrlsToIndexNow ............ 470.68ms DONE
+  2026-09-04 00:21:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:04 App\Jobs\SubmitUrlsToIndexNow ............ 467.85ms DONE
+  2026-09-04 00:21:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:07 App\Jobs\GenerateAiContentJob .................. 5s DONE
+  2026-09-04 00:21:07 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:21:09 App\Jobs\SubmitUrlsToIndexNow .................. 5s DONE
+  2026-09-04 00:21:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:10 App\Jobs\SubmitUrlsToIndexNow ............ 435.74ms DONE
+  2026-09-04 00:21:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:10 App\Jobs\SubmitUrlsToIndexNow ............ 405.17ms DONE
+  2026-09-04 00:21:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:11 App\Jobs\SubmitUrlsToIndexNow ............ 743.95ms DONE
+  2026-09-04 00:21:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:11 App\Jobs\SubmitUrlsToIndexNow ............ 459.02ms DONE
+  2026-09-04 00:21:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:12 App\Jobs\SubmitUrlsToIndexNow ............ 506.13ms DONE
+  2026-09-04 00:21:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:12 App\Jobs\SubmitUrlsToIndexNow ............ 463.56ms DONE
+  2026-09-04 00:21:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:12 App\Jobs\GenerateAiContentJob .................. 5s DONE
+  2026-09-04 00:21:12 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:21:12 App\Jobs\GenerateAiContentJob .............. 1.02ms DONE
+  2026-09-04 00:21:13 App\Jobs\SubmitUrlsToIndexNow ............ 449.74ms DONE
+  2026-09-04 00:21:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:13 App\Jobs\SubmitUrlsToIndexNow ............ 519.80ms DONE
+  2026-09-04 00:21:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:14 App\Jobs\SubmitUrlsToIndexNow ............ 467.14ms DONE
+  2026-09-04 00:21:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:14 App\Jobs\SubmitUrlsToIndexNow ............ 750.07ms DONE
+  2026-09-04 00:21:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:15 App\Jobs\SubmitUrlsToIndexNow ............ 708.82ms DONE
+  2026-09-04 00:21:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:16 App\Jobs\SubmitUrlsToIndexNow ............ 568.55ms DONE
+  2026-09-04 00:21:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:16 App\Jobs\SubmitUrlsToIndexNow ............ 453.70ms DONE
+  2026-09-04 00:21:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:17 App\Jobs\SubmitUrlsToIndexNow ............ 519.74ms DONE
+  2026-09-04 00:21:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:17 App\Jobs\SubmitUrlsToIndexNow ............ 537.78ms DONE
+  2026-09-04 00:21:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:18 App\Jobs\SubmitUrlsToIndexNow ............ 535.96ms DONE
+  2026-09-04 00:21:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:18 App\Jobs\SubmitUrlsToIndexNow ............ 575.96ms DONE
+  2026-09-04 00:21:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:19 App\Jobs\SubmitUrlsToIndexNow ............ 472.74ms DONE
+  2026-09-04 00:21:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:19 App\Jobs\SubmitUrlsToIndexNow ............ 480.76ms DONE
+  2026-09-04 00:21:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:20 App\Jobs\SubmitUrlsToIndexNow ............ 461.06ms DONE
+  2026-09-04 00:21:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:21 App\Jobs\SubmitUrlsToIndexNow ............ 811.37ms DONE
+  2026-09-04 00:21:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:22 App\Jobs\SubmitUrlsToIndexNow ............ 881.56ms DONE
+  2026-09-04 00:21:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:22 App\Jobs\SubmitUrlsToIndexNow ............ 444.28ms DONE
+  2026-09-04 00:21:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:22 App\Jobs\SubmitUrlsToIndexNow ............ 454.67ms DONE
+  2026-09-04 00:21:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:23 App\Jobs\SubmitUrlsToIndexNow ............ 418.38ms DONE
+  2026-09-04 00:21:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:23 App\Jobs\SubmitUrlsToIndexNow ............ 489.64ms DONE
+  2026-09-04 00:21:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:24 App\Jobs\SubmitUrlsToIndexNow ............ 462.15ms DONE
+  2026-09-04 00:21:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:29 App\Jobs\SubmitUrlsToIndexNow .................. 5s DONE
+  2026-09-04 00:21:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:30 App\Jobs\SubmitUrlsToIndexNow ............ 493.85ms DONE
+  2026-09-04 00:21:30 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:30 App\Jobs\SubmitUrlsToIndexNow ............ 525.60ms DONE
+  2026-09-04 00:21:30 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:31 App\Jobs\SubmitUrlsToIndexNow ............ 671.87ms DONE
+  2026-09-04 00:21:31 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:32 App\Jobs\SubmitUrlsToIndexNow ............ 440.42ms DONE
+  2026-09-04 00:21:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:32 App\Jobs\SubmitUrlsToIndexNow ............ 473.11ms DONE
+  2026-09-04 00:21:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:33 App\Jobs\SubmitUrlsToIndexNow ............ 683.60ms DONE
+  2026-09-04 00:21:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:33 App\Jobs\SubmitUrlsToIndexNow ............ 481.22ms DONE
+  2026-09-04 00:21:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:34 App\Jobs\SubmitUrlsToIndexNow ............ 693.02ms DONE
+  2026-09-04 00:21:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:34 App\Jobs\SubmitUrlsToIndexNow ............ 527.15ms DONE
+  2026-09-04 00:21:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:35 App\Jobs\SubmitUrlsToIndexNow ............ 413.83ms DONE
+  2026-09-04 00:21:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:36 App\Jobs\SubmitUrlsToIndexNow ............ 710.45ms DONE
+  2026-09-04 00:21:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:36 App\Jobs\SubmitUrlsToIndexNow ............ 493.74ms DONE
+  2026-09-04 00:21:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:37 App\Jobs\SubmitUrlsToIndexNow ............ 502.95ms DONE
+  2026-09-04 00:21:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:37 App\Jobs\SubmitUrlsToIndexNow ............ 498.08ms DONE
+  2026-09-04 00:21:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:38 App\Jobs\SubmitUrlsToIndexNow ............ 492.91ms DONE
+  2026-09-04 00:21:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:38 App\Jobs\SubmitUrlsToIndexNow ............ 461.48ms DONE
+  2026-09-04 00:21:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:39 App\Jobs\SubmitUrlsToIndexNow ............ 518.72ms DONE
+  2026-09-04 00:21:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:39 App\Jobs\SubmitUrlsToIndexNow ............ 696.49ms DONE
+  2026-09-04 00:21:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:40 App\Jobs\SubmitUrlsToIndexNow ............ 487.53ms DONE
+  2026-09-04 00:21:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:40 App\Jobs\SubmitUrlsToIndexNow ............ 680.37ms DONE
+  2026-09-04 00:21:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:41 App\Jobs\SubmitUrlsToIndexNow ............ 459.39ms DONE
+  2026-09-04 00:21:41 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:41 App\Jobs\SubmitUrlsToIndexNow ............ 446.95ms DONE
+  2026-09-04 00:21:41 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:42 App\Jobs\SubmitUrlsToIndexNow ............ 714.41ms DONE
+  2026-09-04 00:21:42 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:43 App\Jobs\SubmitUrlsToIndexNow ............ 697.72ms DONE
+  2026-09-04 00:21:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:43 App\Jobs\SubmitUrlsToIndexNow ............ 682.73ms DONE
+  2026-09-04 00:21:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:44 App\Jobs\SubmitUrlsToIndexNow ............ 471.80ms DONE
+  2026-09-04 00:21:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:44 App\Jobs\SubmitUrlsToIndexNow ............ 451.85ms DONE
+  2026-09-04 00:21:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:45 App\Jobs\SubmitUrlsToIndexNow ............ 693.34ms DONE
+  2026-09-04 00:21:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:46 App\Jobs\SubmitUrlsToIndexNow ............ 460.24ms DONE
+  2026-09-04 00:21:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:46 App\Jobs\SubmitUrlsToIndexNow ............ 521.86ms DONE
+  2026-09-04 00:21:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:47 App\Jobs\SubmitUrlsToIndexNow ............ 482.27ms DONE
+  2026-09-04 00:21:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:47 App\Jobs\SubmitUrlsToIndexNow ............ 521.56ms DONE
+  2026-09-04 00:21:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:48 App\Jobs\SubmitUrlsToIndexNow ............ 495.09ms DONE
+  2026-09-04 00:21:48 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:48 App\Jobs\GenerateAiContentJob .................. RUNNING
+  2026-09-04 00:21:49 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:21:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:49 App\Jobs\SubmitUrlsToIndexNow ............ 167.10ms DONE
+  2026-09-04 00:21:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:50 App\Jobs\SubmitUrlsToIndexNow ............ 930.65ms DONE
+  2026-09-04 00:21:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:50 App\Jobs\SubmitUrlsToIndexNow ............ 517.26ms DONE
+  2026-09-04 00:21:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:51 App\Jobs\SubmitUrlsToIndexNow ............ 996.39ms DONE
+  2026-09-04 00:21:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:52 App\Jobs\SubmitUrlsToIndexNow ............ 541.45ms DONE
+  2026-09-04 00:21:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:53 App\Jobs\SubmitUrlsToIndexNow ............ 940.88ms DONE
+  2026-09-04 00:21:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:54 App\Jobs\SubmitUrlsToIndexNow ............ 700.43ms DONE
+  2026-09-04 00:21:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:55 App\Jobs\SubmitUrlsToIndexNow ............ 977.87ms DONE
+  2026-09-04 00:21:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:56 App\Jobs\SubmitUrlsToIndexNow ............ 966.69ms DONE
+  2026-09-04 00:21:56 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:55 App\Jobs\GenerateAiContentJob .................. 7s DONE
+  2026-09-04 00:21:57 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:21:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:57 App\Jobs\SubmitUrlsToIndexNow ............ 783.52ms DONE
+  2026-09-04 00:21:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:58 App\Jobs\SubmitUrlsToIndexNow ............ 785.10ms DONE
+  2026-09-04 00:21:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:59 App\Jobs\SubmitUrlsToIndexNow ............ 674.83ms DONE
+  2026-09-04 00:21:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:21:59 App\Jobs\SubmitUrlsToIndexNow ............ 484.84ms DONE
+  2026-09-04 00:21:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:00 App\Jobs\SubmitUrlsToIndexNow ............ 453.82ms DONE
+  2026-09-04 00:22:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:00 App\Jobs\SubmitUrlsToIndexNow ............ 695.36ms DONE
+  2026-09-04 00:22:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:01 App\Jobs\SubmitUrlsToIndexNow ............ 512.39ms DONE
+  2026-09-04 00:22:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:02 App\Jobs\SubmitUrlsToIndexNow ............ 692.53ms DONE
+  2026-09-04 00:22:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:02 App\Jobs\SubmitUrlsToIndexNow ............ 476.32ms DONE
+  2026-09-04 00:22:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:03 App\Jobs\SubmitUrlsToIndexNow ............ 673.04ms DONE
+  2026-09-04 00:22:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:04 App\Jobs\SubmitUrlsToIndexNow ............ 696.88ms DONE
+  2026-09-04 00:22:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:04 App\Jobs\SubmitUrlsToIndexNow ............ 590.47ms DONE
+  2026-09-04 00:22:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:05 App\Jobs\SubmitUrlsToIndexNow ............ 672.50ms DONE
+  2026-09-04 00:22:05 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:06 App\Jobs\SubmitUrlsToIndexNow ............ 690.97ms DONE
+  2026-09-04 00:22:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:06 App\Jobs\SubmitUrlsToIndexNow ............ 507.34ms DONE
+  2026-09-04 00:22:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:06 App\Jobs\SubmitUrlsToIndexNow ............ 452.36ms DONE
+  2026-09-04 00:22:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:07 App\Jobs\SubmitUrlsToIndexNow ............ 694.19ms DONE
+  2026-09-04 00:22:07 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:08 App\Jobs\SubmitUrlsToIndexNow ............ 550.90ms DONE
+  2026-09-04 00:22:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:08 App\Jobs\SubmitUrlsToIndexNow ............ 454.65ms DONE
+  2026-09-04 00:22:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:09 App\Jobs\SubmitUrlsToIndexNow ............ 460.65ms DONE
+  2026-09-04 00:22:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:09 App\Jobs\SubmitUrlsToIndexNow ............ 685.73ms DONE
+  2026-09-04 00:22:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:10 App\Jobs\SubmitUrlsToIndexNow ............ 668.36ms DONE
+  2026-09-04 00:22:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:11 App\Jobs\SubmitUrlsToIndexNow ............ 674.66ms DONE
+  2026-09-04 00:22:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:11 App\Jobs\SubmitUrlsToIndexNow ............ 441.32ms DONE
+  2026-09-04 00:22:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:12 App\Jobs\SubmitUrlsToIndexNow ............ 493.89ms DONE
+  2026-09-04 00:22:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:12 App\Jobs\SubmitUrlsToIndexNow ............ 695.98ms DONE
+  2026-09-04 00:22:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:13 App\Jobs\SubmitUrlsToIndexNow ............ 478.36ms DONE
+  2026-09-04 00:22:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:13 App\Jobs\SubmitUrlsToIndexNow ............ 696.33ms DONE
+  2026-09-04 00:22:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:14 App\Jobs\SubmitUrlsToIndexNow ............ 670.23ms DONE
+  2026-09-04 00:22:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:15 App\Jobs\SubmitUrlsToIndexNow ............ 463.33ms DONE
+  2026-09-04 00:22:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:15 App\Jobs\SubmitUrlsToIndexNow ............ 534.93ms DONE
+  2026-09-04 00:22:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:16 App\Jobs\SubmitUrlsToIndexNow ............ 668.03ms DONE
+  2026-09-04 00:22:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:16 App\Jobs\SubmitUrlsToIndexNow ............ 532.11ms DONE
+  2026-09-04 00:22:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:17 App\Jobs\SubmitUrlsToIndexNow ............ 439.89ms DONE
+  2026-09-04 00:22:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:17 App\Jobs\SubmitUrlsToIndexNow ............ 483.84ms DONE
+  2026-09-04 00:22:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:18 App\Jobs\SubmitUrlsToIndexNow ............ 474.19ms DONE
+  2026-09-04 00:22:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:18 App\Jobs\SubmitUrlsToIndexNow ............ 457.66ms DONE
+  2026-09-04 00:22:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:19 App\Jobs\SubmitUrlsToIndexNow ............ 527.83ms DONE
+  2026-09-04 00:22:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:19 App\Jobs\SubmitUrlsToIndexNow ............ 501.97ms DONE
+  2026-09-04 00:22:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:20 App\Jobs\SubmitUrlsToIndexNow ............ 512.54ms DONE
+  2026-09-04 00:22:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:20 App\Jobs\SubmitUrlsToIndexNow ............ 512.43ms DONE
+  2026-09-04 00:22:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:21 App\Jobs\SubmitUrlsToIndexNow ............ 489.01ms DONE
+  2026-09-04 00:22:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:21 App\Jobs\SubmitUrlsToIndexNow ............ 520.52ms DONE
+  2026-09-04 00:22:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:22 App\Jobs\SubmitUrlsToIndexNow ............ 545.91ms DONE
+  2026-09-04 00:22:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:22 App\Jobs\SubmitUrlsToIndexNow ............ 655.70ms DONE
+  2026-09-04 00:22:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:23 App\Jobs\SubmitUrlsToIndexNow ............ 506.96ms DONE
+  2026-09-04 00:22:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:24 App\Jobs\SubmitUrlsToIndexNow ............ 694.64ms DONE
+  2026-09-04 00:22:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:24 App\Jobs\SubmitUrlsToIndexNow ............ 458.84ms DONE
+  2026-09-04 00:22:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:25 App\Jobs\SubmitUrlsToIndexNow ............ 503.38ms DONE
+  2026-09-04 00:22:25 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:25 App\Jobs\SubmitUrlsToIndexNow ............ 480.35ms DONE
+  2026-09-04 00:22:25 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:26 App\Jobs\SubmitUrlsToIndexNow ............ 652.98ms DONE
+  2026-09-04 00:22:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:25 App\Jobs\GenerateProjectBlogPostJob ............ RUNNING
+  2026-09-04 00:22:26 App\Jobs\SubmitUrlsToIndexNow ............ 657.80ms DONE
+  2026-09-04 00:22:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:27 App\Jobs\SubmitUrlsToIndexNow ............ 662.42ms DONE
+  2026-09-04 00:22:27 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:28 App\Jobs\SubmitUrlsToIndexNow ............ 471.58ms DONE
+  2026-09-04 00:22:28 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:28 App\Jobs\SubmitUrlsToIndexNow ............ 500.98ms DONE
+  2026-09-04 00:22:28 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:29 App\Jobs\SubmitUrlsToIndexNow ............ 672.54ms DONE
+  2026-09-04 00:22:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:29 App\Jobs\SubmitUrlsToIndexNow ............ 700.06ms DONE
+  2026-09-04 00:22:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:30 App\Jobs\SubmitUrlsToIndexNow ............ 478.68ms DONE
+  2026-09-04 00:22:30 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:31 App\Jobs\SubmitUrlsToIndexNow ............ 672.87ms DONE
+  2026-09-04 00:22:31 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:31 App\Jobs\SubmitUrlsToIndexNow ............ 525.57ms DONE
+  2026-09-04 00:22:31 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:32 App\Jobs\SubmitUrlsToIndexNow ............ 693.96ms DONE
+  2026-09-04 00:22:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:32 App\Jobs\SubmitUrlsToIndexNow ............ 394.07ms DONE
+  2026-09-04 00:22:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:33 App\Jobs\SubmitUrlsToIndexNow ............ 462.94ms DONE
+  2026-09-04 00:22:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:33 App\Jobs\GenerateProjectBlogPostJob ............ 7s DONE
+  2026-09-04 00:22:33 App\Jobs\SubmitUrlsToIndexNow ............ 520.13ms DONE
+  2026-09-04 00:22:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:34 App\Jobs\SubmitUrlsToIndexNow ............ 536.87ms DONE
+  2026-09-04 00:22:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:34 App\Jobs\SubmitUrlsToIndexNow ............ 511.87ms DONE
+  2026-09-04 00:22:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:35 App\Jobs\SubmitUrlsToIndexNow ............ 546.28ms DONE
+  2026-09-04 00:22:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:35 App\Jobs\SubmitUrlsToIndexNow ............ 676.02ms DONE
+  2026-09-04 00:22:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:36 App\Jobs\SubmitUrlsToIndexNow ............ 452.42ms DONE
+  2026-09-04 00:22:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:36 App\Jobs\SubmitUrlsToIndexNow ............ 510.25ms DONE
+  2026-09-04 00:22:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:37 App\Jobs\SubmitUrlsToIndexNow ............ 684.78ms DONE
+  2026-09-04 00:22:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:38 App\Jobs\SubmitUrlsToIndexNow ............ 470.49ms DONE
+  2026-09-04 00:22:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:38 App\Jobs\SubmitUrlsToIndexNow ............ 473.60ms DONE
+  2026-09-04 00:22:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:39 App\Jobs\SubmitUrlsToIndexNow ............ 670.10ms DONE
+  2026-09-04 00:22:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:40 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:22:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:40 App\Jobs\SubmitUrlsToIndexNow ............ 455.36ms DONE
+  2026-09-04 00:22:40 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:41 App\Jobs\SubmitUrlsToIndexNow ............ 929.64ms DONE
+  2026-09-04 00:22:41 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:42 App\Jobs\SubmitUrlsToIndexNow ............ 476.20ms DONE
+  2026-09-04 00:22:42 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:43 App\Jobs\SubmitUrlsToIndexNow ............ 668.59ms DONE
+  2026-09-04 00:22:43 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:44 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:22:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:44 App\Jobs\SubmitUrlsToIndexNow ............ 481.81ms DONE
+  2026-09-04 00:22:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:45 App\Jobs\SubmitUrlsToIndexNow ............ 674.77ms DONE
+  2026-09-04 00:22:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:46 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:22:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:47 App\Jobs\SubmitUrlsToIndexNow ............ 974.12ms DONE
+  2026-09-04 00:22:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:48 App\Jobs\SubmitUrlsToIndexNow ............ 954.81ms DONE
+  2026-09-04 00:22:48 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:49 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:22:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:50 App\Jobs\SubmitUrlsToIndexNow ............ 686.13ms DONE
+  2026-09-04 00:22:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:51 App\Jobs\SubmitUrlsToIndexNow ............ 486.50ms DONE
+  2026-09-04 00:22:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:52 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:22:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:52 App\Jobs\SubmitUrlsToIndexNow ............ 501.15ms DONE
+  2026-09-04 00:22:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:53 App\Jobs\SubmitUrlsToIndexNow ............ 679.29ms DONE
+  2026-09-04 00:22:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:54 App\Jobs\SubmitUrlsToIndexNow .................. 1s DONE
+  2026-09-04 00:22:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:55 App\Jobs\SubmitUrlsToIndexNow ............ 784.06ms DONE
+  2026-09-04 00:22:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:55 App\Jobs\SubmitUrlsToIndexNow ............ 455.88ms DONE
+  2026-09-04 00:22:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:56 App\Jobs\SubmitUrlsToIndexNow ............ 952.53ms DONE
+  2026-09-04 00:22:56 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:57 App\Jobs\SubmitUrlsToIndexNow ............ 946.01ms DONE
+  2026-09-04 00:22:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:58 App\Jobs\SubmitUrlsToIndexNow ............ 835.14ms DONE
+  2026-09-04 00:22:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:59 App\Jobs\SubmitUrlsToIndexNow ............ 675.42ms DONE
+  2026-09-04 00:22:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:22:59 App\Jobs\SubmitUrlsToIndexNow ............ 678.90ms DONE
+  2026-09-04 00:22:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:00 App\Jobs\SubmitUrlsToIndexNow ............ 564.81ms DONE
+  2026-09-04 00:23:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:00 App\Jobs\SubmitUrlsToIndexNow ............ 686.67ms DONE
+  2026-09-04 00:23:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:01 App\Jobs\SubmitUrlsToIndexNow ............ 581.12ms DONE
+  2026-09-04 00:23:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:02 App\Jobs\SubmitUrlsToIndexNow ............ 514.64ms DONE
+  2026-09-04 00:23:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:02 App\Jobs\SubmitUrlsToIndexNow ............ 666.45ms DONE
+  2026-09-04 00:23:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:03 App\Jobs\SubmitUrlsToIndexNow ............ 511.75ms DONE
+  2026-09-04 00:23:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:03 App\Jobs\SubmitUrlsToIndexNow ............ 508.32ms DONE
+  2026-09-04 00:23:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:04 App\Jobs\SubmitUrlsToIndexNow ............ 501.55ms DONE
+  2026-09-04 00:23:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:04 App\Jobs\SubmitUrlsToIndexNow ............ 680.35ms DONE
+  2026-09-04 00:23:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:05 App\Jobs\SubmitUrlsToIndexNow ............ 470.64ms DONE
+  2026-09-04 00:23:05 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:05 App\Jobs\SubmitUrlsToIndexNow ............ 504.83ms DONE
+  2026-09-04 00:23:05 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:06 App\Jobs\SubmitUrlsToIndexNow ............ 461.19ms DONE
+  2026-09-04 00:23:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:06 App\Jobs\SubmitUrlsToIndexNow ............ 499.68ms DONE
+  2026-09-04 00:23:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:07 App\Jobs\SubmitUrlsToIndexNow ............ 463.99ms DONE
+  2026-09-04 00:23:07 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:08 App\Jobs\SubmitUrlsToIndexNow ............ 680.00ms DONE
+  2026-09-04 00:23:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:08 App\Jobs\SubmitUrlsToIndexNow ............ 533.24ms DONE
+  2026-09-04 00:23:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:09 App\Jobs\SubmitUrlsToIndexNow ............ 515.95ms DONE
+  2026-09-04 00:23:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:09 App\Jobs\SubmitUrlsToIndexNow ............ 687.33ms DONE
+  2026-09-04 00:23:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:10 App\Jobs\SubmitUrlsToIndexNow ............ 681.47ms DONE
+  2026-09-04 00:23:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:10 App\Jobs\SubmitUrlsToIndexNow ............ 477.51ms DONE
+  2026-09-04 00:23:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:11 App\Jobs\SubmitUrlsToIndexNow ............ 669.80ms DONE
+  2026-09-04 00:23:11 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:12 App\Jobs\SubmitUrlsToIndexNow ............ 660.54ms DONE
+  2026-09-04 00:23:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:12 App\Jobs\SubmitUrlsToIndexNow ............ 485.86ms DONE
+  2026-09-04 00:23:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:13 App\Jobs\SubmitUrlsToIndexNow ............ 517.96ms DONE
+  2026-09-04 00:23:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:13 App\Jobs\SubmitUrlsToIndexNow ............ 678.94ms DONE
+  2026-09-04 00:23:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:14 App\Jobs\SubmitUrlsToIndexNow ............ 716.88ms DONE
+  2026-09-04 00:23:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:15 App\Jobs\SubmitUrlsToIndexNow ............ 689.29ms DONE
+  2026-09-04 00:23:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:15 App\Jobs\SubmitUrlsToIndexNow ............ 428.29ms DONE
+  2026-09-04 00:23:15 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:16 App\Jobs\SubmitUrlsToIndexNow ............ 669.27ms DONE
+  2026-09-04 00:23:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:16 App\Jobs\SubmitUrlsToIndexNow ............ 463.68ms DONE
+  2026-09-04 00:23:16 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:17 App\Jobs\SubmitUrlsToIndexNow ............ 532.04ms DONE
+  2026-09-04 00:23:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:17 App\Jobs\SubmitUrlsToIndexNow ............ 494.75ms DONE
+  2026-09-04 00:23:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:18 App\Jobs\SubmitUrlsToIndexNow ............ 682.80ms DONE
+  2026-09-04 00:23:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:19 App\Jobs\SubmitUrlsToIndexNow ............ 724.50ms DONE
+  2026-09-04 00:23:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:20 App\Jobs\SubmitUrlsToIndexNow ............ 686.60ms DONE
+  2026-09-04 00:23:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:20 App\Jobs\SubmitUrlsToIndexNow ............ 509.06ms DONE
+  2026-09-04 00:23:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:21 App\Jobs\SubmitUrlsToIndexNow ............ 506.83ms DONE
+  2026-09-04 00:23:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:21 App\Jobs\SubmitUrlsToIndexNow ............ 691.65ms DONE
+  2026-09-04 00:23:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:22 App\Jobs\SubmitUrlsToIndexNow ............ 675.93ms DONE
+  2026-09-04 00:23:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:22 App\Jobs\SubmitUrlsToIndexNow ............ 446.29ms DONE
+  2026-09-04 00:23:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:23 App\Jobs\SubmitUrlsToIndexNow ............ 520.60ms DONE
+  2026-09-04 00:23:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:24 App\Jobs\SubmitUrlsToIndexNow ............ 700.10ms DONE
+  2026-09-04 00:23:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:24 App\Jobs\SubmitUrlsToIndexNow ............ 476.56ms DONE
+  2026-09-04 00:23:24 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:25 App\Jobs\SubmitUrlsToIndexNow ............ 740.46ms DONE
+  2026-09-04 00:23:25 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:26 App\Jobs\SubmitUrlsToIndexNow ............ 682.60ms DONE
+  2026-09-04 00:23:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:26 App\Jobs\SubmitUrlsToIndexNow ............ 540.75ms DONE
+  2026-09-04 00:23:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:27 App\Jobs\SubmitUrlsToIndexNow ............ 689.79ms DONE
+  2026-09-04 00:23:27 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:27 App\Jobs\SubmitUrlsToIndexNow ............ 531.45ms DONE
+  2026-09-04 00:23:27 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:28 App\Jobs\SubmitUrlsToIndexNow ............ 503.06ms DONE
+  2026-09-04 00:23:28 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:28 App\Jobs\SubmitUrlsToIndexNow ............ 560.32ms DONE
+  2026-09-04 00:23:28 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:29 App\Jobs\SubmitUrlsToIndexNow ............ 510.31ms DONE
+  2026-09-04 00:23:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:29 App\Jobs\SubmitUrlsToIndexNow ............ 498.53ms DONE
+  2026-09-04 00:23:29 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:30 App\Jobs\SubmitUrlsToIndexNow ............ 697.74ms DONE
+  2026-09-04 00:23:30 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:31 App\Jobs\SubmitUrlsToIndexNow ............ 444.82ms DONE
+  2026-09-04 00:23:31 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:31 App\Jobs\SubmitUrlsToIndexNow ............ 466.64ms DONE
+  2026-09-04 00:23:31 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:32 App\Jobs\SubmitUrlsToIndexNow ............ 517.96ms DONE
+  2026-09-04 00:23:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:32 App\Jobs\SubmitUrlsToIndexNow ............ 682.92ms DONE
+  2026-09-04 00:23:32 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:33 App\Jobs\SubmitUrlsToIndexNow ............ 675.72ms DONE
+  2026-09-04 00:23:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:33 App\Jobs\SubmitUrlsToIndexNow ............ 541.08ms DONE
+  2026-09-04 00:23:33 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:34 App\Jobs\SubmitUrlsToIndexNow ............ 469.99ms DONE
+  2026-09-04 00:23:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:35 App\Jobs\SubmitUrlsToIndexNow ............ 682.44ms DONE
+  2026-09-04 00:23:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:35 App\Jobs\SubmitUrlsToIndexNow ............ 479.10ms DONE
+  2026-09-04 00:23:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:36 App\Jobs\SubmitUrlsToIndexNow ............ 552.35ms DONE
+  2026-09-04 00:23:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:36 App\Jobs\SubmitUrlsToIndexNow ............ 516.65ms DONE
+  2026-09-04 00:23:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:37 App\Jobs\SubmitUrlsToIndexNow ............ 476.70ms DONE
+  2026-09-04 00:23:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:37 App\Jobs\SubmitUrlsToIndexNow ............ 557.66ms DONE
+  2026-09-04 00:23:37 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:38 App\Jobs\SubmitUrlsToIndexNow ............ 483.24ms DONE
+  2026-09-04 00:23:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:38 App\Jobs\SubmitUrlsToIndexNow ............ 666.23ms DONE
+  2026-09-04 00:23:38 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:39 App\Jobs\SubmitUrlsToIndexNow ............ 476.79ms DONE
+  2026-09-04 00:23:39 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:23:39 App\Jobs\SubmitUrlsToIndexNow ............ 673.20ms DONE
+  2026-09-04 00:23:39 App\Jobs\RunGscInspectBulkJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunGscInspectBulkJob ............ 169.72ms DONE
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 2.30ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.41ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.64ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.62ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.48ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.64ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.45ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.62ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.74ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.50ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.46ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.67ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.50ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.60ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.82ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.67ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.48ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.64ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.70ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.71ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.45ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.42ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.60ms FAIL
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:40 App\Jobs\RunSeoChannelSyncJob .............. 0.41ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.50ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.60ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.50ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.85ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.46ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.50ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.44ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.47ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.46ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.62ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.39ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.64ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.48ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.45ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.85ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.60ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:41 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.61ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.48ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.41ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.48ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.47ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.78ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.67ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.59ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.67ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.47ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.58ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.77ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.66ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.47ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.69ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.46ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.69ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.98ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.47ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.41ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.54ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.51ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.55ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.45ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.63ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.48ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.42ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.53ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.43ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.49ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.50ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.56ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.57ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.52ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 0.44ms FAIL
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob ............. 12.61ms DONE
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 1.94ms DONE
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .............. 8.68ms DONE
+  2026-09-04 00:23:42 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:23:45 App\Jobs\RunSeoChannelSyncJob .................. 3s DONE
+  2026-09-04 00:23:45 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:01 App\Jobs\RunSeoChannelSyncJob ................. 15s DONE
+  2026-09-04 00:24:01 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:03 App\Jobs\RunSeoChannelSyncJob .................. 2s DONE
+  2026-09-04 00:24:03 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:08 App\Jobs\RunSeoChannelSyncJob .................. 5s DONE
+  2026-09-04 00:24:08 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:08 App\Jobs\RunSeoChannelSyncJob .............. 2.92ms DONE
+  2026-09-04 00:24:08 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:19 App\Jobs\RunSeoChannelSyncJob ................. 10s DONE
+  2026-09-04 00:24:19 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:19 App\Jobs\RunSeoChannelSyncJob ............. 12.18ms FAIL
+  2026-09-04 00:24:19 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:20 App\Jobs\RunSeoChannelSyncJob .................. 1s DONE
+  2026-09-04 00:24:20 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob ............ 668.79ms DONE
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .............. 2.53ms DONE
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .............. 1.64ms DONE
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob ............ 383.20ms DONE
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob ............. 83.01ms DONE
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .............. 6.95ms DONE
+  2026-09-04 00:24:21 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:24:23 App\Jobs\RunSeoChannelSyncJob .................. 1s DONE
+  2026-09-04 00:24:23 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:25:07 App\Jobs\RunSeoChannelSyncJob ................. 43s DONE
+  2026-09-04 00:25:07 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:25:09 App\Jobs\RunSeoChannelSyncJob .................. 2s DONE
+  2026-09-04 00:25:09 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:25:33 App\Jobs\RunSeoChannelSyncJob ................. 24s DONE
+  2026-09-04 00:25:33 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:25:52 App\Jobs\RunSeoChannelSyncJob ................. 19s DONE
+  2026-09-04 00:25:52 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:12 App\Jobs\GenerateProjectBlogPostJob ............ RUNNING
+  2026-09-04 00:26:16 App\Jobs\RunSeoChannelSyncJob ................. 23s DONE
+  2026-09-04 00:26:16 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:16 App\Jobs\RunSeoChannelSyncJob ............. 98.11ms FAIL
+  2026-09-04 00:26:16 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob ............ 974.15ms DONE
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .............. 2.52ms DONE
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .............. 1.69ms DONE
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .............. 2.06ms DONE
+  2026-09-04 00:26:17 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:19 App\Jobs\RunSeoChannelSyncJob .................. 2s DONE
+  2026-09-04 00:26:19 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:20 App\Jobs\GenerateProjectBlogPostJob ............ 8s DONE
+  2026-09-04 00:26:30 App\Jobs\RunSeoChannelSyncJob ................. 10s DONE
+  2026-09-04 00:26:30 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:32 App\Jobs\RunSeoChannelSyncJob .................. 1s DONE
+  2026-09-04 00:26:32 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:37 App\Jobs\RunSeoChannelSyncJob .................. 5s DONE
+  2026-09-04 00:26:37 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:37 App\Jobs\RunSeoChannelSyncJob .............. 2.52ms DONE
+  2026-09-04 00:26:37 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:43 App\Jobs\RunSeoChannelSyncJob .................. 5s DONE
+  2026-09-04 00:26:43 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:43 App\Jobs\RunSeoChannelSyncJob .............. 7.17ms FAIL
+  2026-09-04 00:26:43 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:43 App\Jobs\RunSeoChannelSyncJob ............ 721.33ms DONE
+  2026-09-04 00:26:43 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob ............ 423.70ms DONE
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob ............. 78.13ms DONE
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob ............. 77.36ms DONE
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob ............. 79.51ms DONE
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob ............. 80.26ms DONE
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\RunSeoChannelSyncJob ............. 78.10ms DONE
+  2026-09-04 00:26:44 App\Jobs\SyncLeadFilterToPeer .................. RUNNING
+  2026-09-04 00:26:44 App\Jobs\SyncLeadFilterToPeer ............ 102.52ms DONE
+  2026-09-04 00:26:44 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:45 App\Jobs\SubmitUrlsToIndexNow ............ 504.60ms DONE
+  2026-09-04 00:26:45 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:46 App\Jobs\SubmitUrlsToIndexNow ............ 707.13ms DONE
+  2026-09-04 00:26:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:46 App\Jobs\SubmitUrlsToIndexNow ............ 466.55ms DONE
+  2026-09-04 00:26:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:46 App\Jobs\SubmitUrlsToIndexNow ............ 479.42ms DONE
+  2026-09-04 00:26:46 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:47 App\Jobs\SubmitUrlsToIndexNow ............ 686.42ms DONE
+  2026-09-04 00:26:47 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:48 App\Jobs\SubmitUrlsToIndexNow ............ 446.35ms DONE
+  2026-09-04 00:26:48 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:48 App\Jobs\SubmitUrlsToIndexNow ............ 450.79ms DONE
+  2026-09-04 00:26:48 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:49 App\Jobs\SubmitUrlsToIndexNow ............ 684.76ms DONE
+  2026-09-04 00:26:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:49 App\Jobs\SubmitUrlsToIndexNow ............ 482.11ms DONE
+  2026-09-04 00:26:49 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:50 App\Jobs\SubmitUrlsToIndexNow ............ 709.00ms DONE
+  2026-09-04 00:26:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:50 App\Jobs\SubmitUrlsToIndexNow ............ 499.00ms DONE
+  2026-09-04 00:26:50 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:51 App\Jobs\SubmitUrlsToIndexNow ............ 652.14ms DONE
+  2026-09-04 00:26:51 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:52 App\Jobs\SubmitUrlsToIndexNow ............ 538.18ms DONE
+  2026-09-04 00:26:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:52 App\Jobs\SubmitUrlsToIndexNow ............ 523.81ms DONE
+  2026-09-04 00:26:52 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:53 App\Jobs\SubmitUrlsToIndexNow ............ 704.75ms DONE
+  2026-09-04 00:26:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:53 App\Jobs\SubmitUrlsToIndexNow ............ 466.97ms DONE
+  2026-09-04 00:26:53 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:54 App\Jobs\SubmitUrlsToIndexNow ............ 501.21ms DONE
+  2026-09-04 00:26:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:54 App\Jobs\SubmitUrlsToIndexNow ............ 505.85ms DONE
+  2026-09-04 00:26:54 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:55 App\Jobs\SubmitUrlsToIndexNow ............ 451.37ms DONE
+  2026-09-04 00:26:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:55 App\Jobs\SubmitUrlsToIndexNow ............ 663.85ms DONE
+  2026-09-04 00:26:55 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:56 App\Jobs\SubmitUrlsToIndexNow ............ 525.91ms DONE
+  2026-09-04 00:26:56 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:56 App\Jobs\SubmitUrlsToIndexNow ............ 490.95ms DONE
+  2026-09-04 00:26:56 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:57 App\Jobs\SubmitUrlsToIndexNow ............ 398.89ms DONE
+  2026-09-04 00:26:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:57 App\Jobs\SubmitUrlsToIndexNow ............ 515.50ms DONE
+  2026-09-04 00:26:57 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:58 App\Jobs\SubmitUrlsToIndexNow ............ 724.86ms DONE
+  2026-09-04 00:26:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:58 App\Jobs\SubmitUrlsToIndexNow ............ 135.26ms DONE
+  2026-09-04 00:26:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:58 App\Jobs\SubmitUrlsToIndexNow ............ 175.97ms DONE
+  2026-09-04 00:26:58 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:59 App\Jobs\SubmitUrlsToIndexNow ............ 121.75ms DONE
+  2026-09-04 00:26:59 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:26:59 App\Jobs\SubmitUrlsToIndexNow ............ 187.16ms DONE
+  2026-09-04 00:26:59 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:00 App\Jobs\RegenSitemapsAndNotifyJob ............. 1s DONE
+  2026-09-04 00:27:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:00 App\Jobs\SubmitUrlsToIndexNow ............ 679.81ms DONE
+  2026-09-04 00:27:00 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:01 App\Jobs\SubmitUrlsToIndexNow ............ 714.41ms DONE
+  2026-09-04 00:27:01 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:02 App\Jobs\SubmitUrlsToIndexNow ............ 489.23ms DONE
+  2026-09-04 00:27:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:02 App\Jobs\SubmitUrlsToIndexNow ............ 569.15ms DONE
+  2026-09-04 00:27:02 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:03 App\Jobs\SubmitUrlsToIndexNow ............ 463.07ms DONE
+  2026-09-04 00:27:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:03 App\Jobs\SubmitUrlsToIndexNow ............ 738.36ms DONE
+  2026-09-04 00:27:03 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:04 App\Jobs\SubmitUrlsToIndexNow ............ 665.64ms DONE
+  2026-09-04 00:27:04 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:05 App\Jobs\SubmitUrlsToIndexNow ............ 690.70ms DONE
+  2026-09-04 00:27:05 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:05 App\Jobs\SubmitUrlsToIndexNow ............ 340.46ms DONE
+  2026-09-04 00:27:05 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:06 App\Jobs\SubmitUrlsToIndexNow ............ 680.34ms DONE
+  2026-09-04 00:27:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:06 App\Jobs\SubmitUrlsToIndexNow ............ 460.59ms DONE
+  2026-09-04 00:27:06 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:07 App\Jobs\SubmitUrlsToIndexNow ............ 412.10ms DONE
+  2026-09-04 00:27:07 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:07 App\Jobs\SubmitUrlsToIndexNow ............ 735.54ms DONE
+  2026-09-04 00:27:07 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:08 App\Jobs\SubmitUrlsToIndexNow ............ 450.35ms DONE
+  2026-09-04 00:27:08 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:09 App\Jobs\SubmitUrlsToIndexNow ............ 645.04ms DONE
+  2026-09-04 00:27:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:09 App\Jobs\SubmitUrlsToIndexNow ............ 526.21ms DONE
+  2026-09-04 00:27:09 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:10 App\Jobs\SubmitUrlsToIndexNow ............ 476.00ms DONE
+  2026-09-04 00:27:10 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:10 App\Jobs\SubmitUrlsToIndexNow ............ 553.31ms DONE
+  2026-09-04 00:27:10 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:12 App\Jobs\RegenSitemapsAndNotifyJob ............. 1s DONE
+  2026-09-04 00:27:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:12 App\Jobs\SubmitUrlsToIndexNow ............ 511.76ms DONE
+  2026-09-04 00:27:12 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:13 App\Jobs\SubmitUrlsToIndexNow ............ 469.18ms DONE
+  2026-09-04 00:27:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:13 App\Jobs\SubmitUrlsToIndexNow ............ 469.33ms DONE
+  2026-09-04 00:27:13 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:14 App\Jobs\SubmitUrlsToIndexNow ............ 532.53ms DONE
+  2026-09-04 00:27:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:14 App\Jobs\SubmitUrlsToIndexNow ............ 403.63ms DONE
+  2026-09-04 00:27:14 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:15 App\Jobs\SubmitUrlsToIndexNow ............ 673.67ms DONE
+  2026-09-04 00:27:15 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:17 App\Jobs\RegenSitemapsAndNotifyJob ............. 2s DONE
+  2026-09-04 00:27:17 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:18 App\Jobs\SubmitUrlsToIndexNow ............ 526.04ms DONE
+  2026-09-04 00:27:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:18 App\Jobs\SubmitUrlsToIndexNow ............ 679.88ms DONE
+  2026-09-04 00:27:18 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:19 App\Jobs\SubmitUrlsToIndexNow ............ 429.02ms DONE
+  2026-09-04 00:27:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:19 App\Jobs\SubmitUrlsToIndexNow ............ 485.21ms DONE
+  2026-09-04 00:27:19 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:20 App\Jobs\SubmitUrlsToIndexNow ............ 670.10ms DONE
+  2026-09-04 00:27:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:20 App\Jobs\SubmitUrlsToIndexNow ............ 445.00ms DONE
+  2026-09-04 00:27:20 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:21 App\Jobs\SubmitUrlsToIndexNow ............ 507.83ms DONE
+  2026-09-04 00:27:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:21 App\Jobs\SubmitUrlsToIndexNow ............ 685.30ms DONE
+  2026-09-04 00:27:21 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:22 App\Jobs\SubmitUrlsToIndexNow ............ 506.76ms DONE
+  2026-09-04 00:27:22 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:23 App\Jobs\SubmitUrlsToIndexNow ............ 665.91ms DONE
+  2026-09-04 00:27:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:23 App\Jobs\SubmitUrlsToIndexNow ............ 470.02ms DONE
+  2026-09-04 00:27:23 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:24 App\Jobs\SubmitUrlsToIndexNow ............ 747.27ms DONE
+  2026-09-04 00:27:24 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:26 App\Jobs\RegenSitemapsAndNotifyJob ............. 2s DONE
+  2026-09-04 00:27:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:26 App\Jobs\SubmitUrlsToIndexNow ............ 151.17ms DONE
+  2026-09-04 00:27:26 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:26 App\Jobs\SubmitUrlsToIndexNow ............ 123.79ms DONE
+  2026-09-04 00:27:26 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:28 App\Jobs\RegenSitemapsAndNotifyJob ............. 1s DONE
+  2026-09-04 00:27:28 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:33 App\Jobs\SubmitUrlsToIndexNow .................. 5s DONE
+  2026-09-04 00:27:33 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:34 App\Jobs\RegenSitemapsAndNotifyJob ............. 1s DONE
+  2026-09-04 00:27:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:34 App\Jobs\SubmitUrlsToIndexNow ............ 149.97ms DONE
+  2026-09-04 00:27:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:34 App\Jobs\SubmitUrlsToIndexNow ............ 129.11ms DONE
+  2026-09-04 00:27:34 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow ............ 160.71ms DONE
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow ............ 137.04ms DONE
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow ............ 115.53ms DONE
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:35 App\Jobs\SubmitUrlsToIndexNow ............ 146.90ms DONE
+  2026-09-04 00:27:35 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:36 App\Jobs\RegenSitemapsAndNotifyJob ............. 1s DONE
+  2026-09-04 00:27:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:36 App\Jobs\SubmitUrlsToIndexNow ............ 153.60ms DONE
+  2026-09-04 00:27:36 App\Jobs\SubmitUrlsToIndexNow .................. RUNNING
+  2026-09-04 00:27:36 App\Jobs\SubmitUrlsToIndexNow ............ 108.17ms DONE
+  2026-09-04 00:27:36 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:37 App\Jobs\RegenSitemapsAndNotifyJob ............. 1s DONE
+  2026-09-04 00:27:37 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:39 App\Jobs\RegenSitemapsAndNotifyJob ............. 2s DONE
+  2026-09-04 00:27:39 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:41 App\Jobs\RegenSitemapsAndNotifyJob ............. 2s DONE
+  2026-09-04 00:27:41 App\Jobs\RegenSitemapsAndNotifyJob ............. RUNNING
+  2026-09-04 00:27:42 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:27:43 App\Jobs\RegenSitemapsAndNotifyJob ............. 2s DONE
+  2026-09-04 00:27:45 App\Jobs\PublishToSocialMediaJob ............... 2s DONE
+  2026-09-04 00:27:45 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:27:48 App\Jobs\PublishToSocialMediaJob ............... 3s DONE
+  2026-09-04 00:27:48 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:27:51 App\Jobs\PublishToSocialMediaJob ............... 2s DONE
+  2026-09-04 00:27:51 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:27:53 App\Jobs\PublishToSocialMediaJob ............... 1s DONE
+  2026-09-04 00:27:53 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:27:55 App\Jobs\PublishToSocialMediaJob ............... 1s FAIL
+  2026-09-04 00:27:55 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:27:57 App\Jobs\PublishToSocialMediaJob ............... 1s DONE
+  2026-09-04 00:27:57 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:28:00 App\Jobs\PublishToSocialMediaJob ............... 3s DONE
+  2026-09-04 00:28:00 testimonials:sync-yelp-reviews ................. RUNNING
+  2026-09-04 00:29:01 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:29:04 App\Jobs\PublishToSocialMediaJob ............... 2s FAIL
+  2026-09-04 00:34:04 App\Jobs\PublishToSocialMediaJob ............... RUNNING
+  2026-09-04 00:34:06 App\Jobs\PublishToSocialMediaJob ............... 1s FAIL
+  2026-09-04 01:29:41 testimonials:sync-yelp-reviews ................. RUNNING
+  2026-09-04 02:31:22 testimonials:sync-yelp-reviews ................. RUNNING
+  2026-09-04 03:17:46 App\Jobs\GenerateProjectBlogPostJob ............ RUNNING
+  2026-09-04 03:17:52 App\Jobs\GenerateProjectBlogPostJob ............ 6s DONE

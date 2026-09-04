@@ -21,7 +21,7 @@ GS Construction is a licensed, bonded and insured remodeling contractor based in
 - Home addition: $60,000–$350,000+
 
 ## Service area
-Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority cities: Palatine, Inverness, Arlington Heights, Hoffman Estates, Chicago, Western Springs, Lake Zurich, Barrington, Long Grove, Prospect Heights, Mount Prospect, Glencoe, Vernon Hills, Wheeling, Rolling Meadows, Evanston, Buffalo Grove, Kildeer.
+Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority cities: Mount Prospect.
 
 ## Why GS Construction
 - Family-owned; one dedicated project lead per job (no rotating crews)
@@ -31,9 +31,9 @@ Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority citi
 - English & Polish speaking
 
 ## By the numbers
-- 71 customer reviews across Google, Houzz, Yelp and Angi
-- 400 completed remodeling projects
-- 60 Chicago-area cities and villages served
+- 0 customer reviews across Google, Houzz, Yelp and Angi
+- 0 completed remodeling projects
+- 0 Chicago-area cities and villages served
 - Operating since 2015; 40+ years combined experience
 
 ## Cost guides (researched price ranges by project type)
@@ -54,7 +54,10 @@ Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority citi
 - [Wilmette permits](http://127.0.0.1:8003/permits/wilmette)
 - [Winnetka permits](http://127.0.0.1:8003/permits/winnetka)
 
+## Project stories (one real project each: the plan, the build, the before and after, the homeowners' review)
+- [A Modern Grand Room in Mount Prospect](http://gs.construction/blog/a-modern-grand-room-in-mount-prospect) — Kitchen Remodel in Mount Prospect, IL
 ## Key pages
+- [Project stories (blog)](http://127.0.0.1:8003/blog)
 - [Services](http://127.0.0.1:8003/services)
 - [Project portfolio](http://127.0.0.1:8003/projects)
 - [Reviews](http://127.0.0.1:8003/reviews)
@@ -72,8 +75,8 @@ Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority citi
 - Google Maps: https://www.google.com/maps/place/?q=place_id:ChIJ1VmJQHm5D4gRZDQlQNkLz2A
 
 ## Metadata
-- Generated: 2026-08-22
+- Generated: 2026-09-04
 - Full version: http://127.0.0.1:8003/llms-full.txt
-- Feed URL: http://127.0.0.1:8003/ai-feed.json
-- Sitemap URL: http://127.0.0.1:8003/ai-sitemap.xml
-- Generated At: 2026-08-22T04:15:39+00:00
+- Feed URL: http://gs.construction/ai-feed.json
+- Sitemap URL: http://gs.construction/ai-sitemap.xml
+- Generated At: 2026-09-04T02:58:50+00:00
