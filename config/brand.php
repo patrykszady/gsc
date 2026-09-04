@@ -43,4 +43,20 @@ return [
     // that travels furthest.
     'ai_description' => 'GS Construction & Remodeling: Kitchen, bathroom, and home remodeling services in Chicago suburbs. Family-owned, 40+ years experience, :reviews five-star reviews. Serving :cities cities in Chicagoland. (224) 735-4200.',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Business profiles & citations
+    |--------------------------------------------------------------------------
+    | Directory and review profiles we maintain. The backlinks intelligence
+    | checks each one still links to the site (DataForSEO's crawler never
+    | sees Yelp/BBB/Houzz pages, so these are verified by us directly).
+    */
+    'profiles' => [
+        'BBB' => 'https://www.bbb.org/us/il/prospect-heights/profile/general-contractor/gs-construction-remodeling-inc-0654-88701450',
+        'Houzz' => 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575',
+        'Yelp' => 'https://www.yelp.com/biz/gs-construction-prospect-heights',
+        'BuildZoom' => 'https://www.buildzoom.com/contractor/gs-construction-remodeling-prospect-heights-il',
+        'Nextdoor' => 'https://nextdoor.com/pages/gs-construction-remodeling-prospect-heights-il/',
+        'MapQuest' => 'https://www.mapquest.com/us/illinois/gs-construction-743191322',
+    ],
 ];

@@ -3,6 +3,7 @@
 namespace App\Services\Seo\Intel\Sources;
 
 use App\Services\DataForSeoService;
+use Illuminate\Support\Facades\Http;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
@@ -107,6 +108,12 @@ class BacklinksSource extends IntelSource
         if (! $exceeded()) {
             $anchors = $this->fetchAnchors($our);
             $payload['anchors'] = $this->anchorMix($anchors);
+        }
+
+        // Profiles we maintain (BBB, Yelp, Houzz…): DataForSEO's crawler never
+        // sees them, so we verify the link ourselves. Free — no API calls.
+        foreach ($this->checkCitations() as $snapshot) {
+            $snapshots[] = $snapshot;
         }
 
         if (! $exceeded()) {
@@ -237,6 +244,21 @@ class BacklinksSource extends IntelSource
             }
         }
 
+        // Citations: a profile that loads and shows the business but no longer
+        // links to us, or a profile that is gone.
+        foreach ($this->latestSet('citation') as $url => $c) {
+            $name = (string) ($c['payload']['name'] ?? parse_url($url, PHP_URL_HOST));
+            $status = (int) ($c['metrics']['status'] ?? 0);
+            $linked = $c['metrics']['links_to_us'] ?? null;
+            if (in_array($status, [404, 410], true)) {
+                $findings[] = $this->finding('citation_gone', Finding::CRITICAL, "{$name} profile is gone", "{$url} returns HTTP {$status}. Re-claim or re-create the listing; it was a live citation.", $url, null, ['status' => ['prev' => 200, 'now' => $status]]);
+            } elseif ($status === 200 && $linked === 0) {
+                $findings[] = $this->finding('citation_missing', Finding::WARN, "{$name} profile does not link to us", "The profile page loads and shows the business, but carries no link to {$this->ourDomain()}. Add the website URL to the listing.", $url);
+            } elseif ($linked === null) {
+                $findings[] = $this->finding('citation_unverified', Finding::INFO, "{$name} profile could not be verified automatically", trim(($c['payload']['note'] ?? 'The page did not load as a normal visitor would see it.') . ' Check the listing by hand now and then.'), $url);
+            }
+        }
+
         return $findings;
     }
 
@@ -254,6 +276,7 @@ class BacklinksSource extends IntelSource
         $newCount = $previousRef->isNotEmpty() ? $latestRef->keys()->diff($previousRef->keys())->count() : 0;
         $lostSet = $previousRef->isNotEmpty() ? $previousRef->keys()->diff($latestRef->keys()) : collect();
         $broken = $this->latestSet('broken_target')->sortByDesc(fn ($s) => $s['metrics']['links'] ?? 0);
+        $citations = $this->latestSet('citation');
 
         $tile = fn ($label, $value, $prevValue = null, $unit = '') => array_filter([
             'label' => $label, 'value' => $value, 'prev' => $prevValue, 'unit' => $unit,
@@ -267,8 +290,30 @@ class BacklinksSource extends IntelSource
                 $tile('Broken targets', $broken->count()),
                 $tile('New referring domains', $newCount),
                 $tile('Lost referring domains', $lostSet->count()),
+                $tile('Profiles linking to us', $citations->where('metrics.links_to_us', 1)->count(), null, 'of ' . $citations->count()),
             ],
             'tables' => [
+                [
+                    'title' => 'Business profiles & citations',
+                    'columns' => ['Profile', 'Status', 'Links to us', 'Follow'],
+                    'rows' => $citations->map(function ($c, $url) {
+                        $status = (int) ($c['metrics']['status'] ?? 0);
+                        $linked = $c['metrics']['links_to_us'] ?? null;
+
+                        return [
+                            (string) ($c['payload']['name'] ?? parse_url($url, PHP_URL_HOST)),
+                            $status === 200 ? 'live' : ($status === 0 ? 'unreachable' : 'HTTP ' . $status),
+                            $linked === null ? '?' : ($linked ? 'yes' : 'no'),
+                            $linked ? (($c['metrics']['nofollow'] ?? 0) ? 'nofollow' : 'dofollow') : '—',
+                        ];
+                    })->values()->all(),
+                ],
+                [
+                    'title' => 'Referring domains (DataForSEO index)',
+                    'columns' => ['Domain', 'Rank', 'Links', 'Spam'],
+                    'rows' => $latestRef->map(fn ($s, $d) => [$d, (int) ($s['metrics']['rank'] ?? 0), (int) ($s['metrics']['backlinks'] ?? 0), $s['metrics']['spam_score'] ?? '—'])
+                        ->sortByDesc(fn ($r) => [$r[1], $r[2]])->take(12)->values()->all(),
+                ],
                 [
                     'title' => 'Lost referring domains',
                     'columns' => ['Domain', 'Rank'],
@@ -417,5 +462,66 @@ class BacklinksSource extends IntelSource
             'referring_domains' => (int) ($it['referring_domains'] ?? 0),
             'rank' => isset($it['rank']) ? (int) $it['rank'] : null,
         ], $items);
+    }
+
+    /** Profiles we maintain: config/brand.php 'profiles' (name => url) plus any per-site extras. */
+    protected function citations(): array
+    {
+        $out = [];
+        foreach (array_merge((array) config('brand.profiles', []), (array) $this->config('citations', [])) as $name => $url) {
+            $url = trim((string) $url);
+            if ($url === '' || ! filter_var($url, FILTER_VALIDATE_URL)) {
+                continue;
+            }
+            $out[$url] = is_string($name) ? $name : (string) parse_url($url, PHP_URL_HOST);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Fetch each profile like a visitor and look for a link to our domain.
+     * links_to_us: 1 linked, 0 page shows the business but no link, null
+     * could not be verified (blocked, error, or the page did not show the business).
+     *
+     * @return Snapshot[]
+     */
+    protected function checkCitations(): array
+    {
+        $our = $this->ourDomain();
+        $names = array_filter([(string) config('brand.display_name'), (string) config('brand.name')]);
+        $snapshots = [];
+        foreach ($this->citations() as $url => $name) {
+            $status = 0;
+            $linked = null;
+            $nofollow = null;
+            $note = null;
+            try {
+                $resp = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36', 'Accept' => 'text/html,application/xhtml+xml'])
+                    ->timeout(15)->get($url);
+                $status = $resp->status();
+                if ($status === 200) {
+                    $html = (string) $resp->body();
+                    $showsBusiness = collect($names)->contains(fn ($n) => $n !== '' && stripos($html, $n) !== false);
+                    if (preg_match('#<a\b[^>]*href=["\']?(?:https?:)?//(?:www\.)?' . preg_quote($our, '#') . '(?:[/?\#"\'\s>]|$)[^>]*>#i', $html, $m)) {
+                        $linked = 1;
+                        $nofollow = preg_match('/rel=["\'][^"\']*nofollow/i', $m[0]) ? 1 : 0;
+                    } elseif ($showsBusiness) {
+                        $linked = 0;
+                    } else {
+                        $note = 'The page loaded but did not show the business (bot wall or consent page).';
+                    }
+                } else {
+                    $note = "HTTP {$status}.";
+                }
+            } catch (\Throwable $e) {
+                $note = 'Fetch failed: ' . mb_substr($e->getMessage(), 0, 120);
+            }
+            $snapshots[] = new Snapshot('citation', $url, ['status' => $status, 'links_to_us' => $linked, 'nofollow' => $nofollow], [
+                'name' => $name, 'host' => parse_url($url, PHP_URL_HOST), 'note' => $note, 'checked_at' => now()->toDateTimeString(),
+            ]);
+        }
+
+        return $snapshots;
     }
 }

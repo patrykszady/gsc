@@ -23,6 +23,7 @@ class BacklinksSourceTest extends TestCase
             'seo-intel.sources' => [BacklinksSource::class],
             'seo-intel.families.backlinks.competitors' => 1,
             'seo-intel.families.backlinks.max_referring_domains' => 300,
+            'brand.profiles' => [], // citation checks are exercised by their own test
         ]);
         // One competitor, discovered the same way SeoDomainOverview finds them.
         DB::table('map_pack_competitors')->insert([
@@ -114,6 +115,9 @@ class BacklinksSourceTest extends TestCase
             $url = $request->url();
             if (str_contains($url, 'user_data')) {
                 return Http::response(['tasks' => [['result' => [['money' => ['balance' => 50]]]]]]);
+            }
+            if (isset($fixtures['profiles'][$url])) {
+                return $fixtures['profiles'][$url];
             }
             $body = $request->data();
             $target = $body[0]['target'] ?? null;
@@ -287,5 +291,48 @@ class BacklinksSourceTest extends TestCase
 
             return $request->data()[0]['filters'] === ['is_broken', '=', true];
         });
+    }
+
+    public function test_business_profiles_are_verified_directly_and_reported(): void
+    {
+        config(['brand.profiles' => ['BBB' => 'https://bbb.test/profile', 'Houzz' => 'https://houzz.test/pro', 'Yelp' => 'https://yelp.test/biz', 'Old directory' => 'https://gone.test/listing'], 'brand.display_name' => 'GS Construction & Remodeling']);
+        $fx = $this->day1();
+        $fx['profiles'] = [
+            'https://bbb.test/profile' => Http::response('<html><h1>GS Construction &amp; Remodeling, INC.</h1><p>GS Construction & Remodeling</p><a href="https://gs.construction/" rel="nofollow noopener">Visit Website</a></html>', 200),
+            'https://houzz.test/pro' => Http::response('<html><h1>GS Construction & Remodeling</h1><p>No website listed.</p></html>', 200),
+            'https://yelp.test/biz' => Http::response('Access denied', 403),
+            'https://gone.test/listing' => Http::response('Not found', 404),
+        ];
+        $this->fakeFor($fx);
+
+        Carbon::setTestNow('2026-09-08 04:00:00');
+        $this->artisan('seo:intel', ['family' => ['backlinks'], '--budget' => 1])->assertExitCode(0);
+
+        $citations = DB::table('seo_intel_snapshots')->where('family', 'backlinks')->where('kind', 'citation')->get()->keyBy('subject');
+        $this->assertCount(4, $citations);
+        $bbb = json_decode((string) $citations['https://bbb.test/profile']->metrics, true);
+        $this->assertSame(['status' => 200, 'links_to_us' => 1, 'nofollow' => 1], $bbb);
+        $this->assertSame(0, json_decode((string) $citations['https://houzz.test/pro']->metrics, true)['links_to_us']);
+        $this->assertNull(json_decode((string) $citations['https://yelp.test/biz']->metrics, true)['links_to_us']);
+
+        $findings = DB::table('seo_intel_findings')->where('family', 'backlinks')->get()->keyBy('subject');
+        $this->assertSame('warn', $findings['https://houzz.test/pro']->severity);
+        $this->assertSame('backlinks.citation_missing', $findings['https://houzz.test/pro']->code);
+        $this->assertSame('info', $findings['https://yelp.test/biz']->severity);
+        $this->assertSame('critical', $findings['https://gone.test/listing']->severity);
+        $this->assertFalse($findings->has('https://bbb.test/profile'), 'a linked profile is not a finding');
+
+        $report = app(BacklinksSource::class)->report();
+        $tables = collect($report['tables'])->keyBy('title');
+        $this->assertSame(['Profile', 'Status', 'Links to us', 'Follow'], $tables['Business profiles & citations']['columns']);
+        $rows = collect($tables['Business profiles & citations']['rows'])->keyBy(0);
+        $this->assertSame(['BBB', 'live', 'yes', 'nofollow'], $rows['BBB']);
+        $this->assertSame(['Houzz', 'live', 'no', '—'], $rows['Houzz']);
+        $this->assertSame(['Yelp', 'HTTP 403', '?', '—'], $rows['Yelp']);
+        $this->assertSame(['Old directory', 'HTTP 404', '?', '—'], $rows['Old directory']);
+        $this->assertSame('of 4', collect($report['tiles'])->firstWhere('label', 'Profiles linking to us')['unit']);
+        $this->assertSame(1, collect($report['tiles'])->firstWhere('label', 'Profiles linking to us')['value']);
+        $this->assertSame(['Domain', 'Rank', 'Links', 'Spam'], $tables['Referring domains (DataForSEO index)']['columns']);
+        $this->assertNotEmpty($tables['Referring domains (DataForSEO index)']['rows']);
     }
 }
