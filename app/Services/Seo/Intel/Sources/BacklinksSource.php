@@ -492,33 +492,9 @@ class BacklinksSource extends IntelSource
         $names = array_filter([(string) config('brand.display_name'), (string) config('brand.name')]);
         $snapshots = [];
         foreach ($this->citations() as $url => $name) {
-            $status = 0;
-            $linked = null;
-            $nofollow = null;
-            $note = null;
-            try {
-                $resp = Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36', 'Accept' => 'text/html,application/xhtml+xml'])
-                    ->timeout(15)->get($url);
-                $status = $resp->status();
-                if ($status === 200) {
-                    $html = (string) $resp->body();
-                    $showsBusiness = collect($names)->contains(fn ($n) => $n !== '' && stripos($html, $n) !== false);
-                    if (preg_match('#<a\b[^>]*href=["\']?(?:https?:)?//(?:www\.)?' . preg_quote($our, '#') . '(?:[/?\#"\'\s>]|$)[^>]*>#i', $html, $m)) {
-                        $linked = 1;
-                        $nofollow = preg_match('/rel=["\'][^"\']*nofollow/i', $m[0]) ? 1 : 0;
-                    } elseif ($showsBusiness) {
-                        $linked = 0;
-                    } else {
-                        $note = 'The page loaded but did not show the business (bot wall or consent page).';
-                    }
-                } else {
-                    $note = "HTTP {$status}.";
-                }
-            } catch (\Throwable $e) {
-                $note = 'Fetch failed: ' . mb_substr($e->getMessage(), 0, 120);
-            }
-            $snapshots[] = new Snapshot('citation', $url, ['status' => $status, 'links_to_us' => $linked, 'nofollow' => $nofollow], [
-                'name' => $name, 'host' => parse_url($url, PHP_URL_HOST), 'note' => $note, 'checked_at' => now()->toDateTimeString(),
+            $r = \App\Support\Citations\LinkCheck::run($url, $our, $names);
+            $snapshots[] = new Snapshot('citation', $url, ['status' => $r['status'], 'links_to_us' => $r['links_to_us'], 'nofollow' => $r['nofollow']], [
+                'name' => $name, 'host' => parse_url($url, PHP_URL_HOST), 'note' => $r['note'], 'checked_at' => now()->toDateTimeString(),
             ]);
         }
 

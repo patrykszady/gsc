@@ -35,6 +35,6 @@ Route::middleware(['signed', 'noindex', ResolveAdminSite::class])
     ->name('admin.')
     ->group(function () {
         Route::get('/platforms/{provider}/viewer', [PlatformsViewerController::class, 'show'])
-            ->whereIn('provider', ['yelp', 'instagram'])
+            ->whereIn('provider', ['yelp', 'instagram', 'citations'])
             ->name('platforms.viewer');
     });

@@ -32,6 +32,23 @@ return [
     'state' => 'IL',
 
     'owners' => 'Greg & Patryk Szady',
+    'founded' => 2015,
+    'languages' => ['English', 'Polish'],
+
+    // The office (Business Profile address) and the hours every directory gets.
+    'address' => [
+        'street' => '400 N Wheeling Rd',
+        'city' => 'Prospect Heights',
+        'state' => 'IL',
+        'zip' => '60070',
+        'country' => 'US',
+        'lat' => 42.102847,
+        'lng' => -87.9275628,
+    ],
+    'hours' => [
+        'Mon' => ['08:00', '18:00'], 'Tue' => ['08:00', '18:00'], 'Wed' => ['08:00', '18:00'],
+        'Thu' => ['08:00', '18:00'], 'Fri' => ['08:00', '18:00'], 'Sat' => ['08:00', '18:00'], 'Sun' => null,
+    ],
 
     // The ai-content-description meta tag.
     //
@@ -58,5 +75,7 @@ return [
         'BuildZoom' => 'https://www.buildzoom.com/contractor/gs-construction-remodeling-prospect-heights-il',
         'Nextdoor' => 'https://nextdoor.com/pages/gs-construction-remodeling-prospect-heights-il/',
         'MapQuest' => 'https://www.mapquest.com/us/illinois/gs-construction-743191322',
+        'Angi' => 'https://www.angi.com/companylist/us/il/chicagoland/gs-construction-and-remodeling-reviews-11400361.htm',
+        'Facebook' => 'https://www.facebook.com/gs.construction.chi',
     ],
 ];

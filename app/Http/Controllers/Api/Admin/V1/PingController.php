@@ -28,6 +28,8 @@ class PingController extends Controller
                     'timelapses', 'before-afters', 'image-tags', 'areas-map', 'review-platforms', 'testimonial-projects',
                     // Partner credits on the project form (designer / architect / trade), used by the blog writer.
                     'collaborators',
+                    // Citation builder: directory listings driven from the remote browser.
+                    'citations',
                 ],
                 // This site's identity inside the central admin: GS blue is
                 // Tailwind's stock sky ramp (accent null = leave it alone,

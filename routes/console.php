@@ -267,6 +267,13 @@ foreach ([
 Schedule::command('seo:intel onpage --budget=1')->cron('30 5-23/2 * * 1,2')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/schedule.log'));
+// Citation builder: verify every listing still links to us weekly; follow
+// directory verification emails when the mailbox is configured.
+Schedule::command('citations:control check')->weeklyOn(3, '05:20')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+Schedule::command('citations:control inbox')->everyFifteenMinutes()
+    ->when(fn () => (string) config('citations.inbox.password') !== '')
+    ->withoutOverlapping(10);
 Schedule::command('seo:intel business_data --budget=1')->weekdays()->dailyAt('06:10') // reviews and the local competitors' profiles (~\$0.06/run)
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/schedule.log'));
