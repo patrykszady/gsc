@@ -94,9 +94,82 @@ class AreaSeoPolicy
         }
 
         if (in_array($page, self::PROOF_GATED_PAGES, true)) {
-            return self::isPriority($area);
+            if (self::isPriority($area)) {
+                return true;
+            }
+            // Demand gate: a town's service page also earns its index slot when
+            // Google already shows real demand for that town + service. The
+            // pages exist with ~2,000 unique words each; keeping them noindexed
+            // left the town hub ranking 8–15 for queries a dedicated page
+            // answers (Kenilworth home remodeling: 3,445 impressions/28d,
+            // Schaumburg kitchen: 2,120). Threshold in config/seo.php.
+            if ($page === 'service' && $service !== null && $area->hasUniqueContent()) {
+                return self::demandImpressions($area, $service) >= (int) config('seo.area_service_demand_impressions', 100);
+            }
+
+            return false;
         }
 
         return false;
+    }
+
+    /** Service slug => words a query must contain (besides the town) to count as demand for it. */
+    public const DEMAND_KEYWORDS = [
+        'kitchen-remodeling' => ['kitchen'],
+        'bathroom-remodeling' => ['bathroom', 'bath '],
+        'home-remodeling' => ['home remodel', 'home renovation', 'whole home', 'remodeling contractor', 'renovation services', 'renovation contractor'],
+        'basement-remodeling' => ['basement'],
+        'home-additions' => ['addition'],
+    ];
+
+    /**
+     * Impressions (last 28 full days of Search Console data) for queries that
+     * name this town and this service. Cached per site for 12 hours; the whole
+     * query table is read once per cache miss and folded per town+service.
+     */
+    public static function demandImpressions(AreaServed $area, string $service): int
+    {
+        $table = self::demandTable();
+        $key = mb_strtolower(trim((string) $area->city)) . '|' . $service;
+
+        return (int) ($table[$key] ?? 0);
+    }
+
+    /** @return array<string,int> "city|service" => impressions */
+    protected static function demandTable(): array
+    {
+        return Cache::remember(\App\Support\Tenancy::cacheKey('seo.area.service_demand'), 12 * 3600, function (): array {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('gsc_query_metrics')) {
+                return [];
+            }
+            $end = now()->subDays(3);
+            $start = $end->copy()->subDays(27);
+            $rows = \App\Support\Tenancy::table('gsc_query_metrics')
+                ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+                ->groupBy('query')
+                ->selectRaw('query, SUM(impressions) impressions')
+                ->get();
+            $cities = AreaServed::query()->pluck('city')->map(fn ($c) => mb_strtolower(trim((string) $c)))->filter()->unique()->all();
+
+            $table = [];
+            foreach ($rows as $r) {
+                $q = ' ' . preg_replace('/\s+/', ' ', mb_strtolower(str_replace([',', '.'], ' ', (string) $r->query))) . ' ';
+                foreach ($cities as $city) {
+                    if (! str_contains($q, ' ' . $city . ' ')) {
+                        continue;
+                    }
+                    foreach (self::DEMAND_KEYWORDS as $service => $words) {
+                        foreach ($words as $w) {
+                            if (str_contains($q, $w)) {
+                                $table[$city . '|' . $service] = ($table[$city . '|' . $service] ?? 0) + (int) $r->impressions;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $table;
+        });
     }
 }

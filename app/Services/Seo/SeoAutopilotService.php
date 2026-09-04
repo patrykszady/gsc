@@ -160,7 +160,7 @@ class SeoAutopilotService
             // Covered-city modifier plays need real volume (the area page
             // already serves the head term); an UNCOVERED town is a genuine
             // gap, so the 30-impression floor from the query is enough.
-            if ($cityIsCovered && (int) $q->impressions < 60) {
+            if ($cityIsCovered && (int) $q->impressions < (int) config('seo.autopilot.modifier_min_impressions', 30)) {
                 continue;
             }
 

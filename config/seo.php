@@ -326,7 +326,20 @@ return [
     | /admin/landing-pages before publishing. Leave false until you trust the
     | generated content.
     */
+    /*
+    | Demand gate for town×service pages (/areas-served/{town}/services/{service}):
+    | indexed when the town has local proof (the original rule) OR when Search
+    | Console shows at least this many impressions/28d for queries naming that
+    | town and service. See AreaSeoPolicy::shouldIndex().
+    */
+    'area_service_demand_impressions' => (int) env('SEO_AREA_SERVICE_DEMAND_IMPRESSIONS', 100),
+
     'autopilot' => [
         'auto_publish_landing_pages' => env('SEO_AUTOPILOT_AUTO_PUBLISH', false),
+        // Covered-town modifier plays ("small bathroom remodel glencoe", "custom
+        // basement remodeling mount prospect") need this many impressions/28d
+        // before the engine drafts a landing page. 60 kept every real play
+        // (30–53 impressions) below the line; the ledger stayed empty for months.
+        'modifier_min_impressions' => (int) env('SEO_AUTOPILOT_MODIFIER_MIN_IMPRESSIONS', 30),
     ],
 ];
