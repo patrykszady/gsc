@@ -44,11 +44,17 @@ class BlogPostController extends Controller
             'slug' => ['sometimes', 'string', 'max:191'],
             'excerpt' => ['sometimes', 'nullable', 'string', 'max:500'],
             'body' => ['sometimes', 'nullable', 'string'],
+            // From the admin's rich-text editor; converted to the Markdown we store.
+            'body_html' => ['sometimes', 'nullable', 'string'],
             'meta_title' => ['sometimes', 'nullable', 'string', 'max:191'],
             'meta_description' => ['sometimes', 'nullable', 'string', 'max:320'],
             'status' => ['sometimes', 'in:draft,published'],
         ]);
 
+        if (array_key_exists('body_html', $data)) {
+            $data['body'] = BlogPost::markdownFromHtml((string) $data['body_html']);
+            unset($data['body_html']);
+        }
         if (($data['status'] ?? null) === BlogPost::STATUS_PUBLISHED && ! $model->published_at) {
             $data['published_at'] = now();
         }

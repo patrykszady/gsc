@@ -112,6 +112,37 @@ class BlogPost extends Model
         ];
     }
 
+    /**
+     * The body as HTML for the admin's rich-text editor. Plain CommonMark —
+     * media shortcodes stay as their own paragraphs ("[cover]") so the
+     * editor shows them and the round trip keeps them.
+     */
+    public function bodyHtml(): string
+    {
+        $converter = new \League\CommonMark\GithubFlavoredMarkdownConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]);
+
+        return (string) $converter->convert((string) $this->body);
+    }
+
+    /**
+     * The inverse: HTML from the editor back to the Markdown we store.
+     * Headings as "##", emphasis as * and **, shortcode paragraphs back to
+     * bare "[cover]" lines.
+     */
+    public static function markdownFromHtml(string $html): string
+    {
+        $converter = new \League\HTMLToMarkdown\HtmlConverter([
+            'header_style' => 'atx',
+            'strip_tags' => true,
+            'hard_break' => false,
+            'remove_nodes' => 'script style',
+        ]);
+        $markdown = $converter->convert($html);
+        // The editor may escape the brackets of a shortcode paragraph.
+        $markdown = preg_replace('/^[ \t]*\\\\?\[(before|cover|before-after|timelapse|gallery)\\\\?\][ \t]*$/m', '[$1]', $markdown) ?? $markdown;
+        return trim(preg_replace("/\n{3,}/", "\n\n", $markdown) ?? $markdown);
+    }
+
     /** The date shown on the post and the index. */
     public function displayDate(): ?\Illuminate\Support\Carbon
     {
@@ -165,6 +196,8 @@ class BlogPost extends Model
             'title' => $this->title,
             'excerpt' => $this->excerpt,
             'body' => $this->body,
+            // For the admin's rich-text editor; Markdown stays the stored form.
+            'body_html' => $this->bodyHtml(),
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
             'status' => $this->status,

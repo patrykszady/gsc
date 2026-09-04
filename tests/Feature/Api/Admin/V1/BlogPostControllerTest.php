@@ -152,4 +152,26 @@ class BlogPostControllerTest extends TestCase
         $this->putJson("/api/admin/v1/blog-posts/{$draft->id}", ['status' => 'draft'], $this->adminApiHeaders())->assertOk();
         \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\AnnounceBlogPostJob::class);
     }
+
+    public function test_body_round_trips_through_html_for_the_rich_text_editor(): void
+    {
+        $draft = $this->draft(['body' => "Intro **bold** text.\n\n[cover]\n\n## The build\n\nA [link](https://example.com) here.\n\n[gallery]"]);
+
+        $html = $this->getJson("/api/admin/v1/blog-posts/{$draft->id}", $this->adminApiHeaders())->assertOk()->json('data.body_html');
+        $this->assertStringContainsString('<strong>bold</strong>', $html);
+        $this->assertStringContainsString('<h2>The build</h2>', $html);
+        $this->assertStringContainsString('<p>[cover]</p>', $html);
+
+        $edited = str_replace('<h2>The build</h2>', '<h2>The build, week by week</h2><p>[timelapse]</p>', $html);
+        $this->putJson("/api/admin/v1/blog-posts/{$draft->id}", ['body_html' => $edited], $this->adminApiHeaders())->assertOk();
+
+        $body = $draft->fresh()->body;
+        $this->assertStringContainsString('**bold**', $body);
+        $this->assertStringContainsString('## The build, week by week', $body);
+        $this->assertMatchesRegularExpression('/^\[cover\]$/m', $body);
+        $this->assertMatchesRegularExpression('/^\[timelapse\]$/m', $body);
+        $this->assertMatchesRegularExpression('/^\[gallery\]$/m', $body);
+        $this->assertStringContainsString('[link](https://example.com)', $body);
+        $this->assertSame('manual', $draft->fresh()->writer);
+    }
 }
