@@ -21,8 +21,22 @@
 #
 # DEPLOY_STOP_BEFORE_SWITCH=1 builds the release and exits without switching
 # (used to validate the script the first time).
+#
+# THE ARTISAN SHIM. Forge's stored deploy script (editable only in the Forge
+# dashboard; the API is closed to us) still runs `artisan down` … `artisan up`
+# inside `current`. Each release therefore gets an `artisan` shim (installed
+# below, real file kept as artisan.real) that turns `down` into this deploy
+# and `up` into a no-op, and forwards everything else. Forge's old script then
+# grinds on inside the retired release — harmless — while the site serves the
+# new one. If this deploy fails before the switch, the shim falls back to a
+# real `down`, so the fallback is never worse than the old behaviour.
+# GSC_DEPLOY_SHIM=0 in the environment bypasses the shim.
 
 set -euo pipefail
+
+# One deploy at a time: two pushes in quick succession queue, not race.
+exec 9>/tmp/gsc-deploy.lock
+flock -w 900 9 || { echo "Another deploy holds the lock; giving up."; exit 1; }
 
 SITE=/home/forge/gs.construction
 REPO="${DEPLOY_REPO:-$SITE/repo}"
@@ -93,6 +107,34 @@ fi
 log "Switch current → $NEW"
 ln -sfn "$NEW" "$SITE/current.next"
 mv -Tf "$SITE/current.next" "$SITE/current"
+
+log "Install artisan shim in the new release"
+if [ ! -f "$NEW/artisan.real" ]; then
+    mv "$NEW/artisan" "$NEW/artisan.real"
+    cat > "$NEW/artisan" <<'SHIM'
+#!/usr/bin/env php
+<?php
+// Deploy shim — see deploy/forge-deploy.sh ("THE ARTISAN SHIM"). Installed
+// per release; the real entry point is artisan.real.
+$cmd = $_SERVER['argv'][1] ?? null;
+$site = '/home/forge/gs.construction';
+if ($cmd === 'down' && getenv('GSC_DEPLOY_SHIM') !== '0') {
+    $script = 'cd ' . escapeshellarg($site . '/repo')
+        . ' && git fetch -q origin && git reset -q --hard origin/main'
+        . ' && bash deploy/forge-deploy.sh';
+    passthru('bash -c ' . escapeshellarg($script), $code);
+    if ($code === 0) {
+        exit(0);
+    }
+    fwrite(STDERR, "Zero-downtime deploy failed (exit {$code}); falling back to maintenance mode.\n");
+}
+if ($cmd === 'up' && getenv('GSC_DEPLOY_SHIM') !== '0' && ! file_exists(__DIR__ . '/storage/framework/down')) {
+    exit(0);
+}
+require __DIR__ . '/artisan.real';
+SHIM
+    chmod +x "$NEW/artisan"
+fi
 
 log "Reload PHP-FPM (opcache) and restart Horizon"
 ( flock -w 10 9 || exit 1; sudo -S service "$FPM" reload ) 9>/tmp/fpmlock || echo "FPM reload skipped (no sudo); opcache revalidates on its own"
