@@ -36,7 +36,7 @@ class SeoAutopilotService
 {
     /** Categories the autopilot may apply without human approval.
      *  create_page only ever creates a DRAFT — publishing stays a human step. */
-    public const SAFE_ALLOWLIST = ['title_meta', 'reindex', 'llms_regen', 'create_page'];
+    public const SAFE_ALLOWLIST = ['title_meta', 'reindex', 'llms_regen', 'create_page', 'content_refresh'];
 
     private const BASE_URL = 'https://gs.construction';
 
@@ -64,6 +64,7 @@ class SeoAutopilotService
             'reindex' => new ReindexApplier(),
             'llms_regen' => new LlmsRegenApplier(),
             'create_page' => new CreatePageApplier(),
+            'content_refresh' => new \App\Services\Seo\Appliers\ContentRefreshApplier(),
         ];
     }
 
@@ -83,6 +84,7 @@ class SeoAutopilotService
         $created += $this->synthesizeCoverageClusters();
         $created += $this->synthesizeLlmsRefresh();
         $created += $this->synthesizeCreatePage();
+        $created += $this->synthesizeResearch();
 
         return $created;
     }
@@ -196,6 +198,147 @@ class SeoAutopilotService
     }
 
     /** Zero-click / striking-distance pages that map to a HasSEO model. */
+    /**
+     * Keyword research (seo_keywords, weekly from DataForSEO) → actions:
+     *  - a researched phrase for a town we have no page for, or with a
+     *    modifier angle, becomes a landing page (proof gate still applies);
+     *  - a town page whose title lacks the town's top researched phrase gets a
+     *    title/meta experiment built on that phrase;
+     *  - a town page with thin local copy and real search volume gets a copy
+     *    refresh written around the town's top phrases (reversible).
+     */
+    private function synthesizeResearch(): int
+    {
+        if (! Schema::hasTable('seo_keywords')) {
+            return 0;
+        }
+        $minVolume = (int) config('seo.autopilot.research_min_volume', 30);
+        $rows = \App\Support\Tenancy::table('seo_keywords')
+            ->where('volume', '>=', $minVolume)
+            ->where('opportunity', '>', 0)
+            ->whereNotNull('service')
+            ->whereNotNull('city')
+            ->orderByDesc('opportunity')
+            ->limit(300)
+            ->get();
+        if ($rows->isEmpty()) {
+            return 0;
+        }
+
+        $areaCities = $this->areaCityKeys();
+        $generator = new LandingPageContentGenerator();
+        $created = 0;
+        $pageBudget = 6;
+        $refreshBudget = (int) config('seo.autopilot.content_refresh_per_run', 2);
+        $topByCity = []; // city|service => top row
+
+        foreach ($rows as $r) {
+            $covered = isset($areaCities[Str::lower((string) $r->city)]);
+
+            // (a) landing page: uncovered town, or a modifier angle on a covered one.
+            if ($pageBudget > 0 && (! $covered || $r->modifier !== null) && ($r->our_position === null || (float) $r->our_position > 20)) {
+                $content = $generator->build((string) $r->service, (string) $r->city, $r->modifier, (string) $r->keyword);
+                if ($content !== null && ! \App\Models\LandingPage::where('slug', $content['slug'])->exists()) {
+                    $created += $this->upsertAction([
+                        'fingerprint' => $this->fp('keyword_research', 'create_page', $content['slug']),
+                        'source' => 'keyword_research',
+                        'category' => 'create_page',
+                        'risk' => SeoAction::RISK_SAFE,
+                        'target_url' => self::BASE_URL . '/remodeling/' . $content['slug'],
+                        'title' => 'Create landing page: ' . $content['h1'],
+                        'hypothesis' => sprintf('"%s" has %d searches/month%s and we %s. Proof-backed landing page can capture it.', $r->keyword, (int) $r->volume, $r->competitor_best_position ? " (a competitor ranks #{$r->competitor_best_position})" : '', $r->our_position === null ? 'do not rank' : 'rank ' . round((float) $r->our_position, 1)),
+                        'metric' => 'clicks',
+                        'payload' => ['content' => $content, 'query' => $r->keyword, 'volume' => (int) $r->volume],
+                        'impact_score' => round((float) $r->volume * 0.05, 1),
+                    ]);
+                    $pageBudget--;
+                }
+                continue;
+            }
+
+            // Covered town, plain intent: remember the strongest phrase per town+service.
+            if ($covered && $r->modifier === null) {
+                $key = Str::lower((string) $r->city) . '|' . $r->service;
+                if (! isset($topByCity[$key]) || (int) $r->volume > (int) $topByCity[$key]->volume) {
+                    $topByCity[$key] = $r;
+                }
+            }
+        }
+
+        // (b) + (c): per covered town, title on the top phrase; copy refresh when thin.
+        $refreshed = [];
+        foreach ($topByCity as $key => $r) {
+            if ((int) $r->volume < 50) {
+                continue;
+            }
+            $area = AreaServed::query()->whereRaw('LOWER(city) = ?', [Str::lower((string) $r->city)])->first();
+            if (! $area) {
+                continue;
+            }
+            $isHome = $r->service === 'home-remodeling';
+            $url = self::BASE_URL . '/areas-served/' . $area->slug . ($isHome ? '' : '/services/' . $r->service);
+            $serviceSlug = $isHome ? null : (string) $r->service;
+            if (! AreaSeoPolicy::shouldIndex($area, $serviceSlug ? 'service' : 'home', $serviceSlug)) {
+                continue;
+            }
+
+            // (b) title experiment on the phrase, when the live title lacks its head word.
+            $current = \App\Models\SeoPathOverride::where('path', \App\Models\SeoPathOverride::normalizePath($url))->first()?->title
+                ?? ($this->titles->forArea($area, $serviceSlug)['title'] ?? '');
+            // The first distinctive word of the phrase the live title lacks
+            // ("renovation" in "kenilworth home remodeling and renovation
+            // services" against "Kenilworth Home Remodeling").
+            $stop = [mb_strtolower((string) $r->city), 'illinois', 'services', 'service', 'near', 'with', 'from', 'that', 'this', 'best'];
+            $head = collect(explode(' ', mb_strtolower((string) $r->keyword)))
+                ->filter(fn ($w) => mb_strlen($w) > 3 && ! in_array($w, $stop, true) && ! str_contains(mb_strtolower((string) $current), $w))
+                ->first();
+            $inFlight = SeoAction::where('category', 'title_meta')->where('target_url', $url)->whereIn('status', [SeoAction::STATUS_PROPOSED, SeoAction::STATUS_APPLIED])->whereNull('measured_at')->exists();
+            if ($head && ! $inFlight) {
+                $generated = $this->titles->forArea($area, $serviceSlug, (string) $r->keyword);
+                $created += $this->upsertAction([
+                    'fingerprint' => $this->fp('keyword_research', 'title_meta', $url . ':' . $r->keyword),
+                    'source' => 'keyword_research',
+                    'category' => 'title_meta',
+                    'risk' => SeoAction::RISK_SAFE,
+                    'target_type' => AreaServed::class,
+                    'target_id' => $area->getKey(),
+                    'target_url' => $url,
+                    'title' => 'Rewrite title/meta on the researched phrase: ' . Str::of($url)->after(self::BASE_URL),
+                    'hypothesis' => sprintf('"%s" has %d searches/month; the title does not carry "%s". Title/meta built on the phrase.', $r->keyword, (int) $r->volume, $head),
+                    'metric' => 'clicks',
+                    'payload' => ['new_title' => $generated['title'], 'new_description' => $generated['description'], 'phrase' => $r->keyword, 'volume' => (int) $r->volume],
+                    'impact_score' => round((float) $r->volume * 0.03, 1),
+                ]);
+            }
+
+            // (c) copy refresh for a thin town page (once per area per 90 days, budget per run).
+            if ($isHome && $refreshBudget > 0 && ! isset($refreshed[$area->getKey()]) && mb_strlen((string) $area->local_intro) < 1500) {
+                $recent = SeoAction::where('category', 'content_refresh')->where('target_type', AreaServed::class)->where('target_id', $area->getKey())->where('created_at', '>=', now()->subDays(90))->exists();
+                if (! $recent) {
+                    $phrases = collect($topByCity)->filter(fn ($x) => Str::lower((string) $x->city) === Str::lower((string) $r->city))->sortByDesc('volume')->take(4)->pluck('keyword')->all();
+                    $created += $this->upsertAction([
+                        'fingerprint' => $this->fp('keyword_research', 'content_refresh', $area->slug . ':' . now()->format('Y-m')),
+                        'source' => 'keyword_research',
+                        'category' => 'content_refresh',
+                        'risk' => SeoAction::RISK_SAFE,
+                        'target_type' => AreaServed::class,
+                        'target_id' => $area->getKey(),
+                        'target_url' => self::BASE_URL . '/areas-served/' . $area->slug,
+                        'title' => 'Deepen local copy around researched phrases: /areas-served/' . $area->slug,
+                        'hypothesis' => sprintf('%s searches/month across "%s"; the town page carries only %d characters of local copy. A deeper, query-led intro should lift rank and clicks.', (int) $r->volume, implode('", "', $phrases), mb_strlen((string) $area->local_intro)),
+                        'metric' => 'clicks',
+                        'payload' => ['phrases' => $phrases, 'volume' => (int) $r->volume],
+                        'impact_score' => round((float) $r->volume * 0.04, 1),
+                    ]);
+                    $refreshed[$area->getKey()] = true;
+                    $refreshBudget--;
+                }
+            }
+        }
+
+        return $created;
+    }
+
     private function synthesizeTitleMeta(): int
     {
         if (! Schema::hasTable('gsc_query_metrics')) {
@@ -782,6 +925,7 @@ class SeoAutopilotService
             'reindex' => 0.5,
             'title_meta' => 0.55, // map-pack caps organic-CTR recovery
             'create_page' => 0.45, // new page; upside real but slower + needs review
+            'content_refresh' => 0.45, // deeper, query-led copy on a page that already ranks
             default => 0.4,
         };
     }
@@ -952,6 +1096,17 @@ class SeoAutopilotService
      * @param array<string,string> $knownCities lower => Display
      * @return array{0:string,1:string,2:?string}|null
      */
+    /**
+     * Public face of the query parser: [service slug, City, modifier|null] or
+     * null — the same rule the demand-gap and research loops use.
+     *
+     * @return array{0:string,1:string,2:?string}|null
+     */
+    public function classify(string $query): ?array
+    {
+        return $this->parseQuery($query, $this->knownCities());
+    }
+
     private function parseQuery(string $query, array $knownCities): ?array
     {
         // Real queries arrive as "barrington, il", "mt. prospect", "park

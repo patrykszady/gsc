@@ -2,6 +2,8 @@
 
 namespace App\Services\Seo;
 
+use Illuminate\Support\Str;
+
 use App\Models\AreaServed;
 use App\Models\Project;
 
@@ -58,9 +60,22 @@ class TitleMetaGenerator
     /**
      * @return array{title:string,description:string}
      */
-    public function forArea(AreaServed $area, ?string $serviceSlug = null): array
+    public function forArea(AreaServed $area, ?string $serviceSlug = null, ?string $targetPhrase = null): array
     {
         $city = trim((string) $area->city);
+        // Research-led: the title carries the phrase people actually search
+        // (Title Case, city kept once), the description answers it.
+        if ($targetPhrase !== null && trim($targetPhrase) !== '') {
+            $phrase = Str::title(trim($targetPhrase));
+            $phrase = preg_replace('/\b(Il|Illinois)\b/', '', $phrase) ?? $phrase;
+            $phrase = trim(preg_replace('/\s+/', ' ', $phrase) ?? $phrase);
+            $title = $this->fitTitle($phrase, ['Free Estimate']);
+            $desc = $this->fitDesc(
+                ucfirst(mb_strtolower(trim($targetPhrase))) . " by a family-owned, 5-star rated contractor: clear pricing, a dedicated project lead, licensed & insured. Free in-home estimate."
+            );
+
+            return ['title' => $title, 'description' => $desc];
+        }
 
         if ($serviceSlug !== null && isset(self::SERVICES[$serviceSlug])) {
             $service = self::SERVICES[$serviceSlug];

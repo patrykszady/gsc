@@ -701,7 +701,7 @@ PROMPT;
      * striking distance (Evanston 2.4k, Glenview 2.2k) earned that depth. The
      * existing copy is kept as grounding so verified facts survive the rewrite.
      */
-    public function deepenAreaLocalIntro(\App\Models\AreaServed $area): ?string
+    public function deepenAreaLocalIntro(\App\Models\AreaServed $area, array $targetPhrases = []): ?string
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
@@ -712,6 +712,9 @@ PROMPT;
         $city = $area->city;
         $existing = trim((string) $area->local_intro);
         $landmarks = trim((string) $area->landmarks);
+        $phraseBlock = $targetPhrases !== []
+            ? "PHRASES PEOPLE SEARCH FOR THIS TOWN (work each in once, naturally, where it is true of what we do — never as a list, never forced):\n- " . implode("\n- ", array_map('trim', $targetPhrases)) . "\n"
+            : '';
 
         $prompt = <<<PROMPT
 You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom, and
@@ -728,6 +731,7 @@ CURRENT TEXT:
 
 KNOWN LOCAL LANDMARKS (use naturally where relevant, do not just list them):
 {$landmarks}
+{$phraseBlock}
 
 The expansion should read as genuine local knowledge, covering — where you are
 confident of the facts for {$city}:

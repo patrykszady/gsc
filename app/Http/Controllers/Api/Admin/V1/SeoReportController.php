@@ -118,6 +118,7 @@ class SeoReportController extends Controller
             'rankings' => $this->rankingSnapshot($this->normalizeWindowDays((int) $request->integer('rank_days', 7))),
             'geo' => $this->geoSnapshot(),
             'local_falcon' => $this->localFalconSnapshot(),
+            'keyword_research' => $this->keywordResearchSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
             'gsc_errors' => $this->gscErrorSnapshot(),
         ]);
@@ -753,6 +754,50 @@ class SeoReportController extends Controller
             }
 
             return ['available' => true, 'keywords' => $keywords, 'ai' => $ai, 'our_reviews' => $ourReviews, 'latest' => Carbon::parse(($scans->first() ?? collect($ai)->first())?->scanned_at ?? now())->toDateString()];
+        });
+    }
+
+    /**
+     * Keyword research: the universe size, top opportunities (volume × how far
+     * we are from page 1 × competitor proof), and the competitor gap — terms
+     * a pack leader or page-one competitor ranks for that we are absent from.
+     */
+    protected function keywordResearchSnapshot(): array
+    {
+        if (! Schema::hasTable('seo_keywords')) {
+            return ['available' => false];
+        }
+
+        return Cache::remember(Tenancy::cacheKey('seo_reports_keywords_v1'), 1800, function (): array {
+            $base = Tenancy::table('seo_keywords');
+            $total = (int) (clone $base)->count();
+            if ($total === 0) {
+                return ['available' => false, 'total' => 0];
+            }
+            $row = fn ($k) => [
+                'keyword' => $k->keyword,
+                'volume' => (int) $k->volume,
+                'difficulty' => $k->difficulty !== null ? (int) $k->difficulty : null,
+                'our_position' => $k->our_position !== null ? round((float) $k->our_position, 1) : null,
+                'our_impressions' => $k->our_impressions !== null ? (int) $k->our_impressions : null,
+                'competitor_best' => $k->competitor_best_position !== null ? (int) $k->competitor_best_position : null,
+                'competitors' => $k->competitor_domains ? array_keys((array) json_decode($k->competitor_domains, true)) : [],
+                'service' => $k->service,
+                'city' => $k->city,
+                'modifier' => $k->modifier,
+                'opportunity' => (float) $k->opportunity,
+            ];
+
+            return [
+                'available' => true,
+                'total' => $total,
+                'with_volume' => (int) (clone $base)->where('volume', '>', 0)->count(),
+                'researched_at' => optional((clone $base)->max('researched_at'), fn ($d) => Carbon::parse($d)->toDateString()),
+                'volume_total' => (int) (clone $base)->sum('volume'),
+                'opportunities' => (clone $base)->where('opportunity', '>', 0)->orderByDesc('opportunity')->limit(15)->get()->map($row)->all(),
+                'competitor_gap' => (clone $base)->whereNotNull('competitor_domains')->whereNull('our_position')->where('volume', '>', 0)->orderByDesc('volume')->limit(15)->get()->map($row)->all(),
+                'already_winning' => (clone $base)->where('our_position', '<=', 3)->where('volume', '>', 0)->orderByDesc('volume')->limit(8)->get()->map($row)->all(),
+            ];
         });
     }
 

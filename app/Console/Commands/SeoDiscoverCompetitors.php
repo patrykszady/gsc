@@ -359,6 +359,13 @@ class SeoDiscoverCompetitors extends Command
             );
         }
 
+        // Machine-readable twin for seo:keyword-research (competitor domains
+        // to pull ranked keywords for).
+        Storage::disk('local')->put('reports/competitor-discovery.json', json_encode([
+            'generated_at' => now()->toIso8601String(),
+            'domains' => $rows->map(fn ($h) => ['host' => $h['host'], 'areas' => (int) $h['area_count'], 'best_pos' => (int) $h['best_pos'], 'known' => (bool) $h['known']])->values()->all(),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
         $md .= "\n## Suggested config/competitors.php stubs (new domains)\n\n";
         $md .= "```php\n";
         foreach ($rows as $h) {

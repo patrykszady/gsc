@@ -333,6 +333,8 @@ return [
     | town and service. See AreaSeoPolicy::shouldIndex().
     */
     'area_service_demand_impressions' => (int) env('SEO_AREA_SERVICE_DEMAND_IMPRESSIONS', 100),
+    // …or this much researched monthly search volume for the town + service (seo_keywords).
+    'area_service_demand_volume' => (int) env('SEO_AREA_SERVICE_DEMAND_VOLUME', 50),
 
     'autopilot' => [
         'auto_publish_landing_pages' => env('SEO_AUTOPILOT_AUTO_PUBLISH', false),
@@ -341,5 +343,10 @@ return [
         // before the engine drafts a landing page. 60 kept every real play
         // (30–53 impressions) below the line; the ledger stayed empty for months.
         'modifier_min_impressions' => (int) env('SEO_AUTOPILOT_MODIFIER_MIN_IMPRESSIONS', 30),
+        // Keyword research (seo_keywords): a researched phrase needs this monthly
+        // search volume to drive a landing page, a title experiment, or a copy refresh.
+        'research_min_volume' => (int) env('SEO_AUTOPILOT_RESEARCH_MIN_VOLUME', 30),
+        // Copy refreshes per autopilot run (each is one Gemini call and a page rewrite).
+        'content_refresh_per_run' => (int) env('SEO_AUTOPILOT_CONTENT_REFRESH_PER_RUN', 2),
     ],
 ];

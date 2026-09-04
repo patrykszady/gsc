@@ -104,7 +104,8 @@ class AreaSeoPolicy
             // answers (Kenilworth home remodeling: 3,445 impressions/28d,
             // Schaumburg kitchen: 2,120). Threshold in config/seo.php.
             if ($page === 'service' && $service !== null && $area->hasUniqueContent()) {
-                return self::demandImpressions($area, $service) >= (int) config('seo.area_service_demand_impressions', 100);
+                return self::demandImpressions($area, $service) >= (int) config('seo.area_service_demand_impressions', 100)
+                    || self::researchVolume($area, $service) >= (int) config('seo.area_service_demand_volume', 50);
             }
 
             return false;
@@ -133,6 +134,25 @@ class AreaSeoPolicy
         $key = mb_strtolower(trim((string) $area->city)) . '|' . $service;
 
         return (int) ($table[$key] ?? 0);
+    }
+
+    /** Researched monthly search volume (seo_keywords) for this town + service. */
+    public static function researchVolume(AreaServed $area, string $service): int
+    {
+        $table = Cache::remember(\App\Support\Tenancy::cacheKey('seo.area.service_volume'), 12 * 3600, function (): array {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('seo_keywords')) {
+                return [];
+            }
+            $out = [];
+            foreach (\App\Support\Tenancy::table('seo_keywords')->whereNotNull('city')->whereNotNull('service')->whereNull('modifier')->where('volume', '>', 0)->get(['city', 'service', 'volume']) as $r) {
+                $k = mb_strtolower($r->city) . '|' . $r->service;
+                $out[$k] = ($out[$k] ?? 0) + (int) $r->volume;
+            }
+
+            return $out;
+        });
+
+        return (int) ($table[mb_strtolower(trim((string) $area->city)) . '|' . $service] ?? 0);
     }
 
     /** @return array<string,int> "city|service" => impressions */
