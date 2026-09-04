@@ -248,7 +248,7 @@ class OnPageSourceTest extends TestCase
         $result = $runner->run($source);
 
         $this->assertTrue($result['ok']);
-        $this->assertSame(1, $result['snapshots'], 'only the summary — no follow-up detail once over budget');
+        $this->assertSame(2, $result['snapshots'], 'the task marker and the summary — no follow-up detail once over budget');
 
         $post = Http::recorded(fn ($r) => str_contains($r->url(), 'on_page/task_post'))->first()[0];
         $this->assertSame(10, $post->data()[0]['max_crawl_pages'], 'clamped from 100000 to what $0.0005 buys at $0.00015/page');
@@ -256,5 +256,65 @@ class OnPageSourceTest extends TestCase
         $this->assertSame(0, Http::recorded(fn ($r) => str_contains($r->url(), 'on_page/pages'))->count());
         $this->assertSame(0, Http::recorded(fn ($r) => str_contains($r->url(), 'on_page/duplicate_tags'))->count());
         $this->assertSame(0, Http::recorded(fn ($r) => str_contains($r->url(), 'on_page/redirect_chains'))->count());
+    }
+
+    public function test_a_queued_crawl_is_collected_by_a_later_run_without_posting_again(): void
+    {
+        $posts = 0;
+        $summaryCalls = 0;
+        Http::fake(function ($request) use (&$posts, &$summaryCalls) {
+            $url = $request->url();
+            if (str_contains($url, 'user_data')) {
+                return Http::response(['tasks' => [['result' => [['money' => ['balance' => 20]]]]]]);
+            }
+            if (str_contains($url, 'on_page/task_post')) {
+                $posts++;
+
+                return Http::response(['tasks' => [['id' => 'queued-1', 'status_code' => 20100, 'status_message' => 'Task Created.', 'cost' => 0.09]]]);
+            }
+            if (str_contains($url, 'on_page/summary/')) {
+                $summaryCalls++;
+                if ($summaryCalls <= 25) {
+                    return Http::response(['tasks' => [['cost' => 0, 'status_code' => 40602, 'status_message' => 'Task In Queue.', 'result' => null]]]);
+                }
+
+                return Http::response(['tasks' => [['cost' => 0, 'status_code' => 20000, 'result' => [[
+                    'crawl_progress' => 'finished',
+                    'crawl_status' => ['pages_crawled' => 12, 'pages_in_queue' => 0, 'max_crawl_pages' => 600],
+                    'page_metrics' => ['onpage_score' => 90.0, 'checks' => []],
+                ]]]]]);
+            }
+
+            return Http::response(['tasks' => [['cost' => 0, 'status_code' => 20000, 'result' => [['items' => [], 'total_items_count' => 0]]]]]);
+        });
+
+        // Monday 03:30: posted, still in DataForSEO's queue after the wait → remembered, nothing reported.
+        Carbon::setTestNow('2026-09-07 03:30:00');
+        $this->artisan('seo:intel', ['family' => ['onpage']])->assertExitCode(0);
+        $this->assertSame(1, $posts);
+        $this->assertSame(0, DB::table('seo_intel_snapshots')->where('kind', 'summary')->count());
+        $this->assertSame('queued-1', json_decode((string) DB::table('seo_intel_snapshots')->where('kind', 'crawl_task')->value('payload'), true)['id']);
+        $this->assertSame(1, DB::table('seo_intel_runs')->count());
+
+        // Pickup two hours later, still queued: no second post, no ledger row.
+        Carbon::setTestNow('2026-09-07 05:30:00');
+        $summaryCalls = 0;
+        $this->artisan('seo:intel', ['family' => ['onpage']])->expectsOutputToContain('nothing to collect')->assertExitCode(0);
+        $this->assertSame(1, $posts);
+        $this->assertSame(1, DB::table('seo_intel_runs')->count());
+
+        // Next morning the crawl has finished: collected under the same task id.
+        Carbon::setTestNow('2026-09-08 07:30:00');
+        $summaryCalls = 30;
+        $this->artisan('seo:intel', ['family' => ['onpage']])->assertExitCode(0);
+        $this->assertSame(1, $posts);
+        $this->assertSame(1, DB::table('seo_intel_snapshots')->where('kind', 'summary')->count());
+        $this->assertSame(1, (int) json_decode((string) DB::table('seo_intel_snapshots')->where('kind', 'crawl_task')->orderByDesc('taken_on')->value('metrics'), true)['finished']);
+        $this->assertSame(2, DB::table('seo_intel_runs')->count());
+
+        // Later that week: nothing pending and the crawl is recent → no new crawl.
+        Carbon::setTestNow('2026-09-10 07:30:00');
+        $this->artisan('seo:intel', ['family' => ['onpage']])->expectsOutputToContain('nothing to collect')->assertExitCode(0);
+        $this->assertSame(1, $posts);
     }
 }

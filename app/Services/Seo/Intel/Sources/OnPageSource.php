@@ -3,6 +3,7 @@
 namespace App\Services\Seo\Intel\Sources;
 
 use App\Services\DataForSeoService;
+use Illuminate\Support\Carbon;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
@@ -56,18 +57,34 @@ class OnPageSource extends IntelSource
             $maxPages = max(10, (int) floor($budget / self::PRICE_PER_PAGE));
         }
 
-        $id = $this->dfs->postTask('/on_page/task_post', [
-            'target' => $this->ourDomain(),
-            'max_crawl_pages' => $maxPages,
-            'load_resources' => false,
-            'enable_javascript' => false,
-            'enable_browser_rendering' => false,
-        ]);
-        if ($id === null) {
-            return [];
+        // A crawl can wait in DataForSEO's queue for hours, so the flow is
+        // post now, collect on whichever later run finds it finished. The
+        // pending task id lives in a 'crawl_task' snapshot; a new crawl is
+        // posted only when none is pending and the last one is old enough.
+        $pending = $this->latest('crawl_task', 'pending');
+        $id = ($pending && empty($pending['payload']['finished'])) ? (string) ($pending['payload']['id'] ?? '') : '';
+        $posted = false;
+        if ($id === '') {
+            $last = $this->latest('summary', $this->ourDomain());
+            $minDays = (int) $this->config('min_interval_days', 6);
+            if ($last && Carbon::parse($last['taken_on'])->gt(now()->subDays($minDays))) {
+                return $this->skip(); // crawled recently — nothing to do until the next slot
+            }
+            $id = (string) $this->dfs->postTask('/on_page/task_post', [
+                'target' => $this->ourDomain(),
+                'max_crawl_pages' => $maxPages,
+                'load_resources' => false,
+                'enable_javascript' => false,
+                'enable_browser_rendering' => false,
+            ]);
+            if ($id === '') {
+                return [];
+            }
+            $posted = true;
         }
+        $taskSnapshot = fn (bool $finished) => new Snapshot('crawl_task', 'pending', ['finished' => $finished ? 1 : 0], ['id' => $id, 'posted_on' => $posted ? now()->toDateString() : ($pending['payload']['posted_on'] ?? now()->toDateString()), 'finished' => $finished]);
 
-        $maxWait = (int) $this->config('max_wait', 1500);
+        $maxWait = (int) $this->config('max_wait', 600);
         $interval = (int) $this->config('poll_interval', 30);
         $summary = $this->dfs->pollUntil(function () use ($id) {
             $data = $this->dfs->request('GET', "/on_page/summary/{$id}");
@@ -77,9 +94,9 @@ class OnPageSource extends IntelSource
         }, $maxWait, $interval);
 
         if (! is_array($summary)) {
-            // Crawl never settled inside the wait budget — nothing to report
-            // this run; the next scheduled run tries again with a fresh task.
-            return [];
+            // Still queued or crawling: remember the task (only when just
+            // posted — a pickup run that finds it still pending is a no-op).
+            return $posted ? [$taskSnapshot(false)] : $this->skip();
         }
 
         $pm = (array) ($summary['page_metrics'] ?? []);
@@ -135,6 +152,7 @@ class OnPageSource extends IntelSource
         }
 
         $snapshots = [
+            $taskSnapshot(true),
             new Snapshot('summary', $this->ourDomain(), [
                 'onpage_score' => round((float) ($pm['onpage_score'] ?? 0), 2),
                 'pages_crawled' => (int) ($crawlStatus['pages_crawled'] ?? 0),

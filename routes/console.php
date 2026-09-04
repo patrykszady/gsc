@@ -262,6 +262,11 @@ foreach ([
         ->appendOutputTo(storage_path('logs/schedule.log'))
         ->onFailure(fn () => logger()->warning("Scheduled seo:intel {$family} failed (balance?)"));
 }
+// The Monday crawl is posted at 03:30; DataForSEO can hold it in the queue for
+// hours, so these pickups collect it when it is finished (free calls, no-op otherwise).
+Schedule::command('seo:intel onpage --budget=1')->cron('30 5-23/2 * * 1,2')
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:intel business_data --budget=1')->weekdays()->dailyAt('06:10') // reviews and the local competitors' profiles (~\$0.06/run)
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/schedule.log'));

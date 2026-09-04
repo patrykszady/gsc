@@ -67,6 +67,11 @@ class IntelRunner
                 if ($count === 0 && $this->dfs->getLastError()) {
                     $error = $this->dfs->getLastError();
                 }
+                if ($source->wasSkipped()) {
+                    // Nothing to collect right now (a crawl still queued, a
+                    // family not due): no snapshots, no findings churn, no ledger row.
+                    return ['family' => $family, 'ok' => true, 'skipped' => true, 'cost' => round($this->dfs->spent() - $spentBefore, 4), 'snapshots' => 0, 'findings' => $stats, 'error' => null, 'duration_ms' => (int) round((microtime(true) - $started) * 1000)];
+                }
                 if (! $dryRun) {
                     $this->store->save($family, $runId, $takenOn, $snapshots);
                 }
@@ -89,6 +94,6 @@ class IntelRunner
             Cache::forget(Tenancy::cacheKey(self::CACHE_KEY));
         }
 
-        return ['family' => $family, 'ok' => $error === null, 'cost' => $cost, 'snapshots' => $count, 'findings' => $stats, 'error' => $error, 'duration_ms' => $duration];
+        return ['family' => $family, 'ok' => $error === null, 'skipped' => false, 'cost' => $cost, 'snapshots' => $count, 'findings' => $stats, 'error' => $error, 'duration_ms' => $duration];
     }
 }

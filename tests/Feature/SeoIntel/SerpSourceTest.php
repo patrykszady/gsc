@@ -278,4 +278,45 @@ class SerpSourceTest extends TestCase
         $this->assertNotEmpty($report['note']);
         $this->assertGreaterThan(0, app(SerpSource::class)->estimateCost());
     }
+
+    public function test_metro_queries_are_capped_per_city_and_their_local_pack_findings_only_inform(): void
+    {
+        config(['seo-intel.families.serp.queries' => [], 'seo-intel.families.serp.tracked' => 6, 'seo-intel.families.serp.per_city' => 1,
+            'seo-intel.families.serp.services' => ['kitchen remodeling'], 'gbp-services.service_areas' => ['Arlington Heights, IL, USA']]);
+        foreach (['Arlington Heights', 'Chicago'] as $town) {
+            AreaServed::create(['city' => $town, 'slug' => Str::slug($town)]);
+            Project::create(['title' => "{$town} kitchen", 'slug' => Str::slug($town).'-kitchen', 'project_type' => 'kitchen', 'location' => "{$town}, IL", 'is_published' => true, 'completed_at' => now()]);
+        }
+        DB::table('seo_keywords')->insert([
+            ['keyword' => 'chicago kitchen renovation', 'city' => 'Chicago', 'opportunity' => 500, 'created_at' => now(), 'updated_at' => now()],
+            ['keyword' => 'chicago basements', 'city' => 'Chicago', 'opportunity' => 400, 'created_at' => now(), 'updated_at' => now()],
+            ['keyword' => 'custom shower remodel', 'city' => 'Arlington Heights', 'opportunity' => 90, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'user_data')) {
+                return Http::response(['tasks' => [['result' => [['money' => ['balance' => 50]]]]]]);
+            }
+            $keyword = json_decode($request->body(), true)[0]['keyword'] ?? '';
+            $items = [
+                ['type' => 'local_pack', 'rank_group' => 1, 'rank_absolute' => 1, 'domain' => 'prismkitchenbath.com', 'title' => 'Prism Kitchen & Bath'],
+                ['type' => 'organic', 'rank_group' => 1, 'rank_absolute' => 4, 'domain' => 'prismkitchenbath.com', 'url' => 'https://prismkitchenbath.com/'],
+            ];
+
+            return Http::response(['tasks' => [['cost' => 0.004, 'status_code' => 20000, 'result' => [['keyword' => $keyword, 'items' => $items]]]]]);
+        });
+
+        Carbon::setTestNow('2026-09-05 06:00:00');
+        $this->artisan('seo:intel', ['family' => ['serp'], '--budget' => 1])->assertExitCode(0);
+
+        $subjects = DB::table('seo_intel_snapshots')->where('family', 'serp')->pluck('subject');
+        $this->assertCount(4, $subjects, 'two anchors plus one researched phrase per city');
+        $this->assertTrue($subjects->contains('chicago kitchen renovation'));
+        $this->assertFalse($subjects->contains('chicago basements'), 'Chicago is capped to one researched phrase');
+
+        $absent = DB::table('seo_intel_findings')->where('code', 'serp.local_pack_absent')->get()->keyBy('subject');
+        $this->assertSame('info', $absent['kitchen remodeling Chicago IL']->severity);
+        $this->assertSame('info', $absent['chicago kitchen renovation']->severity);
+        $this->assertSame('warn', $absent['kitchen remodeling Arlington Heights IL']->severity);
+        $this->assertStringContainsString('organic position', $absent['chicago kitchen renovation']->detail);
+    }
 }

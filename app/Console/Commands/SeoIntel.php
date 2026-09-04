@@ -94,6 +94,10 @@ class SeoIntel extends Command
                 continue;
             }
             $r = $runner->run($source, $dryRun, $findingsOnly);
+            if (! empty($r['skipped'])) {
+                $this->line(sprintf('  %-18s —    nothing to collect right now', $family));
+                continue;
+            }
             $line = sprintf('  %-18s %s  %3d snapshots  $%.3f  findings +%d / %d open / -%d resolved  (%.1fs)',
                 $family, $r['ok'] ? 'ok ' : 'ERR', $r['snapshots'], $r['cost'], $r['findings']['new'], $r['findings']['open'], $r['findings']['resolved'], $r['duration_ms'] / 1000);
             $r['ok'] ? $this->info($line) : $this->error($line . '  ' . $r['error']);

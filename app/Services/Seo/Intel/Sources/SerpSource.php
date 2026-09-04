@@ -135,10 +135,13 @@ class SerpSource extends IntelSource
 
             // Local pack present but we are not in it.
             if (($snap['payload']['local_pack_present'] ?? false) && ! ($snap['metrics']['in_local_pack'] ?? 0)) {
+                // A metro's pack (Chicago) is city-local: measured from the office it is not ours to win, so it informs rather than warns.
+                $metro = $this->isMetroQuery($query);
                 $candidates[] = $this->finding(
-                    'local_pack_absent', Finding::WARN,
+                    'local_pack_absent', $metro ? Finding::INFO : Finding::WARN,
                     "Local pack shows for \"{$query}\" — we are not in it",
-                    'A 3-pack renders for this query on Google Maps/Search and our listing does not appear in it.',
+                    'A 3-pack renders for this query on Google Maps/Search and our listing does not appear in it.'
+                        . ($metro ? ' Measured from the office; for a city this size the pack is city-local — the organic position is the number to move.' : ''),
                     $query,
                 );
             }
@@ -238,14 +241,19 @@ class SerpSource extends IntelSource
         // kitchen renovation" local pack, seen from Prospect Heights, is one
         // we can never enter, so tracking it only produces noise.
         $served = $this->servedTowns();
-        $researched = Tenancy::table('seo_keywords')
-            ->whereNotNull('city')
-            ->orderByDesc('opportunity')
-            ->limit($tracked * 4)
-            ->get(['keyword', 'city'])
-            ->filter(fn ($r) => isset($served[mb_strtolower(trim((string) $r->city))]))
-            ->pluck('keyword')
-            ->all();
+        // …and no single town (Chicago) may take every slot: at most per_city
+        // researched phrases each, highest opportunity first.
+        $perCity = max(1, (int) $this->config('per_city', 4));
+        $byCity = [];
+        $researched = [];
+        foreach (Tenancy::table('seo_keywords')->whereNotNull('city')->orderByDesc('opportunity')->limit($tracked * 4)->get(['keyword', 'city']) as $r) {
+            $city = mb_strtolower(trim((string) $r->city));
+            if (! isset($served[$city]) || ($byCity[$city] ?? 0) >= $perCity) {
+                continue;
+            }
+            $byCity[$city] = ($byCity[$city] ?? 0) + 1;
+            $researched[] = (string) $r->keyword;
+        }
 
         return array_slice($this->dedupe(array_merge($anchors, $researched)), 0, $tracked);
     }
@@ -274,6 +282,18 @@ class SerpSource extends IntelSource
         }
 
         return $towns;
+    }
+
+    /** Names a metro (config metro_cities, default Chicago) whose local pack is not winnable from the office. */
+    protected function isMetroQuery(string $query): bool
+    {
+        foreach ((array) $this->config('metro_cities', ['chicago']) as $city) {
+            if ((string) $city !== '' && stripos($query, (string) $city) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function dedupe(array $queries): array

@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Schema;
  */
 class ContentAnalysisSource extends IntelSource
 {
+    public const DIRECTORY_DOMAINS = ['porch.com', 'homestars.com', 'houzz.com', 'yelp.com', 'angi.com', 'homeadvisor.com', 'bbb.org', 'buildzoom.com', 'thumbtack.com', 'nextdoor.com', 'facebook.com', 'yellowpages.com', 'mapquest.com', 'manta.com', 'bark.com'];
+
     public function family(): string
     {
         return 'content_analysis';
@@ -177,7 +179,9 @@ class ContentAnalysisSource extends IntelSource
             // = 0.4) and outweighs the positive fraction.
             $neg = (float) ($metrics['negative'] ?? 0);
             $pos = (float) ($metrics['positive'] ?? 0);
-            if ($neg >= 0.4 && $neg > $pos) {
+            // Directory listings (porch.com "unscreened … services in Zion")
+            // carry our name but their sentiment is about the page template.
+            if ($neg >= 0.4 && $neg > $pos && ! $this->isDirectoryDomain((string) (parse_url($url, PHP_URL_HOST) ?: ''))) {
                 $mentionFindings[] = $this->finding('negative_mention', Finding::WARN, 'Negative-sentiment mention',
                     $label !== '' ? $label : $url, $url);
             }
@@ -433,5 +437,19 @@ class ContentAnalysisSource extends IntelSource
     public static function phrase(string $term): string
     {
         return '"' . trim($term, '"') . '"';
+    }
+
+    /** Aggregators and directories: citations worth counting, sentiment not worth reading. */
+    protected function isDirectoryDomain(string $host): bool
+    {
+        $host = mb_strtolower($host);
+        foreach ((array) $this->config('directory_domains', self::DIRECTORY_DOMAINS) as $d) {
+            $d = mb_strtolower(trim((string) $d));
+            if ($d !== '' && ($host === $d || str_ends_with($host, '.' . $d))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

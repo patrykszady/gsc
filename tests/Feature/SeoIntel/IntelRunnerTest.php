@@ -21,6 +21,8 @@ class FakeScoreSource extends IntelSource
 
     public static bool $explode = false;
 
+    public static bool $nothing = false;
+
     public function family(): string
     {
         return 'fake';
@@ -40,6 +42,9 @@ class FakeScoreSource extends IntelSource
     {
         if (self::$explode) {
             throw new \RuntimeException('API said no');
+        }
+        if (self::$nothing) {
+            return $this->skip();
         }
         $this->dfs->request('POST', '/fake/live', [['x' => 1]]);
 
@@ -85,6 +90,7 @@ class IntelRunnerTest extends TestCase
         });
         FakeScoreSource::$score = 80;
         FakeScoreSource::$explode = false;
+        FakeScoreSource::$nothing = false;
         self::$balance = 12.5;
     }
 
@@ -176,6 +182,13 @@ class IntelRunnerTest extends TestCase
         $this->assertSame(1, DB::table('seo_intel_snapshots')->count(), 'no names, nothing removed');
         $this->artisan('seo:intel', ['family' => ['fake'], '--reset' => true, '--findings' => true])->expectsOutputToContain('removed 1 snapshots')->assertExitCode(0);
         $this->assertSame(0, DB::table('seo_intel_snapshots')->count());
+        $this->assertSame(0, DB::table('seo_intel_runs')->count());
+    }
+
+    public function test_a_source_with_nothing_to_do_leaves_no_ledger_row(): void
+    {
+        FakeScoreSource::$nothing = true;
+        $this->artisan('seo:intel', ['family' => ['fake']])->expectsOutputToContain('nothing to collect')->assertExitCode(0);
         $this->assertSame(0, DB::table('seo_intel_runs')->count());
     }
 

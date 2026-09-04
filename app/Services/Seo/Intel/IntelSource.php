@@ -22,6 +22,21 @@ abstract class IntelSource
 {
     public function __construct(protected DataForSeoService $dfs, protected IntelStore $store) {}
 
+    protected bool $skipped = false;
+
+    /** collect() had nothing to do this run (a crawl still queued, a family not due): no snapshots, no ledger row. */
+    protected function skip(): array
+    {
+        $this->skipped = true;
+
+        return [];
+    }
+
+    public function wasSkipped(): bool
+    {
+        return $this->skipped;
+    }
+
     /** Short machine name, also the config key: 'onpage', 'backlinks', … */
     abstract public function family(): string;
 

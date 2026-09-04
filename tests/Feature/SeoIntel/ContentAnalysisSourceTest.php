@@ -130,12 +130,17 @@ class ContentAnalysisSourceTest extends TestCase
             'type' => 'content_analysis_search', 'url' => 'https://bad-mention.test/x', 'domain' => 'bad-mention.test', 'main_domain' => 'bad-mention.test',
             'content_info' => ['title' => 'Complaint thread', 'date_published' => '2026-09-10', 'connotation_types' => ['positive' => 0.05, 'negative' => 0.83, 'neutral' => 0.12], 'rating' => null],
         ];
+        // A porch.com directory page reads as "negative" (its template says "unscreened"): a citation, not a complaint.
+        $directory = [
+            'type' => 'content_analysis_search', 'url' => 'https://pro.porch.com/zion-il/bathtub-installation/cs', 'domain' => 'pro.porch.com', 'main_domain' => 'porch.com',
+            'content_info' => ['title' => 'Are there any unscreened bathtub installation services in Zion I can browse?', 'date_published' => '2026-09-09', 'connotation_types' => ['positive' => 0.05, 'negative' => 0.9, 'neutral' => 0.05], 'rating' => null],
+        ];
         $cited = [
             'type' => 'content_analysis_search', 'url' => 'https://cited-us.test/no-link', 'domain' => 'cited-us.test', 'main_domain' => 'cited-us.test',
             'content_info' => ['title' => 'Local remodelers roundup', 'date_published' => '2026-09-11', 'connotation_types' => ['positive' => 0.76, 'negative' => 0.03, 'neutral' => 0.21], 'rating' => null],
         ];
 
-        return [$good, $bad, $cited];
+        return [$good, $bad, $directory, $cited];
     }
 
     protected function trendSeries(string $day): array
@@ -178,8 +183,10 @@ class ContentAnalysisSourceTest extends TestCase
         $mentionsUp = DB::table('seo_intel_findings')->where('code', 'content_analysis.brand_mentions_up')->first();
         $this->assertSame(['total_count' => ['prev' => 40, 'now' => 45]], json_decode((string) $mentionsUp->delta, true));
 
-        $negMention = DB::table('seo_intel_findings')->where('code', 'content_analysis.negative_mention')->first();
-        $this->assertSame('https://bad-mention.test/x', $negMention->subject);
+        $negMentions = DB::table('seo_intel_findings')->where('code', 'content_analysis.negative_mention')->get();
+        $this->assertCount(1, $negMentions, 'the directory page is a citation, not a negative mention');
+        $this->assertSame('https://bad-mention.test/x', $negMentions->first()->subject);
+        $this->assertNotNull(DB::table('seo_intel_snapshots')->where('kind', 'mention')->where('subject', 'https://pro.porch.com/zion-il/bathtub-installation/cs')->first(), 'still stored as a mention');
 
         // The docs' search/live response carries no "links to target" field, so
         // link_to_us starts out null (unknown) and the citation opens a WIN

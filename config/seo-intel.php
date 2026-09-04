@@ -33,7 +33,8 @@ return [
             'max_cost' => 0.20,
             'max_issue_pages' => 300,
             'max_findings' => 40,
-            'max_wait' => 1500,
+            'max_wait' => 600,           // seconds a run waits for the crawl before leaving it for the next pickup
+            'min_interval_days' => 6,    // post a new crawl only when the last finished one is this old
             'poll_interval' => 30,
             'score_drop_threshold' => 3,
             'crawl_shrink_pct' => 0.10,
@@ -61,6 +62,8 @@ return [
         'serp' => [
             'queries' => [],   // empty = derived from seo_keywords + core towns × services
             'tracked' => 30,
+            'per_city' => 4,              // researched phrases per town, so Chicago cannot take every slot
+            'metro_cities' => ['chicago'], // their local pack informs instead of warning
             'depth' => 20,
             'max_findings' => 25,
             'max_cost' => 0.20,
