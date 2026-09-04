@@ -51,6 +51,55 @@ class DataForSeoService
     }
 
     /**
+     * One raw authenticated request for callers that shape their own payloads
+     * (the intelligence sources). Task-based POST bodies are a list of tasks.
+     * Returns the decoded envelope, [] on transport failure; check
+     * getLastError() and resultOf() for the first task's result.
+     */
+    public function request(string $method, string $path, array $body = []): array
+    {
+        return $this->call($method, $path, $body);
+    }
+
+    /** The first task's result list of a decoded envelope. */
+    public static function resultOf(array $data): array
+    {
+        return (array) ($data['tasks'][0]['result'] ?? []);
+    }
+
+    /** Queue an asynchronous task (…/task_post); returns its id or null. */
+    public function postTask(string $path, array $task): ?string
+    {
+        $data = $this->call('POST', $path, [$task]);
+        $first = $data['tasks'][0] ?? [];
+        $id = $first['id'] ?? null;
+
+        return is_string($id) && in_array((int) ($first['status_code'] ?? 0), [20000, 20100], true) ? $id : null;
+    }
+
+    /**
+     * Poll until $probe returns non-null, sleeping $interval seconds between
+     * attempts (no sleeping under tests, where a bounded number of attempts
+     * is made instead). Returns the probe's value, or null on timeout.
+     */
+    public function pollUntil(callable $probe, int $maxSeconds = 600, int $interval = 15): mixed
+    {
+        $testing = app()->runningUnitTests();
+        $maxAttempts = $testing ? 20 : max(1, (int) ceil($maxSeconds / max(1, $interval)));
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            $value = $probe();
+            if ($value !== null) {
+                return $value;
+            }
+            if (! $testing) {
+                sleep($interval);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Google Ads search volume for up to 1,000 keywords (one task, ~$0.08).
      *
      * @return array<string, array{volume:int,cpc:?float,competition:?float}> keyed by keyword (lowercase)
