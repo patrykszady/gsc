@@ -226,6 +226,14 @@ class SeoAutopilotService
         }
 
         $areaCities = $this->areaCityKeys();
+        // Towns we declare as served on the Business Profile — the boundary
+        // for research-driven pages in towns without an area page. Without
+        // it the first run proposed Round Lake and Lake Villa, an hour north
+        // of anywhere we work. (The Search Console rule stays as it was: an
+        // impression is proof someone there searched for us.)
+        $servedTowns = collect((array) config('gbp-services.service_areas', []))
+            ->map(fn ($s) => Str::lower(trim((string) Str::before((string) $s, ','))))
+            ->filter()->flip()->all();
         $generator = new LandingPageContentGenerator();
         $created = 0;
         $pageBudget = 6;
@@ -236,6 +244,9 @@ class SeoAutopilotService
             $covered = isset($areaCities[Str::lower((string) $r->city)]);
 
             // (a) landing page: uncovered town, or a modifier angle on a covered one.
+            if (! $covered && ! isset($servedTowns[Str::lower((string) $r->city)])) {
+                continue; // outside the declared service area
+            }
             if ($pageBudget > 0 && (! $covered || $r->modifier !== null) && ($r->our_position === null || (float) $r->our_position > 20)) {
                 $content = $generator->build((string) $r->service, (string) $r->city, $r->modifier, (string) $r->keyword);
                 if ($content !== null && ! \App\Models\LandingPage::where('slug', $content['slug'])->exists()) {

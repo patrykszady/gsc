@@ -90,7 +90,7 @@ class SeoDataForSeoIntelTest extends TestCase
 
     public function test_business_name_parser_handles_the_engines_formats(): void
     {
-        $names = SeoAiMentions::businessesNamed("**Majestic Tiles Remodeling Services**\n**Open now · Bathroom remodeler · 5.0 (113 reviews)**\n[Glenbrook Remodeling](https://glenbrook.test)\n3. **Airoom** - design-build\n");
-        $this->assertSame(['Majestic Tiles Remodeling Services', 'Glenbrook Remodeling', 'Airoom'], $names);
+        $names = SeoAiMentions::businessesNamed("**Majestic Tiles Remodeling Services**\n**Open now · Bathroom remodeler · 5.0 (113 reviews)**\n**Kenilworth, Illinois**\n**Highly-Rated Companies**\n[Glenbrook Remodeling](https://glenbrook.test)\n3. **Airoom** - design-build\n**1. Orren Pickell Building Group**\n");
+        $this->assertSame(['Majestic Tiles Remodeling Services', 'Glenbrook Remodeling', 'Airoom', 'Orren Pickell Building Group'], $names);
     }
 }

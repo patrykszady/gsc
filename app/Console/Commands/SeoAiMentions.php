@@ -124,8 +124,12 @@ class SeoAiMentions extends Command
         $names = [];
         foreach ($found as [, $n]) {
             $n = trim(preg_replace('/\s+/', ' ', $n) ?? '');
+            $n = preg_replace('/^\d+\.\s*/', '', $n) ?? $n;            // "1. Orren Pickell"
             $n = preg_replace('/\s*[:\-–—]\s*$/', '', $n) ?? $n;
-            if ($n === '' || preg_match('/^(open now|website|phone|address|rating|reviews?|note|top|best)\b/i', $n)) {
+            if ($n === ''
+                || preg_match('/^(open now|closed|website|phone|address|rating|reviews?|note|top|best|specific|highly|well-known|several|here|these|other)\b/i', $n)
+                || preg_match('/\b(illinois|companies|contractors|firms|options)\s*$/i', $n)      // "Kenilworth, Illinois", "Highly-Rated Companies"
+                || str_contains($n, '·') || preg_match('/\(\d+ reviews?\)/i', $n)) {
                 continue;
             }
             if (! in_array($n, $names, true)) {

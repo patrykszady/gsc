@@ -34,7 +34,10 @@ class SeoResearchAutomationTest extends TestCase
         $kenilworth = AreaServed::create(['city' => 'Kenilworth', 'slug' => 'kenilworth', 'local_intro' => 'Short copy about Kenilworth.']);
         Project::create(['title' => 'Palatine Kitchen', 'project_type' => 'kitchen', 'location' => 'Palatine, IL', 'is_published' => true, 'is_featured' => true]);
 
-        // Uncovered town → landing page (proof comes from the featured kitchen project).
+        // Uncovered town inside the declared service area → landing page (proof comes from the featured kitchen project);
+        // an uncovered town outside it is ignored.
+        config(['gbp-services.service_areas' => ['Wheeling, IL, USA', 'Palatine, IL, USA']]);
+        $this->keyword(['keyword' => 'kitchen remodeling round lake', 'volume' => 200, 'service' => 'kitchen-remodeling', 'city' => 'Round Lake', 'competitor_best_position' => 2]);
         $this->keyword(['keyword' => 'kitchen remodeling wheeling', 'volume' => 140, 'service' => 'kitchen-remodeling', 'city' => 'Wheeling', 'competitor_best_position' => 3, 'competitor_domains' => json_encode(['prism.test' => 3])]);
         // Covered town, plain intent, strong phrase the title lacks → title experiment + copy refresh (thin intro).
         $this->keyword(['keyword' => 'kenilworth home remodeling and renovation services', 'volume' => 320, 'service' => 'home-remodeling', 'city' => 'Kenilworth', 'our_position' => 7.5]);
@@ -45,6 +48,7 @@ class SeoResearchAutomationTest extends TestCase
         $page = SeoAction::where('category', 'create_page')->where('source', 'keyword_research')->first();
         $this->assertNotNull($page);
         $this->assertStringContainsString('Wheeling', $page->title);
+        $this->assertNull(SeoAction::where('category', 'create_page')->where('title', 'like', '%Round Lake%')->first(), 'towns outside the declared service area get no page');
         $this->assertSame(140, $page->payload['volume']);
 
         $title = SeoAction::where('category', 'title_meta')->where('source', 'keyword_research')->first();
