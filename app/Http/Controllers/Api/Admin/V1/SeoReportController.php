@@ -120,6 +120,7 @@ class SeoReportController extends Controller
             'map_pack' => $this->mapPackSnapshot(),
             'keyword_research' => $this->keywordResearchSnapshot(),
             'dataforseo' => $this->dataForSeoSnapshot(),
+            'intel' => $this->intelSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
             'gsc_errors' => $this->gscErrorSnapshot(),
         ]);
@@ -866,6 +867,58 @@ class SeoReportController extends Controller
             }
 
             return $out;
+        });
+    }
+
+    /**
+     * DataForSEO intelligence: every API family's latest run, its report
+     * (uniform tiles + tables), open findings and the run ledger.
+     */
+    protected function intelSnapshot(): array
+    {
+        return Cache::remember(Tenancy::cacheKey(\App\Services\Seo\Intel\IntelRunner::CACHE_KEY), 1800, function (): array {
+            $store = app(\App\Services\Seo\Intel\IntelStore::class);
+            if (! $store->ready()) {
+                return ['families' => [], 'open_findings' => 0, 'critical' => 0, 'spent_30d' => 0];
+            }
+            $families = [];
+            foreach (app(\App\Services\Seo\Intel\IntelRunner::class)->sources() as $family => $source) {
+                $runs = $store->runs($family, 8);
+                $last = $runs->first();
+                try {
+                    $report = $last ? $source->report() : ['tiles' => [], 'tables' => [], 'note' => 'Not collected yet.'];
+                } catch (\Throwable $e) {
+                    report($e);
+                    $report = ['tiles' => [], 'tables' => [], 'note' => 'Report unavailable: ' . mb_substr($e->getMessage(), 0, 120)];
+                }
+                $open = $store->openFindings($family, 200);
+                $families[$family] = [
+                    'label' => $source->label(),
+                    'taken_on' => $last->taken_on ?? null,
+                    'prev_taken_on' => $runs->skip(1)->first()->taken_on ?? null,
+                    'cost' => $last ? round((float) $last->cost, 3) : null,
+                    'error' => $last->error ?? null,
+                    'estimate' => round($source->estimateCost(), 3),
+                    'report' => $report,
+                    'findings' => $open->take(10)->map(fn ($f) => [
+                        'severity' => $f->severity, 'code' => $f->code, 'title' => $f->title, 'detail' => $f->detail, 'key' => $f->key,
+                        'first_seen_on' => substr((string) $f->first_seen_on, 0, 10), 'delta' => $f->delta, 'action' => $f->action,
+                    ])->values()->all(),
+                    'findings_open' => $open->count(),
+                    'findings_by_severity' => $open->countBy('severity')->all(),
+                    'runs' => $runs->map(fn ($r) => ['taken_on' => $r->taken_on, 'cost' => round((float) $r->cost, 3), 'new' => (int) $r->findings_new, 'resolved' => (int) $r->findings_resolved, 'error' => $r->error])->values()->all(),
+                ];
+            }
+            $all = $store->openFindings(null, 1000);
+            $spent = Tenancy::table('seo_intel_runs')->where('taken_on', '>=', now()->subDays(30)->toDateString())->sum('cost');
+
+            return [
+                'families' => $families,
+                'open_findings' => $all->count(),
+                'critical' => $all->where('severity', 'critical')->count(),
+                'spent_30d' => round((float) $spent, 2),
+                'top_findings' => $all->take(12)->map(fn ($f) => ['family' => $f->family, 'severity' => $f->severity, 'title' => $f->title, 'detail' => $f->detail, 'key' => $f->key, 'action' => $f->action])->values()->all(),
+            ];
         });
     }
 

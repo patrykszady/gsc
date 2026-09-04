@@ -98,6 +98,11 @@ class RecommendationEngine
             $recommendations = array_merge($recommendations, $this->localPackRecs());
             $recommendations = array_merge($recommendations, $this->dataForSeoRecs());
         });
+        $this->rule(function () use (&$recommendations, &$actionItems): void {
+            [$urgent, $recs] = $this->intelRecs();
+            $actionItems = array_merge($actionItems, $urgent);
+            $recommendations = array_merge($recommendations, $recs);
+        });
 
         if ($recommendations === []) {
             $recommendations[] = [
@@ -898,6 +903,39 @@ class RecommendationEngine
         }
 
         return $recs;
+    }
+
+    /**
+     * DataForSEO intelligence findings: critical ones become action items,
+     * the rest (grouped per family) become recommendations.
+     *
+     * @return array{0: list<string>, 1: list<array{t: string, d: string, p: string}>}
+     */
+    private function intelRecs(): array
+    {
+        if (! Schema::hasTable('seo_intel_findings')) {
+            return [[], []];
+        }
+        $open = app(\App\Services\Seo\Intel\IntelStore::class)->openFindings(null, 300);
+        $labels = [];
+        foreach (app(\App\Services\Seo\Intel\IntelRunner::class)->sources() as $family => $source) {
+            $labels[$family] = $source->label();
+        }
+        $urgent = $open->where('severity', 'critical')->take(4)
+            ->map(fn ($f) => ($labels[$f->family] ?? $f->family) . ': ' . $f->title . ($f->key ? ' (' . $f->key . ')' : '') . ($f->detail ? ' — ' . \Illuminate\Support\Str::limit($f->detail, 160) : ''))
+            ->values()->all();
+        $recs = [];
+        foreach ($open->whereIn('severity', ['warn', 'info'])->groupBy('family') as $family => $g) {
+            $warn = $g->where('severity', 'warn');
+            $lead = $warn->first() ?? $g->first();
+            $recs[] = [
+                't' => ($labels[$family] ?? $family) . ': ' . $lead->title,
+                'd' => \Illuminate\Support\Str::limit((string) $lead->detail, 200) . ($g->count() > 1 ? ' Plus ' . ($g->count() - 1) . ' more open finding' . ($g->count() > 2 ? 's' : '') . ' from this source on the SEO page.' : ''),
+                'p' => $warn->isNotEmpty() ? 'now' : 'next',
+            ];
+        }
+
+        return [$urgent, array_slice($recs, 0, 6)];
     }
 
     private function liveFaqCheckRecs(): array

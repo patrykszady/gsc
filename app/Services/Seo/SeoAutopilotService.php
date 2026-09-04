@@ -85,6 +85,7 @@ class SeoAutopilotService
         $created += $this->synthesizeLlmsRefresh();
         $created += $this->synthesizeCreatePage();
         $created += $this->synthesizeResearch();
+        $created += $this->synthesizeIntel();
 
         return $created;
     }
@@ -400,6 +401,149 @@ class SeoAutopilotService
                     $refreshed[$area->getKey()] = true;
                     $refreshBudget--;
                 }
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * DataForSEO intelligence findings that carry an action hint (see
+     * App\Services\Seo\Intel\Finding) become ledger actions through the same
+     * appliers as every other signal: the finding says what is wrong, the
+     * action fixes it, the measurement says whether it helped. Only the
+     * safe categories are accepted; everything else stays a finding on the
+     * SEO page for a human.
+     */
+    private function synthesizeIntel(): int
+    {
+        if (! Schema::hasTable('seo_intel_findings')) {
+            return 0;
+        }
+        $store = app(\App\Services\Seo\Intel\IntelStore::class);
+        $findings = $store->openFindings(null, 300)->filter(fn ($f) => is_array($f->action) && in_array($f->action['type'] ?? null, self::SAFE_ALLOWLIST, true));
+        if ($findings->isEmpty()) {
+            return 0;
+        }
+        $servedTowns = collect((array) config('gbp-services.service_areas', []))
+            ->map(fn ($s) => Str::lower(trim((string) Str::before((string) $s, ','))))
+            ->filter()->flip()->all();
+        $generator = new LandingPageContentGenerator();
+        $impact = ['critical' => 8.0, 'warn' => 5.0, 'info' => 2.5, 'win' => 1.0];
+        $budgets = ['title_meta' => 6, 'content_refresh' => (int) config('seo.autopilot.content_refresh_per_run', 2), 'create_page' => 3, 'reindex' => 10, 'llms_regen' => 1];
+        $created = 0;
+
+        foreach ($findings as $f) {
+            $a = $f->action;
+            $type = (string) $a['type'];
+            if (($budgets[$type] ?? 0) <= 0) {
+                continue;
+            }
+            $why = Str::limit(trim($f->title . ($f->detail ? '. ' . $f->detail : '')), 400);
+            $score = round(($impact[$f->severity] ?? 2.0), 1);
+            $path = isset($a['path']) ? '/' . ltrim((string) parse_url((string) $a['path'], PHP_URL_PATH), '/') : null;
+            $attrs = null;
+
+            switch ($type) {
+                case 'title_meta':
+                    if ($path === null || ! ($target = $this->resolveTarget(self::BASE_URL . $path))) {
+                        break;
+                    }
+                    [$model, $serviceSlug] = $target;
+                    if ($model instanceof AreaServed && ! AreaSeoPolicy::shouldIndex($model, $serviceSlug ? 'service' : 'home', $serviceSlug)) {
+                        break;
+                    }
+                    $inFlight = SeoAction::where('category', 'title_meta')->where('target_url', self::BASE_URL . $path)
+                        ->whereIn('status', [SeoAction::STATUS_PROPOSED, SeoAction::STATUS_APPLIED])->whereNull('measured_at')->exists();
+                    if ($inFlight) {
+                        break;
+                    }
+                    $generated = $model instanceof AreaServed ? $this->titles->forArea($model, $serviceSlug, $a['phrase'] ?? null) : $this->titles->forProject($model);
+                    $attrs = [
+                        'fingerprint' => $this->fp('intel', 'title_meta', $model::class . ':' . $model->getKey() . ':' . ($serviceSlug ?? '')),
+                        'target_type' => $model::class, 'target_id' => $model->getKey(), 'target_url' => self::BASE_URL . $path,
+                        'title' => 'Rewrite title/meta: ' . $path,
+                        'metric' => 'clicks',
+                        'payload' => ['new_title' => $generated['title'], 'new_description' => $generated['description'], 'finding' => $f->code],
+                    ];
+                    break;
+
+                case 'content_refresh':
+                    if ($path === null || ! ($target = $this->resolveTarget(self::BASE_URL . $path)) || ! ($target[0] instanceof AreaServed) || $target[1] !== null) {
+                        break;
+                    }
+                    $area = $target[0];
+                    $recent = SeoAction::where('category', 'content_refresh')->where('target_type', AreaServed::class)->where('target_id', $area->getKey())
+                        ->where('created_at', '>=', now()->subDays(90))->exists();
+                    if ($recent) {
+                        break;
+                    }
+                    $phrases = array_values(array_filter(array_map('strval', (array) ($a['phrases'] ?? []))));
+                    $attrs = [
+                        'fingerprint' => $this->fp('intel', 'content_refresh', $area->slug . ':' . now()->format('Y-m')),
+                        'target_type' => AreaServed::class, 'target_id' => $area->getKey(), 'target_url' => self::BASE_URL . '/areas-served/' . $area->slug,
+                        'title' => 'Deepen local copy: /areas-served/' . $area->slug,
+                        'metric' => 'clicks',
+                        'payload' => ['phrases' => $phrases, 'finding' => $f->code],
+                    ];
+                    break;
+
+                case 'create_page':
+                    $town = trim((string) ($a['town'] ?? ''));
+                    $service = trim((string) ($a['service'] ?? ''));
+                    if ($town === '' || $service === '' || ! isset($servedTowns[Str::lower($town)])) {
+                        break;
+                    }
+                    $content = $generator->build($service, $town, $a['modifier'] ?? null, (string) ($a['keyword'] ?? ($service . ' ' . $town)));
+                    if ($content === null || \App\Models\LandingPage::where('slug', $content['slug'])->exists()) {
+                        break;
+                    }
+                    $attrs = [
+                        'fingerprint' => $this->fp('intel', 'create_page', $content['slug']),
+                        'target_url' => self::BASE_URL . '/remodeling/' . $content['slug'],
+                        'title' => 'Create landing page: ' . $content['h1'],
+                        'metric' => 'clicks',
+                        'payload' => ['content' => $content, 'query' => (string) ($a['keyword'] ?? ''), 'finding' => $f->code],
+                    ];
+                    break;
+
+                case 'reindex':
+                    $url = (string) ($a['url'] ?? '');
+                    if (! str_starts_with($url, self::BASE_URL . '/')) {
+                        break;
+                    }
+                    $attrs = [
+                        'fingerprint' => $this->fp('intel', 'reindex', $url . ':' . now()->format('oW')),
+                        'target_url' => $url,
+                        'title' => 'Reindex: ' . Str::of($url)->after(self::BASE_URL),
+                        'metric' => 'impressions',
+                        'payload' => ['url' => $url, 'finding' => $f->code],
+                    ];
+                    break;
+
+                case 'llms_regen':
+                    $attrs = [
+                        'fingerprint' => $this->fp('intel', 'llms_regen', 'llms.txt:' . now()->format('oW')),
+                        'target_url' => self::BASE_URL . '/llms.txt',
+                        'title' => 'Regenerate llms.txt / AI feed',
+                        'metric' => 'impressions',
+                        'payload' => ['finding' => $f->code],
+                    ];
+                    break;
+            }
+            if ($attrs === null) {
+                continue;
+            }
+            $created += $this->upsertAction($attrs + [
+                'source' => 'intel',
+                'category' => $type,
+                'risk' => SeoAction::RISK_SAFE,
+                'hypothesis' => $why,
+                'impact_score' => $score,
+            ]);
+            $budgets[$type]--;
+            if ($action = SeoAction::where('fingerprint', $attrs['fingerprint'])->first()) {
+                \App\Support\Tenancy::table('seo_intel_findings')->where('id', $f->id)->update(['seo_action_id' => $action->getKey(), 'updated_at' => now()]);
             }
         }
 

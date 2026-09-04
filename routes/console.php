@@ -245,6 +245,26 @@ Schedule::command('seo:ai-mentions --budget=2')->twiceMonthly(1, 15, '05:30')
 Schedule::command('seo:keyword-research --budget=4 --ideas')->weeklyOn(0, '04:30')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->warning('Scheduled seo:keyword-research failed (balance?)'));
+// DataForSEO intelligence, one API family per slot (seo:intel --list shows
+// the per-run estimates). Each run is stored and compared with the previous.
+foreach ([
+    'onpage' => ['weeklyOn', 1, '03:30'],           // Monday: crawl our site
+    'labs' => ['weeklyOn', 1, '04:30'],             // Monday: competitors + keyword gaps
+    'backlinks' => ['weeklyOn', 2, '04:00'],        // Tuesday: new/lost/broken links
+    'serp' => ['weeklyOn', 3, '04:00'],             // Wednesday: ranks + SERP features from the service area
+    'content_analysis' => ['weeklyOn', 4, '04:30'], // Thursday: brand mentions + sentiment
+    'ai_optimization' => ['weeklyOn', 5, '04:30'],  // Friday: AI search volume + LLM citations
+    'trends' => ['weeklyOn', 6, '05:30'],           // Saturday: seasonality + rising queries
+    'domain_analytics' => ['monthlyOn', 4, '04:45'], // monthly: competitor tech + whois
+] as $family => [$method, $day, $at]) {
+    Schedule::command("seo:intel {$family} --budget=1")->{$method}($day, $at)
+        ->withoutOverlapping(90)
+        ->appendOutputTo(storage_path('logs/schedule.log'))
+        ->onFailure(fn () => logger()->warning("Scheduled seo:intel {$family} failed (balance?)"));
+}
+Schedule::command('seo:intel business_data --budget=1')->weekdays()->dailyAt('06:10') // reviews and the local competitors' profiles (~\$0.06/run)
+    ->withoutOverlapping(60)
+    ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:map-pack-competitors --limit=15')->dailyAt('05:40')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));

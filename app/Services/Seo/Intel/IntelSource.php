@@ -103,7 +103,7 @@ abstract class IntelSource
     /** The six towns with the most projects — the ones the business is built on. */
     protected function coreTowns(int $n = 6): array
     {
-        return array_values(array_map(fn ($a) => (string) $a->name, AreaServed::coreTowns($n)));
+        return array_values(array_map('strval', AreaServed::coreTowns($n)));
     }
 
     /** Office coordinates the geo-grid is centred on. */
