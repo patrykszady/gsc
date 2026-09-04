@@ -33,7 +33,11 @@ class SeoAiMentions extends Command
 
             return self::SUCCESS;
         }
+        // Core towns = the six with the most completed projects (the footer's rule), unless overridden.
         $towns = array_values(array_filter(array_map('trim', explode(',', (string) ($this->option('towns') ?: implode(',', (array) config('seo.ai_mentions.towns', [])))))));
+        if ($towns === []) {
+            $towns = \App\Models\AreaServed::coreTowns(6);
+        }
         $services = (array) config('seo.ai_mentions.services', ['kitchen remodeling' => 'kitchen-remodeling', 'bathroom remodeling' => 'bathroom-remodeling']);
         $platforms = array_values(array_intersect(array_map('trim', explode(',', (string) $this->option('platforms'))), array_keys(self::MODELS)));
         $brand = (string) config('brand.name');

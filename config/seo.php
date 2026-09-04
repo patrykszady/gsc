@@ -341,7 +341,8 @@ return [
     | answer engines about, twice a month, via DataForSEO.
     */
     'ai_mentions' => [
-        'towns' => ['Kenilworth', 'Schaumburg', 'Evanston', 'Arlington Heights', 'Palatine', 'Mount Prospect'],
+        // Empty = the core towns: the six with the most completed projects (AreaServed::coreTowns), the footer's rule.
+        'towns' => [],
         'services' => ['kitchen remodeling' => 'kitchen-remodeling', 'bathroom remodeling' => 'bathroom-remodeling'],
     ],
 

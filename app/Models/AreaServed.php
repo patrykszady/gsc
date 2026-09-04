@@ -96,6 +96,25 @@ class AreaServed extends Model
      *
      * @return Collection<int, AreaServed>
      */
+    /**
+     * The towns that define the business right now: the $n with the most
+     * completed projects (ties alphabetical). One rule for the footer, the
+     * AI-answer monitoring and any other "core towns" list, so they never
+     * drift apart. Towns with no project at all are never "core".
+     *
+     * @return array<int, string> city names, most projects first
+     */
+    public static function coreTowns(int $n = 6): array
+    {
+        return static::orderedByLocalProjects()
+            ->filter(fn ($area) => ($area->local_project_count ?? 0) > 0)
+            ->take($n)
+            ->pluck('city')
+            ->map(fn ($c) => trim((string) $c))
+            ->values()
+            ->all();
+    }
+
     public static function orderedByLocalProjects(): Collection
     {
         return cache()->remember(Tenancy::cacheKey('areas.ordered_by_projects'), 21600, function (): Collection {
@@ -109,9 +128,10 @@ class AreaServed extends Model
             return static::query()
                 ->orderBy('city')
                 ->get()
+                ->each(fn (self $area) => $area->setAttribute('local_project_count', $counts[mb_strtolower(trim($area->city))] ?? 0))
                 // Stable sort (PHP 8+), so towns on an equal count keep the
                 // alphabetical order the query already applied.
-                ->sortByDesc(fn (self $area): int => $counts[mb_strtolower(trim($area->city))] ?? 0)
+                ->sortByDesc(fn (self $area): int => (int) $area->local_project_count)
                 ->values();
         });
     }
