@@ -681,6 +681,16 @@ class SeoReportController extends Controller
             }
             $scans = $scans->reject(fn ($s) => in_array($s->platform, $aiPlatforms, true));
 
+            // Only keywords in the latest campaign run: a keyword last scanned
+            // days before the newest scan is a retired one (the misspelled
+            // "remodleing contractor" from the first manual scans).
+            $newest = $scans->max(fn ($s) => Carbon::parse($s->scanned_at)->getTimestamp());
+            $scans = $scans->filter(function ($s) use ($scans, $newest) {
+                $latestForKeyword = $scans->where('keyword', $s->keyword)->max(fn ($x) => Carbon::parse($x->scanned_at)->getTimestamp());
+
+                return $latestForKeyword >= $newest - 3 * 86400;
+            });
+
             $keywords = [];
             foreach ($scans->groupBy('keyword') as $keyword => $group) {
                 $latest = $group->first();
