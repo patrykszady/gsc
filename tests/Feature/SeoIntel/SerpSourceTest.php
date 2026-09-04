@@ -227,8 +227,10 @@ class SerpSourceTest extends TestCase
 
     public function test_derived_query_list_prioritises_core_town_anchors_dedupes_and_caps(): void
     {
-        config(['seo-intel.families.serp.queries' => [], 'seo-intel.families.serp.tracked' => 5]);
+        config(['seo-intel.families.serp.queries' => [], 'seo-intel.families.serp.tracked' => 5, 'gbp-services.service_areas' => ['Arlington Heights, IL, USA', 'Buffalo Grove, IL, USA']]);
 
+        // Chicago has an area page but is not a Business Profile service area.
+        AreaServed::create(['city' => 'Chicago', 'slug' => 'chicago']);
         foreach (['Arlington Heights', 'Buffalo Grove'] as $town) {
             $area = AreaServed::create(['city' => $town, 'slug' => Str::slug($town)]);
             Project::create(['title' => "{$town} kitchen", 'slug' => Str::slug($town).'-kitchen', 'project_type' => 'kitchen', 'location' => "{$town}, IL", 'is_published' => true, 'completed_at' => now()]);

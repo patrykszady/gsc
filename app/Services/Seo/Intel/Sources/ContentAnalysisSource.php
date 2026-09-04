@@ -274,12 +274,26 @@ class ContentAnalysisSource extends IntelSource
      */
     protected function brandTerms(): array
     {
-        $brand = (string) config('brand.name');
-        // "GS Construction & Remodeling" is also written "… and Remodeling" (porch.com does).
-        $default = array_filter([$brand, str_contains($brand, '&') ? str_replace('&', 'and', $brand) : null]);
-        $terms = (array) $this->config('brand_terms', array_values($default));
+        $configured = array_filter(array_map(fn ($t) => trim((string) $t), (array) $this->config('brand_terms', [])));
+        if ($configured !== []) {
+            return array_values(array_unique($configured));
+        }
+        // Default: every configured spelling of the business name, and its
+        // "& → and" form ("GS Construction and Remodeling" is how porch.com
+        // writes it). A name under three words is too ambiguous to search on
+        // its own — "GS Construction" alone matches a Korean conglomerate and
+        // giant-slalom results — so short names are dropped unless brand_terms
+        // is set explicitly for the site.
+        $terms = [];
+        foreach (array_unique(array_filter([(string) config('brand.name'), (string) config('seo.site_name'), (string) config('brand.legal_name')])) as $name) {
+            $terms[] = $name;
+            if (str_contains($name, '&')) {
+                $terms[] = preg_replace('/\s*&\s*/', ' and ', $name);
+            }
+        }
+        $terms = array_filter(array_map('trim', $terms), fn ($t) => str_word_count(preg_replace('/[^a-z ]/i', ' ', $t)) >= 3);
 
-        return array_values(array_unique(array_filter(array_map(fn ($t) => trim((string) $t), $terms))));
+        return array_values(array_unique($terms));
     }
 
     /** Service phrases to watch for seasonal/topical heat. */

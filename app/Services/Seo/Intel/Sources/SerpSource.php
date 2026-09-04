@@ -251,7 +251,12 @@ class SerpSource extends IntelSource
     }
 
     /** Case-insensitive de-dupe that keeps the first-seen casing. */
-    /** Towns we serve (Business Profile service areas + area pages), lower-cased, as keys. */
+    /**
+     * Towns we serve, lower-cased, as keys: the Business Profile service areas
+     * plus the core towns. Not every area page — Chicago has one, but a local
+     * pack for "chicago kitchen renovation" seen from Prospect Heights is not
+     * ours to win.
+     */
     protected function servedTowns(): array
     {
         $towns = [];
@@ -264,7 +269,7 @@ class SerpSource extends IntelSource
                 $towns[$name] = true;
             }
         }
-        foreach (AreaServed::query()->pluck('city') as $city) {
+        foreach (AreaServed::coreTowns(6) as $city) {
             $towns[mb_strtolower(trim((string) $city))] = true;
         }
 
