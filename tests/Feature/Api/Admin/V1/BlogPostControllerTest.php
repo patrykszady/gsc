@@ -144,6 +144,16 @@ class BlogPostControllerTest extends TestCase
 
         $html = $this->get('/blog/' . $draft->slug)->assertOk()->getContent();
         $this->assertStringContainsString('"@type":"BlogPosting"', $html);
+        $this->assertStringContainsString('property="og:type" content="article"', $html);
+        $this->assertStringContainsString('property="article:published_time"', $html);
+        $this->assertStringContainsString('property="article:section" content="Kitchen Remodel"', $html);
+        $this->assertStringContainsString('name="keywords"', $html);
+        $this->assertStringContainsString('type="application/atom+xml" href="' . route('blog.feed') . '"', $html);
+
+        $feed = $this->get('/blog/feed.atom')->assertOk()->assertHeader('Content-Type', 'application/atom+xml; charset=UTF-8')->getContent();
+        $this->assertStringContainsString('<title>A Modern Grand Room in Mount Prospect</title>', $feed);
+        $this->assertStringContainsString('<published>', $feed);
+        $this->assertStringContainsString('/blog/' . $draft->slug, $this->get('/feed/updates.atom')->assertOk()->getContent());
         $this->assertMatchesRegularExpression('/"@type":\s*"BreadcrumbList"/', $html);
         $this->assertStringNotContainsString('noindex', $html);
 

@@ -16,6 +16,10 @@
         <x-breadcrumb-schema :items="[['name' => 'Blog', 'url' => route('blog.index')], ['name' => $post->title, 'url' => $post->url()]]" />
     @endif
 
+    @push('head')
+        <link rel="alternate" type="application/atom+xml" href="{{ route('blog.feed') }}" title="{{ config('brand.name') }} — Project Stories">
+    @endpush
+
     <x-breadcrumbs :items="[['label' => 'Blog', 'url' => route('blog.index')], ['label' => $post->title]]" maxWidth="max-w-6xl" padding="pt-8 pb-0" />
 
     {{-- One lightbox scope for the whole article: every photo the renderer

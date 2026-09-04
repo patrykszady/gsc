@@ -457,6 +457,8 @@ Route::get('/feed/updates.atom', function () {
             ->map(fn ($a) => ['url' => url('/areas-served/'.$a->slug), 'title' => $a->city.' Remodeling — GS Construction', 'updated' => $a->updated_at]))
         ->concat(Project::where('is_published', true)->orderByDesc('updated_at')->limit(30)->get()
             ->map(fn ($p) => ['url' => url('/projects/'.$p->slug), 'title' => $p->title, 'updated' => $p->updated_at]))
+        ->concat(\Illuminate\Support\Facades\Schema::hasTable('blog_posts') ? \App\Models\BlogPost::published()->orderByDesc('updated_at')->limit(30)->get()
+            ->map(fn ($b) => ['url' => $b->url(), 'title' => $b->title, 'updated' => $b->updated_at]) : collect())
         ->filter(fn ($e) => $e['updated'] !== null)
         ->sortByDesc('updated')
         ->take(40)
@@ -489,12 +491,48 @@ Route::get('/feed/updates.atom', function () {
 // expiring preview link the admin hands out (BlogPost::previewUrl) — a bare
 // ?preview=1 is a 404 like any other unpublished post.
 Route::get('/blog', function () {
+    SeoService::blogIndex();
     $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->orderByDesc('dated_at')->paginate(12);
 
     return view('blog-index', ['posts' => $posts]);
 })->name('blog.index');
+
+// Blog feed: Atom with summaries and real publish/updated times, on the same
+// WebSub hub as the updates feed (RegenSitemapsAndNotifyJob pings it), so
+// subscribed crawlers and readers learn about a new story within minutes.
+Route::get('/blog/feed.atom', function () {
+    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->limit(40)->get();
+    $brand = (string) config('brand.name');
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+        .'<feed xmlns="http://www.w3.org/2005/Atom">'."\n"
+        .'  <title>'.e($brand).' — Project Stories</title>'."\n"
+        .'  <subtitle>Real remodeling projects, told step by step.</subtitle>'."\n"
+        .'  <id>'.url('/blog/feed.atom').'</id>'."\n"
+        .'  <link rel="self" href="'.url('/blog/feed.atom').'"/>'."\n"
+        .'  <link rel="hub" href="https://pubsubhubbub.appspot.com/"/>'."\n"
+        .'  <link rel="alternate" type="text/html" href="'.url('/blog').'"/>'."\n"
+        .'  <author><name>'.e($brand).'</name></author>'."\n"
+        .'  <updated>'.(($posts->max('updated_at') ?? now())->toAtomString()).'</updated>'."\n";
+    foreach ($posts as $post) {
+        $cover = $post->project?->cover();
+        $xml .= '  <entry>'."\n"
+            .'    <id>'.e($post->url()).'</id>'."\n"
+            .'    <title>'.e($post->title).'</title>'."\n"
+            .'    <link rel="alternate" type="text/html" href="'.e($post->url()).'"/>'."\n"
+            .'    <published>'.($post->published_at ?? $post->displayDate())->toAtomString().'</published>'."\n"
+            .'    <updated>'.($post->updated_at ?? $post->published_at)->toAtomString().'</updated>'."\n"
+            .($post->excerpt ? '    <summary>'.e($post->excerpt).'</summary>'."\n" : '')
+            .($cover ? '    <link rel="enclosure" type="image/jpeg" href="'.e($cover->getThumbnailUrl('large') ?? $cover->url).'"/>'."\n" : '')
+            .($post->project?->location ? '    <category term="'.e($post->project->location).'"/>'."\n" : '')
+            .'  </entry>'."\n";
+    }
+    $xml .= '</feed>'."\n";
+
+    return response($xml, 200, ['Content-Type' => 'application/atom+xml; charset=UTF-8'])->setMaxAge(300)->setPublic();
+})->name('blog.feed');
 Route::get('/blog/{post:slug}', function (\App\Models\BlogPost $post) {
     abort_unless($post->isPublished() || (request()->boolean('preview') && request()->hasValidSignature()), 404);
+    SeoService::blogPost($post->load(['project.images', 'project.collaborators']));
 
     return view('blog-show', ['post' => $post->load(['project.images', 'project.testimonials', 'project.collaborators'])]);
 })->name('blog.show');

@@ -344,6 +344,68 @@ class SeoService
     }
 
     /**
+     * SEO for a blog post (a project story): article Open Graph with the
+     * project's cover, real publish/modified dates, section and tags, and
+     * keywords — the same treatment a project page gets, plus the article
+     * fields Google and social cards read for freshness and attribution.
+     */
+    public static function blogPost(\App\Models\BlogPost $post): void
+    {
+        $project = $post->project;
+        $types = Project::projectTypes();
+        $typeLabel = $project ? ($types[$project->project_type] ?? ucfirst(str_replace('-', ' ', (string) $project->project_type))) : 'Remodeling';
+        $city = $project ? trim(Str::before((string) $project->location, ',')) : '';
+
+        $title = $post->meta_title ?: $post->title;
+        $description = $post->meta_description ?: ($post->excerpt ?: Str::limit(trim(strip_tags((string) $post->body)), 155));
+
+        $image = null;
+        if ($project && ($cover = $project->cover())) {
+            $image = $cover->getWebpThumbnailUrl('large') ?? $cover->getThumbnailUrl('large') ?? $cover->url;
+            if ($image && ! str_starts_with($image, 'http')) {
+                $image = url($image);
+            }
+        }
+
+        self::setTags($title, $description, $image);
+
+        $tags = array_values(array_unique(array_filter([
+            $typeLabel,
+            $city !== '' ? "{$city} {$typeLabel}" : null,
+            $city !== '' ? "{$city} remodeling" : null,
+            'project story',
+            'before and after',
+            ...($project ? $project->collaborators->map(fn ($c) => $c->name)->all() : []),
+        ])));
+
+        self::seo()
+            ->type('article')
+            ->section($typeLabel)
+            ->tags($tags)
+            ->publishedTime($post->published_at ?? $post->displayDate())
+            ->modifiedTime($post->updated_at ?? $post->published_at)
+            ->author((string) config('brand.name'))
+            ->keywords(array_values(array_filter([
+                $typeLabel,
+                $city !== '' ? "{$city} {$typeLabel}" : null,
+                $project?->location,
+                'remodeling project story',
+                'before and after',
+                'home renovation',
+            ])));
+    }
+
+    /** SEO for the blog index. */
+    public static function blogIndex(): void
+    {
+        self::setTags(
+            'Project Stories & Remodeling Blog',
+            'Real remodeling projects told step by step — the plan, the build, the before and after — by a family-owned contractor in the Chicago suburbs.',
+        );
+        self::seo()->keywords(['remodeling blog', 'kitchen remodel stories', 'bathroom remodel before and after', 'Chicago suburbs remodeling projects']);
+    }
+
+    /**
      * Set SEO tags for a service page.
      */
     public static function service(string $serviceType): void

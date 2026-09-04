@@ -2,6 +2,10 @@
     :title="'Project Stories & Remodeling Blog | ' . config('brand.name')"
     metaDescription="Real remodeling projects, told step by step — the before, the build, and the after — from a family-owned contractor in the Chicago suburbs."
 >
+    @push('head')
+        <link rel="alternate" type="application/atom+xml" href="{{ route('blog.feed') }}" title="{{ config('brand.name') }} — Project Stories">
+    @endpush
+
     <x-breadcrumbs :items="[['label' => 'Blog']]" maxWidth="max-w-6xl" padding="pt-8 pb-0" />
 
     <div class="mx-auto max-w-6xl px-4 pt-10 sm:px-6 sm:pt-14 lg:px-8">
