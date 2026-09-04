@@ -246,6 +246,10 @@ Schedule::command('localfalcon:scan')->weeklyOn(1, '04:50')
     ->onFailure(fn () => logger()->error('Scheduled localfalcon:scan failed'))
     ->when(fn () => (bool) env('LOCALFALCON_ONDEMAND', false));
 
+// Organic competitor discovery (Brave): monthly is enough — page-one sets move
+// slowly, and each run is 60 searches. Shown on /admin/seo-reports.
+Schedule::command('seo:discover-competitors --max-queries=60 --top=10 --min-appearances=2 --markdown')->monthlyOn(3, '06:10')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('localfalcon:competitors --limit=15')->dailyAt('05:40')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('localfalcon:sync')->dailyAt('05:20')

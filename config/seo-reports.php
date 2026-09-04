@@ -9,6 +9,11 @@
 return [
 
     'reports' => [
+        'competitor-discovery' => [
+            'label' => 'Competitor discovery (organic page 1)',
+            'command' => 'seo:discover-competitors --max-queries=60 --top=10 --min-appearances=2 --markdown',
+            'description' => 'Domains ranking on page one for town × service searches across the areas we serve; cross-check against the Local Falcon pack leaders.',
+        ],
         'content-decay' => [
             'label' => 'Content decay',
             'command' => 'seo:content-decay --markdown',
