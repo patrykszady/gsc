@@ -489,7 +489,7 @@ Route::get('/feed/updates.atom', function () {
 // expiring preview link the admin hands out (BlogPost::previewUrl) — a bare
 // ?preview=1 is a 404 like any other unpublished post.
 Route::get('/blog', function () {
-    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('dated_at')->orderByDesc('published_at')->paginate(12);
+    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->orderByDesc('dated_at')->paginate(12);
 
     return view('blog-index', ['posts' => $posts]);
 })->name('blog.index');

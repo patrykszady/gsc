@@ -43,7 +43,13 @@
             </p>
             <h1 class="mt-1 font-heading text-3xl font-bold tracking-tight text-balance text-zinc-900 sm:text-5xl dark:text-white">{{ $post->title }}</h1>
             <p class="mt-3 text-sm text-zinc-500">
-                <time datetime="{{ $post->displayDate()?->toDateString() }}">{{ $post->displayDate()?->format('F j, Y') }}</time>
+                @if ($post->published_at)
+                    Published <time datetime="{{ $post->published_at->toDateString() }}">{{ $post->published_at->format('F j, Y') }}</time>
+                    @if ($post->updated_at && $post->updated_at->gt($post->published_at->copy()->addDay())) · Updated <time datetime="{{ $post->updated_at->toDateString() }}">{{ $post->updated_at->format('F j, Y') }}</time> @endif
+                    @if ($post->dated_at) · Project completed {{ $post->dated_at->format('F Y') }} @endif
+                @else
+                    <time datetime="{{ $post->displayDate()?->toDateString() }}">{{ $post->displayDate()?->format('F j, Y') }}</time>
+                @endif
                 @if (! $post->isPublished()) · <span class="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800">Draft preview</span> @endif
                 @if ($project) · {{ count($lightboxImages) }} photos @endif
             </p>

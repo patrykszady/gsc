@@ -548,7 +548,7 @@ class GenerateSitemap extends Command
                 $this->info('Adding blog posts to sitemap...');
                 $sitemap->add(Url::create("{$baseUrl}/blog")->setLastModificationDate($posts->max('updated_at'))->setChangeFrequency('weekly')->setPriority(0.6));
                 foreach ($posts as $post) {
-                    $sitemap->add(Url::create("{$baseUrl}/blog/{$post->slug}")->setLastModificationDate($post->updated_at)->setChangeFrequency('monthly')->setPriority(0.6));
+                    $sitemap->add(Url::create("{$baseUrl}/blog/{$post->slug}")->setLastModificationDate(max($post->updated_at, $post->published_at))->setChangeFrequency('monthly')->setPriority(0.6));
                 }
             }
         }

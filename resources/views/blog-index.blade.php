@@ -31,7 +31,9 @@
                             </p>
                             <h2 class="mt-2 font-heading text-lg font-bold text-zinc-900 group-hover:text-sky-700 dark:text-white">{{ $post->title }}</h2>
                             <p class="mt-2 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{{ $post->excerpt }}</p>
-                            <p class="mt-auto pt-4 text-xs text-zinc-500">{{ $post->displayDate()?->format('M j, Y') }}</p>
+                            <p class="mt-auto pt-4 text-xs text-zinc-500">
+                                {{ ($post->published_at ?? $post->displayDate())?->format('M j, Y') }}@if ($post->dated_at) · project {{ $post->dated_at->format('M Y') }}@endif
+                            </p>
                         </div>
                     </a>
                 @endforeach
