@@ -835,7 +835,7 @@ class SeoReportController extends Controller
                 // prospect (directory, local press, association) links to a few.
                 $gapQuery = fn () => Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])
                     ->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30));
-                $freeHost = fn ($d) => (bool) preg_match('/\\.(web\\.app|blogspot\\.com|wordpress\\.com|weebly\\.com|wixsite\\.com|github\\.io|netlify\\.app|vercel\\.app|pages\\.dev)$/', (string) $d);
+                $freeHost = fn ($d) => (bool) preg_match('/\\.(web\\.app|blogspot\\.com|wordpress\\.com|weebly\\.com|wixsite\\.com|github\\.io|netlify\\.app|vercel\\.app|pages\\.dev|firebaseapp\\.com)$/', (string) $d);
                 $rows = $gapQuery()->orderByDesc('competitor_count')->orderByDesc('rank')->limit(80)->get()->reject(fn ($p) => $freeHost($p->domain));
                 $out['link_gap'] = $rows->take(20)
                     ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->values()->all();
