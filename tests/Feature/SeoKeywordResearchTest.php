@@ -17,7 +17,7 @@ class SeoKeywordResearchTest extends TestCase
         parent::setUp();
         config(['services.dataforseo.login' => 'u', 'services.dataforseo.password' => 'p']);
         AreaServed::create(['city' => 'Kenilworth', 'slug' => 'kenilworth']);
-        DB::table('local_falcon_competitors')->insert(['site_id' => null, 'place_id' => 'p1', 'keyword' => 'kitchen remodeling', 'name' => 'Prism', 'url' => 'https://prism.test/', 'host' => 'prism.test', 'pack_points' => 9, 'seen_points' => 12, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'p1', 'keyword' => 'kitchen remodeling', 'name' => 'Prism', 'url' => 'https://prism.test/', 'host' => 'prism.test', 'pack_points' => 9, 'seen_points' => 12, 'created_at' => now(), 'updated_at' => now()]);
     }
 
     public function test_refuses_to_run_when_the_balance_cannot_cover_the_estimate(): void

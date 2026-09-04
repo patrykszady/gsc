@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  *
  *  1. Universe: every Search Console query with impressions, the generated
  *     town × service phrases for every area we serve, and the keywords the
- *     map-pack leaders (Local Falcon) and organic page-one competitors (Brave
+ *     map-pack leaders (geo-grid) and organic page-one competitors (Brave
  *     discovery) rank for. Remodeling-ish terms only.
  *  2. Search volume for the universe (one task per 1,000 keywords).
  *  3. Our own standing from gsc_query_metrics (position, impressions, clicks).
@@ -65,6 +65,9 @@ class SeoKeywordResearch extends Command
             foreach (Tenancy::table('seo_keywords')->get() as $k) {
                 $sources = (array) json_decode((string) $k->sources, true);
                 $opp = ($k->intent ?? null) === 'navigational' ? 0.0 : $this->opportunity((int) $k->volume, $k->our_position !== null ? (float) $k->our_position : null, $k->competitor_domains !== null, (string) $k->keyword, $k->city, $sources);
+                if ($opp > 0 && $k->difficulty !== null) {
+                    $opp = round($opp * (1 - min(100, (int) $k->difficulty) / 200), 2); // winnable first
+                }
                 Tenancy::table('seo_keywords')->where('id', $k->id)->update(['opportunity' => $opp]);
                 $n++;
             }
@@ -107,8 +110,8 @@ class SeoKeywordResearch extends Command
 
         // ---- competitors: map-pack leaders + organic page-one domains ----
         $domains = collect();
-        if (Schema::hasTable('local_falcon_competitors')) {
-            $domains = $domains->concat(Tenancy::table('local_falcon_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
+        if (Schema::hasTable('map_pack_competitors')) {
+            $domains = $domains->concat(Tenancy::table('map_pack_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
                 ->select('host', DB::raw('SUM(pack_points) w'))->groupBy('host')->orderByDesc('w')->limit(30)->pluck('host'));
         }
         $disc = Storage::disk('local')->exists('reports/competitor-discovery.json') ? json_decode((string) Storage::disk('local')->get('reports/competitor-discovery.json'), true) : null;
@@ -120,7 +123,7 @@ class SeoKeywordResearch extends Command
         $this->info(sprintf('Universe: %d keywords (%d from Search Console); %d competitor domains.', count($universe), count($ours), $domains->count()));
 
         // ---- cost estimate + balance guard -------------------------------
-        $estimate = ceil(count($universe) / 1000) * 0.08 + $domains->count() * 0.03 + ($this->option('ideas') ? count($services) * 0.02 : 0) + 2 * 2 * 0.013; // + intent/difficulty (2 calls each, ≤2,000 kws)
+        $estimate = ceil((count($universe) + 3000) / 1000) * 0.08 + $domains->count() * 0.03 + ($this->option('ideas') ? count($services) * 0.02 : 0) + 2 * 2 * 0.013; // + intent/difficulty (2 calls each, ≤2,000 kws)
         $balance = $dfs->balance();
         $this->line(sprintf('Estimated cost: $%.2f · budget: $%.2f · balance: %s', $estimate, $budget, $balance === null ? 'unknown' : '$' . number_format($balance, 2)));
         if ($dry) {
@@ -170,7 +173,9 @@ class SeoKeywordResearch extends Command
         }
 
         // ---- 3. volumes for everything without one -----------------------
-        $need = array_keys(array_filter($universe, fn ($v) => ! isset($v['__vol'])));
+        // State-scoped volume for EVERYTHING (Labs' ranked/ideas volumes are national);
+        // the Labs number only fills in when Google Ads has none.
+        $need = array_keys($universe);
         $volumes = [];
         foreach (array_chunk($need, 1000) as $chunk) {
             if ($dfs->spent() >= $budget) {
@@ -184,7 +189,7 @@ class SeoKeywordResearch extends Command
         $siteId = \App\Models\Site::current()?->id;
         $written = 0;
         foreach ($universe as $kw => $meta) {
-            $vol = $meta['__vol'] ?? ($volumes[$kw]['volume'] ?? null);
+            $vol = $volumes[$kw]['volume'] ?? ($meta['__vol'] ?? null);
             if ($vol === null && ! isset($ours[$kw])) {
                 continue; // nothing known about it
             }
@@ -226,6 +231,10 @@ class SeoKeywordResearch extends Command
                 $upd = [];
                 if (isset($difficulty[$kw])) {
                     $upd['difficulty'] = $difficulty[$kw];
+                    $row = Tenancy::table('seo_keywords')->where('keyword', $kw)->first();
+                    if ($row && (float) $row->opportunity > 0) {
+                        $upd['opportunity'] = round((float) $row->opportunity * (1 - min(100, (int) $difficulty[$kw]) / 200), 2);
+                    }
                 }
                 if (isset($intent[$kw])) {
                     $upd['intent'] = mb_substr($intent[$kw]['label'], 0, 20);
@@ -242,6 +251,7 @@ class SeoKeywordResearch extends Command
         }
 
         Cache::forget(Tenancy::cacheKey('seo.area.service_demand'));
+        Cache::forget(Tenancy::cacheKey('seo.area.service_volume'));
         Cache::forget(Tenancy::cacheKey('seo_reports_keywords_v1'));
         $this->info(sprintf('Wrote %d keywords. Spent $%.3f.', $written, $dfs->spent()));
 
@@ -251,12 +261,15 @@ class SeoKeywordResearch extends Command
     private function remodelingish(string $kw): bool
     {
         foreach (self::REMODELING as $w) {
+            if ($w === 'contractor') {
+                continue; // alone it admits "concrete slab contractors"; it counts only beside a trade word
+            }
             if (str_contains($kw, $w)) {
                 return true;
             }
         }
 
-        return false;
+        return (bool) preg_match('/contractor/', $kw) && (bool) preg_match('/\b(kitchen|bath|basement|remodel|renovat|addition)/', $kw);
     }
 
     /**
@@ -274,9 +287,11 @@ class SeoKeywordResearch extends Command
         // suburban contractor, however big the number: it must name a town,
         // or already show us impressions in Search Console, or carry a
         // buying-a-contractor marker at a plausible local volume.
+        // A Search Console impression is evidence someone near us searched it —
+        // but "bathroom remodel" (135k, national) shows impressions too. Without
+        // a town in the phrase, the volume cap applies to every source.
         $local = $city !== null
-            || in_array('gsc', $sources, true)
-            || (preg_match('/\b(contractor|remodel|renovat|near me)/i', $keyword) && $volume <= 20000);
+            || ((in_array('gsc', $sources, true) || preg_match('/\b(contractor|remodel|renovat|near me)/i', $keyword)) && $volume <= 20000);
         // …and it must be our trade: "concrete slab contractors" and "exterior
         // painting contractor" carry the marker but are not work we sell.
         $ourTrade = (bool) preg_match('/\b(kitchen|bath|basement|addition|mudroom|remodel|renovat|whole[- ]home|home improvement)/i', $keyword);

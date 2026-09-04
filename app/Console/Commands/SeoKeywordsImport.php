@@ -8,17 +8,16 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Import a hand-built keyword list into seo_keywords — Local Falcon's Local
- * Keyword Tool (UI only; not in their API) exports one, and its AI-search
- * phrasings are the part DataForSEO doesn't offer. One keyword per line, or
+ * Import a hand-built keyword list into seo_keywords (a spreadsheet, a
+ * client's list, another tool's export). One keyword per line, or
  * CSV with optional columns: keyword,volume,difficulty,wyn. Volumes missing
  * here are filled by the next seo:keyword-research run.
  */
 class SeoKeywordsImport extends Command
 {
-    protected $signature = 'seo:keywords-import {file : Path to a .txt/.csv keyword list} {--source=localfalcon : Source tag stored with each keyword}';
+    protected $signature = 'seo:keywords-import {file : Path to a .txt/.csv keyword list} {--source=import : Source tag stored with each keyword}';
 
-    protected $description = 'Import a keyword list (e.g. from Local Falcon\'s Local Keyword Tool) into seo_keywords';
+    protected $description = 'Import a hand-built keyword list into seo_keywords';
 
     public function handle(SeoAutopilotService $engine): int
     {

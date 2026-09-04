@@ -16,7 +16,7 @@ class SeoDataForSeoIntelTest extends TestCase
     {
         parent::setUp();
         config(['services.dataforseo.login' => 'u', 'services.dataforseo.password' => 'p', 'app.url' => 'https://gs.construction']);
-        DB::table('local_falcon_competitors')->insert(['site_id' => null, 'place_id' => 'p1', 'keyword' => 'kitchen remodeling', 'name' => 'Prism', 'url' => 'https://prism.test/', 'host' => 'prism.test', 'pack_points' => 9, 'seen_points' => 12, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'p1', 'keyword' => 'kitchen remodeling', 'name' => 'Prism', 'url' => 'https://prism.test/', 'host' => 'prism.test', 'pack_points' => 9, 'seen_points' => 12, 'created_at' => now(), 'updated_at' => now()]);
     }
 
     public function test_domain_overview_records_us_and_competitors_with_backlink_profile(): void
@@ -38,7 +38,7 @@ class SeoDataForSeoIntelTest extends TestCase
 
     public function test_backlink_gap_lists_domains_linking_to_competitors_but_not_us(): void
     {
-        DB::table('local_falcon_competitors')->insert(['site_id' => null, 'place_id' => 'p2', 'keyword' => 'kitchen remodeling', 'name' => 'Dream', 'url' => 'https://dream.test/', 'host' => 'dream.test', 'pack_points' => 5, 'seen_points' => 8, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'p2', 'keyword' => 'kitchen remodeling', 'name' => 'Dream', 'url' => 'https://dream.test/', 'host' => 'dream.test', 'pack_points' => 5, 'seen_points' => 8, 'created_at' => now(), 'updated_at' => now()]);
         $ref = fn (array $domains) => Http::response(['tasks' => [['cost' => 0.024, 'status_code' => 20000, 'result' => [['items' => array_map(fn ($d) => ['domain' => $d, 'rank' => 300, 'backlinks' => 3, 'referring_links_platform_types' => ['organization' => 3]], $domains)]]]]]);
         Http::fake(function ($request) use ($ref) {
             if (str_contains($request->url(), 'user_data')) {

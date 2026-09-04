@@ -116,7 +116,8 @@ class SeoAiMentions extends Command
         foreach ([
             '/\*\*\[?([^*\]\n]{3,70})\]?(?:\([^)]*\))?\*\*/u',
             '/\[([^\]\n]{3,70})\]\(https?:[^)]+\)/u',
-            '/^\s*\d+\.\s+\**([^*:\n]{3,70})/mu',
+            // "1. Orren Pickell Building Group - design-build": stop at the descriptor.
+            '/^\s*\d+\.\s+\**([^*:\n,.]{3,70}?)(?=\s+[-–—]\s|[,.:*]|$)/mu',
         ] as $re) {
             preg_match_all($re, $answer, $m, PREG_OFFSET_CAPTURE);
             foreach ($m[1] as [$name, $offset]) {

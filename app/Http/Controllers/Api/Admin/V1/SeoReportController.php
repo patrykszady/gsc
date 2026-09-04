@@ -117,7 +117,7 @@ class SeoReportController extends Controller
             'clarity' => $this->claritySnapshot($this->normalizeWindowDays((int) $request->integer('clarity_days', 7))),
             'rankings' => $this->rankingSnapshot($this->normalizeWindowDays((int) $request->integer('rank_days', 7))),
             'geo' => $this->geoSnapshot(),
-            'local_falcon' => $this->localFalconSnapshot(),
+            'map_pack' => $this->mapPackSnapshot(),
             'keyword_research' => $this->keywordResearchSnapshot(),
             'dataforseo' => $this->dataForSeoSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
@@ -636,19 +636,19 @@ class SeoReportController extends Controller
     }
 
     /**
-     * Local Falcon map-pack visibility: the latest geo-grid scan per keyword
-     * (mirrored daily by localfalcon:sync), its movement since the previous
+     * Map-pack visibility: the latest geo-grid scan per keyword
+     * (seo:map-pack-grid, weekly, via DataForSEO), its movement since the previous
      * scan, who owns the pack, and which of our towns the business actually
      * appears in — each found grid point snapped to the nearest area we serve.
      */
-    protected function localFalconSnapshot(): array
+    protected function mapPackSnapshot(): array
     {
-        if (! Schema::hasTable('local_falcon_scans')) {
+        if (! Schema::hasTable('map_pack_scans')) {
             return ['available' => false, 'keywords' => []];
         }
 
-        return Cache::remember(Tenancy::cacheKey('seo_reports_local_falcon_v1'), 900, function (): array {
-            $scans = Tenancy::table('local_falcon_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(60)->get();
+        return Cache::remember(Tenancy::cacheKey('seo_reports_map_pack_v1'), 900, function (): array {
+            $scans = Tenancy::table('map_pack_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(60)->get();
             if ($scans->isEmpty()) {
                 return ['available' => false, 'keywords' => []];
             }
@@ -671,8 +671,8 @@ class SeoReportController extends Controller
             $ourReviews = Schema::hasTable('review_urls')
                 ? (int) \App\Models\Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
                 : 0;
-            $competitorRows = Schema::hasTable('local_falcon_competitors')
-                ? Tenancy::table('local_falcon_competitors')->where('pack_points', '>', 0)->get()
+            $competitorRows = Schema::hasTable('map_pack_competitors')
+                ? Tenancy::table('map_pack_competitors')->where('pack_points', '>', 0)->get()
                 : collect();
 
             $aiPlatforms = ['chatgpt', 'gemini', 'aimode', 'gaio', 'grok', 'apple'];
@@ -780,6 +780,7 @@ class SeoReportController extends Controller
                 'volume' => (int) $k->volume,
                 'difficulty' => $k->difficulty !== null ? (int) $k->difficulty : null,
                 'intent' => $k->intent ?? null,
+                'cpc' => $k->cpc !== null ? round((float) $k->cpc, 2) : null,
                 'our_position' => $k->our_position !== null ? round((float) $k->our_position, 1) : null,
                 'our_impressions' => $k->our_impressions !== null ? (int) $k->our_impressions : null,
                 'competitor_best' => $k->competitor_best_position !== null ? (int) $k->competitor_best_position : null,

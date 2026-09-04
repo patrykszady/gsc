@@ -11,7 +11,7 @@ class SeoKeywordsImportTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_imports_a_local_falcon_list_and_classifies_it(): void
+    public function test_imports_a_hand_built_list_and_classifies_it(): void
     {
         AreaServed::create(['city' => 'Glencoe', 'slug' => 'glencoe']);
         $file = tempnam(sys_get_temp_dir(), 'kw');
@@ -24,7 +24,7 @@ class SeoKeywordsImportTest extends TestCase
         $this->assertSame('bathroom-remodeling', $a->service);
         $this->assertSame('Glencoe', $a->city);
         $this->assertSame('small-space', $a->modifier);
-        $this->assertSame(['localfalcon'], json_decode($a->sources, true));
+        $this->assertSame(['import'], json_decode($a->sources, true));
 
         $b = DB::table('seo_keywords')->where('keyword', 'who does kitchen renovations near glencoe il')->first();
         $this->assertNull($b->volume);

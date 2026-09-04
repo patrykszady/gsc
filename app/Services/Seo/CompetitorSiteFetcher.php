@@ -25,7 +25,7 @@ class CompetitorSiteFetcher
 
     public function __construct(protected PartnerSiteFetcher $partner) {}
 
-    /** @return array<string, mixed>|null attributes for local_falcon_competitors, or null when unreachable */
+    /** @return array<string, mixed>|null attributes for map_pack_competitors, or null when unreachable */
     public function read(string $url): ?array
     {
         $url = trim($url);

@@ -126,4 +126,4 @@ Each is a first-person account of one completed project: what the homeowners ask
 - Site URL: http://127.0.0.1:8003
 - Feed URL: http://gs.construction/ai-feed.json
 - Sitemap URL: http://gs.construction/ai-sitemap.xml
-- Generated At: 2026-09-04T02:58:50+00:00
+- Generated At: 2026-09-04T20:17:37+00:00

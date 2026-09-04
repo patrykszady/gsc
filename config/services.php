@@ -303,18 +303,6 @@ return [
         'password' => env('DATAFORSEO_PASSWORD'),
     ],
 
-    // Local Falcon — geo-grid map-pack visibility. API key from
-    // localfalcon.com account settings (paid plans).
-    'localfalcon' => [
-        'key' => env('LOCALFALCON_API_KEY'),
-        // Weekly automated geo-grid scans (localfalcon:scan). 5×5 @ 5mi ≈ 25
-        // credits per keyword per run.
-        'keywords' => ['kitchen remodeling', 'bathroom remodeling', 'general contractor'],
-        'grid_size' => env('LOCALFALCON_GRID_SIZE', '5'),
-        'radius' => env('LOCALFALCON_RADIUS', '5'),
-        'measurement' => 'mi',
-    ],
-
     'scraper' => [
         'proxy' => env('SCRAPER_PROXY_URL') ?: $compose2captchaProxy(),
     ],

@@ -815,7 +815,7 @@ class RecommendationEngine
      * @return array<int, array{t:string,d:string,p:string}>
      */
     /**
-     * Local Falcon: the map pack as measured, not guessed. A review gap to the
+     * The geo-grid: the map pack as measured, not guessed. A review gap to the
      * businesses that own the pack, and the towns inside the scan grid where
      * we never appear despite organic demand.
      *
@@ -823,12 +823,12 @@ class RecommendationEngine
      */
     private function localPackRecs(): array
     {
-        if (! Schema::hasTable('local_falcon_competitors') || ! Schema::hasTable('local_falcon_scans')) {
+        if (! Schema::hasTable('map_pack_competitors') || ! Schema::hasTable('map_pack_scans')) {
             return [];
         }
         $recs = [];
-        $latestScanIds = \App\Support\Tenancy::table('local_falcon_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(6)->pluck('scan_id');
-        $leaders = \App\Support\Tenancy::table('local_falcon_competitors')->whereIn('scan_id', $latestScanIds)->where('pack_points', '>', 0)->orderByDesc('pack_points')->limit(12)->get();
+        $latestScanIds = \App\Support\Tenancy::table('map_pack_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(6)->pluck('scan_id');
+        $leaders = \App\Support\Tenancy::table('map_pack_competitors')->whereIn('scan_id', $latestScanIds)->where('pack_points', '>', 0)->orderByDesc('pack_points')->limit(12)->get();
         if ($leaders->isEmpty()) {
             return [];
         }
@@ -839,7 +839,7 @@ class RecommendationEngine
         if ($top && (int) $top->reviews > $ours + 15) {
             $recs[] = [
                 't' => 'Close the Google review gap to the map-pack leaders',
-                'd' => "Local Falcon shows we hold no 3-pack spots across the service area. The businesses that own it carry {$top->reviews} Google reviews ({$top->name}) against our {$ours}. Review count is the strongest lever after proximity for a service-area listing — ask recent clients, and ask them to name their town.",
+                'd' => "The geo-grid scan shows we hold no 3-pack spots across the service area. The businesses that own it carry {$top->reviews} Google reviews ({$top->name}) against our {$ours}. Review count is the strongest lever after proximity for a service-area listing — ask recent clients, and ask them to name their town.",
                 'p' => 'now',
             ];
         }
@@ -887,8 +887,10 @@ class RecommendationEngine
                     }
                 }
                 arsort($named);
+                $worst = $rows->groupBy('town')->map(fn ($g) => (int) $g->where('mentioned', 1)->count())
+                    ->filter(fn ($named) => $named === 0)->keys()->take(3)->implode(', ');
                 $recs[] = [
-                    't' => "AI answer engines name us in {$rate}% of contractor questions",
+                    't' => "AI answer engines name us in {$rate}% of contractor questions" . ($worst !== '' ? " — never in {$worst}" : ''),
                     'd' => 'Asked for the best kitchen/bathroom contractors in our core towns, ChatGPT, Gemini, Perplexity and Claude mostly name ' . implode(', ', array_slice(array_keys($named), 0, 4)) . '. They cite Google reviews, directory listings and pages that name the town explicitly — review volume, the town service pages and llms.txt are the levers.',
                     'p' => 'now',
                 ];

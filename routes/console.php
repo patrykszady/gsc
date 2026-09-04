@@ -232,23 +232,9 @@ Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:
 // SEO: weekly rank snapshot from Search Console data. GSC gives real Google
 // positions for queries with impressions; map-pack visibility is covered by
 // gbp:metrics-sync.
-// Local Falcon geo-grid results, daily mirror (scans run on their side).
-// Skips silently until LOCALFALCON_API_KEY exists.
-// Originate the weekly geo-grid scans via the On-Demand API (Mon 04:50).
-// Gated: needs the plan's on_demand_api_access — flip LOCALFALCON_ONDEMAND=true
-// when available. Until then, recurring scans scheduled inside Local Falcon's
-// UI reach the same tables through localfalcon:sync below.
-Schedule::command('localfalcon:scan')->weeklyOn(1, '04:50')
-    ->timezone('America/Chicago')
-    ->onOneServer()
-    ->withoutOverlapping(30)
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled localfalcon:scan failed'))
-    ->when(fn () => (bool) env('LOCALFALCON_ONDEMAND', false));
-
-// Organic competitor discovery (Brave): monthly is enough — page-one sets move
-// slowly, and each run is 60 searches. Shown on /admin/seo-reports.
-Schedule::command('seo:discover-competitors --max-queries=60 --top=10 --min-appearances=2 --markdown')->monthlyOn(3, '06:10')
+// Geo-grid map-pack scan (DataForSEO Google Maps at every grid point) — the
+// Saturday-morning picture of the 3-pack across the service area.
+Schedule::command('seo:map-pack-grid --budget=2')->weeklyOn(6, '07:00')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:domain-overview --budget=1')->weeklyOn(0, '05:00')
     ->appendOutputTo(storage_path('logs/schedule.log'));
@@ -259,9 +245,7 @@ Schedule::command('seo:ai-mentions --budget=2')->twiceMonthly(1, 15, '05:30')
 Schedule::command('seo:keyword-research --budget=4 --ideas')->weeklyOn(0, '04:30')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->warning('Scheduled seo:keyword-research failed (balance?)'));
-Schedule::command('localfalcon:competitors --limit=15')->dailyAt('05:40')
-    ->appendOutputTo(storage_path('logs/schedule.log'));
-Schedule::command('localfalcon:sync')->dailyAt('05:20')
+Schedule::command('seo:map-pack-competitors --limit=15')->dailyAt('05:40')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 

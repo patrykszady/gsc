@@ -273,6 +273,38 @@ class DataForSeoService
         return trim($text) !== '' ? trim($text) : null;
     }
 
+    /**
+     * Google Maps results at a coordinate (~$0.002): the map pack as seen
+     * from that point, top 20, with rank, rating, review count and profile facts.
+     *
+     * @return array<int, array{rank:int,title:string,place_id:?string,url:?string,rating:?float,reviews:?int,claimed:?bool,categories:?array}>
+     */
+    public function mapsResults(string $keyword, float $lat, float $lng, int $depth = 20): array
+    {
+        $data = $this->call('POST', '/serp/google/maps/live/advanced', [[
+            'keyword' => $keyword, 'location_coordinate' => sprintf('%.6f,%.6f,14z', $lat, $lng), 'language_code' => 'en', 'depth' => $depth,
+        ]]);
+        $out = [];
+        foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $it) {
+            if (($it['type'] ?? '') !== 'maps_search' && ! isset($it['rank_absolute'])) {
+                continue;
+            }
+            $cats = array_values(array_filter(array_merge([(string) ($it['category'] ?? '')], (array) ($it['additional_categories'] ?? []))));
+            $out[] = [
+                'rank' => (int) ($it['rank_absolute'] ?? $it['rank_group'] ?? 0),
+                'title' => (string) ($it['title'] ?? ''),
+                'place_id' => $it['place_id'] ?? null,
+                'url' => $it['url'] ?? null,
+                'rating' => isset($it['rating']['value']) ? (float) $it['rating']['value'] : null,
+                'reviews' => isset($it['rating']['votes_count']) ? (int) $it['rating']['votes_count'] : null,
+                'claimed' => isset($it['is_claimed']) ? (bool) $it['is_claimed'] : null,
+                'categories' => $cats ?: null,
+            ];
+        }
+
+        return $out;
+    }
+
     /** One authenticated call; records the task cost; returns decoded JSON or [] on failure. */
     protected function call(string $method, string $path, array $body = []): array
     {

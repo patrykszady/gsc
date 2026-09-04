@@ -43,7 +43,7 @@ class SeoResearchAutomationTest extends TestCase
         $this->keyword(['keyword' => 'kenilworth home remodeling and renovation services', 'volume' => 320, 'service' => 'home-remodeling', 'city' => 'Kenilworth', 'our_position' => 7.5]);
 
         // A competitor's brand and a navigational term must not drive anything.
-        DB::table('local_falcon_competitors')->insert(['site_id' => null, 'place_id' => 'kbu', 'keyword' => 'kitchen remodeling', 'name' => 'Kitchens & Baths Unlimited', 'pack_points' => 3, 'seen_points' => 3, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'kbu', 'keyword' => 'kitchen remodeling', 'name' => 'Kitchens & Baths Unlimited', 'pack_points' => 3, 'seen_points' => 3, 'created_at' => now(), 'updated_at' => now()]);
         $this->keyword(['keyword' => 'kitchens and baths unlimited kenilworth', 'volume' => 900, 'service' => 'kitchen-remodeling', 'city' => 'Kenilworth']);
         $this->keyword(['keyword' => 'chi renovation kenilworth', 'volume' => 400, 'service' => 'home-remodeling', 'city' => 'Kenilworth', 'intent' => 'navigational']);
 

@@ -72,12 +72,12 @@ class SeoDomainOverview extends Command
         return self::SUCCESS;
     }
 
-    /** Map-pack leaders (Local Falcon) then organic page-one domains (Brave discovery), deduplicated. */
+    /** Map-pack leaders (geo-grid) then organic page-one domains (Brave discovery), deduplicated. */
     public static function competitorDomains(int $limit): array
     {
         $domains = collect();
-        if (Schema::hasTable('local_falcon_competitors')) {
-            $domains = $domains->concat(Tenancy::table('local_falcon_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
+        if (Schema::hasTable('map_pack_competitors')) {
+            $domains = $domains->concat(Tenancy::table('map_pack_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
                 ->select('host', DB::raw('SUM(pack_points) w'))->groupBy('host')->orderByDesc('w')->limit(30)->pluck('host'));
         }
         $disc = Storage::disk('local')->exists('reports/competitor-discovery.json') ? json_decode((string) Storage::disk('local')->get('reports/competitor-discovery.json'), true) : null;

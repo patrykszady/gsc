@@ -337,6 +337,20 @@ return [
     'area_service_demand_volume' => (int) env('SEO_AREA_SERVICE_DEMAND_VOLUME', 50),
 
     /*
+    | Geo-grid map-pack scan (seo:map-pack-grid, weekly, DataForSEO Google Maps
+    | at every point): centered on the business (400 N Wheeling Rd, Prospect
+    | Heights), 11×11 points out to 15 miles — Lake Bluff to Schaumburg,
+    | Barrington to Evanston. ~$0.002 a point.
+    */
+    'map_pack' => [
+        'center_lat' => (float) env('SEO_MAP_PACK_LAT', 42.102847),
+        'center_lng' => (float) env('SEO_MAP_PACK_LNG', -87.9275628),
+        'grid_size' => (int) env('SEO_MAP_PACK_GRID', 11),
+        'radius_miles' => (float) env('SEO_MAP_PACK_RADIUS', 15),
+        'keywords' => ['kitchen remodeling', 'bathroom remodeling', 'remodeling contractor'],
+    ],
+
+    /*
     | GEO measurement (seo:ai-mentions): the towns and services we ask the AI
     | answer engines about, twice a month, via DataForSEO.
     */

@@ -221,8 +221,8 @@ class SeoAutopilotService
         static $tokens = null;
         if ($tokens === null) {
             $names = collect();
-            if (Schema::hasTable('local_falcon_competitors')) {
-                $names = $names->concat(\App\Support\Tenancy::table('local_falcon_competitors')->pluck('name'));
+            if (Schema::hasTable('map_pack_competitors')) {
+                $names = $names->concat(\App\Support\Tenancy::table('map_pack_competitors')->pluck('name'));
             }
             $names = $names->concat(collect((array) config('competitors.competitors', []))->pluck('name'));
             $tokens = $names->map(fn ($n) => Str::lower(trim((string) $n)))
@@ -230,9 +230,17 @@ class SeoAutopilotService
                 ->map(fn ($n) => trim(preg_replace('/[^a-z0-9 ]+/', ' ', (string) $n) ?? ''))
                 ->map(fn ($n) => trim(preg_replace('/\s+/', ' ', $n) ?? ''))
                 // Keep the distinctive part: the first two words when there are
-                // three or more ("kitchens baths", "chi renovation"), otherwise all.
-                ->map(fn ($n) => implode(' ', array_slice(explode(' ', $n), 0, 2)))
-                ->filter(fn ($n) => mb_strlen($n) >= 8 && ! preg_match('/^(kitchen|bathroom|home|basement|remodeling|renovation|construction|design|general)( |$)/', $n))
+                // three or more ("kitchens baths", "chi renovation"). When those
+                // two are generic ("kitchen village", "home remodeling pros"),
+                // fall back to three words rather than dropping the brand.
+                ->map(function ($n) {
+                    $words = explode(' ', $n);
+                    $two = implode(' ', array_slice($words, 0, 2));
+                    $generic = '/^(kitchen|kitchens|bathroom|bath|home|basement|remodeling|renovation|construction|design|general|chicago|north shore)( |$)/';
+
+                    return preg_match($generic, $two) && count($words) >= 3 ? implode(' ', array_slice($words, 0, 3)) : $two;
+                })
+                ->filter(fn ($n) => mb_strlen($n) >= 8 && ! preg_match('/^(kitchen|bathroom|home|basement|remodeling|renovation|construction|design|general) (remodeling|remodel|renovation|contractor|contractors|construction|design|remodelers)$/', $n))
                 ->unique()->values()->all();
         }
         $kw = ' ' . preg_replace('/\s+/', ' ', Str::lower((string) $row->keyword)) . ' ';
@@ -318,6 +326,13 @@ class SeoAutopilotService
         }
 
         // (b) + (c): per covered town, title on the top phrase; copy refresh when thin.
+        // Towns the AI answer engines never name get first call on the refresh budget.
+        $unnamed = [];
+        if (Schema::hasTable('seo_ai_mentions') && ($day = \App\Support\Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
+            $unnamed = \App\Support\Tenancy::table('seo_ai_mentions')->where('asked_on', $day)->get()->groupBy('town')
+                ->filter(fn ($g) => (int) $g->where('mentioned', 1)->count() === 0)->keys()->map(fn ($t) => Str::lower($t))->flip()->all();
+        }
+        uasort($topByCity, fn ($a, $b) => [isset($unnamed[Str::lower((string) $b->city)]) ? 1 : 0, (int) $b->volume] <=> [isset($unnamed[Str::lower((string) $a->city)]) ? 1 : 0, (int) $a->volume]);
         $refreshed = [];
         foreach ($topByCity as $key => $r) {
             if ((int) $r->volume < 50) {

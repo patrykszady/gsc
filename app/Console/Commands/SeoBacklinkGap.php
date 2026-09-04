@@ -30,6 +30,11 @@ class SeoBacklinkGap extends Command
         $ours = preg_replace('#^https?://(www\.)?#', '', rtrim((string) config('app.url'), '/')) ?: 'gs.construction';
         $competitors = SeoDomainOverview::competitorDomains((int) $this->option('competitors'));
         $estimate = (count($competitors) + 3) * 0.025;
+        if ($estimate > (float) $this->option('budget')) {
+            $this->error(sprintf('Estimated cost $%.2f exceeds --budget; narrow --competitors.', $estimate));
+
+            return self::FAILURE;
+        }
         $balance = $dfs->balance();
         if ($balance !== null && $balance < $estimate) {
             $this->error(sprintf('DataForSEO balance $%.2f cannot cover this run ($%.2f).', $balance, $estimate));
