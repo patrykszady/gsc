@@ -267,13 +267,16 @@ class ProjectController extends Controller
             'data' => Testimonial::query()
                 ->orderByDesc('review_date')
                 ->orderByDesc('id')
-                ->get(['id', 'reviewer_name', 'star_rating', 'review_date', 'project_location'])
+                ->get(['id', 'reviewer_name', 'star_rating', 'review_date', 'project_location', 'project_type', 'review_description'])
                 ->map(fn (Testimonial $t) => [
                     'id' => $t->id,
                     'reviewer_name' => $t->reviewer_name,
                     'star_rating' => $t->star_rating,
                     'review_date' => optional($t->review_date)->format('Y-m-d'),
                     'project_location' => $t->project_location,
+                    'project_type' => $t->project_type,
+                    // Opening words, so the picker's search also matches what the review says.
+                    'excerpt' => \Illuminate\Support\Str::limit(trim(preg_replace('/\s+/', ' ', (string) $t->review_description)), 70),
                 ])->all(),
         ]);
     }
