@@ -117,6 +117,7 @@ class SeoReportController extends Controller
             'clarity' => $this->claritySnapshot($this->normalizeWindowDays((int) $request->integer('clarity_days', 7))),
             'rankings' => $this->rankingSnapshot($this->normalizeWindowDays((int) $request->integer('rank_days', 7))),
             'geo' => $this->geoSnapshot(),
+            'local_falcon' => $this->localFalconSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
             'gsc_errors' => $this->gscErrorSnapshot(),
         ]);
@@ -629,6 +630,92 @@ class SeoReportController extends Controller
             }
 
             return ['feeds' => $feeds];
+        });
+    }
+
+    /**
+     * Local Falcon map-pack visibility: the latest geo-grid scan per keyword
+     * (mirrored daily by localfalcon:sync), its movement since the previous
+     * scan, who owns the pack, and which of our towns the business actually
+     * appears in — each found grid point snapped to the nearest area we serve.
+     */
+    protected function localFalconSnapshot(): array
+    {
+        if (! Schema::hasTable('local_falcon_scans')) {
+            return ['available' => false, 'keywords' => []];
+        }
+
+        return Cache::remember(Tenancy::cacheKey('seo_reports_local_falcon_v1'), 900, function (): array {
+            $scans = Tenancy::table('local_falcon_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(60)->get();
+            if ($scans->isEmpty()) {
+                return ['available' => false, 'keywords' => []];
+            }
+
+            $areas = \App\Models\AreaServed::query()->whereNotNull('latitude')->whereNotNull('longitude')->get(['city', 'slug', 'latitude', 'longitude']);
+            $nearestTown = function (float $lat, float $lng) use ($areas): ?array {
+                $best = null;
+                $bestD = 4.0; // miles — a grid point farther than this from any town we serve stays unnamed
+                foreach ($areas as $a) {
+                    $d = 69.0 * sqrt((($a->latitude - $lat) ** 2) + (((($a->longitude - $lng) * cos(deg2rad($lat)))) ** 2));
+                    if ($d < $bestD) {
+                        $bestD = $d;
+                        $best = ['city' => $a->city, 'slug' => $a->slug];
+                    }
+                }
+
+                return $best;
+            };
+
+            $keywords = [];
+            foreach ($scans->groupBy('keyword') as $keyword => $group) {
+                $latest = $group->first();
+                $prev = $group->skip(1)->first();
+                $raw = json_decode((string) $latest->raw, true) ?: [];
+                $detail = $raw['detail'] ?? [];
+                $grid = (array) ($detail['grid'] ?? []);
+                $points = count($grid) ?: (int) ($detail['points_total'] ?? 0);
+                $found = array_values(array_filter($grid, fn ($pt) => ($pt['rank'] ?? false) !== false));
+
+                $towns = [];
+                foreach ($found as $pt) {
+                    if (! is_numeric($pt['lat'] ?? null) || ! is_numeric($pt['lng'] ?? null)) {
+                        continue;
+                    }
+                    $t = $nearestTown((float) $pt['lat'], (float) $pt['lng']);
+                    $name = $t['city'] ?? 'unnamed point';
+                    $rank = (int) $pt['rank'];
+                    if (! isset($towns[$name]) || $rank < $towns[$name]['best_rank']) {
+                        $towns[$name] = ['city' => $name, 'slug' => $t['slug'] ?? null, 'best_rank' => $rank, 'points' => ($towns[$name]['points'] ?? 0) + 1];
+                    } else {
+                        $towns[$name]['points']++;
+                    }
+                }
+                usort($towns, fn ($a, $b) => $a['best_rank'] <=> $b['best_rank']);
+
+                $keywords[] = [
+                    'keyword' => $keyword,
+                    'scanned_at' => Carbon::parse($latest->scanned_at)->toDateString(),
+                    'grid' => $latest->grid_points ? "{$latest->grid_points}×{$latest->grid_points}" : null,
+                    'radius' => $detail['radius'] ?? null,
+                    'arp' => $latest->arp !== null ? round((float) $latest->arp, 1) : null,
+                    'atrp' => $latest->atrp !== null ? round((float) $latest->atrp, 1) : null,
+                    'solv' => $latest->solv !== null ? round((float) $latest->solv, 1) : null,
+                    'found' => count($found) ?: (int) ($detail['found'] ?? 0),
+                    'points' => $points,
+                    'top3' => count(array_filter($found, fn ($pt) => (int) $pt['rank'] <= 3)),
+                    'prev' => $prev ? [
+                        'scanned_at' => Carbon::parse($prev->scanned_at)->toDateString(),
+                        'arp' => $prev->arp !== null ? round((float) $prev->arp, 1) : null,
+                        'solv' => $prev->solv !== null ? round((float) $prev->solv, 1) : null,
+                    ] : null,
+                    'towns' => array_values($towns),
+                    'pack_leaders' => array_slice((array) ($detail['pack_leaders'] ?? []), 0, 5),
+                    'report_url' => $detail['public_url'] ?? null,
+                    'heatmap' => $detail['heatmap'] ?? null,
+                ];
+            }
+
+            return ['available' => true, 'keywords' => $keywords, 'latest' => Carbon::parse($scans->first()->scanned_at)->toDateString()];
         });
     }
 

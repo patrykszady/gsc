@@ -137,4 +137,26 @@ class SeoReportControllerTest extends TestCase
     {
         $this->getJson('/api/admin/v1/seo/reports')->assertUnauthorized();
     }
+
+    public function test_dashboard_carries_local_falcon_visibility_with_towns_and_trend(): void
+    {
+        \Illuminate\Support\Facades\Cache::flush();
+        $area = \App\Models\AreaServed::create(['city' => 'Prospect Heights', 'slug' => 'prospect-heights', 'latitude' => 42.0953, 'longitude' => -87.9373]);
+        $grid = [['lat' => 42.1028, 'lng' => -87.9276, 'rank' => 4], ['lat' => 42.30, 'lng' => -87.60, 'rank' => false]];
+        $raw = fn (array $extra) => json_encode(['detail' => array_merge(['grid' => $grid, 'points_total' => 2, 'pack_leaders' => [['business' => 'Prism Kitchen', 'appearances' => 15]], 'public_url' => 'https://localrankingtracker.com/scan-report/x/y/', 'radius' => '15mi'], $extra)]);
+        foreach ([['2026-08-28 12:00:00', 9.0, 0.0], ['2026-09-04 12:00:00', 4.0, 0.0]] as [$at, $arp, $solv]) {
+            \Illuminate\Support\Facades\DB::table('local_falcon_scans')->insert(['site_id' => $area->site_id, 'scan_id' => md5($at), 'keyword' => 'bathroom remodeling', 'scanned_at' => $at, 'arp' => $arp, 'atrp' => 20.9, 'solv' => $solv, 'grid_points' => 11, 'in_top3' => 0, 'raw' => $raw([]), 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        $lf = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.local_falcon');
+        $this->assertTrue($lf['available']);
+        $k = $lf['keywords'][0];
+        $this->assertSame('bathroom remodeling', $k['keyword']);
+        $this->assertSame(4.0, $k['arp']);
+        $this->assertSame(9.0, $k['prev']['arp']);
+        $this->assertSame(1, $k['found']);
+        $this->assertSame('Prospect Heights', $k['towns'][0]['city']);
+        $this->assertSame(4, $k['towns'][0]['best_rank']);
+        $this->assertSame('Prism Kitchen', $k['pack_leaders'][0]['business']);
+    }
 }
