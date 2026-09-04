@@ -119,6 +119,7 @@ class SeoReportController extends Controller
             'geo' => $this->geoSnapshot(),
             'local_falcon' => $this->localFalconSnapshot(),
             'keyword_research' => $this->keywordResearchSnapshot(),
+            'dataforseo' => $this->dataForSeoSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
             'gsc_errors' => $this->gscErrorSnapshot(),
         ]);
@@ -778,6 +779,7 @@ class SeoReportController extends Controller
                 'keyword' => $k->keyword,
                 'volume' => (int) $k->volume,
                 'difficulty' => $k->difficulty !== null ? (int) $k->difficulty : null,
+                'intent' => $k->intent ?? null,
                 'our_position' => $k->our_position !== null ? round((float) $k->our_position, 1) : null,
                 'our_impressions' => $k->our_impressions !== null ? (int) $k->our_impressions : null,
                 'competitor_best' => $k->competitor_best_position !== null ? (int) $k->competitor_best_position : null,
@@ -798,6 +800,66 @@ class SeoReportController extends Controller
                 'competitor_gap' => (clone $base)->whereNotNull('competitor_domains')->whereNull('our_position')->where('volume', '>', 0)->orderByDesc('volume')->limit(15)->get()->map($row)->all(),
                 'already_winning' => (clone $base)->where('our_position', '<=', 3)->where('volume', '>', 0)->orderByDesc('volume')->limit(8)->get()->map($row)->all(),
             ];
+        });
+    }
+
+    /**
+     * DataForSEO intelligence beyond keywords: organic share of voice (us vs
+     * competitors, this week vs last), the link gap, and AI answer mentions.
+     */
+    protected function dataForSeoSnapshot(): array
+    {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_dataforseo_v1'), 1800, function (): array {
+            $out = ['share_of_voice' => [], 'link_gap' => [], 'ai_mentions' => null];
+
+            if (Schema::hasTable('seo_domain_overviews')) {
+                $rows = Tenancy::table('seo_domain_overviews')->orderByDesc('date')->get();
+                foreach ($rows->groupBy('domain') as $domain => $g) {
+                    $latest = $g->first();
+                    $prev = $g->skip(1)->first();
+                    $top10 = fn ($r) => (int) $r->pos_1 + (int) $r->pos_2_3 + (int) $r->pos_4_10;
+                    $out['share_of_voice'][] = [
+                        'domain' => $domain, 'is_us' => (bool) $latest->is_us, 'date' => $latest->date,
+                        'top10' => $top10($latest), 'top10_prev' => $prev ? $top10($prev) : null,
+                        'top20' => $top10($latest) + (int) $latest->pos_11_20,
+                        'keywords_total' => (int) $latest->keywords_total, 'etv' => round((float) $latest->etv),
+                        'referring_domains' => $latest->referring_domains !== null ? (int) $latest->referring_domains : null,
+                        'domain_rank' => $latest->domain_rank !== null ? (int) $latest->domain_rank : null,
+                    ];
+                }
+                usort($out['share_of_voice'], fn ($a, $b) => [$b['is_us'], $b['top10']] <=> [$a['is_us'], $a['top10']]);
+            }
+
+            if (Schema::hasTable('seo_backlink_prospects')) {
+                $out['link_gap'] = Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->where('competitor_count', '>=', 2)
+                    ->orderByDesc('competitor_count')->orderByDesc('rank')->limit(20)->get()
+                    ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->all();
+                $out['link_gap_total'] = (int) Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->where('competitor_count', '>=', 2)->count();
+            }
+
+            if (Schema::hasTable('seo_ai_mentions') && ($latestDay = Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
+                $rows = Tenancy::table('seo_ai_mentions')->where('asked_on', $latestDay)->get();
+                $prevDay = Tenancy::table('seo_ai_mentions')->where('asked_on', '<', $latestDay)->max('asked_on');
+                $prevRows = $prevDay ? Tenancy::table('seo_ai_mentions')->where('asked_on', $prevDay)->get() : collect();
+                $named = [];
+                foreach ($rows as $r) {
+                    foreach ((array) json_decode((string) $r->businesses_named, true) as $n) {
+                        $named[$n] = ($named[$n] ?? 0) + 1;
+                    }
+                }
+                arsort($named);
+                $out['ai_mentions'] = [
+                    'asked_on' => $latestDay,
+                    'asked' => $rows->count(),
+                    'mentioned' => (int) $rows->where('mentioned', 1)->count(),
+                    'prev_rate' => $prevRows->count() ? round(100 * $prevRows->where('mentioned', 1)->count() / $prevRows->count()) : null,
+                    'by_platform' => $rows->groupBy('platform')->map(fn ($g) => ['asked' => $g->count(), 'mentioned' => (int) $g->where('mentioned', 1)->count()])->all(),
+                    'by_town' => $rows->groupBy('town')->map(fn ($g) => ['asked' => $g->count(), 'mentioned' => (int) $g->where('mentioned', 1)->count()])->all(),
+                    'most_named' => array_slice($named, 0, 8, true),
+                ];
+            }
+
+            return $out;
         });
     }
 

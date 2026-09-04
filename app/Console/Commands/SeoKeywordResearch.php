@@ -105,7 +105,7 @@ class SeoKeywordResearch extends Command
         $this->info(sprintf('Universe: %d keywords (%d from Search Console); %d competitor domains.', count($universe), count($ours), $domains->count()));
 
         // ---- cost estimate + balance guard -------------------------------
-        $estimate = ceil(count($universe) / 1000) * 0.08 + $domains->count() * 0.03 + ($this->option('ideas') ? count($services) * 0.02 : 0);
+        $estimate = ceil(count($universe) / 1000) * 0.08 + $domains->count() * 0.03 + ($this->option('ideas') ? count($services) * 0.02 : 0) + 2 * 2 * 0.013; // + intent/difficulty (2 calls each, ≤2,000 kws)
         $balance = $dfs->balance();
         $this->line(sprintf('Estimated cost: $%.2f · budget: $%.2f · balance: %s', $estimate, $budget, $balance === null ? 'unknown' : '$' . number_format($balance, 2)));
         if ($dry) {
@@ -200,6 +200,27 @@ class SeoKeywordResearch extends Command
                 ]
             );
             $written++;
+        }
+
+        // ---- 5. intent + difficulty for everything with volume ------------
+        if ($dfs->spent() < $budget) {
+            $withVolume = Tenancy::table('seo_keywords')->where('volume', '>=', 10)->orderByDesc('volume')->limit(2000)->pluck('keyword')->all();
+            $difficulty = $dfs->keywordDifficulty($withVolume);
+            $intent = $dfs->searchIntent($withVolume);
+            foreach ($withVolume as $kw) {
+                $upd = [];
+                if (isset($difficulty[$kw])) {
+                    $upd['difficulty'] = $difficulty[$kw];
+                }
+                if (isset($intent[$kw])) {
+                    $upd['intent'] = mb_substr($intent[$kw]['label'], 0, 20);
+                    $upd['intent_probability'] = round($intent[$kw]['probability'], 2);
+                }
+                if ($upd) {
+                    Tenancy::table('seo_keywords')->where('keyword', $kw)->update($upd);
+                }
+            }
+            $this->line(sprintf('  intent/difficulty for %d keywords', count($withVolume)));
         }
 
         Cache::forget(Tenancy::cacheKey('seo.area.service_demand'));

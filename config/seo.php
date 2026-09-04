@@ -336,6 +336,15 @@ return [
     // …or this much researched monthly search volume for the town + service (seo_keywords).
     'area_service_demand_volume' => (int) env('SEO_AREA_SERVICE_DEMAND_VOLUME', 50),
 
+    /*
+    | GEO measurement (seo:ai-mentions): the towns and services we ask the AI
+    | answer engines about, twice a month, via DataForSEO.
+    */
+    'ai_mentions' => [
+        'towns' => ['Kenilworth', 'Schaumburg', 'Evanston', 'Arlington Heights', 'Palatine', 'Mount Prospect'],
+        'services' => ['kitchen remodeling' => 'kitchen-remodeling', 'bathroom remodeling' => 'bathroom-remodeling'],
+    ],
+
     'autopilot' => [
         'auto_publish_landing_pages' => env('SEO_AUTOPILOT_AUTO_PUBLISH', false),
         // Covered-town modifier plays ("small bathroom remodel glencoe", "custom

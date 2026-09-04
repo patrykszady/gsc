@@ -86,11 +86,12 @@ class DataForSeoService
 
     /**
      * Keywords a competitor domain ranks for in Google (DataForSEO Labs,
-     * ~$0.01 + rows). Filtered to remodeling-ish terms client-side.
+     * ~$0.01 + rows). Labs endpoints take country-level locations only —
+     * a state name is rejected (40501). Filtered to remodeling-ish terms client-side.
      *
      * @return array<int, array{keyword:string,volume:int,position:int,difficulty:?int,url:?string}>
      */
-    public function rankedKeywords(string $domain, int $limit = 300, string $locationName = 'Illinois,United States'): array
+    public function rankedKeywords(string $domain, int $limit = 300, string $locationName = 'United States'): array
     {
         $data = $this->call('POST', '/dataforseo_labs/google/ranked_keywords/live', [[
             'target' => $domain,
@@ -125,7 +126,7 @@ class DataForSeoService
      *
      * @return array<int, array{keyword:string,volume:int,difficulty:?int}>
      */
-    public function keywordIdeas(array $seeds, int $limit = 200, string $locationName = 'Illinois,United States'): array
+    public function keywordIdeas(array $seeds, int $limit = 200, string $locationName = 'United States'): array
     {
         $seeds = array_values(array_filter(array_map('trim', $seeds)));
         if ($seeds === []) {
@@ -152,6 +153,124 @@ class DataForSeoService
         }
 
         return $out;
+    }
+
+    /**
+     * Keyword difficulty 0–100 for up to 1,000 keywords (Labs, ~$0.012/call).
+     *
+     * @return array<string,int> keyword => difficulty
+     */
+    public function keywordDifficulty(array $keywords): array
+    {
+        $out = [];
+        foreach (array_chunk(array_values(array_unique(array_filter($keywords))), 1000) as $chunk) {
+            $data = $this->call('POST', '/dataforseo_labs/google/bulk_keyword_difficulty/live', [['keywords' => $chunk, 'location_name' => 'United States', 'language_code' => 'en']]);
+            foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $it) {
+                if (isset($it['keyword'], $it['keyword_difficulty'])) {
+                    $out[mb_strtolower((string) $it['keyword'])] = (int) $it['keyword_difficulty'];
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Search intent (informational / navigational / commercial / transactional)
+     * for up to 1,000 keywords (Labs, ~$0.012/call).
+     *
+     * @return array<string, array{label:string,probability:float}>
+     */
+    public function searchIntent(array $keywords): array
+    {
+        $out = [];
+        foreach (array_chunk(array_values(array_unique(array_filter($keywords))), 1000) as $chunk) {
+            $data = $this->call('POST', '/dataforseo_labs/google/search_intent/live', [['keywords' => $chunk, 'language_code' => 'en']]);
+            foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $it) {
+                if (isset($it['keyword'], $it['keyword_intent']['label'])) {
+                    $out[mb_strtolower((string) $it['keyword'])] = ['label' => (string) $it['keyword_intent']['label'], 'probability' => (float) ($it['keyword_intent']['probability'] ?? 0)];
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Organic footprint of a domain in Google US (Labs, ~$0.012): how many
+     * keywords it ranks for by position band, estimated traffic, churn.
+     *
+     * @return array{pos_1:int,pos_2_3:int,pos_4_10:int,pos_11_20:int,count:int,etv:float,is_new:int,is_lost:int}|null
+     */
+    public function domainRankOverview(string $domain): ?array
+    {
+        $data = $this->call('POST', '/dataforseo_labs/google/domain_rank_overview/live', [['target' => $domain, 'location_name' => 'United States', 'language_code' => 'en']]);
+        $m = $data['tasks'][0]['result'][0]['items'][0]['metrics']['organic'] ?? null;
+        if (! is_array($m)) {
+            return null;
+        }
+
+        return [
+            'pos_1' => (int) ($m['pos_1'] ?? 0), 'pos_2_3' => (int) ($m['pos_2_3'] ?? 0), 'pos_4_10' => (int) ($m['pos_4_10'] ?? 0), 'pos_11_20' => (int) ($m['pos_11_20'] ?? 0),
+            'count' => (int) ($m['count'] ?? 0), 'etv' => (float) ($m['etv'] ?? 0), 'is_new' => (int) ($m['is_new'] ?? 0), 'is_lost' => (int) ($m['is_lost'] ?? 0),
+        ];
+    }
+
+    /**
+     * Backlink profile summary (~$0.024): domain rank, backlinks, referring domains.
+     *
+     * @return array{rank:?int,backlinks:int,referring_domains:int,spam_score:?int}|null
+     */
+    public function backlinkSummary(string $domain): ?array
+    {
+        $data = $this->call('POST', '/backlinks/summary/live', [['target' => $domain, 'internal_list_limit' => 5]]);
+        $r = $data['tasks'][0]['result'][0] ?? null;
+        if (! is_array($r)) {
+            return null;
+        }
+
+        return ['rank' => isset($r['rank']) ? (int) $r['rank'] : null, 'backlinks' => (int) ($r['backlinks'] ?? 0), 'referring_domains' => (int) ($r['referring_domains'] ?? 0), 'spam_score' => isset($r['backlinks_spam_score']) ? (int) $r['backlinks_spam_score'] : null];
+    }
+
+    /**
+     * Domains linking to a target (~$0.024 per 100), strongest first.
+     *
+     * @return array<int, array{domain:string,rank:int,backlinks:int,platform:?string}>
+     */
+    public function referringDomains(string $domain, int $limit = 100): array
+    {
+        $data = $this->call('POST', '/backlinks/referring_domains/live', [['target' => $domain, 'limit' => $limit, 'order_by' => ['rank,desc'], 'exclude_internal_backlinks' => true]]);
+        $out = [];
+        foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $it) {
+            if (empty($it['domain'])) {
+                continue;
+            }
+            $platform = is_array($it['referring_links_platform_types'] ?? null) ? array_key_first($it['referring_links_platform_types']) : null;
+            $out[] = ['domain' => mb_strtolower((string) $it['domain']), 'rank' => (int) ($it['rank'] ?? 0), 'backlinks' => (int) ($it['backlinks'] ?? 0), 'platform' => $platform];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ask an AI answer engine a question with web search on (~$0.03) and
+     * return the answer text.
+     *
+     * @param  string  $platform  chat_gpt | gemini | perplexity | claude
+     */
+    public function llmAnswer(string $platform, string $model, string $prompt): ?string
+    {
+        $data = $this->call('POST', "/ai_optimization/{$platform}/llm_responses/live", [['user_prompt' => $prompt, 'model_name' => $model, 'web_search' => true]]);
+        $sections = $data['tasks'][0]['result'][0]['items'][0]['sections'] ?? null;
+        if (! is_array($sections)) {
+            return null;
+        }
+        $text = '';
+        foreach ($sections as $s) {
+            $text .= ($s['text'] ?? '') . "\n";
+        }
+
+        return trim($text) !== '' ? trim($text) : null;
     }
 
     /** One authenticated call; records the task cost; returns decoded JSON or [] on failure. */

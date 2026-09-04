@@ -96,6 +96,7 @@ class RecommendationEngine
         $this->rule(function () use (&$recommendations): void {
             $recommendations = array_merge($recommendations, $this->liveFaqCheckRecs());
             $recommendations = array_merge($recommendations, $this->localPackRecs());
+            $recommendations = array_merge($recommendations, $this->dataForSeoRecs());
         });
 
         if ($recommendations === []) {
@@ -850,6 +851,46 @@ class RecommendationEngine
                     't' => 'Towns the pack leaders name on their own sites',
                     'd' => "The competitors winning the map pack name these towns on their homepages: {$towns}. Where we serve them, the town service pages are now indexable on demand — make sure each has a linked review or a project photo from that town.",
                     'p' => 'next',
+                ];
+            }
+        }
+
+        return $recs;
+    }
+
+    /**
+     * Link gap and AI-answer mentions (DataForSEO), when the data exists.
+     *
+     * @return array<int, array{t:string,d:string,p:string}>
+     */
+    private function dataForSeoRecs(): array
+    {
+        $recs = [];
+        if (Schema::hasTable('seo_backlink_prospects')) {
+            $gap = \App\Support\Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->where('competitor_count', '>=', 2)->orderByDesc('competitor_count')->orderByDesc('rank')->limit(5)->get();
+            if ($gap->count() >= 3) {
+                $recs[] = [
+                    't' => 'Earn the links the competitors share',
+                    'd' => 'Domains that link to two or more of the map-pack / page-one competitors but not to us: ' . $gap->pluck('domain')->implode(', ') . '. Directories, local press and associations in that list are the cheapest authority we can add — the full list is on the SEO page.',
+                    'p' => 'next',
+                ];
+            }
+        }
+        if (Schema::hasTable('seo_ai_mentions') && ($day = \App\Support\Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
+            $rows = \App\Support\Tenancy::table('seo_ai_mentions')->where('asked_on', $day)->get();
+            $rate = $rows->count() ? round(100 * $rows->where('mentioned', 1)->count() / $rows->count()) : null;
+            if ($rate !== null && $rate < 25) {
+                $named = [];
+                foreach ($rows as $r) {
+                    foreach ((array) json_decode((string) $r->businesses_named, true) as $n) {
+                        $named[$n] = ($named[$n] ?? 0) + 1;
+                    }
+                }
+                arsort($named);
+                $recs[] = [
+                    't' => "AI answer engines name us in {$rate}% of contractor questions",
+                    'd' => 'Asked for the best kitchen/bathroom contractors in our core towns, ChatGPT, Gemini, Perplexity and Claude mostly name ' . implode(', ', array_slice(array_keys($named), 0, 4)) . '. They cite Google reviews, directory listings and pages that name the town explicitly — review volume, the town service pages and llms.txt are the levers.',
+                    'p' => 'now',
                 ];
             }
         }

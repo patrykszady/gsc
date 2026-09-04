@@ -250,7 +250,13 @@ Schedule::command('localfalcon:scan')->weeklyOn(1, '04:50')
 // slowly, and each run is 60 searches. Shown on /admin/seo-reports.
 Schedule::command('seo:discover-competitors --max-queries=60 --top=10 --min-appearances=2 --markdown')->monthlyOn(3, '06:10')
     ->appendOutputTo(storage_path('logs/schedule.log'));
-Schedule::command('seo:keyword-research --budget=3')->weeklyOn(0, '04:30')
+Schedule::command('seo:domain-overview --budget=1')->weeklyOn(0, '05:00')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+Schedule::command('seo:backlink-gap --budget=1')->monthlyOn(2, '05:15')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+Schedule::command('seo:ai-mentions --budget=2')->twiceMonthly(1, 15, '05:30')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+Schedule::command('seo:keyword-research --budget=4 --ideas')->weeklyOn(0, '04:30')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->warning('Scheduled seo:keyword-research failed (balance?)'));
 Schedule::command('localfalcon:competitors --limit=15')->dailyAt('05:40')
