@@ -173,6 +173,20 @@ class IntelStore
         );
     }
 
+    /**
+     * Remove everything a family has stored (its next run starts over).
+     *
+     * @return array{snapshots: int, findings: int, runs: int}
+     */
+    public function reset(string $family): array
+    {
+        return [
+            'snapshots' => Tenancy::table('seo_intel_snapshots')->where('family', $family)->delete(),
+            'findings' => Tenancy::table('seo_intel_findings')->where('family', $family)->delete(),
+            'runs' => Tenancy::table('seo_intel_runs')->where('family', $family)->delete(),
+        ];
+    }
+
     /** Latest runs of a family, newest first. */
     public function runs(string $family, int $limit = 12): Collection
     {

@@ -148,7 +148,8 @@ class TrendsSource extends IntelSource
                 $town = $this->matchTown($query, $towns);
                 $isBreakout = strcasecmp($value, 'Breakout') === 0;
 
-                if ($town !== null || stripos($query, 'near me') !== false) {
+                // "detox centers near me" rises next to "home addition" too — local intent alone is not enough.
+                if (($town !== null || stripos($query, 'near me') !== false) && self::isTradeQuery($query)) {
                     $action = ($town !== null && $service) ? ['type' => 'create_page', 'town' => $town, 'service' => $service['slug']] : null;
                     $out[] = $this->finding(
                         'rising_local_query', Finding::INFO, "Rising local search: \"{$query}\"",
@@ -305,6 +306,12 @@ class TrendsSource extends IntelSource
     }
 
     /** Core towns plus GBP service-area cities (counties excluded — they aren't a page-able town). */
+    /** Mentions what we do — remodeling, renovation, contracting, the rooms we build. */
+    public static function isTradeQuery(string $query): bool
+    {
+        return (bool) preg_match('/remodel|renovat|contractor|construction|builder|kitchen|bath|basement|addition|home improvement|design.build|general contract/i', $query);
+    }
+
     protected function serviceTowns(): array
     {
         $towns = AreaServed::coreTowns(6);

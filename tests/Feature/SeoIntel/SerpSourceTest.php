@@ -241,6 +241,8 @@ class SerpSourceTest extends TestCase
             ['keyword' => 'granite countertop installer', 'city' => 'Buffalo Grove', 'opportunity' => 80, 'created_at' => now(), 'updated_at' => now()],
             ['keyword' => 'walk in tub install', 'city' => 'Arlington Heights', 'opportunity' => 70, 'created_at' => now(), 'updated_at' => now()],
             ['keyword' => 'attic conversion cost', 'city' => 'Buffalo Grove', 'opportunity' => 60, 'created_at' => now(), 'updated_at' => now()],
+            // Highest opportunity of all, but Chicago is not a town we serve: never tracked.
+            ['keyword' => 'chicago kitchen renovation', 'city' => 'Chicago', 'opportunity' => 500, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         Http::fake(function ($request) {
@@ -260,6 +262,7 @@ class SerpSourceTest extends TestCase
         $lower = $subjects->map(fn ($s) => mb_strtolower($s));
         $this->assertSame($lower->count(), $lower->unique()->count(), 'no case-insensitive duplicates');
         $this->assertTrue($subjects->contains('kitchen remodeling Arlington Heights IL'), 'the anchor keeps its own casing over the duplicate researched row');
+        $this->assertFalse($subjects->contains('chicago kitchen renovation'), 'towns outside the service area are not tracked');
         $this->assertFalse($subjects->contains('Kitchen Remodeling Arlington Heights IL'), 'the duplicate researched row was deduped away');
         foreach (['kitchen remodeling Arlington Heights IL', 'bathroom remodeling Arlington Heights IL', 'kitchen remodeling Buffalo Grove IL', 'bathroom remodeling Buffalo Grove IL'] as $anchor) {
             $this->assertTrue($subjects->contains($anchor), "core-town anchor \"{$anchor}\" should always be tracked");

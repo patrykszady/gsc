@@ -16,6 +16,12 @@ class IntelRunner
 
     public function __construct(protected DataForSeoService $dfs, protected IntelStore $store) {}
 
+    /** USD spent through this runner's transport so far (the command's budget check reads this). */
+    public function spent(): float
+    {
+        return $this->dfs->spent();
+    }
+
     /**
      * Registered sources, keyed by family. Classes that do not exist (yet)
      * are skipped so the registry can list families ahead of their code.

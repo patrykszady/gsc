@@ -112,6 +112,10 @@ class IntelRunnerTest extends TestCase
         $this->assertEquals(0.004, (float) $run->cost);
         $this->assertSame(1, (int) $run->snapshots);
 
+        // The command's budget guard reads the runner's transport, not a second instance.
+        $this->artisan('seo:intel', ['family' => ['fake'], '--budget' => 1])->expectsOutputToContain('Spent $0.004')->assertExitCode(0);
+        $this->artisan('seo:intel', ['family' => ['fake'], '--budget' => 0.001])->expectsOutputToContain('Spent $0.004');
+
         Carbon::setTestNow('2026-09-12 06:00:00');
         FakeScoreSource::$score = 70;
         $this->artisan('seo:intel', ['family' => ['fake']])->assertExitCode(0);
@@ -162,6 +166,17 @@ class IntelRunnerTest extends TestCase
         $this->assertSame(1, $before, 'a dry run still collects');
         $this->artisan('seo:intel', ['family' => ['fake'], '--findings' => true])->assertExitCode(0);
         $this->assertSame($before, $live(), 'findings-only makes no API calls');
+    }
+
+    public function test_reset_wipes_a_family_and_needs_explicit_names(): void
+    {
+        $this->artisan('seo:intel', ['family' => ['fake']])->assertExitCode(0);
+        $this->assertSame(1, DB::table('seo_intel_snapshots')->count());
+        $this->artisan('seo:intel', ['--reset' => true, '--findings' => true])->assertExitCode(1);
+        $this->assertSame(1, DB::table('seo_intel_snapshots')->count(), 'no names, nothing removed');
+        $this->artisan('seo:intel', ['family' => ['fake'], '--reset' => true, '--findings' => true])->expectsOutputToContain('removed 1 snapshots')->assertExitCode(0);
+        $this->assertSame(0, DB::table('seo_intel_snapshots')->count());
+        $this->assertSame(0, DB::table('seo_intel_runs')->count());
     }
 
     public function test_balance_guard_refuses_a_run_the_account_cannot_cover(): void

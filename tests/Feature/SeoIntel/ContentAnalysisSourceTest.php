@@ -71,7 +71,7 @@ class ContentAnalysisSourceTest extends TestCase
 
             $body = (array) $request->data();
             $task = (array) ($body[0] ?? []);
-            $keyword = (string) ($task['keyword'] ?? '');
+            $keyword = trim((string) ($task['keyword'] ?? ''), '"'); // sent as an exact phrase
 
             if (str_contains($url, 'content_analysis/summary/live')) {
                 return Http::response(['tasks' => [['cost' => 0.02, 'status_code' => 20000, 'result' => [$this->summaryFor($keyword, $day)]]]]);

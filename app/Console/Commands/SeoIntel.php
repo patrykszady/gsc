@@ -23,7 +23,8 @@ class SeoIntel extends Command
         {--budget=2 : Max USD to spend across this run}
         {--dry-run : Collect and print, store nothing}
         {--findings : Only recompute findings from stored snapshots}
-        {--list : Show registered families and their last run}';
+        {--list : Show registered families and their last run}
+        {--reset : Delete the named families\' snapshots, findings and runs before collecting (start over)}';
 
     protected $description = 'Collect DataForSEO intelligence (on-page, backlinks, Labs, SERP, business data, content, AI) into per-run snapshots and findings';
 
@@ -56,6 +57,17 @@ class SeoIntel extends Command
             return self::SUCCESS;
         }
 
+        if ($this->option('reset')) {
+            if (! $only) {
+                $this->error('--reset needs explicit family names.');
+
+                return self::FAILURE;
+            }
+            foreach (array_keys($sources) as $family) {
+                $n = $store->reset($family);
+                $this->warn("  {$family}: reset — removed {$n['snapshots']} snapshots, {$n['findings']} findings, {$n['runs']} runs.");
+            }
+        }
         $findingsOnly = (bool) $this->option('findings');
         $dryRun = (bool) $this->option('dry-run');
         $budget = (float) $this->option('budget');
@@ -77,8 +89,8 @@ class SeoIntel extends Command
 
         $failed = 0;
         foreach ($sources as $family => $source) {
-            if (! $findingsOnly && $dfs->spent() + $source->estimateCost() > $budget && $dfs->spent() > 0) {
-                $this->warn("  {$family}: skipped, budget reached (\${$dfs->spent()} spent).");
+            if (! $findingsOnly && $runner->spent() > 0 && $runner->spent() + $source->estimateCost() > $budget) {
+                $this->warn(sprintf('  %s: skipped, budget reached ($%.3f spent).', $family, $runner->spent()));
                 continue;
             }
             $r = $runner->run($source, $dryRun, $findingsOnly);
@@ -92,7 +104,7 @@ class SeoIntel extends Command
                 }
             }
         }
-        $this->info(sprintf('Done. Spent $%.3f.', $dfs->spent()));
+        $this->info(sprintf('Done. Spent $%.3f.', $runner->spent()));
 
         return $failed === count($sources) ? self::FAILURE : self::SUCCESS;
     }

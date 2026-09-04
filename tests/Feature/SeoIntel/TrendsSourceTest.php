@@ -140,6 +140,7 @@ class TrendsSourceTest extends TestCase
             ['query' => 'kitchen remodel Arlington Heights', 'value' => '250'],
             ['query' => 'kitchen remodel near me', 'value' => '80'],
             ['query' => 'kitchen remodel financing', 'value' => 'Breakout'],
+            ['query' => 'detox centers near me', 'value' => '900'], // local intent, wrong trade: ignored
         ];
         $this->artisan('seo:intel', ['family' => ['trends'], '--budget' => 1])->assertExitCode(0);
 
@@ -156,7 +157,7 @@ class TrendsSourceTest extends TestCase
 
         // Both "Arlington Heights" and "near me" qualify as local-intent rising queries.
         $this->assertArrayHasKey('trends.rising_local_query', $findings->toArray());
-        $this->assertCount(2, $findings['trends.rising_local_query']);
+        $this->assertCount(2, $findings['trends.rising_local_query'], 'the off-trade "near me" query is not a local finding');
         $rising = $findings['trends.rising_local_query']->firstWhere(fn ($f) => str_contains((string) $f->title, 'Arlington Heights'));
         $this->assertNotNull($rising, 'the town-mentioning rising query opened its own finding');
         $action = json_decode((string) $rising->action, true);

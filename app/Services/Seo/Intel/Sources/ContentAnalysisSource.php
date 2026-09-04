@@ -69,7 +69,7 @@ class ContentAnalysisSource extends IntelSource
             if ($overBudget()) {
                 break;
             }
-            $snap = $this->fetchSummary($term);
+            $snap = $this->fetchSummary($term, in_array($term, $brandTerms, true) ? $this->ourDomain() : null);
             if ($snap !== null) {
                 $snapshots[] = $snap;
             }
@@ -274,7 +274,10 @@ class ContentAnalysisSource extends IntelSource
      */
     protected function brandTerms(): array
     {
-        $terms = (array) $this->config('brand_terms', [config('brand.name')]);
+        $brand = (string) config('brand.name');
+        // "GS Construction & Remodeling" is also written "… and Remodeling" (porch.com does).
+        $default = array_filter([$brand, str_contains($brand, '&') ? str_replace('&', 'and', $brand) : null]);
+        $terms = (array) $this->config('brand_terms', array_values($default));
 
         return array_values(array_unique(array_filter(array_map(fn ($t) => trim((string) $t), $terms))));
     }
@@ -301,14 +304,21 @@ class ContentAnalysisSource extends IntelSource
             ->pluck('name')->map(fn ($n) => trim((string) $n))->filter()->unique()->values()->all();
     }
 
-    protected function fetchSummary(string $term): ?Snapshot
+    protected function fetchSummary(string $term, ?string $excludeDomain = null): ?Snapshot
     {
-        $env = $this->dfs->request('POST', '/content_analysis/summary/live', [[
-            'keyword' => $term,
+        // Exact phrase (the docs' quoted form): a bare "GS Construction"
+        // matched 184,000 ski-race and adventure pages ("GS" = giant slalom).
+        // Our own site is excluded from our own mention count.
+        $task = [
+            'keyword' => self::phrase($term),
             // Skip ecommerce listings — noise for a brand-mention read.
             'page_type' => ['organization', 'news', 'blogs', 'message-boards'],
             'internal_list_limit' => 10,
-        ]]);
+        ];
+        if ($excludeDomain !== null) {
+            $task['initial_dataset_filters'] = ['main_domain', '<>', $excludeDomain];
+        }
+        $env = $this->dfs->request('POST', '/content_analysis/summary/live', [$task]);
         $item = DataForSeoService::resultOf($env)[0] ?? null;
         if (! is_array($item)) {
             return null;
@@ -330,7 +340,8 @@ class ContentAnalysisSource extends IntelSource
     protected function fetchSearch(string $term): array
     {
         $env = $this->dfs->request('POST', '/content_analysis/search/live', [[
-            'keyword' => $term,
+            'keyword' => self::phrase($term),
+            'filters' => ['main_domain', '<>', $this->ourDomain()],
             'search_mode' => 'as_is',
             'limit' => (int) $this->config('mention_limit', 50),
             'order_by' => ['content_info.date_published,desc'],
@@ -402,5 +413,11 @@ class ContentAnalysisSource extends IntelSource
             'avg_12mo' => round($avg, 2),
             'months' => count($series),
         ], ['series' => $series]);
+    }
+
+    /** The docs' exact-phrase form: "\"gs construction & remodeling\"". */
+    public static function phrase(string $term): string
+    {
+        return '"' . trim($term, '"') . '"';
     }
 }

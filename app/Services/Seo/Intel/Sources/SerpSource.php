@@ -234,10 +234,16 @@ class SerpSource extends IntelSource
             }
         }
 
+        // Researched phrases only for towns we actually serve: a "chicago
+        // kitchen renovation" local pack, seen from Prospect Heights, is one
+        // we can never enter, so tracking it only produces noise.
+        $served = $this->servedTowns();
         $researched = Tenancy::table('seo_keywords')
             ->whereNotNull('city')
             ->orderByDesc('opportunity')
-            ->limit($tracked)
+            ->limit($tracked * 4)
+            ->get(['keyword', 'city'])
+            ->filter(fn ($r) => isset($served[mb_strtolower(trim((string) $r->city))]))
             ->pluck('keyword')
             ->all();
 
@@ -245,6 +251,26 @@ class SerpSource extends IntelSource
     }
 
     /** Case-insensitive de-dupe that keeps the first-seen casing. */
+    /** Towns we serve (Business Profile service areas + area pages), lower-cased, as keys. */
+    protected function servedTowns(): array
+    {
+        $towns = [];
+        foreach ((array) config('gbp-services.service_areas', []) as $entry) {
+            if (stripos((string) $entry, 'county') !== false) {
+                continue;
+            }
+            $name = mb_strtolower(trim((string) explode(',', (string) $entry)[0]));
+            if ($name !== '') {
+                $towns[$name] = true;
+            }
+        }
+        foreach (AreaServed::query()->pluck('city') as $city) {
+            $towns[mb_strtolower(trim((string) $city))] = true;
+        }
+
+        return $towns;
+    }
+
     protected function dedupe(array $queries): array
     {
         $seen = [];
