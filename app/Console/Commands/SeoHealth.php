@@ -457,8 +457,9 @@ class SeoHealth extends Command
         };
     }
 
-    protected function scoreColor(int $s): string
+    protected function scoreColor(?int $s): string
     {
+        $s = (int) $s;
         return match (true) {
             $s >= 80 => 'green',
             $s >= 60 => 'yellow',

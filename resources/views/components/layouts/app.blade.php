@@ -251,9 +251,39 @@
 
             window.addEventListener('unhandledrejection', function (e) {
                 var reason = e.reason;
-                report('promise', {
-                    message: (reason && reason.message) ? reason.message : String(reason),
-                    stack: (reason && reason.stack) ? reason.stack : null
+                var message = (reason && reason.message) ? reason.message : String(reason);
+
+                // Livewire's own error dialog: when two requests fail back to
+                // back it calls showModal() on a dialog that is still open and
+                // throws. That throw is a symptom — the failed request is the
+                // fact, and it is reported by the Livewire hook below.
+                if (/showModal.*already open/i.test(message)) {
+                    return;
+                }
+                // A visitor whose page URL carries credentials (user:pass@host,
+                // scanners mostly) makes Livewire's link prefetch throw. Not a
+                // defect in this site, and nothing here can change that URL.
+                if (/URL that includes credentials/i.test(message)) {
+                    return;
+                }
+
+                report('promise', { message: message, stack: (reason && reason.stack) ? reason.stack : null });
+            });
+
+            // The fact behind most "dialog" and "expired" symptoms: a Livewire
+            // request that did not get a 200. Report the status and the start
+            // of the body (a Cloudflare challenge page, a 419, a 500 …) so the
+            // dashboard shows the cause, not the modal Livewire opened for it.
+            document.addEventListener('livewire:init', function () {
+                if (!window.Livewire || !window.Livewire.hook) return;
+                window.Livewire.hook('request', function (ctx) {
+                    ctx.fail(function (res) {
+                        var body = (res && res.content) ? String(res.content).replace(/\s+/g, ' ').substring(0, 300) : '';
+                        report('livewire', {
+                            message: 'Livewire request failed: HTTP ' + (res && res.status) + ' on ' + window.location.pathname,
+                            stack: body
+                        });
+                    });
                 });
             });
         })();

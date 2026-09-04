@@ -764,7 +764,7 @@ class RecommendationEngine
         // there is nothing for a human to click — and a Do-item that resolves
         // to "no action possible" teaches the operator to ignore the list.
         $category = (string) $wins->first()->category;
-        $openCount = SeoAction::proposed()->where('category', $category)->count();
+        $openCount = SeoAction::open()->where('category', $category)->count();
 
         if ($openCount === 0) {
             return [];

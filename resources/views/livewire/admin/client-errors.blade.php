@@ -70,6 +70,7 @@
                     <flux:select.option value="all">All Types</flux:select.option>
                     <flux:select.option value="error">Errors</flux:select.option>
                     <flux:select.option value="promise">Unhandled Promises</flux:select.option>
+                    <flux:select.option value="livewire">Failed Livewire requests</flux:select.option>
                 </flux:select>
             </div>
             @if ($stats['open'] > 0)
@@ -90,8 +91,8 @@
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <flux:badge size="sm" :color="$error->kind === 'promise' ? 'amber' : 'red'">
-                                {{ $error->kind === 'promise' ? 'Promise' : 'Error' }}
+                            <flux:badge size="sm" :color="match($error->kind) { 'promise' => 'amber', 'livewire' => 'sky', default => 'red' }">
+                                {{ match($error->kind) { 'promise' => 'Promise', 'livewire' => 'Livewire', default => 'Error' } }}
                             </flux:badge>
                             <flux:badge size="sm" color="zinc">{{ $error->occurrences }}&times;</flux:badge>
                             @if ($error->resolved_at)

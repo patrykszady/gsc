@@ -19,7 +19,7 @@ class ClientErrors extends Component
     public string $statusFilter = 'open'; // open, resolved, all
 
     #[Url]
-    public string $kindFilter = 'all'; // all, error, promise
+    public string $kindFilter = 'all'; // all, error, promise, livewire
 
     public ?int $expandedId = null;
 
