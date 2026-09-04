@@ -797,7 +797,7 @@ class SeoReportController extends Controller
                 'researched_at' => optional((clone $base)->max('researched_at'), fn ($d) => Carbon::parse($d)->toDateString()),
                 'volume_total' => (int) (clone $base)->sum('volume'),
                 'opportunities' => (clone $base)->where('opportunity', '>', 0)->orderByDesc('opportunity')->limit(15)->get()->map($row)->all(),
-                'competitor_gap' => (clone $base)->whereNotNull('competitor_domains')->whereNull('our_position')->where('volume', '>', 0)->orderByDesc('volume')->limit(15)->get()->map($row)->all(),
+                'competitor_gap' => (clone $base)->whereNotNull('competitor_domains')->whereNull('our_position')->where('opportunity', '>', 0)->orderByDesc('volume')->limit(15)->get()->map($row)->all(),
                 'already_winning' => (clone $base)->where('our_position', '<=', 3)->where('volume', '>', 0)->orderByDesc('volume')->limit(8)->get()->map($row)->all(),
             ];
         });
@@ -831,10 +831,14 @@ class SeoReportController extends Controller
             }
 
             if (Schema::hasTable('seo_backlink_prospects')) {
-                $out['link_gap'] = Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->where('competitor_count', '>=', 2)
+                // Link farms link to every competitor at once and carry a spam score; a real
+                // prospect (directory, local press, association) links to a few.
+                $gapQuery = fn () => Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])
+                    ->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30));
+                $out['link_gap'] = $gapQuery()
                     ->orderByDesc('competitor_count')->orderByDesc('rank')->limit(20)->get()
                     ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->all();
-                $out['link_gap_total'] = (int) Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->where('competitor_count', '>=', 2)->count();
+                $out['link_gap_total'] = (int) $gapQuery()->count();
             }
 
             if (Schema::hasTable('seo_ai_mentions') && ($latestDay = Tenancy::table('seo_ai_mentions')->max('asked_on'))) {

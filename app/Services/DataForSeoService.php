@@ -235,7 +235,7 @@ class DataForSeoService
     /**
      * Domains linking to a target (~$0.024 per 100), strongest first.
      *
-     * @return array<int, array{domain:string,rank:int,backlinks:int,platform:?string}>
+     * @return array<int, array{domain:string,rank:int,backlinks:int,platform:?string,spam_score:?int}>
      */
     public function referringDomains(string $domain, int $limit = 100): array
     {
@@ -246,7 +246,7 @@ class DataForSeoService
                 continue;
             }
             $platform = is_array($it['referring_links_platform_types'] ?? null) ? array_key_first($it['referring_links_platform_types']) : null;
-            $out[] = ['domain' => mb_strtolower((string) $it['domain']), 'rank' => (int) ($it['rank'] ?? 0), 'backlinks' => (int) ($it['backlinks'] ?? 0), 'platform' => $platform];
+            $out[] = ['domain' => mb_strtolower((string) $it['domain']), 'rank' => (int) ($it['rank'] ?? 0), 'backlinks' => (int) ($it['backlinks'] ?? 0), 'platform' => $platform, 'spam_score' => isset($it['backlinks_spam_score']) ? (int) $it['backlinks_spam_score'] : null];
         }
 
         return $out;

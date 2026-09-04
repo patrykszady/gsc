@@ -53,8 +53,9 @@ class SeoBacklinkGap extends Command
                 if ($d === $ours || $d === $c || str_ends_with($d, '.' . $c)) {
                     continue;
                 }
-                $p = $prospects[$d] ?? ['domain' => $d, 'rank' => 0, 'links_to' => [], 'platform' => $r['platform']];
+                $p = $prospects[$d] ?? ['domain' => $d, 'rank' => 0, 'links_to' => [], 'platform' => $r['platform'], 'spam' => null];
                 $p['rank'] = max($p['rank'], $r['rank']);
+                $p['spam'] = max((int) $p['spam'], (int) ($r['spam_score'] ?? 0));
                 $p['links_to'][$c] = $r['backlinks'];
                 $prospects[$d] = $p;
             }
@@ -71,6 +72,7 @@ class SeoBacklinkGap extends Command
                     'competitor_count' => count($p['links_to']),
                     'links_to_us' => isset($oursLinks[$d]),
                     'platform_type' => $p['platform'] ? mb_substr((string) $p['platform'], 0, 60) : null,
+                    'spam_score' => $p['spam'],
                     'seen_at' => now(),
                     'updated_at' => now(), 'created_at' => now(),
                 ]
@@ -78,7 +80,7 @@ class SeoBacklinkGap extends Command
             $n++;
         }
         Cache::forget(Tenancy::cacheKey('seo_reports_dataforseo_v1'));
-        $gap = collect($prospects)->filter(fn ($p, $d) => ! isset($oursLinks[$d]) && count($p['links_to']) >= 2)->count();
+        $gap = collect($prospects)->filter(fn ($p, $d) => ! isset($oursLinks[$d]) && count($p['links_to']) >= 2 && (int) $p['spam'] < 30 && count($p['links_to']) < 6)->count();
         $this->info(sprintf('%d prospect domains recorded; %d link to 2+ competitors and not to us. Spent $%.3f.', $n, $gap, $dfs->spent()));
 
         return self::SUCCESS;

@@ -42,6 +42,11 @@ class SeoResearchAutomationTest extends TestCase
         // Covered town, plain intent, strong phrase the title lacks → title experiment + copy refresh (thin intro).
         $this->keyword(['keyword' => 'kenilworth home remodeling and renovation services', 'volume' => 320, 'service' => 'home-remodeling', 'city' => 'Kenilworth', 'our_position' => 7.5]);
 
+        // A competitor's brand and a navigational term must not drive anything.
+        DB::table('local_falcon_competitors')->insert(['site_id' => null, 'place_id' => 'kbu', 'keyword' => 'kitchen remodeling', 'name' => 'Kitchens & Baths Unlimited', 'pack_points' => 3, 'seen_points' => 3, 'created_at' => now(), 'updated_at' => now()]);
+        $this->keyword(['keyword' => 'kitchens and baths unlimited kenilworth', 'volume' => 900, 'service' => 'kitchen-remodeling', 'city' => 'Kenilworth']);
+        $this->keyword(['keyword' => 'chi renovation kenilworth', 'volume' => 400, 'service' => 'home-remodeling', 'city' => 'Kenilworth', 'intent' => 'navigational']);
+
         $created = app(SeoAutopilotService::class)->synthesize();
         $this->assertGreaterThanOrEqual(3, $created);
 
@@ -55,6 +60,8 @@ class SeoResearchAutomationTest extends TestCase
         $this->assertNotNull($title);
         $this->assertSame('https://gs.construction/areas-served/kenilworth', $title->target_url);
         $this->assertStringContainsString('Renovation Services', $title->payload['new_title']);
+        $this->assertSame(0, SeoAction::where('category', 'title_meta')->where('payload', 'like', '%Unlimited%')->count(), 'competitor brands never become our title');
+        $this->assertSame(0, SeoAction::where('payload', 'like', '%chi renovation%')->count(), 'navigational terms drive nothing');
 
         $refresh = SeoAction::where('category', 'content_refresh')->first();
         $this->assertNotNull($refresh);

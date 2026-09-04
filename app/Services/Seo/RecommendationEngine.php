@@ -867,7 +867,7 @@ class RecommendationEngine
     {
         $recs = [];
         if (Schema::hasTable('seo_backlink_prospects')) {
-            $gap = \App\Support\Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->where('competitor_count', '>=', 2)->orderByDesc('competitor_count')->orderByDesc('rank')->limit(5)->get();
+            $gap = \App\Support\Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30))->orderByDesc('competitor_count')->orderByDesc('rank')->limit(5)->get();
             if ($gap->count() >= 3) {
                 $recs[] = [
                     't' => 'Earn the links the competitors share',

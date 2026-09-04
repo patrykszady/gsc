@@ -37,7 +37,8 @@ class SeoKeywordResearch extends Command
         {--budget=3 : Max USD to spend this run}
         {--competitors=15 : Competitor domains to pull ranked keywords for}
         {--ideas : Also pull keyword ideas around each service (adds ~$0.10)}
-        {--dry-run : Build the universe and report what would be fetched, spend nothing}';
+        {--dry-run : Build the universe and report what would be fetched, spend nothing}
+        {--rescore : Recompute opportunity for stored keywords only; no API calls}';
 
     protected $description = 'Keyword + competitor research via DataForSEO into seo_keywords (volume, our position, competitor coverage, opportunity)';
 
@@ -58,6 +59,20 @@ class SeoKeywordResearch extends Command
 
         $budget = (float) $this->option('budget');
         $dry = (bool) $this->option('dry-run');
+
+        if ($this->option('rescore')) {
+            $n = 0;
+            foreach (Tenancy::table('seo_keywords')->get() as $k) {
+                $sources = (array) json_decode((string) $k->sources, true);
+                $opp = ($k->intent ?? null) === 'navigational' ? 0.0 : $this->opportunity((int) $k->volume, $k->our_position !== null ? (float) $k->our_position : null, $k->competitor_domains !== null, (string) $k->keyword, $k->city, $sources);
+                Tenancy::table('seo_keywords')->where('id', $k->id)->update(['opportunity' => $opp]);
+                $n++;
+            }
+            Cache::forget(Tenancy::cacheKey('seo_reports_keywords_v1'));
+            $this->info("Rescored {$n} keywords.");
+
+            return self::SUCCESS;
+        }
 
         // ---- 1. universe -------------------------------------------------
         $universe = [];  // keyword => sources[]
@@ -176,7 +191,7 @@ class SeoKeywordResearch extends Command
             $class = $engine->classify($kw);
             $mine = $ours[$kw] ?? null;
             $hits = $competitorHits[$kw] ?? [];
-            $opp = $this->opportunity((int) ($vol ?? 0), $mine['pos'] ?? null, $hits !== []);
+            $opp = $this->opportunity((int) ($vol ?? 0), $mine['pos'] ?? null, $hits !== [], $kw, $class[1] ?? null, array_keys(array_filter($meta, fn ($v, $k) => ! str_starts_with($k, '__'), ARRAY_FILTER_USE_BOTH)));
             Tenancy::table('seo_keywords')->updateOrInsert(
                 ['site_id' => $siteId, 'keyword' => mb_substr($kw, 0, 191)],
                 [
@@ -215,6 +230,9 @@ class SeoKeywordResearch extends Command
                 if (isset($intent[$kw])) {
                     $upd['intent'] = mb_substr($intent[$kw]['label'], 0, 20);
                     $upd['intent_probability'] = round($intent[$kw]['probability'], 2);
+                    if ($intent[$kw]['label'] === 'navigational') {
+                        $upd['opportunity'] = 0; // someone's brand, not a market
+                    }
                 }
                 if ($upd) {
                     Tenancy::table('seo_keywords')->where('keyword', $kw)->update($upd);
@@ -246,9 +264,20 @@ class SeoKeywordResearch extends Command
      * no opportunity; one a competitor ranks for that we are absent from is the
      * strongest signal there is real, winnable intent.
      */
-    private function opportunity(int $volume, ?float $ourPos, bool $competitorRanks): float
+    private function opportunity(int $volume, ?float $ourPos, bool $competitorRanks, string $keyword = '', ?string $city = null, array $sources = []): float
     {
         if ($volume <= 0) {
+            return 0.0;
+        }
+        // Local relevance gate. A national head term ("home goods",
+        // "kitchen cabinets", 1.5M searches) is not an opportunity for a
+        // suburban contractor, however big the number: it must name a town,
+        // or already show us impressions in Search Console, or carry a
+        // buying-a-contractor marker at a plausible local volume.
+        $local = $city !== null
+            || in_array('gsc', $sources, true)
+            || (preg_match('/\b(contractor|remodel|renovat|near me)/i', $keyword) && $volume <= 20000);
+        if (! $local) {
             return 0.0;
         }
         $distance = $ourPos === null ? 1.0 : ($ourPos <= 3 ? 0.0 : min(1.0, ($ourPos - 3) / 17));

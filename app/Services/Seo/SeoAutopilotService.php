@@ -207,6 +207,44 @@ class SeoAutopilotService
      *  - a town page with thin local copy and real search volume gets a copy
      *    refresh written around the town's top phrases (reversible).
      */
+    /**
+     * A researched term that is really someone's brand ("kitchens and baths
+     * unlimited glenview") must never become our title or our page: it is
+     * misleading and it is their name. Navigational intent is the engine's
+     * signal for that; the competitor name list is the belt to its braces.
+     */
+    private function isBrandedOrNavigational(object $row): bool
+    {
+        if (($row->intent ?? null) === 'navigational') {
+            return true;
+        }
+        static $tokens = null;
+        if ($tokens === null) {
+            $names = collect();
+            if (Schema::hasTable('local_falcon_competitors')) {
+                $names = $names->concat(\App\Support\Tenancy::table('local_falcon_competitors')->pluck('name'));
+            }
+            $names = $names->concat(collect((array) config('competitors.competitors', []))->pluck('name'));
+            $tokens = $names->map(fn ($n) => Str::lower(trim((string) $n)))
+                ->map(fn ($n) => preg_replace('/\b(inc|llc|ltd|co|corp|the|of|and|&)\b\.?/', ' ', $n))
+                ->map(fn ($n) => trim(preg_replace('/[^a-z0-9 ]+/', ' ', (string) $n) ?? ''))
+                ->map(fn ($n) => trim(preg_replace('/\s+/', ' ', $n) ?? ''))
+                // Keep the distinctive part: the first two words when there are
+                // three or more ("kitchens baths", "chi renovation"), otherwise all.
+                ->map(fn ($n) => implode(' ', array_slice(explode(' ', $n), 0, 2)))
+                ->filter(fn ($n) => mb_strlen($n) >= 8 && ! preg_match('/^(kitchen|bathroom|home|basement|remodeling|renovation|construction|design|general)( |$)/', $n))
+                ->unique()->values()->all();
+        }
+        $kw = ' ' . preg_replace('/\s+/', ' ', Str::lower((string) $row->keyword)) . ' ';
+        foreach ($tokens as $t) {
+            if (str_contains($kw, ' ' . $t . ' ')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function synthesizeResearch(): int
     {
         if (! Schema::hasTable('seo_keywords')) {
@@ -241,6 +279,9 @@ class SeoAutopilotService
         $topByCity = []; // city|service => top row
 
         foreach ($rows as $r) {
+            if ($this->isBrandedOrNavigational($r)) {
+                continue;
+            }
             $covered = isset($areaCities[Str::lower((string) $r->city)]);
 
             // (a) landing page: uncovered town, or a modifier angle on a covered one.
