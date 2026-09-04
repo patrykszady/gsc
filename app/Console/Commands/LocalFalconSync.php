@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Http;
  */
 class LocalFalconSync extends Command
 {
-    protected $signature = 'localfalcon:sync {--limit=25 : Most recent scans to mirror}';
+    protected $signature = 'localfalcon:sync {--limit=25 : Most recent scans to mirror} {--refresh : Re-fetch per-point detail for scans already mirrored}';
 
     protected $description = 'Mirror recent Local Falcon geo-grid scan results (map-pack visibility) into the local DB.';
 
@@ -71,7 +71,7 @@ class LocalFalconSync extends Command
             // Slimmed before storing (rank-per-point + top pack occupants),
             // since the raw detail repeats every competitor at every point.
             $detail = null;
-            if ($isNew) {
+            if ($isNew || $this->option('refresh')) {
                 $d = Http::asForm()->timeout(60)->post("https://api.localfalcon.com/v1/reports/{$scanId}/", [
                     'api_key' => $key,
                 ]);
@@ -86,14 +86,42 @@ class LocalFalconSync extends Command
                         'lng' => $pt['lng'] ?? null,
                         'rank' => ($pt['found'] ?? false) ? ($pt['rank'] ?? false) : false,
                     ])->all();
-                    $leaders = collect($data['data_points'] ?? [])
-                        ->flatMap(fn ($pt) => array_slice((array) ($pt['results'] ?? []), 0, 3))
-                        ->groupBy('place_id')
-                        ->map(fn ($g) => ['business' => $g->first()['name'] ?? $g->first()['business'] ?? '?', 'appearances' => $g->count()])
-                        ->sortByDesc('appearances')->take(8)->values()->all();
+                    // Every business seen at any point, folded once: pack (top-3)
+                    // appearances, appearances at all, best rank, plus the profile
+                    // facts the pack shows (reviews, rating, site). Top 25 by pack.
+                    $competitors = [];
+                    foreach ((array) ($data['data_points'] ?? []) as $pt) {
+                        foreach ((array) ($pt['results'] ?? []) as $res) {
+                            $pid = (string) ($res['place_id'] ?? '');
+                            if ($pid === '') {
+                                continue;
+                            }
+                            $rank = (int) ($res['rank'] ?? 99);
+                            $c = $competitors[$pid] ?? [
+                                'place_id' => $pid,
+                                'name' => (string) ($res['name'] ?? '?'),
+                                'url' => $res['url'] ?? null,
+                                'rating' => is_numeric($res['rating'] ?? null) ? (float) $res['rating'] : null,
+                                'reviews' => is_numeric($res['reviews'] ?? null) ? (int) $res['reviews'] : null,
+                                'claimed' => isset($res['claimed']) ? filter_var($res['claimed'], FILTER_VALIDATE_BOOLEAN) : null,
+                                'categories' => is_array($res['categories'] ?? null) ? array_values($res['categories']) : null,
+                                'pack' => 0, 'seen' => 0, 'best' => 99,
+                            ];
+                            $c['seen']++;
+                            $c['best'] = min($c['best'], $rank);
+                            if ($rank <= 3) {
+                                $c['pack']++;
+                            }
+                            $competitors[$pid] = $c;
+                        }
+                    }
+                    usort($competitors, fn ($a, $b) => [$b['pack'], $b['seen']] <=> [$a['pack'], $a['seen']]);
+                    $competitors = array_slice(array_values($competitors), 0, 25);
+                    $leaders = array_map(fn ($c) => ['business' => $c['name'], 'appearances' => $c['pack']], array_slice($competitors, 0, 8));
                     $detail = [
                         'grid' => $points,
                         'pack_leaders' => $leaders,
+                        'competitors' => $competitors,
                         'found' => $data['found_in'] ?? null,
                         'points_total' => $data['points'] ?? null,
                         'center' => ['lat' => $data['lat'] ?? null, 'lng' => $data['lng'] ?? null],
@@ -109,6 +137,8 @@ class LocalFalconSync extends Command
                 [
                     'site_id' => \App\Models\Site::current()?->id,
                     'keyword' => mb_substr((string) ($r['keyword'] ?? $r['search_term'] ?? ''), 0, 191),
+                    'platform' => mb_substr((string) ($r['platform'] ?? 'google'), 0, 20),
+                    'saiv' => is_numeric(str_replace('%', '', (string) ($r['saiv'] ?? ''))) ? (float) str_replace('%', '', (string) $r['saiv']) : null,
                     'scanned_at' => isset($r['date']) ? Carbon::parse($r['date']) : (isset($r['timestamp']) ? Carbon::createFromTimestamp((int) $r['timestamp']) : null),
                     'arp' => is_numeric($r['arp'] ?? null) ? $r['arp'] : null,
                     'atrp' => is_numeric($r['atrp'] ?? null) ? $r['atrp'] : null,
@@ -121,6 +151,28 @@ class LocalFalconSync extends Command
                 ]
             );
             $written++;
+
+            // The pack owners for this scan, one row per business+keyword; site
+            // reads (localfalcon:competitors) attach to the host across keywords.
+            if ($detail && \Illuminate\Support\Facades\Schema::hasTable('local_falcon_competitors')) {
+                $keyword = mb_substr((string) ($r['keyword'] ?? $r['search_term'] ?? ''), 0, 191);
+                foreach ((array) ($detail['competitors'] ?? []) as $c) {
+                    \App\Support\Tenancy::table('local_falcon_competitors')->updateOrInsert(
+                        ['site_id' => \App\Models\Site::current()?->id, 'place_id' => $c['place_id'], 'keyword' => $keyword],
+                        [
+                            'name' => mb_substr($c['name'], 0, 191),
+                            'url' => $c['url'] ? mb_substr((string) $c['url'], 0, 500) : null,
+                            'host' => $c['url'] ? mb_substr((string) preg_replace('/^www\./', '', (string) parse_url((string) $c['url'], PHP_URL_HOST)), 0, 191) : null,
+                            'rating' => $c['rating'], 'reviews' => $c['reviews'], 'claimed' => $c['claimed'],
+                            'categories' => $c['categories'] ? json_encode($c['categories']) : null,
+                            'scan_id' => $scanId,
+                            'scanned_at' => isset($r['date']) ? Carbon::parse($r['date']) : now(),
+                            'pack_points' => $c['pack'], 'seen_points' => $c['seen'], 'best_rank' => $c['best'] < 99 ? $c['best'] : null,
+                            'updated_at' => now(), 'created_at' => now(),
+                        ]
+                    );
+                }
+            }
         }
 
         $this->info("Mirrored {$written} scan(s).");

@@ -246,6 +246,8 @@ Schedule::command('localfalcon:scan')->weeklyOn(1, '04:50')
     ->onFailure(fn () => logger()->error('Scheduled localfalcon:scan failed'))
     ->when(fn () => (bool) env('LOCALFALCON_ONDEMAND', false));
 
+Schedule::command('localfalcon:competitors --limit=15')->dailyAt('05:40')
+    ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('localfalcon:sync')->dailyAt('05:20')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));

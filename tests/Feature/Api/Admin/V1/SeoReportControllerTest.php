@@ -148,6 +148,8 @@ class SeoReportControllerTest extends TestCase
             \Illuminate\Support\Facades\DB::table('local_falcon_scans')->insert(['site_id' => $area->site_id, 'scan_id' => md5($at), 'keyword' => 'bathroom remodeling', 'scanned_at' => $at, 'arp' => $arp, 'atrp' => 20.9, 'solv' => $solv, 'grid_points' => 11, 'in_top3' => 0, 'raw' => $raw([]), 'created_at' => now(), 'updated_at' => now()]);
         }
 
+        \Illuminate\Support\Facades\DB::table('local_falcon_competitors')->insert(['site_id' => $area->site_id, 'place_id' => 'p1', 'keyword' => 'bathroom remodeling', 'name' => 'Prism Kitchen', 'url' => 'https://prism.test/', 'host' => 'prism.test', 'rating' => 5.0, 'reviews' => 53, 'claimed' => true, 'scan_id' => md5('2026-09-04 12:00:00'), 'scanned_at' => '2026-09-04 12:00:00', 'pack_points' => 15, 'seen_points' => 23, 'best_rank' => 1, 'site_services' => json_encode(['Kitchen', 'Bathroom']), 'site_towns' => json_encode(['Highland Park']), 'site_title' => 'Prism', 'site_fetched_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+
         $lf = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.local_falcon');
         $this->assertTrue($lf['available']);
         $k = $lf['keywords'][0];
@@ -158,5 +160,9 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame('Prospect Heights', $k['towns'][0]['city']);
         $this->assertSame(4, $k['towns'][0]['best_rank']);
         $this->assertSame('Prism Kitchen', $k['pack_leaders'][0]['business']);
+        $this->assertSame(53, $k['pack_leaders'][0]['reviews']);
+        $this->assertSame(['Kitchen', 'Bathroom'], $k['pack_leaders'][0]['services']);
+        $this->assertSame(53, $k['review_gap']['leader']);
+        $this->assertSame(53, $k['review_gap']['gap']);
     }
 }

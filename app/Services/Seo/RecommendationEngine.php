@@ -95,6 +95,7 @@ class RecommendationEngine
         });
         $this->rule(function () use (&$recommendations): void {
             $recommendations = array_merge($recommendations, $this->liveFaqCheckRecs());
+            $recommendations = array_merge($recommendations, $this->localPackRecs());
         });
 
         if ($recommendations === []) {
@@ -812,6 +813,50 @@ class RecommendationEngine
      *
      * @return array<int, array{t:string,d:string,p:string}>
      */
+    /**
+     * Local Falcon: the map pack as measured, not guessed. A review gap to the
+     * businesses that own the pack, and the towns inside the scan grid where
+     * we never appear despite organic demand.
+     *
+     * @return array<int, array{t:string,d:string,p:string}>
+     */
+    private function localPackRecs(): array
+    {
+        if (! Schema::hasTable('local_falcon_competitors') || ! Schema::hasTable('local_falcon_scans')) {
+            return [];
+        }
+        $recs = [];
+        $latestScanIds = \App\Support\Tenancy::table('local_falcon_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(6)->pluck('scan_id');
+        $leaders = \App\Support\Tenancy::table('local_falcon_competitors')->whereIn('scan_id', $latestScanIds)->where('pack_points', '>', 0)->orderByDesc('pack_points')->limit(12)->get();
+        if ($leaders->isEmpty()) {
+            return [];
+        }
+        $ours = Schema::hasTable('review_urls')
+            ? (int) \App\Models\Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
+            : 0;
+        $top = $leaders->sortByDesc('reviews')->first();
+        if ($top && (int) $top->reviews > $ours + 15) {
+            $recs[] = [
+                't' => 'Close the Google review gap to the map-pack leaders',
+                'd' => "Local Falcon shows we hold no 3-pack spots across the service area. The businesses that own it carry {$top->reviews} Google reviews ({$top->name}) against our {$ours}. Review count is the strongest lever after proximity for a service-area listing — ask recent clients, and ask them to name their town.",
+                'p' => 'now',
+            ];
+        }
+        $unread = $leaders->whereNull('site_title')->count();
+        if ($unread === 0) {
+            $towns = $leaders->flatMap(fn ($c) => (array) json_decode((string) $c->site_towns, true))->countBy()->sortDesc()->take(5)->keys()->implode(', ');
+            if ($towns !== '') {
+                $recs[] = [
+                    't' => 'Towns the pack leaders name on their own sites',
+                    'd' => "The competitors winning the map pack name these towns on their homepages: {$towns}. Where we serve them, the town service pages are now indexable on demand — make sure each has a linked review or a project photo from that town.",
+                    'p' => 'next',
+                ];
+            }
+        }
+
+        return $recs;
+    }
+
     private function liveFaqCheckRecs(): array
     {
         $status = Http::timeout(8)->get(url('/faq'))->status();

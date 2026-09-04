@@ -666,6 +666,21 @@ class SeoReportController extends Controller
                 return $best;
             };
 
+            $ourReviews = Schema::hasTable('review_urls')
+                ? (int) \App\Models\Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
+                : 0;
+            $competitorRows = Schema::hasTable('local_falcon_competitors')
+                ? Tenancy::table('local_falcon_competitors')->where('pack_points', '>', 0)->get()
+                : collect();
+
+            $aiPlatforms = ['chatgpt', 'gemini', 'aimode', 'gaio', 'grok', 'apple'];
+            $ai = [];
+            foreach ($scans->whereIn('platform', $aiPlatforms)->groupBy(fn ($s) => $s->platform . '|' . $s->keyword) as $g) {
+                $s = $g->first();
+                $ai[] = ['platform' => $s->platform, 'keyword' => $s->keyword, 'scanned_at' => Carbon::parse($s->scanned_at)->toDateString(), 'saiv' => $s->saiv !== null ? round((float) $s->saiv, 1) : null, 'arp' => $s->arp !== null ? round((float) $s->arp, 1) : null];
+            }
+            $scans = $scans->reject(fn ($s) => in_array($s->platform, $aiPlatforms, true));
+
             $keywords = [];
             foreach ($scans->groupBy('keyword') as $keyword => $group) {
                 $latest = $group->first();
@@ -712,13 +727,22 @@ class SeoReportController extends Controller
                         'solv' => $prev->solv !== null ? round((float) $prev->solv, 1) : null,
                     ] : null,
                     'towns' => array_values($towns),
-                    'pack_leaders' => array_slice((array) ($detail['pack_leaders'] ?? []), 0, 5),
+                    'pack_leaders' => $competitorRows->where('keyword', $keyword)->where('scan_id', $latest->scan_id)->sortByDesc('pack_points')->take(6)->map(fn ($c) => [
+                        'business' => $c->name, 'appearances' => (int) $c->pack_points, 'best_rank' => $c->best_rank, 'reviews' => $c->reviews, 'rating' => $c->rating !== null ? (float) $c->rating : null, 'url' => $c->url, 'host' => $c->host,
+                        'services' => $c->site_services ? json_decode($c->site_services, true) : null,
+                        'towns' => $c->site_towns ? json_decode($c->site_towns, true) : null,
+                        'site_read' => $c->site_fetched_at !== null && $c->site_title !== null,
+                    ])->values()->all() ?: array_slice((array) ($detail['pack_leaders'] ?? []), 0, 5),
+                    'review_gap' => (function () use ($competitorRows, $keyword, $latest, $ourReviews) {
+                        $top = $competitorRows->where('keyword', $keyword)->where('scan_id', $latest->scan_id)->sortByDesc('pack_points')->take(6)->pluck('reviews')->filter()->max();
+                        return $top ? ['ours' => $ourReviews, 'leader' => (int) $top, 'gap' => max(0, (int) $top - $ourReviews)] : null;
+                    })(),
                     'report_url' => $detail['public_url'] ?? null,
                     'heatmap' => $detail['heatmap'] ?? null,
                 ];
             }
 
-            return ['available' => true, 'keywords' => $keywords, 'latest' => Carbon::parse($scans->first()->scanned_at)->toDateString()];
+            return ['available' => true, 'keywords' => $keywords, 'ai' => $ai, 'our_reviews' => $ourReviews, 'latest' => Carbon::parse(($scans->first() ?? collect($ai)->first())?->scanned_at ?? now())->toDateString()];
         });
     }
 
