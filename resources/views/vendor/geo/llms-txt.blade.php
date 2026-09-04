@@ -18,6 +18,7 @@
     $citiesServed = \App\Support\CompanyStats::citiesServed();
     $costGuides = collect(config('remodel-costs.guides', []));
     $permitGuides = collect(\App\Support\PermitGuideInfo::all());
+    $stories = \Illuminate\Support\Facades\Schema::hasTable('blog_posts') ? \App\Models\BlogPost::published()->with('project')->orderByDesc('dated_at')->limit(20)->get() : collect();
 @endphp# llms.txt for {{ $site_name }}
 
 > {{ $description ?: 'Family-owned kitchen, bathroom, and whole-home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English & Polish.' }}
@@ -66,7 +67,15 @@
 - [{{ $guide['town'] ?? \Illuminate\Support\Str::of($slug)->replace('-', ' ')->title() }} permits]({{ $siteUrl }}/permits/{{ $slug }})
 @endforeach
 
+@if($stories->isNotEmpty())
+## Project stories (one real project each: the plan, the build, the before and after, the homeowners' review)
+@foreach($stories as $story)
+- [{!! $story->title !!}]({{ $story->url() }})@if($story->project) — {{ \App\Models\Project::projectTypes()[$story->project->project_type] ?? 'Remodel' }}{{ $story->project->location ? ' in ' . $story->project->location : '' }}@endif
+
+@endforeach
+@endif
 ## Key pages
+- [Project stories (blog)]({{ $siteUrl }}/blog)
 - [Services]({{ $siteUrl }}/services)
 - [Project portfolio]({{ $siteUrl }}/projects)
 - [Reviews]({{ $siteUrl }}/reviews)

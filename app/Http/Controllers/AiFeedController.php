@@ -48,6 +48,26 @@ class AiFeedController extends Controller
                 ->values()
                 ->all();
 
+            // Project stories: the long-form, first-person account of a
+            // project (process, materials, partners, the homeowners' review).
+            $stories = \App\Models\BlogPost::published()
+                ->with('project')
+                ->orderByDesc('dated_at')
+                ->limit(50)
+                ->get()
+                ->map(fn (\App\Models\BlogPost $b) => array_filter([
+                    'id'           => $b->id,
+                    'title'        => $b->title,
+                    'url'          => $b->url(),
+                    'summary'      => $b->excerpt,
+                    'project_type' => $b->project?->project_type,
+                    'location'     => $b->project?->location,
+                    'project_url'  => $b->project ? url('/projects/' . $b->project->slug) : null,
+                    'date'         => $b->displayDate()?->toDateString(),
+                ]))
+                ->values()
+                ->all();
+
             $reviews = Testimonial::visible()
                 ->latest('review_date')
                 ->limit(50)
@@ -124,6 +144,7 @@ class AiFeedController extends Controller
                 'service_area' => $areas->pluck('city')->all(),
                 'service_area_matrix' => $serviceAreaMatrix,
                 'projects'     => $projects,
+                'stories'      => $stories,
                 'reviews'      => $reviews,
                 'credentials' => [
                     'licensed' => true,

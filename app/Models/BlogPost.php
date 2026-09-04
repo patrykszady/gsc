@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 class BlogPost extends Model
 {
     use BelongsToSite;
+    use \Hszope\LaravelAigeo\Traits\HasGeoProfile;
 
     public const STATUS_DRAFT = 'draft';
 
@@ -61,6 +62,54 @@ class BlogPost extends Model
     public function previewUrl(): string
     {
         return \Illuminate\Support\Facades\URL::temporarySignedRoute('blog.show', now()->addDays(7), ['post' => $this->slug, 'preview' => 1]);
+    }
+
+    /**
+     * GEO profile for laravel-aigeo (scored on the /geo dashboard like
+     * projects and reviews). A story is described as the project it tells,
+     * with the review that backs it.
+     */
+    public function geoProfile(): array
+    {
+        $project = $this->project;
+        $type = $project ? (Project::projectTypes()[$project->project_type] ?? 'Remodel') : 'Remodel';
+        $loc = $project?->location ?: 'Chicago Suburbs';
+        $review = $project?->testimonials->where('is_hidden', false)->sortByDesc('review_date')->first();
+
+        return [
+            'brand' => config('brand.name'),
+            'name' => $this->title,
+            'description' => $this->excerpt ?: $this->meta_description,
+            'url' => $this->url(),
+            'image' => $project?->cover()?->url,
+            'sku' => 'story-' . $this->id,
+            'price' => 'Contact for quote',
+            'currency' => 'USD',
+            'in_stock' => true,
+            'rating' => $review?->star_rating ?? 5,
+            'review_count' => max(1, (int) $project?->testimonials->count()),
+            'reviews' => $review ? [[
+                'author' => $review->display_name,
+                'rating' => $review->star_rating ?? 5,
+                'body' => $review->review_description,
+                'date' => optional($review->review_date)->toDateString(),
+            ]] : [],
+            'breadcrumb' => [
+                ['name' => 'Home', 'url' => url('/')],
+                ['name' => 'Blog', 'url' => route('blog.index')],
+                ['name' => $this->title, 'url' => $this->url()],
+            ],
+            'faqs' => [
+                ['question' => "Where was this {$type} project?", 'answer' => "In {$loc}, by " . config('brand.name') . '.'],
+                ['question' => 'Who did the work?', 'answer' => config('brand.name') . ' handled the consultation, estimate, permits, scheduling and construction' . ($project && $project->collaborators->isNotEmpty() ? ', working with ' . $project->collaborators->map(fn ($c) => $c->name . ' (' . strtolower($c->roleLabel()) . ')')->implode(', ') . '.' : '.')],
+            ],
+            'attributes' => array_filter([
+                'Project Type' => $type,
+                'Location' => $loc,
+                'Completed' => $project?->completed_at?->format('F Y'),
+                'Published' => $this->displayDate()?->format('F j, Y'),
+            ]),
+        ];
     }
 
     /** The date shown on the post and the index. */

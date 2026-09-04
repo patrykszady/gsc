@@ -133,4 +133,23 @@ class BlogPostControllerTest extends TestCase
             ->assertOk()->assertJsonPath('data.post.title', 'A Palatine bath')->assertJsonPath('data.generating', false)
             ->assertJsonPath('data.post.preview_url', fn ($u) => str_contains($u, 'signature='));
     }
+
+    public function test_publishing_announces_the_post_to_crawlers_and_marks_it_up(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $draft = $this->draft();
+
+        $this->putJson("/api/admin/v1/blog-posts/{$draft->id}", ['status' => 'published'], $this->adminApiHeaders())->assertOk();
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\AnnounceBlogPostJob::class, fn ($job) => $job->post->is($draft));
+
+        $html = $this->get('/blog/' . $draft->slug)->assertOk()->getContent();
+        $this->assertStringContainsString('"@type":"BlogPosting"', $html);
+        $this->assertMatchesRegularExpression('/"@type":\s*"BreadcrumbList"/', $html);
+        $this->assertStringNotContainsString('noindex', $html);
+
+        // A draft is neither marked up nor announced.
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->putJson("/api/admin/v1/blog-posts/{$draft->id}", ['status' => 'draft'], $this->adminApiHeaders())->assertOk();
+        \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\AnnounceBlogPostJob::class);
+    }
 }

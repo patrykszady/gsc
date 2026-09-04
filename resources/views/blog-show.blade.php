@@ -11,6 +11,10 @@
     @if (! $post->isPublished())
         <meta name="robots" content="noindex,nofollow">
     @endif
+    @if ($post->isPublished())
+        <x-blog-posting-schema :post="$post" />
+        <x-breadcrumb-schema :items="[['name' => 'Blog', 'url' => route('blog.index')], ['name' => $post->title, 'url' => $post->url()]]" />
+    @endif
 
     <x-breadcrumbs :items="[['label' => 'Blog', 'url' => route('blog.index')], ['label' => $post->title]]" maxWidth="max-w-6xl" padding="pt-8 pb-0" />
 

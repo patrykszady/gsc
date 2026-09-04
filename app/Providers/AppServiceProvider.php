@@ -119,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
         Testimonial::observe(TestimonialObserver::class);
         AreaServed::observe(AreaServedObserver::class);
         Project::observe(ProjectObserver::class);
+        \App\Models\BlogPost::observe(\App\Observers\BlogPostObserver::class);
         ProjectImage::observe(ProjectImageObserver::class);
 
         // Restrict Log Viewer access to specific admin emails only.

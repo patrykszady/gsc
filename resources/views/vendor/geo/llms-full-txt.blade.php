@@ -8,6 +8,7 @@
     $cities = collect(array_keys(\App\Support\SEO\AreaSeoPolicy::priorityCities()))
         ->map(fn ($c) => \Illuminate\Support\Str::of($c)->title())
         ->implode(', ');
+    $stories = \Illuminate\Support\Facades\Schema::hasTable('blog_posts') ? \App\Models\BlogPost::published()->with('project')->orderByDesc('dated_at')->limit(30)->get() : collect();
 @endphp# llms-full.txt for {{ $site_name }}
 
 > {{ $description ?: 'Family-owned kitchen, bathroom, and whole-home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English & Polish.' }}
@@ -52,7 +53,17 @@ sourced from the business's own site; ranges are typical Chicago-suburb project 
 {{ $qa['a'] }}
 
 @endforeach
+@if($stories->isNotEmpty())
+## Project stories
+Each is a first-person account of one completed project: what the homeowners asked for, the plan, the build, materials, partners, and the homeowners' own review.
+@foreach($stories as $story)
+- {!! $story->title !!} ({{ $story->displayDate()?->format('F Y') }}): {{ $story->url() }}
+  {!! \Illuminate\Support\Str::limit((string) $story->excerpt, 220) !!}
+@endforeach
+
+@endif
 ## Key pages
+- Project stories (blog): {{ $siteUrl }}/blog
 - Services: {{ $siteUrl }}/services
 - Project portfolio: {{ $siteUrl }}/projects
 - Reviews: {{ $siteUrl }}/reviews

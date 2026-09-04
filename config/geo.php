@@ -105,6 +105,7 @@ return [
         'models' => [
             ['model' => \App\Models\Project::class,     'label' => 'Projects'],
             ['model' => \App\Models\Testimonial::class, 'label' => 'Testimonials'],
+            ['model' => \App\Models\BlogPost::class,    'label' => 'Project stories'],
         ],
     ],
 ];
