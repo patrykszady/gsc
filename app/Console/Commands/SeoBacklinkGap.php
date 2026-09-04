@@ -54,7 +54,7 @@ class SeoBacklinkGap extends Command
                     continue;
                 }
                 // Free-host spam networks ("housesbathroom.web.app", blogspot farms) are not prospects.
-                if (preg_match('/\.(web\.app|blogspot\.com|wordpress\.com|weebly\.com|wixsite\.com|github\.io|netlify\.app|vercel\.app|pages\.dev)$/', $d)) {
+                if (preg_match('/\.(web\.app|blogspot\.com|wordpress\.com|weebly\.com|wixsite\.com|github\.io|netlify\.app|vercel\.app|pages\.dev|firebaseapp\.com)$/', $d)) {
                     continue;
                 }
                 $p = $prospects[$d] ?? ['domain' => $d, 'rank' => 0, 'links_to' => [], 'platform' => $r['platform'], 'spam' => null];
