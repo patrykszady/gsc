@@ -241,11 +241,25 @@ class GenerateSitemap extends Command
             $this->line("  Added static: /{$uri}");
         }
 
-        // Config-driven page groups get their config file's real mtime — it
-        // changes exactly when their content changes (deploys).
-        $configMtime = fn (string $file) => \Illuminate\Support\Carbon::createFromTimestamp(
-            @filemtime(config_path($file)) ?: time()
-        );
+        // Config-driven page groups are dated by the config file's last git
+        // commit — the moment their content actually changed. The filesystem
+        // mtime was used before, but a deploy (a fresh clone per release)
+        // resets every file's mtime, which stamped ~50 unchanged pages
+        // "modified today" on every push. Google's answer to lastmod it
+        // cannot trust is to ignore it site-wide.
+        $configMtime = function (string $file): \Illuminate\Support\Carbon {
+            static $cache = [];
+            if (! array_key_exists($file, $cache)) {
+                $ts = null;
+                if (is_dir(base_path('.git'))) {
+                    $out = @shell_exec('git -C ' . escapeshellarg(base_path()) . ' log -1 --format=%ct -- ' . escapeshellarg('config/' . $file) . ' 2>/dev/null');
+                    $ts = is_string($out) && ctype_digit(trim($out)) ? (int) trim($out) : null;
+                }
+                $cache[$file] = $ts ?: (@filemtime(config_path($file)) ?: time());
+            }
+
+            return \Illuminate\Support\Carbon::createFromTimestamp($cache[$file]);
+        };
 
         // Add competitor comparison pages
         $competitors = (array) config('competitors.competitors', []);
@@ -557,16 +571,24 @@ class GenerateSitemap extends Command
         $includeZipPages = (bool) config('seo.sitemap_generation.include_zip_pages', true);
         if ($includeZipPages) {
             foreach ($zipMap as $zip => $info) {
-                $zipUrl = Url::create("{$baseUrl}/service-area/{$zip}")
-                    ->setLastModificationDate($areaLastmod)
-                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                    ->setPriority(0.65);
-
                 // These pages pick projects from every area within 10 miles, not
                 // from one area — so they need their own selection rather than an
                 // area's. Shared with the page via ZipCodeService::projectsNear()
                 // so the sitemap can only ever advertise what the page renders.
-                foreach ($zipService->projectsNear((string) $zip, 12) as $project) {
+                $zipProjects = $zipService->projectsNear((string) $zip, 12);
+
+                // Dated by the newest project the page shows. It used to take
+                // the newest project site-wide, so one project edit stamped all
+                // 60 ZIP pages "modified today".
+                $zipLastmod = $zipProjects->max('updated_at');
+                $zipUrl = Url::create("{$baseUrl}/service-area/{$zip}")
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(0.65);
+                if ($zipLastmod) {
+                    $zipUrl->setLastModificationDate(\Carbon\Carbon::parse($zipLastmod));
+                }
+
+                foreach ($zipProjects as $project) {
                     $image = $project->cover(); // matches <x-project-card>
                     if (! $image) {
                         continue;
