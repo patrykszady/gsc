@@ -65,7 +65,10 @@ class LandingPageContentGenerator
 
         $h1 = trim(($modLabel ? "$modLabel " : '') . "$serviceLabel in $city, IL");
         $titleCore = trim(($modLabel ? "$modLabel " : '') . "$serviceLabel · $city");
-        $title = $this->fit($titleCore . ' | 5★ · Free Estimate', 60);
+        // "| 5★ · Free Estimate" got cut to "| 5★ · Free" by the 60-char fit on
+        // every real title. Keep the suffix only when it fits whole; the brand
+        // is appended by SEOBuilder anyway.
+        $title = mb_strlen($titleCore . ' | Free Estimate') <= 60 ? $titleCore . ' | Free Estimate' : $this->fit($titleCore, 60);
 
         $count = $proof->count();
         $pricing = self::PRICING[$service] ?? 'a range we scope on a free in-home visit';
