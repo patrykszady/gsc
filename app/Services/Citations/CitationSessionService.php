@@ -255,7 +255,12 @@ class CitationSessionService
         }
         $citation->last_run_at = now();
 
-        if (! empty($runner['error'])) {
+        if (($runner['phase'] ?? null) === 'stopped' || ($runner['phase'] ?? null) === 'timeout') {
+            // A deliberate stop or an expired wait is not a failure: the directory goes back on the board.
+            $citation->status = Citation::STATUS_PLANNED;
+            $citation->human_reason = null;
+            $citation->note = (string) ($runner['error'] ?? 'Session ended.');
+        } elseif (! empty($runner['error'])) {
             $citation->status = Citation::STATUS_FAILED;
             $citation->human_reason = null;
             $citation->note = mb_substr((string) $runner['error'], 0, 500);
