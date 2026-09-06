@@ -37,9 +37,19 @@ return [
     // Where payloads, runner state and screenshots live (one folder per directory).
     'storage_dir' => env('CITATIONS_STORAGE_DIR', storage_path('app/citations')),
 
-    // Mailbox the directories send their verification emails to. Until the
-    // password is set, email verification is a human step in the admin.
+    // Mailbox the directories send their verification emails to. It lives on
+    // Microsoft 365, which no longer accepts password IMAP, so the reader uses
+    // Microsoft Graph with an Entra app registration (application permission
+    // Mail.Read, admin-consented). Until CITATIONS_M365_* are set, email
+    // verification is a human step in the admin. The IMAP block below stays
+    // for tenants whose mailbox is elsewhere.
     'inbox' => [
+        'mailbox' => env('CITATIONS_MAILBOX', env('CITATIONS_IMAP_USER', 'crew@gs.construction')),
+        'graph' => [
+            'tenant_id' => env('CITATIONS_M365_TENANT_ID'),
+            'client_id' => env('CITATIONS_M365_CLIENT_ID'),
+            'client_secret' => env('CITATIONS_M365_CLIENT_SECRET'),
+        ],
         'host' => env('CITATIONS_IMAP_HOST', 'imap.gmail.com'),
         'port' => (int) env('CITATIONS_IMAP_PORT', 993),
         'user' => env('CITATIONS_IMAP_USER', 'crew@gs.construction'),

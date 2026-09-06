@@ -180,6 +180,37 @@ class CitationsTest extends TestCase
         $this->assertFalse(app(VerificationInbox::class)->isConfigured());
     }
 
+    public function test_microsoft_365_inbox_follows_a_directory_verification_link_once(): void
+    {
+        config(['citations.inbox.mailbox' => 'crew@gs.construction', 'citations.inbox.graph' => ['tenant_id' => 'tenant-1', 'client_id' => 'client-1', 'client_secret' => 'shh']]);
+        $this->assertSame('graph', app(VerificationInbox::class)->mode());
+        $this->artisan('citations:sync');
+        Citation::where('slug', 'remodelersup')->update(['status' => 'pending_verification', 'verification' => json_encode(['email' => 'pending'])]);
+
+        Http::fake([
+            'login.microsoftonline.com/tenant-1/oauth2/v2.0/token' => Http::response(['access_token' => 'tok', 'expires_in' => 3600]),
+            'graph.microsoft.com/v1.0/users/crew%40gs.construction/mailFolders/Inbox/messages*' => Http::response(['value' => [
+                ['id' => 'msg-2', 'subject' => 'Your weekly digest', 'from' => ['emailAddress' => ['address' => 'news@porch.com']], 'body' => ['content' => '<a href="https://porch.com/confirm?x=1">x</a>']],
+                ['id' => 'msg-1', 'subject' => 'Please confirm your email', 'from' => ['emailAddress' => ['address' => 'no-reply@mail.remodelersup.com']], 'body' => ['content' => '<p>Welcome!</p><a href="https://remodelersup.com/verify?token=abc&amp;x=1">Confirm</a> <a href="https://remodelersup.com/unsubscribe?u=1">bye</a>']],
+            ]]),
+            'remodelersup.com/*' => Http::response('Thanks, verified.', 200),
+        ]);
+
+        $this->artisan('citations:control', ['action' => 'inbox'])->expectsOutputToContain('verified: remodelersup')->assertExitCode(0);
+        $c = Citation::where('slug', 'remodelersup')->first();
+        $this->assertSame('submitted', $c->status);
+        $this->assertSame('done', $c->verification['email']);
+        $this->assertContains('msg-1', $c->verification['messages_seen']);
+        Http::assertSent(fn ($r) => $r->url() === 'https://remodelersup.com/verify?token=abc&x=1');
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'porch.com/confirm'));
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'graph.microsoft.com') && $r->hasHeader('Authorization', 'Bearer tok'));
+
+        // The same mail is never followed twice, and the token is reused.
+        Citation::where('slug', 'remodelersup')->update(['status' => 'pending_verification']);
+        $this->artisan('citations:control', ['action' => 'inbox'])->assertExitCode(0);
+        Http::assertSentCount(4);
+    }
+
     public function test_sync_imports_the_profiles_we_already_have_and_the_check_sorts_them(): void
     {
         config(['brand.profiles' => ['BBB' => 'https://www.bbb.org/us/il/gs', 'Houzz' => 'https://www.houzz.com/pro/gs', 'Nextdoor' => 'https://nextdoor.com/pages/gs']]);
