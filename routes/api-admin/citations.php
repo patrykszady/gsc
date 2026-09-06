@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('citations')->group(function () {
     Route::get('/', [CitationsController::class, 'index']);
     Route::get('payload', [CitationsController::class, 'payload']);
+    Route::post('batch', [CitationsController::class, 'batch']);
     Route::post('session/poll', [CitationsController::class, 'poll']);
     Route::post('session/stop', [CitationsController::class, 'stop']);
     Route::post('{slug}/start', [CitationsController::class, 'start']);

@@ -27,7 +27,7 @@ puppeteer.use(StealthPlugin());
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
-  const args = { slug: null, payload: null, state: null, dir: null, userDataDir: null, timeoutMs: 2700000, headless: false };
+  const args = { slug: null, payload: null, state: null, dir: null, userDataDir: null, timeoutMs: 2700000, headless: false, auto: false };
   for (const a of argv.slice(2)) {
     if (a.startsWith('--slug=')) args.slug = a.slice(7);
     else if (a.startsWith('--payload=')) args.payload = a.slice(10);
@@ -36,6 +36,7 @@ function parseArgs(argv) {
     else if (a.startsWith('--user-data-dir=')) args.userDataDir = a.slice(16);
     else if (a.startsWith('--timeout-ms=')) args.timeoutMs = parseInt(a.slice(13), 10) || args.timeoutMs;
     else if (a === '--headless') args.headless = true;
+    else if (a === '--auto') args.auto = true;
   }
   if (!args.slug || !args.payload || !args.state || !args.dir) {
     throw new Error('Usage: run.mjs --slug --payload --state --dir --user-data-dir [--timeout-ms] [--headless]');
@@ -68,7 +69,7 @@ async function main() {
   page.setDefaultTimeout(20000);
 
   const ctx = makeContext({ browser, page, payload, args, deadline });
-  ctx.log(`runner started for ${args.slug}${args.headless ? ' (headless)' : ''}`);
+  ctx.log(`runner started for ${args.slug}${args.headless ? ' (headless)' : ''}${args.auto ? ' (automatic)' : ''}`);
 
   let adapter;
   const custom = path.join(here, 'adapters', `${args.slug}.mjs`);

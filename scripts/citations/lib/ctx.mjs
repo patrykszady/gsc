@@ -306,7 +306,81 @@ export function makeContext({ browser, page, payload, args, deadline }) {
   };
 
   /** Pause for a human; resolves when resume.flag appears (true) or the deadline passes (false). */
+  const auto = !!args.auto;
+
+  /** A CAPTCHA widget on the page (reCAPTCHA, hCaptcha, Turnstile, home-grown), or null. We never try to solve one — it is handed to a person. */
+  const detectCaptcha = async () => page.evaluate(() => {
+    const sel = 'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], iframe[src*="captcha"], .g-recaptcha, .h-captcha, .cf-turnstile, [data-sitekey], input[name*="captcha" i], img[src*="captcha" i]';
+    const el = document.querySelector(sel);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (el.tagName !== 'IFRAME' && (r.width === 0 || r.height === 0)) return null;
+    return String(el.getAttribute('src') || el.className || el.tagName).replace(/^https?:\/\//, '').slice(0, 60);
+  });
+
+  /** Tick "I agree to the terms" boxes; marketing opt-ins are left alone. */
+  const tickTerms = async () => page.evaluate(() => {
+    let n = 0;
+    for (const box of document.querySelectorAll('input[type="checkbox"]')) {
+      const forLabel = box.id ? document.querySelector(`label[for="${CSS.escape(box.id)}"]`) : null;
+      const label = ((box.closest('label')?.innerText || '') + ' ' + (forLabel?.innerText || '') + ' ' + (box.parentElement?.innerText || '')).toLowerCase();
+      if (/terms|agree|privacy|conditions|policy/.test(label) && !/newsletter|marketing|promotion|offers|updates|subscribe|sms|text me/.test(label) && !box.checked) {
+        box.click();
+        n++;
+      }
+    }
+    return n;
+  });
+
+  /** Press the form's submit control. Returns {label, navigated} or null when none looked right. */
+  const clickSubmit = async () => {
+    const before = page.url();
+    const label = await page.evaluate(() => {
+      const visible = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      const text = (el) => ((el.innerText || el.value || el.textContent || '') + ' ' + (el.getAttribute('aria-label') || '')).replace(/\s+/g, ' ').trim();
+      const score = (el) => {
+        const t = text(el).toLowerCase();
+        if (/log ?in|sign ?in|cancel|back|search|menu|close|forgot/.test(t)) return -1;
+        if (/submit|sign ?up|register|create (my |an |a )?(account|listing|profile)|add (my |your |a )?(business|listing|company)|get listed|list (my|your) business|join/.test(t)) return 3;
+        if ((el.getAttribute('type') || '').toLowerCase() === 'submit') return 2;
+        if (/continue|next|finish|done|save|send/.test(t)) return 1;
+        return 0;
+      };
+      const cands = Array.from(document.querySelectorAll('button, input[type="submit"], a[role="button"]')).filter(visible);
+      const best = cands.map((el) => ({ el, s: score(el) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s)[0];
+      if (!best) return null;
+      const t = text(best.el).slice(0, 40);
+      best.el.click();
+      return t;
+    });
+    if (label === null) return null;
+    log(`clicked "${label}"`);
+    try { await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }); } catch {}
+    await sleep(2500);
+    return { label, navigated: page.url() !== before };
+  };
+
+  /** After a submit: what the page says — a success phrase, validation errors, or "already registered". */
+  const readOutcome = async () => page.evaluate(() => {
+    const text = (document.body?.innerText || '').replace(/\s+/g, ' ').slice(0, 20000);
+    const success = /thank you|thanks for|verify your e-?mail|check your (inbox|e-?mail)|confirmation (e-?mail|link)|successfully|has been (created|submitted|received|sent)|your listing (is|has|was)|almost done|account (was )?created/i.exec(text);
+    const already = /already (exists|registered|in use|taken|have an account|been registered)/i.exec(text);
+    const errors = Array.from(document.querySelectorAll('[class*="error" i], [class*="invalid" i], [role="alert"], .help-block, .invalid-feedback'))
+      .map((e) => (e.innerText || '').replace(/\s+/g, ' ').trim()).filter((t) => t && t.length < 160);
+    return { success: success ? success[0] : null, already: already ? already[0] : null, errors: [...new Set(errors)].slice(0, 5) };
+  });
+
+  /** Automatic mode: record that a person has to take over, and end the run. */
+  const park = (reason) => {
+    setState({ phase: 'needs_human', needs_human: true, reason, step: page.url(), done: true, outcome: 'needs_human', note: null });
+    log(`parked for a human: ${reason}`);
+  };
+
   const waitHuman = async (reason) => {
+    if (auto) {
+      park(reason);
+      return false;
+    }
     const flag = path.join(dir, 'resume.flag');
     try { fs.unlinkSync(flag); } catch {}
     setState({ phase: 'waiting_human', needs_human: true, reason, step: page.url() });
@@ -329,5 +403,5 @@ export function makeContext({ browser, page, payload, args, deadline }) {
     log(`finished: ${outcome}${listing_url ? ' ' + listing_url : ''}${note ? ' — ' + note : ''}`);
   };
 
-  return { browser, page, payload, listing, directory, hints, args, state, setState, log, shot, sleep, goto, clickSignupLink, scanFields, classify, prefill, photoFiles, logoFile, uploadPhotosIfPossible, waitHuman, finish };
+  return { browser, page, payload, listing, directory, hints, args, auto, state, setState, log, shot, sleep, goto, clickSignupLink, scanFields, classify, prefill, photoFiles, logoFile, uploadPhotosIfPossible, detectCaptcha, tickTerms, clickSubmit, readOutcome, park, waitHuman, finish };
 }
