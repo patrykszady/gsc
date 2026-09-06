@@ -76,17 +76,35 @@ class CitationBatchRunner
         return ['slug' => $citation->slug, 'status' => $citation->status, 'note' => $citation->note, 'reason' => $citation->human_reason, 'seconds' => time() - $started];
     }
 
-    /** @param  list<string>  $remaining */
+    /**
+     * Batch progress lives in the shared storage/app (like the session state),
+     * not the cache: a deploy clears the cache mid-batch, the job chain does not care.
+     *
+     * @param  list<string>  $remaining
+     */
     public static function progress(?array $remaining, int $done, ?string $current = null, bool $active = true): void
     {
-        Cache::put(self::CACHE_KEY, ['active' => $active, 'remaining' => $remaining ?? [], 'done' => $done, 'current' => $current, 'updated_at' => now()->toDateTimeString()], now()->addHours(6));
+        $file = self::progressFile();
+        @mkdir(dirname($file), 0775, true);
+        file_put_contents($file, json_encode(['active' => $active, 'remaining' => $remaining ?? [], 'done' => $done, 'current' => $current, 'updated_at' => now()->toDateTimeString()]));
+        Cache::forget(self::CACHE_KEY);
     }
 
     public static function progressState(): array
     {
-        $p = Cache::get(self::CACHE_KEY);
+        $file = self::progressFile();
+        $p = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+        // A batch that has not moved for six hours is over, whatever the file says.
+        if (is_array($p) && ! empty($p['active']) && ! empty($p['updated_at']) && now()->diffInHours(\Illuminate\Support\Carbon::parse($p['updated_at'])) >= 6) {
+            $p['active'] = false;
+        }
 
         return is_array($p) ? $p : ['active' => false, 'remaining' => [], 'done' => 0, 'current' => null, 'updated_at' => null];
+    }
+
+    protected static function progressFile(): string
+    {
+        return rtrim((string) (config('citations.storage_dir') ?: storage_path('app/citations')), '/') . '/batch.json';
     }
 
     protected function sleep(int $seconds): void
