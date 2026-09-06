@@ -40,6 +40,18 @@ class CitationBatchRunner
     {
         $started = time();
         $ttl = (int) config('citations.session.auto_ttl_seconds', 240);
+        // One browser slot: if a session is still winding down (or a person
+        // has the viewer open), wait for it rather than failing this row.
+        $waitUntil = time() + $ttl + 60;
+        while (($this->sessions->status()['running'] ?? false) && time() < $waitUntil) {
+            $this->sleep(5);
+        }
+        if ($this->sessions->status()['running'] ?? false) {
+            $citation->addLog('Skipped: another browser session was still running', 'batch');
+            $citation->save();
+
+            return ['slug' => $citation->slug, 'status' => $citation->status, 'note' => 'Another browser session was still running; left on the board.', 'reason' => null, 'seconds' => time() - $started];
+        }
         $result = $this->sessions->start($citation, true, true);
         if (! ($result['ok'] ?? false)) {
             $citation->status = Citation::STATUS_FAILED;
@@ -88,6 +100,14 @@ class CitationBatchRunner
         @mkdir(dirname($file), 0775, true);
         file_put_contents($file, json_encode(['active' => $active, 'remaining' => $remaining ?? [], 'done' => $done, 'current' => $current, 'updated_at' => now()->toDateTimeString()]));
         Cache::forget(self::CACHE_KEY);
+    }
+
+    /** A batch is in flight when its progress file says so and moved within the last ten minutes. */
+    public static function isActive(): bool
+    {
+        $p = self::progressState();
+
+        return ! empty($p['active']) && ! empty($p['updated_at']) && now()->diffInMinutes(\Illuminate\Support\Carbon::parse($p['updated_at'])) < 10;
     }
 
     public static function progressState(): array

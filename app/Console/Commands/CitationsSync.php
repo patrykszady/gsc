@@ -63,6 +63,22 @@ class CitationsSync extends Command
                 $stale->save();
             }
         }
+        // Rows that failed only because the browser slot was busy go back on the
+        // board; sites that answered a bot-wall status are a person's job, not dead.
+        foreach (Citation::query()->where('site_id', $siteId)->whereIn('status', [Citation::STATUS_FAILED, Citation::STATUS_UNREACHABLE])->get() as $row) {
+            $note = (string) $row->note;
+            if ($row->status === Citation::STATUS_FAILED && str_starts_with($note, 'Another citation session is running')) {
+                $row->status = Citation::STATUS_PLANNED;
+                $row->note = null;
+                $row->addLog('Back on the board: the browser slot was busy at the time', 'sync');
+                $row->save();
+            } elseif ($row->status === Citation::STATUS_UNREACHABLE && preg_match('/HTTP (401|403|429|503)\b/', $note)) {
+                $row->status = Citation::STATUS_NEEDS_HUMAN;
+                $row->human_reason = 'The site blocked the automated browser (' . (preg_match('/HTTP \d+/', $note, $m) ? $m[0] : 'bot wall') . '). Open the session and do this one by hand.';
+                $row->note = null;
+                $row->save();
+            }
+        }
         $this->info("Citations registry synced ({$created} new).");
 
         if ($this->option('list')) {

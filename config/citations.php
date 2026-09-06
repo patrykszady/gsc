@@ -30,7 +30,7 @@ return [
         'websockify_binary' => env('YELP_REMOTE_LOGIN_WEBSOCKIFY', 'websockify'),
         'node_binary' => env('CITATIONS_NODE_BINARY', env('YELP_NODE_BINARY', 'node')),
         'max_ttl_seconds' => (int) env('CITATIONS_REMOTE_MAX_TTL', 2700),
-        'auto_ttl_seconds' => (int) env('CITATIONS_AUTO_TTL', 240), // one directory in automatic (batch) mode
+        'auto_ttl_seconds' => (int) env('CITATIONS_AUTO_TTL', 300), // one directory in automatic (batch) mode
         'user_data_dir' => env('CITATIONS_USER_DATA_DIR', storage_path('app/citations/profile')),
     ],
 

@@ -55,6 +55,9 @@ class CitationsController extends Controller
     {
         $this->ensureSynced();
         $data = $request->validate(['tiers' => ['nullable', 'array'], 'tiers.*' => ['integer', 'between:0,3'], 'only' => ['nullable', 'array'], 'only.*' => ['string', 'max:60']]);
+        if (\App\Services\Citations\CitationBatchRunner::isActive()) {
+            return $this->itemResponse(['ok' => false, 'error' => 'An automatic run is already going. Let it finish; the board shows its progress.']);
+        }
         if ($sessions->status()['running'] ?? false) {
             return $this->itemResponse(['ok' => false, 'error' => 'A browser session is running. Stop it first.']);
         }

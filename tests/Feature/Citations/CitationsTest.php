@@ -267,5 +267,17 @@ class CitationsTest extends TestCase
         $this->assertContains('zermit', $queued['slugs']);
         \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\RunCitationsBatch::class, fn ($job) => $job->slugs === $queued['slugs']);
         $this->assertTrue($this->getJson('/api/admin/v1/citations', $this->adminApiHeaders())->json('data.batch.active'));
+        // A second "run all" while one is going is refused rather than interleaved.
+        $again = $this->postJson('/api/admin/v1/citations/batch', [], $this->adminApiHeaders())->assertOk()->json('data');
+        $this->assertFalse($again['ok']);
+        $this->assertStringContainsString('already going', $again['error']);
+
+        // Rows that failed only because the slot was busy, and bot walls, are sorted out by sync.
+        Citation::where('slug', 'manta')->update(['status' => 'failed', 'note' => 'Another citation session is running (facebook). Stop it first.']);
+        Citation::where('slug', 'angi')->update(['status' => 'unreachable', 'note' => 'https://www.angi.com/x returned HTTP 403.']);
+        $this->artisan('citations:sync')->assertExitCode(0);
+        $this->assertSame('planned', Citation::where('slug', 'manta')->value('status'));
+        $this->assertSame('needs_human', Citation::where('slug', 'angi')->value('status'));
+        $this->assertStringContainsString('HTTP 403', Citation::where('slug', 'angi')->value('human_reason'));
     }
 }

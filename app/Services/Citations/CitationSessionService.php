@@ -127,7 +127,9 @@ class CitationSessionService
         if ($auto) {
             $cmd[] = '--auto';
         }
-        $pids['runner'] = $this->spawn(($headless ? '' : 'DISPLAY=' . escapeshellarg($display) . ' ') . implode(' ', $cmd), $chromeLog);
+        // exec so the recorded pid is node itself, not a waiting sh wrapper (a
+        // TERM to the wrapper left the browser running and the slot "busy").
+        $pids['runner'] = $this->spawn(($headless ? 'exec ' : 'exec env DISPLAY=' . escapeshellarg($display) . ' ') . implode(' ', $cmd), $chromeLog);
         usleep(800000);
         if (! $pids['runner'] || ! $this->pidAlive($pids['runner'])) {
             $this->killPids($pids);

@@ -35,6 +35,11 @@ class CitationsBatch extends Command
             return self::SUCCESS;
         }
         if ($this->option('queue')) {
+            if (CitationBatchRunner::isActive()) {
+                $this->error('An automatic run is already going (see citations:sync --list). Let it finish first.');
+
+                return self::FAILURE;
+            }
             CitationBatchRunner::progress($rows->pluck('slug')->all(), 0);
             RunCitationsBatch::dispatch($rows->pluck('slug')->all());
             $this->info('Queued. Follow it on the admin Citations board or with citations:sync --list.');
