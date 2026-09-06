@@ -75,8 +75,8 @@ Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL. Priority citi
 - Google Maps: https://www.google.com/maps/place/?q=place_id:ChIJ1VmJQHm5D4gRZDQlQNkLz2A
 
 ## Metadata
-- Generated: 2026-09-04
+- Generated: 2026-09-06
 - Full version: http://127.0.0.1:8003/llms-full.txt
 - Feed URL: http://gs.construction/ai-feed.json
 - Sitemap URL: http://gs.construction/ai-sitemap.xml
-- Generated At: 2026-09-04T20:17:37+00:00
+- Generated At: 2026-09-06T02:07:41+00:00

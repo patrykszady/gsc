@@ -1,5 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/testimonials</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/projects</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/services/kitchen-remodeling</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/services/bathroom-remodeling</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/services/home-remodeling</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/services/basement-remodeling</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/areas-served/sitemap-test-city/services/home-additions</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/projects/sitemap-test-project</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen - Featured Image</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://gs.construction/projects/sitemap-test-project/photos/sitemap-test-kitchen-photo</loc>
+    <image:image>
+      <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
+      <image:title>Sitemap Test Kitchen - Photo</image:title>
+      <image:caption>Sitemap test kitchen remodel</image:caption>
+    </image:image>
+  </url>
 </urlset>
