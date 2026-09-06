@@ -22,7 +22,11 @@ export default async function run(ctx) {
     await ctx.shot('unreachable');
     return ctx.finish({ outcome: 'unreachable', note: `${startUrl} did not load.` });
   }
-  if (status >= 400) {
+  if ([401, 403, 429, 503].includes(status)) {
+    // A bot wall, not a dead site: the attended browser (a person at the keyboard) gets through.
+    await ctx.shot('blocked');
+    if (auto) return ctx.park(`The site blocked the automated browser (HTTP ${status}). Open the session and do this one by hand.`);
+  } else if (status >= 400) {
     await ctx.shot('http-error');
     return ctx.finish({ outcome: 'unreachable', note: `${startUrl} returned HTTP ${status}.` });
   }
