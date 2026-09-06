@@ -47,6 +47,22 @@ class CitationsSync extends Command
                 $created++;
             }
         }
+        // A row still "running" with no live session for it is a session that
+        // ended without anyone polling (browser closed, viewer expired): fold in
+        // whatever the runner left behind, and otherwise put it back on the board.
+        $sessions = app(\App\Services\Citations\CitationSessionService::class);
+        $live = $sessions->status();
+        foreach (Citation::query()->where('site_id', $siteId)->where('status', Citation::STATUS_RUNNING)->get() as $stale) {
+            if (($live['running'] ?? false) && ($live['slug'] ?? null) === $stale->slug) {
+                continue;
+            }
+            $sessions->syncCitation($stale);
+            if ($stale->fresh()->status === Citation::STATUS_RUNNING) {
+                $stale->status = Citation::STATUS_PLANNED;
+                $stale->addLog('Session ended without a result; back on the board', 'sync');
+                $stale->save();
+            }
+        }
         $this->info("Citations registry synced ({$created} new).");
 
         if ($this->option('list')) {

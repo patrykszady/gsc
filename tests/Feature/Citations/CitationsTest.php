@@ -83,6 +83,11 @@ class CitationsTest extends TestCase
         $this->artisan('citations:sync')->assertExitCode(0);
         $this->assertSame(count(config('citations.directories')), Citation::count());
         $this->assertSame('live', $c->fresh()->status);
+
+        // A row left "running" by a session nobody polled goes back on the board.
+        Citation::where('slug', 'sisgroup')->update(['status' => 'running']);
+        $this->artisan('citations:sync')->assertExitCode(0);
+        $this->assertSame('planned', Citation::where('slug', 'sisgroup')->value('status'));
     }
 
     public function test_api_lists_the_board_starts_a_session_through_a_signed_viewer_and_takes_manual_updates(): void
