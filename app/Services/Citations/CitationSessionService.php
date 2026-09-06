@@ -58,8 +58,12 @@ class CitationSessionService
     /**
      * Start a session for one directory. Returns ['ok', 'url' (noVNC), 'expires_at', 'slug'].
      */
-    public function start(Citation $citation, bool $headless = false): array
+    public function start(Citation $citation, bool $headless = false, bool $auto = false): array
     {
+        // Automatic mode is headless and, as a safety net, never submits forms
+        // from a development host: the payload would carry a localhost website.
+        $headless = $headless || $auto;
+        $auto = $auto && ! preg_match('#://(127\.0\.0\.1|localhost|[^/]+\.localhost|[^/]+\.test)(:|/|$)#', (string) config('app.url'));
         $req = $this->checkRequirements($headless);
         if (! $req['ok']) {
             return ['ok' => false, 'error' => 'Missing on this host: ' . implode(', ', $req['missing'])];
@@ -94,7 +98,7 @@ class CitationSessionService
         $logDir = storage_path('logs');
         $chromeLog = $logDir . '/citations-runner.log';
         $display = (string) $cfg['display'];
-        $maxTtl = (int) $cfg['max_ttl_seconds'];
+        $maxTtl = $auto ? (int) config('citations.session.auto_ttl_seconds', 240) : (int) $cfg['max_ttl_seconds'];
 
         $this->killOrphans($cfg);
 
@@ -119,6 +123,9 @@ class CitationSessionService
         ];
         if ($headless) {
             $cmd[] = '--headless';
+        }
+        if ($auto) {
+            $cmd[] = '--auto';
         }
         $pids['runner'] = $this->spawn(($headless ? '' : 'DISPLAY=' . escapeshellarg($display) . ' ') . implode(' ', $cmd), $chromeLog);
         usleep(800000);
@@ -153,7 +160,7 @@ class CitationSessionService
 
         $now = time();
         $state = [
-            'slug' => $citation->slug, 'headless' => $headless, 'display' => $display,
+            'slug' => $citation->slug, 'headless' => $headless, 'auto' => $auto, 'display' => $display,
             'vnc_port' => (int) $cfg['vnc_port'], 'ws_port' => (int) $cfg['ws_port'], 'ws_host' => (string) $cfg['ws_host'],
             'password' => $password, 'public_url' => $cfg['public_url'] ?? null,
             'pids' => $pids, 'dir' => $dir, 'started_at' => $now, 'expires_at' => $now + $maxTtl,
@@ -270,6 +277,11 @@ class CitationSessionService
         } elseif (($runner['outcome'] ?? null) === 'unreachable') {
             $citation->status = Citation::STATUS_UNREACHABLE;
             $citation->note = (string) ($runner['note'] ?? 'The site did not load.');
+        } elseif (($runner['outcome'] ?? null) === 'needs_human') {
+            // Automatic mode parked it: a person finishes it from the board.
+            $citation->status = Citation::STATUS_NEEDS_HUMAN;
+            $citation->human_reason = (string) ($runner['reason'] ?? 'A human step is needed.');
+            $citation->note = null;
         } elseif (! empty($runner['done'])) {
             $needsEmail = in_array('email', (array) ($citation->definition()['needs'] ?? []), true) || in_array('account', (array) ($citation->definition()['needs'] ?? []), true);
             $citation->status = $needsEmail ? Citation::STATUS_PENDING_VERIFICATION : Citation::STATUS_SUBMITTED;

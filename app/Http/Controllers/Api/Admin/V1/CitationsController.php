@@ -45,8 +45,27 @@ class CitationsController extends Controller
             'counts' => $rows->countBy('status')->all(),
             'session' => $this->sessionPayload($status),
             'inbox_configured' => $inbox->isConfigured(),
+            'batch' => \App\Services\Citations\CitationBatchRunner::progressState(),
             'requirements' => $sessions->checkRequirements(),
         ]);
+    }
+
+    /** Queue the automatic run over every open directory (optionally some tiers only). */
+    public function batch(Request $request, \App\Services\Citations\CitationBatchRunner $runner, CitationSessionService $sessions): JsonResponse
+    {
+        $this->ensureSynced();
+        $data = $request->validate(['tiers' => ['nullable', 'array'], 'tiers.*' => ['integer', 'between:0,3'], 'only' => ['nullable', 'array'], 'only.*' => ['string', 'max:60']]);
+        if ($sessions->status()['running'] ?? false) {
+            return $this->itemResponse(['ok' => false, 'error' => 'A browser session is running. Stop it first.']);
+        }
+        $slugs = $runner->eligible((array) ($data['tiers'] ?? []), (array) ($data['only'] ?? []))->pluck('slug')->all();
+        if ($slugs === []) {
+            return $this->itemResponse(['ok' => false, 'error' => 'Nothing to run: every directory is live, declined, parked for you, or waiting for verification.']);
+        }
+        \App\Services\Citations\CitationBatchRunner::progress($slugs, 0);
+        \App\Jobs\RunCitationsBatch::dispatch($slugs);
+
+        return $this->itemResponse(['ok' => true, 'queued' => count($slugs), 'slugs' => $slugs]);
     }
 
     public function payload(): JsonResponse

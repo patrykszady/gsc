@@ -72,9 +72,14 @@ class CitationsControl extends Command
                     $citation->links_to_us = $r['links_to_us'] === null ? null : (bool) $r['links_to_us'];
                     $citation->nofollow = $r['nofollow'] === null ? null : (bool) $r['nofollow'];
                     $citation->last_checked_at = now();
-                    if ($r['links_to_us'] === 1 && in_array($citation->status, [Citation::STATUS_SUBMITTED, Citation::STATUS_PENDING_VERIFICATION, Citation::STATUS_NEEDS_HUMAN], true)) {
+                    if ($r['links_to_us'] === 1 && ! in_array($citation->status, [Citation::STATUS_DECLINED, Citation::STATUS_LIVE], true)) {
                         $citation->status = Citation::STATUS_LIVE;
                         $citation->live_at = $citation->live_at ?: now();
+                        $citation->human_reason = null;
+                    } elseif ($r['links_to_us'] === 0 && in_array($citation->status, [Citation::STATUS_PLANNED, Citation::STATUS_LIVE, Citation::STATUS_SUBMITTED, Citation::STATUS_PENDING_VERIFICATION], true)) {
+                        // The profile is there but carries no website link — the one thing worth a person's minute.
+                        $citation->status = Citation::STATUS_NEEDS_HUMAN;
+                        $citation->human_reason = 'The profile exists but has no link to the website. Open it and add ' . rtrim((string) config('app.url'), '/') . '.';
                     }
                     if (in_array($r['status'], [404, 410], true) && $citation->status === Citation::STATUS_LIVE) {
                         $citation->status = Citation::STATUS_FAILED;

@@ -96,7 +96,7 @@ class CitationsTest extends TestCase
                 return ['ok' => true, 'missing' => []];
             }
 
-            public function start(Citation $citation, bool $headless = false): array
+            public function start(Citation $citation, bool $headless = false, bool $auto = false): array
             {
                 $this->started[] = $citation->slug;
 
@@ -173,5 +173,94 @@ class CitationsTest extends TestCase
         $this->assertSame('remodelersup.com', VerificationInbox::registrable('mail.app.remodelersup.com'));
         $this->assertSame('prosgrade.co.uk', VerificationInbox::registrable('mail.prosgrade.co.uk'));
         $this->assertFalse(app(VerificationInbox::class)->isConfigured());
+    }
+
+    public function test_sync_imports_the_profiles_we_already_have_and_the_check_sorts_them(): void
+    {
+        config(['brand.profiles' => ['BBB' => 'https://www.bbb.org/us/il/gs', 'Houzz' => 'https://www.houzz.com/pro/gs', 'Nextdoor' => 'https://nextdoor.com/pages/gs']]);
+        $this->artisan('citations:sync')->assertExitCode(0);
+        $this->assertSame('https://www.bbb.org/us/il/gs', Citation::where('slug', 'bbb')->value('listing_url'));
+        $this->assertSame('https://nextdoor.com/pages/gs', Citation::where('slug', 'nextdoor')->value('listing_url'));
+        $this->assertNull(Citation::where('slug', 'remodelersup')->value('listing_url'));
+
+        Http::fake([
+            'www.bbb.org/*' => Http::response('<h1>GS Construction & Remodeling, INC.</h1><a href="https://gs.construction/" rel="nofollow">Website</a>', 200),
+            'www.houzz.com/*' => Http::response('Access denied', 403),
+            'nextdoor.com/*' => Http::response('<h1>GS Construction & Remodeling</h1><p>No website.</p>', 200),
+        ]);
+        $this->artisan('citations:control', ['action' => 'check'])->assertExitCode(0);
+        $this->assertSame('live', Citation::where('slug', 'bbb')->value('status'), 'an existing profile that links to us is a live citation');
+        $this->assertSame('needs_human', Citation::where('slug', 'nextdoor')->value('status'), 'exists but no link: a person adds the website');
+        $this->assertStringContainsString('add https://gs.construction', Citation::where('slug', 'nextdoor')->value('human_reason'));
+        $this->assertSame('planned', Citation::where('slug', 'houzz')->value('status'), 'blocked by a bot wall: nothing concluded');
+    }
+
+    public function test_batch_runs_every_open_directory_automatically_and_parks_what_needs_a_person(): void
+    {
+        $this->artisan('citations:sync');
+        Citation::where('slug', 'handyhubb')->update(['status' => 'live', 'listing_url' => 'https://handyhubb.com/biz/gs']);
+        Citation::where('slug', 'prosgrade')->update(['status' => 'declined']);
+
+        $fake = new class extends CitationSessionService
+        {
+            public array $started = [];
+
+            protected ?string $current = null;
+
+            public function checkRequirements(bool $headless = false): array
+            {
+                return ['ok' => true, 'missing' => []];
+            }
+
+            public function start(Citation $citation, bool $headless = false, bool $auto = false): array
+            {
+                $this->started[] = [$citation->slug, $headless, $auto];
+                $this->current = $citation->slug;
+                // The runner's own state file, as automatic mode leaves it.
+                $dir = $this->dirFor($citation);
+                $state = $citation->slug === 'remodelersup'
+                    ? ['phase' => 'done', 'done' => true, 'outcome' => 'done', 'listing_url' => 'https://remodelersup.com/pros/gs', 'note' => 'Submitted — the site said "verify your email".', 'photos_uploaded' => 6, 'log' => [], 'shots' => [], 'account' => ['email' => 'crew@gs.construction', 'password' => 'Pw1!']]
+                    : ['phase' => 'needs_human', 'needs_human' => true, 'done' => true, 'outcome' => 'needs_human', 'reason' => 'A CAPTCHA (recaptcha) guards this form.', 'log' => [], 'shots' => [['file' => $dir . '/shots/01-landing.png', 'label' => 'landing']]];
+                file_put_contents($dir . '/state.json', json_encode($state));
+
+                return ['ok' => true, 'slug' => $citation->slug, 'url' => null, 'started_at' => time(), 'expires_at' => time() + 240];
+            }
+
+            public function status(): array
+            {
+                return ['running' => false, 'slug' => $this->current, 'runner' => null];
+            }
+        };
+        $this->app->instance(CitationSessionService::class, $fake);
+
+        $this->artisan('citations:batch', ['--tier' => [2]])->expectsOutputToContain('Done:')->assertExitCode(0);
+
+        $ran = array_column($fake->started, 0);
+        $this->assertContains('remodelersup', $ran);
+        $this->assertContains('excellentcontractor', $ran);
+        $this->assertNotContains('handyhubb', $ran, 'live rows are skipped');
+        $this->assertNotContains('prosgrade', $ran, 'declined rows are skipped');
+        $this->assertNotContains('bing_places', $ran, 'other tiers are skipped');
+        $this->assertTrue(collect($fake->started)->every(fn ($s) => $s[1] === true && $s[2] === true), 'batch runs are headless and automatic');
+
+        $r = Citation::where('slug', 'remodelersup')->first();
+        $this->assertSame('pending_verification', $r->status, 'a submitted form that needs email verification waits for the inbox');
+        $this->assertSame('https://remodelersup.com/pros/gs', $r->listing_url);
+        $this->assertSame(6, $r->photos_uploaded);
+        $this->assertSame('Pw1!', $r->account_password);
+
+        $e = Citation::where('slug', 'excellentcontractor')->first();
+        $this->assertSame('needs_human', $e->status);
+        $this->assertStringContainsString('CAPTCHA', $e->human_reason);
+        $this->assertSame('01-landing.png', $e->screenshots[0]['file']);
+
+        // The API queues the same list and reports progress on the board.
+        $this->app->instance(CitationSessionService::class, $fake);
+        \Illuminate\Support\Facades\Queue::fake();
+        $queued = $this->postJson('/api/admin/v1/citations/batch', ['tiers' => [3]], $this->adminApiHeaders())->assertOk()->json('data');
+        $this->assertTrue($queued['ok']);
+        $this->assertContains('zermit', $queued['slugs']);
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\RunCitationsBatch::class, fn ($job) => $job->slugs === $queued['slugs']);
+        $this->assertTrue($this->getJson('/api/admin/v1/citations', $this->adminApiHeaders())->json('data.batch.active'));
     }
 }

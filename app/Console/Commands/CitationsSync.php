@@ -23,12 +23,23 @@ class CitationsSync extends Command
     {
         $siteId = Site::current()?->id;
         $created = 0;
+        // Profiles we already have (config/brand.php 'profiles') seed the listing URL
+        // of the matching directory, so the link check can verify them right away.
+        $norm = fn ($v) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $v));
+        $known = [];
+        foreach ((array) config('brand.profiles', []) as $label => $url) {
+            $known[$norm($label)] = (string) $url;
+        }
         foreach ((array) config('citations.directories', []) as $slug => $def) {
             $row = Citation::query()->where('site_id', $siteId)->where('slug', $slug)->first();
             $attrs = [
                 'name' => $def['name'] ?? $slug, 'tier' => (int) ($def['tier'] ?? 2), 'mechanism' => (string) ($def['mechanism'] ?? 'form'),
                 'homepage' => $def['homepage'] ?? null, 'start_url' => $def['start_url'] ?? ($def['homepage'] ?? null),
             ];
+            $existingUrl = $known[$norm($slug)] ?? $known[$norm($def['name'] ?? '')] ?? null;
+            if ($existingUrl && empty($row?->listing_url)) {
+                $attrs['listing_url'] = $existingUrl;
+            }
             if ($row) {
                 $row->fill($attrs)->save();
             } else {
