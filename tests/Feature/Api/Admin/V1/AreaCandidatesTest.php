@@ -39,7 +39,7 @@ class AreaCandidatesTest extends TestCase
         DB::table('seo_keywords')->insert(['site_id' => null, 'keyword' => 'kitchen remodeling mount prospect', 'city' => 'Mount Prospect', 'volume' => 900, 'opportunity' => 50, 'sources' => '[]', 'created_at' => now(), 'updated_at' => now()]);
         config(['gbp-services.service_areas' => ['Des Plaines, IL, USA']]);
 
-        $this->assertGreaterThan(200, count(TownCatalog::all()), 'the Census catalog is bundled');
+        $this->assertGreaterThan(30000, count(TownCatalog::all()), 'the national Census catalog is bundled');
 
         $data = $this->getJson('/api/admin/v1/areas/candidates', $this->adminApiHeaders())->assertOk()->json('data');
         $names = array_column($data['candidates'], 'name');
@@ -55,9 +55,16 @@ class AreaCandidatesTest extends TestCase
         $this->assertNotNull($desPlaines['latitude']);
         $this->assertStringContainsString('900 searches/mo researched', collect($data['candidates'])->firstWhere('name', 'Mount Prospect')['why']);
 
-        $search = $this->getJson('/api/admin/v1/areas/candidates?q=north', $this->adminApiHeaders())->assertOk()->json('data.candidates');
-        $this->assertNotEmpty($search);
-        $this->assertTrue(collect($search)->every(fn ($c) => str_contains($c['slug'], 'north')));
+        $this->assertSame('Des Plaines', $desPlaines['city'], 'home-state towns keep a bare city');
+
+        // A search covers the whole country: name matches first, bigger places before smaller ones.
+        $search = $this->getJson('/api/admin/v1/areas/candidates?q=atlanta', $this->adminApiHeaders())->assertOk()->json('data.candidates');
+        $this->assertSame('Atlanta, GA', $search[0]['label']);
+        $this->assertSame('atlanta-ga', $search[0]['slug']);
+        $this->assertSame('Atlanta, GA', $search[0]['city'], 'out-of-state towns carry their state');
+        $this->assertGreaterThan(500, $search[0]['distance_mi']);
+        $this->assertContains('Atlanta, IL', array_column($search, 'label'));
+        $this->assertTrue(collect($search)->every(fn ($c) => str_contains(strtolower($c['label']), 'atlanta')));
     }
 
     public function test_creating_from_a_candidate_fills_coordinates_and_queues_the_writer(): void
@@ -73,6 +80,12 @@ class AreaCandidatesTest extends TestCase
         $plain = $this->postJson('/api/admin/v1/areas', ['name' => 'Northbrook'], $this->adminApiHeaders())->assertCreated()->json('data');
         $this->assertFalse($plain['generating']);
         Queue::assertPushed(GenerateAreaContentJob::class, 1);
+
+        // Anywhere in the country: the state rides along in the city and the slug.
+        $atlanta = $this->postJson('/api/admin/v1/areas', ['name' => 'Atlanta, GA'], $this->adminApiHeaders())->assertCreated()->json('data');
+        $this->assertSame('Atlanta, GA', $atlanta['name']);
+        $this->assertSame('atlanta-ga', $atlanta['slug']);
+        $this->assertEqualsWithDelta(33.76, (float) $atlanta['latitude'], 0.05);
 
         // On-demand generation for an existing area, with force.
         $this->postJson("/api/admin/v1/areas/{$plain['id']}/generate", ['force' => true], $this->adminApiHeaders())->assertStatus(202);

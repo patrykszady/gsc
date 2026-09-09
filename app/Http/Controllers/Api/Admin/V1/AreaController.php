@@ -56,10 +56,17 @@ class AreaController extends Controller
         $generate = (bool) ($data['generate'] ?? false);
         unset($data['generate']);
         $data = $this->mapped($data);
-        // A town from the catalog brings its own coordinates: no geocoder round trip.
-        if ((! isset($data['latitude']) || ! isset($data['longitude'])) && ($town = \App\Support\Areas\TownCatalog::find((string) $data['city']))) {
-            $data['latitude'] = $town['lat'];
-            $data['longitude'] = $town['lng'];
+        // A town from the catalog brings its own coordinates (and its slug
+        // convention: state-suffixed outside the home state): no geocoder round trip.
+        if ($town = \App\Support\Areas\TownCatalog::find((string) $data['city'])) {
+            $data['latitude'] = $data['latitude'] ?? $town['lat'];
+            $data['longitude'] = $data['longitude'] ?? $town['lng'];
+            if (empty($request->input('slug'))) {
+                $data['slug'] = \App\Support\Areas\TownCatalog::slugFor($town);
+            }
+            if (Str::slug((string) $data['city']) === Str::slug($town['name']) || Str::slug((string) $data['city']) === Str::slug(\App\Support\Areas\TownCatalog::label($town))) {
+                $data['city'] = \App\Support\Areas\TownCatalog::cityFor($town);
+            }
         }
         $area = AreaServed::create($data);
         $this->queueGeocodeIfMissingCoords($area);

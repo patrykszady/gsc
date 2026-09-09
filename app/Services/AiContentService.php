@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Str;
+
 use App\Models\Project;
 use App\Models\ProjectImage;
 use Illuminate\Http\Client\ConnectionException;
@@ -619,22 +621,33 @@ PROMPT;
             return null;
         }
 
-        $city = $area->city;
+        // The town's state comes from the catalog (any US place), so an area
+        // outside the home state is described where it is, not as a suburb.
+        $place = \App\Support\Areas\TownCatalog::find((string) $area->city);
+        $city = $place ? $place['name'] : trim((string) Str::before((string) $area->city, ','));
+        $stateCode = $place['state'] ?? \App\Support\Areas\TownCatalog::homeState();
+        $stateName = \App\Support\Areas\TownCatalog::stateName($stateCode);
+        $atHome = strtoupper($stateCode) === \App\Support\Areas\TownCatalog::homeState();
+        $region = $atHome ? (string) config('seo.region_label', 'the region') : $stateName;
+        $regionNote = $atHome ? ' (' . $region . ')' : '';
+        $brand = (string) config('brand.display_name', config('brand.name'));
+        $base = trim((string) config('brand.address.city', config('brand.city')) . ', ' . \App\Support\Areas\TownCatalog::stateName((string) config('brand.address.state', config('brand.state', 'IL'))));
+        $pageCount = max(1, \App\Models\AreaServed::count() - 1);
 
         $prompt = <<<PROMPT
-You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom, and
-whole-home remodeling contractor based in Arlington Heights, Illinois. We serve homeowners
-across the Chicago suburbs. Founded 2015 by Gregory and Patryk (father & son), 40+ years
+You are an SEO copywriter for {$brand}, a family-owned kitchen, bathroom, and
+whole-home remodeling contractor based in {$base}. We serve homeowners
+across the {$region}. Founded 2015 by Gregory and Patryk (father & son), 40+ years
 combined experience, 5-star rated, English & Polish spoken.
 
 Write unique, factual, local SEO content for our service-area page targeting the city of
-**{$city}, Illinois** (Chicago suburb). The goal is to differentiate this page from our
-other 88 city pages so Google does not treat it as a duplicate template.
+**{$city}, {$stateName}**{$regionNote}. The goal is to differentiate this page from our
+other {$pageCount} city pages so Google does not treat it as a duplicate template.
 
 Return ONLY a valid JSON object with EXACTLY these four string keys:
 
 - "intro": 2–3 sentences (180–280 characters). A natural opening for the page that mentions
-  the city by name, references the township or surrounding area, and positions GS Construction
+  the city by name, references the township or surrounding area, and positions {$brand}
   as a local remodeling contractor for {$city} homeowners. No marketing fluff, no "welcome to".
 
 - "local_intro": 3–5 sentences (450–650 characters). Why we're a great fit for THIS city
@@ -650,7 +663,7 @@ Return ONLY a valid JSON object with EXACTLY these four string keys:
 
 - "permit_notes": 2 sentences (180–260 characters). Generic-but-true statement that structural,
   electrical, and plumbing work in {$city} requires permits from the local building department,
-  and that GS Construction handles permit applications and inspection scheduling for the
+  and that {$brand} handles permit applications and inspection scheduling for the
   homeowner. Mention the township/village if you know it; otherwise say "{$city} Village
   building department" or "{$city} building department".
 
