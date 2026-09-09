@@ -59,6 +59,8 @@ class BusinessDataSource extends IntelSource
         $profile = 0.0054;
         $listings = 0.012 + $limit * 0.00036;
         $reviews = ceil($depth / 10) * 0.00075;
+        // Competitor review teardown (monthly): a reviews task per top competitor.
+        $reviews += max(0, (int) $this->config('competitor_reviews', 3)) * ceil((int) $this->config('competitor_review_depth', 40) / 10) * 0.00075;
 
         return round($profile + $listings + $reviews, 4);
     }
@@ -85,6 +87,12 @@ class BusinessDataSource extends IntelSource
             }
         }
 
+        // Competitor review teardown, monthly: what the top competitors are
+        // praised for, next to what our own reviews say.
+        if ($this->dfs->spent() - $spentAtStart < $maxCost && $this->reviewThemesDue()) {
+            $snapshots = array_merge($snapshots, $this->collectReviewThemes($snapshots));
+        }
+
         if ($snapshots === [] && $this->dfs->getLastError()) {
             throw new \RuntimeException('BusinessDataSource: ' . $this->dfs->getLastError());
         }
@@ -98,6 +106,7 @@ class BusinessDataSource extends IntelSource
             $this->profileFindings(),
             $this->listingFindings(),
             $this->reviewFindings(),
+            $this->reviewThemeFindings(),
         );
     }
 
@@ -134,6 +143,16 @@ class BusinessDataSource extends IntelSource
         ];
         if ($attrRows !== []) {
             $tables[] = ['title' => 'Attributes most local competitors show that we do not', 'columns' => ['Attribute'], 'rows' => $attrRows];
+        }
+        $categoryGap = $this->missingCategories($latest, $subjects, $ourSubject);
+        if ($categoryGap !== []) {
+            $tables[] = ['title' => 'Categories most local competitors list that we do not', 'columns' => ['Category'], 'rows' => array_map(fn ($c) => [$c], $categoryGap)];
+        }
+        $themeRows = $this->latestSet('review_themes')->sortByDesc(fn ($s) => (int) ($s['metrics']['reviews_analysed'] ?? 0))
+            ->map(fn ($s, $subject) => [(string) ($s['payload']['name'] ?? $subject), implode(', ', (array) ($s['payload']['praised'] ?? [])), implode(', ', (array) ($s['payload']['complaints'] ?? []))])
+            ->values()->all();
+        if ($themeRows !== []) {
+            $tables[] = ['title' => 'What the reviews praise (ours and the top competitors\')', 'columns' => ['Business', 'Praised for', 'Complaints'], 'rows' => $themeRows];
         }
 
         $note = $profNow
@@ -251,16 +270,7 @@ class BusinessDataSource extends IntelSource
         ];
         $task[$placeId !== '' ? 'place_id' : 'keyword'] = $placeId !== '' ? $placeId : $this->keyword();
 
-        $id = $this->dfs->postTask('/business_data/google/reviews/task_post', $task);
-        if ($id === null) {
-            return null;
-        }
-        $result = $this->dfs->pollUntil(function () use ($id) {
-            $env = $this->dfs->request('GET', "/business_data/google/reviews/task_get/{$id}");
-            $row = DataForSeoService::resultOf($env)[0] ?? null;
-
-            return is_array($row) ? $row : null;
-        }, 120, 5);
+        $result = $this->fetchReviewTask($task);
         if (! is_array($result)) {
             return null;
         }
@@ -397,6 +407,13 @@ class BusinessDataSource extends IntelSource
                 implode(', ', $missing) . '.', $this->profileSubject());
         }
 
+        // Categories most of the top 10 list that our profile does not.
+        $categoryGap = $this->missingCategories($latest, $subjects, $ourSubject);
+        if ($categoryGap !== []) {
+            $out[] = $this->finding('category_gap', Finding::INFO, 'Categories most local competitors list that we do not',
+                implode(', ', $categoryGap) . '. Add the ones that fit as additional categories on the Business Profile (config/gbp-services.php pushes them weekly).', $this->profileSubject());
+        }
+
         if ($previous->isNotEmpty()) {
             // Competitors that gained reviews since the previous run.
             $gains = [];
@@ -511,6 +528,196 @@ class BusinessDataSource extends IntelSource
     }
 
     // --- helpers ------------------------------------------------------
+
+    /**
+     * Categories (primary + additional) that at least category_threshold of
+     * the top-10 competitors list and our own listing/profile does not, as
+     * "Name (n of m)".
+     */
+    protected function missingCategories(Collection $latest, array $subjects, ?string $ourSubject): array
+    {
+        $norm = fn ($c) => mb_strtolower(trim((string) $c));
+        $ours = [];
+        $profile = $this->latest('profile', $this->profileSubject());
+        $ourCats = array_merge(
+            [(string) ($profile['payload']['category'] ?? '')],
+            (array) ($profile['payload']['categories'] ?? []),
+            $ourSubject !== null ? array_merge([(string) ($latest[$ourSubject]['payload']['category'] ?? '')], (array) ($latest[$ourSubject]['payload']['additional_categories'] ?? [])) : []
+        );
+        foreach ($ourCats as $c) {
+            if ($norm($c) !== '') {
+                $ours[$norm($c)] = true;
+            }
+        }
+        $top = array_values(array_filter(array_slice($subjects, 0, 10), fn ($s) => $s !== $ourSubject));
+        if (count($top) < 3) {
+            return [];
+        }
+        $counts = [];
+        foreach ($top as $s) {
+            $cats = array_unique(array_filter(array_map($norm, array_merge([(string) ($latest[$s]['payload']['category'] ?? '')], (array) ($latest[$s]['payload']['additional_categories'] ?? [])))));
+            foreach ($cats as $c) {
+                $counts[$c] = ($counts[$c] ?? 0) + 1;
+            }
+        }
+        arsort($counts);
+        $threshold = (float) $this->config('category_threshold', 0.4);
+        $out = [];
+        foreach ($counts as $c => $n) {
+            if ($n / count($top) >= $threshold && ! isset($ours[$c])) {
+                $out[] = ucfirst($c) . " ({$n} of " . count($top) . ')';
+            }
+        }
+
+        return array_slice($out, 0, 8);
+    }
+
+    // --- competitor review teardown ------------------------------------
+
+    /** The theme vocabulary the summariser maps reviews onto, so businesses compare like for like. */
+    public const REVIEW_THEMES = ['communication', 'on time', 'on budget', 'clean job site', 'craftsmanship', 'design help', 'problem solving', 'fair pricing', 'responsiveness', 'attention to detail', 'friendly crew', 'project management', 'warranty follow-up', 'trustworthy'];
+
+    /** Post a reviews task and wait for it; the result row or null. */
+    protected function fetchReviewTask(array $task): ?array
+    {
+        $id = $this->dfs->postTask('/business_data/google/reviews/task_post', $task);
+        if ($id === null) {
+            return null;
+        }
+        $result = $this->dfs->pollUntil(function () use ($id) {
+            $env = $this->dfs->request('GET', "/business_data/google/reviews/task_get/{$id}");
+            $row = DataForSeoService::resultOf($env)[0] ?? null;
+
+            return is_array($row) ? $row : null;
+        }, 120, 5);
+
+        return is_array($result) ? $result : null;
+    }
+
+    /** Once every competitor_reviews_every_days, and only when the teardown is switched on. */
+    protected function reviewThemesDue(): bool
+    {
+        if ((int) $this->config('competitor_reviews', 3) <= 0) {
+            return false;
+        }
+        $last = $this->store->latestDay($this->family(), 'review_themes');
+
+        return $last === null || Carbon::parse($last)->lte(now()->subDays((int) $this->config('competitor_reviews_every_days', 30)));
+    }
+
+    /**
+     * Themes praised in the top competitors' reviews and in our own
+     * (testimonials), one 'review_themes' snapshot per business.
+     *
+     * @param  Snapshot[]  $collected  this run's snapshots (the listings are read from here)
+     * @return Snapshot[]
+     */
+    protected function collectReviewThemes(array $collected): array
+    {
+        $listings = collect($collected)->filter(fn (Snapshot $s) => $s->kind === 'listing')->mapWithKeys(fn (Snapshot $s) => [$s->subject => ['metrics' => $s->metrics, 'payload' => $s->payload]]);
+        [$subjects, $ourSubject] = $this->rankedListings($listings);
+        $top = array_slice(array_values(array_filter($subjects, fn ($s) => $s !== $ourSubject)), 0, (int) $this->config('competitor_reviews', 3));
+        [$lat, $lng] = $this->center();
+        $depth = (int) $this->config('competitor_review_depth', 40);
+        $out = [];
+
+        foreach ($top as $pid) {
+            $name = (string) ($listings[$pid]['payload']['title'] ?? $pid);
+            $result = $this->fetchReviewTask([
+                'place_id' => $pid, 'language_code' => 'en', 'depth' => $depth, 'sort_by' => 'newest',
+                'location_coordinate' => sprintf('%.6f,%.6f,%d', $lat, $lng, $this->pointRadius()),
+            ]);
+            $items = is_array($result) ? (array) ($result['items'] ?? []) : [];
+            $texts = collect($items)->map(fn ($rv) => trim((string) ($rv['review_text'] ?? '')))->filter()->values()->all();
+            if ($texts === []) {
+                continue;
+            }
+            $themes = $this->summariseReviews($texts, $name);
+            $ratings = collect($items)->map(fn ($rv) => $rv['rating']['value'] ?? null)->filter()->map(fn ($v) => (float) $v);
+            $out[] = new Snapshot('review_themes', $pid, [
+                'reviews_analysed' => count($texts), 'avg_rating' => $ratings->isNotEmpty() ? round($ratings->avg(), 2) : null,
+                'praised_count' => count($themes['praised']), 'complaint_count' => count($themes['complaints']),
+            ], ['name' => $name, 'is_us' => false] + $themes);
+        }
+
+        // Our own reviews: the testimonials we hold (no API cost).
+        $ours = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('testimonials')) {
+            $ours = \App\Support\Tenancy::table('testimonials')->where('is_hidden', false)->orderByDesc('review_date')->limit($depth)
+                ->pluck('review_description')->map(fn ($t) => trim((string) $t))->filter()->values()->all();
+        }
+        if ($ours !== []) {
+            $themes = $this->summariseReviews($ours, (string) config('brand.display_name', config('brand.name')));
+            $out[] = new Snapshot('review_themes', $this->profileSubject(), [
+                'reviews_analysed' => count($ours), 'avg_rating' => null, 'praised_count' => count($themes['praised']), 'complaint_count' => count($themes['complaints']),
+            ], ['name' => (string) config('brand.display_name', config('brand.name')), 'is_us' => true] + $themes);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Map a set of reviews onto the fixed theme vocabulary (praised /
+     * complained about) plus the words reviewers keep using. Without an AI
+     * key the praised list stays empty and the run says so.
+     *
+     * @return array{praised: list<string>, complaints: list<string>, keywords: list<string>, note: ?string}
+     */
+    protected function summariseReviews(array $texts, string $who): array
+    {
+        $sample = implode("\n---\n", array_map(fn ($t) => mb_substr($t, 0, 600), array_slice($texts, 0, 40)));
+        $prompt = implode("\n", [
+            "Below are customer reviews of \"{$who}\", a remodeling contractor. Classify what reviewers PRAISE and what they COMPLAIN ABOUT using only these theme labels:",
+            implode(', ', self::REVIEW_THEMES) . '.',
+            'Return ONLY a JSON object: {"praised": [themes mentioned positively by at least two reviews, most common first], "complaints": [themes mentioned negatively], "keywords": [up to 8 short phrases reviewers repeat, e.g. "kitchen island", "on schedule"]}.',
+            '', $sample,
+        ]);
+        $raw = app(\App\Services\AiContentService::class)->generateText($prompt, 800, 0.2);
+        $data = $raw !== null ? json_decode(trim(preg_replace('/^```(?:json)?|```$/m', '', trim($raw)) ?? $raw), true) : null;
+        if (! is_array($data)) {
+            return ['praised' => [], 'complaints' => [], 'keywords' => [], 'note' => 'Reviews collected; theme classification needs the Gemini key.'];
+        }
+        $onVocab = fn ($list) => array_values(array_intersect(array_map(fn ($t) => mb_strtolower(trim((string) $t)), (array) $list), self::REVIEW_THEMES));
+
+        return [
+            'praised' => $onVocab($data['praised'] ?? []),
+            'complaints' => $onVocab($data['complaints'] ?? []),
+            'keywords' => array_values(array_filter(array_map(fn ($k) => mb_substr(trim((string) $k), 0, 40), (array) ($data['keywords'] ?? [])))),
+            'note' => null,
+        ];
+    }
+
+    /** Themes at least two competitors are praised for that our own reviews never earn. */
+    protected function reviewThemeFindings(): array
+    {
+        $set = $this->latestSet('review_themes');
+        if ($set->isEmpty()) {
+            return [];
+        }
+        $ours = [];
+        $counts = [];
+        $by = [];
+        foreach ($set as $subject => $s) {
+            $praised = (array) ($s['payload']['praised'] ?? []);
+            if (! empty($s['payload']['is_us'])) {
+                $ours = $praised;
+                continue;
+            }
+            foreach ($praised as $t) {
+                $counts[$t] = ($counts[$t] ?? 0) + 1;
+                $by[$t][] = (string) ($s['payload']['name'] ?? $subject);
+            }
+        }
+        $gap = array_keys(array_filter($counts, fn ($n) => $n >= 2));
+        $gap = array_values(array_diff($gap, $ours));
+        if ($gap === []) {
+            return [];
+        }
+        $detail = collect($gap)->map(fn ($t) => $t . ' (' . implode(', ', $by[$t]) . ')')->implode('; ');
+
+        return [$this->finding('review_theme_gap', Finding::INFO, 'What competitors are praised for that our reviews never mention',
+            $detail . '. Ask recent clients to mention these when they review, and make them visible on the site.', $this->profileSubject())];
+    }
 
     /** The keyword my_business_info / reviews search for: our brand + home city. */
     protected function keyword(): string

@@ -119,6 +119,36 @@ class TitleMetaGenerator
     }
 
     /**
+     * A money page (/services/{slug}), whole service area. With a target
+     * phrase (the page's own top Search Console query) the title carries it
+     * verbatim in Title Case, the way forArea() does for researched phrases.
+     *
+     * @return array{title:string,description:string}
+     */
+    public function forService(string $slug, ?string $targetPhrase = null): array
+    {
+        $service = self::SERVICES[$slug] ?? Str::title(str_replace('-', ' ', $slug));
+        $region = (string) config('seo.region_label', 'Chicago Suburbs');
+        if ($targetPhrase !== null && trim($targetPhrase) !== '') {
+            $phrase = Str::title(trim($targetPhrase));
+            $phrase = preg_replace('/\b(Il|Illinois)\b/', '', $phrase) ?? $phrase;
+            $phrase = trim(preg_replace('/\s+/', ' ', $phrase) ?? $phrase);
+            $title = $this->fitTitle($phrase, ['Free Estimate']);
+            $desc = $this->fitDesc(
+                ucfirst(mb_strtolower(trim($targetPhrase))) . " across the {$region}: free in-home estimate, clear itemized pricing, a dedicated project lead, licensed & insured. Family-owned, 5-star rated."
+            );
+
+            return ['title' => $title, 'description' => $desc];
+        }
+        $title = $this->fitTitle("{$service} Contractors, {$region}", ['Free Estimate']);
+        $desc = $this->fitDesc(
+            'Free estimate on ' . strtolower($service) . " across the {$region}. Clear itemized pricing, a dedicated project lead, and 5-star reviews. Family-owned, 40+ yrs combined experience."
+        );
+
+        return ['title' => $title, 'description' => $desc];
+    }
+
+    /**
      * @return array{title:string,description:string}
      */
     public function forProject(Project $project): array

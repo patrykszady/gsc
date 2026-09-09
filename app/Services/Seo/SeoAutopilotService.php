@@ -65,6 +65,7 @@ class SeoAutopilotService
             'llms_regen' => new LlmsRegenApplier(),
             'create_page' => new CreatePageApplier(),
             'content_refresh' => new \App\Services\Seo\Appliers\ContentRefreshApplier(),
+            'gbp_description' => new \App\Services\Seo\Appliers\GbpDescriptionApplier(),
         ];
     }
 
@@ -86,8 +87,49 @@ class SeoAutopilotService
         $created += $this->synthesizeCreatePage();
         $created += $this->synthesizeResearch();
         $created += $this->synthesizeIntel();
+        $created += $this->synthesizeGbpDescription();
 
         return $created;
+    }
+
+    /**
+     * Every ~90 days, propose a fresh "From the business" description for the
+     * Google Business Profile: three variants (keyword-, conversion- and
+     * trust-led) in one review-risk action. A person approves it in the
+     * panel; the applier keeps the old text so it can be reverted.
+     */
+    private function synthesizeGbpDescription(): int
+    {
+        if (! config('seo.autopilot.gbp_description_enabled', true)) {
+            return 0; // off in the test environment: this step talks to Google and Gemini for real
+        }
+        $gbp = app(\App\Services\GoogleBusinessProfileService::class);
+        if (! $gbp->isConfigured()) {
+            return 0;
+        }
+        $every = (int) config('seo.autopilot.gbp_description_days', 90);
+        if (SeoAction::where('category', 'gbp_description')->where('created_at', '>=', now()->subDays($every))->exists()) {
+            return 0;
+        }
+        $current = $gbp->getDescription();
+        $variants = app(\App\Services\Seo\GbpDescriptionWriter::class)->variants($current);
+        if ($variants === null) {
+            return 0;
+        }
+
+        return $this->upsertAction([
+            'fingerprint' => $this->fp('gbp', 'gbp_description', now()->format('Y-m')),
+            'source' => 'gbp',
+            'category' => 'gbp_description',
+            'risk' => SeoAction::RISK_REVIEW,
+            'target_url' => (string) (config('socials.google.url') ?: self::BASE_URL),
+            'title' => 'Refresh the Google Business Profile description (three variants, approve one)',
+            'hypothesis' => ($current ? 'The current description is ' . mb_strlen($current) . ' characters. ' : 'The profile has no description. ')
+                . 'A description that names the services, the core towns and the phrases people search is one of the few free-text signals the map pack reads. Approve to apply the keyword-led variant; edit the action payload first to use the conversion- or trust-led one.',
+            'metric' => 'impressions',
+            'payload' => ['current' => $current, 'variants' => $variants, 'new_description' => $variants['keyword']],
+            'impact_score' => 4.0,
+        ]);
     }
 
     /** Query keyword => service slug, for parsing GSC demand into intent. */
@@ -598,9 +640,13 @@ class SeoAutopilotService
                 continue;
             }
 
-            $generated = $model instanceof AreaServed
-                ? $this->titles->forArea($model, $serviceSlug)
-                : $this->titles->forProject($model);
+            $generated = match (true) {
+                $model instanceof AreaServed => $this->titles->forArea($model, $serviceSlug),
+                // Money pages: the title carries the page's own top non-branded query.
+                $model instanceof \App\Support\SEO\ServicePageTarget => $this->titles->forService($model->slug, $this->topQueryFor((string) $p->page, $start, $end)),
+                default => $this->titles->forProject($model),
+            };
+            $isServicePage = $model instanceof \App\Support\SEO\ServicePageTarget;
 
             $estUplift = round($impressions * $headroom, 1); // est. clicks/28d
             $source = $ctr <= 0.0001 ? 'zero_click' : 'striking_distance';
@@ -622,12 +668,12 @@ class SeoAutopilotService
             }
 
             $created += $this->upsertAction([
-                'fingerprint' => $this->fp($source, 'title_meta', $model::class . ':' . $model->getKey() . ':' . ($serviceSlug ?? '')),
+                'fingerprint' => $this->fp($source, 'title_meta', ($isServicePage ? 'service' : $model::class) . ':' . $model->getKey() . ':' . ($serviceSlug ?? '')),
                 'source' => $source,
                 'category' => 'title_meta',
                 'risk' => SeoAction::RISK_SAFE,
-                'target_type' => $model::class,
-                'target_id' => $model->getKey(),
+                'target_type' => $isServicePage ? null : $model::class,
+                'target_id' => $isServicePage ? null : $model->getKey(),
                 'target_url' => (string) $p->page,
                 'title' => 'Rewrite title/meta: ' . Str::of((string) $p->page)->after(self::BASE_URL),
                 'hypothesis' => sprintf(
@@ -1190,6 +1236,35 @@ class SeoAutopilotService
         if (($segments[0] ?? null) === 'projects' && isset($segments[1]) && count($segments) === 2) {
             $project = Project::where('slug', $segments[1])->first();
             return $project ? [$project, null] : null;
+        }
+
+        // /services/{slug}: the money pages. No model behind them, so the
+        // rewrite lands as a path override (TitleMetaApplier) like every other.
+        if (($segments[0] ?? null) === 'services' && isset($segments[1]) && count($segments) === 2 && isset(TitleMetaGenerator::SERVICES[$segments[1]])) {
+            return [new \App\Support\SEO\ServicePageTarget($segments[1]), null];
+        }
+
+        return null;
+    }
+
+    /** The page's top non-branded query in the window (position ≤ 20), for a title that says what people search. */
+    private function topQueryFor(string $page, Carbon $start, Carbon $end): ?string
+    {
+        $brand = Str::lower((string) config('brand.name'));
+        $rows = \App\Support\Tenancy::table('gsc_query_metrics')
+            ->where('page', $page)->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->groupBy('query')->selectRaw('query, SUM(impressions) impressions, AVG(position) position')
+            ->orderByDesc('impressions')->limit(8)->get();
+        foreach ($rows as $r) {
+            $q = Str::lower(trim((string) $r->query));
+            if ($q === '' || (float) $r->position > 20 || (int) $r->impressions < 20) {
+                continue;
+            }
+            if ($brand !== '' && (str_contains($q, $brand) || str_contains($q, Str::before($brand, ' ') . ' ') && str_contains($q, 'construction'))) {
+                continue;
+            }
+
+            return $q;
         }
 
         return null;

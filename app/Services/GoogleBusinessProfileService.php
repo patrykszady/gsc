@@ -1426,6 +1426,49 @@ class GoogleBusinessProfileService
         return $data;
     }
 
+    /** The "From the business" description on the listing, or null when unreadable. */
+    public function getDescription(): ?string
+    {
+        $location = $this->getLocation('profile');
+        $text = is_array($location) ? ($location['profile']['description'] ?? null) : null;
+
+        return is_string($text) ? $text : null;
+    }
+
+    /**
+     * Replace the "From the business" description (Google allows 750
+     * characters, no URLs). Returns the updated location, or null on failure.
+     */
+    public function updateDescription(string $description): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return null;
+        }
+        $description = mb_substr(trim($description), 0, 750);
+        $response = Http::withToken($accessToken)
+            ->timeout(60)
+            ->patch($this->infoLocationUrl() . '?updateMask=profile.description', ['profile' => ['description' => $description]]);
+
+        if (! $response->successful()) {
+            $this->lastError = [
+                'message' => 'Update description failed',
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ];
+            Log::channel('gbp')->warning('GBP: Failed to update description', ['status' => $response->status(), 'body' => $response->body()]);
+
+            return null;
+        }
+        $this->lastError = null;
+        Log::channel('gbp')->info('GBP: Updated description', ['length' => mb_strlen($description)]);
+
+        return $response->json();
+    }
+
     /**
      * Search available GBP categories by keyword.
      */

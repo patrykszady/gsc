@@ -712,7 +712,7 @@ Schedule::command('social:post --platform=facebook --yes --random-delay=240')
 // daily at 09:30 CT but the ->when() gate only lets it through on the two days
 // chosen for the current ISO week; --random-delay then spreads the actual post
 // time across a ~4h window (posts land ~09:30–13:30 CT).
-Schedule::command('social:post --platform=google_business --queue --random-delay=240')
+Schedule::command('social:post --platform=google_business --queue --random-delay=240 --themed')
     ->dailyAt('09:30')
     ->timezone('America/Chicago')
     ->onOneServer()

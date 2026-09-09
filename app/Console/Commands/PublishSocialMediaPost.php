@@ -18,7 +18,11 @@ class PublishSocialMediaPost extends Command
         {--queue : Dispatch as a queued job instead of running synchronously}
         {--yes : Skip the interactive preview confirmation}
         {--random-delay=0 : Max random delay in minutes before posting (for natural scheduling)}
-        {--via= : Publishing transport for Instagram (graph|puppeteer). Default: graph}';
+        {--via= : Publishing transport for Instagram (graph|puppeteer). Default: graph}
+        {--themed : Follow this week\'s theme (season, rising service, core town) when picking the photo and writing the caption}';
+
+    /** This week's theme when --themed (App\Services\Social\GbpPostTheme). */
+    protected ?array $theme = null;
 
     protected $description = 'Publish a random unposted project image to Instagram, Facebook, and/or Google Business Profile with AI-generated content';
 
@@ -35,6 +39,11 @@ class PublishSocialMediaPost extends Command
         // For dry-run, default to all platforms even if not configured
         if ($isDryRun && empty($platforms)) {
             $platforms = ['instagram', 'facebook', 'google_business'];
+        }
+
+        $this->theme = $this->option('themed') ? app(\App\Services\Social\GbpPostTheme::class)->forWeek() : null;
+        if ($this->theme) {
+            $this->line(sprintf('🗓  Theme: %s · %s · %s%s', $this->theme['season'], $this->theme['service_type'] ?? 'any service', $this->theme['town'] ?? 'any town', $this->theme['rising_phrase'] ? ' · rising: "' . $this->theme['rising_phrase'] . '"' : ''));
         }
 
         // Pick or find the image (with recycling fallback)
@@ -121,7 +130,7 @@ class PublishSocialMediaPost extends Command
 
         if ($this->option('queue')) {
             $delay = $this->getRandomDelay();
-            $job = PublishToSocialMediaJob::dispatch($image, $platforms)->onQueue('social-media');
+            $job = PublishToSocialMediaJob::dispatch($image, $platforms, $this->theme)->onQueue('social-media');
 
             if ($delay > 0) {
                 $job->delay(now()->addMinutes($delay));
@@ -158,7 +167,7 @@ class PublishSocialMediaPost extends Command
         }
 
         $this->info('Publishing...');
-        $job = new PublishToSocialMediaJob($image, $platforms);
+        $job = new PublishToSocialMediaJob($image, $platforms, $this->theme);
         $job->handle(
             app(MetaSocialService::class),
             app(\App\Services\AiContentService::class),
@@ -235,6 +244,31 @@ class PublishSocialMediaPost extends Command
                     $q->where('platform', 'instagram')
                         ->whereIn('status', ['published', 'pending']);
                 });
+            }
+        }
+
+        // A week theme: the rising (or rotated) service in the rotated core
+        // town first, then the service anywhere, then the town with any service.
+        if ($this->theme) {
+            $service = $this->theme['service_type'] ?? null;
+            $town = $this->theme['town'] ?? null;
+            $attempts = array_filter([
+                $service && $town ? [$service, $town] : null,
+                $service ? [$service, null] : null,
+                $town ? [null, $town] : null,
+            ]);
+            foreach ($attempts as [$type, $city]) {
+                $themed = (clone $query)->whereHas('project', function ($q) use ($type, $city) {
+                    if ($type) {
+                        $q->where('project_type', $type);
+                    }
+                    if ($city) {
+                        $q->where('location', 'like', $city . '%');
+                    }
+                });
+                if ($image = $themed->inRandomOrder()->first()) {
+                    return $image;
+                }
             }
         }
 

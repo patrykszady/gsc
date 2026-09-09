@@ -34,6 +34,8 @@ class BusinessDataSourceTest extends TestCase
             'seo.map_pack.center_lng' => -87.9275628,
             // Force the domain fallback for a deterministic subject regardless of the local .env's real place id.
             'services.google.business_profile.place_id' => '',
+            // The monthly competitor review teardown has its own test.
+            'seo-intel.families.business_data.competitor_reviews' => 0,
         ]);
         self::$ourVotes = 40;
         self::$ourRating = 4.9;
@@ -72,7 +74,9 @@ class BusinessDataSourceTest extends TestCase
 
             if (str_contains($url, 'business_listings/search/live')) {
                 $listing = fn (string $pid, string $title, string $domain, float $rating, int $votes, array $attrs = []) => [
-                    'title' => $title, 'category' => 'Kitchen remodeler', 'additional_categories' => [],
+                    'title' => $title, 'category' => 'Kitchen remodeler',
+                    // Four of the five real competitors also list General contractor + Bathroom remodeler; we list Bathroom remodeler already.
+                    'additional_categories' => in_array($pid, ['p-prism', 'p-dream', 'p-yello', 'p-ace'], true) ? ['General contractor', 'Bathroom remodeler'] : [],
                     'rating' => ['value' => $rating, 'votes_count' => $votes], 'is_claimed' => true,
                     'attributes' => ['available_attributes' => $attrs, 'unavailable_attributes' => null],
                     'work_time' => ['work_hours' => ['current_status' => 'open']],
@@ -97,7 +101,20 @@ class BusinessDataSourceTest extends TestCase
             }
 
             if (str_contains($url, 'reviews/task_post')) {
-                return Http::response(['tasks' => [['id' => 'task-1', 'status_code' => 20100, 'status_message' => 'Task Created', 'cost' => 0.0075]]]);
+                $pid = (string) ($request->data()[0]['place_id'] ?? 'ours');
+
+                return Http::response(['tasks' => [['id' => 'task-' . $pid, 'status_code' => 20100, 'status_message' => 'Task Created', 'cost' => 0.0075]]]);
+            }
+
+            if (str_contains($url, 'reviews/task_get/task-p-')) {
+                // A competitor's reviews (place ids start with p-).
+                $who = str_contains($url, 'task-p-prism') ? 'Prism' : 'Dreamline';
+                $items = [
+                    ['profile_name' => 'Dan', 'rating' => ['value' => 5], 'review_text' => "{$who} finished on time and kept us informed every day.", 'timestamp' => Carbon::now()->subDays(4)->format('Y-m-d H:i:s') . ' +00:00'],
+                    ['profile_name' => 'Eve', 'rating' => ['value' => 5], 'review_text' => "Schedule held, crew was on time, site left clean.", 'timestamp' => Carbon::now()->subDays(9)->format('Y-m-d H:i:s') . ' +00:00'],
+                ];
+
+                return Http::response(['tasks' => [['status_code' => 20000, 'result' => [['reviews_count' => 2, 'items' => $items]]]]]);
             }
 
             if (str_contains($url, 'reviews/task_get')) {
@@ -192,6 +209,61 @@ class BusinessDataSourceTest extends TestCase
         $rank = $findings['business_data.review_rank'];
         // Prism 75, Dreamline 55, YelloSquare 30, us 40 -> we rank 3rd.
         $this->assertStringContainsString('#3', $rank->title);
+    }
+
+    public function test_first_run_flags_categories_most_competitors_list_that_we_do_not(): void
+    {
+        $this->artisan('seo:intel', ['family' => ['business_data'], '--budget' => 1])->assertExitCode(0);
+        $gap = DB::table('seo_intel_findings')->where('code', 'business_data.category_gap')->first();
+        $this->assertNotNull($gap);
+        $this->assertStringContainsString('General contractor (4 of 5)', $gap->detail);
+        $this->assertStringNotContainsString('Bathroom remodeler', $gap->detail, 'we already list it');
+        $this->assertStringNotContainsString('Kitchen remodeler', $gap->detail, 'our primary category');
+        $tables = collect(app(BusinessDataSource::class)->report()['tables'])->keyBy('title');
+        $this->assertSame([['General contractor (4 of 5)']], $tables['Categories most local competitors list that we do not']['rows']);
+    }
+
+    public function test_monthly_competitor_review_teardown_finds_themes_our_reviews_never_earn(): void
+    {
+        config(['seo-intel.families.business_data.competitor_reviews' => 2]);
+        DB::table('testimonials')->insert([
+            ['site_id' => null, 'reviewer_name' => 'Ann', 'review_description' => 'Beautiful tile work and cabinetry, real craftsmanship.', 'star_rating' => 5, 'is_hidden' => false, 'review_date' => now()->subDays(20)->toDateString(), 'created_at' => now(), 'updated_at' => now()],
+            ['site_id' => null, 'reviewer_name' => 'Ben', 'review_description' => 'Great attention to detail throughout the bathroom.', 'star_rating' => 5, 'is_hidden' => false, 'review_date' => now()->subDays(40)->toDateString(), 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        $this->mock(\App\Services\AiContentService::class, function ($m) {
+            $m->shouldReceive('generateText')->times(3)->andReturnUsing(function (string $prompt) {
+                if (str_contains($prompt, '"Prism')) {
+                    return json_encode(['praised' => ['on time', 'communication'], 'complaints' => [], 'keywords' => ['on schedule']]);
+                }
+                if (str_contains($prompt, '"Dreamline')) {
+                    return json_encode(['praised' => ['on time', 'clean job site'], 'complaints' => ['fair pricing'], 'keywords' => ['clean']]);
+                }
+
+                return json_encode(['praised' => ['craftsmanship', 'attention to detail'], 'complaints' => [], 'keywords' => ['tile work']]);
+            });
+        });
+
+        $this->artisan('seo:intel', ['family' => ['business_data'], '--budget' => 1])->assertExitCode(0);
+
+        $themes = DB::table('seo_intel_snapshots')->where('family', 'business_data')->where('kind', 'review_themes')->get()->keyBy('subject');
+        $this->assertCount(3, $themes, 'two competitors and ourselves');
+        $this->assertSame(['on time', 'communication'], json_decode((string) $themes['p-prism']->payload, true)['praised']);
+        $this->assertTrue(json_decode((string) $themes['gs.construction']->payload, true)['is_us']);
+
+        $gap = DB::table('seo_intel_findings')->where('code', 'business_data.review_theme_gap')->first();
+        $this->assertNotNull($gap);
+        $this->assertStringContainsString('on time (', $gap->detail);
+        $this->assertStringContainsString('Prism Kitchen & Bath', $gap->detail);
+        $this->assertStringContainsString('Dreamline Remodeling', $gap->detail);
+        $this->assertStringNotContainsString('communication', $gap->detail, 'only one competitor: not a pattern');
+        $this->assertStringNotContainsString('craftsmanship', $gap->detail, 'we are praised for it');
+
+        $tables = collect(app(BusinessDataSource::class)->report()['tables'])->keyBy('title');
+        $this->assertCount(3, $tables['What the reviews praise (ours and the top competitors\')']['rows']);
+
+        // Not due again for a month: a second run posts no competitor tasks.
+        Http::fake(); // no further recording noise
+        $this->assertFalse((fn () => $this->reviewThemesDue())->call(app(BusinessDataSource::class)));
     }
 
     public function test_report_has_the_promised_tiles_and_tables(): void

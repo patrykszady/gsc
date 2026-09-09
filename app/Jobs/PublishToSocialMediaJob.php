@@ -28,6 +28,8 @@ class PublishToSocialMediaJob implements ShouldQueue
         public ProjectImage $image,
         /** @var string[] */
         public array $platforms = ['instagram', 'facebook', 'google_business'],
+        /** Week theme from App\Services\Social\GbpPostTheme (season, town, rising phrase), or null. */
+        public ?array $theme = null,
     ) {}
 
     public function handle(MetaSocialService $metaService, AiContentService $aiService): void
@@ -50,7 +52,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         }
 
         // Generate AI caption + hashtags (use short link in the prompt so AI sees it)
-        $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl);
+        $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl, $this->theme);
 
         if (! $content) {
             Log::channel('social')->error('Social Media: AI content generation failed', [

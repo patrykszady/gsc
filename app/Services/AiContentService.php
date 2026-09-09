@@ -1101,7 +1101,7 @@ PROMPT;
      *
      * @return array{caption: string, hashtags: string}|null
      */
-    public function generateSocialMediaContent(ProjectImage $image, string $linkUrl): ?array
+    public function generateSocialMediaContent(ProjectImage $image, string $linkUrl, ?array $theme = null): ?array
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
@@ -1138,6 +1138,14 @@ PROMPT;
             'start mid-scene, describing the light or the first thing the eye lands on',
         ];
         $angle = $openingAngles[array_rand($openingAngles)];
+        // A week theme (season, a town, a phrase rising in local searches)
+        // gives the post a reason to exist beyond "here is a photo".
+        $themeLine = '';
+        if (is_array($theme) && ! empty($theme['note'])) {
+            $themeLine = "This week's theme: {$theme['note']}"
+                . (! empty($theme['town']) ? " If the project is in {$theme['town']}, say so; if not, do not mention {$theme['town']}." : '')
+                . ' Tie the caption to the theme in one natural clause where the photo allows it; never force it.';
+        }
 
         $prompt = <<<PROMPT
 You are a social media manager for GS Construction, a premium home remodeling company based in Chicago.
@@ -1147,6 +1155,7 @@ Project Context:
 {$projectContext}
 
 Existing AI description of this image: {$image->caption}
+{$themeLine}
 
 Generate a JSON object with these keys:
 1. "caption": An engaging social media caption (2-4 sentences). Requirements:

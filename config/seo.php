@@ -30,6 +30,9 @@ return [
      */
     'address' => env('BUSINESS_ADDRESS_FRAGMENT', 'Chicagoland'),
 
+    // How the service-page titles name the territory ("Kitchen Remodeling Contractors, Chicago Suburbs").
+    'region_label' => env('SEO_REGION_LABEL', 'Chicago Suburbs'),
+
     /**
      * Use this setting to specify the path to the sitemap of your website. This exact path will outputted, so
      * you can use both a hardcoded url and a relative path. We recommend the latter.
@@ -361,6 +364,9 @@ return [
     ],
 
     'autopilot' => [
+        // Propose a fresh Google Business Profile description (three variants, review-risk) this often.
+        'gbp_description_days' => (int) env('SEO_AUTOPILOT_GBP_DESCRIPTION_DAYS', 90),
+        'gbp_description_enabled' => (bool) env('SEO_AUTOPILOT_GBP_DESCRIPTION_ENABLED', true),
         'auto_publish_landing_pages' => env('SEO_AUTOPILOT_AUTO_PUBLISH', false),
         // Covered-town modifier plays ("small bathroom remodel glencoe", "custom
         // basement remodeling mount prospect") need this many impressions/28d
