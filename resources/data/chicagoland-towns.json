@@ -1,0 +1,2417 @@
+{
+"source": "US Census Bureau 2024 Gazetteer, Illinois places within 45 mi of 400 N Wheeling Rd, Prospect Heights",
+"center": [
+42.102847,
+-87.9275628
+],
+"towns": [
+{
+"name": "Prospect Heights",
+"kind": "city",
+"lat": 42.103663,
+"lng": -87.928972,
+"distance_mi": 0.1,
+"land_sqmi": 4.207
+},
+{
+"name": "Wheeling",
+"kind": "village",
+"lat": 42.129614,
+"lng": -87.921503,
+"distance_mi": 1.9,
+"land_sqmi": 8.672
+},
+{
+"name": "Mount Prospect",
+"kind": "village",
+"lat": 42.064202,
+"lng": -87.937364,
+"distance_mi": 2.7,
+"land_sqmi": 10.721
+},
+{
+"name": "Arlington Heights",
+"kind": "village",
+"lat": 42.097362,
+"lng": -87.981671,
+"distance_mi": 2.8,
+"land_sqmi": 16.613
+},
+{
+"name": "Buffalo Grove",
+"kind": "village",
+"lat": 42.165981,
+"lng": -87.961826,
+"distance_mi": 4.7,
+"land_sqmi": 9.568
+},
+{
+"name": "Des Plaines",
+"kind": "city",
+"lat": 42.034398,
+"lng": -87.901136,
+"distance_mi": 4.9,
+"land_sqmi": 14.238
+},
+{
+"name": "Northbrook",
+"kind": "village",
+"lat": 42.128745,
+"lng": -87.835162,
+"distance_mi": 5.1,
+"land_sqmi": 13.248
+},
+{
+"name": "Riverwoods",
+"kind": "village",
+"lat": 42.172903,
+"lng": -87.894862,
+"distance_mi": 5.1,
+"land_sqmi": 3.968
+},
+{
+"name": "Glenview",
+"kind": "village",
+"lat": 42.085162,
+"lng": -87.827388,
+"distance_mi": 5.3,
+"land_sqmi": 14.469
+},
+{
+"name": "Rolling Meadows",
+"kind": "city",
+"lat": 42.074909,
+"lng": -88.025363,
+"distance_mi": 5.4,
+"land_sqmi": 5.618
+},
+{
+"name": "Deerfield",
+"kind": "village",
+"lat": 42.166069,
+"lng": -87.852467,
+"distance_mi": 5.8,
+"land_sqmi": 5.539
+},
+{
+"name": "Palatine",
+"kind": "village",
+"lat": 42.116467,
+"lng": -88.044361,
+"distance_mi": 6.1,
+"land_sqmi": 14.118
+},
+{
+"name": "Lincolnshire",
+"kind": "village",
+"lat": 42.196518,
+"lng": -87.917737,
+"distance_mi": 6.5,
+"land_sqmi": 4.567
+},
+{
+"name": "Bannockburn",
+"kind": "village",
+"lat": 42.192226,
+"lng": -87.869811,
+"distance_mi": 6.8,
+"land_sqmi": 2.028
+},
+{
+"name": "Elk Grove Village",
+"kind": "village",
+"lat": 42.005778,
+"lng": -87.993034,
+"distance_mi": 7.5,
+"land_sqmi": 11.717
+},
+{
+"name": "Park Ridge",
+"kind": "city",
+"lat": 42.011762,
+"lng": -87.843434,
+"distance_mi": 7.6,
+"land_sqmi": 7.088
+},
+{
+"name": "Long Grove",
+"kind": "village",
+"lat": 42.195016,
+"lng": -88.011032,
+"distance_mi": 7.7,
+"land_sqmi": 12.387
+},
+{
+"name": "Northfield",
+"kind": "village",
+"lat": 42.102968,
+"lng": -87.777376,
+"distance_mi": 7.7,
+"land_sqmi": 3.229
+},
+{
+"name": "Golf",
+"kind": "village",
+"lat": 42.058549,
+"lng": -87.784941,
+"distance_mi": 7.9,
+"land_sqmi": 0.448
+},
+{
+"name": "Niles",
+"kind": "village",
+"lat": 42.027862,
+"lng": -87.809973,
+"distance_mi": 8.0,
+"land_sqmi": 5.848
+},
+{
+"name": "Highland Park",
+"kind": "city",
+"lat": 42.182372,
+"lng": -87.810845,
+"distance_mi": 8.1,
+"land_sqmi": 12.234
+},
+{
+"name": "Morton Grove",
+"kind": "village",
+"lat": 42.042321,
+"lng": -87.789012,
+"distance_mi": 8.2,
+"land_sqmi": 5.088
+},
+{
+"name": "Kildeer",
+"kind": "village",
+"lat": 42.181353,
+"lng": -88.048935,
+"distance_mi": 8.3,
+"land_sqmi": 4.313
+},
+{
+"name": "Rosemont",
+"kind": "village",
+"lat": 41.988978,
+"lng": -87.871739,
+"distance_mi": 8.4,
+"land_sqmi": 1.792
+},
+{
+"name": "Glencoe",
+"kind": "village",
+"lat": 42.134489,
+"lng": -87.763178,
+"distance_mi": 8.7,
+"land_sqmi": 3.718
+},
+{
+"name": "Inverness",
+"kind": "village",
+"lat": 42.115136,
+"lng": -88.100894,
+"distance_mi": 8.9,
+"land_sqmi": 6.534
+},
+{
+"name": "Indian Creek",
+"kind": "village",
+"lat": 42.227205,
+"lng": -87.978359,
+"distance_mi": 9.0,
+"land_sqmi": 0.267
+},
+{
+"name": "Deer Park",
+"kind": "village",
+"lat": 42.166284,
+"lng": -88.08618,
+"distance_mi": 9.2,
+"land_sqmi": 3.67
+},
+{
+"name": "Highwood",
+"kind": "city",
+"lat": 42.206018,
+"lng": -87.812945,
+"distance_mi": 9.2,
+"land_sqmi": 0.72
+},
+{
+"name": "Vernon Hills",
+"kind": "village",
+"lat": 42.234407,
+"lng": -87.961064,
+"distance_mi": 9.3,
+"land_sqmi": 7.737
+},
+{
+"name": "Schaumburg",
+"kind": "village",
+"lat": 42.0289,
+"lng": -88.083773,
+"distance_mi": 9.5,
+"land_sqmi": 19.383
+},
+{
+"name": "Winnetka",
+"kind": "village",
+"lat": 42.10621,
+"lng": -87.742764,
+"distance_mi": 9.5,
+"land_sqmi": 3.812
+},
+{
+"name": "Mettawa",
+"kind": "village",
+"lat": 42.243369,
+"lng": -87.921418,
+"distance_mi": 9.7,
+"land_sqmi": 5.451
+},
+{
+"name": "Lake Forest",
+"kind": "city",
+"lat": 42.23535,
+"lng": -87.857305,
+"distance_mi": 9.8,
+"land_sqmi": 17.201
+},
+{
+"name": "Wood Dale",
+"kind": "city",
+"lat": 41.966306,
+"lng": -87.980851,
+"distance_mi": 9.8,
+"land_sqmi": 4.789
+},
+{
+"name": "Forest Lake",
+"kind": "CDP",
+"lat": 42.211835,
+"lng": -88.052499,
+"distance_mi": 9.9,
+"land_sqmi": 0.35
+},
+{
+"name": "Itasca",
+"kind": "village",
+"lat": 41.976616,
+"lng": -88.018775,
+"distance_mi": 9.9,
+"land_sqmi": 5.034
+},
+{
+"name": "Bensenville",
+"kind": "village",
+"lat": 41.958011,
+"lng": -87.943825,
+"distance_mi": 10.0,
+"land_sqmi": 5.532
+},
+{
+"name": "Lake Zurich",
+"kind": "village",
+"lat": 42.195009,
+"lng": -88.087729,
+"distance_mi": 10.4,
+"land_sqmi": 6.923
+},
+{
+"name": "Schiller Park",
+"kind": "village",
+"lat": 41.958626,
+"lng": -87.869317,
+"distance_mi": 10.4,
+"land_sqmi": 2.77
+},
+{
+"name": "Wilmette",
+"kind": "village",
+"lat": 42.077323,
+"lng": -87.728621,
+"distance_mi": 10.4,
+"land_sqmi": 5.401
+},
+{
+"name": "Skokie",
+"kind": "village",
+"lat": 42.03597,
+"lng": -87.739994,
+"distance_mi": 10.7,
+"land_sqmi": 10.064
+},
+{
+"name": "Barrington",
+"kind": "village",
+"lat": 42.151535,
+"lng": -88.128534,
+"distance_mi": 10.8,
+"land_sqmi": 4.616
+},
+{
+"name": "Kenilworth",
+"kind": "village",
+"lat": 42.088818,
+"lng": -87.714497,
+"distance_mi": 11.0,
+"land_sqmi": 0.607
+},
+{
+"name": "Norridge",
+"kind": "village",
+"lat": 41.963726,
+"lng": -87.823192,
+"distance_mi": 11.0,
+"land_sqmi": 1.808
+},
+{
+"name": "Harwood Heights",
+"kind": "village",
+"lat": 41.966318,
+"lng": -87.80559,
+"distance_mi": 11.3,
+"land_sqmi": 0.825
+},
+{
+"name": "Hoffman Estates",
+"kind": "village",
+"lat": 42.064336,
+"lng": -88.14463,
+"distance_mi": 11.4,
+"land_sqmi": 20.536
+},
+{
+"name": "Hawthorn Woods",
+"kind": "village",
+"lat": 42.235788,
+"lng": -88.067525,
+"distance_mi": 11.7,
+"land_sqmi": 8.141
+},
+{
+"name": "Roselle",
+"kind": "village",
+"lat": 41.980249,
+"lng": -88.08591,
+"distance_mi": 11.7,
+"land_sqmi": 5.544
+},
+{
+"name": "Franklin Park",
+"kind": "village",
+"lat": 41.935983,
+"lng": -87.879197,
+"distance_mi": 11.8,
+"land_sqmi": 4.777
+},
+{
+"name": "South Barrington",
+"kind": "village",
+"lat": 42.088992,
+"lng": -88.157184,
+"distance_mi": 11.8,
+"land_sqmi": 7.458
+},
+{
+"name": "Lincolnwood",
+"kind": "village",
+"lat": 42.00543,
+"lng": -87.732959,
+"distance_mi": 12.0,
+"land_sqmi": 2.692
+},
+{
+"name": "Addison",
+"kind": "village",
+"lat": 41.930782,
+"lng": -88.008987,
+"distance_mi": 12.6,
+"land_sqmi": 9.829
+},
+{
+"name": "Evanston",
+"kind": "city",
+"lat": 42.046391,
+"lng": -87.694352,
+"distance_mi": 12.6,
+"land_sqmi": 7.779
+},
+{
+"name": "Mundelein",
+"kind": "village",
+"lat": 42.273352,
+"lng": -88.016174,
+"distance_mi": 12.6,
+"land_sqmi": 10.939
+},
+{
+"name": "North Barrington",
+"kind": "village",
+"lat": 42.206923,
+"lng": -88.128884,
+"distance_mi": 12.6,
+"land_sqmi": 4.725
+},
+{
+"name": "Libertyville",
+"kind": "village",
+"lat": 42.284667,
+"lng": -87.966503,
+"distance_mi": 12.7,
+"land_sqmi": 8.808
+},
+{
+"name": "Knollwood",
+"kind": "CDP",
+"lat": 42.284584,
+"lng": -87.879318,
+"distance_mi": 12.8,
+"land_sqmi": 0.605
+},
+{
+"name": "Lake Bluff",
+"kind": "village",
+"lat": 42.282695,
+"lng": -87.852306,
+"distance_mi": 13.0,
+"land_sqmi": 4.076
+},
+{
+"name": "Northlake",
+"kind": "city",
+"lat": 41.914316,
+"lng": -87.905486,
+"distance_mi": 13.1,
+"land_sqmi": 3.176
+},
+{
+"name": "River Grove",
+"kind": "village",
+"lat": 41.924277,
+"lng": -87.837934,
+"distance_mi": 13.2,
+"land_sqmi": 2.391
+},
+{
+"name": "Bloomingdale",
+"kind": "village",
+"lat": 41.951525,
+"lng": -88.089118,
+"distance_mi": 13.3,
+"land_sqmi": 6.766
+},
+{
+"name": "Green Oaks",
+"kind": "village",
+"lat": 42.299987,
+"lng": -87.910961,
+"distance_mi": 13.6,
+"land_sqmi": 3.991
+},
+{
+"name": "Elmwood Park",
+"kind": "village",
+"lat": 41.922458,
+"lng": -87.816321,
+"distance_mi": 13.7,
+"land_sqmi": 1.908
+},
+{
+"name": "Hanover Park",
+"kind": "village",
+"lat": 41.982485,
+"lng": -88.14287,
+"distance_mi": 13.8,
+"land_sqmi": 6.422
+},
+{
+"name": "Stone Park",
+"kind": "village",
+"lat": 41.903236,
+"lng": -87.880701,
+"distance_mi": 14.0,
+"land_sqmi": 0.344
+},
+{
+"name": "Streamwood",
+"kind": "village",
+"lat": 42.020586,
+"lng": -88.177771,
+"distance_mi": 14.0,
+"land_sqmi": 7.808
+},
+{
+"name": "Elmhurst",
+"kind": "city",
+"lat": 41.897014,
+"lng": -87.943657,
+"distance_mi": 14.2,
+"land_sqmi": 10.218
+},
+{
+"name": "Melrose Park",
+"kind": "village",
+"lat": 41.902995,
+"lng": -87.863648,
+"distance_mi": 14.2,
+"land_sqmi": 4.353
+},
+{
+"name": "Barrington Hills",
+"kind": "village",
+"lat": 42.138642,
+"lng": -88.202959,
+"distance_mi": 14.3,
+"land_sqmi": 27.005
+},
+{
+"name": "Lake Barrington",
+"kind": "village",
+"lat": 42.210237,
+"lng": -88.169491,
+"distance_mi": 14.4,
+"land_sqmi": 5.737
+},
+{
+"name": "Tower Lakes",
+"kind": "village",
+"lat": 42.227844,
+"lng": -88.15524,
+"distance_mi": 14.5,
+"land_sqmi": 0.919
+},
+{
+"name": "Berkeley",
+"kind": "village",
+"lat": 41.889116,
+"lng": -87.911471,
+"distance_mi": 14.8,
+"land_sqmi": 1.402
+},
+{
+"name": "Glendale Heights",
+"kind": "village",
+"lat": 41.918877,
+"lng": -88.078095,
+"distance_mi": 14.9,
+"land_sqmi": 5.393
+},
+{
+"name": "North Chicago",
+"kind": "city",
+"lat": 42.316696,
+"lng": -87.859201,
+"distance_mi": 15.2,
+"land_sqmi": 7.996
+},
+{
+"name": "Villa Park",
+"kind": "village",
+"lat": 41.885612,
+"lng": -87.978235,
+"distance_mi": 15.2,
+"land_sqmi": 4.722
+},
+{
+"name": "Bellwood",
+"kind": "village",
+"lat": 41.882901,
+"lng": -87.87617,
+"distance_mi": 15.4,
+"land_sqmi": 2.398
+},
+{
+"name": "River Forest",
+"kind": "village",
+"lat": 41.894875,
+"lng": -87.819064,
+"distance_mi": 15.4,
+"land_sqmi": 2.48
+},
+{
+"name": "Fox River Grove",
+"kind": "village",
+"lat": 42.195491,
+"lng": -88.214806,
+"distance_mi": 16.0,
+"land_sqmi": 1.712
+},
+{
+"name": "Maywood",
+"kind": "village",
+"lat": 41.879777,
+"lng": -87.844184,
+"distance_mi": 16.0,
+"land_sqmi": 2.717
+},
+{
+"name": "Wauconda",
+"kind": "village",
+"lat": 42.277005,
+"lng": -88.135272,
+"distance_mi": 16.1,
+"land_sqmi": 5.072
+},
+{
+"name": "Bartlett",
+"kind": "village",
+"lat": 41.960637,
+"lng": -88.177747,
+"distance_mi": 16.2,
+"land_sqmi": 15.782
+},
+{
+"name": "Hillside",
+"kind": "village",
+"lat": 41.867524,
+"lng": -87.901839,
+"distance_mi": 16.3,
+"land_sqmi": 3.168
+},
+{
+"name": "Carol Stream",
+"kind": "village",
+"lat": 41.920346,
+"lng": -88.133223,
+"distance_mi": 16.4,
+"land_sqmi": 9.145
+},
+{
+"name": "East Dundee",
+"kind": "village",
+"lat": 42.097437,
+"lng": -88.248079,
+"distance_mi": 16.4,
+"land_sqmi": 2.928
+},
+{
+"name": "Lombard",
+"kind": "village",
+"lat": 41.873844,
+"lng": -88.015491,
+"distance_mi": 16.5,
+"land_sqmi": 10.172
+},
+{
+"name": "Oak Park",
+"kind": "village",
+"lat": 41.887164,
+"lng": -87.78994,
+"distance_mi": 16.5,
+"land_sqmi": 4.7
+},
+{
+"name": "Port Barrington",
+"kind": "village",
+"lat": 42.244208,
+"lng": -88.195134,
+"distance_mi": 16.8,
+"land_sqmi": 1.16
+},
+{
+"name": "Forest Park",
+"kind": "village",
+"lat": 41.868369,
+"lng": -87.815663,
+"distance_mi": 17.2,
+"land_sqmi": 2.402
+},
+{
+"name": "Broadview",
+"kind": "village",
+"lat": 41.858367,
+"lng": -87.856192,
+"distance_mi": 17.3,
+"land_sqmi": 1.777
+},
+{
+"name": "Grayslake",
+"kind": "village",
+"lat": 42.34082,
+"lng": -88.033563,
+"distance_mi": 17.3,
+"land_sqmi": 10.928
+},
+{
+"name": "Gages Lake",
+"kind": "CDP",
+"lat": 42.351645,
+"lng": -87.982437,
+"distance_mi": 17.4,
+"land_sqmi": 2.976
+},
+{
+"name": "Oakbrook Terrace",
+"kind": "city",
+"lat": 41.85356,
+"lng": -87.969023,
+"distance_mi": 17.4,
+"land_sqmi": 1.309
+},
+{
+"name": "Park City",
+"kind": "city",
+"lat": 42.353666,
+"lng": -87.892381,
+"distance_mi": 17.4,
+"land_sqmi": 1.157
+},
+{
+"name": "Westchester",
+"kind": "village",
+"lat": 41.849196,
+"lng": -87.890619,
+"distance_mi": 17.6,
+"land_sqmi": 3.686
+},
+{
+"name": "Glen Ellyn",
+"kind": "village",
+"lat": 41.866715,
+"lng": -88.062711,
+"distance_mi": 17.7,
+"land_sqmi": 6.97
+},
+{
+"name": "Hainesville",
+"kind": "village",
+"lat": 42.336184,
+"lng": -88.073446,
+"distance_mi": 17.8,
+"land_sqmi": 1.847
+},
+{
+"name": "Trout Valley",
+"kind": "village",
+"lat": 42.195703,
+"lng": -88.250688,
+"distance_mi": 17.8,
+"land_sqmi": 0.428
+},
+{
+"name": "Cary",
+"kind": "village",
+"lat": 42.212144,
+"lng": -88.249627,
+"distance_mi": 18.1,
+"land_sqmi": 6.526
+},
+{
+"name": "Round Lake Park",
+"kind": "village",
+"lat": 42.340665,
+"lng": -88.081179,
+"distance_mi": 18.2,
+"land_sqmi": 2.067
+},
+{
+"name": "Gurnee",
+"kind": "village",
+"lat": 42.370085,
+"lng": -87.936805,
+"distance_mi": 18.5,
+"land_sqmi": 13.514
+},
+{
+"name": "Island Lake",
+"kind": "village",
+"lat": 42.278773,
+"lng": -88.200494,
+"distance_mi": 18.5,
+"land_sqmi": 3.368
+},
+{
+"name": "North Riverside",
+"kind": "village",
+"lat": 41.846142,
+"lng": -87.826283,
+"distance_mi": 18.5,
+"land_sqmi": 1.644
+},
+{
+"name": "Oak Brook",
+"kind": "village",
+"lat": 41.836395,
+"lng": -87.953173,
+"distance_mi": 18.5,
+"land_sqmi": 7.976
+},
+{
+"name": "Waukegan",
+"kind": "city",
+"lat": 42.369447,
+"lng": -87.870898,
+"distance_mi": 18.6,
+"land_sqmi": 24.259
+},
+{
+"name": "Carpentersville",
+"kind": "village",
+"lat": 42.122736,
+"lng": -88.293896,
+"distance_mi": 18.8,
+"land_sqmi": 7.865
+},
+{
+"name": "Oakwood Hills",
+"kind": "village",
+"lat": 42.248087,
+"lng": -88.240012,
+"distance_mi": 18.9,
+"land_sqmi": 1.088
+},
+{
+"name": "Round Lake",
+"kind": "village",
+"lat": 42.343181,
+"lng": -88.102099,
+"distance_mi": 18.9,
+"land_sqmi": 5.56
+},
+{
+"name": "Third Lake",
+"kind": "village",
+"lat": 42.369763,
+"lng": -88.009092,
+"distance_mi": 18.9,
+"land_sqmi": 0.588
+},
+{
+"name": "La Grange Park",
+"kind": "village",
+"lat": 41.830778,
+"lng": -87.872274,
+"distance_mi": 19.0,
+"land_sqmi": 2.233
+},
+{
+"name": "Berwyn",
+"kind": "city",
+"lat": 41.843333,
+"lng": -87.790926,
+"distance_mi": 19.3,
+"land_sqmi": 3.904
+},
+{
+"name": "Wheaton",
+"kind": "city",
+"lat": 41.856833,
+"lng": -88.108126,
+"distance_mi": 19.4,
+"land_sqmi": 11.32
+},
+{
+"name": "Winfield",
+"kind": "village",
+"lat": 41.878435,
+"lng": -88.153033,
+"distance_mi": 19.4,
+"land_sqmi": 3.095
+},
+{
+"name": "Brookfield",
+"kind": "village",
+"lat": 41.825059,
+"lng": -87.847546,
+"distance_mi": 19.6,
+"land_sqmi": 3.064
+},
+{
+"name": "Riverside",
+"kind": "village",
+"lat": 41.830956,
+"lng": -87.815854,
+"distance_mi": 19.6,
+"land_sqmi": 1.978
+},
+{
+"name": "Burtons Bridge",
+"kind": "CDP",
+"lat": 42.27789,
+"lng": -88.23035,
+"distance_mi": 19.7,
+"land_sqmi": 0.123
+},
+{
+"name": "Volo",
+"kind": "village",
+"lat": 42.330324,
+"lng": -88.158743,
+"distance_mi": 19.7,
+"land_sqmi": 4.123
+},
+{
+"name": "Cicero",
+"kind": "town",
+"lat": 41.844537,
+"lng": -87.75929,
+"distance_mi": 19.8,
+"land_sqmi": 5.865
+},
+{
+"name": "Sleepy Hollow",
+"kind": "village",
+"lat": 42.090287,
+"lng": -88.313712,
+"distance_mi": 19.8,
+"land_sqmi": 1.976
+},
+{
+"name": "Wayne",
+"kind": "village",
+"lat": 41.947255,
+"lng": -88.253231,
+"distance_mi": 19.9,
+"land_sqmi": 5.73
+},
+{
+"name": "Grandwood Park",
+"kind": "CDP",
+"lat": 42.392144,
+"lng": -87.989218,
+"distance_mi": 20.2,
+"land_sqmi": 1.445
+},
+{
+"name": "Holiday Hills",
+"kind": "village",
+"lat": 42.295944,
+"lng": -88.228842,
+"distance_mi": 20.4,
+"land_sqmi": 0.934
+},
+{
+"name": "Algonquin",
+"kind": "village",
+"lat": 42.159466,
+"lng": -88.321873,
+"distance_mi": 20.6,
+"land_sqmi": 12.521
+},
+{
+"name": "La Grange",
+"kind": "village",
+"lat": 41.807213,
+"lng": -87.874148,
+"distance_mi": 20.6,
+"land_sqmi": 2.525
+},
+{
+"name": "Lake in the Hills",
+"kind": "village",
+"lat": 42.179357,
+"lng": -88.315468,
+"distance_mi": 20.6,
+"land_sqmi": 10.205
+},
+{
+"name": "Lyons",
+"kind": "village",
+"lat": 41.812184,
+"lng": -87.818589,
+"distance_mi": 20.8,
+"land_sqmi": 2.207
+},
+{
+"name": "Round Lake Beach",
+"kind": "village",
+"lat": 42.382409,
+"lng": -88.080689,
+"distance_mi": 20.8,
+"land_sqmi": 5.046
+},
+{
+"name": "West Chicago",
+"kind": "city",
+"lat": 41.894469,
+"lng": -88.221121,
+"distance_mi": 20.8,
+"land_sqmi": 15.406
+},
+{
+"name": "West Dundee",
+"kind": "village",
+"lat": 42.1044,
+"lng": -88.333451,
+"distance_mi": 20.8,
+"land_sqmi": 4.018
+},
+{
+"name": "Western Springs",
+"kind": "village",
+"lat": 41.802278,
+"lng": -87.900556,
+"distance_mi": 20.8,
+"land_sqmi": 2.785
+},
+{
+"name": "Elgin",
+"kind": "city",
+"lat": 42.038963,
+"lng": -88.325671,
+"distance_mi": 20.9,
+"land_sqmi": 38.173
+},
+{
+"name": "Hinsdale",
+"kind": "village",
+"lat": 41.800683,
+"lng": -87.928172,
+"distance_mi": 20.9,
+"land_sqmi": 4.623
+},
+{
+"name": "Clarendon Hills",
+"kind": "village",
+"lat": 41.798448,
+"lng": -87.957239,
+"distance_mi": 21.1,
+"land_sqmi": 1.81
+},
+{
+"name": "Prairie Grove",
+"kind": "village",
+"lat": 42.27386,
+"lng": -88.269882,
+"distance_mi": 21.1,
+"land_sqmi": 6.048
+},
+{
+"name": "Long Lake",
+"kind": "CDP",
+"lat": 42.372117,
+"lng": -88.127342,
+"distance_mi": 21.2,
+"land_sqmi": 1.18
+},
+{
+"name": "South Elgin",
+"kind": "village",
+"lat": 41.990254,
+"lng": -88.314285,
+"distance_mi": 21.3,
+"land_sqmi": 7.268
+},
+{
+"name": "Stickney",
+"kind": "village",
+"lat": 41.817025,
+"lng": -87.7737,
+"distance_mi": 21.3,
+"land_sqmi": 1.924
+},
+{
+"name": "Westmont",
+"kind": "village",
+"lat": 41.794371,
+"lng": -87.97286,
+"distance_mi": 21.4,
+"land_sqmi": 5.033
+},
+{
+"name": "Lakemoor",
+"kind": "village",
+"lat": 42.338872,
+"lng": -88.202665,
+"distance_mi": 21.5,
+"land_sqmi": 5.282
+},
+{
+"name": "McCook",
+"kind": "village",
+"lat": 41.798265,
+"lng": -87.841592,
+"distance_mi": 21.5,
+"land_sqmi": 2.614
+},
+{
+"name": "Round Lake Heights",
+"kind": "village",
+"lat": 42.38461,
+"lng": -88.105893,
+"distance_mi": 21.5,
+"land_sqmi": 0.576
+},
+{
+"name": "Downers Grove",
+"kind": "village",
+"lat": 41.79503,
+"lng": -88.021055,
+"distance_mi": 21.8,
+"land_sqmi": 14.652
+},
+{
+"name": "Forest View",
+"kind": "village",
+"lat": 41.809097,
+"lng": -87.773079,
+"distance_mi": 21.8,
+"land_sqmi": 1.168
+},
+{
+"name": "Venetian Village",
+"kind": "CDP",
+"lat": 42.406072,
+"lng": -88.045525,
+"distance_mi": 21.8,
+"land_sqmi": 1.771
+},
+{
+"name": "Chicago",
+"kind": "city",
+"lat": 41.837045,
+"lng": -87.684939,
+"distance_mi": 22.2,
+"land_sqmi": 227.748
+},
+{
+"name": "Lindenhurst",
+"kind": "village",
+"lat": 42.417147,
+"lng": -88.026434,
+"distance_mi": 22.3,
+"land_sqmi": 4.528
+},
+{
+"name": "Summit",
+"kind": "village",
+"lat": 41.788452,
+"lng": -87.813921,
+"distance_mi": 22.5,
+"land_sqmi": 2.119
+},
+{
+"name": "Crystal Lake",
+"kind": "city",
+"lat": 42.233209,
+"lng": -88.33436,
+"distance_mi": 22.7,
+"land_sqmi": 18.985
+},
+{
+"name": "Gilberts",
+"kind": "village",
+"lat": 42.109981,
+"lng": -88.371882,
+"distance_mi": 22.8,
+"land_sqmi": 5.489
+},
+{
+"name": "Countryside",
+"kind": "city",
+"lat": 41.774204,
+"lng": -87.875224,
+"distance_mi": 22.9,
+"land_sqmi": 2.878
+},
+{
+"name": "Lisle",
+"kind": "village",
+"lat": 41.792111,
+"lng": -88.087705,
+"distance_mi": 23.0,
+"land_sqmi": 6.896
+},
+{
+"name": "Old Mill Creek",
+"kind": "village",
+"lat": 42.433133,
+"lng": -87.9822,
+"distance_mi": 23.0,
+"land_sqmi": 10.666
+},
+{
+"name": "Lake Villa",
+"kind": "village",
+"lat": 42.417573,
+"lng": -88.082609,
+"distance_mi": 23.1,
+"land_sqmi": 6.534
+},
+{
+"name": "Indian Head Park",
+"kind": "village",
+"lat": 41.768433,
+"lng": -87.897405,
+"distance_mi": 23.2,
+"land_sqmi": 0.932
+},
+{
+"name": "Willowbrook",
+"kind": "village",
+"lat": 41.767315,
+"lng": -87.94215,
+"distance_mi": 23.2,
+"land_sqmi": 2.575
+},
+{
+"name": "St. Charles",
+"kind": "city",
+"lat": 41.919447,
+"lng": -88.310743,
+"distance_mi": 23.4,
+"land_sqmi": 14.458
+},
+{
+"name": "Hodgkins",
+"kind": "village",
+"lat": 41.766066,
+"lng": -87.861944,
+"distance_mi": 23.5,
+"land_sqmi": 2.712
+},
+{
+"name": "Beach Park",
+"kind": "village",
+"lat": 42.442271,
+"lng": -87.875368,
+"distance_mi": 23.6,
+"land_sqmi": 7.076
+},
+{
+"name": "Warrenville",
+"kind": "city",
+"lat": 41.820977,
+"lng": -88.187454,
+"distance_mi": 23.6,
+"land_sqmi": 5.425
+},
+{
+"name": "Fox Lake Hills",
+"kind": "CDP",
+"lat": 42.413499,
+"lng": -88.125987,
+"distance_mi": 23.7,
+"land_sqmi": 1.268
+},
+{
+"name": "Wadsworth",
+"kind": "village",
+"lat": 42.450687,
+"lng": -87.925147,
+"distance_mi": 24.0,
+"land_sqmi": 9.844
+},
+{
+"name": "Bedford Park",
+"kind": "village",
+"lat": 41.767773,
+"lng": -87.772556,
+"distance_mi": 24.5,
+"land_sqmi": 5.934
+},
+{
+"name": "Burr Ridge",
+"kind": "village",
+"lat": 41.747898,
+"lng": -87.920105,
+"distance_mi": 24.5,
+"land_sqmi": 7.473
+},
+{
+"name": "McHenry",
+"kind": "city",
+"lat": 42.336204,
+"lng": -88.291651,
+"distance_mi": 24.6,
+"land_sqmi": 14.829
+},
+{
+"name": "Justice",
+"kind": "village",
+"lat": 41.753401,
+"lng": -87.826941,
+"distance_mi": 24.7,
+"land_sqmi": 2.84
+},
+{
+"name": "Darien",
+"kind": "city",
+"lat": 41.745663,
+"lng": -87.981494,
+"distance_mi": 24.8,
+"land_sqmi": 6.174
+},
+{
+"name": "Lakewood",
+"kind": "village",
+"lat": 42.224514,
+"lng": -88.386688,
+"distance_mi": 25.0,
+"land_sqmi": 4.587
+},
+{
+"name": "Zion",
+"kind": "city",
+"lat": 42.459909,
+"lng": -87.851121,
+"distance_mi": 25.0,
+"land_sqmi": 9.944
+},
+{
+"name": "Ridgefield",
+"kind": "CDP",
+"lat": 42.270708,
+"lng": -88.362004,
+"distance_mi": 25.1,
+"land_sqmi": 0.523
+},
+{
+"name": "Johnsburg",
+"kind": "village",
+"lat": 42.383246,
+"lng": -88.246763,
+"distance_mi": 25.3,
+"land_sqmi": 7.254
+},
+{
+"name": "Pistakee Highlands",
+"kind": "CDP",
+"lat": 42.403037,
+"lng": -88.210887,
+"distance_mi": 25.3,
+"land_sqmi": 1.284
+},
+{
+"name": "Willow Springs",
+"kind": "village",
+"lat": 41.734137,
+"lng": -87.88401,
+"distance_mi": 25.6,
+"land_sqmi": 4.149
+},
+{
+"name": "Geneva",
+"kind": "city",
+"lat": 41.882105,
+"lng": -88.329463,
+"distance_mi": 25.7,
+"land_sqmi": 10.098
+},
+{
+"name": "Bridgeview",
+"kind": "village",
+"lat": 41.74028,
+"lng": -87.806682,
+"distance_mi": 25.8,
+"land_sqmi": 4.121
+},
+{
+"name": "Pingree Grove",
+"kind": "village",
+"lat": 42.086647,
+"lng": -88.432448,
+"distance_mi": 25.9,
+"land_sqmi": 4.041
+},
+{
+"name": "Fox Lake",
+"kind": "village",
+"lat": 42.428209,
+"lng": -88.183932,
+"distance_mi": 26.0,
+"land_sqmi": 7.834
+},
+{
+"name": "Woodridge",
+"kind": "village",
+"lat": 41.737392,
+"lng": -88.04413,
+"distance_mi": 26.0,
+"land_sqmi": 9.632
+},
+{
+"name": "Burbank",
+"kind": "city",
+"lat": 41.74441,
+"lng": -87.768568,
+"distance_mi": 26.1,
+"land_sqmi": 4.181
+},
+{
+"name": "Huntley",
+"kind": "village",
+"lat": 42.160801,
+"lng": -88.435461,
+"distance_mi": 26.3,
+"land_sqmi": 14.652
+},
+{
+"name": "McCullom Lake",
+"kind": "village",
+"lat": 42.367699,
+"lng": -88.297366,
+"distance_mi": 26.3,
+"land_sqmi": 0.347
+},
+{
+"name": "Batavia",
+"kind": "city",
+"lat": 41.847692,
+"lng": -88.311047,
+"distance_mi": 26.4,
+"land_sqmi": 10.949
+},
+{
+"name": "Winthrop Harbor",
+"kind": "village",
+"lat": 42.479696,
+"lng": -87.827722,
+"distance_mi": 26.5,
+"land_sqmi": 4.651
+},
+{
+"name": "Hickory Hills",
+"kind": "city",
+"lat": 41.724778,
+"lng": -87.828005,
+"distance_mi": 26.6,
+"land_sqmi": 2.844
+},
+{
+"name": "Antioch",
+"kind": "village",
+"lat": 42.47715,
+"lng": -88.067129,
+"distance_mi": 26.8,
+"land_sqmi": 8.244
+},
+{
+"name": "Bull Valley",
+"kind": "village",
+"lat": 42.323472,
+"lng": -88.360947,
+"distance_mi": 26.9,
+"land_sqmi": 9.843
+},
+{
+"name": "Campton Hills",
+"kind": "village",
+"lat": 41.950241,
+"lng": -88.417049,
+"distance_mi": 27.2,
+"land_sqmi": 16.89
+},
+{
+"name": "Naperville",
+"kind": "city",
+"lat": 41.749173,
+"lng": -88.162019,
+"distance_mi": 27.2,
+"land_sqmi": 39.354
+},
+{
+"name": "Hometown",
+"kind": "city",
+"lat": 41.731248,
+"lng": -87.731134,
+"distance_mi": 27.6,
+"land_sqmi": 0.479
+},
+{
+"name": "Ringwood",
+"kind": "village",
+"lat": 42.397282,
+"lng": -88.304084,
+"distance_mi": 28.0,
+"land_sqmi": 3.864
+},
+{
+"name": "Lake Catherine",
+"kind": "CDP",
+"lat": 42.483383,
+"lng": -88.125413,
+"distance_mi": 28.2,
+"land_sqmi": 0.909
+},
+{
+"name": "Oak Lawn",
+"kind": "village",
+"lat": 41.713885,
+"lng": -87.752777,
+"distance_mi": 28.3,
+"land_sqmi": 8.571
+},
+{
+"name": "Palos Hills",
+"kind": "city",
+"lat": 41.700681,
+"lng": -87.825297,
+"distance_mi": 28.3,
+"land_sqmi": 4.246
+},
+{
+"name": "Channel Lake",
+"kind": "CDP",
+"lat": 42.482745,
+"lng": -88.14713,
+"distance_mi": 28.5,
+"land_sqmi": 1.804
+},
+{
+"name": "Chicago Ridge",
+"kind": "village",
+"lat": 41.703415,
+"lng": -87.779467,
+"distance_mi": 28.6,
+"land_sqmi": 2.268
+},
+{
+"name": "Evergreen Park",
+"kind": "village",
+"lat": 41.721275,
+"lng": -87.701334,
+"distance_mi": 28.8,
+"land_sqmi": 3.163
+},
+{
+"name": "Spring Grove",
+"kind": "village",
+"lat": 42.450749,
+"lng": -88.240232,
+"distance_mi": 28.9,
+"land_sqmi": 9.051
+},
+{
+"name": "Wonder Lake",
+"kind": "village",
+"lat": 42.383405,
+"lng": -88.35004,
+"distance_mi": 29.0,
+"land_sqmi": 4.964
+},
+{
+"name": "North Aurora",
+"kind": "village",
+"lat": 41.808736,
+"lng": -88.341981,
+"distance_mi": 29.4,
+"land_sqmi": 7.578
+},
+{
+"name": "Solon Mills",
+"kind": "CDP",
+"lat": 42.442125,
+"lng": -88.27641,
+"distance_mi": 29.5,
+"land_sqmi": 0.195
+},
+{
+"name": "Worth",
+"kind": "village",
+"lat": 41.688211,
+"lng": -87.792577,
+"distance_mi": 29.5,
+"land_sqmi": 2.369
+},
+{
+"name": "Hampshire",
+"kind": "village",
+"lat": 42.115607,
+"lng": -88.505165,
+"distance_mi": 29.6,
+"land_sqmi": 10.01
+},
+{
+"name": "Lily Lake",
+"kind": "village",
+"lat": 41.957294,
+"lng": -88.472014,
+"distance_mi": 29.7,
+"land_sqmi": 2.717
+},
+{
+"name": "Woodstock",
+"kind": "city",
+"lat": 42.309542,
+"lng": -88.435342,
+"distance_mi": 29.7,
+"land_sqmi": 13.194
+},
+{
+"name": "Aurora",
+"kind": "city",
+"lat": 41.763455,
+"lng": -88.290099,
+"distance_mi": 30.0,
+"land_sqmi": 45.062
+},
+{
+"name": "Bolingbrook",
+"kind": "village",
+"lat": 41.687466,
+"lng": -88.106215,
+"distance_mi": 30.1,
+"land_sqmi": 24.977
+},
+{
+"name": "Lemont",
+"kind": "village",
+"lat": 41.667328,
+"lng": -87.984411,
+"distance_mi": 30.2,
+"land_sqmi": 8.823
+},
+{
+"name": "Palos Park",
+"kind": "village",
+"lat": 41.666163,
+"lng": -87.829602,
+"distance_mi": 30.6,
+"land_sqmi": 6.449
+},
+{
+"name": "Greenwood",
+"kind": "village",
+"lat": 42.395384,
+"lng": -88.383803,
+"distance_mi": 30.9,
+"land_sqmi": 2.656
+},
+{
+"name": "Harmony",
+"kind": "CDP",
+"lat": 42.158906,
+"lng": -88.528598,
+"distance_mi": 31.0,
+"land_sqmi": 0.53
+},
+{
+"name": "Palos Heights",
+"kind": "city",
+"lat": 41.663439,
+"lng": -87.796044,
+"distance_mi": 31.1,
+"land_sqmi": 3.781
+},
+{
+"name": "Elburn",
+"kind": "village",
+"lat": 41.886013,
+"lng": -88.460926,
+"distance_mi": 31.2,
+"land_sqmi": 3.75
+},
+{
+"name": "Merrionette Park",
+"kind": "village",
+"lat": 41.681117,
+"lng": -87.701212,
+"distance_mi": 31.4,
+"land_sqmi": 0.375
+},
+{
+"name": "Alsip",
+"kind": "village",
+"lat": 41.67027,
+"lng": -87.737085,
+"distance_mi": 31.5,
+"land_sqmi": 6.528
+},
+{
+"name": "Richmond",
+"kind": "village",
+"lat": 42.463803,
+"lng": -88.309399,
+"distance_mi": 31.7,
+"land_sqmi": 4.288
+},
+{
+"name": "Franklinville",
+"kind": "CDP",
+"lat": 42.275449,
+"lng": -88.515538,
+"distance_mi": 32.4,
+"land_sqmi": 0.166
+},
+{
+"name": "Virgil",
+"kind": "village",
+"lat": 41.955732,
+"lng": -88.528977,
+"distance_mi": 32.5,
+"land_sqmi": 2.183
+},
+{
+"name": "Union",
+"kind": "village",
+"lat": 42.231567,
+"lng": -88.54478,
+"distance_mi": 32.8,
+"land_sqmi": 0.836
+},
+{
+"name": "Crestwood",
+"kind": "village",
+"lat": 41.645598,
+"lng": -87.740078,
+"distance_mi": 33.0,
+"land_sqmi": 3.049
+},
+{
+"name": "Burlington",
+"kind": "village",
+"lat": 42.052859,
+"lng": -88.568931,
+"distance_mi": 33.1,
+"land_sqmi": 6.855
+},
+{
+"name": "Calumet Park",
+"kind": "village",
+"lat": 41.665735,
+"lng": -87.65765,
+"distance_mi": 33.2,
+"land_sqmi": 1.117
+},
+{
+"name": "Blue Island",
+"kind": "city",
+"lat": 41.65757,
+"lng": -87.681126,
+"distance_mi": 33.3,
+"land_sqmi": 4.071
+},
+{
+"name": "Lockport Heights",
+"kind": "CDP",
+"lat": 41.62149,
+"lng": -88.022401,
+"distance_mi": 33.6,
+"land_sqmi": 0.172
+},
+{
+"name": "Prestbury",
+"kind": "CDP",
+"lat": 41.785962,
+"lng": -88.423989,
+"distance_mi": 33.6,
+"land_sqmi": 0.626
+},
+{
+"name": "Coral",
+"kind": "CDP",
+"lat": 42.217995,
+"lng": -88.566203,
+"distance_mi": 33.7,
+"land_sqmi": 0.038
+},
+{
+"name": "Robbins",
+"kind": "village",
+"lat": 41.643125,
+"lng": -87.708103,
+"distance_mi": 33.7,
+"land_sqmi": 1.449
+},
+{
+"name": "Romeoville",
+"kind": "village",
+"lat": 41.627924,
+"lng": -88.101182,
+"distance_mi": 34.0,
+"land_sqmi": 19.329
+},
+{
+"name": "Boulder Hill",
+"kind": "CDP",
+"lat": 41.710352,
+"lng": -88.333783,
+"distance_mi": 34.2,
+"land_sqmi": 1.458
+},
+{
+"name": "Homer Glen",
+"kind": "village",
+"lat": 41.605179,
+"lng": -87.952373,
+"distance_mi": 34.4,
+"land_sqmi": 22.211
+},
+{
+"name": "Montgomery",
+"kind": "village",
+"lat": 41.721025,
+"lng": -88.35811,
+"distance_mi": 34.4,
+"land_sqmi": 10.008
+},
+{
+"name": "Orland Park",
+"kind": "village",
+"lat": 41.608145,
+"lng": -87.85929,
+"distance_mi": 34.4,
+"land_sqmi": 22.028
+},
+{
+"name": "Midlothian",
+"kind": "village",
+"lat": 41.625428,
+"lng": -87.724233,
+"distance_mi": 34.6,
+"land_sqmi": 2.819
+},
+{
+"name": "Hartland",
+"kind": "CDP",
+"lat": 42.363077,
+"lng": -88.508584,
+"distance_mi": 34.7,
+"land_sqmi": 0.319
+},
+{
+"name": "Posen",
+"kind": "village",
+"lat": 41.629067,
+"lng": -87.685842,
+"distance_mi": 35.0,
+"land_sqmi": 1.169
+},
+{
+"name": "Dixmoor",
+"kind": "village",
+"lat": 41.63295,
+"lng": -87.667233,
+"distance_mi": 35.1,
+"land_sqmi": 1.249
+},
+{
+"name": "Bonnie Brae",
+"kind": "CDP",
+"lat": 41.599932,
+"lng": -88.034475,
+"distance_mi": 35.2,
+"land_sqmi": 0.191
+},
+{
+"name": "Riverdale",
+"kind": "village",
+"lat": 41.642695,
+"lng": -87.63564,
+"distance_mi": 35.2,
+"land_sqmi": 3.575
+},
+{
+"name": "Oak Forest",
+"kind": "city",
+"lat": 41.60668,
+"lng": -87.753299,
+"distance_mi": 35.4,
+"land_sqmi": 6.033
+},
+{
+"name": "Sugar Grove",
+"kind": "village",
+"lat": 41.768621,
+"lng": -88.448896,
+"distance_mi": 35.4,
+"land_sqmi": 10.495
+},
+{
+"name": "Marengo",
+"kind": "city",
+"lat": 42.24655,
+"lng": -88.5975,
+"distance_mi": 35.7,
+"land_sqmi": 8.901
+},
+{
+"name": "Orland Hills",
+"kind": "village",
+"lat": 41.590654,
+"lng": -87.842141,
+"distance_mi": 35.7,
+"land_sqmi": 1.145
+},
+{
+"name": "Kaneville",
+"kind": "village",
+"lat": 41.833246,
+"lng": -88.521642,
+"distance_mi": 35.8,
+"land_sqmi": 0.285
+},
+{
+"name": "Lockport",
+"kind": "city",
+"lat": 41.591001,
+"lng": -88.029697,
+"distance_mi": 35.8,
+"land_sqmi": 11.745
+},
+{
+"name": "Oswego",
+"kind": "village",
+"lat": 41.68322,
+"lng": -88.338849,
+"distance_mi": 35.9,
+"land_sqmi": 15.826
+},
+{
+"name": "Hebron",
+"kind": "village",
+"lat": 42.465377,
+"lng": -88.434416,
+"distance_mi": 36.0,
+"land_sqmi": 1.957
+},
+{
+"name": "Plainfield",
+"kind": "village",
+"lat": 41.630301,
+"lng": -88.245282,
+"distance_mi": 36.5,
+"land_sqmi": 25.903
+},
+{
+"name": "Riley",
+"kind": "CDP",
+"lat": 42.192927,
+"lng": -88.628705,
+"distance_mi": 36.5,
+"land_sqmi": 0.177
+},
+{
+"name": "Dolton",
+"kind": "village",
+"lat": 41.630275,
+"lng": -87.596834,
+"distance_mi": 36.8,
+"land_sqmi": 4.571
+},
+{
+"name": "Markham",
+"kind": "city",
+"lat": 41.600036,
+"lng": -87.690455,
+"distance_mi": 36.8,
+"land_sqmi": 5.405
+},
+{
+"name": "Harvey",
+"kind": "city",
+"lat": 41.607583,
+"lng": -87.65199,
+"distance_mi": 37.0,
+"land_sqmi": 6.206
+},
+{
+"name": "Phoenix",
+"kind": "village",
+"lat": 41.611781,
+"lng": -87.630852,
+"distance_mi": 37.2,
+"land_sqmi": 0.464
+},
+{
+"name": "Maple Park",
+"kind": "village",
+"lat": 41.910779,
+"lng": -88.606056,
+"distance_mi": 37.3,
+"land_sqmi": 2.289
+},
+{
+"name": "Tinley Park",
+"kind": "village",
+"lat": 41.568579,
+"lng": -87.804217,
+"distance_mi": 37.5,
+"land_sqmi": 16.183
+},
+{
+"name": "Burnham",
+"kind": "village",
+"lat": 41.63948,
+"lng": -87.54496,
+"distance_mi": 37.6,
+"land_sqmi": 1.855
+},
+{
+"name": "Crest Hill",
+"kind": "city",
+"lat": 41.57436,
+"lng": -88.113261,
+"distance_mi": 37.7,
+"land_sqmi": 8.976
+},
+{
+"name": "Fairmont",
+"kind": "CDP",
+"lat": 41.561357,
+"lng": -88.058722,
+"distance_mi": 38.0,
+"land_sqmi": 1.391
+},
+{
+"name": "Marley",
+"kind": "CDP",
+"lat": 41.548225,
+"lng": -87.926043,
+"distance_mi": 38.3,
+"land_sqmi": 0.105
+},
+{
+"name": "Sunnyland",
+"kind": "CDP",
+"lat": 41.571968,
+"lng": -88.144854,
+"distance_mi": 38.3,
+"land_sqmi": 0.199
+},
+{
+"name": "Hazel Crest",
+"kind": "village",
+"lat": 41.574164,
+"lng": -87.689295,
+"distance_mi": 38.5,
+"land_sqmi": 3.397
+},
+{
+"name": "Big Rock",
+"kind": "village",
+"lat": 41.766801,
+"lng": -88.526444,
+"distance_mi": 38.6,
+"land_sqmi": 4.318
+},
+{
+"name": "Country Club Hills",
+"kind": "city",
+"lat": 41.563453,
+"lng": -87.725409,
+"distance_mi": 38.7,
+"land_sqmi": 4.97
+},
+{
+"name": "South Holland",
+"kind": "village",
+"lat": 41.598372,
+"lng": -87.602736,
+"distance_mi": 38.7,
+"land_sqmi": 7.236
+},
+{
+"name": "Alden",
+"kind": "CDP",
+"lat": 42.458607,
+"lng": -88.518517,
+"distance_mi": 38.9,
+"land_sqmi": 0.126
+},
+{
+"name": "Crystal Lawns",
+"kind": "CDP",
+"lat": 41.568532,
+"lng": -88.163917,
+"distance_mi": 38.9,
+"land_sqmi": 0.659
+},
+{
+"name": "East Hazel Crest",
+"kind": "village",
+"lat": 41.575799,
+"lng": -87.650273,
+"distance_mi": 39.1,
+"land_sqmi": 0.784
+},
+{
+"name": "Sycamore",
+"kind": "city",
+"lat": 41.996728,
+"lng": -88.677644,
+"distance_mi": 39.2,
+"land_sqmi": 10.122
+},
+{
+"name": "Arbury Hills",
+"kind": "CDP",
+"lat": 41.535311,
+"lng": -87.846065,
+"distance_mi": 39.4,
+"land_sqmi": 0.179
+},
+{
+"name": "Genoa",
+"kind": "city",
+"lat": 42.091035,
+"lng": -88.694964,
+"distance_mi": 39.4,
+"land_sqmi": 2.596
+},
+{
+"name": "Mokena",
+"kind": "village",
+"lat": 41.529863,
+"lng": -87.87771,
+"distance_mi": 39.7,
+"land_sqmi": 8.73
+},
+{
+"name": "Ridgewood",
+"kind": "CDP",
+"lat": 41.53409,
+"lng": -88.043436,
+"distance_mi": 39.7,
+"land_sqmi": 0.44
+},
+{
+"name": "Thornton",
+"kind": "village",
+"lat": 41.574149,
+"lng": -87.6193,
+"distance_mi": 39.8,
+"land_sqmi": 2.375
+},
+{
+"name": "Yorkville",
+"kind": "city",
+"lat": 41.661736,
+"lng": -88.428596,
+"distance_mi": 39.9,
+"land_sqmi": 20.144
+},
+{
+"name": "Homewood",
+"kind": "village",
+"lat": 41.559422,
+"lng": -87.662025,
+"distance_mi": 40.0,
+"land_sqmi": 5.216
+},
+{
+"name": "Calumet City",
+"kind": "city",
+"lat": 41.596493,
+"lng": -87.538572,
+"distance_mi": 40.3,
+"land_sqmi": 7.199
+},
+{
+"name": "Frankfort Square",
+"kind": "CDP",
+"lat": 41.52194,
+"lng": -87.803136,
+"distance_mi": 40.6,
+"land_sqmi": 2.496
+},
+{
+"name": "Ingalls Park",
+"kind": "CDP",
+"lat": 41.520402,
+"lng": -88.034459,
+"distance_mi": 40.6,
+"land_sqmi": 1.11
+},
+{
+"name": "Cortland",
+"kind": "town",
+"lat": 41.937239,
+"lng": -88.689303,
+"distance_mi": 40.7,
+"land_sqmi": 3.593
+},
+{
+"name": "Flossmoor",
+"kind": "village",
+"lat": 41.539107,
+"lng": -87.685704,
+"distance_mi": 40.9,
+"land_sqmi": 3.666
+},
+{
+"name": "New Lenox",
+"kind": "village",
+"lat": 41.510022,
+"lng": -87.970002,
+"distance_mi": 41.0,
+"land_sqmi": 16.067
+},
+{
+"name": "Frankfort",
+"kind": "village",
+"lat": 41.507025,
+"lng": -87.870966,
+"distance_mi": 41.3,
+"land_sqmi": 15.615
+},
+{
+"name": "Garden Prairie",
+"kind": "CDP",
+"lat": 42.253621,
+"lng": -88.712923,
+"distance_mi": 41.5,
+"land_sqmi": 0.638
+},
+{
+"name": "Olympia Fields",
+"kind": "village",
+"lat": 41.521996,
+"lng": -87.691648,
+"distance_mi": 41.9,
+"land_sqmi": 2.939
+},
+{
+"name": "Harvard",
+"kind": "city",
+"lat": 42.42964,
+"lng": -88.621065,
+"distance_mi": 42.0,
+"land_sqmi": 8.377
+},
+{
+"name": "Joliet",
+"kind": "city",
+"lat": 41.516866,
+"lng": -88.147963,
+"distance_mi": 42.0,
+"land_sqmi": 66.286
+},
+{
+"name": "Lansing",
+"kind": "village",
+"lat": 41.565004,
+"lng": -87.546004,
+"distance_mi": 42.0,
+"land_sqmi": 7.463
+},
+{
+"name": "Glenwood",
+"kind": "village",
+"lat": 41.541033,
+"lng": -87.611681,
+"distance_mi": 42.1,
+"land_sqmi": 3.284
+},
+{
+"name": "Matteson",
+"kind": "village",
+"lat": 41.508871,
+"lng": -87.746044,
+"distance_mi": 42.1,
+"land_sqmi": 9.288
+},
+{
+"name": "Rockdale",
+"kind": "village",
+"lat": 41.504881,
+"lng": -88.124765,
+"distance_mi": 42.5,
+"land_sqmi": 1.411
+},
+{
+"name": "Preston Heights",
+"kind": "CDP",
+"lat": 41.495311,
+"lng": -88.080874,
+"distance_mi": 42.7,
+"land_sqmi": 1.158
+},
+{
+"name": "Kingston",
+"kind": "village",
+"lat": 42.101062,
+"lng": -88.763197,
+"distance_mi": 42.8,
+"land_sqmi": 0.984
+},
+{
+"name": "Plano",
+"kind": "city",
+"lat": 41.680353,
+"lng": -88.536308,
+"distance_mi": 42.8,
+"land_sqmi": 8.979
+},
+{
+"name": "Shorewood",
+"kind": "village",
+"lat": 41.517527,
+"lng": -88.215155,
+"distance_mi": 43.1,
+"land_sqmi": 8.085
+},
+{
+"name": "Hinckley",
+"kind": "village",
+"lat": 41.771425,
+"lng": -88.640361,
+"distance_mi": 43.2,
+"land_sqmi": 0.858
+},
+{
+"name": "Chemung",
+"kind": "CDP",
+"lat": 42.416201,
+"lng": -88.66416,
+"distance_mi": 43.4,
+"land_sqmi": 0.281
+},
+{
+"name": "Lawrence",
+"kind": "CDP",
+"lat": 42.4433,
+"lng": -88.64171,
+"distance_mi": 43.4,
+"land_sqmi": 0.368
+},
+{
+"name": "Big Foot Prairie",
+"kind": "CDP",
+"lat": 42.491518,
+"lng": -88.600739,
+"distance_mi": 43.6,
+"land_sqmi": 0.224
+},
+{
+"name": "Chicago Heights",
+"kind": "city",
+"lat": 41.510684,
+"lng": -87.634069,
+"distance_mi": 43.6,
+"land_sqmi": 10.367
+},
+{
+"name": "DeKalb",
+"kind": "city",
+"lat": 41.928186,
+"lng": -88.747585,
+"distance_mi": 43.8,
+"land_sqmi": 17.516
+},
+{
+"name": "Richton Park",
+"kind": "village",
+"lat": 41.480183,
+"lng": -87.742531,
+"distance_mi": 44.1,
+"land_sqmi": 4.392
+},
+{
+"name": "Lynwood",
+"kind": "village",
+"lat": 41.522565,
+"lng": -87.550491,
+"distance_mi": 44.5,
+"land_sqmi": 5.121
+},
+{
+"name": "Ford Heights",
+"kind": "village",
+"lat": 41.511303,
+"lng": -87.581226,
+"distance_mi": 44.6,
+"land_sqmi": 2.035
+},
+{
+"name": "Park Forest",
+"kind": "village",
+"lat": 41.481747,
+"lng": -87.686801,
+"distance_mi": 44.7,
+"land_sqmi": 4.961
+}
+]
+}

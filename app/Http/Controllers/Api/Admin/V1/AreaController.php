@@ -35,12 +35,48 @@ class AreaController extends Controller
         return $this->paginatedResponse($paginator, fn (AreaServed $area) => $area->toApiArray());
     }
 
+    /**
+     * Towns around the office that are not areas yet, best candidates first
+     * (projects there, researched demand, Business Profile service area,
+     * distance). Backs the "pick a town" dropdown on the admin form.
+     */
+    public function candidates(Request $request): JsonResponse
+    {
+        $data = $request->validate(['q' => ['nullable', 'string', 'max:60'], 'limit' => ['nullable', 'integer', 'between:1,300']]);
+
+        return $this->itemResponse([
+            'candidates' => \App\Support\Areas\TownCatalog::candidates($data['q'] ?? null, (int) ($data['limit'] ?? 60)),
+            'radius_miles' => (float) config('areas.candidate_radius_miles', 35),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
-        $area = AreaServed::create($this->mapped($request->validate($this->rules())));
+        $data = $request->validate($this->rules() + ['generate' => ['sometimes', 'boolean']]);
+        $generate = (bool) ($data['generate'] ?? false);
+        unset($data['generate']);
+        $data = $this->mapped($data);
+        // A town from the catalog brings its own coordinates: no geocoder round trip.
+        if ((! isset($data['latitude']) || ! isset($data['longitude'])) && ($town = \App\Support\Areas\TownCatalog::find((string) $data['city']))) {
+            $data['latitude'] = $town['lat'];
+            $data['longitude'] = $town['lng'];
+        }
+        $area = AreaServed::create($data);
         $this->queueGeocodeIfMissingCoords($area);
+        if ($generate) {
+            \App\Jobs\GenerateAreaContentJob::launch($area);
+        }
 
         return $this->itemResponse($area->fresh()->toApiArray(), 201);
+    }
+
+    /** Queue Gemini to fill the empty content fields (or everything with force=1). */
+    public function generate(Request $request, int $area): JsonResponse
+    {
+        $model = AreaServed::findOrFail($area);
+        \App\Jobs\GenerateAreaContentJob::launch($model, $request->boolean('force'));
+
+        return $this->itemResponse($model->fresh()->toApiArray(), 202);
     }
 
     public function show(int $area): JsonResponse

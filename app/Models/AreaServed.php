@@ -528,6 +528,9 @@ class AreaServed extends Model
             'local_intro' => $this->local_intro,
             'landmarks' => $this->landmarks,
             'permit_notes' => $this->permit_notes,
+            // Set while GenerateAreaContentJob is writing the page; the admin polls it.
+            'generating' => is_array($flag = \Illuminate\Support\Facades\Cache::get(\App\Jobs\GenerateAreaContentJob::flagKey((int) $this->id))) && empty($flag['error']),
+            'generation_error' => is_array($flag) ? ($flag['error'] ?? null) : null,
         ];
     }
 }

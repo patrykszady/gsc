@@ -84,6 +84,10 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     Route::apiResource('testimonials', TestimonialController::class);
 
     // gsc-only: jpeterson's ping omits the "areas" capability.
+    // Candidate towns (before the resource so "candidates" is never read as an id)
+    // and on-demand content generation for one area.
+    Route::get('areas/candidates', [AreaController::class, 'candidates']);
+    Route::post('areas/{area}/generate', [AreaController::class, 'generate'])->whereNumber('area');
     Route::apiResource('areas', AreaController::class);
 
     Route::get('leads/stats', [LeadController::class, 'stats']);
