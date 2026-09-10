@@ -107,11 +107,20 @@ async function waitForClearance(page, clearanceMs) {
 /** The page's LocalBusiness block: its name and its reviews, as Angi published them. */
 async function readStructuredReviews(page) {
   return await page.evaluate(() => {
+    // Angi double-encodes: the JSON holds "&amp;#39;", which is one decode
+    // away from "&#39;" and two from an apostrophe. Decode until it settles,
+    // or the stored review shows the entity as literal text.
     const decode = (value) => {
-      const el = document.createElement('textarea');
-      el.innerHTML = value || '';
+      let out = value || '';
 
-      return el.value;
+      for (let pass = 0; pass < 3; pass++) {
+        const el = document.createElement('textarea');
+        el.innerHTML = out;
+        if (el.value === out) break;
+        out = el.value;
+      }
+
+      return out;
     };
 
     for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {

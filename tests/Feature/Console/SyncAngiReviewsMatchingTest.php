@@ -110,6 +110,42 @@ class SyncAngiReviewsMatchingTest extends TestCase
         $this->assertSame(1, AngiReviews::lastRun()['linked']);
     }
 
+    /**
+     * Angi serves its review bodies HTML-encoded (and double-encoded at
+     * that). Stored raw, the site would print "couldn&#39;t" at a reader,
+     * and the text would never match the same review held from elsewhere.
+     */
+    public function test_html_encoded_text_is_decoded_before_it_is_stored(): void
+    {
+        $this->payload([$this->review('Ron &amp;#39; Denise', 'They said we couldn&amp;#39;t have it both ways &amp;amp; then delivered.')]);
+
+        $this->importFromPayload()->assertExitCode(0);
+
+        $stored = Testimonial::sole();
+        $this->assertSame("They said we couldn't have it both ways & then delivered.", $stored->review_description);
+        $this->assertSame("Ron ' Denise", $stored->reviewer_name);
+    }
+
+    public function test_an_html_encoded_review_still_matches_the_copy_already_stored(): void
+    {
+        // The same review, held from Google with a real apostrophe.
+        $existing = Testimonial::create([
+            'reviewer_name' => 'Teresa McMillin',
+            'review_description' => "We couldn't be happier with the results. They kept the project moving along at all times.",
+            'review_date' => '2022-12-21',
+            'star_rating' => 5,
+        ]);
+        ReviewUrl::create(['testimonial_id' => $existing->id, 'platform' => 'google', 'url' => 'https://g.page/r/x/review']);
+
+        $this->payload([$this->review('Teresa M.', 'We couldn&#39;t be happier with the results. They kept the project moving along at all times.', '2022-12-21T09:04:58')]);
+
+        $this->importFromPayload()->assertExitCode(0);
+
+        $this->assertSame(1, Testimonial::count(), 'the encoded copy is the same review, not a second one');
+        $this->assertSame('Teresa McMillin', Testimonial::sole()->reviewer_name);
+        $this->assertEqualsCanonicalizing(['google', 'angi'], Testimonial::sole()->reviewUrls->pluck('platform')->all());
+    }
+
     public function test_the_same_reviewer_and_date_is_treated_as_one_review(): void
     {
         Testimonial::create(['reviewer_name' => 'Teresa M.', 'review_description' => 'An older wording of the same review.', 'review_date' => '2022-12-21', 'star_rating' => 5]);

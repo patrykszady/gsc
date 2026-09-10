@@ -214,8 +214,8 @@ class SyncAngiReviews extends Command
      */
     private function normalize(array $review): ?array
     {
-        $name = trim((string) ($review['reviewer_name'] ?? ''));
-        $description = trim((string) ($review['review_description'] ?? ''));
+        $name = trim($this->decodeEntities((string) ($review['reviewer_name'] ?? '')));
+        $description = trim($this->decodeEntities((string) ($review['review_description'] ?? '')));
         if ($name === '' || $description === '') {
             return null;
         }
@@ -251,10 +251,28 @@ class SyncAngiReviews extends Command
             .'|'.$this->comparable($payload['review_description']);
     }
 
+    /**
+     * HTML entities decoded, in case a stored review kept them: "couldn&#39;t"
+     * and "couldn't" are the same review and must compare equal.
+     */
+    private function decodeEntities(string $value): string
+    {
+        for ($pass = 0; $pass < 3; $pass++) {
+            $decoded = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if ($decoded === $value) {
+                break;
+            }
+            $value = $decoded;
+        }
+
+        return $value;
+    }
+
     /** Letters, digits and single spaces only — punctuation and encoding differ between sites. */
     private function comparable(?string $text, int $length = 160): string
     {
-        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', (string) $text) ?: (string) $text;
+        $text = $this->decodeEntities((string) $text);
+        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
         $text = (string) preg_replace('/[^a-zA-Z0-9 ]/', '', $text);
         $text = mb_strtolower((string) preg_replace('/\s+/', ' ', trim($text)));
 
