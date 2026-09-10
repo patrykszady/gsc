@@ -81,6 +81,9 @@ class SyncAngiReviewsMatchingTest extends TestCase
         $this->assertSame(1, Testimonial::count());
         $this->assertSame(0, AngiReviews::lastRun()['created']);
         $this->assertSame(1, AngiReviews::lastRun()['matched']);
+        // It was cited on the first run; the second must not add a duplicate row.
+        $this->assertSame(0, AngiReviews::lastRun()['linked']);
+        $this->assertSame(1, Testimonial::sole()->reviewUrls()->where('platform', 'angi')->count());
     }
 
     public function test_a_review_already_stored_from_another_site_is_not_duplicated(): void
@@ -99,7 +102,12 @@ class SyncAngiReviewsMatchingTest extends TestCase
         $this->importFromPayload()->assertExitCode(0);
 
         $this->assertSame(1, Testimonial::count(), 'matched on text, so no second copy');
-        $this->assertSame('Denise McMorrow', Testimonial::sole()->reviewer_name, 'the stored testimonial is left alone');
+        $this->assertSame('Denise McMorrow', Testimonial::sole()->reviewer_name, 'the stored wording is left alone');
+        // It IS on Angi, so it now cites Angi as well as Google — this is what
+        // the Platforms count and the public citations read.
+        $this->assertEqualsCanonicalizing(['google', 'angi'], Testimonial::sole()->reviewUrls->pluck('platform')->all());
+        $this->assertSame('https://www.angi.com/companylist/us/il/gs.htm', Testimonial::sole()->reviewUrls->firstWhere('platform', 'angi')->url);
+        $this->assertSame(1, AngiReviews::lastRun()['linked']);
     }
 
     public function test_the_same_reviewer_and_date_is_treated_as_one_review(): void
@@ -111,6 +119,7 @@ class SyncAngiReviewsMatchingTest extends TestCase
         $this->importFromPayload()->assertExitCode(0);
 
         $this->assertSame(1, Testimonial::count());
+        $this->assertSame(1, Testimonial::sole()->reviewUrls()->where('platform', 'angi')->count());
     }
 
     public function test_it_refuses_a_page_belonging_to_another_business(): void
@@ -139,11 +148,17 @@ class SyncAngiReviewsMatchingTest extends TestCase
 
     public function test_a_dry_run_writes_nothing(): void
     {
-        $this->payload([$this->review('Denise M.', 'They remodelled our kitchen and the workmanship was first-rate.')]);
+        $existing = Testimonial::create(['reviewer_name' => 'Denise M.', 'review_description' => 'They remodelled our kitchen and the workmanship was first-rate.', 'review_date' => '2024-11-20', 'star_rating' => 5]);
+
+        $this->payload([
+            $this->review('Denise M.', 'They remodelled our kitchen and the workmanship was first-rate.'),
+            $this->review('Somebody New', 'A review the site has never seen before.'),
+        ]);
 
         $this->importFromPayload(['--dry-run' => true])->assertExitCode(0);
 
-        $this->assertSame(0, Testimonial::count());
+        $this->assertSame(1, Testimonial::count(), 'nothing created');
+        $this->assertSame(0, $existing->reviewUrls()->count(), 'nothing cited');
         $this->assertNull(AngiReviews::lastRun());
     }
 }

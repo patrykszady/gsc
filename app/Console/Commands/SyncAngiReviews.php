@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\ReviewUrl;
 use App\Models\Site;
 use App\Models\Testimonial;
 use App\Support\Reviews\AngiReviews;
@@ -18,7 +19,9 @@ use Illuminate\Support\Collection;
  *
  * A scraped review is matched against the testimonials we already have —
  * same text, or same reviewer and date — so a review left on several sites
- * is stored once. Only unmatched ones are created.
+ * is stored once. An unmatched review is created; a matched one keeps the
+ * text it already has and simply gains an Angi citation, since it is on
+ * Angi too.
  */
 class SyncAngiReviews extends Command
 {
@@ -108,7 +111,7 @@ class SyncAngiReviews extends Command
 
         $this->info('Scraped '.$payloads->count().' review(s) from '.($scraped['business_name'] ?: 'the profile').'.');
 
-        $stats = ['created' => 0, 'matched' => 0, 'failed_parse' => count($scraped['reviews'] ?? []) - $payloads->count()];
+        $stats = ['created' => 0, 'matched' => 0, 'linked' => 0, 'failed_parse' => count($scraped['reviews'] ?? []) - $payloads->count()];
         $existing = Testimonial::with('reviewUrls')->get();
         $seen = [];
 
@@ -119,8 +122,23 @@ class SyncAngiReviews extends Command
             }
             $seen[$key] = true;
 
-            if ($this->matchExisting($existing, $payload)) {
+            if ($match = $this->matchExisting($existing, $payload)) {
                 $stats['matched']++;
+
+                // We already hold this review from another site. Its text
+                // stays as it is, but it IS on Angi, so it should cite Angi:
+                // these rows are what the Platforms count and the public
+                // citations read.
+                if (! $match->reviewUrls->contains(fn (ReviewUrl $url) => $url->platform === 'angi')) {
+                    $stats['linked']++;
+                    if ($dryRun) {
+                        $this->line("[DRY RUN] Cite Angi on: {$match->reviewer_name}");
+                    } else {
+                        $match->reviewUrls()->create(['platform' => 'angi', 'url' => $profileUrl]);
+                        $match->load('reviewUrls');
+                        $this->line("Cited Angi on: #{$match->id} {$match->reviewer_name}");
+                    }
+                }
 
                 continue;
             }
@@ -151,7 +169,7 @@ class SyncAngiReviews extends Command
         $this->info(($dryRun ? '[DRY RUN] ' : '').'Summary');
         $this->line('  Scraped: '.$payloads->count());
         $this->line('  Created: '.$stats['created']);
-        $this->line('  Already had it: '.$stats['matched']);
+        $this->line('  Already had it: '.$stats['matched'].' ('.$stats['linked'].' newly cited to Angi)');
         $this->line('  Unusable cards: '.$stats['failed_parse']);
 
         if (! $dryRun) {
@@ -159,6 +177,7 @@ class SyncAngiReviews extends Command
                 'scraped' => $payloads->count(),
                 'created' => $stats['created'],
                 'matched' => $stats['matched'],
+                'linked' => $stats['linked'],
                 'parse_failures' => $stats['failed_parse'],
             ]);
         }
