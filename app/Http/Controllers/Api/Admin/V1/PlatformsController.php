@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
+use App\Jobs\RunSeoChannelSyncJob;
 use App\Jobs\YelpAutoLogin;
 use App\Models\OAuthToken;
 use App\Models\PlatformSetting;
@@ -17,6 +18,7 @@ use App\Services\InstagramRemoteLoginService;
 use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use App\Support\Reviews\HouzzReviews;
 use App\Support\YelpCookieJar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,6 +69,7 @@ class PlatformsController extends Controller
             'meta' => $this->metaStatus(),
             'yelp' => $this->yelpStatus(),
             'instagram' => $this->instagramStatus(),
+            'houzz' => $this->houzzStatus(),
         ]);
     }
 
@@ -144,6 +147,65 @@ class PlatformsController extends Controller
             'count' => (clone $query)->count(),
             'latest_review_date' => $latest ? Carbon::parse($latest)->toDateString() : null,
         ]);
+    }
+
+    /**
+     * POST platforms/houzz/settings — the Houzz profile URL and the weekly
+     * review-import switch for THIS site. The URL is the same setting the
+     * Social Media page's profile list edits.
+     */
+    public function saveHouzzSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'profile_url' => ['nullable', 'url', 'max:500', 'regex:#^https://(www\.)?houzz\.com/#i'],
+            'enabled' => ['required', 'boolean'],
+        ], [
+            'profile_url.regex' => 'Enter the houzz.com address of the business profile.',
+        ]);
+
+        HouzzReviews::save($data['profile_url'] ?? null, (bool) $data['enabled']);
+
+        return $this->itemResponse($this->houzzStatus());
+    }
+
+    /**
+     * POST platforms/houzz/reviews/sync — import new Houzz reviews now, on
+     * the queue, as this tenant. Same job the Monday schedule dispatches.
+     */
+    public function syncHouzzReviews(): JsonResponse
+    {
+        if (! HouzzReviews::profileUrl()) {
+            return $this->itemResponse(['ok' => false, 'message' => 'Add the Houzz profile URL first.']);
+        }
+        if (HouzzReviews::isRunning()) {
+            return $this->itemResponse(['ok' => false, 'message' => 'A Houzz import is already running — give it a few minutes.']);
+        }
+
+        HouzzReviews::markRunning(true);
+        RunSeoChannelSyncJob::dispatch(
+            'testimonials:sync-houzz-reviews',
+            ['--browser-scrape' => true, '--only-new' => true],
+            Site::current()->id,
+        );
+
+        return $this->itemResponse(['ok' => true, 'message' => 'Importing new Houzz reviews in the background — this takes a few minutes.']);
+    }
+
+    /** @return array<string, mixed> */
+    protected function houzzStatus(): array
+    {
+        $query = Testimonial::query()
+            ->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'houzz'));
+        $latest = (clone $query)->max('review_date');
+
+        return [
+            'profile_url' => HouzzReviews::profileUrl(),
+            'enabled' => HouzzReviews::enabled(),
+            'reviews_count' => (clone $query)->count(),
+            'latest_review_date' => $latest ? Carbon::parse($latest)->toDateString() : null,
+            'last_run' => HouzzReviews::lastRun(),
+            'running' => HouzzReviews::isRunning(),
+        ];
     }
 
     /**

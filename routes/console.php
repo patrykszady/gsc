@@ -208,11 +208,28 @@ Schedule::command('google-business-profile:match-reviews --normalize-google-urls
             ->exists();
     });
 
-// Houzz: check for new reviews weekly (create-only; skip existing)
-Schedule::command('testimonials:sync-houzz-reviews --browser-scrape --only-new')->weeklyOn(1, '06:30')
+// Houzz: weekly import of new reviews for every site that switched it on
+// under Admin → Platforms → Houzz (profile URL and switch are per site).
+// One queued job per site, run as that tenant, so the rows land with the
+// right site_id — the console itself has no request and would otherwise
+// write everything to the default site.
+Schedule::call(function () {
+    \App\Support\Tenancy::each(function (\App\Models\Site $site) {
+        if (! \App\Support\Reviews\HouzzReviews::enabled() || ! \App\Support\Reviews\HouzzReviews::profileUrl()) {
+            return;
+        }
+        \App\Support\Reviews\HouzzReviews::markRunning(true);
+        \App\Jobs\RunSeoChannelSyncJob::dispatch(
+            'testimonials:sync-houzz-reviews',
+            ['--browser-scrape' => true, '--only-new' => true],
+            $site->id,
+        );
+    }, includeInactive: true);
+})->weeklyOn(1, '06:30')
     ->timezone('America/Chicago')
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Houzz review sync failed'));
+    ->name('houzz-reviews-import')
+    ->onOneServer()
+    ->onFailure(fn () => logger()->error('Scheduled Houzz review import failed to dispatch'));
 
 // Yelp: check for new reviews weekly (create-only; skip existing).
 // Scrapes the public review feed / stealth browser through the 2captcha

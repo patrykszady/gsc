@@ -15,6 +15,10 @@ Route::prefix('platforms')->group(function () {
     Route::get('yelp/reviews-summary', [PlatformsController::class, 'yelpReviewsSummary']);
     Route::post('gsc/submit-sitemaps', [PlatformsController::class, 'submitGscSitemaps']);
 
+    // ---- Houzz: per-site profile URL + weekly review import (Admin → Platforms) ----
+    Route::post('houzz/settings', [PlatformsController::class, 'saveHouzzSettings']);
+    Route::post('houzz/reviews/sync', [PlatformsController::class, 'syncHouzzReviews']);
+
     // ---- Yelp: credentials, session, cookie injection, auto-login ----
     Route::post('yelp/credentials', [PlatformsController::class, 'saveYelpCredentials']);
     Route::delete('yelp/credentials/password', [PlatformsController::class, 'clearYelpPassword']);

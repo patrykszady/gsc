@@ -6,7 +6,9 @@ puppeteer.use(StealthPlugin());
 
 function parseArgs(argv) {
   const args = {
-    url: 'https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575',
+    url: null,
+    // The reviewed business, as Houzz prints it ("Reviews for <brand>"); passed by the artisan command.
+    brand: '',
     timeoutMs: 120000,
     maxScrolls: 40,
     headless: true,
@@ -15,6 +17,7 @@ function parseArgs(argv) {
 
   for (const arg of argv.slice(2)) {
     if (arg.startsWith('--url=')) args.url = arg.slice('--url='.length);
+    if (arg.startsWith('--brand=')) args.brand = arg.slice('--brand='.length).trim();
     if (arg.startsWith('--timeout-ms=')) args.timeoutMs = Number(arg.slice('--timeout-ms='.length)) || args.timeoutMs;
     if (arg.startsWith('--max-scrolls=')) args.maxScrolls = Number(arg.slice('--max-scrolls='.length)) || args.maxScrolls;
     if (arg.startsWith('--proxy=')) args.proxy = arg.slice('--proxy='.length);
@@ -24,7 +27,7 @@ function parseArgs(argv) {
   return args;
 }
 
-async function autoExpandReviews(page, maxScrolls) {
+async function autoExpandReviews(page, maxScrolls, brand) {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const scrollReviewContainers = async () => {
     await page.evaluate(() => {
@@ -43,11 +46,11 @@ async function autoExpandReviews(page, maxScrolls) {
   };
 
   const clickByPattern = async (pattern) => {
-    return await page.evaluate((patternSource) => {
+    return await page.evaluate((patternSource, brand) => {
       const re = new RegExp(patternSource, 'i');
 
       const heading = Array.from(document.querySelectorAll('h1,h2,h3,h4,div,span'))
-        .find((el) => (el.textContent || '').replace(/\s+/g, ' ').includes('Reviews for GS Construction'));
+        .find((el) => (el.textContent || '').replace(/\s+/g, ' ').includes(`Reviews for ${brand}`));
       const root = heading?.closest('section,div,article') || document.body;
 
       const candidates = Array.from(root.querySelectorAll('button, a, span, div'));
@@ -68,7 +71,7 @@ async function autoExpandReviews(page, maxScrolls) {
       }
 
       return clicked;
-    }, pattern.source);
+    }, pattern.source, brand);
   };
 
   // Try hard to open the full review list first (e.g. "Show all 55 reviews").
@@ -88,8 +91,8 @@ async function autoExpandReviews(page, maxScrolls) {
   }
 }
 
-async function scrapeProfileReviews(page) {
-  return await page.evaluate(() => {
+async function scrapeProfileReviews(page, brand) {
+  return await page.evaluate((brand) => {
     const clean = (v) => (v || '').replace(/\s+/g, ' ').trim();
     const preserveParagraphs = (v) => {
       const lines = (v || '')
@@ -133,7 +136,7 @@ async function scrapeProfileReviews(page) {
     };
 
     const reviewsHeading = Array.from(document.querySelectorAll('h1,h2,h3,h4,div,span'))
-      .find((el) => clean(el.textContent).match(/Reviews\s+for\s+GS\s+Construction/i));
+      .find((el) => new RegExp('Reviews\\s+for\\s+' + brand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'i').test(clean(el.textContent)));
 
     let root = document.body;
     if (reviewsHeading) {
@@ -221,7 +224,7 @@ async function scrapeProfileReviews(page) {
     }
 
     return reviews;
-  });
+  }, brand);
 }
 
 /**
@@ -306,6 +309,9 @@ function parseReviewsFromHtml(html) {
 async function main() {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const args = parseArgs(process.argv);
+  if (!args.url) throw new Error('Usage: scrape-houzz-reviews.mjs --url=<houzz profile url> --brand=<business name>');
+  // Review links carry the reviewed business slug; compare with punctuation stripped.
+  const brandKey = args.brand.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
   const baseLaunchArgs = [
       '--no-sandbox',
@@ -370,9 +376,18 @@ async function main() {
       await page.goto(reviewsUrl, { waitUntil: 'networkidle2', timeout: args.timeoutMs });
       await sleep(3000 + Math.random() * 2000);
 
-      await autoExpandReviews(page, args.maxScrolls);
+      // A wrong or stale profile URL gets Houzz's 404 page: say so instead of
+      // reporting "no reviews", which reads as a scraping problem.
+      if (/page not found/i.test(await page.title())) {
+        console.error('[scraper] Houzz returned "Page Not Found" for the profile URL.');
+        process.stdout.write(JSON.stringify({ source_url: args.url, count: 0, reviews: [], error: 'not_found' }));
+        await browser.close();
+        return;
+      }
 
-      let reviews = await scrapeProfileReviews(page);
+      await autoExpandReviews(page, args.maxScrolls, args.brand);
+
+      let reviews = await scrapeProfileReviews(page, args.brand);
 
       // If DOM scraping found nothing, try parsing the raw HTML source as fallback.
       if (reviews.length === 0) {
@@ -407,18 +422,18 @@ async function main() {
             console.error(`[resolve] ${review.reviewer_name} -> ${activityUrl}`);
             await resolvePage.goto(activityUrl, { waitUntil: 'networkidle2', timeout: 30000 });
             await sleep(1000 + Math.random() * 1000);
-            const viewReviewUrl = await resolvePage.evaluate(() => {
+            const viewReviewUrl = await resolvePage.evaluate((brandKey) => {
               const links = Array.from(document.querySelectorAll('a[href*="/viewReview/"]'));
               const gsLink = links.find((a) => {
-                const href = (a.getAttribute('href') || '').toLowerCase();
-                return href.includes('gs-construction');
+                const href = (a.getAttribute('href') || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+                return href.includes(brandKey + 'review');
               });
               if (!gsLink) return null;
               const href = gsLink.getAttribute('href') || '';
               if (href.startsWith('http')) return href;
               if (href.startsWith('/')) return `https://www.houzz.com${href}`;
               return null;
-            });
+            }, brandKey);
             if (viewReviewUrl) {
               review.url = viewReviewUrl;
               console.error(`[resolve] Found: ${viewReviewUrl}`);

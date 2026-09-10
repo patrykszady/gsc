@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Site;
 use App\Models\Testimonial;
+use App\Support\Reviews\HouzzReviews;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -14,8 +16,11 @@ class SyncHouzzReviews extends Command
 
     private string $proxy = '';
 
+    /** Why the profile scrape came back empty, when the scraper could tell. */
+    private ?string $scrapeError = null;
+
     protected $signature = 'testimonials:sync-houzz-reviews
-        {--profile-url=https://www.houzz.com/professionals/kitchen-and-bath-remodelers/gs-construction-pfvwus-pf~1225706575 : Houzz business profile URL}
+        {--profile-url= : Houzz business profile URL (default: the site setting from Admin → Platforms)}
         {--browser-scrape : Use Puppeteer profile scraper to extract all review cards}
         {--http-scrape : Scrape profile page via HTTP+proxy (no Puppeteer needed)}
         {--browser-headed : Run Puppeteer in headed mode (useful for logged-in/manual flows)}
@@ -32,8 +37,29 @@ class SyncHouzzReviews extends Command
 
     public function handle(): int
     {
+        try {
+            return $this->sync();
+        } catch (\Throwable $e) {
+            // The Platforms card shows the last run; a crash must land there too.
+            if (! $this->option('dry-run')) {
+                HouzzReviews::recordRun([], mb_substr($e->getMessage(), 0, 300));
+            }
+            throw $e;
+        }
+    }
+
+    private function sync(): int
+    {
         $dryRun = (bool) $this->option('dry-run');
-        $profileUrl = (string) $this->option('profile-url');
+        $profileUrl = (string) ($this->option('profile-url') ?: HouzzReviews::profileUrl() ?? '');
+        if ($profileUrl === '') {
+            $this->warn('No Houzz profile URL is configured for '.Site::current()->name.'. Add it under Admin → Platforms → Houzz.');
+            if (! $dryRun) {
+                HouzzReviews::recordRun([], 'No Houzz profile URL configured.');
+            }
+
+            return self::FAILURE;
+        }
         $browserScrape = (bool) $this->option('browser-scrape');
         $httpScrape = (bool) $this->option('http-scrape');
         $browserHeaded = (bool) $this->option('browser-headed');
@@ -85,8 +111,11 @@ class SyncHouzzReviews extends Command
         }
 
         if (empty($reviewUrls) && empty($profileReviews)) {
-            $this->warn('No Houzz reviews were discovered from URL seeds or profile scrape.');
+            $this->warn($this->scrapeError ?? 'No Houzz reviews were discovered from URL seeds or profile scrape.');
             $this->line('Tip: add --http-scrape, --browser-scrape, or --seed-review-url.');
+            if (! $dryRun) {
+                HouzzReviews::recordRun(['scraped' => 0, 'created' => 0], $this->scrapeError ?? 'No reviews found on the Houzz profile page.');
+            }
 
             return self::SUCCESS;
         }
@@ -319,6 +348,16 @@ class SyncHouzzReviews extends Command
         $this->line('  Skipped existing (only-new): '.$stats['skipped_existing']);
         $this->line('  Updated existing: '.$stats['updated']);
         $this->line('  Parse failures: '.$stats['failed_parse']);
+
+        if (! $dryRun) {
+            HouzzReviews::recordRun([
+                'scraped' => count($profileReviews),
+                'created' => $stats['created'],
+                'matched' => $stats['matched_url'] + $stats['matched_content'] + $stats['matched_name_date'],
+                'updated' => $stats['updated'],
+                'parse_failures' => $stats['failed_parse'],
+            ]);
+        }
 
         return self::SUCCESS;
     }
@@ -702,9 +741,10 @@ class SyncHouzzReviews extends Command
         }
 
         $cmd = sprintf(
-            'node %s --url=%s --timeout-ms=%d %s %s',
+            'node %s --url=%s --brand=%s --timeout-ms=%d %s %s',
             escapeshellarg($scriptPath),
             escapeshellarg($profileUrl),
+            escapeshellarg(HouzzReviews::brandName()),
             $timeoutMs,
             $headed ? '--headed' : '',
             $proxy !== '' ? '--proxy='.escapeshellarg($proxy) : '',
@@ -779,6 +819,9 @@ class SyncHouzzReviews extends Command
         if (! is_array($decoded) || ! isset($decoded['reviews']) || ! is_array($decoded['reviews'])) {
             $this->warn('Failed to parse Puppeteer scraper JSON output.');
             return [];
+        }
+        if (($decoded['error'] ?? null) === 'not_found') {
+            $this->scrapeError = 'Houzz returned "Page Not Found" for the profile URL — check it under Admin → Platforms → Houzz.';
         }
 
         return $decoded['reviews'];
@@ -860,7 +903,7 @@ class SyncHouzzReviews extends Command
         }
 
         $candidates = array_values(array_unique($candidates));
-        $candidates = array_values(array_filter($candidates, fn ($u) => str_contains(mb_strtolower($u), 'gs-construction-review')));
+        $candidates = array_values(array_filter($candidates, fn ($u) => HouzzReviews::reviewUrlBelongsTo($u, HouzzReviews::brandName())));
 
         if (count($candidates) === 1) {
             $this->reviewUrlByUserProfileCache[$reviewerProfileUrl] = $candidates[0];
