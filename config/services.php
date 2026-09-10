@@ -305,6 +305,10 @@ return [
 
     'scraper' => [
         'proxy' => env('SCRAPER_PROXY_URL') ?: $compose2captchaProxy(),
+        // Angi's bot protection refuses headless Chromium, so its scrape runs
+        // a headed browser on a virtual display.
+        'xvfb' => env('SCRAPER_XVFB_BINARY', 'xvfb-run'),
+        'screen' => env('SCRAPER_XVFB_SCREEN', '1440x2400x24'),
     ],
 
     'yelp' => [

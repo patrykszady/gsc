@@ -18,7 +18,9 @@ use App\Services\InstagramRemoteLoginService;
 use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use App\Support\Reviews\AngiReviews;
 use App\Support\Reviews\HouzzReviews;
+use App\Support\Reviews\ReviewImport;
 use App\Support\YelpCookieJar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,7 +71,8 @@ class PlatformsController extends Controller
             'meta' => $this->metaStatus(),
             'yelp' => $this->yelpStatus(),
             'instagram' => $this->instagramStatus(),
-            'houzz' => $this->houzzStatus(),
+            // Houzz and Angi: the scraped review imports, each keyed by platform.
+            ...collect(ReviewImport::sources())->mapWithKeys(fn (string $source) => [$source::platform() => $source::status()])->all(),
         ]);
     }
 
@@ -150,42 +153,25 @@ class PlatformsController extends Controller
     }
 
     /**
-     * POST platforms/houzz/reviews/sync — import new Houzz reviews now, on
-     * the queue, as this tenant. Same job the Monday schedule dispatches.
+     * POST platforms/{platform}/reviews/sync — import that platform's new
+     * reviews now, on the queue, as this tenant. Same job the Monday
+     * schedule dispatches.
      */
-    public function syncHouzzReviews(): JsonResponse
+    public function syncPlatformReviews(string $platform): JsonResponse
     {
-        if (! HouzzReviews::profileUrl()) {
-            return $this->itemResponse(['ok' => false, 'message' => 'Add the Houzz profile URL first.']);
+        $source = collect(ReviewImport::sources())->first(fn (string $s) => $s::platform() === $platform);
+        abort_unless($source !== null, 404);
+
+        if (! $source::profileUrl()) {
+            return $this->itemResponse(['ok' => false, 'message' => 'Add the '.$source::label().' profile URL first.']);
         }
-        if (HouzzReviews::isRunning()) {
-            return $this->itemResponse(['ok' => false, 'message' => 'A Houzz import is already running — give it a few minutes.']);
+        if ($source::isRunning()) {
+            return $this->itemResponse(['ok' => false, 'message' => 'A '.$source::label().' import is already running — give it a few minutes.']);
         }
 
-        HouzzReviews::markRunning(true);
-        RunSeoChannelSyncJob::dispatch(
-            'testimonials:sync-houzz-reviews',
-            ['--browser-scrape' => true, '--only-new' => true],
-            Site::current()->id,
-        );
+        $source::dispatchImport();
 
-        return $this->itemResponse(['ok' => true, 'message' => 'Importing new Houzz reviews in the background — this takes a few minutes.']);
-    }
-
-    /** @return array<string, mixed> */
-    protected function houzzStatus(): array
-    {
-        $query = Testimonial::query()
-            ->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'houzz'));
-        $latest = (clone $query)->max('review_date');
-
-        return [
-            'profile_url' => HouzzReviews::profileUrl(),
-            'reviews_count' => (clone $query)->count(),
-            'latest_review_date' => $latest ? Carbon::parse($latest)->toDateString() : null,
-            'last_run' => HouzzReviews::lastRun(),
-            'running' => HouzzReviews::isRunning(),
-        ];
+        return $this->itemResponse(['ok' => true, 'message' => 'Importing new '.$source::label().' reviews in the background — this takes a few minutes.']);
     }
 
     /**

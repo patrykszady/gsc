@@ -15,9 +15,11 @@ Route::prefix('platforms')->group(function () {
     Route::get('yelp/reviews-summary', [PlatformsController::class, 'yelpReviewsSummary']);
     Route::post('gsc/submit-sitemaps', [PlatformsController::class, 'submitGscSitemaps']);
 
-    // ---- Houzz: import new reviews now (the profile URL is the Social Media page's
-    // houzz link — social-media/urls — and the weekly import is automatic) ----
-    Route::post('houzz/reviews/sync', [PlatformsController::class, 'syncHouzzReviews']);
+    // ---- Scraped review imports (Houzz, Angi): import now. Each profile URL is
+    // that platform's link on the Social Media page — social-media/urls — and the
+    // weekly import is automatic. ----
+    Route::post('{platform}/reviews/sync', [PlatformsController::class, 'syncPlatformReviews'])
+        ->whereIn('platform', ['houzz', 'angi']);
 
     // ---- Yelp: credentials, session, cookie injection, auto-login ----
     Route::post('yelp/credentials', [PlatformsController::class, 'saveYelpCredentials']);

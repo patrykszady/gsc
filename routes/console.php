@@ -208,17 +208,19 @@ Schedule::command('google-business-profile:match-reviews --normalize-google-urls
             ->exists();
     });
 
-// Houzz: weekly import of new reviews for every active site with a Houzz
-// profile URL (the Social Media page's Houzz link). Nothing to switch on.
-// One queued job per site, run as that tenant — see
-// HouzzReviews::dispatchScheduledImports().
+// Houzz and Angi: weekly import of new reviews for every active site that
+// has that platform's profile URL (the Social Media page's link). Nothing
+// to switch on. One queued job per site and platform, run as that tenant —
+// see ReviewImport::dispatchScheduledImports().
 Schedule::call(function () {
-    \App\Support\Reviews\HouzzReviews::dispatchScheduledImports();
+    foreach (\App\Support\Reviews\ReviewImport::sources() as $source) {
+        $source::dispatchScheduledImports();
+    }
 })->weeklyOn(1, '06:30')
     ->timezone('America/Chicago')
-    ->name('houzz-reviews-import')
+    ->name('scraped-reviews-import')
     ->onOneServer()
-    ->onFailure(fn () => logger()->error('Scheduled Houzz review import failed to dispatch'));
+    ->onFailure(fn () => logger()->error('Scheduled review import failed to dispatch'));
 
 // Yelp: check for new reviews weekly (create-only; skip existing).
 // Scrapes the public review feed / stealth browser through the 2captcha
