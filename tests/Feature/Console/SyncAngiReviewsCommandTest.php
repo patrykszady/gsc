@@ -15,7 +15,7 @@ class SyncAngiReviewsCommandTest extends TestCase
     {
         config(['socials.angi.url' => null]);
 
-        $this->artisan('testimonials:sync-angi-reviews --only-new')
+        $this->artisan('testimonials:sync-angi-reviews')
             ->expectsOutputToContain('No Angi profile URL is configured')
             ->assertExitCode(1);
 

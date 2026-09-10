@@ -3,6 +3,7 @@
 namespace Tests\Feature\Support;
 
 use App\Jobs\RunSeoChannelSyncJob;
+use App\Models\PlatformSetting;
 use App\Models\ReviewUrl;
 use App\Models\Site;
 use App\Models\Testimonial;
@@ -27,7 +28,7 @@ class AngiReviewsTest extends TestCase
 
         $this->assertSame('https://www.angi.com/companylist/us/il/saved.htm', AngiReviews::profileUrl());
         // The same key the Social Media page's profile list edits.
-        $this->assertSame('https://www.angi.com/companylist/us/il/saved.htm', \App\Models\PlatformSetting::get('socials.url.angi'));
+        $this->assertSame('https://www.angi.com/companylist/us/il/saved.htm', PlatformSetting::get('socials.url.angi'));
     }
 
     public function test_a_site_without_its_own_socials_file_never_inherits_the_default_sites_angi_profile(): void
@@ -100,7 +101,6 @@ class AngiReviewsTest extends TestCase
         $this->assertSame(['gsc'], $dispatched['angi']);
         $this->assertSame([], $dispatched['houzz'], 'no Houzz URL, no Houzz import');
         Bus::assertDispatched(RunSeoChannelSyncJob::class, fn (RunSeoChannelSyncJob $job) => $job->command === 'testimonials:sync-angi-reviews'
-            && ($job->options['--only-new'] ?? false) === true
             && $job->siteId === Site::current()->id);
         Bus::assertDispatchedTimes(RunSeoChannelSyncJob::class, 1);
     }

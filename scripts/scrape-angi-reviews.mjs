@@ -30,6 +30,8 @@
 import { createRequire } from 'module';
 import fs from 'fs';
 
+import { installShutdownHandlers, launchPuppeteerWithLockRecovery } from './lib/yelp-userdata-lock.mjs';
+
 const require = createRequire(import.meta.url);
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -189,8 +191,11 @@ async function collectReviews(page, args) {
     if (pageNumber === 1) {
       businessName = structured.businessName;
       const wanted = normalizeName(args.brand);
-      // Guard the pasted URL: another contractor's page must not import as ours.
-      if (wanted && !normalizeName(businessName).startsWith(wanted)) {
+      // Guard the pasted URL: another contractor's page must not import as
+      // ours. With no brand to compare against there is nothing to check, so
+      // this refuses rather than importing whatever the page holds.
+      if (!wanted) return { error: 'brand_not_configured', businessName };
+      if (!normalizeName(businessName).startsWith(wanted)) {
         return { error: 'wrong_business', businessName };
       }
       console.error(`[angi] ${businessName}: ${structured.reviewCount} review(s) advertised`);
@@ -277,11 +282,16 @@ async function main() {
       console.error(`[angi] attempt ${index + 1}/${attempts.length} from this server`);
     }
 
-    const browser = await puppeteer.launch({
-      headless: args.headless ? 'new' : false,
-      args: launchArgs,
-      ...(attempt.profileDir ? { userDataDir: attempt.profileDir } : {}),
-    });
+    // A job killed mid-scrape leaves Chromium's SingletonLock behind, and
+    // every later run on that profile would fail to launch.
+    const browser = attempt.profileDir
+      ? await launchPuppeteerWithLockRecovery({
+        puppeteer,
+        launchOptions: { headless: args.headless ? 'new' : false, args: launchArgs, userDataDir: attempt.profileDir },
+        userDataDir: attempt.profileDir,
+      })
+      : await puppeteer.launch({ headless: args.headless ? 'new' : false, args: launchArgs });
+    installShutdownHandlers(browser);
 
     try {
       const page = await browser.newPage();

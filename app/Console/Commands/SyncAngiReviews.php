@@ -2,12 +2,12 @@
 
 namespace App\Console\Commands;
 
-use App\Models\ReviewUrl;
 use App\Models\Site;
 use App\Models\Testimonial;
 use App\Support\Reviews\AngiReviews;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Import the reviews on this site's Angi profile.
@@ -29,11 +29,16 @@ class SyncAngiReviews extends Command
         {--proxy= : Residential proxy URL to fall back to (default: the configured scraper proxy)}
         {--direct-only : Never fall back to the residential proxy}
         {--headless : Run without a virtual display (Angi usually blocks this)}
-        {--only-new : Only create new reviews; never update matched ones}
+        {--from-json= : Read scraper output from this JSON file instead of running a browser}
         {--dry-run : Show what would change without writing to the database}';
 
     protected $description = 'Scrape the Angi profile reviews and add new ones as testimonials.';
 
+    /**
+     * Angi publishes no per-review permalink and no edit history, so nothing
+     * anchors an update: a matched review is left exactly as it is, and only
+     * unseen ones are created.
+     */
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
@@ -62,15 +67,32 @@ class SyncAngiReviews extends Command
         }
 
         $this->info('Reading '.$profileUrl);
-        $scraped = $this->scrape($profileUrl);
+        $scraped = ($fromJson = (string) $this->option('from-json')) !== ''
+            ? $this->readScrapedJson($fromJson)
+            : $this->scrape($profileUrl);
 
         if ($error = ($scraped['error'] ?? null)) {
             $message = match ($error) {
                 'blocked' => 'Angi’s bot protection blocked the read, from this server and from the backup connection. It often works again on the next run.',
                 'not_found' => 'Angi returned "page not found" for the profile URL — check it under Admin → Social Media.',
                 'wrong_business' => 'That Angi page belongs to '.($scraped['business_name'] ?: 'another business').', not '.AngiReviews::brandName().'.',
+                'brand_not_configured' => 'This site has no business name configured, so the Angi page could not be checked against one.',
                 default => 'Angi’s profile page carried no review data.',
             };
+            $this->warn($message);
+            if (! $dryRun) {
+                AngiReviews::recordRun(['scraped' => 0, 'created' => 0], $message);
+            }
+
+            return self::FAILURE;
+        }
+
+        // The scraper checks this too. Repeated here because the profile URL is
+        // operator-supplied, and importing another business's reviews would be
+        // worse than importing none.
+        $businessName = (string) ($scraped['business_name'] ?? '');
+        if ($businessName !== '' && ! AngiReviews::pageBelongsToBrand($businessName, AngiReviews::brandName())) {
+            $message = 'That Angi page belongs to '.$businessName.', not '.AngiReviews::brandName().'.';
             $this->warn($message);
             if (! $dryRun) {
                 AngiReviews::recordRun(['scraped' => 0, 'created' => 0], $message);
@@ -149,7 +171,7 @@ class SyncAngiReviews extends Command
      * first (a review syndicated from another site is word for word), then
      * reviewer and date.
      *
-     * @param  \Illuminate\Support\Collection<int, Testimonial>  $existing
+     * @param  Collection<int, Testimonial>  $existing
      * @param  array<string, mixed>  $payload
      */
     private function matchExisting($existing, array $payload): ?Testimonial
@@ -221,6 +243,25 @@ class SyncAngiReviews extends Command
     }
 
     /**
+     * Read a scraper payload captured earlier, so the matching can be
+     * exercised without a browser.
+     *
+     * @return array<string, mixed>
+     */
+    private function readScrapedJson(string $path): array
+    {
+        $decoded = json_decode((string) @file_get_contents($path), true);
+
+        return is_array($decoded) ? $decoded + ['reviews' => []] : ['error' => 'scraper_failed', 'reviews' => []];
+    }
+
+    /** Chromium's profile, per site: two tenants importing at once must not share one. */
+    private function chromeProfileDir(): string
+    {
+        return storage_path('app/angi/chrome-profile/'.Site::current()->slug);
+    }
+
+    /**
      * Run the scraper. Angi refuses headless Chromium, so the browser runs
      * headed on a virtual display (xvfb-run) unless --headless is passed.
      *
@@ -251,7 +292,7 @@ class SyncAngiReviews extends Command
             escapeshellarg($resultFile),
             max(1, (int) $this->option('max-pages')),
             max(10000, (int) $this->option('timeout-ms')),
-            escapeshellarg(storage_path('app/angi/chrome-profile')),
+            escapeshellarg($this->chromeProfileDir()),
             $headless ? '--headless' : '',
             $proxy !== '' ? '--proxy='.escapeshellarg($proxy) : '',
         );
@@ -260,7 +301,7 @@ class SyncAngiReviews extends Command
             ? $node
             : sprintf('%s -a --server-args=%s %s', escapeshellarg((string) config('services.scraper.xvfb', 'xvfb-run')), escapeshellarg('-screen 0 '.config('services.scraper.screen', '1440x2400x24')), $node);
 
-        @mkdir(storage_path('app/angi/chrome-profile'), 0775, true);
+        @mkdir($this->chromeProfileDir(), 0775, true);
 
         $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $process = proc_open($command, $descriptors, $pipes);

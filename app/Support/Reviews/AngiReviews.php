@@ -33,7 +33,8 @@ final class AngiReviews extends ReviewImport
 
     protected static function commandOptions(): array
     {
-        return ['--only-new' => true];
+        // Angi imports are create-only: a matched review is never rewritten.
+        return [];
     }
 
     /**
