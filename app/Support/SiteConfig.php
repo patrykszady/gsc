@@ -64,6 +64,57 @@ class SiteConfig
         return $path === null ? $resolved : Arr::get($resolved, $path, $default);
     }
 
+    /**
+     * Does the site define this value ITSELF — in config/sites/{slug}/{file}.php
+     * or its stored settings — rather than inherit it from the shared file?
+     *
+     * The shared config files are the default site's own, so identity data
+     * (profile URLs, review links) must never reach another tenant through
+     * inheritance: a site that has not set its Houzz page has none. The
+     * default site owns everything in the shared files.
+     */
+    public static function owns(string $key, ?Site $site = null): bool
+    {
+        $site ??= Site::current();
+        [$file, $path] = array_pad(explode('.', $key, 2), 2, null);
+
+        if ($site->slug === (string) config('sites.default', 'gsc')) {
+            return true;
+        }
+
+        $own = static::ownOverrides($file, $site);
+
+        return $path === null ? $own !== [] : Arr::has($own, $path);
+    }
+
+    /**
+     * Only what the site itself overrides for $file (no shared defaults).
+     *
+     * @return array<mixed, mixed>
+     */
+    protected static function ownOverrides(string $file, Site $site): array
+    {
+        $cacheKey = 'own:' . $site->id . ':' . $file;
+
+        if (isset(static::$cache[$cacheKey])) {
+            return static::$cache[$cacheKey];
+        }
+
+        $own = [];
+
+        $siteFile = config_path("sites/{$site->slug}/{$file}.php");
+        if (is_file($siteFile)) {
+            $own = static::merge($own, (array) require $siteFile);
+        }
+
+        $fromSettings = $site->setting("config.{$file}");
+        if (is_array($fromSettings)) {
+            $own = static::merge($own, $fromSettings);
+        }
+
+        return static::$cache[$cacheKey] = $own;
+    }
+
     /** @return array<string, mixed> */
     protected static function resolve(string $file, ?Site $site = null): array
     {

@@ -208,23 +208,12 @@ Schedule::command('google-business-profile:match-reviews --normalize-google-urls
             ->exists();
     });
 
-// Houzz: weekly import of new reviews for every site that switched it on
-// under Admin → Platforms → Houzz (profile URL and switch are per site).
-// One queued job per site, run as that tenant, so the rows land with the
-// right site_id — the console itself has no request and would otherwise
-// write everything to the default site.
+// Houzz: weekly import of new reviews for every active site with a Houzz
+// profile URL (the Social Media page's Houzz link). Nothing to switch on.
+// One queued job per site, run as that tenant — see
+// HouzzReviews::dispatchScheduledImports().
 Schedule::call(function () {
-    \App\Support\Tenancy::each(function (\App\Models\Site $site) {
-        if (! \App\Support\Reviews\HouzzReviews::enabled() || ! \App\Support\Reviews\HouzzReviews::profileUrl()) {
-            return;
-        }
-        \App\Support\Reviews\HouzzReviews::markRunning(true);
-        \App\Jobs\RunSeoChannelSyncJob::dispatch(
-            'testimonials:sync-houzz-reviews',
-            ['--browser-scrape' => true, '--only-new' => true],
-            $site->id,
-        );
-    }, includeInactive: true);
+    \App\Support\Reviews\HouzzReviews::dispatchScheduledImports();
 })->weeklyOn(1, '06:30')
     ->timezone('America/Chicago')
     ->name('houzz-reviews-import')

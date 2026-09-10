@@ -150,25 +150,6 @@ class PlatformsController extends Controller
     }
 
     /**
-     * POST platforms/houzz/settings — the Houzz profile URL and the weekly
-     * review-import switch for THIS site. The URL is the same setting the
-     * Social Media page's profile list edits.
-     */
-    public function saveHouzzSettings(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'profile_url' => ['nullable', 'url', 'max:500', 'regex:#^https://(www\.)?houzz\.com/#i'],
-            'enabled' => ['required', 'boolean'],
-        ], [
-            'profile_url.regex' => 'Enter the houzz.com address of the business profile.',
-        ]);
-
-        HouzzReviews::save($data['profile_url'] ?? null, (bool) $data['enabled']);
-
-        return $this->itemResponse($this->houzzStatus());
-    }
-
-    /**
      * POST platforms/houzz/reviews/sync — import new Houzz reviews now, on
      * the queue, as this tenant. Same job the Monday schedule dispatches.
      */
@@ -200,7 +181,6 @@ class PlatformsController extends Controller
 
         return [
             'profile_url' => HouzzReviews::profileUrl(),
-            'enabled' => HouzzReviews::enabled(),
             'reviews_count' => (clone $query)->count(),
             'latest_review_date' => $latest ? Carbon::parse($latest)->toDateString() : null,
             'last_run' => HouzzReviews::lastRun(),

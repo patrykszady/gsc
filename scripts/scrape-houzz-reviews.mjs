@@ -310,7 +310,7 @@ async function main() {
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const args = parseArgs(process.argv);
   if (!args.url) throw new Error('Usage: scrape-houzz-reviews.mjs --url=<houzz profile url> --brand=<business name>');
-  // Review links carry the reviewed business slug; compare with punctuation stripped.
+  // Review links carry the reviewed business slug ("J-Peterson-Design-LLC-review"); compare with punctuation stripped.
   const brandKey = args.brand.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
   const baseLaunchArgs = [
@@ -425,8 +425,11 @@ async function main() {
             const viewReviewUrl = await resolvePage.evaluate((brandKey) => {
               const links = Array.from(document.querySelectorAll('a[href*="/viewReview/"]'));
               const gsLink = links.find((a) => {
-                const href = (a.getAttribute('href') || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-                return href.includes(brandKey + 'review');
+                // The reviewed business is the last path segment; it must START with our brand
+                // ("J-Peterson-Design-LLC-review" yes, "Atlas-GS-Construction-Partners-review" no).
+                const href = a.getAttribute('href') || '';
+                const last = href.split(/[?#]/)[0].split('/').filter(Boolean).pop() || '';
+                return /viewreview/i.test(href) && last.toLowerCase().replace(/[^a-z0-9]+/g, '').startsWith(brandKey);
               });
               if (!gsLink) return null;
               const href = gsLink.getAttribute('href') || '';

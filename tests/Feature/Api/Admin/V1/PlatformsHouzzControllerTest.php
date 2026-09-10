@@ -11,9 +11,9 @@ use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 /**
- * /api/admin/v1/platforms — the Houzz card: per-site profile URL, weekly
- * import switch, import-now. Never reaches houzz.com: the import is a
- * queued job, faked here.
+ * /api/admin/v1/platforms — the Houzz card: status (URL from the Social
+ * Media page's profile links, imported count, last run) and import-now.
+ * Never reaches houzz.com: the import is a queued job, faked here.
  */
 class PlatformsHouzzControllerTest extends TestCase
 {
@@ -27,8 +27,6 @@ class PlatformsHouzzControllerTest extends TestCase
     public function test_status_reports_the_houzz_settings_and_imported_review_count(): void
     {
         config(['socials.houzz.url' => 'https://www.houzz.com/pro/from-config/']);
-        // The default site is switched on by migration; read the setting as a fresh site would.
-        PlatformSetting::put(HouzzReviews::ENABLED_KEY, null);
 
         $houzz = Testimonial::create(['reviewer_name' => 'Kathy McHugh', 'review_description' => 'Wonderful kitchen.', 'review_date' => '2026-05-01', 'star_rating' => 5]);
         ReviewUrl::create(['testimonial_id' => $houzz->id, 'platform' => 'houzz', 'url' => 'https://www.houzz.com/viewReview/1/GS-Construction-review']);
@@ -38,32 +36,28 @@ class PlatformsHouzzControllerTest extends TestCase
         $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data.houzz');
 
         $this->assertSame('https://www.houzz.com/pro/from-config/', $data['profile_url']);
-        $this->assertFalse($data['enabled']);
+        $this->assertArrayNotHasKey('enabled', $data);
         $this->assertSame(1, $data['reviews_count']);
         $this->assertSame('2026-05-01', $data['latest_review_date']);
         $this->assertNull($data['last_run']);
         $this->assertFalse($data['running']);
     }
 
-    public function test_settings_require_a_houzz_address_and_persist_per_site(): void
+    public function test_the_houzz_url_comes_from_the_social_media_pages_profile_links(): void
     {
-        $this->postJson('/api/admin/v1/platforms/houzz/settings', [
-            'profile_url' => 'https://www.yelp.com/biz/not-houzz',
-            'enabled' => true,
-        ], $this->bearer())->assertUnprocessable()->assertJsonValidationErrors(['profile_url']);
+        config(['socials.houzz.url' => null]);
 
-        $data = $this->postJson('/api/admin/v1/platforms/houzz/settings', [
-            'profile_url' => 'https://www.houzz.com/pro/jpetersondesign/',
-            'enabled' => true,
-        ], $this->bearer())->assertOk()->json('data');
+        // The Social Media page's profile-links form is the only editor.
+        $this->putJson('/api/admin/v1/social-media/urls', [
+            'urls' => ['houzz' => 'https://www.houzz.com/pro/jpetersondesign/'],
+        ], $this->bearer())->assertOk();
 
+        $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data.houzz');
         $this->assertSame('https://www.houzz.com/pro/jpetersondesign/', $data['profile_url']);
-        $this->assertTrue($data['enabled']);
-        $this->assertTrue(HouzzReviews::enabled());
-        $this->assertSame('https://www.houzz.com/pro/jpetersondesign/', HouzzReviews::profileUrl());
 
-        $this->postJson('/api/admin/v1/platforms/houzz/settings', ['profile_url' => null, 'enabled' => false], $this->bearer())->assertOk();
-        $this->assertFalse(HouzzReviews::enabled());
+        // There is no separate Houzz settings endpoint to drift from it.
+        $this->postJson('/api/admin/v1/platforms/houzz/settings', ['profile_url' => 'https://www.houzz.com/pro/x/'], $this->bearer())
+            ->assertNotFound();
     }
 
     public function test_import_now_queues_the_sync_as_this_site_and_refuses_without_a_url_or_while_running(): void
@@ -75,7 +69,7 @@ class PlatformsHouzzControllerTest extends TestCase
             ->assertOk()->assertJsonPath('data.ok', false);
         Bus::assertNothingDispatched();
 
-        HouzzReviews::save('https://www.houzz.com/pro/jpetersondesign/', true);
+        HouzzReviews::save('https://www.houzz.com/pro/jpetersondesign/');
 
         $this->postJson('/api/admin/v1/platforms/houzz/reviews/sync', [], $this->bearer())
             ->assertOk()->assertJsonPath('data.ok', true);

@@ -2,23 +2,25 @@
 
 namespace App\Support\Reviews;
 
+use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\PlatformSetting;
+use App\Models\Site;
+use App\Support\SiteConfig;
 use App\Support\Tenancy;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Per-site Houzz review import, configured on the admin Platforms page.
+ * Per-site Houzz review import, shown on the admin Platforms page.
  *
- * Every value is a site-scoped PlatformSetting row, so each tenant has its
- * own profile URL, on/off switch and last-run record. The profile URL shares
- * its key with the Social Media page's profile links, so the two screens
- * always show the same address.
+ * There is nothing to switch on: a site with a Houzz profile URL gets its
+ * new reviews imported every week, like Yelp. The URL is the Houzz link
+ * edited under Social Media → profile links (one site-scoped
+ * PlatformSetting); Platforms shows it read-only next to the import status
+ * and last-run record.
  */
 final class HouzzReviews
 {
     public const URL_KEY = 'socials.url.houzz';
-
-    public const ENABLED_KEY = 'houzz.reviews.enabled';
 
     public const LAST_RUN_KEY = 'houzz.reviews.last_run';
 
@@ -27,21 +29,59 @@ final class HouzzReviews
 
     public static function profileUrl(): ?string
     {
-        $url = trim((string) PlatformSetting::get(self::URL_KEY, (string) config('socials.houzz.url', '')));
+        $stored = trim((string) PlatformSetting::get(self::URL_KEY));
+        if ($stored !== '') {
+            return $stored;
+        }
+
+        // config/socials.php is gs.construction's. A site that has not set
+        // its own Houzz page would otherwise inherit GS's profile and import
+        // GS's reviews as its own.
+        if (! SiteConfig::owns('socials.houzz.url')) {
+            return null;
+        }
+
+        $url = trim((string) config('socials.houzz.url', ''));
 
         return $url !== '' ? $url : null;
     }
 
-    /** Off until somebody switches it on for the site — a tenant never inherits another's import. */
-    public static function enabled(): bool
+    /** Imports run automatically for any site with a profile URL. */
+    public static function automated(): bool
     {
-        return PlatformSetting::get(self::ENABLED_KEY) === '1';
+        return self::profileUrl() !== null;
     }
 
-    public static function save(?string $profileUrl, bool $enabled): void
+    public static function save(?string $profileUrl): void
     {
-        PlatformSetting::put(self::URL_KEY, trim((string) $profileUrl) !== '' ? trim((string) $profileUrl) : null);
-        PlatformSetting::put(self::ENABLED_KEY, $enabled ? '1' : '0');
+        $url = trim((string) $profileUrl);
+        PlatformSetting::put(self::URL_KEY, $url !== '' ? $url : null);
+    }
+
+    /**
+     * Monday's schedule: one queued import per active site with a profile
+     * URL, run as that site. Returns the slugs dispatched.
+     *
+     * @return list<string>
+     */
+    public static function dispatchScheduledImports(): array
+    {
+        $dispatched = [];
+
+        Tenancy::each(function (Site $site) use (&$dispatched) {
+            if (! self::automated()) {
+                return;
+            }
+            self::markRunning(true);
+            RunSeoChannelSyncJob::dispatch(
+                'testimonials:sync-houzz-reviews',
+                ['--browser-scrape' => true, '--only-new' => true],
+                $site->id,
+            );
+            $dispatched[] = $site->slug;
+        });
+
+        return $dispatched;
     }
 
     /** @param  array<string, int|string|null>  $summary */
@@ -83,15 +123,22 @@ final class HouzzReviews
     /**
      * Houzz writes the reviewed business into every review URL
      * ("/viewReview/1453810/GS-Construction-review"), so a reviewer's
-     * activity page can list reviews of other pros too. Compare with
-     * punctuation and spacing stripped: "J. Peterson Design" must match
-     * "J-Peterson-Design-review".
+     * activity page can list reviews of other pros too. The last path
+     * segment must START with the brand (punctuation and spacing stripped),
+     * which allows the suffix Houzz adds from the registered name —
+     * "J. Peterson Design" matches "J-Peterson-Design-LLC-review" — but not
+     * another business that merely contains the name
+     * ("Atlas-GS-Construction-Partners-review").
      */
     public static function reviewUrlBelongsTo(string $url, string $brand): bool
     {
         $norm = fn (string $s) => (string) preg_replace('/[^a-z0-9]+/', '', mb_strtolower($s));
         $needle = $norm($brand);
+        $segments = array_values(array_filter(explode('/', (string) parse_url($url, PHP_URL_PATH))));
+        $last = $norm((string) (end($segments) ?: ''));
 
-        return $needle !== '' && str_contains($norm($url), $needle.'review');
+        return $needle !== ''
+            && str_contains($norm(implode('/', $segments)), 'viewreview')
+            && str_starts_with($last, $needle);
     }
 }

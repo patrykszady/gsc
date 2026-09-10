@@ -53,7 +53,7 @@ class SyncHouzzReviews extends Command
         $dryRun = (bool) $this->option('dry-run');
         $profileUrl = (string) ($this->option('profile-url') ?: HouzzReviews::profileUrl() ?? '');
         if ($profileUrl === '') {
-            $this->warn('No Houzz profile URL is configured for '.Site::current()->name.'. Add it under Admin → Platforms → Houzz.');
+            $this->warn('No Houzz profile URL is configured for '.Site::current()->name.'. Add it under Admin → Social Media → profile links.');
             if (! $dryRun) {
                 HouzzReviews::recordRun([], 'No Houzz profile URL configured.');
             }
@@ -821,7 +821,7 @@ class SyncHouzzReviews extends Command
             return [];
         }
         if (($decoded['error'] ?? null) === 'not_found') {
-            $this->scrapeError = 'Houzz returned "Page Not Found" for the profile URL — check it under Admin → Platforms → Houzz.';
+            $this->scrapeError = 'Houzz returned "Page Not Found" for the profile URL — check it under Admin → Social Media → profile links.';
         }
 
         return $decoded['reviews'];

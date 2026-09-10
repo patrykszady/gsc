@@ -19,7 +19,7 @@ return [
         'review' => false,
     ],
     'houzz' => [
-        'url' => 'https://www.houzz.com/pro/jpetersondesign/',
+        'url' => 'https://www.houzz.com/professionals/kitchen-and-bath-designers/j-peterson-design-llc-pfvwus-pf~402700139',
         'label' => 'Houzz',
         'icon' => 'images/socials/houzz.svg',
         'review' => true,

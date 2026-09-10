@@ -211,7 +211,9 @@ class SocialMediaController extends Controller
                     'label' => config("socials.{$key}.label", $cat['label'] ?? ucfirst($key)),
                     'icon' => $icon ? asset($icon) : null,
                     'placeholder' => $cat['placeholder'] ?? 'https://…',
-                    'url' => PlatformSetting::get('socials.url.'.$key, (string) config("socials.{$key}.url", '')),
+                    // A site inherits no profile URL from the shared (default site's) config:
+                    // the Houzz import and the footer would otherwise carry another business.
+                    'url' => PlatformSetting::get('socials.url.'.$key, \App\Support\SiteConfig::owns("socials.{$key}.url") ? (string) config("socials.{$key}.url", '') : ''),
                 ];
             })
             ->values()
