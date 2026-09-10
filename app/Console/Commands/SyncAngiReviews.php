@@ -26,7 +26,8 @@ class SyncAngiReviews extends Command
         {--profile-url= : Angi profile URL (default: the site setting from Admin → Social Media)}
         {--max-pages=10 : How many review pages to walk at most}
         {--timeout-ms=90000 : Per-page navigation timeout}
-        {--proxy= : Residential proxy URL (default: the configured scraper proxy is NOT used — Angi blocks it)}
+        {--proxy= : Residential proxy URL to fall back to (default: the configured scraper proxy)}
+        {--direct-only : Never fall back to the residential proxy}
         {--headless : Run without a virtual display (Angi usually blocks this)}
         {--only-new : Only create new reviews; never update matched ones}
         {--dry-run : Show what would change without writing to the database}';
@@ -65,7 +66,7 @@ class SyncAngiReviews extends Command
 
         if ($error = ($scraped['error'] ?? null)) {
             $message = match ($error) {
-                'blocked' => 'Angi’s bot protection blocked the read. It usually works again on the next run.',
+                'blocked' => 'Angi’s bot protection blocked the read, from this server and from the backup connection. It often works again on the next run.',
                 'not_found' => 'Angi returned "page not found" for the profile URL — check it under Admin → Social Media.',
                 'wrong_business' => 'That Angi page belongs to '.($scraped['business_name'] ?: 'another business').', not '.AngiReviews::brandName().'.',
                 default => 'Angi’s profile page carried no review data.',
@@ -236,6 +237,12 @@ class SyncAngiReviews extends Command
         // xvfb-run merges the child's stderr into stdout, so the result comes
         // back through a file and stdout carries only progress.
         $resultFile = tempnam(sys_get_temp_dir(), 'angi-reviews-');
+        // Cloudflare refuses some addresses outright. The scraper tries this
+        // server first and falls back to residential sessions.
+        $proxy = (string) ($this->option('direct-only')
+            ? ''
+            : ($this->option('proxy') ?: config('services.scraper.proxy', '')));
+
         $node = sprintf(
             'node %s --url=%s --brand=%s --out=%s --max-pages=%d --timeout-ms=%d --profile-dir=%s %s %s',
             escapeshellarg($script),
@@ -246,7 +253,7 @@ class SyncAngiReviews extends Command
             max(10000, (int) $this->option('timeout-ms')),
             escapeshellarg(storage_path('app/angi/chrome-profile')),
             $headless ? '--headless' : '',
-            ($proxy = (string) $this->option('proxy')) !== '' ? '--proxy='.escapeshellarg($proxy) : '',
+            $proxy !== '' ? '--proxy='.escapeshellarg($proxy) : '',
         );
 
         $command = $headless

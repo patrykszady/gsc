@@ -6,15 +6,21 @@
  * reviewer, rating, ISO date and the full untruncated body — so this reads
  * that rather than the rendered cards, which truncate and change often.
  *
- * Cloudflare turns away plain requests AND headless Chromium (403 "Just a
- * moment…"), so this runs a real headed browser; the caller supplies a
- * virtual display (xvfb-run). A persistent profile directory keeps the
- * clearance cookie between runs.
+ * Cloudflare stands in front of it and turns away plain requests AND
+ * headless Chromium, so this drives a real headed browser; the caller
+ * supplies a virtual display (xvfb-run). Two things get past the guard:
+ * waiting out the "Just a moment…" interstitial, which clears itself in a
+ * few seconds, and — when the server's own address is refused outright —
+ * retrying through a residential proxy, a fresh session each time. A
+ * persistent profile directory keeps the clearance cookie between runs,
+ * and is used only for the direct attempt, since that cookie is tied to
+ * the address that earned it.
  *
  * Usage:
  *   node scripts/scrape-angi-reviews.mjs --url=<profile url> --brand="<business name>"
  *        [--out=<json path>] [--profile-dir=<chrome profile>] [--max-pages=10]
- *        [--timeout-ms=90000] [--proxy=<url>] [--headless]
+ *        [--timeout-ms=90000] [--clearance-ms=45000] [--proxy=<url>]
+ *        [--proxy-attempts=4] [--headless]
  *
  * Writes {source_url, business_name, count, reviews[], error?} to --out, or
  * to stdout when no --out is given. Progress goes to stderr. Pass --out
@@ -31,7 +37,18 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
 function parseArgs(argv) {
-  const args = { url: null, brand: '', out: null, profileDir: null, maxPages: 10, timeoutMs: 90000, proxy: null, headless: false };
+  const args = {
+    url: null,
+    brand: '',
+    out: null,
+    profileDir: null,
+    maxPages: 10,
+    timeoutMs: 90000,
+    clearanceMs: 45000,
+    proxy: null,
+    proxyAttempts: 4,
+    headless: false,
+  };
 
   for (const arg of argv.slice(2)) {
     if (arg.startsWith('--url=')) args.url = arg.slice('--url='.length);
@@ -40,7 +57,9 @@ function parseArgs(argv) {
     if (arg.startsWith('--profile-dir=')) args.profileDir = arg.slice('--profile-dir='.length);
     if (arg.startsWith('--max-pages=')) args.maxPages = Number(arg.slice('--max-pages='.length)) || args.maxPages;
     if (arg.startsWith('--timeout-ms=')) args.timeoutMs = Number(arg.slice('--timeout-ms='.length)) || args.timeoutMs;
+    if (arg.startsWith('--clearance-ms=')) args.clearanceMs = Number(arg.slice('--clearance-ms='.length)) || args.clearanceMs;
     if (arg.startsWith('--proxy=')) args.proxy = arg.slice('--proxy='.length);
+    if (arg.startsWith('--proxy-attempts=')) args.proxyAttempts = Number(arg.slice('--proxy-attempts='.length)) || args.proxyAttempts;
     if (arg === '--headless') args.headless = true;
   }
 
@@ -50,12 +69,46 @@ function parseArgs(argv) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const normalizeName = (value) => (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+/** The interstitial clears itself; the block page does not. */
+const CHALLENGE = /just a moment|checking your browser|security verification|performing security/i;
+const HARD_BLOCK = /attention required|you have been blocked|access denied|forbidden/i;
+
+/**
+ * Cloudflare answers the first request with an interstitial that reloads
+ * the page once it is satisfied. Give it that time before calling the page
+ * blocked.
+ *
+ * @return {Promise<string|null>} an error code, or null once the real page is up
+ */
+async function waitForClearance(page, clearanceMs) {
+  const deadline = Date.now() + clearanceMs;
+  let waited = false;
+
+  for (;;) {
+    const title = await page.title().catch(() => '');
+
+    if (HARD_BLOCK.test(title)) return 'blocked';
+
+    if (!CHALLENGE.test(title)) {
+      if (waited) console.error('[angi] challenge cleared');
+
+      return null;
+    }
+
+    if (Date.now() >= deadline) return 'blocked';
+
+    waited = true;
+    await sleep(2500);
+  }
+}
+
 /** The page's LocalBusiness block: its name and its reviews, as Angi published them. */
 async function readStructuredReviews(page) {
   return await page.evaluate(() => {
     const decode = (value) => {
       const el = document.createElement('textarea');
       el.innerHTML = value || '';
+
       return el.value;
     };
 
@@ -90,15 +143,6 @@ async function readStructuredReviews(page) {
   });
 }
 
-/** Cloudflare's interstitial and its hard block both come back as a 403 with a telltale title. */
-function blockedBy(status, title) {
-  if (/just a moment|attention required|access denied|security verification/i.test(title || '')) return 'blocked';
-  if (status === 403) return 'blocked';
-  if (status === 404) return 'not_found';
-
-  return null;
-}
-
 function pageUrl(base, pageNumber) {
   if (pageNumber <= 1) return base;
 
@@ -108,33 +152,105 @@ function pageUrl(base, pageNumber) {
   return url.toString();
 }
 
+/**
+ * One pass over the profile with one browser.
+ *
+ * @return {Promise<{error: string, businessName?: string} | {reviews: Array, businessName: string}>}
+ */
+async function collectReviews(page, args) {
+  const seen = new Set();
+  const reviews = [];
+  let businessName = '';
+
+  for (let pageNumber = 1; pageNumber <= args.maxPages; pageNumber++) {
+    const response = await page.goto(pageUrl(args.url, pageNumber), { waitUntil: 'networkidle2', timeout: args.timeoutMs });
+
+    if (response?.status?.() === 404) {
+      if (pageNumber === 1) return { error: 'not_found' };
+      break;
+    }
+
+    const blocked = await waitForClearance(page, args.clearanceMs);
+    if (blocked) {
+      // A challenge on a later page still leaves the earlier pages usable.
+      if (pageNumber === 1) return { error: blocked };
+      console.error(`[angi] page ${pageNumber} was ${blocked}; keeping ${reviews.length} review(s)`);
+      break;
+    }
+
+    await sleep(1500 + Math.random() * 1500);
+
+    const structured = await readStructuredReviews(page);
+    if (!structured) {
+      if (pageNumber === 1) return { error: 'no_structured_data' };
+      break;
+    }
+
+    if (pageNumber === 1) {
+      businessName = structured.businessName;
+      const wanted = normalizeName(args.brand);
+      // Guard the pasted URL: another contractor's page must not import as ours.
+      if (wanted && !normalizeName(businessName).startsWith(wanted)) {
+        return { error: 'wrong_business', businessName };
+      }
+      console.error(`[angi] ${businessName}: ${structured.reviewCount} review(s) advertised`);
+    }
+
+    let fresh = 0;
+    for (const review of structured.reviews) {
+      if (!review.reviewer_name || !review.review_description) continue;
+      const key = `${review.reviewer_name.toLowerCase()}|${review.review_date_raw ?? ''}|${review.review_description.slice(0, 120).toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      reviews.push(review);
+      fresh++;
+    }
+
+    console.error(`[angi] page ${pageNumber}: ${fresh} new review(s), ${reviews.length} total`);
+
+    // Angi serves an empty review list past the last page, which is where this stops.
+    if (fresh === 0) break;
+  }
+
+  return { reviews, businessName };
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (!args.url) throw new Error('Usage: scrape-angi-reviews.mjs --url=<angi profile url> --brand=<business name>');
 
-  const launchArgs = [
+  const baseLaunchArgs = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
     '--disable-dev-shm-usage',
     '--disable-blink-features=AutomationControlled',
   ];
 
-  let proxyAuth = null;
+  let proxyConfig = null;
   if (args.proxy) {
-    const proxyUrl = new URL(args.proxy);
-    if (proxyUrl.username) {
-      proxyAuth = { username: decodeURIComponent(proxyUrl.username), password: decodeURIComponent(proxyUrl.password) };
+    try {
+      const proxyUrl = new URL(args.proxy);
+      proxyConfig = {
+        host: `${proxyUrl.protocol}//${proxyUrl.hostname}:${proxyUrl.port || 8080}`,
+        username: decodeURIComponent(proxyUrl.username || ''),
+        password: decodeURIComponent(proxyUrl.password || ''),
+      };
+    } catch {
+      console.error('[angi] ignoring an unparseable --proxy');
     }
-    launchArgs.push(`--proxy-server=${proxyUrl.protocol}//${proxyUrl.host}`);
   }
 
-  const browser = await puppeteer.launch({
-    headless: args.headless ? 'new' : false,
-    args: launchArgs,
-    ...(args.profileDir ? { userDataDir: args.profileDir } : {}),
-  });
+  // The server's own address first, with the profile that may already hold a
+  // clearance cookie; then residential sessions, each in a clean browser
+  // because that cookie belongs to the address that earned it.
+  const attempts = [{ proxy: null, profileDir: args.profileDir }];
+  if (proxyConfig) {
+    for (let i = 0; i < Math.max(0, args.proxyAttempts); i++) {
+      attempts.push({ proxy: proxyConfig, profileDir: null });
+    }
+  }
 
-  const emit = async (payload) => {
+  const emit = (payload) => {
     const json = JSON.stringify(payload);
     if (args.out) {
       fs.writeFileSync(args.out, json);
@@ -142,71 +258,68 @@ async function main() {
     } else {
       process.stdout.write(json);
     }
-    await browser.close();
   };
 
-  try {
-    const page = await browser.newPage();
-    if (proxyAuth) await page.authenticate(proxyAuth);
-    await page.setViewport({ width: 1440, height: 2200 });
-    await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+  let lastError = 'blocked';
+  let lastBusinessName = '';
 
-    const seen = new Set();
-    const reviews = [];
-    let businessName = '';
+  for (const [index, attempt] of attempts.entries()) {
+    const launchArgs = [...baseLaunchArgs];
+    let proxyAuth = null;
 
-    for (let pageNumber = 1; pageNumber <= args.maxPages; pageNumber++) {
-      const target = pageUrl(args.url, pageNumber);
-      const response = await page.goto(target, { waitUntil: 'networkidle2', timeout: args.timeoutMs });
-      await sleep(2500 + Math.random() * 1500);
-
-      const status = response?.status?.() ?? 0;
-      const blocked = blockedBy(status, await page.title());
-      if (blocked) {
-        // A challenge on a later page still leaves the earlier pages usable.
-        if (pageNumber === 1) return await emit({ source_url: args.url, business_name: '', count: 0, reviews: [], error: blocked });
-        console.error(`[angi] page ${pageNumber} came back ${blocked}; keeping ${reviews.length} review(s)`);
-        break;
-      }
-
-      const structured = await readStructuredReviews(page);
-      if (!structured) {
-        if (pageNumber === 1) return await emit({ source_url: args.url, business_name: '', count: 0, reviews: [], error: 'no_structured_data' });
-        break;
-      }
-
-      if (pageNumber === 1) {
-        businessName = structured.businessName;
-        const wanted = normalizeName(args.brand);
-        // Guard the pasted URL: another contractor's page must not import as ours.
-        if (wanted && !normalizeName(businessName).startsWith(wanted)) {
-          return await emit({ source_url: args.url, business_name: businessName, count: 0, reviews: [], error: 'wrong_business' });
-        }
-        console.error(`[angi] ${businessName}: ${structured.reviewCount} review(s) advertised`);
-      }
-
-      let fresh = 0;
-      for (const review of structured.reviews) {
-        if (!review.reviewer_name || !review.review_description) continue;
-        const key = `${review.reviewer_name.toLowerCase()}|${review.review_date_raw ?? ''}|${review.review_description.slice(0, 120).toLowerCase()}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        reviews.push(review);
-        fresh++;
-      }
-
-      console.error(`[angi] page ${pageNumber}: ${fresh} new review(s), ${reviews.length} total`);
-
-      // Angi serves an empty review list past the last page, which is where this stops.
-      if (fresh === 0) break;
+    if (attempt.proxy) {
+      launchArgs.push(`--proxy-server=${attempt.proxy.host}`);
+      // A fresh session id asks the proxy for a different residential address.
+      const sessionId = Math.random().toString(36).slice(2, 10);
+      proxyAuth = { username: `${attempt.proxy.username}-session-${sessionId}`, password: attempt.proxy.password };
+      console.error(`[angi] attempt ${index + 1}/${attempts.length} through a residential session`);
+    } else if (attempts.length > 1) {
+      console.error(`[angi] attempt ${index + 1}/${attempts.length} from this server`);
     }
 
-    return await emit({ source_url: args.url, business_name: businessName, count: reviews.length, reviews });
-  } catch (err) {
-    await browser.close();
-    throw err;
+    const browser = await puppeteer.launch({
+      headless: args.headless ? 'new' : false,
+      args: launchArgs,
+      ...(attempt.profileDir ? { userDataDir: attempt.profileDir } : {}),
+    });
+
+    try {
+      const page = await browser.newPage();
+      if (proxyAuth) await page.authenticate(proxyAuth);
+      await page.setViewport({ width: 1440, height: 2200 });
+      await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
+      await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+
+      const outcome = await collectReviews(page, args);
+
+      if (outcome.error) {
+        lastError = outcome.error;
+        lastBusinessName = outcome.businessName ?? lastBusinessName;
+        // Only a refusal is worth another address; the rest would repeat.
+        if (outcome.error !== 'blocked') break;
+        console.error(`[angi] ${outcome.error}; trying again`);
+        continue;
+      }
+
+      emit({
+        source_url: args.url,
+        business_name: outcome.businessName,
+        count: outcome.reviews.length,
+        reviews: outcome.reviews,
+      });
+
+      return;
+    } catch (err) {
+      lastError = 'scrape_failed';
+      console.error(`[angi] attempt ${index + 1} failed: ${err.message}`);
+    } finally {
+      await browser.close().catch(() => {});
+    }
+
+    if (index < attempts.length - 1) await sleep(2000 + Math.random() * 3000);
   }
+
+  emit({ source_url: args.url, business_name: lastBusinessName, count: 0, reviews: [], error: lastError });
 }
 
 main().catch((err) => {
