@@ -3,6 +3,8 @@
 #
 # The old script deployed IN PLACE (git reset inside `current`), so the whole
 # site had to sit in maintenance while composer, `npm ci` (~5 min on this
+# The Chrome build this release's puppeteer expects — cached under ~/.cache/puppeteer, a no-op until puppeteer moves on.
+# site had to sit in maintenance while composer, `npx puppeteer browsers install chrome` (~5 min on this
 # 2-core box) and the build ran: every push meant ~5 minutes of 503. This
 # builds a fresh release next to the live one — the live one keeps serving —
 # and switches the `current` symlink only when the new release is ready.
@@ -88,6 +90,10 @@ log "npm install + build"
 # `npm ci` would delete it and reinstall everything (the 5-minute step).
 npm install --no-audit --no-fund --prefer-offline
 npm run build
+# The Chrome build this release's puppeteer expects (the Houzz/Angi review
+# scrapers, the Instagram and Yelp browsers). Cached under ~/.cache/puppeteer,
+# so this is a no-op until puppeteer moves to a new build.
+npx puppeteer browsers install chrome
 
 log "Caches for the new release"
 $PHP artisan storage:link --force

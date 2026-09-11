@@ -8,6 +8,7 @@ use App\Support\Reviews\HouzzReviews;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SyncHouzzReviews extends Command
 {
@@ -141,6 +142,7 @@ class SyncHouzzReviews extends Command
             $payload = $this->normalizeProfilePayload($profilePayload);
             if (! $payload) {
                 $stats['failed_parse']++;
+
                 continue;
             }
 
@@ -189,9 +191,11 @@ class SyncHouzzReviews extends Command
                 $stats['matched_url']++;
                 if ($onlyNew) {
                     $stats['skipped_existing']++;
+
                     continue;
                 }
                 $stats['updated'] += $this->upsertIntoExisting($matchedByUrl, $payload, $reviewUrlValue, $dryRun);
+
                 continue;
             }
 
@@ -203,9 +207,11 @@ class SyncHouzzReviews extends Command
                 $stats['matched_content']++;
                 if ($onlyNew) {
                     $stats['skipped_existing']++;
+
                     continue;
                 }
                 $stats['updated'] += $this->upsertIntoExisting($matchedByContent, $payload, $reviewUrlValue, $dryRun);
+
                 continue;
             }
 
@@ -220,9 +226,11 @@ class SyncHouzzReviews extends Command
                 $stats['matched_name_date']++;
                 if ($onlyNew) {
                     $stats['skipped_existing']++;
+
                     continue;
                 }
                 $stats['updated'] += $this->upsertIntoExisting($matchedByNameDate, $payload, $reviewUrlValue, $dryRun);
+
                 continue;
             }
 
@@ -230,6 +238,7 @@ class SyncHouzzReviews extends Command
                 $dateLabel = $payload['review_date'] ? $payload['review_date']->toDateString() : 'no-date';
                 $this->line("[DRY RUN] Create (profile): {$payload['reviewer_name']} ({$dateLabel})");
                 $stats['created']++;
+
                 continue;
             }
 
@@ -257,6 +266,7 @@ class SyncHouzzReviews extends Command
             if (! $payload) {
                 $this->warn("Parse failed: {$reviewUrl}");
                 $stats['failed_parse']++;
+
                 continue;
             }
 
@@ -276,9 +286,11 @@ class SyncHouzzReviews extends Command
                 $stats['matched_url']++;
                 if ($onlyNew) {
                     $stats['skipped_existing']++;
+
                     continue;
                 }
                 $stats['updated'] += $this->upsertIntoExisting($matchedByUrl, $payload, $reviewUrl, $dryRun);
+
                 continue;
             }
 
@@ -290,9 +302,11 @@ class SyncHouzzReviews extends Command
                 $stats['matched_content']++;
                 if ($onlyNew) {
                     $stats['skipped_existing']++;
+
                     continue;
                 }
                 $stats['updated'] += $this->upsertIntoExisting($matchedByContent, $payload, $reviewUrl, $dryRun);
+
                 continue;
             }
 
@@ -307,9 +321,11 @@ class SyncHouzzReviews extends Command
                 $stats['matched_name_date']++;
                 if ($onlyNew) {
                     $stats['skipped_existing']++;
+
                     continue;
                 }
                 $stats['updated'] += $this->upsertIntoExisting($matchedByNameDate, $payload, $reviewUrl, $dryRun);
+
                 continue;
             }
 
@@ -317,6 +333,7 @@ class SyncHouzzReviews extends Command
                 $dateLabel = $payload['review_date'] ? $payload['review_date']->toDateString() : 'no-date';
                 $this->line("[DRY RUN] Create: {$payload['reviewer_name']} ({$dateLabel})");
                 $stats['created']++;
+
                 continue;
             }
 
@@ -557,6 +574,7 @@ class SyncHouzzReviews extends Command
         if ($dryRun) {
             $target = $reviewUrl ?? '[no direct url]';
             $this->line("[DRY RUN] Match: #{$testimonial->id} {$testimonial->reviewer_name} <- {$target}");
+
             return 1;
         }
 
@@ -737,6 +755,7 @@ class SyncHouzzReviews extends Command
         $scriptPath = base_path('scripts/scrape-houzz-reviews.mjs');
         if (! is_file($scriptPath)) {
             $this->warn('Browser scraper script missing: '.$scriptPath);
+
             return [];
         }
 
@@ -759,6 +778,7 @@ class SyncHouzzReviews extends Command
         $process = proc_open($cmd, $descriptors, $pipes);
         if (! is_resource($process)) {
             $this->warn('Failed to start Puppeteer scraper process.');
+
             return [];
         }
 
@@ -790,6 +810,7 @@ class SyncHouzzReviews extends Command
                             unset($open[$key]);
                         }
                     }
+
                     continue;
                 }
                 if ($pipe === $pipes[1]) {
@@ -811,20 +832,48 @@ class SyncHouzzReviews extends Command
         }
 
         if (! is_string($output) || trim($output) === '') {
+            // The scraper died before printing anything — a missing Chrome
+            // build, a launch failure. Keep the reason: the Platforms card
+            // shows it, and the log has the whole stderr.
+            $this->scrapeError = 'The Houzz scraper could not run: '.$this->scraperFailureLine($stderr);
+            Log::warning('Houzz scraper produced no output', ['stderr' => mb_substr((string) $stderr, -3000)]);
             $this->warn('Puppeteer scraper returned no output.');
+
             return [];
         }
 
         $decoded = json_decode($output, true);
         if (! is_array($decoded) || ! isset($decoded['reviews']) || ! is_array($decoded['reviews'])) {
             $this->warn('Failed to parse Puppeteer scraper JSON output.');
+
             return [];
         }
         if (($decoded['error'] ?? null) === 'not_found') {
             $this->scrapeError = 'Houzz returned "Page Not Found" for the profile URL — check it under Admin → Social Media → profile links.';
+        } elseif ($decoded['reviews'] === [] && is_string($stderr) && preg_match('/dumped to (\S+) \((\d+) bytes\)/', $stderr, $m) && (int) $m[2] < 5000) {
+            // A profile page a few hundred bytes long is not the profile: Houzz
+            // turned the request away (a datacenter IP without a residential
+            // proxy — "429 too many requests"). Say so instead of "no reviews".
+            $dump = is_file($m[1]) ? (string) file_get_contents($m[1]) : '';
+            $why = str_contains($dump, '429') ? 'Houzz rate-limited this server (HTTP 429)' : 'Houzz returned an empty page ('.$m[2].' bytes)';
+            $this->scrapeError = $why.' — the scrape needs a residential proxy: set SCRAPER_PROXY_URL (or the CAPTCHA_PROXY_* values) in the site\'s .env.';
+            Log::warning('Houzz scraper was blocked', ['bytes' => (int) $m[2], 'dump' => mb_substr($dump, 0, 300), 'stderr' => mb_substr($stderr, -1500)]);
         }
 
         return $decoded['reviews'];
+    }
+
+    /** The one line of the scraper's stderr worth showing an operator: the error itself, not the stack. */
+    private function scraperFailureLine(string|false|null $stderr): string
+    {
+        $lines = array_values(array_filter(array_map('trim', explode("\n", (string) $stderr)), fn ($l) => $l !== '' && ! str_starts_with($l, 'at ')));
+        foreach ($lines as $line) {
+            if (preg_match('/Could not find|ENOENT|EACCES|timeout|Timeout|failed|Failed|denied/i', $line)) {
+                return mb_substr($line, 0, 200);
+            }
+        }
+
+        return mb_substr($lines[0] ?? 'no output from node', 0, 200);
     }
 
     /**
@@ -887,6 +936,7 @@ class SyncHouzzReviews extends Command
 
         if (empty($htmlBlobs)) {
             $this->reviewUrlByUserProfileCache[$reviewerProfileUrl] = null;
+
             return null;
         }
 
@@ -907,6 +957,7 @@ class SyncHouzzReviews extends Command
 
         if (count($candidates) === 1) {
             $this->reviewUrlByUserProfileCache[$reviewerProfileUrl] = $candidates[0];
+
             return $candidates[0];
         }
 
@@ -929,12 +980,14 @@ class SyncHouzzReviews extends Command
 
                 if ($this->normalizeForComparison($candidateText, 140) === $target) {
                     $this->reviewUrlByUserProfileCache[$reviewerProfileUrl] = $candidate;
+
                     return $candidate;
                 }
             }
         }
 
         $this->reviewUrlByUserProfileCache[$reviewerProfileUrl] = null;
+
         return null;
     }
 
@@ -953,8 +1006,8 @@ class SyncHouzzReviews extends Command
     }
 
     /**
-     * @param array<string, mixed> $profilePayload
-    * @return array{reviewer_name:string, reviewer_profile_url:?string, review_description:string, review_date:?Carbon, star_rating:?int, url:?string}|null
+     * @param  array<string, mixed>  $profilePayload
+     * @return array{reviewer_name:string, reviewer_profile_url:?string, review_description:string, review_date:?Carbon, star_rating:?int, url:?string}|null
      */
     private function normalizeProfilePayload(array $profilePayload): ?array
     {
@@ -1060,7 +1113,7 @@ class SyncHouzzReviews extends Command
     }
 
     /**
-     * @param array<int, string> $urls
+     * @param  array<int, string>  $urls
      * @return array<int, string>
      */
     private function deduplicateHouzzUrls(array $urls): array
