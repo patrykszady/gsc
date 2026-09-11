@@ -50,8 +50,8 @@ class PlatformsGoogleCredentialsTest extends TestCase
         $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()
             ->assertJsonPath('data.google.configured', false)
             ->assertJsonPath('data.google.source', null)
-            ->assertJsonPath('data.google.redirect_uris.gbp', route('admin.platforms.gbp-callback', ['site' => Site::current()->primary_host]))
-            ->assertJsonPath('data.google.redirect_uris.gsc', route('admin.platforms.gsc-callback', ['site' => Site::current()->primary_host]))
+            ->assertJsonPath('data.google.redirect_uris.gbp', route('admin-oauth.callback', ['provider' => 'gbp']))
+            ->assertJsonPath('data.google.redirect_uris.gsc', route('admin-oauth.callback', ['provider' => 'gsc']))
             ->assertJsonPath('data.gbp.app_credentials_configured', false)
             ->assertJsonPath('data.gsc.app_credentials_configured', false);
     }
@@ -80,7 +80,7 @@ class PlatformsGoogleCredentialsTest extends TestCase
         // A fresh request boots with the stored client in config, so the sign-in URL carries it.
         $url = $this->getJson('/api/admin/v1/platforms/gbp/oauth-url', $this->bearer())->assertOk()->json('data.url');
         $this->assertStringContainsString('client_id=1234567890-abcdefghijklmnop.apps.googleusercontent.com', $url);
-        $this->assertStringContainsString(urlencode(route('admin.platforms.gbp-callback', ['site' => Site::current()->primary_host])), $url);
+        $this->assertStringContainsString(urlencode(route('admin-oauth.callback', ['provider' => 'gbp'])), $url);
         $this->assertStringContainsString('client_id=1234567890-abcdefghijklmnop', $this->getJson('/api/admin/v1/platforms/gsc/oauth-url', $this->bearer())->json('data.url'));
     }
 

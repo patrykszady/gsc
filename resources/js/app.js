@@ -321,3 +321,7 @@ window.GSCImageCache = {
         cached: imageCache.size
     })
 };
+
+// One branded Google Map base for every map on this site — see branded-map.js
+// (byte-identical across ss-systems, jpeterson-design and gs.construction).
+import './branded-map';

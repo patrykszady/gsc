@@ -1,3 +1,10 @@
+import { load, options, ramp } from './branded-map';
+
+/**
+ * The public project map: one pulsing bubble per ZIP code with projects.
+ * The map itself — loader, tint, shared options — is branded-map.js, the
+ * one base every map in the estate draws from; this file adds the bubbles.
+ */
 export function createProjectZipMap(zipPoints, maxCount, mapCenter) {
     return {
         map: null,
@@ -9,19 +16,16 @@ export function createProjectZipMap(zipPoints, maxCount, mapCenter) {
             this.initialized = true;
 
             // Await the pre-warm promise set up in <head> — by the time Alpine
-            // calls init(), the API is usually already downloaded.
-            await (window.__mapsPrewarm || this.waitForGoogleMaps());
-            if (!window.google?.maps?.importLibrary) return;
+            // calls init(), the API is usually already downloaded; the shared
+            // loader only fetches it itself when nothing has.
+            await (window.__mapsPrewarm || Promise.resolve());
+            const libs = await load(window.__mapsKey, ['maps', 'geocoding']);
 
-            const { Map } = await google.maps.importLibrary('maps');
-            await google.maps.importLibrary('geocoding');
-
-            // Start with map locked - requires click to interact
-            this.map = new Map(this.$refs.map, {
+            // Start with map locked - requires click to interact. The tint
+            // is the site's sky ramp, like every other map here.
+            this.map = new libs.maps.Map(this.$refs.map, options(ramp('--color-sky'), {
                 center: mapCenter,
                 zoom: 10,
-                mapTypeControl: false,
-                streetViewControl: false,
                 fullscreenControl: false,
                 zoomControl: false,
                 gestureHandling: 'cooperative',
@@ -30,20 +34,8 @@ export function createProjectZipMap(zipPoints, maxCount, mapCenter) {
                 disableDoubleClickZoom: false,
                 minZoom: 9,
                 maxZoom: 15,
-                styles: [
-                    { elementType: 'geometry', stylers: [{ color: '#f4f6f9' }] },
-                    { elementType: 'labels.text.fill', stylers: [{ color: '#4b5563' }] },
-                    { elementType: 'labels.text.stroke', stylers: [{ color: '#f4f6f9' }] },
-                    { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#d1d5db' }] },
-                    { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eef2f7' }] },
-                    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-                    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-                    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#e5e7eb' }] },
-                    { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-                    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#1e3a5f' }] },
-                    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#f4f6f9' }] },
-                ],
-            });
+                restriction: undefined,
+            }));
 
             this.renderZipCircles(zipPoints, Math.max(maxCount, 1));
             this.startPulseAnimation();
@@ -161,20 +153,6 @@ export function createProjectZipMap(zipPoints, maxCount, mapCenter) {
             });
 
             return out;
-        },
-        waitForGoogleMaps() {
-            // If already loaded (e.g. after wire:navigate), resolve immediately
-            if (window.google?.maps?.importLibrary) return Promise.resolve();
-            return new Promise((resolve) => {
-                let attempts = 0;
-                const timer = setInterval(() => {
-                    attempts += 1;
-                    if (window.google?.maps?.importLibrary || attempts > 40) {
-                        clearInterval(timer);
-                        resolve();
-                    }
-                }, 250);
-            });
         },
     };
 }

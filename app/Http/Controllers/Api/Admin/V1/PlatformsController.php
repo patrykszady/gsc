@@ -18,6 +18,7 @@ use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
 use App\Support\GoogleOAuthApp;
+use App\Support\OAuthState;
 use App\Support\Reviews\ReviewImport;
 use App\Support\YelpCookieJar;
 use Illuminate\Http\JsonResponse;
@@ -92,15 +93,16 @@ class PlatformsController extends Controller
     {
         abort_unless(in_array($provider, self::OAUTH_PROVIDERS, true), 404);
 
-        $site = ['site' => Site::current()->primary_host];
+        // The shared /admin-oauth/{provider}/callback (routes/web.php), with
+        // a signed state the callback verifies — the same flow as
+        // jpeterson-design's; no admin session needed.
+        $redirectUri = route('admin-oauth.callback', ['provider' => $provider]);
+        $state = OAuthState::make($provider);
 
         $url = match ($provider) {
-            'gbp' => app(GoogleBusinessProfileService::class)
-                ->getOAuthUrl(route('admin.platforms.gbp-callback', $site)),
-            'gsc' => app(GoogleSearchConsoleService::class)
-                ->getOAuthUrl(route('admin.platforms.gsc-callback', $site)),
-            'meta' => app(MetaSocialService::class)
-                ->getOAuthUrl(route('admin.platforms.meta-callback', $site)),
+            'gbp' => app(GoogleBusinessProfileService::class)->getOAuthUrl($redirectUri, $state),
+            'gsc' => app(GoogleSearchConsoleService::class)->getOAuthUrl($redirectUri, $state),
+            'meta' => app(MetaSocialService::class)->getOAuthUrl($redirectUri, $state),
         };
 
         return $this->itemResponse(['url' => $url]);

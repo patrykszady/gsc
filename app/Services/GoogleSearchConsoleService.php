@@ -25,8 +25,11 @@ use Illuminate\Support\Facades\Log;
 class GoogleSearchConsoleService
 {
     protected const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+
     protected const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+
     protected const API_BASE = 'https://searchconsole.googleapis.com/webmasters/v3';
+
     // Full webmasters scope, not .readonly. Everything read-only continues to
     // work, and it additionally allows sitemaps.submit — the supported way to
     // ask Google to re-fetch a sitemap since the ping endpoint was retired in
@@ -34,6 +37,7 @@ class GoogleSearchConsoleService
     // reads; submit returns 403 until `php artisan search-console:auth` is
     // re-run once to grant the wider scope.
     protected const SCOPES = 'https://www.googleapis.com/auth/webmasters';
+
     public const PROVIDER = 'google_search_console';
 
     protected ?array $lastError = null;
@@ -59,16 +63,17 @@ class GoogleSearchConsoleService
         return config('services.google.search_console.refresh_token') ?: null;
     }
 
-    public function getOAuthUrl(string $redirectUri): string
+    public function getOAuthUrl(string $redirectUri, ?string $state = null): string
     {
-        return self::AUTH_ENDPOINT . '?' . http_build_query([
+        return self::AUTH_ENDPOINT.'?'.http_build_query(array_filter([
             'client_id' => config('services.google.search_console.client_id'),
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
             'scope' => self::SCOPES,
             'access_type' => 'offline',
             'prompt' => 'consent',
-        ]);
+            'state' => $state,
+        ]));
     }
 
     /**
@@ -90,6 +95,7 @@ class GoogleSearchConsoleService
 
         if (! $resp->successful()) {
             Log::error('GSC: OAuth exchange failed', ['body' => $resp->body()]);
+
             return ['success' => false, 'error' => $resp->json('error_description') ?? $resp->body()];
         }
 
@@ -107,6 +113,7 @@ class GoogleSearchConsoleService
         );
 
         Cache::forget('gsc_access_token');
+
         return ['success' => true];
     }
 
@@ -114,7 +121,7 @@ class GoogleSearchConsoleService
      * Query the Search Analytics API.
      *
      * @param  array<int,string>  $dimensions  e.g. ['date','query','page','country','device']
-     * @return array<int,array>|null  rows from the response
+     * @return array<int,array>|null rows from the response
      */
     public function querySearchAnalytics(
         string $siteUrl,
@@ -129,7 +136,7 @@ class GoogleSearchConsoleService
             return null;
         }
 
-        $url = self::API_BASE . '/sites/' . rawurlencode($siteUrl) . '/searchAnalytics/query';
+        $url = self::API_BASE.'/sites/'.rawurlencode($siteUrl).'/searchAnalytics/query';
         $resp = Http::withToken($token)->timeout(60)->post($url, [
             'startDate' => $startDate,
             'endDate' => $endDate,
@@ -146,6 +153,7 @@ class GoogleSearchConsoleService
                 'status' => $resp->status(),
                 'body' => $resp->body(),
             ]);
+
             return null;
         }
 
@@ -158,7 +166,8 @@ class GoogleSearchConsoleService
         if (! $token) {
             return null;
         }
-        $resp = Http::withToken($token)->timeout(20)->get(self::API_BASE . '/sites');
+        $resp = Http::withToken($token)->timeout(20)->get(self::API_BASE.'/sites');
+
         return $resp->successful() ? $resp->json('siteEntry', []) : null;
     }
 
@@ -189,7 +198,7 @@ class GoogleSearchConsoleService
         // the only one this code had ever run.
         $resp = Http::withToken($token)->timeout(20)->send(
             'PUT',
-            self::API_BASE . '/sites/' . rawurlencode($siteUrl) . '/sitemaps/' . rawurlencode($sitemapUrl)
+            self::API_BASE.'/sites/'.rawurlencode($siteUrl).'/sitemaps/'.rawurlencode($sitemapUrl)
         );
 
         if ($resp->successful()) {
@@ -246,12 +255,14 @@ class GoogleSearchConsoleService
         $dbToken = OAuthToken::forProvider(self::PROVIDER);
         if ($dbToken?->hasValidAccessToken()) {
             Cache::put($cacheKey, $dbToken->access_token, $dbToken->access_token_expires_at);
+
             return $dbToken->access_token;
         }
 
         $refresh = $this->getRefreshToken();
         if (! $refresh) {
             $this->lastError = ['message' => 'No refresh token. Run php artisan seo:gsc-auth'];
+
             return null;
         }
 
@@ -265,6 +276,7 @@ class GoogleSearchConsoleService
         if (! $resp->successful()) {
             $this->lastError = ['status' => $resp->status(), 'body' => $resp->body()];
             Log::warning('GSC: token refresh failed', ['body' => $resp->body()]);
+
             return null;
         }
 

@@ -15,12 +15,19 @@ use Intervention\Image\Laravel\Facades\Image;
 class GoogleBusinessProfileService
 {
     protected const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+
     protected const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+
     protected const USERINFO_ENDPOINT = 'https://www.googleapis.com/oauth2/v3/userinfo';
+
     protected const MEDIA_API_BASE = 'https://mybusiness.googleapis.com/v4';
+
     protected const ACCOUNT_API_BASE = 'https://mybusinessaccountmanagement.googleapis.com/v1';
+
     protected const INFO_API_BASE = 'https://mybusinessbusinessinformation.googleapis.com/v1';
+
     protected const SCOPES = 'https://www.googleapis.com/auth/business.manage openid email';
+
     public const PROVIDER = 'google_business_profile';
 
     protected ?array $lastError = null;
@@ -86,18 +93,19 @@ class GoogleBusinessProfileService
     /**
      * Generate the Google OAuth consent URL for the admin to authorise.
      */
-    public function getOAuthUrl(string $redirectUri): string
+    public function getOAuthUrl(string $redirectUri, ?string $state = null): string
     {
-        $params = http_build_query([
+        $params = http_build_query(array_filter([
             'client_id' => config('services.google.business_profile.client_id'),
             'redirect_uri' => $redirectUri,
             'response_type' => 'code',
             'scope' => self::SCOPES,
             'access_type' => 'offline',
             'prompt' => 'consent', // force new refresh token every time
-        ]);
+            'state' => $state,
+        ]));
 
-        return self::AUTH_ENDPOINT . '?' . $params;
+        return self::AUTH_ENDPOINT.'?'.$params;
     }
 
     /**
@@ -204,6 +212,7 @@ class GoogleBusinessProfileService
         $imageUrl = $this->getPublicImageUrl($image);
         if (! $imageUrl) {
             Log::channel('gbp')->warning('GBP: Image URL not available', ['image_id' => $image->id]);
+
             return null;
         }
 
@@ -221,7 +230,7 @@ class GoogleBusinessProfileService
             'description' => $this->buildDescription($image),
         ];
 
-        $url = $this->mediaBaseUrl() . '/media';
+        $url = $this->mediaBaseUrl().'/media';
 
         $response = Http::withToken($accessToken)
             ->timeout(60)
@@ -282,7 +291,7 @@ class GoogleBusinessProfileService
             return false;
         }
 
-        $url = self::MEDIA_API_BASE . "/{$mediaName}";
+        $url = self::MEDIA_API_BASE."/{$mediaName}";
 
         $response = Http::withToken($accessToken)
             ->timeout(30)
@@ -324,7 +333,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $url = self::MEDIA_API_BASE . "/{$mediaName}";
+        $url = self::MEDIA_API_BASE."/{$mediaName}";
 
         $response = Http::withToken($accessToken)
             ->timeout(20)
@@ -405,7 +414,7 @@ class GoogleBusinessProfileService
             return $url;
         }
 
-        return $url . '=' . $size;
+        return $url.'='.$size;
     }
 
     public function getMediaUrlCached(string $mediaName, int $ttlSeconds = 604800): ?string
@@ -414,7 +423,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $cacheKey = 'gbp_media_url_' . $mediaName;
+        $cacheKey = 'gbp_media_url_'.$mediaName;
         $negativeTtl = 300; // 5 min
 
         $cached = Cache::get($cacheKey, '__missing__');
@@ -453,7 +462,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $url = $this->mediaBaseUrl() . '/media';
+        $url = $this->mediaBaseUrl().'/media';
         $params = ['pageSize' => $pageSize];
         if ($pageToken) {
             $params['pageToken'] = $pageToken;
@@ -511,18 +520,20 @@ class GoogleBusinessProfileService
     {
         if (! $this->hasOAuthCredentials()) {
             $this->lastError ??= ['message' => 'Missing OAuth credentials'];
+
             return [];
         }
 
         $accessToken = $this->getAccessToken();
         if (! $accessToken) {
             $this->lastError ??= ['message' => 'Failed to obtain access token'];
+
             return [];
         }
 
         $response = Http::withToken($accessToken)
             ->timeout(20)
-            ->get(self::ACCOUNT_API_BASE . '/accounts');
+            ->get(self::ACCOUNT_API_BASE.'/accounts');
 
         if (! $response->successful()) {
             $this->lastError = [
@@ -552,18 +563,20 @@ class GoogleBusinessProfileService
     {
         if (! $this->hasOAuthCredentials()) {
             $this->lastError ??= ['message' => 'Missing OAuth credentials'];
+
             return [];
         }
 
         $accessToken = $this->getAccessToken();
         if (! $accessToken) {
             $this->lastError ??= ['message' => 'Failed to obtain access token'];
+
             return [];
         }
 
         $response = Http::withToken($accessToken)
             ->timeout(20)
-            ->get(self::INFO_API_BASE . "/accounts/{$accountId}/locations", [
+            ->get(self::INFO_API_BASE."/accounts/{$accountId}/locations", [
                 'readMask' => 'name,title,storeCode,websiteUri',
             ]);
 
@@ -591,7 +604,7 @@ class GoogleBusinessProfileService
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Local Posts ("Updates" on the GBP listing)                        */
+    /*  Local Posts ("Updates" on the GBP listing) */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -606,6 +619,7 @@ class GoogleBusinessProfileService
     {
         if (! $this->isConfigured()) {
             $this->lastError = ['message' => 'GBP not configured'];
+
             return null;
         }
 
@@ -630,7 +644,7 @@ class GoogleBusinessProfileService
             'topicType' => 'STANDARD',
         ];
 
-        $url = $this->locationBaseUrl() . '/localPosts';
+        $url = $this->locationBaseUrl().'/localPosts';
 
         $response = Http::withToken($accessToken)
             ->timeout(60)
@@ -646,6 +660,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
+
             return null;
         }
 
@@ -677,7 +692,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $url = $this->locationBaseUrl() . '/localPosts';
+        $url = $this->locationBaseUrl().'/localPosts';
 
         $response = Http::withToken($accessToken)
             ->timeout(30)
@@ -689,6 +704,7 @@ class GoogleBusinessProfileService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ];
+
             return null;
         }
 
@@ -711,7 +727,7 @@ class GoogleBusinessProfileService
             return [];
         }
 
-        $url = $this->locationBaseUrl() . '/localPosts';
+        $url = $this->locationBaseUrl().'/localPosts';
         $all = [];
         $pageToken = null;
 
@@ -741,7 +757,7 @@ class GoogleBusinessProfileService
     /**
      * Delete a single local post ("update") from the GBP listing.
      *
-     * @param string $postName Full resource name: accounts/{a}/locations/{l}/localPosts/{p}
+     * @param  string  $postName  Full resource name: accounts/{a}/locations/{l}/localPosts/{p}
      */
     public function deleteLocalPost(string $postName): bool
     {
@@ -756,7 +772,7 @@ class GoogleBusinessProfileService
 
         $response = Http::withToken($accessToken)
             ->timeout(30)
-            ->delete(self::MEDIA_API_BASE . "/{$postName}");
+            ->delete(self::MEDIA_API_BASE."/{$postName}");
 
         if (! $response->successful()) {
             $this->lastError = [
@@ -780,7 +796,7 @@ class GoogleBusinessProfileService
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Reviews                                                            */
+    /*  Reviews */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -794,6 +810,7 @@ class GoogleBusinessProfileService
     {
         if (! $this->isConfigured()) {
             $this->lastError = ['message' => 'GBP not configured'];
+
             return null;
         }
 
@@ -802,7 +819,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $url = $this->locationBaseUrl() . '/reviews';
+        $url = $this->locationBaseUrl().'/reviews';
         $params = ['pageSize' => $pageSize];
         if ($pageToken) {
             $params['pageToken'] = $pageToken;
@@ -959,7 +976,7 @@ class GoogleBusinessProfileService
         // If it's a local Storage URL, rewrite to the production domain
         $storagePath = str_replace('/storage/', '', parse_url($relativeUrl, PHP_URL_PATH) ?: '');
 
-        return rtrim($productionUrl, '/') . '/storage/' . ltrim($storagePath, '/');
+        return rtrim($productionUrl, '/').'/storage/'.ltrim($storagePath, '/');
     }
 
     /**
@@ -976,7 +993,7 @@ class GoogleBusinessProfileService
 
         $dir = pathinfo($path, PATHINFO_DIRNAME);
         $nameWithoutExt = pathinfo($path, PATHINFO_FILENAME);
-        $jpgPath = trim($dir, '/') . '/' . $nameWithoutExt . '_gbp.jpg';
+        $jpgPath = trim($dir, '/').'/'.$nameWithoutExt.'_gbp.jpg';
         $geotagEnabled = (bool) config('services.google.business_profile.geotag_photos', true);
         [$lat, $lng] = $geotagEnabled
             ? $this->resolveImageCoordinates($image)
@@ -1011,6 +1028,7 @@ class GoogleBusinessProfileService
                     'path' => $path,
                     'error' => $e->getMessage(),
                 ]);
+
                 return null;
             }
         }
@@ -1037,7 +1055,7 @@ class GoogleBusinessProfileService
         $area = AreaServed::query()
             ->where(function ($q) use ($city, $slug) {
                 $q->where('city', $city)
-                  ->orWhere('slug', $slug);
+                    ->orWhere('slug', $slug);
             })
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
@@ -1059,6 +1077,7 @@ class GoogleBusinessProfileService
         // Handle both "," and "." used as separators (real data has both).
         $parts = preg_split('/[,.]/', $location) ?: [$location];
         $city = trim((string) ($parts[0] ?? ''));
+
         return $city !== '' ? $city : trim($location);
     }
 
@@ -1107,7 +1126,7 @@ class GoogleBusinessProfileService
         $accountId = config('services.google.business_profile.account_id');
         $locationId = config('services.google.business_profile.location_id');
 
-        return self::MEDIA_API_BASE . "/accounts/{$accountId}/locations/{$locationId}";
+        return self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}";
     }
 
     /**
@@ -1117,11 +1136,11 @@ class GoogleBusinessProfileService
     {
         $locationId = config('services.google.business_profile.location_id');
 
-        return self::INFO_API_BASE . "/locations/{$locationId}";
+        return self::INFO_API_BASE."/locations/{$locationId}";
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Location / Profile                                                 */
+    /*  Location / Profile */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -1244,7 +1263,7 @@ class GoogleBusinessProfileService
             ],
         ];
 
-        $url = $this->infoLocationUrl() . '?updateMask=serviceArea';
+        $url = $this->infoLocationUrl().'?updateMask=serviceArea';
 
         Log::channel('gbp')->debug('GBP: Service area update request', [
             'url' => $url,
@@ -1395,7 +1414,7 @@ class GoogleBusinessProfileService
             ],
         ];
 
-        $url = $this->infoLocationUrl() . '?updateMask=categories';
+        $url = $this->infoLocationUrl().'?updateMask=categories';
 
         $response = Http::withToken($accessToken)
             ->timeout(60)
@@ -1451,7 +1470,7 @@ class GoogleBusinessProfileService
         $description = mb_substr(trim($description), 0, 750);
         $response = Http::withToken($accessToken)
             ->timeout(60)
-            ->patch($this->infoLocationUrl() . '?updateMask=profile.description', ['profile' => ['description' => $description]]);
+            ->patch($this->infoLocationUrl().'?updateMask=profile.description', ['profile' => ['description' => $description]]);
 
         if (! $response->successful()) {
             $this->lastError = [
@@ -1481,7 +1500,7 @@ class GoogleBusinessProfileService
 
         $response = Http::withToken($accessToken)
             ->timeout(30)
-            ->get(self::INFO_API_BASE . '/categories', [
+            ->get(self::INFO_API_BASE.'/categories', [
                 'regionCode' => $regionCode,
                 'languageCode' => $languageCode,
                 'filter' => "categoryName=\"{$query}\"",
@@ -1517,7 +1536,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $url = self::MEDIA_API_BASE . "/{$reviewName}/reply";
+        $url = self::MEDIA_API_BASE."/{$reviewName}/reply";
 
         $response = Http::withToken($accessToken)
             ->timeout(30)
@@ -1586,7 +1605,7 @@ class GoogleBusinessProfileService
             $serviceItems[] = $node;
         }
 
-        $url = $this->infoLocationUrl() . '?updateMask=serviceItems';
+        $url = $this->infoLocationUrl().'?updateMask=serviceItems';
 
         $response = Http::withToken($accessToken)
             ->timeout(30)

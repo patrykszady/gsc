@@ -51,6 +51,7 @@ use App\Livewire\TradePage;
 use App\Livewire\TradesIndexPage;
 use App\Livewire\ZipCodePage;
 use App\Models\AreaServed;
+use App\Models\BlogPost;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\ShortLink;
@@ -61,6 +62,7 @@ use App\Services\MetaSocialService;
 use App\Services\SeoService;
 use App\Support\DevSites;
 use App\Support\LeadLineInfo;
+use App\Support\OAuthState;
 use App\Support\PermitGuideInfo;
 use App\Support\SEO\SEOBuilder;
 use App\Support\Theme;
@@ -71,6 +73,7 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
@@ -457,7 +460,7 @@ Route::get('/feed/updates.atom', function () {
             ->map(fn ($a) => ['url' => url('/areas-served/'.$a->slug), 'title' => $a->city.' Remodeling — GS Construction', 'updated' => $a->updated_at]))
         ->concat(Project::where('is_published', true)->orderByDesc('updated_at')->limit(30)->get()
             ->map(fn ($p) => ['url' => url('/projects/'.$p->slug), 'title' => $p->title, 'updated' => $p->updated_at]))
-        ->concat(\Illuminate\Support\Facades\Schema::hasTable('blog_posts') ? \App\Models\BlogPost::published()->orderByDesc('updated_at')->limit(30)->get()
+        ->concat(Schema::hasTable('blog_posts') ? BlogPost::published()->orderByDesc('updated_at')->limit(30)->get()
             ->map(fn ($b) => ['url' => $b->url(), 'title' => $b->title, 'updated' => $b->updated_at]) : collect())
         ->filter(fn ($e) => $e['updated'] !== null)
         ->sortByDesc('updated')
@@ -492,7 +495,7 @@ Route::get('/feed/updates.atom', function () {
 // ?preview=1 is a 404 like any other unpublished post.
 Route::get('/blog', function () {
     SeoService::blogIndex();
-    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->orderByDesc('dated_at')->paginate(12);
+    $posts = BlogPost::published()->with('project.images')->orderByDesc('published_at')->orderByDesc('dated_at')->paginate(12);
 
     return view('blog-index', ['posts' => $posts]);
 })->name('blog.index');
@@ -501,7 +504,7 @@ Route::get('/blog', function () {
 // WebSub hub as the updates feed (RegenSitemapsAndNotifyJob pings it), so
 // subscribed crawlers and readers learn about a new story within minutes.
 Route::get('/blog/feed.atom', function () {
-    $posts = \App\Models\BlogPost::published()->with('project.images')->orderByDesc('published_at')->limit(40)->get();
+    $posts = BlogPost::published()->with('project.images')->orderByDesc('published_at')->limit(40)->get();
     $brand = (string) config('brand.name');
     $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
         .'<feed xmlns="http://www.w3.org/2005/Atom">'."\n"
@@ -530,7 +533,7 @@ Route::get('/blog/feed.atom', function () {
 
     return response($xml, 200, ['Content-Type' => 'application/atom+xml; charset=UTF-8'])->setMaxAge(300)->setPublic();
 })->name('blog.feed');
-Route::get('/blog/{post:slug}', function (\App\Models\BlogPost $post) {
+Route::get('/blog/{post:slug}', function (BlogPost $post) {
     abort_unless($post->isPublished() || (request()->boolean('preview') && request()->hasValidSignature()), 404);
     SeoService::blogPost($post->load(['project.images', 'project.collaborators']));
 
@@ -579,6 +582,50 @@ Route::get('/trades/{slug}', TradePage::class)
 Route::get('/remodeling/{slug}', LandingPageShow::class)
     ->where('slug', '[a-z0-9\-]+')
     ->name('landing.show');
+
+/*
+| The OAuth callback every site shares — the same /admin-oauth/{provider}/
+| callback jpeterson-design has, with the same session-less protection: the
+| 'state' value PlatformsController::oauthUrl() mints via App\Support\
+| OAuthState is verified before any code is exchanged, so the callback needs
+| no admin session (the /admin surface is the central admin's proxy now, and
+| the legacy session behind the older /admin/{site}/platforms/… callbacks
+| below is rarely there). Register this exact URL per provider on the
+| site's own Google Cloud OAuth client / Meta app — the admin's "Google
+| sign-in" card lists them. The older routes stay for clients that still
+| carry the old URLs.
+*/
+Route::get('/admin-oauth/{provider}/callback', function (Request $request, string $provider) {
+    abort_unless(in_array($provider, ['gbp', 'gsc', 'meta'], true), 404);
+
+    if (! OAuthState::verify($request->query('state'), $provider)) {
+        return redirect('/admin/gsc/platforms?error='.urlencode(
+            'Sign-in link expired or was invalid. Try connecting again.'
+        ));
+    }
+
+    $code = $request->query('code');
+    if (! $code) {
+        $err = $request->query('error_description') ?? $request->query('error')
+            ?? 'Authorization cancelled or failed — no code returned.';
+
+        return redirect('/admin/gsc/platforms?error='.urlencode((string) $err));
+    }
+
+    $redirectUri = route('admin-oauth.callback', ['provider' => $provider]);
+
+    $result = match ($provider) {
+        'gbp' => app(GoogleBusinessProfileService::class)->exchangeCodeAndStore($code, $redirectUri),
+        'gsc' => app(GoogleSearchConsoleService::class)->exchangeCodeAndStore($code, $redirectUri),
+        'meta' => app(MetaSocialService::class)->exchangeCodeAndStore($code, $redirectUri),
+    };
+
+    if ($result['success'] ?? false) {
+        return redirect("/admin/gsc/platforms?connected={$provider}");
+    }
+
+    return redirect('/admin/gsc/platforms?error='.urlencode('OAuth failed: '.($result['error'] ?? 'Unknown error')));
+})->where('provider', 'gbp|gsc|meta')->name('admin-oauth.callback');
 
 /*
 | OAuth callbacks — deliberately at the ORIGINAL /admin/{site}/… paths, not
@@ -662,7 +709,7 @@ Route::middleware(['auth', 'noindex', ResolveAdminSite::class])
         // by hand. Kept at the ORIGINAL /admin/{site}/… path for the same
         // reason as the OAuth callbacks above: the URL is baked into the
         // shipped extension.
-        Route::get('/platforms/extension-pairing', [\App\Http\Controllers\YelpCookieIngestController::class, 'pairing'])
+        Route::get('/platforms/extension-pairing', [YelpCookieIngestController::class, 'pairing'])
             ->name('platforms.extension-pairing');
     });
 

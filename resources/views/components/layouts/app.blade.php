@@ -299,6 +299,8 @@
         // Pre-warm: start downloading Maps API immediately so the download
         // is done (or nearly done) by the time the map component initializes.
         window.__mapsPrewarm = google.maps.importLibrary('maps').catch(() => {});
+        // For resources/js/branded-map.js, should it ever need to load the API itself.
+        window.__mapsKey = @js(config('services.google.maps_browser_key'));
     </script>
     @endif
 

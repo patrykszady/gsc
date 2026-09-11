@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Models\PlatformSetting;
-use App\Models\Site;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -109,11 +108,9 @@ class GoogleOAuthApp
     /** Where Google sends the sign-in back to — must be registered on the client. */
     public static function redirectUris(): array
     {
-        $site = ['site' => Site::current()->primary_host];
-
         return [
-            'gbp' => route('admin.platforms.gbp-callback', $site),
-            'gsc' => route('admin.platforms.gsc-callback', $site),
+            'gbp' => route('admin-oauth.callback', ['provider' => 'gbp']),
+            'gsc' => route('admin-oauth.callback', ['provider' => 'gsc']),
         ];
     }
 

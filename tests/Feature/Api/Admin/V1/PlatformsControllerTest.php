@@ -167,8 +167,10 @@ class PlatformsControllerTest extends TestCase
 
             parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
+            // The shared, session-less callback — the same path
+            // jpeterson-design uses — never the legacy admin's.
             $this->assertStringContainsString(
-                "/admin/gs.construction/platforms/{$segment}/callback",
+                "/admin-oauth/{$segment}/callback",
                 $query['redirect_uri'],
             );
             // Never the legacy path — that's the whole point of the port.
