@@ -142,10 +142,10 @@ cd "$SITE/current"
 $PHP artisan horizon:terminate --wait || true
 
 log "Post-deploy (never fatal)"
-$PHP artisan sitemap:generate --url="https://gs.construction" || true
+# Sitemaps, image sitemap and both llms files, cache busted first — the
+# same RefreshPublicFeedsJob a content change runs.
+$PHP artisan public-feeds:refresh || true
 $PHP artisan seo:gsc-submit-sitemaps || true
-$PHP artisan geo:llms-txt || true
-$PHP artisan geo:llms-txt --full || true
 $PHP artisan indexnow:submit --all || true
 
 log "Prune old releases (keep $KEEP)"

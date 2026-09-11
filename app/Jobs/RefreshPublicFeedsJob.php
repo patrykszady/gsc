@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Hszope\LaravelAigeo\Modules\LlmsTxt\LlmsTxtGenerator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,6 +38,16 @@ class RefreshPublicFeedsJob implements ShouldQueue
         app()->instance('public-feeds.generating', true);
 
         try {
+            // The geo package caches its rendered llms text for an hour
+            // (LlmsTxtGenerator::generate → Cache::remember), so without
+            // this a regeneration right after a content change — or a
+            // deploy — would write the previous hour's text back to disk.
+            try {
+                app(LlmsTxtGenerator::class)->bust();
+            } catch (\Throwable $e) {
+                Log::warning('public feeds: could not bust the llms cache', ['error' => $e->getMessage()]);
+            }
+
             foreach (self::COMMANDS as $label => $options) {
                 $command = explode(' ', $label)[0];
                 try {
