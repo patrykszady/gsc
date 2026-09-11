@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateAreaContentJob;
 use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\AreaServed;
+use App\Support\Areas\TownCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -45,7 +47,7 @@ class AreaController extends Controller
         $data = $request->validate(['q' => ['nullable', 'string', 'max:60'], 'limit' => ['nullable', 'integer', 'between:1,300']]);
 
         return $this->itemResponse([
-            'candidates' => \App\Support\Areas\TownCatalog::candidates($data['q'] ?? null, (int) ($data['limit'] ?? 60)),
+            'candidates' => TownCatalog::candidates($data['q'] ?? null, (int) ($data['limit'] ?? 60)),
             'radius_miles' => (float) config('areas.candidate_radius_miles', 35),
         ]);
     }
@@ -58,20 +60,20 @@ class AreaController extends Controller
         $data = $this->mapped($data);
         // A town from the catalog brings its own coordinates (and its slug
         // convention: state-suffixed outside the home state): no geocoder round trip.
-        if ($town = \App\Support\Areas\TownCatalog::find((string) $data['city'])) {
+        if ($town = TownCatalog::find((string) $data['city'])) {
             $data['latitude'] = $data['latitude'] ?? $town['lat'];
             $data['longitude'] = $data['longitude'] ?? $town['lng'];
             if (empty($request->input('slug'))) {
-                $data['slug'] = \App\Support\Areas\TownCatalog::slugFor($town);
+                $data['slug'] = TownCatalog::slugFor($town);
             }
-            if (Str::slug((string) $data['city']) === Str::slug($town['name']) || Str::slug((string) $data['city']) === Str::slug(\App\Support\Areas\TownCatalog::label($town))) {
-                $data['city'] = \App\Support\Areas\TownCatalog::cityFor($town);
+            if (Str::slug((string) $data['city']) === Str::slug($town['name']) || Str::slug((string) $data['city']) === Str::slug(TownCatalog::label($town))) {
+                $data['city'] = TownCatalog::cityFor($town);
             }
         }
-        $area = AreaServed::create($data);
+        $area = AreaServed::create($this->withContent($data));
         $this->queueGeocodeIfMissingCoords($area);
         if ($generate) {
-            \App\Jobs\GenerateAreaContentJob::launch($area);
+            GenerateAreaContentJob::launch($area);
         }
 
         return $this->itemResponse($area->fresh()->toApiArray(), 201);
@@ -81,9 +83,9 @@ class AreaController extends Controller
     public function generate(Request $request, int $area): JsonResponse
     {
         $model = AreaServed::findOrFail($area);
-        \App\Jobs\GenerateAreaContentJob::launch($model, $request->boolean('force'));
+        GenerateAreaContentJob::launch($model, $request->boolean('force'));
 
-        return $this->itemResponse($model->fresh()->toApiArray(), 202);
+        return $this->acceptedResponse($model->fresh()->toApiArray());
     }
 
     public function show(int $area): JsonResponse
@@ -95,7 +97,7 @@ class AreaController extends Controller
     {
         $model = AreaServed::findOrFail($area);
 
-        $model->update($this->mapped($request->validate($this->rules($model->id))));
+        $model->update($this->withContent($this->mapped($request->validate($this->rules($model->id)))));
         $this->queueGeocodeIfMissingCoords($model);
 
         return $this->itemResponse($model->fresh()->toApiArray());
@@ -136,6 +138,22 @@ class AreaController extends Controller
         return $data;
     }
 
+    /** Clean the structured content fields: a FAQ without blanks, a sections map with known keys only. */
+    protected function withContent(array $data): array
+    {
+        if (array_key_exists('faq', $data)) {
+            $data['faq'] = AreaServed::normaliseFaq($data['faq']);
+        }
+        if (array_key_exists('sections', $data)) {
+            $data['sections'] = collect((array) $data['sections'])
+                ->only(array_keys(AreaServed::SECTIONS))
+                ->map(fn ($v) => filter_var($v, FILTER_VALIDATE_BOOL))
+                ->all();
+        }
+
+        return $data;
+    }
+
     protected function rules(?int $ignoreId = null): array
     {
         return [
@@ -146,7 +164,16 @@ class AreaController extends Controller
             'intro' => ['sometimes', 'nullable', 'string'],
             'local_intro' => ['sometimes', 'nullable', 'string'],
             'landmarks' => ['sometimes', 'nullable', 'string'],
+            'neighborhoods' => ['sometimes', 'nullable', 'string'],
+            'popular_projects' => ['sometimes', 'nullable', 'string'],
+            'how_we_work' => ['sometimes', 'nullable', 'string'],
+            'faq' => ['sometimes', 'nullable', 'array'],
+            'faq.*.question' => ['nullable', 'string', 'max:500'],
+            'faq.*.answer' => ['nullable', 'string', 'max:2000'],
             'permit_notes' => ['sometimes', 'nullable', 'string'],
+            // Per-section show/hide — only known section keys, booleans.
+            'sections' => ['sometimes', 'nullable', 'array'],
+            'sections.*' => ['boolean'],
         ];
     }
 }

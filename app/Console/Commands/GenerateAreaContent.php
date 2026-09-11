@@ -7,9 +7,10 @@ use App\Services\AiContentService;
 use Illuminate\Console\Command;
 
 /**
- * Generate unique per-city content (intro, local_intro, landmarks, permit_notes)
- * for AreaServed rows via Gemini, so each /areas-served/{city} page differentiates
- * itself from the others.
+ * Generate unique per-city content (intro, local_intro, landmarks,
+ * neighborhoods, popular_projects, how_we_work, faq, permit_notes) for
+ * AreaServed rows via Gemini, so each /areas-served/{city} page
+ * differentiates itself from the others.
  *
  * Usage:
  *   php artisan seo:generate-area-content --dry-run                # preview all empty cities
@@ -25,7 +26,7 @@ class GenerateAreaContent extends Command
         {--limit=0 : Max number of cities to process (0 = no limit)}
         {--dry-run : Print generated content but do not save}
         {--force : Overwrite existing non-empty fields}
-        {--only= : Comma-separated list of fields to keep (intro,local_intro,landmarks,permit_notes)}
+        {--only= : Comma-separated list of fields to keep (intro,local_intro,landmarks,neighborhoods,popular_projects,how_we_work,faq,permit_notes)}
         {--deepen : Expand the existing local_intro to ~2,000 chars instead of regenerating (implies local_intro only)}';
 
     protected $description = 'Generate unique per-city SEO content for AreaServed pages via Gemini.';
@@ -40,14 +41,15 @@ class GenerateAreaContent extends Command
             $query->where('slug', $slug);
         }
 
-        $allowedFields = ['intro', 'local_intro', 'landmarks', 'permit_notes'];
+        $allowedFields = ['intro', 'local_intro', 'landmarks', 'neighborhoods', 'popular_projects', 'how_we_work', 'faq', 'permit_notes'];
         $onlyOpt = trim((string) $this->option('only'));
         $onlyFields = $onlyOpt === ''
             ? $allowedFields
             : array_values(array_intersect($allowedFields, array_map('trim', explode(',', $onlyOpt))));
 
         if (empty($onlyFields)) {
-            $this->error('No valid fields in --only. Allowed: ' . implode(',', $allowedFields));
+            $this->error('No valid fields in --only. Allowed: '.implode(',', $allowedFields));
+
             return self::FAILURE;
         }
 
@@ -66,10 +68,11 @@ class GenerateAreaContent extends Command
         if (! $force) {
             $areas = $areas->filter(function (AreaServed $a) use ($onlyFields) {
                 foreach ($onlyFields as $f) {
-                    if (blank($a->{$f})) {
+                    if (! $this->fieldIsFilled($a, $f)) {
                         return true;
                     }
                 }
+
                 return false;
             })->values();
         }
@@ -80,6 +83,7 @@ class GenerateAreaContent extends Command
 
         if ($areas->isEmpty()) {
             $this->info('Nothing to do — all matching areas already have content (use --force to regenerate).');
+
             return self::SUCCESS;
         }
 
@@ -98,6 +102,7 @@ class GenerateAreaContent extends Command
             false
         )) {
             $this->warn('Aborted.');
+
             return self::SUCCESS;
         }
 
@@ -106,27 +111,32 @@ class GenerateAreaContent extends Command
 
         foreach ($areas as $i => $area) {
             $this->line('');
-            $this->line("[" . ($i + 1) . "/{$areas->count()}] {$area->city} ({$area->slug})");
+            $this->line('['.($i + 1)."/{$areas->count()}] {$area->city} ({$area->slug})");
 
             $content = $service->generateAreaContent($area);
             if ($content === null) {
                 $fail++;
-                $this->warn(' ↳ FAILED: ' . ($service->getLastError() ?: 'unknown'));
+                $this->warn(' ↳ FAILED: '.($service->getLastError() ?: 'unknown'));
                 if ($sleepSeconds > 0 && $i < $areas->count() - 1) {
                     sleep($sleepSeconds);
                 }
+
                 continue;
             }
 
             $updates = [];
             foreach ($onlyFields as $f) {
-                if (! $force && filled($area->{$f})) {
+                if (! $force && $this->fieldIsFilled($area, $f)) {
                     $this->line("   • {$f}: kept existing");
+
                     continue;
                 }
                 $updates[$f] = $content[$f];
-                $preview = mb_substr(str_replace(["\n", "\r"], ' ', $content[$f]), 0, 140);
-                $this->line("   • {$f}: {$preview}" . (mb_strlen($content[$f]) > 140 ? '…' : ''));
+                $preview = $f === 'faq'
+                    ? implode(' / ', array_map(fn ($item) => $item['question'], $content[$f]))
+                    : $content[$f];
+                $preview = mb_substr(str_replace(["\n", "\r"], ' ', $preview), 0, 140);
+                $this->line("   • {$f}: {$preview}".(mb_strlen($preview) >= 140 ? '…' : ''));
             }
 
             if (! $dry && ! empty($updates)) {
@@ -145,7 +155,19 @@ class GenerateAreaContent extends Command
 
         $this->line('');
         $this->info("Done. ok={$ok} failed={$fail}");
+
         return $fail > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Is a field already filled for this area? faq is an array (cast), not
+     * a string, so "filled" means it holds at least one real question —
+     * the same rule GenerateAreaContentJob uses for its own missing-fields
+     * check.
+     */
+    private function fieldIsFilled(AreaServed $area, string $field): bool
+    {
+        return $field === 'faq' ? $area->faqItems() !== [] : filled($area->{$field});
     }
 
     /**
@@ -181,15 +203,15 @@ class GenerateAreaContent extends Command
         foreach ($areas as $i => $area) {
             $before = mb_strlen((string) $area->local_intro);
             $this->line('');
-            $this->line('[' . ($i + 1) . "/{$areas->count()}] {$area->city} ({$area->slug}) — {$before} chars");
+            $this->line('['.($i + 1)."/{$areas->count()}] {$area->city} ({$area->slug}) — {$before} chars");
 
             $text = $service->deepenAreaLocalIntro($area);
             if ($text === null) {
                 $fail++;
-                $this->warn(' ↳ FAILED: ' . ($service->getLastError() ?: 'unknown'));
+                $this->warn(' ↳ FAILED: '.($service->getLastError() ?: 'unknown'));
             } else {
-                $this->line('   • local_intro: ' . mb_substr(str_replace(["\n", "\r"], ' ', $text), 0, 140) . '…');
-                $this->line('   • ' . $before . ' → ' . mb_strlen($text) . ' chars');
+                $this->line('   • local_intro: '.mb_substr(str_replace(["\n", "\r"], ' ', $text), 0, 140).'…');
+                $this->line('   • '.$before.' → '.mb_strlen($text).' chars');
 
                 if ($dry) {
                     $this->comment('   (dry-run: not saved)');

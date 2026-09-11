@@ -28,8 +28,23 @@ class PingController extends Controller
                     'timelapses', 'before-afters', 'image-tags', 'areas-map', 'review-platforms', 'testimonial-projects',
                     // Partner credits on the project form (designer / architect / trade), used by the blog writer.
                     'collaborators',
+                    // Areas carry more page copy here (neighborhoods, what
+                    // homeowners ask for, how we work, a FAQ) and a per-page
+                    // show/hide switch for every section — see
+                    // AreaServed::SECTIONS. Ported from jpeterson-design
+                    // (2026-09-11) for the same admin backbone.
+                    'area-content',
                     // Citation builder: directory listings driven from the remote browser.
                     'citations',
+                    // The admin-managed services list behind the project form's
+                    // "Project Type" (2026-09-11): the central admin's Services
+                    // screen, and its sidebar group listing each service.
+                    'services',
+                    // Services carry their own page copy (intro, what we do,
+                    // who it suits, a FAQ) and a per-section show/hide switch —
+                    // see Service::SECTIONS. Same backbone as area-content,
+                    // ported from jpeterson-design (2026-09-11).
+                    'service-content',
                 ],
                 // This site's identity inside the central admin: GS blue is
                 // Tailwind's stock sky ramp (accent null = leave it alone,

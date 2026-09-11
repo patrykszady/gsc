@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\V1\AreaController;
+use App\Http\Controllers\Api\Admin\V1\BlogPostController;
 use App\Http\Controllers\Api\Admin\V1\DashboardStatsController;
 use App\Http\Controllers\Api\Admin\V1\LeadController;
 use App\Http\Controllers\Api\Admin\V1\PingController;
@@ -63,7 +64,7 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     // Reviews linkable from the project form — the other end of the
     // testimonial<->project pivot the review form writes. gsc-only
     // ('testimonial-projects' capability); jpeterson has no pivot.
-    Route::get('projects/linkable-testimonials', [\App\Http\Controllers\Api\Admin\V1\ProjectController::class, 'linkableTestimonials']);
+    Route::get('projects/linkable-testimonials', [ProjectController::class, 'linkableTestimonials']);
     Route::get('projects/types', [ProjectController::class, 'types']);
     Route::apiResource('projects', ProjectController::class);
 
@@ -75,10 +76,10 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
 
     Route::apiResource('tags', TagController::class)->except(['show']);
 
-    Route::post('blog-posts/{post}/regenerate', [\App\Http\Controllers\Api\Admin\V1\BlogPostController::class, 'regenerate']);
-    Route::post('projects/{project}/blog-post', [\App\Http\Controllers\Api\Admin\V1\BlogPostController::class, 'generateForProject']);
-    Route::get('projects/{project}/blog-post', [\App\Http\Controllers\Api\Admin\V1\BlogPostController::class, 'statusForProject']);
-    Route::apiResource('blog-posts', \App\Http\Controllers\Api\Admin\V1\BlogPostController::class)->except(['store']);
+    Route::post('blog-posts/{post}/regenerate', [BlogPostController::class, 'regenerate']);
+    Route::post('projects/{project}/blog-post', [BlogPostController::class, 'generateForProject']);
+    Route::get('projects/{project}/blog-post', [BlogPostController::class, 'statusForProject']);
+    Route::apiResource('blog-posts', BlogPostController::class)->except(['store']);
 
     Route::get('testimonials/filters', [TestimonialController::class, 'filters']);
     Route::apiResource('testimonials', TestimonialController::class);
@@ -104,4 +105,5 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     require __DIR__.'/api-admin/citations.php';
     require __DIR__.'/api-admin/projects-ext.php';
     require __DIR__.'/api-admin/areas-ext.php';
+    require __DIR__.'/api-admin/services.php';
 });

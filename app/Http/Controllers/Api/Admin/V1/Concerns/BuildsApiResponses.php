@@ -36,6 +36,24 @@ trait BuildsApiResponses
     }
 
     /**
+     * 202 for an endpoint that queues work with dispatchAfterResponse().
+     * Explicit Content-Length (and Connection: close) so the caller can
+     * stop reading the moment the body is complete: under php-fpm the
+     * response is flushed before the job runs anyway, but PHP's built-in
+     * dev server has no fastcgi_finish_request — without a length the
+     * central admin's HTTP client would sit on the open connection for
+     * the whole Gemini call and time out on a request that had succeeded.
+     */
+    protected function acceptedResponse(array $item): JsonResponse
+    {
+        $response = $this->itemResponse($item, 202);
+
+        return $response
+            ->header('Content-Length', (string) strlen((string) $response->getContent()))
+            ->header('Connection', 'close');
+    }
+
+    /**
      * Apply a '-field' / 'field' sort query param ('-' = descending) to a
      * query, falling back to $default (also '-field' / 'field' style)
      * when $sort is absent.

@@ -74,4 +74,44 @@ class AreaControllerTest extends TestCase
 
         Queue::assertNotPushed(RunSeoChannelSyncJob::class);
     }
+
+    /**
+     * Mirrors jpeterson-design's AreaControllerTest::test_the_extra_copy_fields_faq_and_section_switches_round_trip
+     * — same shared backbone (AreaServed::SECTIONS), adapted for this app's
+     * "name" → "city" mapping and areas_served table.
+     */
+    public function test_the_extra_copy_fields_faq_and_section_switches_round_trip(): void
+    {
+        Queue::fake();
+
+        $area = AreaServed::create(['city' => 'Decatur', 'slug' => 'decatur']);
+
+        $data = $this->putJson('/api/admin/v1/areas/'.$area->id, [
+            'name' => 'Decatur',
+            'latitude' => 41.9,
+            'longitude' => -87.6,
+            'neighborhoods' => 'Oakhurst, Winnona Park',
+            'popular_projects' => 'Kitchens.',
+            'how_we_work' => 'From Arlington Heights.',
+            'faq' => [['question' => 'Do you work here?', 'answer' => 'Yes.'], ['question' => '', 'answer' => '']],
+            'sections' => ['faq' => false, 'intro' => '1', 'bogus' => true],
+        ], $this->adminApiHeaders())->assertOk()->json('data');
+
+        $this->assertSame('Oakhurst, Winnona Park', $data['neighborhoods']);
+        $this->assertSame([['question' => 'Do you work here?', 'answer' => 'Yes.']], $data['faq'], 'blank FAQ rows are dropped');
+        $this->assertFalse($data['sections']['faq'], 'explicitly switched off');
+        $this->assertTrue($data['sections']['intro'], 'explicitly switched on');
+        $this->assertFalse($data['sections']['landmarks'], 'untouched section with no content defaults to hidden');
+        $this->assertArrayNotHasKey('bogus', $data['sections']);
+        $this->assertSame(array_keys(AreaServed::SECTIONS), array_keys($data['section_labels']));
+        $this->assertSame($area->fresh()->url, $data['public_url']);
+    }
+
+    public function test_a_section_with_content_and_no_explicit_switch_shows_by_default(): void
+    {
+        $area = AreaServed::create(['city' => 'Wheeling', 'slug' => 'wheeling', 'landmarks' => 'Heritage Park']);
+
+        $this->assertTrue($area->showsSection('landmarks'), 'has content, no switch stored: defaults on');
+        $this->assertFalse($area->showsSection('intro'), 'no content: defaults off regardless of switch');
+    }
 }

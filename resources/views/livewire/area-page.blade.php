@@ -308,10 +308,11 @@
                 </div>
             </section>
 
-            {{-- Unique per-city content (renders only when populated in DB).
-                 Provides genuine differentiation between area pages — critical to
+            {{-- Unique per-city content (renders only when populated in DB
+                 AND switched on — see AreaServed::showsSection). Provides
+                 genuine differentiation between area pages — critical to
                  avoid Google's "duplicate content / thin local lander" penalty. --}}
-            @if($area->hasUniqueContent() || filled($area->landmarks) || filled($area->permit_notes))
+            @if(collect(\App\Models\AreaServed::SECTIONS)->keys()->contains(fn ($key) => $area->showsSection($key)))
             @include('partials.area-intro-slider')
             @endif
 
@@ -371,7 +372,15 @@
 
             <livewire:contact-section :area="$area" />
 
-            @if(!empty($homeSeo['faqs']))
+            {{-- Prefer the area's own admin-authored FAQ (AreaServed::faq)
+                 when it's switched on and has content; otherwise fall back
+                 to the generic $homeSeo faqs, same as before this field
+                 existed. faqItems() already returns the
+                 ['question' => ..., 'answer' => ...] shape <x-faq-section>
+                 expects. --}}
+            @if($area->showsSection('faq'))
+                <x-faq-section :faqs="$area->faqItems()" :heading="'Remodeling FAQ in ' . $area->city" />
+            @elseif(!empty($homeSeo['faqs']))
                 <x-faq-section :faqs="$homeSeo['faqs']" :heading="'Remodeling FAQ in ' . $area->city" />
             @endif
             @break

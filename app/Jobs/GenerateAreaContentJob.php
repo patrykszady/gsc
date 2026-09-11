@@ -17,9 +17,11 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Fill a new (or thin) service-area page: coordinates from the town
- * catalog when missing, then the four unique-content fields from Gemini
- * (intro, local intro, landmarks, permit notes). Existing text is kept
- * unless $force. The "generating" flag the admin polls lives in the cache.
+ * catalog when missing, then the unique-content fields from Gemini (intro,
+ * local intro, landmarks, neighborhoods, popular projects, how we work,
+ * faq, permit notes — see AiContentService::generateAreaContent).
+ * Existing text is kept unless $force. The "generating" flag the admin
+ * polls lives in the cache.
  */
 class GenerateAreaContentJob implements ShouldQueue
 {
@@ -62,8 +64,8 @@ class GenerateAreaContentJob implements ShouldQueue
                         $area->forceFill(['latitude' => $town['lat'], 'longitude' => $town['lng']])->save();
                     }
                 }
-                $fields = ['intro', 'local_intro', 'landmarks', 'permit_notes'];
-                $missing = array_values(array_filter($fields, fn ($f) => $this->force || blank($area->{$f})));
+                $fields = ['intro', 'local_intro', 'landmarks', 'neighborhoods', 'popular_projects', 'how_we_work', 'faq', 'permit_notes'];
+                $missing = array_values(array_filter($fields, fn ($f) => $this->force || ($f === 'faq' ? $area->faqItems() === [] : blank($area->{$f}))));
                 if ($missing !== []) {
                     $content = $ai->generateAreaContent($area);
                     if ($content === null) {

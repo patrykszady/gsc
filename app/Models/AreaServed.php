@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Jobs\GenerateAreaContentJob;
 use App\Models\Concerns\BelongsToSite;
 use App\Services\HiveProjectsClient;
 use App\Support\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
 use RalphJSmit\Laravel\SEO\Support\SEOData;
 
@@ -26,9 +28,32 @@ class AreaServed extends Model
         'intro',
         'local_intro',
         'landmarks',
+        'neighborhoods',
+        'popular_projects',
+        'how_we_work',
+        'faq',
         'permit_notes',
+        'sections',
         'ig_location_id',
         'fb_place_id',
+    ];
+
+    /**
+     * The pieces of page copy an area can carry, in page order, with the
+     * heading each renders under. Every one can be switched off per area
+     * (the `sections` map) without deleting the text. Ported file-for-file
+     * from jpeterson-design's App\Models\Area::SECTIONS — same backbone,
+     * same keys and labels, see that app's model for the shared contract.
+     */
+    public const SECTIONS = [
+        'intro' => 'Intro',
+        'local_intro' => 'Homes here',
+        'neighborhoods' => 'Neighborhoods',
+        'popular_projects' => 'What homeowners ask for',
+        'how_we_work' => 'How we work here',
+        'landmarks' => 'Around town',
+        'faq' => 'Questions',
+        'permit_notes' => 'Good to know',
     ];
 
     /**
@@ -43,7 +68,77 @@ class AreaServed extends Model
     protected $casts = [
         'latitude' => 'float',
         'longitude' => 'float',
+        'faq' => 'array',
+        'sections' => 'array',
     ];
+
+    /**
+     * Show/hide per section, every key present. An absent key defaults to
+     * shown only when that section actually has content — see
+     * showsSection() — so a freshly generated area with, say, no FAQ yet
+     * doesn't show an empty "Questions" toggle turned on.
+     *
+     * @return array<string, bool>
+     */
+    public function sectionsMap(): array
+    {
+        $stored = is_array($this->sections) ? $this->sections : [];
+
+        return collect(self::SECTIONS)->mapWithKeys(function ($label, $key) use ($stored) {
+            return [$key => array_key_exists($key, $stored) ? (bool) $stored[$key] : $this->sectionHasContent($key)];
+        })->all();
+    }
+
+    /** Does the page render this section: switched on, and there is something to show. */
+    public function showsSection(string $key): bool
+    {
+        if (! array_key_exists($key, self::SECTIONS) || ! $this->sectionsMap()[$key]) {
+            return false;
+        }
+
+        return $this->sectionHasContent($key);
+    }
+
+    /** Whether a section key has anything to show, regardless of its switch. */
+    protected function sectionHasContent(string $key): bool
+    {
+        return $key === 'faq' ? $this->faqItems() !== [] : filled($this->{$key});
+    }
+
+    /**
+     * The FAQ as a clean list of question/answer pairs.
+     *
+     * @return list<array{question: string, answer: string}>
+     */
+    public function faqItems(): array
+    {
+        return self::normaliseFaq($this->faq);
+    }
+
+    /** @return list<array{question: string, answer: string}> */
+    public static function normaliseFaq(mixed $faq): array
+    {
+        if (! is_array($faq)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($faq as $item) {
+            $q = trim((string) ($item['question'] ?? $item['q'] ?? ''));
+            $a = trim((string) ($item['answer'] ?? $item['a'] ?? ''));
+            if ($q !== '' && $a !== '') {
+                $out[] = ['question' => $q, 'answer' => $a];
+            }
+        }
+
+        return $out;
+    }
+
+    /** Comma-separated text ("Oakhurst, Winnona Park") as a list. */
+    public static function listFromText(?string $text): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', (string) $text)), fn ($v) => $v !== ''));
+    }
 
     /**
      * Get the route key for the model.
@@ -527,9 +622,17 @@ class AreaServed extends Model
             'intro' => $this->intro,
             'local_intro' => $this->local_intro,
             'landmarks' => $this->landmarks,
+            'neighborhoods' => $this->neighborhoods,
+            'popular_projects' => $this->popular_projects,
+            'how_we_work' => $this->how_we_work,
+            'faq' => $this->faqItems(),
             'permit_notes' => $this->permit_notes,
+            // Per-section show/hide, every key present — see SECTIONS.
+            'sections' => $this->sectionsMap(),
+            'section_labels' => self::SECTIONS,
+            'public_url' => $this->url,
             // Set while GenerateAreaContentJob is writing the page; the admin polls it.
-            'generating' => is_array($flag = \Illuminate\Support\Facades\Cache::get(\App\Jobs\GenerateAreaContentJob::flagKey((int) $this->id))) && empty($flag['error']),
+            'generating' => is_array($flag = Cache::get(GenerateAreaContentJob::flagKey((int) $this->id))) && empty($flag['error']),
             'generation_error' => is_array($flag) ? ($flag['error'] ?? null) : null,
         ];
     }

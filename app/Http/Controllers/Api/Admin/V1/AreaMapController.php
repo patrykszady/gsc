@@ -166,19 +166,18 @@ class AreaMapController extends Controller
             'longitude' => $lng,
         ]);
 
-        $reused = $this->reuseSharedTownFacts($area);
-
+        // Every field is written for this site: nothing is copied from
+        // another site's row for the same town (2026-09-11 — the central
+        // admin promises "written as soon as it is added", per site).
         RunSeoChannelSyncJob::dispatch(
             'seo:generate-area-content',
-            ['--slug' => $area->slug, '--only' => 'intro,local_intro'],
+            ['--slug' => $area->slug],
         );
 
         return response()->json([
             'data' => [
                 'created' => true,
-                'message' => $reused
-                    ? "Added {$area->city}. Reused its landmarks and permit notes from another site, and queued this site's own intro copy."
-                    : "Added {$area->city}. Queued a job to pull its local details — refresh in a minute.",
+                'message' => "Added {$area->city}. Its page copy is being written — refresh in a minute.",
                 'area' => $area->fresh()->toApiArray(),
             ],
         ]);
@@ -237,29 +236,5 @@ class AreaMapController extends Controller
             ])
             ->values()
             ->all();
-    }
-
-    /** Copy a town's FACTUAL local info from any other tenant that already has it. See AreaList::reuseSharedTownFacts(). */
-    protected function reuseSharedTownFacts(AreaServed $area): bool
-    {
-        $source = AreaServed::withoutSiteScope()
-            ->where('slug', $area->slug)
-            ->whereKeyNot($area->getKey())
-            ->where(function ($q) {
-                $q->whereNotNull('landmarks')->where('landmarks', '!=', '')
-                    ->orWhere(fn ($q2) => $q2->whereNotNull('permit_notes')->where('permit_notes', '!=', ''));
-            })
-            ->first();
-
-        if (! $source) {
-            return false;
-        }
-
-        $area->forceFill(array_filter([
-            'landmarks' => $source->landmarks ?: null,
-            'permit_notes' => $source->permit_notes ?: null,
-        ]))->save();
-
-        return true;
     }
 }

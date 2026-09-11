@@ -2,20 +2,24 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Str;
-
+use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\ProjectImage;
+use App\Models\Service;
+use App\Support\Areas\TownCatalog;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AiContentService
 {
     protected string $apiKey;
+
     protected string $model;
+
     protected ?string $lastError = null;
 
     public function __construct()
@@ -39,18 +43,20 @@ class AiContentService
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
         $project = $image->project;
-        if (!$project) {
+        if (! $project) {
             $this->lastError = 'Image has no associated project';
+
             return null;
         }
 
         // Get the image data
         $imageData = $this->getImageData($image);
-        if (!$imageData) {
+        if (! $imageData) {
             return null;
         }
 
@@ -79,7 +85,7 @@ Analyze this home remodeling project photo and generate SEO-optimized alt text a
 PROMPT;
 
         $response = $this->callGemini($prompt, $imageData);
-        
+
         if ($response === null) {
             return null;
         }
@@ -94,10 +100,11 @@ PROMPT;
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
-        $projectType = match($project->project_type) {
+        $projectType = match ($project->project_type) {
             'kitchen' => 'kitchen remodeling',
             'bathroom' => 'bathroom remodeling',
             'basement' => 'basement remodeling',
@@ -133,6 +140,7 @@ PROMPT;
                     $img->getRawOriginal('seo_alt_text'),
                     $img->caption,
                 ]);
+
                 return implode(' — ', $parts);
             })
             ->filter()
@@ -142,7 +150,7 @@ PROMPT;
         if ($imageDescriptions->isNotEmpty()) {
             $imageContext = "\n\nAI-generated descriptions from each project photo (use these details for accuracy):\n";
             foreach ($imageDescriptions as $i => $desc) {
-                $imageContext .= ($i + 1) . ". {$desc}\n";
+                $imageContext .= ($i + 1).". {$desc}\n";
             }
         }
 
@@ -236,20 +244,23 @@ PROMPT;
                     'generationConfig' => $generationConfig,
                 ]);
         } catch (ConnectionException $e) {
-            $this->lastError = 'Connection error: ' . $e->getMessage();
+            $this->lastError = 'Connection error: '.$e->getMessage();
+
             return null;
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $errorMessage = $response->json('error.message') ?? $response->body();
-            $this->lastError = 'API error ' . $response->status() . ': ' . $errorMessage;
+            $this->lastError = 'API error '.$response->status().': '.$errorMessage;
+
             return null;
         }
 
         $content = $response->json('candidates.0.content.parts.0.text');
-        
-        if (!is_string($content) || trim($content) === '') {
+
+        if (! is_string($content) || trim($content) === '') {
             $this->lastError = 'Empty response from API';
+
             return null;
         }
 
@@ -265,6 +276,7 @@ PROMPT;
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
@@ -281,7 +293,8 @@ PROMPT;
         // room-noun + service-variant keyword pairing without the v16
         // self-conflict (project_type is normalized to a clean room noun so
         // "home-remodel" doesn't produce "home remodel remodel").
-        $cacheKey = "yelp_caption_seo:v22:{$image->id}:{$limit}:" . md5($original);
+        $cacheKey = "yelp_caption_seo:v22:{$image->id}:{$limit}:".md5($original);
+
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($image, $project, $original, $limit) {
             // Normalize project_type → a clean ROOM/SCOPE NOUN (no "remodel"/
             // "renovation" suffix) so the prompt can freely pair it with
@@ -341,14 +354,15 @@ PROMPT;
             for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                 $attemptPrompt = $prompt;
                 if ($attempt > 1 && $lastReason !== '') {
-                    $attemptPrompt = "Your previous output was rejected: {$lastReason}\nPrevious: \"{$lastClean}\"\n\nTry again, simpler and shorter.\n\n" . $prompt;
+                    $attemptPrompt = "Your previous output was rejected: {$lastReason}\nPrevious: \"{$lastClean}\"\n\nTry again, simpler and shorter.\n\n".$prompt;
                 }
 
                 // Slightly creative — 0.45 gives us varied, informative output
                 // without the constraint-violation risk of full 0.7.
                 $raw = $this->callGeminiMultiImage($attemptPrompt, [], 300, 0.45);
-                if (!is_string($raw) || trim($raw) === '') {
+                if (! is_string($raw) || trim($raw) === '') {
                     $lastReason = 'Empty response.';
+
                     continue;
                 }
                 $clean = trim($raw);
@@ -388,6 +402,7 @@ PROMPT;
                 'last_reason' => $lastReason,
                 'last_output' => $lastClean,
             ]);
+
             return null;
         });
     }
@@ -478,11 +493,11 @@ PROMPT;
                 $boundaries[] = $pos;
             }
         }
-        if (!empty($boundaries)) {
+        if (! empty($boundaries)) {
             $cut = max($boundaries);
             // Require we keep at least 60 chars so we don't lop off the whole caption.
             if ($cut >= 60) {
-                $candidate = rtrim(mb_substr($head, 0, $cut), " ,;:-") . '.';
+                $candidate = rtrim(mb_substr($head, 0, $cut), ' ,;:-').'.';
                 if (mb_strlen($candidate) <= $limit) {
                     return $candidate;
                 }
@@ -492,7 +507,7 @@ PROMPT;
         // (3) Last resort: cut at the last space and add a period.
         $cut = mb_strrpos($head, ' ');
         if ($cut !== false && $cut >= 60) {
-            return rtrim(mb_substr($head, 0, $cut), " ,;:-") . '.';
+            return rtrim(mb_substr($head, 0, $cut), ' ,;:-').'.';
         }
 
         return $caption;
@@ -538,7 +553,7 @@ PROMPT;
             if ($coreNgram !== '' && mb_strpos($lc, $coreNgram) !== false) {
                 continue;
             }
-            $candidate = $caption . ' ' . $tag;
+            $candidate = $caption.' '.$tag;
             if (mb_strlen($candidate) <= $limit) {
                 return $candidate;
             }
@@ -554,23 +569,24 @@ PROMPT;
     {
         $disk = 'public';
         $filePath = $image->path;
-        
+
         // Try thumbnail first, fall back to original
         $thumbnails = $image->thumbnails ?? [];
         $thumbPath = $thumbnails['large'] ?? null;
-        
+
         if ($thumbPath && Storage::disk($disk)->exists($thumbPath)) {
             $filePath = $thumbPath;
         }
-        
-        if (!Storage::disk($disk)->exists($filePath)) {
-            $this->lastError = 'Image file not found: ' . $filePath;
+
+        if (! Storage::disk($disk)->exists($filePath)) {
+            $this->lastError = 'Image file not found: '.$filePath;
+
             return null;
         }
 
         $contents = Storage::disk($disk)->get($filePath);
         $mimeType = Storage::disk($disk)->mimeType($filePath);
-        
+
         return [
             'base64' => base64_encode($contents),
             'mime_type' => $mimeType,
@@ -581,9 +597,9 @@ PROMPT;
     {
         $parts = [];
         $parts[] = "Project: {$project->title}";
-        
+
         if ($project->project_type) {
-            $type = match($project->project_type) {
+            $type = match ($project->project_type) {
                 'kitchen' => 'Kitchen Remodel',
                 'bathroom' => 'Bathroom Remodel',
                 'basement' => 'Basement Remodel',
@@ -606,33 +622,41 @@ PROMPT;
     }
 
     /**
-     * Generate per-city SEO content (intro, local_intro, landmarks, permit_notes)
-     * for an AreaServed row. Returns an associative array on success, or null on error.
+     * Generate per-city SEO content — intro, local_intro, neighborhoods,
+     * popular_projects, how_we_work, landmarks, faq and permit_notes — for an
+     * AreaServed row. Returns an associative array on success, or null on error.
      *
      * The prompt is grounded: it tells Gemini to use only well-known facts about the
      * Chicago suburb and to keep tone honest. Always review output before saving.
      *
-     * @return array{intro:string,local_intro:string,landmarks:string,permit_notes:string}|null
+     * neighborhoods/popular_projects/how_we_work/faq (2026-09-11) joined the
+     * original four so this matches jpeterson-design's eight-field area
+     * backbone (App\Models\Area::SECTIONS) — same shared contract, same
+     * JSON-only rules, adapted only for this being a remodeling contractor
+     * rather than a design studio.
+     *
+     * @return array{intro:string,local_intro:string,landmarks:string,neighborhoods:string,popular_projects:string,how_we_work:string,faq:list<array{question:string,answer:string}>,permit_notes:string}|null
      */
-    public function generateAreaContent(\App\Models\AreaServed $area): ?array
+    public function generateAreaContent(AreaServed $area): ?array
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
         // The town's state comes from the catalog (any US place), so an area
         // outside the home state is described where it is, not as a suburb.
-        $place = \App\Support\Areas\TownCatalog::find((string) $area->city);
+        $place = TownCatalog::find((string) $area->city);
         $city = $place ? $place['name'] : trim((string) Str::before((string) $area->city, ','));
-        $stateCode = $place['state'] ?? \App\Support\Areas\TownCatalog::homeState();
-        $stateName = \App\Support\Areas\TownCatalog::stateName($stateCode);
-        $atHome = strtoupper($stateCode) === \App\Support\Areas\TownCatalog::homeState();
+        $stateCode = $place['state'] ?? TownCatalog::homeState();
+        $stateName = TownCatalog::stateName($stateCode);
+        $atHome = strtoupper($stateCode) === TownCatalog::homeState();
         $region = $atHome ? (string) config('seo.region_label', 'the region') : $stateName;
-        $regionNote = $atHome ? ' (' . $region . ')' : '';
+        $regionNote = $atHome ? ' ('.$region.')' : '';
         $brand = (string) config('brand.display_name', config('brand.name'));
-        $base = trim((string) config('brand.address.city', config('brand.city')) . ', ' . \App\Support\Areas\TownCatalog::stateName((string) config('brand.address.state', config('brand.state', 'IL'))));
-        $pageCount = max(1, \App\Models\AreaServed::count() - 1);
+        $base = trim((string) config('brand.address.city', config('brand.city')).', '.TownCatalog::stateName((string) config('brand.address.state', config('brand.state', 'IL'))));
+        $pageCount = max(1, AreaServed::count() - 1);
 
         $prompt = <<<PROMPT
 You are an SEO copywriter for {$brand}, a family-owned kitchen, bathroom, and
@@ -644,7 +668,7 @@ Write unique, factual, local SEO content for our service-area page targeting the
 **{$city}, {$stateName}**{$regionNote}. The goal is to differentiate this page from our
 other {$pageCount} city pages so Google does not treat it as a duplicate template.
 
-Return ONLY a valid JSON object with EXACTLY these four string keys:
+Return ONLY a valid JSON object with EXACTLY these eight keys:
 
 - "intro": 2–3 sentences (180–280 characters). A natural opening for the page that mentions
   the city by name, references the township or surrounding area, and positions {$brand}
@@ -656,10 +680,25 @@ Return ONLY a valid JSON object with EXACTLY these four string keys:
   that we work on kitchens, bathrooms, basements, and whole-home remodels. If you know typical
   home age, lot patterns, or notable subdivisions, mention them. Do NOT invent fake project names.
 
+- "neighborhoods": A single comma-separated list (no sentences) of 5–10 real neighborhoods
+  or subdivisions in {$city}. Use only items you are confident exist. Example format:
+  "Old Town, Heritage Park, Cambridge Heights".
+
+- "popular_projects": 2–4 sentences. What homeowners in {$city} most often ask a remodeling
+  contractor for, tied to the housing stock and the era most homes there were built in
+  (e.g. a town of 1970s ranches asking for kitchen openings and primary-suite additions).
+
+- "how_we_work": 2–3 sentences. How a {$brand} project runs for a {$city} homeowner: one
+  contract, one project lead, permits handled, licensed trade partners. Concrete, not sales copy.
+
 - "landmarks": A single comma-separated list (no sentences) of 5–8 well-known, real landmarks,
   neighborhoods, school districts, parks, or major streets in {$city}. Use only items you are
   confident exist. Examples format: "Arlington Park, Lake Arlington, District 25 schools,
   Northwest Highway, Recreation Park".
+
+- "faq": An array of 3–5 objects, each {"question": "...", "answer": "..."}, of the kind of
+  question a {$city} homeowner would actually ask a remodeling contractor (permits, timeline,
+  whether we work in their specific neighborhood, licensing). Answers 1–3 sentences, factual.
 
 - "permit_notes": 2 sentences (180–260 characters). Generic-but-true statement that structural,
   electrical, and plumbing work in {$city} requires permits from the local building department,
@@ -668,7 +707,7 @@ Return ONLY a valid JSON object with EXACTLY these four string keys:
   building department" or "{$city} building department".
 
 Hard rules:
-- Use plain text only. No markdown, no emoji, no quotes around the JSON values.
+- Use plain text only. No markdown, no emoji, no quotes around the JSON values (except inside faq).
 - Do NOT invent specific permit codes, fees, or ordinance numbers.
 - Do NOT mention competitors.
 - Do NOT use the phrases "nestled in", "premier", "your trusted", "look no further".
@@ -688,18 +727,161 @@ PROMPT;
         $decoded = json_decode(trim($raw), true);
 
         if (! is_array($decoded)) {
-            $this->lastError = 'Failed to parse area-content JSON: ' . $raw;
+            $this->lastError = 'Failed to parse area-content JSON: '.$raw;
+
             return null;
         }
 
-        $required = ['intro', 'local_intro', 'landmarks', 'permit_notes'];
+        $required = ['intro', 'local_intro', 'landmarks', 'neighborhoods', 'popular_projects', 'how_we_work', 'permit_notes'];
         $out = [];
         foreach ($required as $key) {
             if (empty($decoded[$key]) || ! is_string($decoded[$key])) {
-                $this->lastError = "Missing '{$key}' in area-content response: " . $raw;
+                $this->lastError = "Missing '{$key}' in area-content response: ".$raw;
+
                 return null;
             }
             $out[$key] = trim($decoded[$key]);
+        }
+
+        // faq is parsed separately (an array of objects, not a string) and
+        // must be non-empty — a malformed or missing faq fails the whole
+        // generation the same way a missing string field does.
+        $out['faq'] = AreaServed::normaliseFaq($decoded['faq'] ?? null);
+        if ($out['faq'] === []) {
+            $this->lastError = "Missing or empty 'faq' in area-content response: ".$raw;
+
+            return null;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Generate page copy (intro, what_we_do, ideal_for, faq) for one
+     * admin-managed Service. Ported from jpeterson-design's identical
+     * generator on its own Service model — same JSON-only prompt shape as
+     * generateAreaContent() above, adapted for a remodeling contractor's
+     * service pages rather than a design studio's.
+     *
+     * Grounded in this site's real facts: the service's own name/blurb, the
+     * rest of the services catalogue (so each page differentiates itself),
+     * the company's published process steps, and published projects of this
+     * project_type (titles + locations only — never invented specifics).
+     *
+     * @return array{intro:string,what_we_do:string,ideal_for:string,faq:list<array{question:string,answer:string}>}|null
+     */
+    public function generateServiceContent(Service $service): ?array
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $brand = (string) config('brand.display_name', config('brand.name'));
+
+        $otherServices = Service::ordered()
+            ->where('id', '!=', $service->id)
+            ->pluck('name')
+            ->implode(', ');
+
+        $processSteps = collect((array) config('services-content.process', []))
+            ->pluck('title')
+            ->filter()
+            ->implode(', ');
+
+        $projects = Project::published()->ofType($service->slug)->limit(8)->get();
+        $projectLines = $projects->map(function (Project $p): string {
+            $loc = trim((string) $p->location);
+
+            return $loc !== '' ? "- {$p->title} ({$loc})" : "- {$p->title}";
+        })->implode("\n");
+
+        $blurb = trim((string) $service->blurb);
+
+        $prompt = <<<PROMPT
+You are an SEO copywriter for {$brand}, a licensed and insured family-owned home
+remodeling contractor serving the Chicago suburbs. We handle one contract, one
+project lead, permits, and licensed trade partners for every job.
+
+Write unique, factual page copy for our service page for **{$service->name}**.
+{$blurb}
+
+Other services we offer (for context only — do not describe these, only {$service->name}):
+{$otherServices}
+
+Our real process steps, in order (reference the idea of this process, not necessarily every step by name):
+{$processSteps}
+
+A sample of our real completed {$service->name} projects (use only to ground you in what
+this work actually looks like for us — never invent client names, addresses, or numbers
+you cannot see here; refer to past work only in general terms):
+{$projectLines}
+
+Return ONLY a valid JSON object with EXACTLY these four keys:
+
+- "intro": 2–3 sentences (180–280 characters). A natural opening for the {$service->name}
+  service page that names the service and positions {$brand} as the contractor for it.
+  No marketing fluff, no "welcome to", no "look no further".
+
+- "what_we_do": 3–5 sentences (400–650 characters). What the work actually includes for
+  a remodeling contractor doing {$service->name}: one contract, one project lead, permits
+  handled, licensed trade partners, and how our process (design/selections, permits,
+  build, walkthrough) applies to this specific service. Concrete, not sales copy.
+
+- "ideal_for": 2–3 sentences (200–350 characters). Which homes and situations
+  {$service->name} suits, grounded in concrete Chicagoland housing stock (e.g. brick
+  bungalows, split-levels, 1970s ranches, older cape cods) and homeowner situations
+  that actually call for this service.
+
+- "faq": An array of 3–5 objects, each {"question": "...", "answer": "..."}, of the kind
+  of question a Chicagoland homeowner would actually ask about {$service->name} (timeline,
+  permits, cost range expectations, what's included). Answers 1–3 sentences, factual.
+
+Hard rules:
+- Use plain text only. No markdown, no emoji, no quotes around JSON values (except inside faq).
+- Do NOT invent specific prices, permit codes, fees, or ordinance numbers.
+- Do NOT mention competitors.
+- Do NOT use the words/phrases: diverse, unique, tailored, vibrant, dynamic, seamless,
+  "a range of", "your needs", "nestled in", "premier", "your trusted", "look no further".
+- Return ONLY the JSON object. No code fences, no preamble.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 900);
+        if ($raw === null) {
+            return null;
+        }
+
+        $raw = preg_replace('/^```json\s*/i', '', $raw);
+        $raw = preg_replace('/^```\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/i', '', $raw);
+        $decoded = json_decode(trim($raw), true);
+
+        if (! is_array($decoded)) {
+            $this->lastError = 'Failed to parse service-content JSON: '.$raw;
+
+            return null;
+        }
+
+        $required = ['intro', 'what_we_do', 'ideal_for'];
+        $out = [];
+        foreach ($required as $key) {
+            if (empty($decoded[$key]) || ! is_string($decoded[$key])) {
+                $this->lastError = "Missing '{$key}' in service-content response: ".$raw;
+
+                return null;
+            }
+            $out[$key] = trim($decoded[$key]);
+        }
+
+        // faq is parsed separately (an array of objects, not a string) and
+        // must be non-empty — a malformed or missing faq fails the whole
+        // generation the same way a missing string field does.
+        $out['faq'] = Service::normaliseFaq($decoded['faq'] ?? null);
+        if ($out['faq'] === []) {
+            $this->lastError = "Missing or empty 'faq' in service-content response: ".$raw;
+
+            return null;
         }
 
         return $out;
@@ -714,7 +896,7 @@ PROMPT;
      * striking distance (Evanston 2.4k, Glenview 2.2k) earned that depth. The
      * existing copy is kept as grounding so verified facts survive the rewrite.
      */
-    public function deepenAreaLocalIntro(\App\Models\AreaServed $area, array $targetPhrases = []): ?string
+    public function deepenAreaLocalIntro(AreaServed $area, array $targetPhrases = []): ?string
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
@@ -726,7 +908,7 @@ PROMPT;
         $existing = trim((string) $area->local_intro);
         $landmarks = trim((string) $area->landmarks);
         $phraseBlock = $targetPhrases !== []
-            ? "PHRASES PEOPLE SEARCH FOR THIS TOWN (work each in once, naturally, where it is true of what we do — never as a list, never forced):\n- " . implode("\n- ", array_map('trim', $targetPhrases)) . "\n"
+            ? "PHRASES PEOPLE SEARCH FOR THIS TOWN (work each in once, naturally, where it is true of what we do — never as a list, never forced):\n- ".implode("\n- ", array_map('trim', $targetPhrases))."\n"
             : '';
 
         $prompt = <<<PROMPT
@@ -799,7 +981,7 @@ PROMPT;
      * so the caller can fall back to its templates whenever this returns null
      * — an AI outage or a bad response must never block page creation.
      *
-     * @param array<int,array{title:string,location:?string,description:?string}> $proof
+     * @param  array<int,array{title:string,location:?string,description:?string}>  $proof
      * @return array{intro:string,sections:array<int,array{heading:string,body:string}>,faq:array<int,array{q:string,a:string}>}|null
      */
     public function generateLandingPageCopy(
@@ -817,19 +999,19 @@ PROMPT;
         }
 
         $proofLines = collect($proof)->take(6)->map(function (array $p): string {
-            $line = '- ' . $p['title'];
+            $line = '- '.$p['title'];
             if (! empty($p['location'])) {
-                $line .= ' (' . $p['location'] . ')';
+                $line .= ' ('.$p['location'].')';
             }
             if (! empty($p['description'])) {
-                $line .= ': ' . mb_substr($p['description'], 0, 200);
+                $line .= ': '.mb_substr($p['description'], 0, 200);
             }
 
             return $line;
-        })->implode("
-");
+        })->implode('
+');
 
-        $angle = trim(($modifierLabel ? $modifierLabel . ' ' : '') . $serviceLabel);
+        $angle = trim(($modifierLabel ? $modifierLabel.' ' : '').$serviceLabel);
 
         $prompt = <<<PROMPT
 You are an SEO copywriter for GS Construction, a family-owned kitchen, bathroom, and
@@ -883,7 +1065,7 @@ PROMPT;
             || ! is_array($decoded['sections'] ?? null) || count($decoded['sections']) < 3
             || ! is_array($decoded['faq'] ?? null) || count($decoded['faq']) < 3
         ) {
-            $this->lastError = 'Landing-page copy failed validation: ' . mb_substr((string) $raw, 0, 200);
+            $this->lastError = 'Landing-page copy failed validation: '.mb_substr((string) $raw, 0, 200);
 
             return null;
         }
@@ -919,6 +1101,7 @@ PROMPT;
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
@@ -960,7 +1143,8 @@ PROMPT;
         $decoded = json_decode(trim($raw), true);
 
         if (! is_array($decoded)) {
-            $this->lastError = 'Failed to parse zip-content JSON: ' . $raw;
+            $this->lastError = 'Failed to parse zip-content JSON: '.$raw;
+
             return null;
         }
 
@@ -968,7 +1152,8 @@ PROMPT;
         $out = [];
         foreach ($required as $key) {
             if (empty($decoded[$key]) || ! is_string($decoded[$key])) {
-                $this->lastError = "Missing '{$key}' in zip-content response: " . $raw;
+                $this->lastError = "Missing '{$key}' in zip-content response: ".$raw;
+
                 return null;
             }
             $out[$key] = trim($decoded[$key]);
@@ -978,21 +1163,22 @@ PROMPT;
     }
 
     /**
-        * Choose a real published Chicagoland project image for a fallback service page hero.
+     * Choose a real published Chicagoland project image for a fallback service page hero.
      *
-        * Gemini reviews a random sample of published project cover images and returns the
-        * best match for the requested service type. The result is cached briefly so the
-        * model is not called on every request while still rotating through images.
+     * Gemini reviews a random sample of published project cover images and returns the
+     * best match for the requested service type. The result is cached briefly so the
+     * model is not called on every request while still rotating through images.
      */
     public function chooseServiceFallbackImageUrl(string $projectType): ?string
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
         $projectType = strtolower(trim($projectType));
-        $cacheKey = "gemini:service-fallback-image:{$projectType}:" . now()->format('Y-m-d-H');
+        $cacheKey = "gemini:service-fallback-image:{$projectType}:".now()->format('Y-m-d-H');
 
         return Cache::remember($cacheKey, now()->addDay(), function () use ($projectType) {
             $candidates = ProjectImage::query()
@@ -1018,13 +1204,13 @@ PROMPT;
                 $project = $image->project;
 
                 return implode(' | ', array_filter([
-                    'option ' . ($index + 1),
-                    'image_id=' . $image->id,
-                    'type=' . ($project?->project_type ?? 'unknown'),
-                    'title=' . ($project?->title ?? 'unknown'),
-                    'location=' . ($project?->location ?? 'unknown'),
-                    'seo_alt=' . trim((string) ($image->seo_alt_text ?? '')),
-                    'caption=' . trim((string) ($image->caption ?? '')),
+                    'option '.($index + 1),
+                    'image_id='.$image->id,
+                    'type='.($project?->project_type ?? 'unknown'),
+                    'title='.($project?->title ?? 'unknown'),
+                    'location='.($project?->location ?? 'unknown'),
+                    'seo_alt='.trim((string) ($image->seo_alt_text ?? '')),
+                    'caption='.trim((string) ($image->caption ?? '')),
                 ]));
             })->implode("\n");
 
@@ -1073,8 +1259,9 @@ PROMPT;
 
         $decoded = json_decode($content, true);
 
-        if (!is_array($decoded)) {
-            $this->lastError = 'Failed to parse JSON response: ' . $content;
+        if (! is_array($decoded)) {
+            $this->lastError = 'Failed to parse JSON response: '.$content;
+
             return null;
         }
 
@@ -1094,15 +1281,16 @@ PROMPT;
         }
 
         if (empty($result['seo_alt_text'])) {
-            $this->lastError = 'Missing seo_alt_text in AI response: ' . $content;
+            $this->lastError = 'Missing seo_alt_text in AI response: '.$content;
+
             return null;
         }
 
-        return !empty($result) ? $result : null;
+        return ! empty($result) ? $result : null;
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Social Media Content Generation                                    */
+    /*  Social Media Content Generation */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -1118,17 +1306,19 @@ PROMPT;
     {
         if (empty($this->apiKey)) {
             $this->lastError = 'Gemini API key not configured';
+
             return null;
         }
 
         $project = $image->project;
-        if (!$project) {
+        if (! $project) {
             $this->lastError = 'Image has no associated project';
+
             return null;
         }
 
         $imageData = $this->getImageData($image);
-        if (!$imageData) {
+        if (! $imageData) {
             return null;
         }
 
@@ -1156,8 +1346,8 @@ PROMPT;
         $themeLine = '';
         if (is_array($theme) && ! empty($theme['note'])) {
             $themeLine = "This week's theme: {$theme['note']}"
-                . (! empty($theme['town']) ? " If the project is in {$theme['town']}, say so; if not, do not mention {$theme['town']}." : '')
-                . ' Tie the caption to the theme in one natural clause where the photo allows it; never force it.';
+                .(! empty($theme['town']) ? " If the project is in {$theme['town']}, say so; if not, do not mention {$theme['town']}." : '')
+                .' Tie the caption to the theme in one natural clause where the photo allows it; never force it.';
         }
 
         $prompt = <<<PROMPT
@@ -1224,7 +1414,7 @@ PROMPT;
         // Tolerant fallback: Gemini occasionally truncates the JSON when it
         // hits maxOutputTokens mid-string. Pull caption/hashtags out with
         // regex so a single truncated post doesn't abort the whole publish.
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             $caption = null;
             $hashtags = null;
             if (preg_match('/"caption"\s*:\s*"((?:\\\\.|[^"\\\\])*)"/s', $content, $m)) {
@@ -1243,8 +1433,9 @@ PROMPT;
             }
         }
 
-        if (!is_array($decoded) || empty($decoded['caption']) || empty($decoded['hashtags'])) {
-            $this->lastError = 'Failed to parse social media JSON: ' . $content;
+        if (! is_array($decoded) || empty($decoded['caption']) || empty($decoded['hashtags'])) {
+            $this->lastError = 'Failed to parse social media JSON: '.$content;
+
             return null;
         }
 
@@ -1278,6 +1469,7 @@ PROMPT;
         // Collapse double spaces / orphan punctuation.
         $caption = preg_replace('/[ \t]{2,}/', ' ', $caption) ?? $caption;
         $caption = preg_replace('/\s+([\.,!\?])/', '$1', $caption) ?? $caption;
+
         return trim($caption);
     }
 
@@ -1305,10 +1497,10 @@ PROMPT;
                 continue;
             }
             if ($token[0] !== '#') {
-                $token = '#' . ltrim($token, '#');
+                $token = '#'.ltrim($token, '#');
             }
             // Drop anything non-tag-ish.
-            if (!preg_match('/^#[A-Za-z0-9_]{2,}$/', $token)) {
+            if (! preg_match('/^#[A-Za-z0-9_]{2,}$/', $token)) {
                 continue;
             }
             $key = strtolower($token);
@@ -1319,16 +1511,18 @@ PROMPT;
             // Hold #GSConstruction aside — it goes last.
             if ($key === '#gsconstruction') {
                 $brand = $token;
+
                 continue;
             }
             // Hold first location-style tag aside (matches known city patterns or #Chicago*).
             if ($cityTag === null && preg_match('/^#(chicago[a-z]*|palatine|arlingtonheights|prospectheights|mountprospect|barrington|wheeling|buffalogrove|northbrook|glenview|deerfield|elgin|schaumburg|hoffmanestates|inverness|naperville|evanston|skokie|desplaines|parkridge|highlandpark|rollingmeadows|streamwood)$/i', $token)) {
                 // Prefer the specific city over #Chicago* when both appear; keep first hit but allow upgrade if it's #ChicagoContractor-ish and a more specific one comes later.
-                if (!preg_match('/^#chicago/i', $token)) {
+                if (! preg_match('/^#chicago/i', $token)) {
                     $cityTag = $token;
                 } elseif ($cityTag === null) {
                     $cityTag = $token;
                 }
+
                 continue;
             }
             $out[] = $token;
@@ -1358,12 +1552,13 @@ PROMPT;
      */
     protected function locationToHashtag(?string $location): string
     {
-        if (!$location) {
+        if (! $location) {
             return 'Chicago';
         }
 
         // Take the city part before any comma
         $city = trim(explode(',', $location)[0]);
+
         // Remove spaces and special chars
         return preg_replace('/[^A-Za-z0-9]/', '', $city);
     }

@@ -1,667 +1,569 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
     <url>
-    <loc>https://gs.construction</loc>
+    <loc>http://127.0.0.1:8003</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
             </url>
     <url>
-    <loc>https://gs.construction/faq</loc>
+    <loc>http://127.0.0.1:8003/faq</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/reviews</loc>
+    <loc>http://127.0.0.1:8003/reviews</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/about</loc>
+    <loc>http://127.0.0.1:8003/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/contact</loc>
+    <loc>http://127.0.0.1:8003/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/jobs</loc>
+    <loc>http://127.0.0.1:8003/jobs</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/projects</loc>
+    <loc>http://127.0.0.1:8003/projects</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/timelapses</loc>
+    <loc>http://127.0.0.1:8003/timelapses</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services</loc>
+    <loc>http://127.0.0.1:8003/services</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/areas-served</loc>
+    <loc>http://127.0.0.1:8003/areas-served</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/service-area</loc>
+    <loc>http://127.0.0.1:8003/service-area</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services/kitchen-remodeling</loc>
+    <loc>http://127.0.0.1:8003/services/kitchen-remodeling</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services/bathroom-remodeling</loc>
+    <loc>http://127.0.0.1:8003/services/bathroom-remodeling</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services/home-remodeling</loc>
+    <loc>http://127.0.0.1:8003/services/home-remodeling</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services/basement-remodeling</loc>
+    <loc>http://127.0.0.1:8003/services/basement-remodeling</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services/home-additions</loc>
+    <loc>http://127.0.0.1:8003/services/home-additions</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
             </url>
     <url>
-    <loc>https://gs.construction/services/mudroom-remodeling</loc>
+    <loc>http://127.0.0.1:8003/services/mudroom-remodeling</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/how-to-choose-a-remodeling-contractor</loc>
+    <loc>http://127.0.0.1:8003/how-to-choose-a-remodeling-contractor</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare</loc>
+    <loc>http://127.0.0.1:8003/compare</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/financing</loc>
+    <loc>http://127.0.0.1:8003/financing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/warranty</loc>
+    <loc>http://127.0.0.1:8003/warranty</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/process</loc>
+    <loc>http://127.0.0.1:8003/process</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/blog</loc>
+    <loc>http://127.0.0.1:8003/blog</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/costs</loc>
+    <loc>http://127.0.0.1:8003/costs</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits</loc>
+    <loc>http://127.0.0.1:8003/permits</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/insurance-claims</loc>
+    <loc>http://127.0.0.1:8003/insurance-claims</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/design-partners</loc>
+    <loc>http://127.0.0.1:8003/design-partners</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades</loc>
+    <loc>http://127.0.0.1:8003/trades</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/kitchen-village</loc>
+    <loc>http://127.0.0.1:8003/compare/kitchen-village</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/kitchen-bath-mart</loc>
+    <loc>http://127.0.0.1:8003/compare/kitchen-bath-mart</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/4ever-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/4ever-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/airoom</loc>
+    <loc>http://127.0.0.1:8003/compare/airoom</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/normandy-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/normandy-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/123-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/123-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/pickell-builders</loc>
+    <loc>http://127.0.0.1:8003/compare/pickell-builders</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/skor-construction</loc>
+    <loc>http://127.0.0.1:8003/compare/skor-construction</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/chi-renovation</loc>
+    <loc>http://127.0.0.1:8003/compare/chi-renovation</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/ohi-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/ohi-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/modern-builders-design</loc>
+    <loc>http://127.0.0.1:8003/compare/modern-builders-design</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/prestige-kitchen-bath</loc>
+    <loc>http://127.0.0.1:8003/compare/prestige-kitchen-bath</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/patrick-a-finn</loc>
+    <loc>http://127.0.0.1:8003/compare/patrick-a-finn</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/advance-design-studio</loc>
+    <loc>http://127.0.0.1:8003/compare/advance-design-studio</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/regency-home-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/regency-home-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/sunny-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/sunny-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/lamantia-design-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/lamantia-design-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/synergy-builders</loc>
+    <loc>http://127.0.0.1:8003/compare/synergy-builders</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/senkus-build</loc>
+    <loc>http://127.0.0.1:8003/compare/senkus-build</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/assembly-squad-remodeling</loc>
+    <loc>http://127.0.0.1:8003/compare/assembly-squad-remodeling</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/maya-construction-group</loc>
+    <loc>http://127.0.0.1:8003/compare/maya-construction-group</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/ecobuild-plus</loc>
+    <loc>http://127.0.0.1:8003/compare/ecobuild-plus</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/thomas-meyer-renovations</loc>
+    <loc>http://127.0.0.1:8003/compare/thomas-meyer-renovations</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/delta-remodels</loc>
+    <loc>http://127.0.0.1:8003/compare/delta-remodels</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/dream-kitchens</loc>
+    <loc>http://127.0.0.1:8003/compare/dream-kitchens</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/compare/scott-lyon-company</loc>
+    <loc>http://127.0.0.1:8003/compare/scott-lyon-company</loc>
     <lastmod>2026-08-07T00:39:48+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/costs/kitchen-remodel-cost</loc>
+    <loc>http://127.0.0.1:8003/costs/kitchen-remodel-cost</loc>
     <lastmod>2026-08-01T04:03:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/costs/bathroom-remodel-cost</loc>
+    <loc>http://127.0.0.1:8003/costs/bathroom-remodel-cost</loc>
     <lastmod>2026-08-01T04:03:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/costs/basement-finishing-cost</loc>
+    <loc>http://127.0.0.1:8003/costs/basement-finishing-cost</loc>
     <lastmod>2026-08-01T04:03:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/costs/home-addition-cost</loc>
+    <loc>http://127.0.0.1:8003/costs/home-addition-cost</loc>
     <lastmod>2026-08-01T04:03:12+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/insurance-claims/water-and-flood-damage</loc>
+    <loc>http://127.0.0.1:8003/insurance-claims/water-and-flood-damage</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/insurance-claims/roof-damage</loc>
+    <loc>http://127.0.0.1:8003/insurance-claims/roof-damage</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/insurance-claims/siding-and-exterior-damage</loc>
+    <loc>http://127.0.0.1:8003/insurance-claims/siding-and-exterior-damage</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/insurance-claims/storm-and-tree-damage</loc>
+    <loc>http://127.0.0.1:8003/insurance-claims/storm-and-tree-damage</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/insurance-claims/fire-and-smoke-damage</loc>
+    <loc>http://127.0.0.1:8003/insurance-claims/fire-and-smoke-damage</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/arlington-heights</loc>
+    <loc>http://127.0.0.1:8003/permits/arlington-heights</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/barrington</loc>
+    <loc>http://127.0.0.1:8003/permits/barrington</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/glenview</loc>
+    <loc>http://127.0.0.1:8003/permits/glenview</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/highland-park</loc>
+    <loc>http://127.0.0.1:8003/permits/highland-park</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/mount-prospect</loc>
+    <loc>http://127.0.0.1:8003/permits/mount-prospect</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/northbrook</loc>
+    <loc>http://127.0.0.1:8003/permits/northbrook</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/palatine</loc>
+    <loc>http://127.0.0.1:8003/permits/palatine</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/schaumburg</loc>
+    <loc>http://127.0.0.1:8003/permits/schaumburg</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/wilmette</loc>
+    <loc>http://127.0.0.1:8003/permits/wilmette</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/permits/winnetka</loc>
+    <loc>http://127.0.0.1:8003/permits/winnetka</loc>
     <lastmod>2026-07-14T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/architects</loc>
+    <loc>http://127.0.0.1:8003/trades/architects</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/structural-engineers</loc>
+    <loc>http://127.0.0.1:8003/trades/structural-engineers</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/interior-designers</loc>
+    <loc>http://127.0.0.1:8003/trades/interior-designers</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/design-showrooms</loc>
+    <loc>http://127.0.0.1:8003/trades/design-showrooms</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/licensed-electricians</loc>
+    <loc>http://127.0.0.1:8003/trades/licensed-electricians</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/licensed-plumbers</loc>
+    <loc>http://127.0.0.1:8003/trades/licensed-plumbers</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/hvac-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/hvac-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/demolition-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/demolition-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/framing-carpenters</loc>
+    <loc>http://127.0.0.1:8003/trades/framing-carpenters</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/excavation-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/excavation-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/drywall-installers</loc>
+    <loc>http://127.0.0.1:8003/trades/drywall-installers</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/carpenters</loc>
+    <loc>http://127.0.0.1:8003/trades/carpenters</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/finish-carpenters</loc>
+    <loc>http://127.0.0.1:8003/trades/finish-carpenters</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/insulation-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/insulation-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/roofing-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/roofing-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/siding-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/siding-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/masonry-contractors</loc>
+    <loc>http://127.0.0.1:8003/trades/masonry-contractors</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/tile-setters</loc>
+    <loc>http://127.0.0.1:8003/trades/tile-setters</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/painters</loc>
+    <loc>http://127.0.0.1:8003/trades/painters</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/flooring-installers</loc>
+    <loc>http://127.0.0.1:8003/trades/flooring-installers</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/trades/countertop-fabricators</loc>
+    <loc>http://127.0.0.1:8003/trades/countertop-fabricators</loc>
     <lastmod>2026-07-14T06:52:08+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
             </url>
     <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/testimonials</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
+    <loc>http://127.0.0.1:8003/reviews/chicago-home-review-2</loc>
+    <lastmod>2026-09-11T15:26:31+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
+            </url>
     <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/projects</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
+    <loc>http://127.0.0.1:8003/reviews/chicago-home-review-1</loc>
+    <lastmod>2026-09-11T15:26:30+00:00</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
+            </url>
     <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/services/kitchen-remodeling</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/services/bathroom-remodeling</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/services/home-remodeling</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/services/basement-remodeling</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/areas-served/sitemap-test-city/services/home-additions</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen in Sitemap Test City, IL</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/projects/kitchens</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
+    <loc>http://127.0.0.1:8003/projects/kitchens</loc>
+    <lastmod>2026-09-11T15:26:31+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/projects/bathrooms</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
+    <loc>http://127.0.0.1:8003/projects/bathrooms</loc>
+    <lastmod>2026-09-11T15:26:31+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
     <url>
-    <loc>https://gs.construction/projects/home-remodeling</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
+    <loc>http://127.0.0.1:8003/projects/home-remodeling</loc>
+    <lastmod>2026-09-11T15:26:31+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
             </url>
-    <url>
-    <loc>https://gs.construction/projects/sitemap-test-project</loc>
-    <lastmod>2026-09-06T02:11:31+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen - Featured Image</image:title>
-</image:image>
-        </url>
-    <url>
-    <loc>https://gs.construction/projects/sitemap-test-project/photos/sitemap-test-kitchen-photo</loc>
-    <lastmod>2026-09-06T02:11:30+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-    <image:image>
-    <image:loc>http://gs.construction/storage/projects/sitemap-test/sitemap-test.jpg</image:loc>
-    <image:caption>Sitemap test kitchen remodel</image:caption>
-    <image:title>Sitemap Test Kitchen - Photo</image:title>
-</image:image>
-        </url>
 </urlset>

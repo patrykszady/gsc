@@ -7,6 +7,8 @@ use Hszope\LaravelAigeo\Traits\HasGeoProfile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
 use RalphJSmit\Laravel\SEO\Support\SEOData;
@@ -184,7 +186,7 @@ class Project extends Model
         return $this->images->firstWhere('is_cover', true) ?? $this->images->first();
     }
 
-    public function blogPost(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function blogPost(): HasOne
     {
         return $this->hasOne(BlogPost::class);
     }
@@ -215,8 +217,23 @@ class Project extends Model
         return $query->where('project_type', $type);
     }
 
+    /**
+     * slug => label for the project form's "Project Type". The services
+     * table is the vocabulary now (admin-managed, see App\Models\Service);
+     * the literals below are the pre-2026-09-11 list, kept as a fallback
+     * for a database that has not been migrated or seeded yet, so nothing
+     * here can hard-fail on an empty table.
+     */
     public static function projectTypes(): array
     {
+        if (Schema::hasTable('services')) {
+            $vocabulary = Service::vocabulary();
+
+            if ($vocabulary !== []) {
+                return $vocabulary;
+            }
+        }
+
         return [
             'kitchen' => 'Kitchen Remodel',
             'bathroom' => 'Bathroom Remodel',

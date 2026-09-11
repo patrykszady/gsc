@@ -14,7 +14,13 @@
                     through the aria-label, landmark and permit sub-headings.
 
      Guard the include with hasUniqueContent()/landmarks/permit_notes — with
-     none of those there is nothing to say about the town. --}}
+     none of those there is nothing to say about the town.
+
+     Each piece below is gated on $area->showsSection('...') rather than a
+     bare filled() check: a piece can have text and still be switched off
+     per area in admin (AreaServed::SECTIONS / sectionsMap). Ported from
+     jpeterson-design's identical area-content backbone (2026-09-11) — see
+     that app's App\Models\Area and partials/area-content.blade.php. --}}
 @php
     $heading ??= "Remodeling in {$area->city}, IL";
     $serviceLine ??= 'remodeling projects';
@@ -148,12 +154,28 @@
                      column: it is a list of local places, so it belongs with the
                      local imagery, and it keeps the right-hand column to prose
                      rather than prose-then-list-then-box. --}}
-                @if(filled($area->landmarks))
+                @if($area->showsSection('landmarks'))
                     <div class="mt-6">
                         <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                             Neighborhoods &amp; landmarks near our {{ $area->city }} {{ $serviceLine }}
                         </h3>
                         <p class="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->landmarks }}</p>
+                    </div>
+                @endif
+
+                {{-- Neighborhoods as a chip list, same treatment as jpeterson's
+                     area-content partial — a separate, named list of places we
+                     work in, distinct from the broader "landmarks" mix above. --}}
+                @if($area->showsSection('neighborhoods'))
+                    <div class="mt-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Neighborhoods we work in
+                        </h3>
+                        <ul class="mt-2 flex flex-wrap gap-2">
+                            @foreach (\App\Models\AreaServed::listFromText($area->neighborhoods) as $item)
+                                <li class="rounded-full border border-zinc-200 px-3 py-1 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-300">{{ $item }}</li>
+                            @endforeach
+                        </ul>
                     </div>
                 @endif
             </div>
@@ -164,19 +186,37 @@
                     {{ $heading }}
                 </h2>
 
-                @if(filled($area->intro))
+                @if($area->showsSection('intro'))
                     <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
                         {{ $area->intro }}
                     </p>
                 @endif
 
-                @if(filled($area->local_intro))
+                @if($area->showsSection('local_intro'))
                     <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
                         {!! nl2br(e($area->local_intro)) !!}
                     </div>
                 @endif
 
-                @if(filled($area->permit_notes))
+                @if($area->showsSection('popular_projects'))
+                    <div class="mt-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            What homeowners in {{ $area->city }} ask for
+                        </h3>
+                        <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $area->popular_projects }}</p>
+                    </div>
+                @endif
+
+                @if($area->showsSection('how_we_work'))
+                    <div class="mt-6">
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            How we work in {{ $area->city }}
+                        </h3>
+                        <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $area->how_we_work }}</p>
+                    </div>
+                @endif
+
+                @if($area->showsSection('permit_notes'))
                     <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
                         <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
                             {{ $area->city }} permits &amp; building codes for {{ $serviceLine }}

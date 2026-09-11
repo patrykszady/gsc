@@ -2,8 +2,12 @@
 
 namespace App\Livewire\Admin;
 
+use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\AreaServed;
+use App\Models\Town;
+use App\Models\TownImport;
 use App\Services\OpenStreetMapGeocoder;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -99,7 +103,7 @@ class AreaList extends Component
             ->map(fn ($c) => mb_strtolower(trim((string) $c)))
             ->flip();
 
-        $towns = \App\Models\Town::query()
+        $towns = Town::query()
             ->inBounds($south, $west, $north, $east)
             ->orderBy('name')
             ->limit(400)
@@ -114,7 +118,7 @@ class AreaList extends Component
             // Empty AND never imported = tell the user to import, not that the
             // region is empty. An imported box that genuinely holds no towns
             // reports needsImport = false and an empty list.
-            'needsImport' => $towns === [] && ! \App\Models\TownImport::covers($south, $west, $north, $east),
+            'needsImport' => $towns === [] && ! TownImport::covers($south, $west, $north, $east),
             'towns' => $towns,
         ];
     }
@@ -136,13 +140,13 @@ class AreaList extends Component
         $state = app(OpenStreetMapGeocoder::class)->reverseTown($lat, $lng)['state'];
         if ($state !== null && ! in_array($state, $this->allowedStates(), true)) {
             $this->mapFlash = "{$city} is in {$state} — outside this site's service states ("
-                . implode(', ', $this->allowedStates())
-                . '). Use the New Area form if this is intentional.';
+                .implode(', ', $this->allowedStates())
+                .'). Use the New Area form if this is intentional.';
 
             return;
         }
 
-        $slug = \Illuminate\Support\Str::slug($city);
+        $slug = Str::slug($city);
         $existing = AreaServed::where('slug', $slug)
             ->orWhereRaw('LOWER(city) = ?', [mb_strtolower($city)])
             ->first();
@@ -160,58 +164,16 @@ class AreaList extends Component
             'longitude' => $lng,
         ]);
 
-        $reused = $this->reuseSharedTownFacts($area);
-
-        // Business-voice copy is always generated fresh for this tenant, even
-        // when the town facts were reused — see reuseSharedTownFacts().
-        \App\Jobs\RunSeoChannelSyncJob::dispatch(
+        // Every field is written for this site; nothing is copied from
+        // another site's row for the same town.
+        RunSeoChannelSyncJob::dispatch(
             'seo:generate-area-content',
-            ['--slug' => $area->slug, '--only' => 'intro,local_intro'],
+            ['--slug' => $area->slug],
         );
 
-        $this->mapFlash = $reused
-            ? "Added {$area->city}. Reused its landmarks and permit notes from another site, and queued this site's own intro copy."
-            : "Added {$area->city}. Queued a job to pull its local details — refresh in a minute.";
+        $this->mapFlash = "Added {$area->city}. Its page copy is being written — refresh in a minute.";
 
         $this->dispatch('areas-map-updated', areas: $this->mapAreas());
-    }
-
-    /**
-     * Copy a town's FACTUAL local info from any other tenant that already has it.
-     *
-     * Landmarks and permit notes describe the town, not the business — Metra
-     * stations and a village's permit portal are the same facts whoever is
-     * serving the street, so regenerating them per tenant burns Gemini calls to
-     * arrive at the same answer.
-     *
-     * intro and local_intro are deliberately NOT copied. They are written in
-     * the business's own voice ("GS Construction provides kitchen, bathroom and
-     * whole-home remodeling…", "Remodeling in Arlington Heights means…"), so
-     * copying them would put a contractor's marketing copy — and its company
-     * name — on an interior designer's page. Those are always regenerated for
-     * the tenant that owns the row.
-     */
-    protected function reuseSharedTownFacts(AreaServed $area): bool
-    {
-        $source = AreaServed::withoutSiteScope()
-            ->where('slug', $area->slug)
-            ->whereKeyNot($area->getKey())
-            ->where(function ($q) {
-                $q->whereNotNull('landmarks')->where('landmarks', '!=', '')
-                    ->orWhere(fn ($q2) => $q2->whereNotNull('permit_notes')->where('permit_notes', '!=', ''));
-            })
-            ->first();
-
-        if (! $source) {
-            return false;
-        }
-
-        $area->forceFill(array_filter([
-            'landmarks' => $source->landmarks ?: null,
-            'permit_notes' => $source->permit_notes ?: null,
-        ]))->save();
-
-        return true;
     }
 
     /** @return array<int, array{id:int,city:string,slug:string,lat:float,lng:float,hasContent:bool,editUrl:string,publicUrl:string}> */
@@ -229,7 +191,7 @@ class AreaList extends Component
                 'lng' => (float) $a->longitude,
                 'hasContent' => $a->hasUniqueContent(),
                 'editUrl' => route('admin.areas.edit', $a),
-                'publicUrl' => url('/areas-served/' . $a->slug),
+                'publicUrl' => url('/areas-served/'.$a->slug),
             ])
             ->all();
     }
