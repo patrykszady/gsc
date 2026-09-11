@@ -2,24 +2,38 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\ResolveAdminSite;
+use App\Http\Middleware\ResolveSite;
 use App\Models\AreaServed;
+use App\Models\BlogPost;
+use App\Models\LandingPage;
 use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\ProjectImage;
+use App\Models\Service;
+use App\Models\Site;
 use App\Models\Testimonial;
 use App\Observers\AreaServedObserver;
+use App\Observers\BlogPostObserver;
 use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use App\Support\PublicFeeds;
+use App\Support\SEO\RecrawlNudger;
+use App\Support\SEO\SEOBuilder;
+use App\Support\Tenancy;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
-use Livewire\Livewire;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
+use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Per-request SEO state accumulator (consumed by app layout).
-        $this->app->singleton(\App\Support\SEO\SEOBuilder::class);
+        $this->app->singleton(SEOBuilder::class);
     }
 
     /**
@@ -42,10 +56,10 @@ class AppServiceProvider extends ServiceProvider
         // during development without ever breaking a page — and never in
         // production, where an unexpected lazy load must degrade, not throw.
         if (! app()->isProduction()) {
-            \Illuminate\Database\Eloquent\Model::preventLazyLoading();
-            \Illuminate\Database\Eloquent\Model::handleLazyLoadingViolationUsing(
+            Model::preventLazyLoading();
+            Model::handleLazyLoadingViolationUsing(
                 function ($model, string $relation): void {
-                    logger()->warning('Lazy load: ' . $model::class . '::' . $relation);
+                    logger()->warning('Lazy load: '.$model::class.'::'.$relation);
                 }
             );
         }
@@ -59,16 +73,16 @@ class AppServiceProvider extends ServiceProvider
         // monitor that cries wolf in dev is a monitor people learn to ignore.
         // The stamp travels with the DB (dev pulls production), so the card
         // reports whether the JOB ran, which is the actual question.
-        \Illuminate\Support\Facades\Event::listen(
-            \Illuminate\Console\Events\CommandFinished::class,
+        Event::listen(
+            CommandFinished::class,
             function ($event): void {
                 if ($event->command !== 'geo:llms-txt' || $event->exitCode !== 0) {
                     return;
                 }
 
                 try {
-                    \App\Support\Tenancy::table('platform_settings')->updateOrInsert(
-                        ['site_id' => \App\Models\Site::current()?->id, 'key' => 'geo.llms_txt_generated_at'],
+                    Tenancy::table('platform_settings')->updateOrInsert(
+                        ['site_id' => Site::current()?->id, 'key' => 'geo.llms_txt_generated_at'],
                         ['value' => now()->toIso8601String(), 'updated_at' => now(), 'created_at' => now()],
                     );
                 } catch (\Throwable) {
@@ -82,22 +96,22 @@ class AppServiceProvider extends ServiceProvider
         // fires on interaction, so every admin action after first paint would
         // run against the DEFAULT site instead of the one in the URL.
         Livewire::addPersistentMiddleware([
-            \App\Http\Middleware\ResolveSite::class,
-            \App\Http\Middleware\ResolveAdminSite::class,
+            ResolveSite::class,
+            ResolveAdminSite::class,
         ]);
 
         // Any save/delete of public content schedules a debounced sitemap
         // regeneration + WebSub ping, so honest lastmod values reach crawlers
         // in minutes instead of waiting for the nightly cycle.
         $recrawlNudge = function ($model): void {
-            \App\Support\SEO\RecrawlNudger::nudge();
+            RecrawlNudger::nudge();
         };
         foreach ([
-            \App\Models\AreaServed::class,
-            \App\Models\Project::class,
-            \App\Models\ProjectImage::class,
-            \App\Models\Testimonial::class,
-            \App\Models\LandingPage::class,
+            AreaServed::class,
+            Project::class,
+            ProjectImage::class,
+            Testimonial::class,
+            LandingPage::class,
         ] as $model) {
             $model::saved($recrawlNudge);
             $model::deleted($recrawlNudge);
@@ -116,10 +130,24 @@ class AppServiceProvider extends ServiceProvider
         $this->applySocialUrlOverrides();
 
         // Register IndexNow observers for automatic URL submission
+        // Anything a crawler reads from a generated file (sitemaps, llms.txt)
+        // refreshes itself after the response whenever listed content
+        // changes — one run per request, however many saves. The observers
+        // below still rebuild the sitemap synchronously for the few events
+        // they always did; this covers everything else (areas, services,
+        // posts, landing pages) and the llms files.
+        foreach ([
+            Project::class, ProjectImage::class, AreaServed::class, Testimonial::class,
+            Service::class, BlogPost::class, LandingPage::class,
+        ] as $model) {
+            $model::saved(fn () => PublicFeeds::refreshSoon());
+            $model::deleted(fn () => PublicFeeds::refreshSoon());
+        }
+
         Testimonial::observe(TestimonialObserver::class);
         AreaServed::observe(AreaServedObserver::class);
         Project::observe(ProjectObserver::class);
-        \App\Models\BlogPost::observe(\App\Observers\BlogPostObserver::class);
+        BlogPost::observe(BlogPostObserver::class);
         ProjectImage::observe(ProjectImageObserver::class);
 
         // Restrict Log Viewer access to specific admin emails only.
@@ -165,9 +193,9 @@ class AppServiceProvider extends ServiceProvider
             }
 
             foreach (['instagram', 'google', 'facebook', 'yelp', 'houzz', 'angi'] as $platform) {
-                $override = PlatformSetting::get('socials.url.' . $platform);
+                $override = PlatformSetting::get('socials.url.'.$platform);
                 if (is_string($override) && $override !== '') {
-                    config()->set('socials.' . $platform . '.url', $override);
+                    config()->set('socials.'.$platform.'.url', $override);
                 }
             }
         } catch (\Throwable) {
