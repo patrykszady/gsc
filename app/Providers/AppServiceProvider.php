@@ -18,6 +18,7 @@ use App\Observers\BlogPostObserver;
 use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\SEO\RecrawlNudger;
 use App\Support\SEO\SEOBuilder;
@@ -52,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // This site's own Google OAuth client, entered from the admin,
+        // overlays the env fallback for Business Profile and Search Console.
+        GoogleOAuthApp::apply();
+
         // Dev guardrail (same as hive2025): surface N+1 lazy loads in the log
         // during development without ever breaking a page — and never in
         // production, where an unexpected lazy load must degrade, not throw.

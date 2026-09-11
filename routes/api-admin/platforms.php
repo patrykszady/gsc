@@ -22,6 +22,11 @@ Route::prefix('platforms')->group(function () {
         ->whereIn('platform', ['houzz', 'angi']);
 
     // ---- Yelp: credentials, session, cookie injection, auto-login ----
+    // This site's own Google OAuth client (client id + secret, or the JSON
+    // Google Cloud Console downloads) — what Business Profile and Search
+    // Console sign in with. Per site: never shared between sites.
+    Route::post('google/credentials', [PlatformsController::class, 'saveGoogleCredentials']);
+    Route::delete('google/credentials', [PlatformsController::class, 'clearGoogleCredentials']);
     Route::post('yelp/credentials', [PlatformsController::class, 'saveYelpCredentials']);
     Route::delete('yelp/credentials/password', [PlatformsController::class, 'clearYelpPassword']);
     Route::post('yelp/session/check', [PlatformsController::class, 'checkYelpSession']);

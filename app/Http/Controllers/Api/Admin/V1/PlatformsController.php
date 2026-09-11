@@ -17,6 +17,7 @@ use App\Services\InstagramRemoteLoginService;
 use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use App\Support\GoogleOAuthApp;
 use App\Support\Reviews\ReviewImport;
 use App\Support\YelpCookieJar;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Ops-domain API for the central admin's Platforms screen: connection
@@ -63,6 +65,7 @@ class PlatformsController extends Controller
     public function status(): JsonResponse
     {
         return $this->itemResponse([
+            'google' => GoogleOAuthApp::status(),
             'gbp' => $this->gbpStatus(),
             'gsc' => $this->gscStatus(),
             'meta' => $this->metaStatus(),
@@ -202,6 +205,52 @@ class PlatformsController extends Controller
      * a new one was actually typed — blank means "keep the existing one",
      * same as the legacy form.
      */
+    /**
+     * POST platforms/google/credentials — this site's own Google OAuth
+     * client. Either the JSON file Google Cloud Console downloads for the
+     * OAuth 2.0 Client ID (`client_json`) or the two values themselves
+     * (`client_id` + `client_secret`). Stored encrypted; the secret is never
+     * returned. Both Google cards read it from then on.
+     */
+    public function saveGoogleCredentials(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'client_json' => ['nullable', 'string', 'max:20000'],
+            'client_id' => ['nullable', 'string', 'max:255'],
+            'client_secret' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (filled($data['client_json'] ?? null)) {
+            $client = GoogleOAuthApp::parseClientJson($data['client_json']);
+        } elseif (filled($data['client_id'] ?? null) && filled($data['client_secret'] ?? null)) {
+            $client = ['client_id' => $data['client_id'], 'client_secret' => $data['client_secret'], 'project_id' => null];
+        } else {
+            throw ValidationException::withMessages([
+                'client_id' => 'Upload the OAuth client JSON from Google Cloud Console, or enter both the client ID and the client secret.',
+            ]);
+        }
+
+        GoogleOAuthApp::save($client['client_id'], $client['client_secret'], $client['project_id'] ?? null);
+
+        return $this->itemResponse([
+            'google' => GoogleOAuthApp::status(),
+            'gbp' => $this->gbpStatus(),
+            'gsc' => $this->gscStatus(),
+        ]);
+    }
+
+    /** DELETE platforms/google/credentials — back to whatever the server's env provides (usually nothing). */
+    public function clearGoogleCredentials(): JsonResponse
+    {
+        GoogleOAuthApp::clear();
+
+        return $this->itemResponse([
+            'google' => GoogleOAuthApp::status(),
+            'gbp' => $this->gbpStatus(),
+            'gsc' => $this->gscStatus(),
+        ]);
+    }
+
     public function saveYelpCredentials(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -773,7 +822,9 @@ class PlatformsController extends Controller
             'updated_at' => $token?->updated_at?->toIso8601String(),
             'access_token_expires_at' => $token?->access_token_expires_at?->toIso8601String(),
             'scopes' => $token?->scopes,
-            'app_credentials_configured' => $service->hasOAuthCredentials(),
+            // The OAuth client is what "configured" means here; the refresh
+            // token is what connecting produces, and is reported separately.
+            'app_credentials_configured' => ! empty($config['client_id']) && ! empty($config['client_secret']),
             'fully_configured' => $service->isConfigured(),
             // Presence booleans only, for the "Configuration Status" dot-row
             // checklist (legacy view's inline $gbpChecks,
@@ -792,9 +843,11 @@ class PlatformsController extends Controller
     {
         $service = app(GoogleSearchConsoleService::class);
         $token = $service->getStoredToken();
+        $config = config('services.google.search_console');
 
         return [
             'connected' => (bool) $token?->refresh_token,
+            'app_credentials_configured' => ! empty($config['client_id']) && ! empty($config['client_secret']),
             'write_scope' => $service->hasWriteScope(),
             'granted_at' => $token?->created_at?->toIso8601String(),
             'updated_at' => $token?->updated_at?->toIso8601String(),
