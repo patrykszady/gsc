@@ -71,6 +71,8 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     Route::get('projects/{project}/images', [ProjectImageController::class, 'index']);
     Route::post('projects/{project}/images', [ProjectImageController::class, 'store']);
     Route::post('projects/{project}/images/reorder', [ProjectImageController::class, 'reorder']);
+    // Move photos to another project, or into a new draft ('image-move').
+    Route::post('projects/{project}/images/move', [ProjectImageController::class, 'move']);
     Route::put('projects/{project}/images/{image}', [ProjectImageController::class, 'update']);
     Route::delete('projects/{project}/images/{image}', [ProjectImageController::class, 'destroy']);
 

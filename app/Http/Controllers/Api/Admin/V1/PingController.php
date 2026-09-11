@@ -25,7 +25,7 @@ class PingController extends Controller
                     // Legacy-parity extras, all gsc-only:
                     // timelapses/before-afters, the areas coverage map,
                     // multi-platform review URLs, testimonial↔project links.
-                    'timelapses', 'before-afters', 'image-tags', 'areas-map', 'review-platforms', 'testimonial-projects',
+                    'timelapses', 'before-afters', 'image-tags', 'image-move', 'areas-map', 'review-platforms', 'testimonial-projects',
                     // Partner credits on the project form (designer / architect / trade), used by the blog writer.
                     'collaborators',
                     // Areas carry more page copy here (neighborhoods, what

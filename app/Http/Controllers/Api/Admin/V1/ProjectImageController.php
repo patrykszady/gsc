@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\ProjectImage;
+use App\Support\Projects\ImageMover;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -109,6 +110,38 @@ class ProjectImageController extends Controller
         return response()->json([
             'data' => $project->images()->with('tags')->get()->map(fn (ProjectImage $image) => $image->toApiArray())->all(),
         ]);
+    }
+
+    /**
+     * POST projects/{project}/images/move — behind the 'image-move' ping
+     * capability, the same endpoint as jpeterson-design's. `image_ids` of
+     * this project go to `project_id` (an existing project) or, without
+     * one, into a new unpublished draft titled `title` (default "New
+     * project"); this site's own observers then draft what they draft for
+     * any new project.
+     */
+    public function move(Request $request, int $project): JsonResponse
+    {
+        $source = Project::findOrFail($project);
+
+        $data = $request->validate([
+            'image_ids' => ['required', 'array', 'min:1'],
+            'image_ids.*' => ['integer'],
+            'project_id' => ['nullable', 'integer', 'exists:projects,id'],
+            'title' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $target = isset($data['project_id']) ? Project::findOrFail($data['project_id']) : null;
+
+        $result = ImageMover::move($source, array_map('intval', $data['image_ids']), $target, $data['title'] ?? null);
+        $target = $result['target'];
+
+        return response()->json(['data' => [
+            'project' => $target->fresh(['images.tags', 'testimonials'])->toApiArray(),
+            'source' => $source->fresh(['images.tags', 'testimonials'])->toApiArray(),
+            'moved' => $result['moved'],
+            'created' => $result['created'],
+        ]]);
     }
 
     /**
