@@ -256,6 +256,8 @@ class Testimonial extends Model
                 'url' => $u->url,
             ])->values()->all(),
             'project_ids' => $this->projects->pluck('id')->values()->all(),
+            // slug + public_url: the same two keys jpeterson-design carries.
+            'slug' => $this->slug,
             'public_url' => route('reviews.show', $this),
         ];
     }
