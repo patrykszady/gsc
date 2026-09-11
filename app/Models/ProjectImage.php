@@ -474,6 +474,12 @@ class ProjectImage extends Model
      * 'tags' — see ProjectController/ProjectImageController — to avoid an
      * N+1); falls back to a query otherwise so this never errors.
      */
+    /** The photo's own public page, /projects/{project}/photos/{slug} (jpd's sits under /portfolio). */
+    public function url(): string
+    {
+        return url('/projects/'.$this->project?->slug.'/photos/'.($this->slug ?: $this->id));
+    }
+
     public function toApiArray(): array
     {
         return [
@@ -482,6 +488,9 @@ class ProjectImage extends Model
             'url' => $this->url,
             'filename' => $this->filename,
             'original_filename' => $this->original_filename,
+            'slug' => $this->slug,
+            // The photo's own page on the site (live once the project is published).
+            'public_url' => $this->url(),
             'alt_text' => $this->alt_text,
             'caption' => $this->caption,
             'is_cover' => (bool) $this->is_cover,

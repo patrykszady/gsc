@@ -324,12 +324,20 @@ class Project extends Model
      * gsc-only extras (yelp_portfolio_url, testimonial links, partners) are
      * deliberately not exposed.
      */
+    /** The project's public page, /projects/{slug} (jpd's sits at /portfolio/{slug}). */
+    public function url(): string
+    {
+        return url('/projects/'.$this->slug);
+    }
+
     public function toApiArray(): array
     {
         return [
             'id' => $this->id,
             'title' => $this->title,
             'slug' => $this->slug,
+            // Where the admin's "View" button goes once the project is published.
+            'public_url' => $this->url(),
             'description' => $this->description,
             'project_type' => $this->project_type,
             'location' => $this->location,
