@@ -13,8 +13,10 @@ class GscCoverageState extends Model
 
     protected $fillable = [
         'url',
+        'source',
         'verdict',
         'coverage_state',
+        'console_reason',
         'robots_txt_state',
         'indexing_state',
         'page_fetch_state',
@@ -36,8 +38,11 @@ class GscCoverageState extends Model
 
     public function isProblem(): bool
     {
-        if (($this->verdict ?? '') !== 'PASS') return true;
+        if (($this->verdict ?? '') !== 'PASS') {
+            return true;
+        }
         $state = strtolower((string) $this->coverage_state);
+
         return str_contains($state, 'forbidden')
             || str_contains($state, 'not indexed')
             || str_contains($state, 'soft 404')

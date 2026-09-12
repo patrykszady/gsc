@@ -7,6 +7,7 @@ use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscRichResultIssue;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +29,9 @@ class SeoGscInspectBulk extends Command
         {--limit=0 : Maximum URLs to inspect this run (0 = all sitemap URLs)}
         {--sitemap= : Path to sitemap XML (default public/sitemap.xml)}
         {--strategy=stale : URL selection: stale|random|all}
+        {--urls=* : Inspect these URLs instead of the sitemap (a Console export, tracked 404s)}
+        {--source=sitemap : What the rows are: sitemap|console|tracked}
+        {--reason= : The Console reason the URLs were exported under, kept on each row}
         {--site= : GSC site URL override}
         {--markdown : Write reports/gsc-inspect-bulk.md}';
 
@@ -36,12 +40,16 @@ class SeoGscInspectBulk extends Command
     public function handle(): int
     {
         $token = $this->gscAccessToken();
-        if (! $token) return self::FAILURE;
+        if (! $token) {
+            return self::FAILURE;
+        }
 
         $site = $this->gscSiteUrl($this->option('site'));
-        $urls = $this->loadSitemapUrls((string) ($this->option('sitemap') ?: public_path('sitemap.xml')));
+        $explicit = array_values(array_filter(array_map('trim', (array) $this->option('urls'))));
+        $urls = $explicit !== [] ? $explicit : $this->loadSitemapUrls((string) ($this->option('sitemap') ?: public_path('sitemap.xml')));
         if (empty($urls)) {
             $this->error('Sitemap has no URLs.');
+
             return self::FAILURE;
         }
         $this->info(sprintf('Loaded %d sitemap URLs.', count($urls)));
@@ -51,7 +59,7 @@ class SeoGscInspectBulk extends Command
             $limit = count($urls);
         }
 
-        $urls = $this->prioritize($urls, (string) $this->option('strategy'), $limit);
+        $urls = $explicit !== [] ? $urls : $this->prioritize($urls, (string) $this->option('strategy'), $limit);
         $this->info(sprintf('Inspecting %d URLs (strategy=%s).', count($urls), $this->option('strategy')));
 
         $changes = [];
@@ -65,9 +73,9 @@ class SeoGscInspectBulk extends Command
                 // >30s per call (three cURL-28 aborts in the July-August log,
                 // each killing that night's sweep via the schedule's failure
                 // hook). The retry below only covers connection drops; a slow
-                //-but-alive response needs the longer budget.
+                // -but-alive response needs the longer budget.
                 ->timeout(60)
-                ->retry(2, 2000, fn ($e) => $e instanceof \Illuminate\Http\Client\ConnectionException, throw: false)
+                ->retry(2, 2000, fn ($e) => $e instanceof ConnectionException, throw: false)
                 ->post(
                     'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
                     ['inspectionUrl' => $u, 'siteUrl' => $site]
@@ -94,7 +102,7 @@ class SeoGscInspectBulk extends Command
                         $resp = $inspect($u);
                     }
                 }
-            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            } catch (ConnectionException $e) {
                 // A transient network timeout must not abort the whole sweep.
                 $failures++;
                 $this->line(sprintf('  err   net  %s (%s)', $u, $e->getMessage()));
@@ -108,6 +116,7 @@ class SeoGscInspectBulk extends Command
                     $this->warn('Quota hit; stopping early.');
                     break;
                 }
+
                 continue;
             }
             $inspected++;
@@ -135,14 +144,21 @@ class SeoGscInspectBulk extends Command
     /** @return array<int,string> */
     protected function loadSitemapUrls(string $path): array
     {
-        if (! is_file($path)) return [];
+        if (! is_file($path)) {
+            return [];
+        }
         $xml = @simplexml_load_string((string) file_get_contents($path));
-        if (! $xml) return [];
+        if (! $xml) {
+            return [];
+        }
         $urls = [];
         foreach ($xml->url ?? [] as $u) {
             $loc = (string) $u->loc;
-            if ($loc !== '') $urls[] = $loc;
+            if ($loc !== '') {
+                $urls[] = $loc;
+            }
         }
+
         return $urls;
     }
 
@@ -150,13 +166,14 @@ class SeoGscInspectBulk extends Command
      * Pick URLs that need inspection most: oldest inspected_at first (stale),
      * else random sample, else all in declared order capped at the limit.
      *
-     * @param array<int,string> $urls
+     * @param  array<int,string>  $urls
      * @return array<int,string>
      */
     protected function prioritize(array $urls, string $strategy, int $limit): array
     {
         if ($strategy === 'random') {
             shuffle($urls);
+
             return array_slice($urls, 0, $limit);
         }
         if ($strategy === 'all') {
@@ -170,13 +187,14 @@ class SeoGscInspectBulk extends Command
             ->all();
         $unseen = array_values(array_diff($urls, $known));
         $merged = array_merge($unseen, $known); // never-seen first, then oldest stale
+
         return array_slice($merged, 0, $limit);
     }
 
     /**
      * Persist + return a change description when verdict/coverage/canonical shifted, else null.
      *
-     * @param array<string,mixed> $r
+     * @param  array<string,mixed>  $r
      * @return array<string,mixed>|null
      */
     protected function persist(string $url, array $r, array $richResults): array
@@ -198,6 +216,10 @@ class SeoGscInspectBulk extends Command
         GscCoverageState::updateOrCreate(
             ['url' => $url],
             [
+                // A sitemap sweep never demotes a row imported from the
+                // Console: it keeps the source that first explained it.
+                'source' => $existing?->source && $existing->source !== 'sitemap' ? $existing->source : (string) ($this->option('source') ?: 'sitemap'),
+                'console_reason' => $this->option('reason') ? (string) $this->option('reason') : ($existing->console_reason ?? null),
                 'verdict' => $verdict,
                 'coverage_state' => $coverage,
                 'robots_txt_state' => $r['robotsTxtState'] ?? null,
@@ -251,7 +273,7 @@ class SeoGscInspectBulk extends Command
     /**
      * Persist current rich-result issues for a URL from URL Inspection response.
      *
-     * @param array<string,mixed> $richResults
+     * @param  array<string,mixed>  $richResults
      */
     protected function persistRichResults(string $url, array $richResults): int
     {
@@ -305,18 +327,18 @@ class SeoGscInspectBulk extends Command
     }
 
     /**
-     * @param array<int,array<string,mixed>> $changes
+     * @param  array<int,array<string,mixed>>  $changes
      */
     protected function writeReport(int $inspected, int $failures, array $changes): void
     {
         $lines = [];
         $lines[] = '# GSC URL Inspection — bulk run';
         $lines[] = '';
-        $lines[] = '_Generated: ' . now()->toIso8601String() . '_';
+        $lines[] = '_Generated: '.now()->toIso8601String().'_';
         $lines[] = '';
         $lines[] = "- Inspected: **{$inspected}**";
         $lines[] = "- API failures: **{$failures}**";
-        $lines[] = '- State changes: **' . count($changes) . '**';
+        $lines[] = '- State changes: **'.count($changes).'**';
         $lines[] = '';
 
         $totals = GscCoverageState::query()

@@ -18,6 +18,7 @@ use App\Observers\BlogPostObserver;
 use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\SEO\RecrawlNudger;
@@ -26,10 +27,12 @@ use App\Support\Tenancy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -53,6 +56,33 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // /areas-served/{area}: a served town binds as usual; a town the site
+        // no longer serves 301s to its nearest served neighbour (same spoke)
+        // or the areas index — from the binding itself, since a failed
+        // implicit binding 404s before any middleware could redirect, and
+        // Google keeps re-crawling those old pages as "Not found (404)".
+        Route::bind('area', function (string $value, $route) {
+            $path = '/'.ltrim((string) request()->path(), '/');
+            $public = (bool) preg_match('#^/(?:areas-served|areas|locations)/#', $path);
+
+            // Anything but the public area pages — the admin API's
+            // `areas/{area}` takes the raw id (int $area), nothing binds —
+            // gets the parameter untouched, as before this binding existed.
+            if (! $public) {
+                return $value;
+            }
+
+            if ($area = AreaServed::query()->where('slug', $value)->first()) {
+                return $area;
+            }
+            $suffix = preg_match('#^/(?:areas-served|areas|locations)/[^/]+(/.*)$#', $path, $m) ? $m[1] : '';
+            $target = RetiredAreaRedirect::target($value, $suffix);
+            if ($target !== null) {
+                throw new HttpResponseException(redirect($target, 301));
+            }
+            abort(404);
+        });
+
         // This site's own Google OAuth client, entered from the admin,
         // overlays the env fallback for Business Profile and Search Console.
         GoogleOAuthApp::apply();

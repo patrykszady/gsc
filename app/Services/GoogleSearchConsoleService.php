@@ -217,6 +217,80 @@ class GoogleSearchConsoleService
         return false;
     }
 
+    /**
+     * Every sitemap Search Console knows for the property, as Google reports
+     * them: path, last submitted / downloaded, pending, errors, warnings and
+     * the URL counts per content type. Null when there is no token.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public function listSitemaps(string $siteUrl): ?array
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            return null;
+        }
+        $resp = Http::withToken($token)->timeout(20)->get(self::API_BASE.'/sites/'.rawurlencode($siteUrl).'/sitemaps');
+        if (! $resp->successful()) {
+            $this->lastError = ['status' => $resp->status(), 'message' => mb_substr($resp->body(), 0, 300)];
+
+            return null;
+        }
+
+        return $resp->json('sitemap', []);
+    }
+
+    /** Remove a sitemap from the property (sitemaps.delete). */
+    public function deleteSitemap(string $siteUrl, string $sitemapUrl): bool
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            $this->lastError = ['message' => 'No access token'];
+
+            return false;
+        }
+        $resp = Http::withToken($token)->timeout(20)->delete(self::API_BASE.'/sites/'.rawurlencode($siteUrl).'/sitemaps/'.rawurlencode($sitemapUrl));
+        if ($resp->successful()) {
+            $this->lastError = null;
+
+            return true;
+        }
+        $this->lastError = ['status' => $resp->status(), 'message' => mb_substr($resp->body(), 0, 300)];
+
+        return false;
+    }
+
+    /**
+     * One URL through the URL Inspection API — the same call the nightly
+     * sweep makes per sitemap URL (seo:gsc-inspect-bulk), for a page an
+     * operator asks about right now. Returns Google's inspectionResult
+     * (indexStatusResult, richResultsResult, mobileUsabilityResult…), or
+     * null with lastError set.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function inspectUrl(string $siteUrl, string $url): ?array
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            $this->lastError = ['message' => 'No access token'];
+
+            return null;
+        }
+        $resp = Http::withToken($token)->timeout(60)->post(
+            'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
+            ['inspectionUrl' => $url, 'siteUrl' => $siteUrl]
+        );
+        if (! $resp->successful()) {
+            $this->lastError = ['status' => $resp->status(), 'message' => mb_substr($resp->body(), 0, 300)];
+
+            return null;
+        }
+        $this->lastError = null;
+
+        return $resp->json('inspectionResult', []);
+    }
+
     public function getLastError(): ?array
     {
         return $this->lastError;

@@ -959,3 +959,13 @@ if (app()->environment('local')) {
         );
     })->name('dev.sites.bar');
 }
+
+// Every public URL no route claims still passes through the web middleware —
+// RedirectLegacyUrls' old-site map, trailing-slash and case fixes, the 410
+// list — before it is a 404. Without a fallback route an unmatched path
+// never reached that middleware at all. Registered for every method and
+// kept off /api (and Livewire's own endpoints), so an unknown API path or
+// method still answers 404 the way it always did, not 405.
+Route::any('{fallbackPlaceholder}', fn () => abort(404))
+    ->where('fallbackPlaceholder', '^(?!api(/|$)|livewire(/|$)|livewire-).*$')
+    ->fallback();

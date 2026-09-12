@@ -45,4 +45,14 @@ Route::prefix('seo')->group(function () {
     Route::post('gsc-errors/prune-retired', [GscErrorController::class, 'pruneRetired']);
     Route::post('gsc-errors/refresh', [GscErrorController::class, 'refresh']);
     Route::get('gsc-errors/export', [GscErrorController::class, 'export']);
+    // Search Console, read and write: the Page-indexing breakdown the
+    // Console shows (from the sweep, the Googlebot 404 tracker and the robots
+    // rules), a Console export to inspect, one URL inspected on demand, and
+    // the property's sitemaps (list / submit / delete).
+    Route::get('gsc-errors/indexing', [GscErrorController::class, 'indexing']);
+    Route::post('gsc-errors/import', [GscErrorController::class, 'importConsoleExport']);
+    Route::post('gsc-errors/inspect', [GscErrorController::class, 'inspect']);
+    Route::get('gsc-errors/sitemaps', [GscErrorController::class, 'sitemaps']);
+    Route::post('gsc-errors/sitemaps', [GscErrorController::class, 'submitSitemap']);
+    Route::delete('gsc-errors/sitemaps', [GscErrorController::class, 'deleteSitemap']);
 });
