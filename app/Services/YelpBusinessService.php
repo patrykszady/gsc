@@ -1377,7 +1377,12 @@ class YelpBusinessService
             $args[] = '--cookies-file=' . $cookiesFile;
         }
 
-        if ($proxyUrl = $this->proxyUrl()) {
+        // Direct by default. The residential proxy exists to get PAST
+        // DataDome at login; reading pages with the persistent session works
+        // from the server's own IP, and through the proxy the lead page never
+        // reached network-idle (2026-09-15: a 7-minute hang, then a kill).
+        // YELP_LEADS_PROXY opts a proxy in for this read only.
+        if ($proxyUrl = (string) ($cfg['leads_proxy'] ?? '')) {
             $args[] = '--proxy=' . $proxyUrl;
         }
 

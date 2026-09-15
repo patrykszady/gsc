@@ -327,6 +327,8 @@ return [
             // dashboard URLs). The upload script caches what it sees into
             // <user_data_dir>/.yelp-bizid; this env wins when set. Used to
             // build lead URLs and to open the leads page directly.
+            // A proxy for the lead READ only (yelp:sync-leads); unset = direct.
+            'leads_proxy' => env('YELP_LEADS_PROXY'),
             'biz_id' => env('YELP_BIZ_ID') ?: (is_file(($d = env('YELP_USER_DATA_DIR', storage_path('app/yelp-puppeteer'))).'/.yelp-bizid') ? trim((string) file_get_contents($d.'/.yelp-bizid')) : null),
             // Path to node binary (override if not on PATH).
             'node_binary' => env('YELP_NODE_BINARY', 'node'),

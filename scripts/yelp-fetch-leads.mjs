@@ -196,6 +196,25 @@ async function pageState(page) {
   return page.evaluate(() => (window.yelp && window.yelp.react_apollo_state) || null).catch(() => null);
 }
 
+/**
+ * Load a biz.yelp.com page and wait for its hydration state to be present.
+ *
+ * Not `networkidle2`: the lead pages keep connections open (messaging,
+ * analytics), so "idle" can take minutes or never come — through the proxy
+ * it never did. The state is written by an inline script in the document,
+ * so it is there as soon as the document is, and that is all we read.
+ */
+async function loadWithState(page, url, timeoutMs) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch((e) => log(`goto ${url}: ${e.message}`));
+  const deadline = Date.now() + Math.min(timeoutMs, 45000);
+  while (Date.now() < deadline) {
+    const state = await pageState(page);
+    if (state) return state;
+    await sleep(500);
+  }
+  return pageState(page);
+}
+
 function isLeadsCenterUrl(url) {
   return /^https:\/\/biz\.yelp\.com\/leads_center\/[A-Za-z0-9_-]{12,}\/leads/.test(url || '');
 }
@@ -268,8 +287,8 @@ async function main() {
     });
 
     const listUrl = `https://biz.yelp.com/leads_center/${args.bizId}/leads`;
-    await page.goto(listUrl, { waitUntil: 'networkidle2', timeout: args.timeoutMs }).catch((e) => log(`goto list: ${e.message}`));
-    await sleep(2000);
+    let state = await loadWithState(page, listUrl, args.timeoutMs);
+    await sleep(1500);
 
     if (await dd.detectDataDome(page)) {
       result.error = 'DataDome challenge on the leads page';
@@ -282,7 +301,7 @@ async function main() {
       throw new Error(result.error);
     }
 
-    let state = await pageState(page);
+    if (!state) state = await pageState(page);
     if (!state) {
       result.error = 'leads page has no react_apollo_state — layout changed?';
       exitCode = 1;
@@ -321,9 +340,7 @@ async function main() {
       if (!changed) { result.leads.push({ ...summary, detail: false }); continue; }
 
       const url = `${listUrl}/${summary.encid}`;
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: args.timeoutMs }).catch((e) => log(`goto ${summary.encid}: ${e.message}`));
-      await sleep(1500);
-      const detailState = await pageState(page);
+      const detailState = await loadWithState(page, url, args.timeoutMs);
       const detail = detailState ? leadDetailFromState(detailState, summary.encid) : null;
       if (!detail) { result.errors.push({ encid: summary.encid, error: 'no detail state' }); result.leads.push({ ...summary, detail: false }); continue; }
 
