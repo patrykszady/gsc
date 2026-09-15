@@ -51,13 +51,20 @@ class SyncYelpLeads extends Command
         try {
             $result = $yelp->fetchLeads($known, $outDir, (bool) $this->option('all'), fn (string $line) => $this->line("  <fg=gray>{$line}</>"));
         } catch (\App\Exceptions\YelpSessionExpiredException $e) {
+            File::deleteDirectory($outDir);
             $this->warn('Yelp session is known-dead; recovery is already in motion. Skipping this run.');
 
             return self::SUCCESS;
         } catch (\App\Exceptions\YelpUploadThrottledException $e) {
+            File::deleteDirectory($outDir);
             $this->warn('Yelp automation is cooling down — ' . $e->getMessage());
 
             return self::SUCCESS;
+        } catch (\Throwable $e) {
+            // Whatever happened, the downloads folder must not pile up.
+            File::deleteDirectory($outDir);
+
+            throw $e;
         }
 
         if (! ($result['ok'] ?? false)) {

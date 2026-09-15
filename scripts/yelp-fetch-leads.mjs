@@ -9,7 +9,7 @@
  * hydration state (window.yelp.react_apollo_state), so this reads that state
  * rather than scraping the layout — a redesign of the cards does not break it.
  *
- *   node scripts/yelp-fetch-leads.mjs --user-data-dir=... [--cookies-file=...]
+ *   YELP_USER_DATA_DIR=... node scripts/yelp-fetch-leads.mjs [--cookies-file=...]
  *        --biz-id=... --out-dir=... [--known=ENCID@ISO,...] [--all]
  *        [--max-pages=5] [--timeout-ms=90000] [--proxy=...] [--headed]
  *
@@ -173,6 +173,12 @@ function parseArgs(argv) {
     maxPages: 5, timeoutMs: 90000, proxy: null, headless: true,
     userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   };
+  // The profile dir comes through the environment, as it does for the
+  // uploads: scripts/yelp-run-locked.sh sweeps Chromium at the end of a run
+  // with `pkill -f "user-data-dir=<dir>"`, and a script whose own command
+  // line carries that string is swept with it — parent process included
+  // (2026-09-15: every PHP-launched run "signaled with signal 9").
+  args.userDataDir = process.env.YELP_USER_DATA_DIR || null;
   for (const a of argv.slice(2)) {
     if (a.startsWith('--user-data-dir=')) args.userDataDir = a.slice(16);
     else if (a.startsWith('--cookies-file=')) args.cookiesFile = a.slice(15);

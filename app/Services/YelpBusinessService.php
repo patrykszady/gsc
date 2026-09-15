@@ -1368,9 +1368,11 @@ class YelpBusinessService
             '--timeout-ms=' . (int) ($cfg['timeout_ms'] ?? 180000),
         ];
 
-        if (! empty($cfg['user_data_dir'])) {
-            $args[] = '--user-data-dir=' . $cfg['user_data_dir'];
-        }
+        // The profile dir travels as YELP_USER_DATA_DIR (browserProcessEnv),
+        // never as an argument: the bash wrapper's end-of-run sweep is
+        // `pkill -f "user-data-dir=<dir>"`, and an argv carrying that string
+        // gets the whole process tree — this PHP process's child included —
+        // killed before the JSON is read.
 
         $cookiesFile = \App\Support\YelpCookieJar::path();
         if (is_file($cookiesFile) && filesize($cookiesFile) > 0) {
@@ -1435,6 +1437,12 @@ class YelpBusinessService
                     ]);
 
                     return ['ok' => false, 'error' => 'The lead fetch timed out.'];
+                } catch (\Symfony\Component\Process\Exception\ProcessSignaledException $e) {
+                    Log::channel('yelp')->error('Yelp leads: fetch script was killed', [
+                        'signal' => $e->getSignal(),
+                    ]);
+
+                    return ['ok' => false, 'error' => 'The lead fetch was killed (signal ' . $e->getSignal() . ') before it reported.'];
                 } finally {
                     if ($teeFh) {
                         @fclose($teeFh);
