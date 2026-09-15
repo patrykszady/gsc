@@ -5,7 +5,9 @@ namespace App\Support\SEO;
 use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
+use App\Support\Tenancy;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Single source of truth for which area-served pages Google should index.
@@ -13,18 +15,24 @@ use Illuminate\Support\Facades\Cache;
  * Context: the site publishes 87 cities × up to 11 page variants (~950 URLs).
  * Google's own coverage report shows ~186 of them "Crawled – currently not
  * indexed" and the ones that do surface earn ~0% CTR — a templated-sprawl
- * quality drag. This policy keeps the pages that carry genuine local proof
- * (a real project or review in that city) in the index and noindexes the thin,
- * near-duplicate spokes. Used by BOTH AreaPage (to emit the noindex meta) and
- * GenerateSitemap (to exclude the same URLs) so the two never disagree —
+ * quality drag. This policy originally kept only the pages with genuine local
+ * proof (a real project or review in that city) in the index and noindexed
+ * the thin, near-duplicate spokes.
+ *
+ * Since 2026-09-14 (Patryk's call, after Search Console listed ~280 of those
+ * spokes under "Excluded by noindex") every variant of a town that has its
+ * own copy is indexable: config seo.area_index_subpages and
+ * seo.area_index_service_pages. Turn either off and the proof/demand gates
+ * below apply again. Used by BOTH AreaPage (to emit the noindex meta) and
+ * GenerateSitemap (to include the same URLs) so the two never disagree —
  * sitemapping a noindexed URL is a self-inflicted quality signal.
  */
 class AreaSeoPolicy
 {
-    /** Sub-page variants that are pure navigational duplicates — never indexed. */
+    /** Navigational sub-pages; indexable with seo.area_index_subpages, never otherwise. */
     public const THIN_PAGES = ['contact', 'about', 'services'];
 
-    /** Spokes that only earn an index slot when the city has real local proof. */
+    /** Spokes that, with the flags off, earn an index slot only on real local proof or demand. */
     public const PROOF_GATED_PAGES = ['service', 'projects', 'testimonials'];
 
     /**
@@ -78,7 +86,7 @@ class AreaSeoPolicy
     /**
      * Should this specific area page variant be indexed?
      *
-     * @param string $page 'home'|'contact'|'about'|'services'|'projects'|'testimonials'|'service'
+     * @param  string  $page  'home'|'contact'|'about'|'services'|'projects'|'testimonials'|'service'
      */
     public static function shouldIndex(AreaServed $area, string $page = 'home', ?string $service = null): bool
     {
@@ -90,12 +98,21 @@ class AreaSeoPolicy
         }
 
         if (in_array($page, self::THIN_PAGES, true)) {
-            return false;
+            // A town without its own copy is a bare template, and so is every
+            // page under it — the flag opens the sub-pages of real towns only.
+            return (bool) config('seo.area_index_subpages', true) && $area->hasUniqueContent();
         }
 
         if (in_array($page, self::PROOF_GATED_PAGES, true)) {
             if (self::isPriority($area)) {
                 return true;
+            }
+
+            $opened = $page === 'service'
+                ? (bool) config('seo.area_index_service_pages', true)
+                : (bool) config('seo.area_index_subpages', true);
+            if ($opened) {
+                return $area->hasUniqueContent();
             }
             // Demand gate: a town's service page also earns its index slot when
             // Google already shows real demand for that town + service. The
@@ -131,7 +148,7 @@ class AreaSeoPolicy
     public static function demandImpressions(AreaServed $area, string $service): int
     {
         $table = self::demandTable();
-        $key = mb_strtolower(trim((string) $area->city)) . '|' . $service;
+        $key = mb_strtolower(trim((string) $area->city)).'|'.$service;
 
         return (int) ($table[$key] ?? 0);
     }
@@ -139,32 +156,32 @@ class AreaSeoPolicy
     /** Researched monthly search volume (seo_keywords) for this town + service. */
     public static function researchVolume(AreaServed $area, string $service): int
     {
-        $table = Cache::remember(\App\Support\Tenancy::cacheKey('seo.area.service_volume'), 12 * 3600, function (): array {
-            if (! \Illuminate\Support\Facades\Schema::hasTable('seo_keywords')) {
+        $table = Cache::remember(Tenancy::cacheKey('seo.area.service_volume'), 12 * 3600, function (): array {
+            if (! Schema::hasTable('seo_keywords')) {
                 return [];
             }
             $out = [];
-            foreach (\App\Support\Tenancy::table('seo_keywords')->whereNotNull('city')->whereNotNull('service')->whereNull('modifier')->where('volume', '>', 0)->get(['city', 'service', 'volume']) as $r) {
-                $k = mb_strtolower($r->city) . '|' . $r->service;
+            foreach (Tenancy::table('seo_keywords')->whereNotNull('city')->whereNotNull('service')->whereNull('modifier')->where('volume', '>', 0)->get(['city', 'service', 'volume']) as $r) {
+                $k = mb_strtolower($r->city).'|'.$r->service;
                 $out[$k] = ($out[$k] ?? 0) + (int) $r->volume;
             }
 
             return $out;
         });
 
-        return (int) ($table[mb_strtolower(trim((string) $area->city)) . '|' . $service] ?? 0);
+        return (int) ($table[mb_strtolower(trim((string) $area->city)).'|'.$service] ?? 0);
     }
 
     /** @return array<string,int> "city|service" => impressions */
     protected static function demandTable(): array
     {
-        return Cache::remember(\App\Support\Tenancy::cacheKey('seo.area.service_demand'), 12 * 3600, function (): array {
-            if (! \Illuminate\Support\Facades\Schema::hasTable('gsc_query_metrics')) {
+        return Cache::remember(Tenancy::cacheKey('seo.area.service_demand'), 12 * 3600, function (): array {
+            if (! Schema::hasTable('gsc_query_metrics')) {
                 return [];
             }
             $end = now()->subDays(3);
             $start = $end->copy()->subDays(27);
-            $rows = \App\Support\Tenancy::table('gsc_query_metrics')
+            $rows = Tenancy::table('gsc_query_metrics')
                 ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
                 ->groupBy('query')
                 ->selectRaw('query, SUM(impressions) impressions')
@@ -173,15 +190,15 @@ class AreaSeoPolicy
 
             $table = [];
             foreach ($rows as $r) {
-                $q = ' ' . preg_replace('/\s+/', ' ', mb_strtolower(str_replace([',', '.'], ' ', (string) $r->query))) . ' ';
+                $q = ' '.preg_replace('/\s+/', ' ', mb_strtolower(str_replace([',', '.'], ' ', (string) $r->query))).' ';
                 foreach ($cities as $city) {
-                    if (! str_contains($q, ' ' . $city . ' ')) {
+                    if (! str_contains($q, ' '.$city.' ')) {
                         continue;
                     }
                     foreach (self::DEMAND_KEYWORDS as $service => $words) {
                         foreach ($words as $w) {
                             if (str_contains($q, $w)) {
-                                $table[$city . '|' . $service] = ($table[$city . '|' . $service] ?? 0) + (int) $r->impressions;
+                                $table[$city.'|'.$service] = ($table[$city.'|'.$service] ?? 0) + (int) $r->impressions;
                                 break;
                             }
                         }

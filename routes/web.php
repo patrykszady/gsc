@@ -60,6 +60,7 @@ use App\Services\GoogleBusinessProfileService;
 use App\Services\GoogleSearchConsoleService;
 use App\Services\MetaSocialService;
 use App\Services\SeoService;
+use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\DevSites;
 use App\Support\LeadLineInfo;
 use App\Support\OAuthState;
@@ -318,7 +319,12 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
 // (App\Support\LeadLineInfo); areas without verified official info render
 // generic Illinois-law content and are noindexed.
 Route::get('/areas-served/{area}/lead-pipe-replacement', function (string $area) {
-    $model = AreaServed::where('slug', $area)->firstOrFail();
+    $model = AreaServed::where('slug', $area)->first();
+    if (! $model) {
+        // A retired town: the same 301 to its nearest served neighbour that
+        // every other spoke gets. Search Console held 64 of these as 404s.
+        return redirect(RetiredAreaRedirect::target($area, '/lead-pipe-replacement') ?? '/areas-served', 301);
+    }
     $info = LeadLineInfo::forSlug($area);
 
     $seo = app(SEOBuilder::class);

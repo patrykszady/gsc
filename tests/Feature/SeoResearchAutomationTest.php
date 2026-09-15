@@ -30,6 +30,9 @@ class SeoResearchAutomationTest extends TestCase
 
     public function test_research_creates_a_landing_page_a_title_experiment_and_a_copy_refresh(): void
     {
+        // Written for the proof/demand gates; keep them on here so the branch
+        // they exercise stays covered after the 2026-09-14 flags opened every town page.
+        config(['seo.area_index_subpages' => false, 'seo.area_index_service_pages' => false]);
         Cache::flush();
         $kenilworth = AreaServed::create(['city' => 'Kenilworth', 'slug' => 'kenilworth', 'local_intro' => 'Short copy about Kenilworth.']);
         Project::create(['title' => 'Palatine Kitchen', 'project_type' => 'kitchen', 'location' => 'Palatine, IL', 'is_published' => true, 'is_featured' => true]);
@@ -77,7 +80,7 @@ class SeoResearchAutomationTest extends TestCase
         });
         $action = SeoAction::create(['fingerprint' => 'f1', 'source' => 'keyword_research', 'category' => 'content_refresh', 'risk' => 'safe', 'status' => 'proposed', 'target_type' => AreaServed::class, 'target_id' => $area->getKey(), 'target_url' => 'https://gs.construction/areas-served/kenilworth', 'title' => 't', 'hypothesis' => 'h', 'metric' => 'clicks', 'payload' => ['phrases' => ['kenilworth home remodeling']]]);
 
-        $applier = new ContentRefreshApplier();
+        $applier = new ContentRefreshApplier;
         $applier->apply($action);
         $this->assertStringStartsWith('Deeper copy', $area->fresh()->local_intro);
         $this->assertSame('Original short copy about Kenilworth.', $action->payload['prev_local_intro']);
@@ -88,6 +91,9 @@ class SeoResearchAutomationTest extends TestCase
 
     public function test_town_service_page_indexes_on_researched_volume_alone(): void
     {
+        // Written for the proof/demand gates; keep them on here so the branch
+        // they exercise stays covered after the 2026-09-14 flags opened every town page.
+        config(['seo.area_index_subpages' => false, 'seo.area_index_service_pages' => false]);
         Cache::flush();
         $area = AreaServed::create(['city' => 'Winnetka', 'slug' => 'winnetka', 'local_intro' => str_repeat('Winnetka copy. ', 50)]);
         $this->assertFalse(AreaSeoPolicy::shouldIndex($area, 'service', 'bathroom-remodeling'));

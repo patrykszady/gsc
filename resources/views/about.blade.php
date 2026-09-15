@@ -27,7 +27,7 @@
             ->whereHas('project')
             ->select('project_images.*')
             ->join(
-                \DB::raw('(SELECT MIN(id) as min_id FROM project_images GROUP BY project_id ORDER BY RAND() LIMIT 6) as unique_projects'),
+                \DB::raw('(SELECT MIN(id) as min_id FROM project_images GROUP BY project_id ORDER BY '.\DB::getQueryGrammar()->compileRandom('').' LIMIT 6) as unique_projects'),
                 'project_images.id', '=', 'unique_projects.min_id'
             )
             ->inRandomOrder()

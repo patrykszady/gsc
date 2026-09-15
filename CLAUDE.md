@@ -74,7 +74,13 @@ reach that middleware at all. Since 2026-09-14 `/areas/…` and `/locations/…`
 `/areas-served/…` (they used to serve the page under noindex + canonical), a review
 reached by any slug other than its own 301s to the real one (route binding reads only
 the trailing id), and robots.txt disallows `/*_page=` (Livewire pagination state from an
-older build). Search Console shows a URL's state as of its LAST crawl and recrawls
+older build). **Area indexing policy (2026-09-14, Patryk's decision):** every page variant
+of a town that has its own copy is indexable — `AreaSeoPolicy` flags
+`seo.area_index_subpages` / `seo.area_index_service_pages` (config/seo.php, env
+`SEO_AREA_INDEX_SUBPAGES` / `SEO_AREA_INDEX_SERVICE_PAGES`); set either to false to
+return to the proof/demand gates. GenerateSitemap follows the same policy, so a flip
+changes the sitemap on the next `sitemap:generate`. A retired town's lead-pipe page 301s
+to its nearest served neighbour like every other spoke. Search Console shows a URL's state as of its LAST crawl and recrawls
 noindexed/dead URLs slowly, so its "Excluded by noindex" list lags these fixes by weeks
 to months; nothing in the API purges it, and "Validate fix" on that bucket cannot pass
 while deliberately noindexed area sub-pages (AreaSeoPolicy) remain — that is expected.

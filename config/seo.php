@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\SeoOverride;
 use RalphJSmit\Laravel\SEO\Models\SEO;
 
 return [
@@ -10,7 +11,7 @@ return [
      * We use a custom model so that DB-stored admin overrides take precedence
      * over the model's getDynamicSEOData() defaults.
      */
-    'model' => \App\Models\SeoOverride::class,
+    'model' => SeoOverride::class,
 
     /**
      * Use this setting to specify the site name that will be used in OpenGraph tags.
@@ -168,16 +169,16 @@ return [
         // share-of-voice over time. Matched (case-insensitive) against listing
         // title or domain host. Update as the landscape shifts.
         'competitor_patterns' => [
-            'airoom'                  => ['airoom'],
-            'normandy_remodeling'     => ['normandy remodeling', 'normandyremodeling'],
-            'lifestyle_renovations'   => ['lifestyle renovations', 'lifestylerenovations'],
-            'jw_construction'         => ['jw construction'],
-            'siena_construction'      => ['siena construction'],
-            'sebring_design'          => ['sebring design', 'sebringdesignbuild'],
-            're_bath'                 => ['re-bath', 'rebath'],
-            'kitchen_master'          => ['kitchen master'],
-            'remodeling_concepts'     => ['remodeling concepts'],
-            'chicagoland_remodeling'  => ['chicagoland remodeling'],
+            'airoom' => ['airoom'],
+            'normandy_remodeling' => ['normandy remodeling', 'normandyremodeling'],
+            'lifestyle_renovations' => ['lifestyle renovations', 'lifestylerenovations'],
+            'jw_construction' => ['jw construction'],
+            'siena_construction' => ['siena construction'],
+            'sebring_design' => ['sebring design', 'sebringdesignbuild'],
+            're_bath' => ['re-bath', 'rebath'],
+            'kitchen_master' => ['kitchen master'],
+            'remodeling_concepts' => ['remodeling concepts'],
+            'chicagoland_remodeling' => ['chicagoland remodeling'],
         ],
 
         // Google web queries. `location`/`ll` fields are legacy metadata kept
@@ -309,13 +310,13 @@ return [
     'psi_max_urls' => env('SEO_PSI_MAX_URLS', 60),
 
     'psi_urls' => [
-        env('APP_URL', 'https://gs.construction') . '/',
-        env('APP_URL', 'https://gs.construction') . '/about',
-        env('APP_URL', 'https://gs.construction') . '/projects',
-        env('APP_URL', 'https://gs.construction') . '/services/kitchen-remodeling',
-        env('APP_URL', 'https://gs.construction') . '/services/bathroom-remodeling',
-        env('APP_URL', 'https://gs.construction') . '/areas-served/lake-zurich',
-        env('APP_URL', 'https://gs.construction') . '/contact',
+        env('APP_URL', 'https://gs.construction').'/',
+        env('APP_URL', 'https://gs.construction').'/about',
+        env('APP_URL', 'https://gs.construction').'/projects',
+        env('APP_URL', 'https://gs.construction').'/services/kitchen-remodeling',
+        env('APP_URL', 'https://gs.construction').'/services/bathroom-remodeling',
+        env('APP_URL', 'https://gs.construction').'/areas-served/lake-zurich',
+        env('APP_URL', 'https://gs.construction').'/contact',
     ],
 
     /*
@@ -335,6 +336,12 @@ return [
     | Console shows at least this many impressions/28d for queries naming that
     | town and service. See AreaSeoPolicy::shouldIndex().
     */
+    // 2026-09-14, Patryk's call: every page variant of a town is indexable
+    // as long as the town has its own copy. Set either to false to return to
+    // the proof/demand gates in AreaSeoPolicy without touching code.
+    'area_index_subpages' => (bool) env('SEO_AREA_INDEX_SUBPAGES', true),
+    'area_index_service_pages' => (bool) env('SEO_AREA_INDEX_SERVICE_PAGES', true),
+
     'area_service_demand_impressions' => (int) env('SEO_AREA_SERVICE_DEMAND_IMPRESSIONS', 100),
     // …or this much researched monthly search volume for the town + service (seo_keywords).
     'area_service_demand_volume' => (int) env('SEO_AREA_SERVICE_DEMAND_VOLUME', 50),
