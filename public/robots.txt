@@ -14,6 +14,10 @@
 
 User-agent: Googlebot
 Allow: /
+# Livewire pagination state from an older build (?7db88787_page=4). Never a
+# page of its own, always canonical to the bare URL; nothing links to these
+# any more, so stop re-crawling the ones Google remembers.
+Disallow: /*_page=
 Disallow: /horizon
 Disallow: /horizon/
 Disallow: /telescope
@@ -59,6 +63,7 @@ Disallow: /livewire/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /*_page=
 Disallow: /horizon
 Disallow: /horizon/
 Disallow: /telescope
@@ -101,6 +106,7 @@ Disallow: /api/
 # Default: Allow all other bots
 User-agent: *
 Allow: /
+Disallow: /*_page=
 Disallow: /horizon
 Disallow: /horizon/
 Disallow: /telescope

@@ -3,13 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\AreaServed;
+use App\Services\ZipCodeService;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
  * Regression coverage for canonical and alias routes:
  *  - /areas-served/{area} is the canonical area URL
- *  - /areas/{area} and /locations/{area} are aliases that must serve content
- *    but mark themselves noindex via canonical pointing back to /areas-served
+ *  - /areas/{area} and /locations/{area} are old aliases that 301 to
+ *    /areas-served/{area}, every sub-path included
  *  - /service-area/{zip} should 200 for known ZIPs and 404 for unknown
  *  - Critical static feeds: /ai-feed.json, /geo/answers.json, /llms.txt,
  *    /sitemap.xml all return 200
@@ -23,11 +25,11 @@ class CanonicalRoutesTest extends TestCase
         // These tests require the real application schema/data (areas, projects,
         // ZIP map). Skip when running under an empty in-memory test DB.
         try {
-            if (! \Illuminate\Support\Facades\Schema::hasTable('areas_served')) {
+            if (! Schema::hasTable('areas_served')) {
                 $this->markTestSkipped('areas_served table not present in test database.');
             }
         } catch (\Throwable $e) {
-            $this->markTestSkipped('Database not available: ' . $e->getMessage());
+            $this->markTestSkipped('Database not available: '.$e->getMessage());
         }
     }
 
@@ -53,18 +55,33 @@ class CanonicalRoutesTest extends TestCase
         $resp->assertSee('rel="canonical"', false);
     }
 
-    public function test_area_alias_routes_serve_content_with_canonical_to_areas_served(): void
+    public function test_area_alias_routes_redirect_permanently_to_areas_served(): void
     {
+        // Every alias shape Search Console still remembers, sub-paths included.
+        foreach ([
+            '/areas' => '/areas-served',
+            '/locations' => '/areas-served',
+            '/areas/north-barrington' => '/areas-served/north-barrington',
+            '/locations/north-barrington/projects' => '/areas-served/north-barrington/projects',
+            '/areas/lake-forest/services/kitchen-remodeling' => '/areas-served/lake-forest/services/kitchen-remodeling',
+        ] as $alias => $target) {
+            $this->get($alias)->assertStatus(301)->assertRedirect($target);
+        }
+    }
+
+    public function test_area_alias_routes_used_to_serve_content_with_canonical_to_areas_served(): void
+    {
+        $this->markTestSkipped('Superseded: the aliases now 301 (see the test above).');
         $slug = $this->firstAreaSlug();
         if (! $slug) {
             $this->markTestSkipped('No areas seeded.');
         }
 
-        foreach (['/areas/' . $slug, '/locations/' . $slug] as $aliasUrl) {
+        foreach (['/areas/'.$slug, '/locations/'.$slug] as $aliasUrl) {
             $resp = $this->get($aliasUrl);
             $resp->assertStatus(200);
             // Canonical should point at /areas-served/{slug}
-            $resp->assertSee('href="' . url('/areas-served/' . $slug) . '"', false);
+            $resp->assertSee('href="'.url('/areas-served/'.$slug).'"', false);
         }
     }
 
@@ -91,14 +108,14 @@ class CanonicalRoutesTest extends TestCase
 
     public function test_service_area_known_zip_returns_200_with_city(): void
     {
-        $map = app(\App\Services\ZipCodeService::class)->getZipMap();
+        $map = app(ZipCodeService::class)->getZipMap();
         if (empty($map)) {
             $this->markTestSkipped('No ZIP-mapped projects available.');
         }
         $zip = (string) array_key_first($map);
         $city = $map[$zip]['city'];
 
-        $resp = $this->get('/service-area/' . $zip);
+        $resp = $this->get('/service-area/'.$zip);
         $resp->assertStatus(200);
         $resp->assertSee($zip);
         $resp->assertSee($city);

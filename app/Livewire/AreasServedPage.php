@@ -4,7 +4,7 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Services\SeoService;
-use App\Support\SEO\SEOBuilder;
+use App\Support\CompanyStats;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -14,19 +14,12 @@ class AreasServedPage extends Component
     public function mount(): void
     {
         SeoService::areasServed();
-
-        if (in_array(request()->path(), ['locations', 'areas'], true)) {
-            app(SEOBuilder::class)
-                ->canonical(url('/areas-served'))
-                ->url(url('/areas-served'))
-                ->markNoindex();
-        }
     }
 
     protected function getFaqs(): array
     {
         return [
-            ['question' => 'What areas does GS Construction serve?', 'answer' => 'We serve ' . \App\Support\CompanyStats::citiesServedLabel() . ' cities across Chicagoland, including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, Barrington, and communities throughout the Northwest Suburbs, North Shore, and greater Chicago area.'],
+            ['question' => 'What areas does GS Construction serve?', 'answer' => 'We serve '.CompanyStats::citiesServedLabel().' cities across Chicagoland, including Arlington Heights, Palatine, Mount Prospect, Schaumburg, Buffalo Grove, Barrington, and communities throughout the Northwest Suburbs, North Shore, and greater Chicago area.'],
             ['question' => 'Do you charge extra for projects outside your main service area?', 'answer' => 'No, we do not charge extra travel fees for projects within our service area. If your city is listed on our areas served page, standard pricing applies.'],
             ['question' => 'How do I know if you serve my city?', 'answer' => 'Browse our areas served directory above. If you do not see your city listed, contact us anyway — we frequently take on projects in neighboring communities.'],
             ['question' => 'Can I see projects you have completed in my area?', 'answer' => 'Yes! Click on your city above to see our remodeling projects, reviews, and service information specific to your area.'],

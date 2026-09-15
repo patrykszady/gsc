@@ -3,24 +3,26 @@
 namespace App\Livewire;
 
 use App\Models\AreaServed;
+use App\Models\Project;
+use App\Models\Testimonial;
 use App\Services\SeoService;
+use App\Support\SEO\AreaSeoPolicy;
 use App\Support\SEO\SEOBuilder;
 use Illuminate\Support\Facades\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-use App\Models\Project;
-use App\Models\Testimonial;
 #[Layout('components.layouts.app')]
 class AreaPage extends Component
 {
     public AreaServed $area;
 
     public string $page = 'home';
-    
+
     public ?string $service = null;
 
     public int $projectCount = 0;
+
     public function mount(AreaServed $area, ?string $page = null, ?string $service = null): void
     {
         $this->area = $area;
@@ -31,7 +33,7 @@ class AreaPage extends Component
         $city = trim((string) $area->city);
         if ($city !== '') {
             $needle = mb_strtolower($city);
-            
+
             // Count projects in this city
             $projectCount = Project::query()
                 ->where('is_published', true)
@@ -41,10 +43,11 @@ class AreaPage extends Component
                 ->filter(function (Project $project) use ($needle): bool {
                     $parts = preg_split('/[,.]/', (string) $project->location) ?: [];
                     $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
                     return $token === $needle;
                 })
                 ->count();
-            
+
             // Count testimonials in this city
             $testimonialCount = Testimonial::query()
                 ->where('is_hidden', false)
@@ -52,10 +55,11 @@ class AreaPage extends Component
                 ->filter(function (Testimonial $t) use ($needle): bool {
                     $parts = preg_split('/[,.]/', (string) $t->project_location) ?: [];
                     $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
                     return $token === $needle;
                 })
                 ->count();
-            
+
             $this->projectCount = $projectCount + $testimonialCount;
         }
         // Share area with all views (for navbar, footer, etc.)
@@ -86,21 +90,12 @@ class AreaPage extends Component
             };
         }
 
-        $path = request()->path();
-        if (str_starts_with($path, 'locations/') || str_starts_with($path, 'areas/')) {
-            $canonicalPath = preg_replace('#^(locations|areas)/#', 'areas-served/', $path);
-            app(SEOBuilder::class)
-                ->canonical(url('/' . ltrim($canonicalPath, '/')))
-                ->url(url('/' . ltrim($canonicalPath, '/')))
-                ->markNoindex();
-        }
-
         // Keep thin, near-duplicate area spokes out of the index. Cities without
         // real local proof (a project or review) and pure nav variants
         // (contact/about/services) are noindexed so Google's quality budget
         // concentrates on the pages that can actually rank. See AreaSeoPolicy.
         $policyPage = $this->page === 'service' ? 'service' : $this->page;
-        if (! \App\Support\SEO\AreaSeoPolicy::shouldIndex($area, $policyPage, $this->service)) {
+        if (! AreaSeoPolicy::shouldIndex($area, $policyPage, $this->service)) {
             app(SEOBuilder::class)->markNoindex();
         }
     }
@@ -111,7 +106,7 @@ class AreaPage extends Component
             'area' => $this->area,
             'page' => $this->page,
             'service' => $this->service,
-                    'projectCount' => $this->projectCount,
+            'projectCount' => $this->projectCount,
         ]);
     }
 }

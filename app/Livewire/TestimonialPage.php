@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
 use App\Services\SeoService;
@@ -17,6 +16,15 @@ class TestimonialPage extends Component
 
     public function mount(Testimonial $testimonial): void
     {
+        // Route binding reads only the trailing id, so ANY slug ending in
+        // "-42" resolves — and the page then canonicalised to whatever URL
+        // was asked for. Search Console held ten such duplicates, each
+        // self-canonical. Send every variant to the one real address.
+        $requested = (string) (request()->route()?->originalParameters()['testimonial'] ?? '');
+        if ($requested !== '' && $requested !== $testimonial->slug) {
+            abort(redirect()->route('reviews.show', $testimonial, 301));
+        }
+
         $this->testimonial = $testimonial->loadMissing('reviewUrls', 'projects');
 
         SeoService::testimonial($testimonial);
@@ -154,6 +162,7 @@ class TestimonialPage extends Component
     protected function getThumbnailUrl(): ?string
     {
         $image = $this->heroImage();
+
         return $image
             ? $this->resolveImageUrl($image, 'large')
             : null;
@@ -162,6 +171,7 @@ class TestimonialPage extends Component
     protected function getThumbnailThumbUrl(): ?string
     {
         $image = $this->heroImage();
+
         return $image
             ? $this->resolveImageUrl($image, 'thumb')
             : null;

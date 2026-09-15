@@ -296,31 +296,13 @@ Route::redirect('/bathroom-remodeling', '/services/bathroom-remodeling', 301);
 Route::redirect('/kitchen-remodeling', '/services/kitchen-remodeling', 301);
 Route::redirect('/home-remodeling', '/services/home-remodeling', 301);
 
-// /areas alias (same content as /areas-served, noindex + canonical handled in component)
-Route::get('/areas', AreasServedPage::class)->name('areas.alias.index');
-Route::get('/areas/{area}', AreaPage::class)
-    ->defaults('page', 'home')
-    ->name('areas.alias.show');
-Route::get('/areas/{area}/{page}', AreaPage::class)
-    ->where('page', 'contact|testimonials|projects|about|services')
-    ->name('areas.alias.page');
-Route::get('/areas/{area}/services/{service}', AreaPage::class)
-    ->defaults('page', 'service')
-    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
-    ->name('areas.alias.service');
-
-// Locations alias (keep canonical on /areas-served)
-Route::get('/locations', AreasServedPage::class)->name('locations.index');
-Route::get('/locations/{area}', AreaPage::class)
-    ->defaults('page', 'home')
-    ->name('locations.show');
-Route::get('/locations/{area}/{page}', AreaPage::class)
-    ->where('page', 'contact|testimonials|projects|about|services')
-    ->name('locations.page');
-Route::get('/locations/{area}/services/{service}', AreaPage::class)
-    ->defaults('page', 'service')
-    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
-    ->name('locations.service');
+// /areas/… and /locations/… used to serve the same page as /areas-served/…
+// under noindex + canonical. Google kept ~90 of them in its "Excluded by
+// noindex" bucket for months, recrawling each one; a 301 hands every signal
+// to the one real URL and lets those entries expire.
+Route::get('/{alias}/{rest?}', fn (string $alias, string $rest = '') => redirect('/areas-served'.($rest !== '' ? '/'.$rest : ''), 301))
+    ->where(['alias' => 'areas|locations', 'rest' => '.*'])
+    ->name('areas.alias');
 
 // Areas Served (canonical)
 Route::get('/areas-served', AreasServedPage::class)->name('areas.index');
