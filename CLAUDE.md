@@ -51,7 +51,13 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   `/sitemap.xml` and `/image-sitemap.xml` routes for the tenant that answers the host;
   `/robots.txt` renders `resources/robots/{slug}.txt` (else `default.txt`) with `{{base}}`
   = the site's own origin. **Nothing goes in `public/`** — nginx serves a static file
-  there to every host of the deployment. `Site::forgetActive()` after flipping `is_active`
+  there to every host of the deployment. **Known exception (2026-09-15):** Forge's shared
+  nginx `site.conf` has `location = /robots.txt { access_log off; log_not_found off; }`
+  (static only) plus `error_page 404 /index.php`, so the route answers **404** on prod
+  with the right body. Until that block also carries
+  `try_files $uri /index.php?$query_string;` (root-owned, no sudo — edit in Forge),
+  `robots:publish` in the post-deploy script writes the DEFAULT site's robots.txt to
+  `public/`; every other host gets that same file. Fix nginx before another site launches. `Site::forgetActive()` after flipping `is_active`
   in-process (the active set is cached per process).
 - **Schedules:** every GSC / sitemap command in `routes/console.php` runs through
   `$perTenant(...)` = `tenants:run "<cmd>" --continue-on-error` (active sites only, so a
