@@ -70,4 +70,11 @@ middleware can act), or to `/areas-served` when the gazetteer does not know it.
 `RedirectLegacyUrls::GONE` answers 410 for old WordPress-era paths; it runs on every
 request, so nothing in it may match a live page. A method-agnostic fallback route at the
 end of `routes/web.php` (off `/api` and Livewire) is what lets unmatched public URLs
-reach that middleware at all.
+reach that middleware at all. Since 2026-09-14 `/areas/…` and `/locations/…` 301 to
+`/areas-served/…` (they used to serve the page under noindex + canonical), a review
+reached by any slug other than its own 301s to the real one (route binding reads only
+the trailing id), and robots.txt disallows `/*_page=` (Livewire pagination state from an
+older build). Search Console shows a URL's state as of its LAST crawl and recrawls
+noindexed/dead URLs slowly, so its "Excluded by noindex" list lags these fixes by weeks
+to months; nothing in the API purges it, and "Validate fix" on that bucket cannot pass
+while deliberately noindexed area sub-pages (AreaSeoPolicy) remain — that is expected.
