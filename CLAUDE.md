@@ -50,7 +50,17 @@ export and queues `RunGscInspectUrlsJob` (`seo:gsc-inspect-bulk --urls=… --sou
 `gsc-errors/sitemaps` lists / submits / deletes the property's sitemaps
 (`GoogleSearchConsoleService::listSitemaps/deleteSitemap/inspectUrl`). The pruner only
 prunes `source = sitemap` rows. The API cannot export the Console's Pages report in
-bulk, request indexing, or read Core Web Vitals.
+bulk, request indexing, start or read "Validate fix", or read Core Web Vitals; the
+Indexing API is job postings and livestreams only, and the BigQuery export is
+performance data only.
+
+**URL Inspection allowance (2026-09-14).** 2,000 calls/day and 600/minute per property,
+shared by the nightly sweep (`seo:gsc-inspect-bulk`), a Console CSV import and the admin's
+inspect button. `App\Support\Seo\UrlInspectionQuota` counts every call per site, per
+Pacific day (Google's quotas turn over at midnight Pacific): callers reserve what is
+left and stop before Google refuses; a 429 marks the day spent. The sweep's default
+`--include=sitemap,coverage,tracked` also refreshes coverage rows the sitemap no longer
+carries and the paths Googlebot 404s on, since nothing else ever inspects those.
 
 **Retired towns and dead old-site paths (2026-09-12).** `/areas-served/{town}` for a
 town no longer in `areas_served` 301s to the nearest served town (same spoke) via the
