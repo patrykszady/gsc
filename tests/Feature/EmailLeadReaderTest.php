@@ -179,11 +179,13 @@ class EmailLeadReaderTest extends TestCase
             $this->message(['id' => 'm-known', 'from' => [['name' => 'Brad Bates', 'email' => 'Brad@example.test']], 'subject' => 'Bates window order', 'headers' => [['name' => 'Message-ID', 'value' => '<k@x>']]]),
             $this->message(['id' => 'm-cc-known', 'from' => [['name' => 'B', 'email' => 'brad.other@example.test']], 'cc' => [['email' => 'brad@example.test']], 'subject' => 'Follow up', 'headers' => [['name' => 'Message-ID', 'value' => '<kc@x>']]]),
             $this->message(['id' => 'm-bulk', 'from' => [['name' => 'Deals', 'email' => 'deals@shop.example']], 'headers' => [['name' => 'Message-ID', 'value' => '<b@x>'], ['name' => 'List-Unsubscribe', 'value' => '<mailto:u@shop.example>']]]),
+            $this->message(['id' => 'm-machine', 'from' => [['name' => 'Apple', 'email' => 'no_reply@insideapple.apple.com']], 'subject' => 'Review updated terms', 'headers' => [['name' => 'Message-ID', 'value' => '<m@x>']]]),
+            $this->message(['id' => 'm-shipping', 'from' => [['name' => 'Amazon', 'email' => 'shipment-tracking@amazon.com']], 'subject' => 'Out for delivery', 'headers' => [['name' => 'Message-ID', 'value' => '<s@x>']]]),
             $this->message(['id' => 'm-pitch', 'from' => [['name' => 'SEO Pro', 'email' => 'sales@seo.example']], 'subject' => 'Rank #1 on Google', 'body' => 'We help contractors like you get more leads with our proven SEO packages. Book a call today.', 'headers' => [['name' => 'Message-ID', 'value' => '<p@x>']]]),
         ], ['is_lead' => false, 'confidence' => 0.97, 'reason' => 'SEO agency pitch']);
 
         $this->artisan('leads:ingest-email')
-            ->expectsOutputToContain('6 skipped')
+            ->expectsOutputToContain('8 skipped')
             ->assertSuccessful();
 
         $this->assertSame(1, ContactSubmission::withoutSiteScope()->count());
@@ -193,6 +195,8 @@ class EmailLeadReaderTest extends TestCase
             'm-known' => 'reply',
             'm-cc-known' => 'reply',
             'm-bulk' => 'automated',
+            'm-machine' => 'automated',
+            'm-shipping' => 'automated',
             'm-pitch' => 'not_a_lead',
         ], EmailLeadIngest::pluck('skip_reason', 'nylas_message_id')->all());
         // Only the pitch was worth asking the model about.

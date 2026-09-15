@@ -351,7 +351,11 @@ class EmailLeadReader
             return 'internal';
         }
 
-        if (preg_match('/^(noreply|no-reply|donotreply|do-not-reply|mailer-daemon|postmaster|bounce)/i', $fromEmail)) {
+        // Machine senders by local part. The first live read (2026-09-15)
+        // paid the model to reject Apple's no_reply@, Amazon's
+        // order-update@ / shipment-tracking@ / auto-confirm@ — none of
+        // which a person ever writes from.
+        if (preg_match('/^(no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer-daemon|postmaster|bounces?|auto-confirm|order-update|shipment-tracking|notifications?|alerts?|newsletter|marketing)([-_.+@]|$)/i', $fromEmail)) {
             return 'automated';
         }
 
