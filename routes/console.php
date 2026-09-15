@@ -192,6 +192,7 @@ Schedule::command('yelp:keep-session')->cron('20 */6 * * *')
 // Each run is a dashboard visit, so it also keeps the session warm;
 // withoutOverlapping because it shares the Chromium profile.
 Schedule::command('yelp:sync-leads')->cron('10,40 7-18 * * *')
+    ->timezone('America/Chicago') // the app runs in UTC; the window is Chicago's day
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
