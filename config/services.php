@@ -134,6 +134,11 @@ return [
             // `sc-domain:gs.construction`) to avoid configuring the same value twice.
             'site_url' => env('GOOGLE_SEARCH_CONSOLE_SITE_URL',
                 env('GSC_SEARCH_CONSOLE_SITE_URL', 'sc-domain:gs.construction')),
+            // URL Inspection's published ceilings, per property per day and
+            // per minute. Everything that inspects shares one allowance —
+            // see App\Support\Seo\UrlInspectionQuota.
+            'inspection_daily_quota' => (int) env('GSC_INSPECTION_DAILY_QUOTA', 2000),
+            'inspection_per_minute_quota' => (int) env('GSC_INSPECTION_PER_MINUTE_QUOTA', 600),
         ],
         // PageSpeed Insights API (free, 25k req/day; API key recommended).
         'pagespeed' => [

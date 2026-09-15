@@ -6,6 +6,7 @@ use App\Jobs\RunGscInspectUrlsJob;
 use App\Models\GscCoverageState;
 use App\Models\OAuthToken;
 use App\Models\Tracked404;
+use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -102,6 +103,76 @@ class GscIndexingControllerTest extends TestCase
         $this->assertSame('Crawled - currently not indexed', $row->coverage_state);
 
         $this->postJson('/api/admin/v1/seo/gsc-errors/inspect', ['url' => 'not a url'], $this->bearer())->assertStatus(422);
+    }
+
+    /**
+     * Search Console publishes no coverage report over its API, so every row
+     * of our own breakdown costs one URL Inspection call. The allowance is
+     * the property's and three callers share it, so the breakdown reports
+     * what is left.
+     */
+    public function test_the_breakdown_reports_what_is_left_of_todays_inspection_allowance(): void
+    {
+        config(['services.google.search_console.inspection_daily_quota' => 2000]);
+        UrlInspectionQuota::consume(828);
+
+        $quota = $this->getJson('/api/admin/v1/seo/gsc-errors/indexing', $this->bearer())
+            ->assertOk()->json('data.quota');
+
+        $this->assertSame(828, $quota['used']);
+        $this->assertSame(1172, $quota['remaining']);
+        $this->assertSame(2000, $quota['daily_limit']);
+    }
+
+    public function test_an_import_queues_only_what_todays_allowance_covers_and_says_what_it_deferred(): void
+    {
+        Bus::fake();
+        config(['services.google.search_console.inspection_daily_quota' => 10]);
+        UrlInspectionQuota::consume(8);
+
+        $csv = "URL\n".collect(range(1, 5))->map(fn ($i) => "https://gs.construction/p{$i}")->implode("\n");
+
+        $data = $this->postJson('/api/admin/v1/seo/gsc-errors/import', ['csv' => $csv, 'reason' => 'Page with redirect'], $this->bearer())
+            ->assertOk()->json('data');
+
+        $this->assertSame(2, $data['queued'], 'only what is left');
+        $this->assertSame(3, $data['deferred']);
+        Bus::assertDispatched(RunGscInspectUrlsJob::class, fn (RunGscInspectUrlsJob $job) => count($job->urls) === 2);
+    }
+
+    public function test_an_import_with_no_allowance_left_queues_nothing_and_explains_why(): void
+    {
+        Bus::fake();
+        config(['services.google.search_console.inspection_daily_quota' => 5]);
+        UrlInspectionQuota::markExhausted();
+
+        $data = $this->postJson('/api/admin/v1/seo/gsc-errors/import', ['csv' => "URL\nhttps://gs.construction/p1"], $this->bearer())
+            ->assertOk()->json('data');
+
+        $this->assertSame(0, $data['queued']);
+        $this->assertSame(1, $data['deferred']);
+        $this->assertStringContainsString('allowance is spent', $data['message']);
+        Bus::assertNothingDispatched();
+    }
+
+    public function test_inspecting_one_url_spends_from_the_allowance_and_is_refused_once_it_is_gone(): void
+    {
+        config(['services.google.search_console.inspection_daily_quota' => 1]);
+        OAuthToken::create(['provider' => 'google_search_console', 'refresh_token' => 'r', 'access_token' => 'a', 'expires_at' => now()->addHour(), 'scopes' => ['https://www.googleapis.com/auth/webmasters']]);
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'a', 'expires_in' => 3600]),
+            'searchconsole.googleapis.com/*' => Http::response(['inspectionResult' => ['indexStatusResult' => ['verdict' => 'PASS', 'coverageState' => 'Submitted and indexed']]]),
+        ]);
+
+        $this->postJson('/api/admin/v1/seo/gsc-errors/inspect', ['url' => 'https://gs.construction/a'], $this->bearer())
+            ->assertOk()->assertJsonPath('data.ok', true);
+        $this->assertSame(0, UrlInspectionQuota::remaining());
+
+        // The second call would be refused by Google; refuse it here instead,
+        // with a message that says when it can be retried.
+        $this->postJson('/api/admin/v1/seo/gsc-errors/inspect', ['url' => 'https://gs.construction/b'], $this->bearer())
+            ->assertStatus(429)
+            ->assertJsonPath('data.ok', false);
     }
 
     public function test_sitemaps_are_listed_submitted_and_deleted_through_the_api(): void

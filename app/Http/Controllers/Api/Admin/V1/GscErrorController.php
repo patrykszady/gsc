@@ -10,6 +10,7 @@ use App\Models\GscCoverageState;
 use App\Models\GscRichResultIssue;
 use App\Models\Tracked404;
 use App\Services\GoogleSearchConsoleService;
+use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -221,6 +222,10 @@ class GscErrorController extends Controller
                 'tracked' => GscCoverageState::query()->where('source', 'tracked')->count(),
             ],
             'latest_inspected' => ($latest = GscCoverageState::query()->max('inspected_at')) ? Carbon::parse($latest)->toIso8601String() : null,
+            // What the per-URL state costs: Search Console publishes no
+            // coverage report over its API, so every row here was bought with
+            // one URL Inspection call out of the property's daily allowance.
+            'quota' => UrlInspectionQuota::status(),
         ]);
     }
 
@@ -266,12 +271,33 @@ class GscErrorController extends Controller
             return $this->itemResponse(['queued' => 0, 'skipped' => $skipped, 'message' => 'No URLs of this site in that file — export a reason from Search Console\'s Page indexing screen (Export → CSV).']);
         }
 
-        RunGscInspectUrlsJob::dispatch(array_slice($urls, 0, 1500), 'console', $data['reason'] ?? null);
+        // Every inspection spends from the property's daily allowance, which
+        // the nightly sweep also draws on. Queue only what today can actually
+        // answer, and say so rather than letting Google refuse the remainder.
+        $allowance = UrlInspectionQuota::reserve(count($urls));
+        $queued = array_slice($urls, 0, max(0, min(1500, $allowance)));
+
+        if ($queued === []) {
+            return $this->itemResponse([
+                'queued' => 0,
+                'skipped' => $skipped,
+                'deferred' => count($urls),
+                'quota' => UrlInspectionQuota::status(),
+                'message' => 'Today\'s URL Inspection allowance is spent ('.UrlInspectionQuota::used().' of '.UrlInspectionQuota::dailyLimit().'). It resets '.UrlInspectionQuota::resetsAt()->diffForHumans().' — import this file again then.',
+            ]);
+        }
+
+        RunGscInspectUrlsJob::dispatch($queued, 'console', $data['reason'] ?? null);
+
+        $deferred = count($urls) - count($queued);
 
         return $this->itemResponse([
-            'queued' => count($urls),
+            'queued' => count($queued),
             'skipped' => $skipped,
-            'message' => count($urls).' URL(s) queued for URL Inspection — about '.max(1, (int) ceil(count($urls) * 2 / 60)).' minute(s); they will appear here with their reason.',
+            'deferred' => $deferred,
+            'quota' => UrlInspectionQuota::status(),
+            'message' => count($queued).' URL(s) queued for URL Inspection — about '.max(1, (int) ceil(count($queued) * 2 / 60)).' minute(s); they will appear here with their reason.'
+                .($deferred > 0 ? ' '.$deferred.' more than today\'s allowance covers — import the file again tomorrow for the rest.' : ''),
         ]);
     }
 
@@ -279,9 +305,19 @@ class GscErrorController extends Controller
     public function inspect(Request $request): JsonResponse
     {
         $data = $request->validate(['url' => ['required', 'url', 'max:2000']]);
+
+        if (UrlInspectionQuota::remaining() < 1) {
+            return $this->itemResponse([
+                'ok' => false,
+                'quota' => UrlInspectionQuota::status(),
+                'message' => 'Today\'s URL Inspection allowance is spent ('.UrlInspectionQuota::used().' of '.UrlInspectionQuota::dailyLimit().'). It resets '.UrlInspectionQuota::resetsAt()->diffForHumans().'.',
+            ], 429);
+        }
+
         $service = app(GoogleSearchConsoleService::class);
         $site = (string) config('services.google.search_console.site_url');
 
+        UrlInspectionQuota::consume();
         $result = $service->inspectUrl($site, $data['url']);
         if ($result === null) {
             return $this->itemResponse(['ok' => false, 'message' => $service->getLastError()['message'] ?? 'Search Console did not answer.'], 502);

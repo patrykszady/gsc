@@ -6,6 +6,8 @@ use App\Console\Commands\Concerns\UsesSearchConsoleApi;
 use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscRichResultIssue;
+use App\Models\Tracked404;
+use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
@@ -18,8 +20,14 @@ use Illuminate\Support\Facades\Storage;
  * ones flagged by reactive tools. Persists every result to `gsc_coverage_states` and writes
  * a markdown summary highlighting verdict changes since last run.
  *
- * Quota: the URL Inspection API is limited to ~2,000 calls/day per property. We default to
- * all sitemap URLs (or --limit override) and stagger calls 250ms apart.
+ * Quota: the URL Inspection API allows 2,000 calls/day and 600/minute per property, shared
+ * with the Console-export import and the admin's inspect button, so every call is counted
+ * through UrlInspectionQuota and the run stops while it still has an allowance left.
+ *
+ * Scope: the sitemap is the canonical set, but Search Console's "why pages aren't indexed"
+ * report counts URLs the sitemap never carried — the paths Googlebot 404s on, and anything
+ * imported from a Console export. --include decides which of those pools the sweep keeps
+ * fresh alongside the sitemap.
  */
 class SeoGscInspectBulk extends Command
 {
@@ -29,6 +37,7 @@ class SeoGscInspectBulk extends Command
         {--limit=0 : Maximum URLs to inspect this run (0 = all sitemap URLs)}
         {--sitemap= : Path to sitemap XML (default public/sitemap.xml)}
         {--strategy=stale : URL selection: stale|random|all}
+        {--include=sitemap,coverage,tracked : Pools to sweep: sitemap, coverage (rows the sitemap no longer carries), tracked (paths Googlebot 404s on)}
         {--urls=* : Inspect these URLs instead of the sitemap (a Console export, tracked 404s)}
         {--source=sitemap : What the rows are: sitemap|console|tracked}
         {--reason= : The Console reason the URLs were exported under, kept on each row}
@@ -46,13 +55,26 @@ class SeoGscInspectBulk extends Command
 
         $site = $this->gscSiteUrl($this->option('site'));
         $explicit = array_values(array_filter(array_map('trim', (array) $this->option('urls'))));
-        $urls = $explicit !== [] ? $explicit : $this->loadSitemapUrls((string) ($this->option('sitemap') ?: public_path('sitemap.xml')));
+        if ($explicit !== []) {
+            $urls = $explicit;
+        } else {
+            $sitemapUrls = $this->loadSitemapUrls((string) ($this->option('sitemap') ?: public_path('sitemap.xml')));
+            $pools = array_map('trim', explode(',', (string) $this->option('include')));
+            $urls = in_array('sitemap', $pools, true) ? $sitemapUrls : [];
+            $offSitemap = $this->offSitemapUrls($pools, $sitemapUrls);
+            $urls = array_values(array_unique(array_merge($urls, $offSitemap)));
+            if ($offSitemap !== []) {
+                $this->info(sprintf('Loaded %d sitemap URL(s) + %d that the sitemap does not carry.', count($sitemapUrls), count($offSitemap)));
+            } else {
+                $this->info(sprintf('Loaded %d sitemap URLs.', count($sitemapUrls)));
+            }
+        }
+
         if (empty($urls)) {
-            $this->error('Sitemap has no URLs.');
+            $this->error('Nothing to inspect.');
 
             return self::FAILURE;
         }
-        $this->info(sprintf('Loaded %d sitemap URLs.', count($urls)));
 
         $limit = (int) $this->option('limit');
         if ($limit <= 0) {
@@ -60,7 +82,24 @@ class SeoGscInspectBulk extends Command
         }
 
         $urls = $explicit !== [] ? $urls : $this->prioritize($urls, (string) $this->option('strategy'), $limit);
-        $this->info(sprintf('Inspecting %d URLs (strategy=%s).', count($urls), $this->option('strategy')));
+
+        // The allowance is the property's, not this command's: an import or an
+        // admin inspection earlier today has already spent part of it.
+        $allowed = UrlInspectionQuota::reserve(count($urls));
+        if ($allowed <= 0) {
+            $this->warn(sprintf(
+                'The URL Inspection allowance for today is spent (%d/%d). It resets %s.',
+                UrlInspectionQuota::used(), UrlInspectionQuota::dailyLimit(), UrlInspectionQuota::resetsAt()->diffForHumans()
+            ));
+
+            return self::SUCCESS;
+        }
+        if ($allowed < count($urls)) {
+            $this->warn(sprintf('Only %d of %d URLs fit in today\'s remaining allowance; the rest go on the next run.', $allowed, count($urls)));
+            $urls = array_slice($urls, 0, $allowed);
+        }
+
+        $this->info(sprintf('Inspecting %d URLs (strategy=%s, %d left in today\'s allowance).', count($urls), $this->option('strategy'), UrlInspectionQuota::remaining()));
 
         $changes = [];
         $failures = 0;
@@ -83,8 +122,12 @@ class SeoGscInspectBulk extends Command
         };
         $lastTokenRefresh = null;
 
+        // 600 calls a minute is the other ceiling; 250ms apart is 240/min.
+        $pacing = max(100_000, (int) ceil(60_000_000 / UrlInspectionQuota::perMinuteLimit()) * 2);
+
         foreach ($urls as $u) {
-            usleep(250_000);
+            usleep($pacing);
+            UrlInspectionQuota::consume();
             try {
                 $resp = $inspect($u);
 
@@ -113,7 +156,10 @@ class SeoGscInspectBulk extends Command
                 $failures++;
                 $this->line(sprintf('  err   %3d  %s', $resp->status(), $u));
                 if ($resp->status() === 429) {
-                    $this->warn('Quota hit; stopping early.');
+                    // Google is the authority on the allowance, whatever our
+                    // own count says — another client shares this property.
+                    UrlInspectionQuota::markExhausted();
+                    $this->warn('Google refused on quota; stopping early. It resets '.UrlInspectionQuota::resetsAt()->diffForHumans().'.');
                     break;
                 }
 
@@ -132,13 +178,59 @@ class SeoGscInspectBulk extends Command
             $this->line(sprintf('  %-7s %-45s %s', $verdict, substr($coverage, 0, 45), $u));
         }
 
-        $this->info(sprintf('Done. inspected=%d failures=%d changes=%d rich_issues=%d', $inspected, $failures, count($changes), $richIssues));
+        $this->info(sprintf(
+            'Done. inspected=%d failures=%d changes=%d rich_issues=%d allowance_left=%d',
+            $inspected, $failures, count($changes), $richIssues, UrlInspectionQuota::remaining()
+        ));
 
         if ($this->option('markdown')) {
             $this->writeReport($inspected, $failures, $changes);
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The URLs Search Console counts that our sitemap does not carry.
+     *
+     * 'coverage' keeps refreshing rows whose URL has left the sitemap or
+     * arrived from a Console export — without this the sweep can never
+     * revisit them, so a fix there would never show. 'tracked' adds the
+     * paths Googlebot actually 404s on, which is the only way those appear
+     * in our own copy of the report at all.
+     *
+     * @param  list<string>  $pools
+     * @param  list<string>  $sitemapUrls
+     * @return list<string>
+     */
+    protected function offSitemapUrls(array $pools, array $sitemapUrls): array
+    {
+        $known = array_flip($sitemapUrls);
+        $extra = [];
+
+        if (in_array('coverage', $pools, true)) {
+            foreach (GscCoverageState::query()->orderBy('inspected_at')->pluck('url') as $url) {
+                if (! isset($known[$url])) {
+                    $extra[$url] = true;
+                }
+            }
+        }
+
+        if (in_array('tracked', $pools, true)) {
+            $base = rtrim((string) config('app.url'), '/');
+            $paths = Tracked404::query()
+                ->where('user_agent', 'like', '%Googlebot%')
+                ->orderByDesc('hit_count')
+                ->pluck('path');
+            foreach ($paths as $path) {
+                $url = $base.'/'.ltrim((string) $path, '/');
+                if (! isset($known[$url])) {
+                    $extra[$url] = true;
+                }
+            }
+        }
+
+        return array_keys($extra);
     }
 
     /** @return array<int,string> */
