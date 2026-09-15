@@ -58,10 +58,6 @@ Artisan::command('seo:gbp-metrics-sync
 // yet is skipped until it is.
 $perTenant = fn (string $command) => 'tenants:run '.escapeshellarg($command).' --continue-on-error';
 
-// The default site's static robots.txt copy (see RobotsPublish): refreshed
-// daily so a deploy that changed resources/robots/ reaches nginx by morning.
-Schedule::command('robots:publish')->dailyAt('00:20')->onOneServer();
-
 // Schedule sitemap regeneration daily
 Schedule::command($perTenant('sitemap:generate'))->daily();
 

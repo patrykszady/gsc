@@ -31,7 +31,6 @@ class RefreshPublicFeedsJob implements ShouldQueue
     public const COMMANDS = [
         'sitemap:generate' => [],
         'seo:image-sitemap-build' => [],
-        'robots:publish' => [],
         'geo:llms-txt' => [],
         'geo:llms-txt --full' => ['--full' => true],
     ];

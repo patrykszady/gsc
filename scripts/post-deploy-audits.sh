@@ -101,8 +101,8 @@ verify_sitemap() {
         echo "no generated sitemap under storage/app/private/tenants/"
         return 1
     }
-    [[ -f public/sitemap.xml || -f public/image-sitemap.xml ]] && {
-        echo "static sitemap left in public/ — it would be served to every host"
+    [[ -f public/sitemap.xml || -f public/image-sitemap.xml || -e public/robots.txt ]] && {
+        echo "static crawl file left in public/ — it would be served to every host"
         return 1
     }
 
@@ -160,9 +160,6 @@ if [[ "$MODE" == "default" || "$MODE" == "syncs" || "$MODE" == "all" ]]; then
     # that site — and fail fast on malformed output.
     run "Sitemap generate"             tenants:run sitemap:generate --continue-on-error
     run "Image sitemap build"          tenants:run seo:image-sitemap-build --continue-on-error
-    # Forge's nginx serves /robots.txt from disk only (see RobotsPublish):
-    # refresh the default site's static copy behind the tracked symlink.
-    run "Robots publish (default site)" robots:publish
     run_shell "Sitemap validate"       verify_sitemap
 
     run "GSC sync"                     tenants:run seo:gsc-sync --continue-on-error

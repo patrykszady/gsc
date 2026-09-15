@@ -51,17 +51,12 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   `/sitemap.xml` and `/image-sitemap.xml` routes for the tenant that answers the host;
   `/robots.txt` renders `resources/robots/{slug}.txt` (else `default.txt`) with `{{base}}`
   = the site's own origin. **Nothing goes in `public/`** — nginx serves a static file
-  there to every host of the deployment. **Known exception (2026-09-15):** Forge's shared
-  nginx `site.conf` has `location = /robots.txt { access_log off; log_not_found off; }`
-  (static only) plus `error_page 404 /index.php`, so the route answers **404** on prod
-  with the right body. Until that block also carries
-  `try_files $uri /index.php?$query_string;` (root-owned, no sudo — edit in Forge),
-  `public/robots.txt` is a TRACKED SYMLINK to `storage/app/private/robots-default.txt`
-  (shared storage, survives releases) which `robots:publish` writes for the DEFAULT site
-  (daily 00:20, in RefreshPublicFeedsJob, and in the post-deploy script). Every other
-  host gets that same file from nginx. Fix nginx before another site launches, then the
-  symlink and command can go. `Site::forgetActive()` after flipping `is_active`
-  in-process (the active set is cached per process).
+  there to every host of the deployment. Forge's shared nginx `site.conf` had a
+  static-only `location = /robots.txt`; since 2026-09-15 it carries
+  `try_files $uri /index.php?$query_string;` (Patryk edited it over SSH with sudo), so
+  the route answers. If a new Forge site/server is ever provisioned, that line must be
+  added again or /robots.txt is a 404 with the right body. `Site::forgetActive()` after
+  flipping `is_active` in-process (the active set is cached per process).
 - **Schedules:** every GSC / sitemap command in `routes/console.php` runs through
   `$perTenant(...)` = `tenants:run "<cmd>" --continue-on-error` (active sites only, so a
   site in build is skipped until launch). Queued inspection jobs carry `siteId`.
