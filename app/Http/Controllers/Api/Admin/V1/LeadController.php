@@ -27,6 +27,13 @@ class LeadController extends Controller
                 : $query->where('status', $status);
         }
 
+        // How the enquiry reached us: web (the site form), crew-email (the
+        // shared inbox), yelp (Request a Quote) — the same values the
+        // Source column badges.
+        if ($source = $request->string('source')->toString()) {
+            $query->where('source', $source);
+        }
+
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -75,6 +82,17 @@ class LeadController extends Controller
                 ->limit(5)
                 ->get()
                 ->map(fn ($row) => ['label' => $row->city, 'count' => (int) $row->count])
+                ->all(),
+            // Every channel with its count, for the Source filter's options
+            // — so the admin lists what actually exists, not a guessed list.
+            'sources' => ContactSubmission::query()
+                ->selectRaw('source, COUNT(*) as count')
+                ->whereNotNull('source')
+                ->where('source', '!=', '')
+                ->groupBy('source')
+                ->orderByDesc('count')
+                ->get()
+                ->map(fn ($row) => ['source' => $row->source, 'count' => (int) $row->count])
                 ->all(),
             'traffic_sources' => ContactSubmission::query()
                 ->selectRaw('utm_source, COUNT(*) as count')

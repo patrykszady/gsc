@@ -156,6 +156,39 @@ class LeadControllerTest extends TestCase
         $this->assertCount(2, $data);
     }
 
+    public function test_source_filter_narrows_to_one_channel(): void
+    {
+        $this->makeLead(['source' => 'web']);
+        $this->makeLead(['source' => 'yelp', 'email' => '']);
+        $this->makeLead(['source' => 'yelp', 'email' => '']);
+
+        $data = $this->getJson('/api/admin/v1/leads?source=yelp', $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertCount(2, $data);
+        $this->assertSame(['yelp', 'yelp'], array_column($data, 'source'));
+
+        // No source = every channel.
+        $this->assertCount(3, $this->getJson('/api/admin/v1/leads', $this->adminApiHeaders())->json('data'));
+    }
+
+    public function test_stats_lists_every_source_with_its_count(): void
+    {
+        $this->makeLead(['source' => 'web']);
+        $this->makeLead(['source' => 'web']);
+        $this->makeLead(['source' => 'yelp', 'email' => '']);
+
+        $data = $this->getJson('/api/admin/v1/leads/stats', $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame([
+            ['source' => 'web', 'count' => 2],
+            ['source' => 'yelp', 'count' => 1],
+        ], $data['sources']);
+    }
+
     public function test_stats_returns_five_card_grid_and_aggregates(): void
     {
         $this->makeLead(['status' => 'spam', 'city' => 'Barrington', 'utm_source' => 'google']);
