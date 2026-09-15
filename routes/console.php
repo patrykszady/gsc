@@ -186,11 +186,12 @@ Schedule::command('yelp:keep-session')->cron('20 */6 * * *')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
-// Yelp biz: pull Request-a-Quote leads into contact submissions during the
-// working day, every half hour at :10/:40 so it never shares a minute with
-// the keep-alive above. Each run is a dashboard visit, so it also keeps the
-// session warm; withoutOverlapping because it shares the Chromium profile.
-Schedule::command('yelp:sync-leads')->cron('10,40 6-21 * * *')
+// Yelp biz: pull Request-a-Quote leads into contact submissions every half
+// hour between 7 AM and 7 PM (nothing overnight — nobody answers a lead at
+// 3 AM), at :10/:40 so it never shares a minute with the keep-alive above.
+// Each run is a dashboard visit, so it also keeps the session warm;
+// withoutOverlapping because it shares the Chromium profile.
+Schedule::command('yelp:sync-leads')->cron('10,40 7-18 * * *')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
