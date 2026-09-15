@@ -56,8 +56,11 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   (static only) plus `error_page 404 /index.php`, so the route answers **404** on prod
   with the right body. Until that block also carries
   `try_files $uri /index.php?$query_string;` (root-owned, no sudo — edit in Forge),
-  `robots:publish` in the post-deploy script writes the DEFAULT site's robots.txt to
-  `public/`; every other host gets that same file. Fix nginx before another site launches. `Site::forgetActive()` after flipping `is_active`
+  `public/robots.txt` is a TRACKED SYMLINK to `storage/app/private/robots-default.txt`
+  (shared storage, survives releases) which `robots:publish` writes for the DEFAULT site
+  (daily 00:20, in RefreshPublicFeedsJob, and in the post-deploy script). Every other
+  host gets that same file from nginx. Fix nginx before another site launches, then the
+  symlink and command can go. `Site::forgetActive()` after flipping `is_active`
   in-process (the active set is cached per process).
 - **Schedules:** every GSC / sitemap command in `routes/console.php` runs through
   `$perTenant(...)` = `tenants:run "<cmd>" --continue-on-error` (active sites only, so a

@@ -45,6 +45,17 @@ final class CrawlFiles
         return str_replace('{{base}}', rtrim($site->url(), '/'), $template);
     }
 
+    /**
+     * Where the DEFAULT site's static robots.txt copy lives (shared storage,
+     * so it survives releases). public/robots.txt is a tracked symlink to it:
+     * Forge's nginx serves /robots.txt from disk only, and a file generated
+     * into public/ would vanish with the next release.
+     */
+    public static function defaultRobotsStaticPath(): string
+    {
+        return storage_path('app/private/robots-default.txt');
+    }
+
     public static function robotsSourcePath(?Site $site = null): string
     {
         $site ??= Site::current();

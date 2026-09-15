@@ -160,9 +160,8 @@ if [[ "$MODE" == "default" || "$MODE" == "syncs" || "$MODE" == "all" ]]; then
     # that site — and fail fast on malformed output.
     run "Sitemap generate"             tenants:run sitemap:generate --continue-on-error
     run "Image sitemap build"          tenants:run seo:image-sitemap-build --continue-on-error
-    # Interim: Forge's nginx serves /robots.txt from disk only (see
-    # RobotsPublish). Drop this line once that location block also has
-    # `try_files $uri /index.php?$query_string;`.
+    # Forge's nginx serves /robots.txt from disk only (see RobotsPublish):
+    # refresh the default site's static copy behind the tracked symlink.
     run "Robots publish (default site)" robots:publish
     run_shell "Sitemap validate"       verify_sitemap
 

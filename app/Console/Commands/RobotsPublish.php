@@ -32,8 +32,15 @@ class RobotsPublish extends Command
             ."# Every other site of this deployment is served by the /robots.txt route; see CrawlFiles.\n"
             .CrawlFiles::robots($default);
 
-        file_put_contents(public_path('robots.txt'), $body);
-        $this->info('Wrote public/robots.txt for '.$default->slug.' ('.strlen($body).' bytes).');
+        // The target of the tracked public/robots.txt symlink — never the
+        // symlink itself, which a write-through would replace and a release
+        // would drop.
+        $path = CrawlFiles::defaultRobotsStaticPath();
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0775, true);
+        }
+        file_put_contents($path, $body);
+        $this->info('Wrote '.str_replace(base_path().'/', '', $path).' for '.$default->slug.' ('.strlen($body).' bytes); public/robots.txt points at it.');
 
         return self::SUCCESS;
     }
