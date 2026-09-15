@@ -186,6 +186,14 @@ Schedule::command('yelp:keep-session')->cron('20 */6 * * *')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
+// Yelp biz: pull Request-a-Quote leads into contact submissions during the
+// working day, every half hour at :10/:40 so it never shares a minute with
+// the keep-alive above. Each run is a dashboard visit, so it also keeps the
+// session warm; withoutOverlapping because it shares the Chromium profile.
+Schedule::command('yelp:sync-leads')->cron('10,40 6-21 * * *')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'));
+
 // Yelp biz: re-login unattended when the session is known-dead, 15 minutes
 // after the check above has had its say. Only runs when a captcha key AND a
 // proxy are configured (see canAutoLogin) — without both, DataDome cannot be

@@ -323,6 +323,11 @@ return [
             'password' => env('YELP_BIZ_PASSWORD'),
             // Persistent Chromium profile dir so login/cookies survive between runs.
             'user_data_dir' => env('YELP_USER_DATA_DIR', storage_path('app/yelp-puppeteer')),
+            // The account's business id on biz.yelp.com (the "7qfy…" in its
+            // dashboard URLs). The upload script caches what it sees into
+            // <user_data_dir>/.yelp-bizid; this env wins when set. Used to
+            // build lead URLs and to open the leads page directly.
+            'biz_id' => env('YELP_BIZ_ID') ?: (is_file(($d = env('YELP_USER_DATA_DIR', storage_path('app/yelp-puppeteer'))).'/.yelp-bizid') ? trim((string) file_get_contents($d.'/.yelp-bizid')) : null),
             // Path to node binary (override if not on PATH).
             'node_binary' => env('YELP_NODE_BINARY', 'node'),
             // Run Chromium headed for first-time login / debugging.

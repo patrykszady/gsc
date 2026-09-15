@@ -1330,6 +1330,141 @@ class YelpBusinessService
      * @param  array<string,mixed>  $context
      * @return T|null
      */
+    /**
+     * The account's Request-a-Quote leads, read from biz.yelp.com with the
+     * signed-in session (scripts/yelp-fetch-leads.mjs). Runs under the same
+     * automation lock and flock wrapper as the uploads, since it shares the
+     * Chromium profile.
+     *
+     * $known maps yelp lead id => last-event ISO time already stored; the
+     * script fetches details and photos only for leads outside it or whose
+     * last event moved. Photos land under $outDir/<lead id>/.
+     *
+     * @param  array<string, ?string>  $known
+     * @return array{ok: bool, error?: string, session_dead?: bool, listed?: int, fetched?: int, leads?: array<int, array<string, mixed>>, errors?: array}
+     */
+    public function fetchLeads(array $known, string $outDir, bool $all = false, ?callable $onProgress = null): array
+    {
+        $cfg = config('services.yelp.business');
+        $script = base_path('scripts/yelp-fetch-leads.mjs');
+
+        if (! is_file($script)) {
+            return ['ok' => false, 'error' => 'scripts/yelp-fetch-leads.mjs is missing'];
+        }
+
+        $bizId = (string) ($cfg['biz_id'] ?? '');
+
+        if ($bizId === '') {
+            return ['ok' => false, 'error' => 'No Yelp business id known yet — set YELP_BIZ_ID, or run one photo upload so the profile caches it.'];
+        }
+
+        @mkdir($outDir, 0775, true);
+
+        $args = [
+            $cfg['node_binary'] ?? 'node',
+            $script,
+            '--biz-id=' . $bizId,
+            '--out-dir=' . $outDir,
+            '--timeout-ms=' . (int) ($cfg['timeout_ms'] ?? 180000),
+        ];
+
+        if (! empty($cfg['user_data_dir'])) {
+            $args[] = '--user-data-dir=' . $cfg['user_data_dir'];
+        }
+
+        $cookiesFile = \App\Support\YelpCookieJar::path();
+        if (is_file($cookiesFile) && filesize($cookiesFile) > 0) {
+            $args[] = '--cookies-file=' . $cookiesFile;
+        }
+
+        if ($proxyUrl = $this->proxyUrl()) {
+            $args[] = '--proxy=' . $proxyUrl;
+        }
+
+        if ($known !== []) {
+            $args[] = '--known=' . implode(',', array_map(
+                fn ($id, $at) => $id . '@' . ($at ?? ''),
+                array_keys($known),
+                array_values($known),
+            ));
+        }
+
+        if ($all) {
+            $args[] = '--all';
+        }
+
+        return $this->withAutomationLock(
+            operation: 'fetch_leads',
+            callback: function () use ($args, $cfg, $onProgress): array {
+                $timeoutSec = ((int) ($cfg['timeout_ms'] ?? 180000)) / 1000 * 3 + 30;
+                $process = new Process($this->wrapWithFlock($args), base_path());
+                $process->setTimeout($timeoutSec);
+                $process->setEnv($this->browserProcessEnv() + [
+                    'YELP_RUN_TIMEOUT' => (string) (int) ($timeoutSec - 10),
+                    'YELP_RUN_LOCK_WAIT' => (string) max(0, (int) ($cfg['automation_lock_wait_seconds'] ?? 20)),
+                ]);
+
+                $teeLog = storage_path('logs/yelp-leads.log');
+                @mkdir(dirname($teeLog), 0775, true);
+                $teeFh = @fopen($teeLog, 'ab');
+                if ($teeFh) {
+                    @fwrite($teeFh, "\n===== " . now()->toIso8601String() . " =====\n");
+                }
+
+                try {
+                    $process->run(function (string $type, string $buffer) use ($onProgress, $teeFh): void {
+                        if ($teeFh) {
+                            @fwrite($teeFh, $buffer);
+                        }
+                        if ($onProgress && $type === Process::ERR) {
+                            foreach (preg_split('/\r?\n/', $buffer) ?: [] as $line) {
+                                if (trim($line) !== '') {
+                                    $onProgress(trim($line));
+                                }
+                            }
+                        }
+                    });
+                } catch (ProcessTimedOutException $e) {
+                    Log::channel('yelp')->error('Yelp leads: fetch script timed out', [
+                        'message' => \App\Support\SecretRedactor::redact($e->getMessage()),
+                    ]);
+
+                    return ['ok' => false, 'error' => 'The lead fetch timed out.'];
+                } finally {
+                    if ($teeFh) {
+                        @fclose($teeFh);
+                    }
+                }
+
+                $payload = json_decode($this->lastJsonLine(trim($process->getOutput())) ?: '', true);
+                $exit = $process->getExitCode();
+
+                if ($exit === 3) {
+                    // The script landed on a login/marketing page: the session is gone.
+                    $this->markSessionDead('yelp-fetch-leads reported not authenticated');
+
+                    return ['ok' => false, 'session_dead' => true, 'error' => $payload['error'] ?? 'Yelp session is not authenticated.'];
+                }
+
+                if (! is_array($payload)) {
+                    return [
+                        'ok' => false,
+                        'error' => 'No JSON from the lead fetcher (exit ' . $exit . '): '
+                            . \App\Support\SecretRedactor::redact(mb_substr(trim($process->getErrorOutput()), -300)),
+                    ];
+                }
+
+                if (($payload['ok'] ?? false) === true) {
+                    // A page that rendered with our session is proof the session lives.
+                    $this->markSessionFresh();
+                }
+
+                return $payload;
+            },
+            context: ['operation' => 'fetch_leads'],
+        );
+    }
+
     protected function withAutomationLock(string $operation, callable $callback, array $context = []): mixed
     {
         $cfg = config('services.yelp.business');

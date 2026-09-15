@@ -35,6 +35,11 @@ class ContactSubmission extends Model
         'hive_sent_at',
         'hive_lead_id',
         'hive_send_error',
+        'yelp_lead_id',
+        'yelp_conversation_id',
+        'yelp_status',
+        'yelp_last_event_at',
+        'attachments',
     ];
 
     protected $casts = [
@@ -43,7 +48,44 @@ class ContactSubmission extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'hive_sent_at' => 'datetime',
+        'yelp_last_event_at' => 'datetime',
+        'attachments' => 'array',
     ];
+
+    /** The Yelp for Business conversation this lead came from, or null. */
+    public function yelpUrl(): ?string
+    {
+        if (! $this->yelp_lead_id) {
+            return null;
+        }
+
+        $bizId = (string) config('services.yelp.business.biz_id');
+
+        return $bizId !== ''
+            ? "https://biz.yelp.com/leads_center/{$bizId}/leads/{$this->yelp_lead_id}"
+            : null;
+    }
+
+    /**
+     * Attachments with a URL the admin can render. Yelp's own links expire
+     * within a day, so the files were copied to the public disk at sync.
+     *
+     * @return array<int, array{encid: ?string, path: string, url: string, mime: ?string, size: ?int}>
+     */
+    public function attachmentsForApi(): array
+    {
+        return collect((array) $this->attachments)
+            ->filter(fn ($a) => is_array($a) && ! empty($a['path']))
+            ->map(fn (array $a) => [
+                'encid' => $a['encid'] ?? null,
+                'path' => $a['path'],
+                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($a['path']),
+                'mime' => $a['mime'] ?? null,
+                'size' => isset($a['size']) ? (int) $a['size'] : null,
+            ])
+            ->values()
+            ->all();
+    }
 
     /**
      * A submission is spam only while explicitly flagged as such.
@@ -177,6 +219,11 @@ class ContactSubmission extends Model
             'utm_campaign' => $this->utm_campaign,
             'hive_sent_at' => optional($this->hive_sent_at)->toIso8601String(),
             'was_sent_to_hive' => $this->wasSentToHive(),
+            'yelp_lead_id' => $this->yelp_lead_id,
+            'yelp_url' => $this->yelpUrl(),
+            'yelp_status' => $this->yelp_status,
+            'yelp_last_event_at' => optional($this->yelp_last_event_at)->toIso8601String(),
+            'attachments' => $this->attachmentsForApi(),
             'created_at' => optional($this->created_at)->toIso8601String(),
         ];
     }

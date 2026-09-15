@@ -59,7 +59,9 @@ class SendLeadToHive implements ShouldQueue
             'city' => $submission->city,
             'message' => $submission->message,
             'availability' => $submission->availability,
-            'source' => 'gs.construction',
+            // Hive shows this as the lead's origin. Website leads are the
+            // site; a Yelp Request-a-Quote lead says so.
+            'source' => $submission->source === 'yelp' ? 'yelp' : 'gs.construction',
             'referrer' => $submission->referrer,
             'ip_address' => $submission->ip_address,
             'user_agent' => $submission->user_agent,
