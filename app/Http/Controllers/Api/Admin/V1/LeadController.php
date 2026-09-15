@@ -52,6 +52,62 @@ class LeadController extends Controller
         return $this->paginatedResponse($paginator, fn (ContactSubmission $lead) => $lead->toApiArray());
     }
 
+    /**
+     * A lead hive captured itself — crew@ inbox, Angi, Houzz, hive's own form —
+     * pushed here the moment it exists, so every lead starts on ss.systems
+     * whatever channel it came through. Identity is (source, hive_lead_id),
+     * exactly as leads:pull-from-hive matches; a second push updates in place.
+     * The row is born already forwarded (hive_lead_id set), so nothing sends
+     * it back to hive.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'hive_lead_id' => ['required', 'integer', 'min:1'],
+            'source' => ['required', 'string', 'max:64'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'state' => ['nullable', 'string', 'max:2'],
+            'zip' => ['nullable', 'string', 'max:10'],
+            'message' => ['nullable', 'string', 'max:20000'],
+            'received_at' => ['nullable', 'date'],
+        ]);
+
+        $existing = ContactSubmission::query()
+            ->where('source', $data['source'])
+            ->where('hive_lead_id', (int) $data['hive_lead_id'])
+            ->first();
+
+        $attributes = [
+            'name' => \Illuminate\Support\Str::limit((string) ($data['name'] ?? 'Unknown'), 250, ''),
+            'email' => \Illuminate\Support\Str::limit((string) ($data['email'] ?? ''), 250, ''),
+            'phone' => ! empty($data['phone']) ? \Illuminate\Support\Str::limit((string) $data['phone'], 20, '') : null,
+            'address' => $data['address'] ?? null,
+            'city' => $data['city'] ?? null,
+            'state' => $data['state'] ?? null,
+            'zip' => $data['zip'] ?? null,
+            'message' => (string) ($data['message'] ?? ''),
+            'source' => $data['source'],
+            'hive_lead_id' => (int) $data['hive_lead_id'],
+            'hive_sent_at' => now(),
+        ];
+
+        if ($existing) {
+            $existing->fill($attributes)->save();
+
+            return $this->itemResponse($existing->fresh()->toApiArray());
+        }
+
+        $submission = ContactSubmission::create($attributes + ['status' => 'pending']);
+        // Filed when it arrived, not when it was pushed — the admin sorts by created_at.
+        $submission->forceFill(['created_at' => ! empty($data['received_at']) ? \Illuminate\Support\Carbon::parse($data['received_at']) : now()])->saveQuietly();
+
+        return $this->itemResponse($submission->fresh()->toApiArray(), 201);
+    }
+
     public function show(int $lead): JsonResponse
     {
         $model = ContactSubmission::findOrFail($lead);

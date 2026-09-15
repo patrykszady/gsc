@@ -94,6 +94,9 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     Route::apiResource('areas', AreaController::class);
 
     Route::get('leads/stats', [LeadController::class, 'stats']);
+    // hive pushes every lead it captures itself (crew inbox, Angi, Houzz, its
+    // own form) here the moment it exists, so ss.systems shows it first.
+    Route::post('leads', [LeadController::class, 'store']);
     Route::get('leads', [LeadController::class, 'index']);
     Route::get('leads/{lead}', [LeadController::class, 'show']);
     Route::patch('leads/{lead}/status', [LeadController::class, 'updateStatus']);

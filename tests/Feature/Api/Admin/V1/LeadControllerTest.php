@@ -156,6 +156,46 @@ class LeadControllerTest extends TestCase
         $this->assertCount(2, $data);
     }
 
+    public function test_hive_can_push_a_lead_it_captured_and_a_second_push_updates_it(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        $payload = [
+            'hive_lead_id' => 170,
+            'source' => 'crew-email',
+            'name' => 'Josh Simmons',
+            'email' => 'jsims692@example.test',
+            'address' => '6 Drake Terrace',
+            'city' => 'Prospect Heights',
+            'state' => 'IL',
+            'zip' => '60070',
+            'message' => 'I have a basement I need remodeling done.',
+            'received_at' => '2026-09-15T20:06:27Z',
+        ];
+
+        $created = $this->postJson('/api/admin/v1/leads', $payload, $this->adminApiHeaders())
+            ->assertCreated()
+            ->json('data');
+
+        $this->assertSame('Josh Simmons', $created['name']);
+        $this->assertSame('crew-email', $created['source']);
+        $this->assertSame('pending', $created['status']);
+        $this->assertTrue($created['was_sent_to_hive']);
+
+        $row = ContactSubmission::withoutSiteScope()->findOrFail($created['id']);
+        $this->assertSame(170, $row->hive_lead_id);
+        $this->assertTrue($row->created_at->equalTo(\Illuminate\Support\Carbon::parse('2026-09-15T20:06:27Z')));
+        // Born forwarded: nothing sends it back to hive.
+        \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\SendLeadToHive::class);
+
+        $this->postJson('/api/admin/v1/leads', ['phone' => '8475550100'] + $payload, $this->adminApiHeaders())->assertOk();
+        $this->assertSame(1, ContactSubmission::withoutSiteScope()->where('hive_lead_id', 170)->count());
+        $this->assertSame('8475550100', $row->fresh()->phone);
+
+        // No token, no lead.
+        $this->postJson('/api/admin/v1/leads', $payload)->assertUnauthorized();
+    }
+
     public function test_source_filter_narrows_to_one_channel(): void
     {
         $this->makeLead(['source' => 'web']);
