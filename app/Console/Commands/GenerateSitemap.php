@@ -10,6 +10,7 @@ use App\Models\Site;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\ZipCodeService;
+use App\Support\ExclusivePaths;
 use App\Support\LeadLineInfo;
 use App\Support\PermitGuideInfo;
 use App\Support\SEO\AreaSeoPolicy;
@@ -767,6 +768,28 @@ class GenerateSitemap extends Command
         }
         $this->line("  Added {$projectCount} project pages ({$imageCount} images in sitemap)");
         $this->line("  Added {$photoPageCount} individual photo pages");
+
+        // Only what this tenant actually serves. The static list comes from the
+        // shared route table and the guides from shared config, so another
+        // tenant's sitemap advertised /reviews, /compare/… — 80-odd URLs that
+        // 404 on that site (TenantRouteGuard). Drop what it does not claim.
+        $slug = Site::current()->slug;
+        $kept = [];
+        $dropped = 0;
+        foreach ($sitemap->getTags() as $tag) {
+            $tagPath = (string) parse_url((string) ($tag->url ?? ''), PHP_URL_PATH);
+            if ($tagPath !== '' && ! ExclusivePaths::allows($slug, $tagPath)) {
+                $dropped++;
+
+                continue;
+            }
+            $kept[] = $tag;
+        }
+        if ($dropped > 0) {
+            $this->line("  Dropped {$dropped} URL(s) another tenant owns (not served on {$slug})");
+            $urlCount -= $dropped;
+        }
+        $sitemap = Sitemap::create()->add($kept);
 
         // One sitemap per site, served by the /sitemap.xml route for the
         // tenant that owns it. Never public/: nginx would hand that one file

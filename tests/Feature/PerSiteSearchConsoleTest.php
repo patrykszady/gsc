@@ -115,6 +115,12 @@ class PerSiteSearchConsoleTest extends TestCase
         $xml = (string) file_get_contents(CrawlFiles::sitemapPath($jpd));
         $this->assertStringContainsString('<loc>https://jpeterson-design.com/', $xml);
         $this->assertStringNotContainsString('gs.construction', $xml);
+        // Only what her site serves: the shared route table and guide config
+        // are gs.construction's, and those paths 404 on her domain.
+        $this->assertStringContainsString('<loc>https://jpeterson-design.com/about</loc>', $xml, 'a path both tenants claim');
+        foreach (['/reviews', '/compare/', '/trades/', '/permits/', '/costs/', '/faq', '/areas-served'] as $gsOnly) {
+            $this->assertStringNotContainsString('jpeterson-design.com'.$gsOnly, $xml, "{$gsOnly} is gs.construction's");
+        }
         $this->assertFileDoesNotExist(public_path('sitemap.xml'), 'never public/: nginx would hand one file to every host');
     }
 }
