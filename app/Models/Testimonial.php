@@ -50,6 +50,12 @@ class Testimonial extends Model
         return "{$location}-{$type}-review-{$this->id}";
     }
 
+    /** The id a review slug ends in ("hoffman-estates-il-kitchen-review-10" → 10), or null. */
+    public static function idFromSlug(string $slug): ?int
+    {
+        return preg_match('/-(\d+)$/', $slug, $m) ? (int) $m[1] : null;
+    }
+
     /**
      * Resolve route binding by extracting ID from the end of the slug.
      */

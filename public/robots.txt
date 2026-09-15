@@ -14,6 +14,10 @@
 
 User-agent: Googlebot
 Allow: /
+# The GEO admin screens (/geo, /geo/models…) sign you in; only /geo/answers.json is public.
+Allow: /geo/answers.json
+Disallow: /geo$
+Disallow: /geo/
 # Livewire pagination state from an older build (?7db88787_page=4). Never a
 # page of its own, always canonical to the bare URL; nothing links to these
 # any more, so stop re-crawling the ones Google remembers.
@@ -63,6 +67,10 @@ Disallow: /livewire/
 
 User-agent: Bingbot
 Allow: /
+# The GEO admin screens (/geo, /geo/models…) sign you in; only /geo/answers.json is public.
+Allow: /geo/answers.json
+Disallow: /geo$
+Disallow: /geo/
 Disallow: /*_page=
 Disallow: /horizon
 Disallow: /horizon/
@@ -106,6 +114,10 @@ Disallow: /api/
 # Default: Allow all other bots
 User-agent: *
 Allow: /
+# The GEO admin screens (/geo, /geo/models…) sign you in; only /geo/answers.json is public.
+Allow: /geo/answers.json
+Disallow: /geo$
+Disallow: /geo/
 Disallow: /*_page=
 Disallow: /horizon
 Disallow: /horizon/

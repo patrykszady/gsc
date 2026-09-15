@@ -69,6 +69,9 @@ class RedirectLegacyUrls
         '#^/images/services/[^/]+-hero\.jpg$#',
         '#^/wp-content/#',
         '#^/wp-includes/#',
+        '#^/html/#',                      // /html/head/title — a scraper's artefact Google kept
+        '#^/your-personal-glow-recipe#',  // WordPress-era posts from the old site
+        '#^/a-nerdie-guide-to-moles#',
     ];
 
     /**

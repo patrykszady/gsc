@@ -56,6 +56,7 @@ use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\ShortLink;
 use App\Models\Site;
+use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\GoogleSearchConsoleService;
 use App\Services\MetaSocialService;
@@ -142,7 +143,11 @@ Route::get('/reviews', function () {
     return view('testimonials');
 })->name('reviews.index');
 
-Route::get('/reviews/{testimonial}', TestimonialPage::class)->name('reviews.show');
+Route::get('/reviews/{testimonial}', TestimonialPage::class)
+    // A review that once existed (the slug ends in its id) and is gone for
+    // good answers 410, so Google drops it; a typo is an ordinary 404.
+    ->missing(fn (Request $request) => abort(Testimonial::idFromSlug((string) $request->route('testimonial')) ? 410 : 404))
+    ->name('reviews.show');
 
 // Shareable review shortlink. Text or email gs.construction/review to happy
 // customers and it drops them straight onto the Google write-review form —
@@ -167,7 +172,12 @@ Route::get('/testimonials', function () {
     return redirect('/reviews', 301);
 })->name('testimonials.index');
 Route::get('/testimonials/{testimonial}', function (string $testimonial) {
-    return redirect("/reviews/{$testimonial}", 301);
+    // Straight to the review's one real address; a review that once existed
+    // (the slug ends in its id) and is gone answers 410, not a chain into a 404.
+    $id = Testimonial::idFromSlug($testimonial);
+    $review = $id ? Testimonial::query()->find($id) : null;
+
+    return $review ? redirect(route('reviews.show', $review), 301) : abort($id ? 410 : 404);
 })->name('testimonials.show');
 
 Route::get('/about', function () {
@@ -253,6 +263,14 @@ Route::get('/api/project-images', function () {
         ->header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
 })->name('api.project-images');
 
+// Projects were once addressed by id (/projects/3). Google still holds those;
+// the project is still there under its slug, so say so once.
+Route::get('/projects/{id}', function (int $id) {
+    $project = Project::query()->find($id);
+
+    return $project ? redirect(route('projects.show', $project), 301) : abort(410);
+})->whereNumber('id');
+
 // Every before/after timelapse on one page. Declared BEFORE /projects/{project}
 // so "timelapses" is not swallowed as a project slug.
 Route::get('/timelapses', TimelapsesPage::class)->name('timelapses.index');
@@ -295,6 +313,7 @@ Route::redirect('/contact-us', '/contact', 301);
 // Legacy root-level service URLs → new /services/* pattern
 Route::redirect('/bathroom-remodeling', '/services/bathroom-remodeling', 301);
 Route::redirect('/kitchen-remodeling', '/services/kitchen-remodeling', 301);
+Route::redirect('/index', '/', 301);
 Route::redirect('/home-remodeling', '/services/home-remodeling', 301);
 
 // /areas/… and /locations/… used to serve the same page as /areas-served/…
@@ -318,14 +337,18 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
 // official-source research stored in storage/app/lead-service-lines.json
 // (App\Support\LeadLineInfo); areas without verified official info render
 // generic Illinois-law content and are noindexed.
-Route::get('/areas-served/{area}/lead-pipe-replacement', function (string $area) {
-    $model = AreaServed::where('slug', $area)->first();
+Route::get('/areas-served/{area}/lead-pipe-replacement', function (AreaServed|string $area) {
+    // The 'area' binding (AppServiceProvider) hands a served town as a model and
+    // 301s a retired one itself, so by here $area is a model — or a plain
+    // string in the admin API's untouched form. PHP coerces a model to its
+    // JSON when a closure says `string`, which is how every lead-pipe page
+    // 404'd for two days: keep the type wide and take the slug explicitly.
+    $model = $area instanceof AreaServed ? $area : AreaServed::where('slug', $area)->first();
+    $slug = $model?->slug ?? (string) $area;
     if (! $model) {
-        // A retired town: the same 301 to its nearest served neighbour that
-        // every other spoke gets. Search Console held 64 of these as 404s.
-        return redirect(RetiredAreaRedirect::target($area, '/lead-pipe-replacement') ?? '/areas-served', 301);
+        return redirect(RetiredAreaRedirect::target($slug, '/lead-pipe-replacement') ?? '/areas-served', 301);
     }
-    $info = LeadLineInfo::forSlug($area);
+    $info = LeadLineInfo::forSlug($slug);
 
     $seo = app(SEOBuilder::class);
     $seo->title("Lead Pipe Replacement in {$model->city}, IL — Who Pays & How It Works")
@@ -335,9 +358,9 @@ Route::get('/areas-served/{area}/lead-pipe-replacement', function (string $area)
                 : "Lead water service line replacement in {$model->city}, IL — how to check your line, what Illinois law requires, and how replacement gets coordinated during a remodel.",
             158
         ))
-        ->canonical(url("/areas-served/{$area}/lead-pipe-replacement"));
+        ->canonical(url("/areas-served/{$slug}/lead-pipe-replacement"));
 
-    if (! LeadLineInfo::hasOfficialInfo($area)) {
+    if (! LeadLineInfo::hasOfficialInfo($slug)) {
         $seo->markNoindex();
     }
 
@@ -350,11 +373,20 @@ Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
     ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
     ->name('areas.service');
 
+// Google found ~50 /areas-served/{town}/services/mudroom-remodeling URLs that
+// never existed — mudroom is not a town-level service. One hop to the real
+// mudroom page (RetiredAreaRedirect does the same for retired towns).
+Route::get('/areas-served/{area}/services/mudroom-remodeling', fn () => redirect('/services/mudroom-remodeling', 301));
+
 // 301 redirects from old short slugs to keyword-rich canonical URLs
-Route::get('/areas-served/{area}/services/kitchens', function (string $area) {
+Route::get('/areas-served/{area}/services/kitchens', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/kitchen-remodeling", 301);
 });
-Route::get('/areas-served/{area}/services/bathrooms', function (string $area) {
+Route::get('/areas-served/{area}/services/bathrooms', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/bathroom-remodeling", 301);
 });
 
@@ -365,23 +397,33 @@ Route::get('/service-area/{zip}', ZipCodePage::class)
     ->name('service-area.show');
 
 // Redirects from old area-level service URLs
-Route::get('/areas-served/{area}/kitchen-remodeling', function (string $area) {
+Route::get('/areas-served/{area}/kitchen-remodeling', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/kitchen-remodeling", 301);
 });
-Route::get('/areas-served/{area}/bathroom-remodeling', function (string $area) {
+Route::get('/areas-served/{area}/bathroom-remodeling', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/bathroom-remodeling", 301);
 });
-Route::get('/areas-served/{area}/home-remodeling', function (string $area) {
+Route::get('/areas-served/{area}/home-remodeling', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/home-remodeling", 301);
 });
 // basement-remodeling and home-additions were missing from this group even
 // though the same old URL shape existed for them too. The gap was measurable:
 // 260 distinct /areas-served/{area}/{service} 404 paths in tracked_404s
 // (2,179 hits, Googlebot among them) for exactly these two services.
-Route::get('/areas-served/{area}/basement-remodeling', function (string $area) {
+Route::get('/areas-served/{area}/basement-remodeling', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/basement-remodeling", 301);
 });
-Route::get('/areas-served/{area}/home-additions', function (string $area) {
+Route::get('/areas-served/{area}/home-additions', function (AreaServed|string $area) {
+    $area = $area instanceof AreaServed ? $area->slug : $area;
+
     return redirect("/areas-served/{$area}/services/home-additions", 301);
 });
 

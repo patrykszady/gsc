@@ -32,6 +32,14 @@ class RetiredAreaRedirect
             return null;
         }
 
+        // Old URL shapes go straight to the canonical one, so a retired town's
+        // old link is one hop, not a redirect into another redirect.
+        $suffix = strtr($suffix, ['/services/kitchens' => '/services/kitchen-remodeling', '/services/bathrooms' => '/services/bathroom-remodeling']);
+        $suffix = (string) preg_replace('#^/(kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions)$#', '/services/$1', $suffix);
+        if ($suffix === '/services/mudroom-remodeling') {
+            return '/services/mudroom-remodeling';
+        }
+
         $nearest = static::nearestServed($slug);
 
         return $nearest ? self::INDEX.'/'.$nearest->slug.$suffix : self::INDEX;

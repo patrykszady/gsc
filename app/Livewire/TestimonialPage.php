@@ -16,10 +16,11 @@ class TestimonialPage extends Component
 
     public function mount(Testimonial $testimonial): void
     {
-        // Route binding reads only the trailing id, so ANY slug ending in
-        // "-42" resolves — and the page then canonicalised to whatever URL
-        // was asked for. Search Console held ten such duplicates, each
-        // self-canonical. Send every variant to the one real address.
+        // Livewire binds {testimonial} because the property above is typed,
+        // and a review that no longer exists is answered by the route's
+        // missing() handler (410 for an id-shaped slug). What reaches here is
+        // a live review — but any slug ending in its id resolves, and the
+        // page used to canonicalise to whatever was asked for. One address.
         $requested = (string) (request()->route()?->originalParameters()['testimonial'] ?? '');
         if ($requested !== '' && $requested !== $testimonial->slug) {
             abort(redirect()->route('reviews.show', $testimonial, 301));

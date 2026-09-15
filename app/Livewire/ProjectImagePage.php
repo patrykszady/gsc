@@ -6,6 +6,8 @@ use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\GoogleBusinessProfileService;
 use App\Support\SEO\SEOBuilder;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -13,16 +15,21 @@ use Livewire\Component;
 class ProjectImagePage extends Component
 {
     public Project $project;
+
     public ProjectImage $image;
+
     public ?int $previousImageId = null;
+
     public ?int $nextImageId = null;
+
     public int $currentPosition = 1;
+
     public int $totalImages = 0;
 
     public function mount(Project $project, ProjectImage $image): void
     {
         // Only show published projects
-        if (!$project->is_published) {
+        if (! $project->is_published) {
             abort(404);
         }
 
@@ -32,21 +39,30 @@ class ProjectImagePage extends Component
         if ($image->project_id !== $project->id) {
             $ownerSlug = $image->project?->slug;
             if ($ownerSlug) {
-                throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                throw new HttpResponseException(
                     redirect()->to(route('projects.image', ['project' => $ownerSlug, 'image' => $image->slug ?: $image->id]), 301)
                 );
             }
             abort(404);
         }
 
+        // Photos were once addressed by id; the slug is the one address now,
+        // and Google held the id URLs as "alternate page with canonical".
+        $requested = (string) (request()->route()?->originalParameters()['image'] ?? '');
+        if ($image->slug && $requested !== '' && $requested !== $image->slug) {
+            throw new HttpResponseException(
+                redirect()->to(route('projects.image', ['project' => $project->slug, 'image' => $image->slug]), 301)
+            );
+        }
+
         $this->project = $project;
         $this->image = $image;
         $this->loadImageNavigation();
-        
+
         // Set SEO meta
         $this->setSeoMeta();
     }
-    
+
     /**
      * Return text as-is (kept for compatibility with view usage).
      */
@@ -54,7 +70,7 @@ class ProjectImagePage extends Component
     {
         return $text;
     }
-    
+
     /**
      * Get the canonical URL (without area for area variations).
      */
@@ -64,50 +80,50 @@ class ProjectImagePage extends Component
 
         return route('projects.image', ['project' => $this->project, 'image' => $imageKey]);
     }
-    
+
     protected function loadImageNavigation(): void
     {
         // Load all images to determine position and navigation
         $images = $this->project->images()->orderBy('sort_order')->get();
         $this->totalImages = $images->count();
 
-        $currentIndex = $images->search(fn($img) => $img->id === $this->image->id);
+        $currentIndex = $images->search(fn ($img) => $img->id === $this->image->id);
         $this->currentPosition = $currentIndex !== false ? $currentIndex + 1 : 1;
 
         if ($currentIndex !== false && $this->totalImages > 1) {
             // Wrap around: previous of first = last, next of last = first
             $prevIndex = ($currentIndex - 1 + $this->totalImages) % $this->totalImages;
             $nextIndex = ($currentIndex + 1) % $this->totalImages;
-            
+
             $this->previousImageId = $images[$prevIndex]->id;
             $this->nextImageId = $images[$nextIndex]->id;
         }
     }
-    
+
     public function goToImage(int $imageId): void
     {
         $newImage = ProjectImage::find($imageId);
-        
-        if (!$newImage || $newImage->project_id !== $this->project->id) {
+
+        if (! $newImage || $newImage->project_id !== $this->project->id) {
             return;
         }
-        
+
         $this->image = $newImage;
         $this->loadImageNavigation();
-        
+
         // Update the URL without full page navigation
         $imageKey = $this->image->slug ?: $this->image->id;
 
         $this->dispatch('urlChanged', url: route('projects.image', ['project' => $this->project, 'image' => $imageKey]));
     }
-    
+
     public function nextImage(): void
     {
         if ($this->nextImageId && $this->totalImages > 1) {
             $this->goToImage($this->nextImageId);
         }
     }
-    
+
     public function previousImage(): void
     {
         if ($this->previousImageId && $this->totalImages > 1) {
@@ -119,11 +135,11 @@ class ProjectImagePage extends Component
     {
         // Get location-aware text
         $location = $this->project->location;
-        
+
         // These fields feed SEOBuilder directly (not SeoService::setTags), so
         // clamp here: alt-text titles ran to 125+ chars and captions to 286 —
         // both far past what Google displays, and both got rewritten in SERPs.
-        $title = \Illuminate\Support\Str::limit(
+        $title = Str::limit(
             $this->localizeText($this->image->seo_alt_text)
                 ?: "{$this->project->title} - Photo {$this->currentPosition}",
             60,
@@ -139,9 +155,9 @@ class ProjectImagePage extends Component
         // all 238 with a unique, sentence-form description of the photo.
         $description = $this->localizeText($this->image->caption)
             ?: "View photo {$this->currentPosition} of {$this->totalImages} from {$this->project->title}. "
-               . ($location ? "Located in {$location}. " : '')
-               . "Professional remodeling by GS Construction.";
-        $description = \Illuminate\Support\Str::limit(trim($description), 160, '');
+               .($location ? "Located in {$location}. " : '')
+               .'Professional remodeling by GS Construction.';
+        $description = Str::limit(trim($description), 160, '');
         if (($cut = mb_strrpos($description, '.')) !== false && $cut > 96) {
             $description = mb_substr($description, 0, $cut + 1);
         }
@@ -153,12 +169,12 @@ class ProjectImagePage extends Component
                 ->getMediaUrlCached($this->image->google_places_media_name);
         }
 
-        if (!is_string($imageUrl) || trim($imageUrl) === '') {
+        if (! is_string($imageUrl) || trim($imageUrl) === '') {
             $imageUrl = is_string($googleUrl) && trim($googleUrl) !== ''
                 ? $googleUrl
                 : asset('images/greg-patryk.jpg');
         }
-        
+
         // Canonical always points to the base URL (no area)
         $canonicalUrl = $this->getCanonicalUrl();
         $currentUrl = $canonicalUrl;
@@ -206,6 +222,7 @@ class ProjectImagePage extends Component
     protected function getProjectTypeLabel(): string
     {
         $types = Project::projectTypes();
+
         return $types[$this->project->project_type] ?? ucfirst(str_replace('-', ' ', $this->project->project_type));
     }
 
