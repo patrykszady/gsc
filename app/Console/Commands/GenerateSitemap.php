@@ -768,19 +768,15 @@ class GenerateSitemap extends Command
         $this->line("  Added {$projectCount} project pages ({$imageCount} images in sitemap)");
         $this->line("  Added {$photoPageCount} individual photo pages");
 
-        // Write to storage first, then copy to public (for Forge zero-downtime deployments)
-        $storagePath = storage_path('app/sitemap.xml');
-        $publicPath = CrawlFiles::sitemapPath();
-
-        $sitemap->writeToFile($storagePath);
-
-        // Copy to public directory
-        if (copy($storagePath, $publicPath)) {
-            $this->info('Sitemap generated successfully at public/sitemap.xml');
-        } else {
-            $this->warn('Sitemap saved to storage/app/sitemap.xml but could not copy to public/');
-            $this->warn('You may need to manually symlink or copy it.');
+        // One sitemap per site, served by the /sitemap.xml route for the
+        // tenant that owns it. Never public/: nginx would hand that one file
+        // to every host of this deployment.
+        $path = CrawlFiles::sitemapPath();
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0775, true);
         }
+        $sitemap->writeToFile($path);
+        $this->info('Sitemap generated for '.Site::current()->slug.' at '.str_replace(base_path().'/', '', $path));
 
         $this->newLine();
         $this->info('=== Summary ===');
