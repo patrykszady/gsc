@@ -196,6 +196,39 @@ class LeadControllerTest extends TestCase
         $this->postJson('/api/admin/v1/leads', $payload)->assertUnauthorized();
     }
 
+    public function test_hive_answering_an_email_this_site_read_first_updates_that_row(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        // Read out of crew@ here; hive has not answered yet, so no hive id.
+        $mine = ContactSubmission::create([
+            'name' => 'William Johnson', 'email' => 'willjohn1089@gmail.com', 'message' => 'Bathroom remodel',
+            'source' => 'crew-email', 'status' => 'pending', 'email_message_id' => str_repeat('b', 40),
+        ]);
+
+        // Hive's mirror of the lead it made from that same email.
+        $this->postJson('/api/admin/v1/leads', [
+            'hive_lead_id' => 171,
+            'source' => 'crew-email',
+            'external_id' => str_repeat('b', 40),
+            'subject' => 'Bathroom remodel',
+            'name' => 'William Johnson',
+            'email' => 'willjohn1089@gmail.com',
+            'message' => 'Bathroom remodel',
+        ], $this->adminApiHeaders())->assertOk();
+
+        $this->assertSame(1, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame(171, $mine->fresh()->hive_lead_id);
+        $this->assertSame('Bathroom remodel', $mine->fresh()->subject);
+
+        // A different email under the same source is its own row, carrying its identity.
+        $created = $this->postJson('/api/admin/v1/leads', [
+            'hive_lead_id' => 172, 'source' => 'crew-email', 'external_id' => str_repeat('c', 40),
+            'name' => 'Toby Daisy', 'email' => 'toby@example.test', 'message' => 'Deck',
+        ], $this->adminApiHeaders())->assertCreated()->json('data');
+        $this->assertSame(str_repeat('c', 40), ContactSubmission::withoutSiteScope()->findOrFail($created['id'])->email_message_id);
+    }
+
     public function test_source_filter_narrows_to_one_channel(): void
     {
         $this->makeLead(['source' => 'web']);

@@ -73,13 +73,29 @@ class LeadController extends Controller
             'state' => ['nullable', 'string', 'max:2'],
             'zip' => ['nullable', 'string', 'max:10'],
             'message' => ['nullable', 'string', 'max:20000'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            // Hive's own identity for the lead. For an email that is the
+            // RFC Message-ID hash this site's reader would compute too.
+            'external_id' => ['nullable', 'string', 'max:64'],
             'received_at' => ['nullable', 'date'],
         ]);
+
+        $isEmail = $data['source'] === \App\Services\EmailLeadReader::SOURCE;
+        $identity = $isEmail && ! empty($data['external_id']) ? (string) $data['external_id'] : null;
 
         $existing = ContactSubmission::query()
             ->where('source', $data['source'])
             ->where('hive_lead_id', (int) $data['hive_lead_id'])
             ->first();
+
+        // An email this site read first is already here without a hive id:
+        // this push is hive answering it, not a second enquiry.
+        if (! $existing && $identity !== null) {
+            $existing = ContactSubmission::query()
+                ->where('source', $data['source'])
+                ->where('email_message_id', $identity)
+                ->first();
+        }
 
         $attributes = [
             'name' => \Illuminate\Support\Str::limit((string) ($data['name'] ?? 'Unknown'), 250, ''),
@@ -90,10 +106,11 @@ class LeadController extends Controller
             'state' => $data['state'] ?? null,
             'zip' => $data['zip'] ?? null,
             'message' => (string) ($data['message'] ?? ''),
+            'subject' => isset($data['subject']) ? \Illuminate\Support\Str::limit((string) $data['subject'], 255, '') : null,
             'source' => $data['source'],
             'hive_lead_id' => (int) $data['hive_lead_id'],
             'hive_sent_at' => now(),
-        ];
+        ] + ($identity !== null ? ['email_message_id' => $identity] : []);
 
         if ($existing) {
             $existing->fill($attributes)->save();

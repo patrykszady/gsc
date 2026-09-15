@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\ContactSubmission;
+use App\Models\EmailLeadIngest;
+use App\Services\EmailLeadReader;
 use App\Services\HiveProjectsClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -50,18 +52,44 @@ class SendLeadToHive implements ShouldQueue
             return;
         }
 
+        $isEmail = $submission->source === EmailLeadReader::SOURCE;
+        $extracted = (array) ($submission->extracted ?? []);
+
         $payload = [
-            'external_id' => (string) $submission->id,
+            // Hive identifies a lead by (source, external_id). An email
+            // enquiry's identity is its RFC Message-ID hash — the very value
+            // hive's own crew@ reader keyed its leads by, so the two readers
+            // can never make twins of one email.
+            'external_id' => $isEmail && $submission->email_message_id ? $submission->email_message_id : (string) $submission->id,
             'name' => $submission->name,
             'email' => $submission->email,
             'phone' => $submission->phone,
             'address' => $submission->address,
             'city' => $submission->city,
+            'state' => $submission->state,
+            'zip' => $submission->zip,
+            'subject' => $submission->subject,
             'message' => $submission->message,
             'availability' => $submission->availability,
             // Hive shows this as the lead's origin. Website leads are the
-            // site; a Yelp Request-a-Quote lead says so.
-            'source' => $submission->source === 'yelp' ? 'yelp' : 'gs.construction',
+            // site; a Yelp Request-a-Quote lead says so; an email says so.
+            'source' => match ($submission->source) {
+                'yelp' => 'yelp',
+                EmailLeadReader::SOURCE => EmailLeadReader::SOURCE,
+                default => 'gs.construction',
+            },
+            // Photos and documents, by public URL — hive copies them onto
+            // the lead. What the classifier read out of an email (project
+            // type, scope, timeline, budget, partner addresses, its own
+            // verdict) rides along so hive neither re-asks the model nor
+            // loses the detail.
+            'attachments' => $submission->attachmentsForApi(),
+            'extracted' => $extracted,
+            // The email's RFC Message-ID, so hive's missing-info reply
+            // threads under the enquiry in the sender's mailbox.
+            'in_reply_to' => $isEmail
+                ? EmailLeadIngest::where('submission_id', $submission->id)->value('rfc_message_id')
+                : null,
             'referrer' => $submission->referrer,
             'ip_address' => $submission->ip_address,
             'user_agent' => $submission->user_agent,
@@ -70,6 +98,7 @@ class SendLeadToHive implements ShouldQueue
             'utm_campaign' => $submission->utm_campaign,
             'submitted_at' => optional($submission->created_at)->toIso8601String(),
         ];
+        $payload = array_filter($payload, fn ($v) => $v !== null && $v !== []);
 
         $leadId = $hive->submitLead($payload);
 

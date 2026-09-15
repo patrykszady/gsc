@@ -40,6 +40,9 @@ class ContactSubmission extends Model
         'yelp_status',
         'yelp_last_event_at',
         'attachments',
+        'subject',
+        'email_message_id',
+        'extracted',
     ];
 
     protected $casts = [
@@ -50,6 +53,7 @@ class ContactSubmission extends Model
         'hive_sent_at' => 'datetime',
         'yelp_last_event_at' => 'datetime',
         'attachments' => 'array',
+        'extracted' => 'array',
     ];
 
     /** The Yelp for Business conversation this lead came from, or null. */
@@ -78,6 +82,7 @@ class ContactSubmission extends Model
             ->filter(fn ($a) => is_array($a) && ! empty($a['path']))
             ->map(fn (array $a) => [
                 'encid' => $a['encid'] ?? null,
+                'name' => $a['name'] ?? null,
                 'path' => $a['path'],
                 'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($a['path']),
                 'mime' => $a['mime'] ?? null,
@@ -202,6 +207,7 @@ class ContactSubmission extends Model
             'address' => $this->address,
             'street' => $this->street(),
             'message' => $this->message,
+            'subject' => $this->subject,
             'availability' => $this->availability,
             'city' => $this->city,
             'state' => $this->state,

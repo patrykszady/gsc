@@ -189,6 +189,36 @@ return [
         'inbox_id' => env('MAILTRAP_INBOX_ID'),
     ],
 
+    /*
+    | Nylas — the same application (and grants) hive uses. A grant is a
+    | server-side authorization tied to the Nylas app, not to any of our
+    | codebases, so this site can read the inboxes hive reads.
+    */
+    'nylas' => [
+        'api_key' => env('NYLAS_API_KEY'),
+        'api_uri' => env('NYLAS_API_URI', 'https://api.us.nylas.com'),
+    ],
+
+    /*
+    | Email leads: enquiries arriving in the team's inboxes become contact
+    | submissions here — where every lead starts, so ss.systems lists them
+    | first — and go on to hive like a web-form lead. EMAIL_LEADS_INBOXES is
+    | "mailbox|grant_id" pairs, comma-separated; a mailbox other than the
+    | grant's own (crew@ through Patryk's grant) is read as a shared mailbox.
+    */
+    'email_leads' => [
+        'enabled' => (bool) env('EMAIL_LEADS_ENABLED', false),
+        'inboxes' => collect(explode(',', (string) env('EMAIL_LEADS_INBOXES', '')))
+            ->map(fn (string $pair) => array_map('trim', explode('|', $pair, 2)))
+            ->filter(fn (array $pair) => count($pair) === 2 && $pair[0] !== '' && $pair[1] !== '')
+            ->map(fn (array $pair) => ['mailbox' => mb_strtolower($pair[0]), 'grant_id' => $pair[1]])
+            ->values()
+            ->all(),
+        'internal_domains' => ['gs.construction', 'hive.contractors'],
+        'lookback_days' => (int) env('EMAIL_LEADS_LOOKBACK_DAYS', 2),
+        'poll_limit' => (int) env('EMAIL_LEADS_POLL_LIMIT', 25),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),

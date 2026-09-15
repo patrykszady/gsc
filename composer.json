@@ -23,6 +23,7 @@
         "lsolesen/pel": "^0.9.12",
         "nyholm/psr7": "^1.8",
         "opcodesio/log-viewer": "^3.21",
+        "opcodesio/mail-parser": "^0.2.4",
         "railsware/mailtrap-php": "^3.9",
         "ralphjsmit/laravel-seo": "^1.8",
         "spatie/laravel-sitemap": "^7.3",

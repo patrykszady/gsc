@@ -103,6 +103,18 @@ Schedule::command('leads:pull-from-hive --source=crew-email')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled leads:pull-from-hive failed'));
 
+// Email enquiries start HERE now: the reader watches crew@, patryk@ and
+// greg@ through the same Nylas grants hive uses and files each new enquiry
+// as a contact submission, which then goes to hive like a web-form lead.
+// Every five minutes, and only once the inboxes are configured — an empty
+// EMAIL_LEADS_INBOXES means the site is not the reader yet.
+Schedule::command('leads:ingest-email')
+    ->everyFiveMinutes()
+    ->when(fn () => (bool) config('services.email_leads.enabled') && config('services.email_leads.inboxes') !== [])
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled leads:ingest-email failed'));
+
 // Weekly health check of social/sameAs URLs
 Schedule::command('socials:check --quiet-on-success')->weekly()
     ->onOneServer()
