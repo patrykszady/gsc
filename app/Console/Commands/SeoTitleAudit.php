@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\GscQueryMetric;
 use App\Models\OAuthToken;
+use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -27,7 +28,7 @@ class SeoTitleAudit extends Command
 
     public function handle(): int
     {
-        $site = (string) ($this->option('site') ?: config('seo.search_console.site_url'));
+        $site = (string) ($this->option('site') ?: SearchConsoleProperty::url());
         $days = max(1, (int) $this->option('days'));
         $minImpr = (int) $this->option('min-impr');
         $maxCtr = (float) $this->option('max-ctr');
@@ -51,7 +52,8 @@ class SeoTitleAudit extends Command
             ]);
 
             if (! $resp->successful()) {
-                $this->error('GSC fetch failed: ' . $resp->body());
+                $this->error('GSC fetch failed: '.$resp->body());
+
                 return self::FAILURE;
             }
 
@@ -67,6 +69,7 @@ class SeoTitleAudit extends Command
 
         if (empty($candidates)) {
             $this->info('No candidates matched. Loosen --min-impr or --max-ctr.');
+
             return self::SUCCESS;
         }
 
@@ -76,7 +79,7 @@ class SeoTitleAudit extends Command
         foreach (array_slice($candidates, 0, $limit) as $c) {
             $rowsOut[] = [
                 round($c['pos'], 1),
-                round($c['ctr'], 2) . '%',
+                round($c['ctr'], 2).'%',
                 $c['clk'],
                 $c['impr'],
                 $this->shortenUrl($c['page']),
@@ -99,9 +102,12 @@ class SeoTitleAudit extends Command
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
             $this->error('No Search Console OAuth token. Run: php artisan seo:gsc-auth');
+
             return null;
         }
-        if ($row->hasValidAccessToken()) return $row->access_token;
+        if ($row->hasValidAccessToken()) {
+            return $row->access_token;
+        }
 
         $resp = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
             'client_id' => config('services.google.search_console.client_id'),
@@ -109,16 +115,21 @@ class SeoTitleAudit extends Command
             'refresh_token' => $row->refresh_token,
             'grant_type' => 'refresh_token',
         ]);
-        if (! $resp->successful()) { $this->error('Refresh failed: ' . $resp->body()); return null; }
+        if (! $resp->successful()) {
+            $this->error('Refresh failed: '.$resp->body());
+
+            return null;
+        }
         $d = $resp->json();
         $row->access_token = $d['access_token'] ?? null;
         $row->access_token_expires_at = now()->addSeconds(((int) ($d['expires_in'] ?? 3600)) - 120);
         $row->save();
+
         return $row->access_token;
     }
 
     /**
-     * @param array<int,array<string,mixed>> $rows
+     * @param  array<int,array<string,mixed>>  $rows
      * @return array<int,array{page:string,impr:int,clk:int,pos:float,ctr:float}>
      */
     protected function buildCandidatesFromRows(array $rows, int $minImpr, float $maxCtr, float $maxPos): array

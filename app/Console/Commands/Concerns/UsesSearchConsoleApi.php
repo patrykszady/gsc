@@ -4,6 +4,7 @@ namespace App\Console\Commands\Concerns;
 
 use App\Console\Commands\SearchConsoleAuth;
 use App\Models\OAuthToken;
+use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -20,15 +21,16 @@ trait UsesSearchConsoleApi
      * Refresh and return a Search Console access token, or null if OAuth is not set up.
      */
     /**
-     * @param bool $forceRefresh Skip the stored token even if unexpired — for
-     *                           long-running sweeps that get a 401 mid-run
-     *                           because the token aged out after fetch.
+     * @param  bool  $forceRefresh  Skip the stored token even if unexpired — for
+     *                              long-running sweeps that get a 401 mid-run
+     *                              because the token aged out after fetch.
      */
     protected function gscAccessToken(bool $forceRefresh = false): ?string
     {
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
             $this->error('No Search Console OAuth token. Run: php artisan seo:gsc-auth');
+
             return null;
         }
         if (! $forceRefresh && $row->hasValidAccessToken()) {
@@ -42,7 +44,8 @@ trait UsesSearchConsoleApi
             'grant_type' => 'refresh_token',
         ]);
         if (! $resp->successful()) {
-            $this->error('Token refresh failed: ' . $resp->body());
+            $this->error('Token refresh failed: '.$resp->body());
+
             return null;
         }
         $d = $resp->json();
@@ -59,7 +62,7 @@ trait UsesSearchConsoleApi
      */
     protected function gscSiteUrl(?string $override = null): string
     {
-        return (string) ($override ?: config('seo.search_console.site_url'));
+        return (string) ($override ?: SearchConsoleProperty::url());
     }
 
     /**
@@ -69,8 +72,9 @@ trait UsesSearchConsoleApi
     protected function gscBaseUrl(?string $override = null): string
     {
         $site = $this->gscSiteUrl($override);
+
         return str_starts_with($site, 'sc-domain:')
-            ? 'https://' . substr($site, strlen('sc-domain:'))
+            ? 'https://'.substr($site, strlen('sc-domain:'))
             : rtrim($site, '/');
     }
 }

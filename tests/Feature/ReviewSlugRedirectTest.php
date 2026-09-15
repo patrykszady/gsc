@@ -35,7 +35,7 @@ class ReviewSlugRedirectTest extends TestCase
 
     public function test_pagination_state_from_an_older_build_is_kept_out_of_crawlers(): void
     {
-        $robots = (string) file_get_contents(public_path('robots.txt'));
+        $robots = \App\Support\Seo\CrawlFiles::robots();
 
         // Googlebot's group and the default group both carry the rule.
         $this->assertSame(3, substr_count($robots, 'Disallow: /*_page='));

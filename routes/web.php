@@ -66,6 +66,7 @@ use App\Support\DevSites;
 use App\Support\LeadLineInfo;
 use App\Support\OAuthState;
 use App\Support\PermitGuideInfo;
+use App\Support\Seo\CrawlFiles;
 use App\Support\SEO\SEOBuilder;
 use App\Support\Theme;
 use Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders;
@@ -79,8 +80,15 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-// Note: robots.txt is served as a static file from public/robots.txt
-// This ensures fastest response and works even if PHP is down.
+// The crawl files, per tenant. They were static files under public/, which
+// nginx serves for EVERY host of this deployment — another site's domain
+// handed out gs.construction's robots rules and sitemap. See CrawlFiles.
+Route::get('/robots.txt', fn () => response(CrawlFiles::robots(), 200, [
+    'Content-Type' => 'text/plain; charset=UTF-8',
+    'Cache-Control' => 'public, max-age=3600',
+]))->name('robots');
+Route::get('/sitemap.xml', fn () => CrawlFiles::serve(CrawlFiles::sitemapPath()))->name('sitemap');
+Route::get('/image-sitemap.xml', fn () => CrawlFiles::serve(CrawlFiles::imageSitemapPath()))->name('image-sitemap');
 
 // IndexNow key verification file
 Route::get('/{key}.txt', function (string $key) {

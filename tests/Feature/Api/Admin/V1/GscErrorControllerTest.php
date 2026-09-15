@@ -73,8 +73,8 @@ class GscErrorControllerTest extends TestCase
 
     public function test_prune_retired_deletes_only_urls_that_left_a_readable_sitemap(): void
     {
-        if (! is_file(public_path('sitemap.xml'))) {
-            $this->markTestSkipped('No public/sitemap.xml on this box to exercise the readable-sitemap branch.');
+        if (! is_file(\App\Support\Seo\CrawlFiles::sitemapPath())) {
+            $this->markTestSkipped('No generated sitemap on this box to exercise the readable-sitemap branch.');
         }
 
         GscCoverageState::create(['url' => 'https://gs.construction/this-url-is-definitely-not-in-the-sitemap-xyz', 'verdict' => 'FAIL', 'inspected_at' => now()]);

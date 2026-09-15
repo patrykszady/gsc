@@ -1,16 +1,24 @@
 <?php
 
+use App\Jobs\SendLeadToHive;
+use App\Models\ContactSubmission;
+use App\Models\ImageSocialPost;
+use App\Models\Project;
+use App\Models\ReviewUrl;
+use App\Models\Testimonial;
+use App\Services\Citations\VerificationInbox;
+use App\Services\TestimonialProjectTypeClassifier;
+use App\Services\YelpBusinessService;
+use App\Support\Reviews\ReviewImport;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Jobs\SendLeadToHive;
-use App\Models\ContactSubmission;
-use App\Models\Project;
-use App\Models\Testimonial;
-use App\Services\TestimonialProjectTypeClassifier;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -43,15 +51,22 @@ Artisan::command('seo:gbp-metrics-sync
     ]);
 })->purpose('Alias for legacy seo:gbp-metrics-sync command.');
 
+// Search Console and the crawl files are per site: the property, the OAuth
+// grant, the sitemap and the coverage rows all belong to one tenant, and the
+// console has no request to pick one. Every such command runs once per
+// ACTIVE site, as that site (tenants:run); a site whose domain is not live
+// yet is skipped until it is.
+$perTenant = fn (string $command) => 'tenants:run '.escapeshellarg($command).' --continue-on-error';
+
 // Schedule sitemap regeneration daily
-Schedule::command('sitemap:generate')->daily();
+Schedule::command($perTenant('sitemap:generate'))->daily();
 
 // Then tell Google to re-fetch it. The ping endpoint died in June 2023 and
 // IndexNow never reaches Google, so without this the regenerated sitemap sat
 // unread for days (the Sitemaps report showed 3-6 day old reads). Runs 30
 // minutes after generation; requires the webmasters (write) OAuth scope —
 // the command reports plainly if the token still carries readonly-only.
-Schedule::command('seo:gsc-submit-sitemaps')->dailyAt('00:30')
+Schedule::command($perTenant('seo:gsc-submit-sitemaps'))->dailyAt('00:30')
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-submit-sitemaps failed'))
@@ -177,7 +192,7 @@ Schedule::command('yelp:keep-session')->cron('20 */6 * * *')
 // cleared and the attempt would just burn a Chromium launch.
 Schedule::command('yelp:login')->dailyAt('02:30')
     ->withoutOverlapping()
-    ->when(fn () => Cache::has('yelp.session_dead') && app(\App\Services\YelpBusinessService::class)->canAutoLogin())
+    ->when(fn () => Cache::has('yelp.session_dead') && app(YelpBusinessService::class)->canAutoLogin())
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
 // Google Business Profile: sync new reviews daily at 06:00 AM CT
@@ -197,7 +212,7 @@ Schedule::command('google-business-profile:match-reviews --normalize-google-urls
             return false;
         }
 
-        return \App\Models\ReviewUrl::query()
+        return ReviewUrl::query()
             ->where('platform', 'google')
             ->whereNotNull('external_id')
             ->where('external_id', '!=', '')
@@ -213,7 +228,7 @@ Schedule::command('google-business-profile:match-reviews --normalize-google-urls
 // to switch on. One queued job per site and platform, run as that tenant —
 // see ReviewImport::dispatchScheduledImports().
 Schedule::call(function () {
-    foreach (\App\Support\Reviews\ReviewImport::sources() as $source) {
+    foreach (ReviewImport::sources() as $source) {
         $source::dispatchScheduledImports();
     }
 })->weeklyOn(1, '06:30')
@@ -280,7 +295,7 @@ Schedule::command('seo:intel onpage --budget=1')->cron('30 5-23/2 * * 1,2')
 Schedule::command('citations:control check')->weeklyOn(3, '05:20')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('citations:control inbox')->everyFifteenMinutes()
-    ->when(fn () => app(\App\Services\Citations\VerificationInbox::class)->isConfigured())
+    ->when(fn () => app(VerificationInbox::class)->isConfigured())
     ->withoutOverlapping(10);
 Schedule::command('seo:intel business_data --budget=1')->weekdays()->dailyAt('06:10') // reviews and the local competitors' profiles (~\$0.06/run)
     ->withoutOverlapping(60)
@@ -332,7 +347,7 @@ Schedule::command('seo:clarity-sync --days=3')
     ->onFailure(fn () => logger()->error('Scheduled seo:clarity-sync failed'));
 
 // SEO: weekly GSC week-over-week regression monitor (runs after Mon sync).
-Schedule::command('seo:gsc-monitor --window=7 --markdown')
+Schedule::command($perTenant('seo:gsc-monitor --window=7 --markdown'))
     ->weeklyOn(2, '09:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-monitor.log'))
@@ -516,7 +531,6 @@ Schedule::command('gbp:unresponded-reviews --max-age=24 --notify --notify-recent
     ->appendOutputTo(storage_path('logs/gbp-unresponded-reviews.log'))
     ->when(fn () => config('services.google.business_profile.enabled'));
 
-
 // FAQ: weekly generation for website + AI model training.
 Schedule::command('faq:generate --ai')
     ->weeklyOn(2, '08:00') // Tuesdays 08:00 CT
@@ -534,7 +548,7 @@ Schedule::command('seo:404-indexnow --min-hits=3')
 // SEO: weekly URL Inspection sweep — persists coverage states to
 // gsc_coverage_states and re-pushes "Crawled - currently not indexed" /
 // "Blocked due to access forbidden" pages through IndexNow + cache warm.
-Schedule::command('seo:reindex-problem-pages --auto')
+Schedule::command($perTenant('seo:reindex-problem-pages --auto'))
     ->weeklyOn(2, '09:45')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-reindex-problem-pages.log'))
@@ -542,7 +556,7 @@ Schedule::command('seo:reindex-problem-pages --auto')
     ->when(fn () => config('services.google.search_console.enabled'));
 
 // SEO: weekly Cloudflare/WAF Googlebot-403 probe (detects bot-fight blocks).
-Schedule::command('seo:cloudflare-403-audit --markdown')
+Schedule::command($perTenant('seo:cloudflare-403-audit --markdown'))
     ->weeklyOn(2, '10:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-cloudflare-403-audit.log'))
@@ -551,7 +565,7 @@ Schedule::command('seo:cloudflare-403-audit --markdown')
 // SEO: nightly full-sitemap URL Inspection sweep. One run/day keeps us under
 // the ~2,000 calls/day URL Inspection quota while keeping coverage +
 // enhancements/shopping signals fresh in admin.
-Schedule::command('seo:gsc-inspect-bulk --limit=0 --markdown')
+Schedule::command($perTenant('seo:gsc-inspect-bulk --limit=0 --markdown'))
     ->dailyAt('04:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-inspect-bulk.log'))
@@ -561,7 +575,7 @@ Schedule::command('seo:gsc-inspect-bulk --limit=0 --markdown')
 // SEO: weekly cleanup of coverage rows for URLs that left the sitemap — the
 // sweep can never refresh them, so they pollute /admin/gsc-errors and the
 // autopilot's coverage synthesizers. Runs after the Sunday sitemap regen.
-Schedule::command('seo:gsc-prune-retired')
+Schedule::command($perTenant('seo:gsc-prune-retired'))
     ->weeklyOn(0, '05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-prune-retired.log'))
@@ -569,7 +583,7 @@ Schedule::command('seo:gsc-prune-retired')
 
 // SEO: daily sitemap submission-status check (errors, warnings, stale lastDownloaded).
 $seoAlertEmail = (string) env('SEO_ALERT_EMAIL', '');
-$sitemapStatus = Schedule::command('seo:gsc-sitemap-status --markdown')
+$sitemapStatus = Schedule::command($perTenant('seo:gsc-sitemap-status --markdown'))
     ->dailyAt('05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-sitemap-status.log'))
@@ -579,13 +593,13 @@ if ($seoAlertEmail !== '') {
 }
 
 // SEO: weekly canonical-conflict report + auto re-warm (Google chose different canonical).
-Schedule::command('seo:gsc-canonical-conflicts --warm --markdown')
+Schedule::command($perTenant('seo:gsc-canonical-conflicts --warm --markdown'))
     ->weeklyOn(3, '05:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-canonical-conflicts.log'));
 
 // SEO: daily critical-page health canary (manual-action / security-issue proxy).
-$criticalHealth = Schedule::command('seo:gsc-critical-health --markdown')
+$criticalHealth = Schedule::command($perTenant('seo:gsc-critical-health --markdown'))
     ->dailyAt('05:45')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-critical-health.log'))
@@ -595,7 +609,7 @@ if ($seoAlertEmail !== '') {
 }
 
 // SEO: weekly crawl-budget staleness report (derived from URL Inspection lastCrawlTime).
-Schedule::command('seo:gsc-crawl-budget --markdown')
+Schedule::command($perTenant('seo:gsc-crawl-budget --markdown'))
     ->weeklyOn(3, '05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-gsc-crawl-budget.log'));
@@ -606,7 +620,7 @@ Schedule::command('seo:gsc-crawl-budget --markdown')
 // hours so a newly-published day (and late-arriving revisions to recent days)
 // lands on /admin within hours instead of waiting for a once-daily run. The
 // upsert is keyed on dim_hash, so re-running is idempotent.
-Schedule::command('seo:gsc-sync --days=7')
+Schedule::command($perTenant('seo:gsc-sync --days=7'))
     ->everyThreeHours()
     ->timezone('America/Chicago')
     ->withoutOverlapping(60) // a full paginated pull can take a couple minutes
@@ -665,7 +679,7 @@ Schedule::command('seo:bing-sync')
  */
 $metaPostPlan = function (string $platform): array {
     $week = now('America/Chicago')->format('o-W');
-    $randomizer = new \Random\Randomizer(new \Random\Engine\Mt19937(crc32('meta-social-' . $week)));
+    $randomizer = new Randomizer(new Mt19937(crc32('meta-social-'.$week)));
 
     // One shuffle, split in two: Instagram takes the first pair of days,
     // Facebook the next. Drawing both from the same deal is what makes a
@@ -736,7 +750,7 @@ Schedule::command('social:post --platform=google_business --queue --random-delay
         // week number: stable within the week, but different (and unpredictable)
         // week to week. This is what makes it "2× a week on random days".
         $now = now('America/Chicago');
-        $randomizer = new \Random\Randomizer(new \Random\Engine\Mt19937(crc32($now->format('o-W'))));
+        $randomizer = new Randomizer(new Mt19937(crc32($now->format('o-W'))));
         $chosenDays = array_slice($randomizer->shuffleArray(range(1, 7)), 0, 2);
 
         return in_array($now->dayOfWeekIso, $chosenDays, true);
@@ -751,16 +765,16 @@ Schedule::call(function (): void {
         return;
     }
 
-    $lastPublishedAt = \App\Models\ImageSocialPost::query()
+    $lastPublishedAt = ImageSocialPost::query()
         ->where('platform', 'google_business')
         ->where('status', 'published')
         ->max('published_at');
 
-    if ($lastPublishedAt !== null && \Illuminate\Support\Carbon::parse($lastPublishedAt)->greaterThanOrEqualTo(now()->subDays(6))) {
+    if ($lastPublishedAt !== null && Carbon::parse($lastPublishedAt)->greaterThanOrEqualTo(now()->subDays(6))) {
         return;
     }
 
-    $exitCode = \Illuminate\Support\Facades\Artisan::call('social:post', [
+    $exitCode = Artisan::call('social:post', [
         '--platform' => 'google_business',
         '--queue' => true,
     ]);
@@ -769,7 +783,7 @@ Schedule::call(function (): void {
         logger()->error('GBP safety-net could not queue catch-up post', [
             'last_published_at' => $lastPublishedAt,
             'exit_code' => $exitCode,
-            'output' => trim(\Illuminate\Support\Facades\Artisan::output()),
+            'output' => trim(Artisan::output()),
         ]);
 
         return;
@@ -798,6 +812,7 @@ Artisan::command('gsc:cleanup-gbp-jpegs
     $ageHours = (int) $this->option('age');
     if ($ageHours < 1) {
         $this->error('Age must be at least 1 hour.');
+
         return 1;
     }
 
@@ -816,13 +831,14 @@ Artisan::command('gsc:cleanup-gbp-jpegs
             continue;
         }
 
-        if ($cutoff->greaterThanOrEqualTo(\Illuminate\Support\Carbon::createFromTimestamp($lastModified))) {
+        if ($cutoff->greaterThanOrEqualTo(Carbon::createFromTimestamp($lastModified))) {
             $disk->delete($file);
             $deleted++;
         }
     }
 
     $this->info("Deleted {$deleted} GBP JPG files.");
+
     return 0;
 })->purpose('Delete temporary GBP JPG uploads after a retention window');
 
@@ -869,12 +885,14 @@ Artisan::command('gsc:classify-testimonials
 
             if (! $suggested) {
                 $this->line("#{$t->id} {$t->reviewer_name}: unable to classify");
+
                 continue;
             }
 
             $current = $t->project_type;
             if ($current === $suggested) {
                 $this->line("#{$t->id} {$t->reviewer_name}: unchanged ({$suggested})");
+
                 continue;
             }
 

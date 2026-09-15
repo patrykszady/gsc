@@ -7,6 +7,8 @@ use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\OAuthToken;
 use App\Services\IndexNowService;
+use App\Support\Seo\CrawlFiles;
+use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -47,16 +49,20 @@ class SeoReindexProblemPages extends Command
 
         if (empty($urls)) {
             $this->warn('No URLs provided. Use --urls=https://... or --auto.');
+
             return self::FAILURE;
         }
 
         $urls = array_values(array_unique($urls));
-        $this->info('Submitting ' . count($urls) . ' URL(s):');
-        foreach ($urls as $u) $this->line('  - ' . $u);
+        $this->info('Submitting '.count($urls).' URL(s):');
+        foreach ($urls as $u) {
+            $this->line('  - '.$u);
+        }
 
         if ($this->option('dry-run')) {
             $this->warn('Dry run. Nothing submitted.');
             $this->writeRunReport($urls, [], true, null);
+
             return self::SUCCESS;
         }
 
@@ -71,9 +77,10 @@ class SeoReindexProblemPages extends Command
             $this->line(sprintf('  warm  %3d  %s', $resp->status(), $u));
 
             if ($resp->status() === 410) {
-                $this->line('  skip 410  ' . $u);
+                $this->line('  skip 410  '.$u);
                 $this->excludedGone410[] = $u;
                 $this->markGone($u);
+
                 continue;
             }
 
@@ -84,12 +91,14 @@ class SeoReindexProblemPages extends Command
         if (empty($submitUrls)) {
             $this->warn('No URLs left to submit after warm/410 filtering.');
             $this->writeRunReport($urls, [], false, true);
+
             return self::SUCCESS;
         }
 
         if (! $indexNow->isEnabled()) {
             $this->warn('IndexNow disabled in config; skipping submit.');
             $this->writeRunReport($urls, $submitUrls, false, null);
+
             return self::SUCCESS;
         }
 
@@ -112,37 +121,44 @@ class SeoReindexProblemPages extends Command
         $token = $this->fetchAccessToken();
         if (! $token) {
             $this->warn('Falling back to cached GSC coverage states (token unavailable).');
+
             return $this->cachedProblemUrls();
         }
 
-        $site = (string) ($this->option('site') ?: config('seo.search_console.site_url'));
+        $site = (string) ($this->option('site') ?: SearchConsoleProperty::url());
         $base = str_starts_with($site, 'sc-domain:')
-            ? 'https://' . substr($site, strlen('sc-domain:'))
+            ? 'https://'.substr($site, strlen('sc-domain:'))
             : rtrim($site, '/');
 
         $candidates = [
-            $base . '/',
-            $base . '/services/kitchen-remodeling',
-            $base . '/services/bathroom-remodeling',
-            $base . '/services/home-remodeling',
-            $base . '/services/basement-remodeling',
-            $base . '/services/home-additions',
-            $base . '/areas-served',
+            $base.'/',
+            $base.'/services/kitchen-remodeling',
+            $base.'/services/bathroom-remodeling',
+            $base.'/services/home-remodeling',
+            $base.'/services/basement-remodeling',
+            $base.'/services/home-additions',
+            $base.'/areas-served',
         ];
         AreaServed::query()->orderBy('city')->get()
-            ->each(function ($a) use (&$candidates, $base) { $candidates[] = $base . '/areas-served/' . $a->slug; });
+            ->each(function ($a) use (&$candidates, $base) {
+                $candidates[] = $base.'/areas-served/'.$a->slug;
+            });
 
         $problems = [];
         $checked = 0;
         $cap = 60; // GSC inspection quota is tight (~600/day); cap per run.
         foreach ($candidates as $u) {
-            if ($checked++ >= $cap) break;
+            if ($checked++ >= $cap) {
+                break;
+            }
             usleep(200_000);
             $resp = Http::withToken($token)->timeout(30)->post(
                 'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
                 ['inspectionUrl' => $u, 'siteUrl' => $site]
             );
-            if (! $resp->successful()) continue;
+            if (! $resp->successful()) {
+                continue;
+            }
             $r = $resp->json()['inspectionResult']['indexStatusResult'] ?? [];
             $verdict = $r['verdict'] ?? '?';
             $coverage = $r['coverageState'] ?? '?';
@@ -193,7 +209,7 @@ class SeoReindexProblemPages extends Command
 
         $rows = $this->filterToCurrentSitemap($rows);
 
-        $this->line('  cached problem URLs: ' . count($rows));
+        $this->line('  cached problem URLs: '.count($rows));
 
         return $rows;
     }
@@ -202,12 +218,12 @@ class SeoReindexProblemPages extends Command
      * Keep only URLs still present in the current sitemap so stale removed URLs
      * (e.g. intentional 410 routes) do not get re-submitted forever.
      *
-     * @param array<int,string> $urls
+     * @param  array<int,string>  $urls
      * @return array<int,string>
      */
     protected function filterToCurrentSitemap(array $urls): array
     {
-        $path = public_path('sitemap.xml');
+        $path = CrawlFiles::sitemapPath();
         if (! is_file($path)) {
             return $urls;
         }
@@ -248,23 +264,23 @@ class SeoReindexProblemPages extends Command
     }
 
     /**
-     * @param array<int,string> $detectedUrls
-     * @param array<int,string> $submittedUrls
+     * @param  array<int,string>  $detectedUrls
+     * @param  array<int,string>  $submittedUrls
      */
     protected function writeRunReport(array $detectedUrls, array $submittedUrls, bool $dryRun, ?bool $indexNowAccepted): void
     {
         $lines = [];
         $lines[] = '# Reindex Problem URLs — Last Run';
         $lines[] = '';
-        $lines[] = '- Generated: ' . now()->toIso8601String();
-        $lines[] = '- Mode: ' . ($dryRun ? 'dry-run' : 'live');
-        $lines[] = '- Auto detection: ' . ($this->option('auto') ? 'yes' : 'no');
-        $lines[] = '- Detected URLs: **' . count($detectedUrls) . '**';
-        $lines[] = '- Submitted URLs: **' . count($submittedUrls) . '**';
-        $lines[] = '- Excluded (410): **' . count($this->excludedGone410) . '**';
-        $lines[] = '- Excluded (not in sitemap): **' . count($this->excludedNotInSitemap) . '**';
+        $lines[] = '- Generated: '.now()->toIso8601String();
+        $lines[] = '- Mode: '.($dryRun ? 'dry-run' : 'live');
+        $lines[] = '- Auto detection: '.($this->option('auto') ? 'yes' : 'no');
+        $lines[] = '- Detected URLs: **'.count($detectedUrls).'**';
+        $lines[] = '- Submitted URLs: **'.count($submittedUrls).'**';
+        $lines[] = '- Excluded (410): **'.count($this->excludedGone410).'**';
+        $lines[] = '- Excluded (not in sitemap): **'.count($this->excludedNotInSitemap).'**';
         if ($indexNowAccepted !== null) {
-            $lines[] = '- IndexNow accepted: **' . ($indexNowAccepted ? 'yes' : 'no') . '**';
+            $lines[] = '- IndexNow accepted: **'.($indexNowAccepted ? 'yes' : 'no').'**';
         }
         $lines[] = '';
 
@@ -274,7 +290,7 @@ class SeoReindexProblemPages extends Command
             $lines[] = '_None_';
         } else {
             foreach ($submittedUrls as $u) {
-                $lines[] = '- ' . $u;
+                $lines[] = '- '.$u;
             }
         }
         $lines[] = '';
@@ -285,7 +301,7 @@ class SeoReindexProblemPages extends Command
             $lines[] = '_None_';
         } else {
             foreach (array_values(array_unique($this->excludedGone410)) as $u) {
-                $lines[] = '- ' . $u;
+                $lines[] = '- '.$u;
             }
         }
         $lines[] = '';
@@ -296,20 +312,20 @@ class SeoReindexProblemPages extends Command
             $lines[] = '_None_';
         } else {
             foreach (array_values(array_unique($this->excludedNotInSitemap)) as $u) {
-                $lines[] = '- ' . $u;
+                $lines[] = '- '.$u;
             }
         }
         $lines[] = '';
 
         $relativePath = 'reports/reindex-problem-pages-last.md';
         Storage::disk('local')->put($relativePath, implode("\n", $lines));
-        $this->line('Wrote report: ' . Storage::disk('local')->path($relativePath));
+        $this->line('Wrote report: '.Storage::disk('local')->path($relativePath));
     }
 
     /**
      * Upsert a GSC URL Inspection result and append a history row when state changed.
      *
-     * @param array<string,mixed> $r indexStatusResult payload from Search Console.
+     * @param  array<string,mixed>  $r  indexStatusResult payload from Search Console.
      */
     protected function persistInspection(string $url, array $r): void
     {
@@ -360,9 +376,12 @@ class SeoReindexProblemPages extends Command
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
             $this->error('No Search Console OAuth token. Run: php artisan seo:gsc-auth');
+
             return null;
         }
-        if ($row->hasValidAccessToken()) return $row->access_token;
+        if ($row->hasValidAccessToken()) {
+            return $row->access_token;
+        }
 
         $resp = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
             'client_id' => config('services.google.search_console.client_id'),
@@ -370,11 +389,16 @@ class SeoReindexProblemPages extends Command
             'refresh_token' => $row->refresh_token,
             'grant_type' => 'refresh_token',
         ]);
-        if (! $resp->successful()) { $this->error('Refresh failed: ' . $resp->body()); return null; }
+        if (! $resp->successful()) {
+            $this->error('Refresh failed: '.$resp->body());
+
+            return null;
+        }
         $d = $resp->json();
         $row->access_token = $d['access_token'] ?? null;
         $row->access_token_expires_at = now()->addSeconds(((int) ($d['expires_in'] ?? 3600)) - 120);
         $row->save();
+
         return $row->access_token;
     }
 }

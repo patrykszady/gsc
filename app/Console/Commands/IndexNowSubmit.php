@@ -6,6 +6,7 @@ use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Services\IndexNowService;
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
@@ -70,7 +71,7 @@ class IndexNowSubmit extends Command
 
         $urls = array_unique($urls);
 
-        $this->info('Submitting ' . count($urls) . ' URLs to IndexNow...');
+        $this->info('Submitting '.count($urls).' URLs to IndexNow...');
 
         if ($this->output->isVerbose()) {
             foreach ($urls as $url) {
@@ -157,7 +158,7 @@ class IndexNowSubmit extends Command
      */
     protected function getSitemapUrls(?string $source = null): array
     {
-        $source = $source ?: public_path('sitemap.xml');
+        $source = $source ?: CrawlFiles::sitemapPath();
 
         $xml = $this->loadSitemapXml($source);
         if (! $xml) {
@@ -197,12 +198,14 @@ class IndexNowSubmit extends Command
                 $response = Http::timeout(20)->get($source);
                 if (! $response->successful()) {
                     $this->warn("Failed to fetch sitemap URL: {$source}");
+
                     return null;
                 }
                 $content = $response->body();
             } else {
                 if (! file_exists($source)) {
                     $this->warn("Sitemap file not found: {$source}");
+
                     return null;
                 }
                 $content = file_get_contents($source);
@@ -210,6 +213,7 @@ class IndexNowSubmit extends Command
 
             if (! $content) {
                 $this->warn("Empty sitemap content: {$source}");
+
                 return null;
             }
 
@@ -217,12 +221,14 @@ class IndexNowSubmit extends Command
 
             if (! $xml) {
                 $this->warn("Failed to parse sitemap XML: {$source}");
+
                 return null;
             }
 
             return $xml;
         } catch (\Throwable $e) {
             $this->warn("Error loading sitemap {$source}: {$e->getMessage()}");
+
             return null;
         }
     }

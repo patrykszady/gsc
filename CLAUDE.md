@@ -37,6 +37,28 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
 - **Content for a client site must be supplied by that client.** Do not copy text or images
   from their existing site (see `docs/legal/`).
 
+## Search Console, sitemaps and robots are PER SITE (2026-09-15)
+
+- **Property:** `App\Support\Seo\SearchConsoleProperty::url()` — the default site's comes
+  from env (`GSC_SEARCH_CONSOLE_SITE_URL`); any other site is `sc-domain:{primary_host}`
+  unless its own `config/sites/{slug}/seo.php` (or `sites.settings.config.seo`) sets
+  `search_console.site_url`. Never read `config('…search_console.site_url')` directly.
+- **Grant:** `oauth_tokens` is site-scoped; the `.env` refresh token is the default
+  site's only (`GoogleSearchConsoleService::getRefreshToken()` returns null elsewhere).
+  Connect a new site from ITS admin Platforms page.
+- **Crawl files:** `App\Support\Seo\CrawlFiles` — sitemaps live at
+  `storage/app/private/tenants/{slug}/{sitemap,image-sitemap}.xml`, served by the
+  `/sitemap.xml` and `/image-sitemap.xml` routes for the tenant that answers the host;
+  `/robots.txt` renders `resources/robots/{slug}.txt` (else `default.txt`) with `{{base}}`
+  = the site's own origin. **Nothing goes in `public/`** — nginx serves a static file
+  there to every host of the deployment. `Site::forgetActive()` after flipping `is_active`
+  in-process (the active set is cached per process).
+- **Schedules:** every GSC / sitemap command in `routes/console.php` runs through
+  `$perTenant(...)` = `tenants:run "<cmd>" --continue-on-error` (active sites only, so a
+  site in build is skipped until launch). Queued inspection jobs carry `siteId`.
+- **Legacy:** `jpeterson-design.on-forge.com` is an OLD separate Forge site from the
+  `patrykszady/jpeterson-design` repo, not this app — its own public/robots.txt is not ours.
+
 ## Search Console in the admin (2026-09-12)
 
 The central admin's GSC Errors page reads and writes Search Console through this

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\GoogleSearchConsoleService;
+use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 
 /**
@@ -29,8 +30,8 @@ class SeoGscSubmitSitemaps extends Command
             return self::SUCCESS;
         }
 
-        $site = (string) ($this->option('site') ?: config('services.google.search_console.site_url'));
-        $base = rtrim((string) config('app.url'), '/');
+        $site = (string) ($this->option('site') ?: SearchConsoleProperty::url());
+        $base = SearchConsoleProperty::baseUrl();
 
         $failures = 0;
         foreach (["{$base}/sitemap.xml", "{$base}/image-sitemap.xml"] as $sitemap) {
@@ -53,14 +54,14 @@ class SeoGscSubmitSitemaps extends Command
                 || str_contains((string) ($err['message'] ?? ''), 'search-console:auth');
 
             if ($needsAuth) {
-                $this->warn("  {$sitemap}: " . ($err['message'] ?? 'not authorized'));
+                $this->warn("  {$sitemap}: ".($err['message'] ?? 'not authorized'));
                 $this->warn('  Skipping until `php artisan search-console:auth` grants the write scope.');
 
                 return self::SUCCESS;
             }
 
             $failures++;
-            $this->error("  {$sitemap}: " . ($err['message'] ?? 'unknown error'));
+            $this->error("  {$sitemap}: ".($err['message'] ?? 'unknown error'));
         }
 
         return $failures === 0 ? self::SUCCESS : self::FAILURE;

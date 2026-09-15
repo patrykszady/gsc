@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\Site;
+use App\Support\Tenancy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,8 +28,14 @@ class RunGscInspectUrlsJob implements ShouldQueue
 
     public int $tries = 1;
 
-    /** @param  list<string>  $urls */
-    public function __construct(public array $urls, public string $source = 'console', public ?string $reason = null) {}
+    /**
+     * @param  list<string>  $urls
+     * @param  int|null  $siteId  tenant to run as; defaults to whoever dispatched (the queue has no request)
+     */
+    public function __construct(public array $urls, public string $source = 'console', public ?string $reason = null, public ?int $siteId = null)
+    {
+        $this->siteId ??= Site::current()->id;
+    }
 
     public function handle(): void
     {
@@ -35,11 +43,14 @@ class RunGscInspectUrlsJob implements ShouldQueue
             return;
         }
 
-        Artisan::call('seo:gsc-inspect-bulk', array_filter([
+        $run = fn () => Artisan::call('seo:gsc-inspect-bulk', array_filter([
             '--urls' => $this->urls,
             '--source' => $this->source,
             '--reason' => $this->reason,
             '--limit' => 0,
         ], fn ($v) => $v !== null));
+        $site = Site::find($this->siteId);
+
+        $site ? Tenancy::for($site, $run) : $run();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\AreaServed;
 use App\Models\OAuthToken;
+use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -22,9 +23,11 @@ class SearchConsoleAudit extends Command
     public function handle(): int
     {
         $token = $this->fetchAccessToken();
-        if (! $token) return self::FAILURE;
+        if (! $token) {
+            return self::FAILURE;
+        }
 
-        $site = (string) ($this->option('site') ?: config('seo.search_console.site_url'));
+        $site = (string) ($this->option('site') ?: SearchConsoleProperty::url());
         $days = max(1, (int) $this->option('days'));
         $topN = max(5, (int) $this->option('top'));
 
@@ -54,13 +57,13 @@ class SearchConsoleAudit extends Command
             $this->line('SITEMAPS:');
             foreach ($maps as $m) {
                 $warns = $m['warnings'] ?? 0;
-                $errs  = $m['errors']   ?? 0;
+                $errs = $m['errors'] ?? 0;
                 $submitted = $m['contents'][0]['submitted'] ?? '?';
-                $indexed   = $m['contents'][0]['indexed']   ?? '?';
+                $indexed = $m['contents'][0]['indexed'] ?? '?';
                 $this->line(sprintf('  %-60s submitted=%s indexed=%s warns=%s errs=%s', $m['path'] ?? '', $submitted, $indexed, $warns, $errs));
             }
         } else {
-            $this->warn('Sitemaps API failed: ' . $sm->status() . ' ' . $sm->body());
+            $this->warn('Sitemaps API failed: '.$sm->status().' '.$sm->body());
         }
         $this->newLine();
 
@@ -98,13 +101,17 @@ class SearchConsoleAudit extends Command
         // ----- Detect un-impression-ed city pages -----
         $publicBase = $this->publicBaseUrl($site);
         $allCityUrls = AreaServed::query()->orderBy('city')->get()
-            ->map(fn ($a) => $publicBase . '/areas-served/' . $a->slug)
+            ->map(fn ($a) => $publicBase.'/areas-served/'.$a->slug)
             ->all();
         $impressed = collect($cityRows)->pluck('keys.0')->filter()->all();
         $missing = array_values(array_diff($allCityUrls, $impressed));
-        $this->line('CITY PAGES WITH ZERO IMPRESSIONS (' . count($missing) . ' / ' . count($allCityUrls) . '):');
-        foreach (array_slice($missing, 0, 30) as $u) $this->line('  - ' . $u);
-        if (count($missing) > 30) $this->line('  …and ' . (count($missing) - 30) . ' more');
+        $this->line('CITY PAGES WITH ZERO IMPRESSIONS ('.count($missing).' / '.count($allCityUrls).'):');
+        foreach (array_slice($missing, 0, 30) as $u) {
+            $this->line('  - '.$u);
+        }
+        if (count($missing) > 30) {
+            $this->line('  …and '.(count($missing) - 30).' more');
+        }
         $this->newLine();
 
         // ----- Optional URL inspection -----
@@ -125,10 +132,13 @@ class SearchConsoleAudit extends Command
         $row = OAuthToken::forProvider(SearchConsoleAuth::PROVIDER);
         if (! $row || ! $row->refresh_token) {
             $this->error('No Search Console OAuth token. Run: php artisan search-console:auth');
+
             return null;
         }
 
-        if ($row->hasValidAccessToken()) return $row->access_token;
+        if ($row->hasValidAccessToken()) {
+            return $row->access_token;
+        }
 
         $resp = Http::asForm()->timeout(20)->post('https://oauth2.googleapis.com/token', [
             'client_id' => config('services.google.search_console.client_id'),
@@ -138,7 +148,8 @@ class SearchConsoleAudit extends Command
         ]);
 
         if (! $resp->successful()) {
-            $this->error('Refresh failed: ' . $resp->body());
+            $this->error('Refresh failed: '.$resp->body());
+
             return null;
         }
         $d = $resp->json();
@@ -150,8 +161,8 @@ class SearchConsoleAudit extends Command
     }
 
     /**
-     * @param array<int,string>      $dims
-     * @param array<string,mixed>    $extra
+     * @param  array<int,string>  $dims
+     * @param  array<string,mixed>  $extra
      * @return array<int,array<string,mixed>>
      */
     protected function searchAnalytics(string $token, string $site, string $start, string $end, array $dims, int $rowLimit, array $extra = []): array
@@ -168,7 +179,8 @@ class SearchConsoleAudit extends Command
         $resp = Http::withToken($token)->timeout(60)->post($url, $body);
 
         if (! $resp->successful()) {
-            $this->warn('Search Analytics failed (' . implode(',', $dims) . '): ' . $resp->status() . ' ' . substr($resp->body(), 0, 200));
+            $this->warn('Search Analytics failed ('.implode(',', $dims).'): '.$resp->status().' '.substr($resp->body(), 0, 200));
+
             return [];
         }
 
@@ -178,14 +190,18 @@ class SearchConsoleAudit extends Command
     /** @param array<int,array<string,mixed>> $rows */
     protected function printAnalytics(array $rows, string $label): void
     {
-        if (empty($rows)) { $this->warn('  (no rows)'); return; }
+        if (empty($rows)) {
+            $this->warn('  (no rows)');
+
+            return;
+        }
         foreach ($rows as $r) {
             $key = $r['keys'][0] ?? '';
             $clk = (int) ($r['clicks'] ?? 0);
             $imp = (int) ($r['impressions'] ?? 0);
             $ctr = $imp ? round(($clk / $imp) * 100, 1) : 0;
             $pos = round((float) ($r['position'] ?? 0), 1);
-            $this->line(sprintf('  pos=%-5s ctr=%-5s clicks=%-5d impr=%-6d  %s', $pos, $ctr . '%', $clk, $imp, $key));
+            $this->line(sprintf('  pos=%-5s ctr=%-5s clicks=%-5d impr=%-6d  %s', $pos, $ctr.'%', $clk, $imp, $key));
         }
     }
 
@@ -196,8 +212,9 @@ class SearchConsoleAudit extends Command
     protected function publicBaseUrl(string $site): string
     {
         if (str_starts_with($site, 'sc-domain:')) {
-            return 'https://' . substr($site, strlen('sc-domain:'));
+            return 'https://'.substr($site, strlen('sc-domain:'));
         }
+
         return rtrim($site, '/');
     }
 
@@ -207,16 +224,18 @@ class SearchConsoleAudit extends Command
         // Inspect the homepage, three service pages, and ten priority city pages.
         $base = $this->publicBaseUrl($site);
         $urls = [
-            $base . '/',
-            $base . '/services/kitchen-remodeling',
-            $base . '/services/bathroom-remodeling',
-            $base . '/services/home-remodeling',
-            $base . '/services/basement-remodeling',
-            $base . '/services/home-additions',
-            $base . '/areas-served',
+            $base.'/',
+            $base.'/services/kitchen-remodeling',
+            $base.'/services/bathroom-remodeling',
+            $base.'/services/home-remodeling',
+            $base.'/services/basement-remodeling',
+            $base.'/services/home-additions',
+            $base.'/areas-served',
         ];
         AreaServed::query()->orderBy('city')->limit(10)->get()
-            ->each(function ($a) use (&$urls, $base) { $urls[] = $base . '/areas-served/' . $a->slug; });
+            ->each(function ($a) use (&$urls, $base) {
+                $urls[] = $base.'/areas-served/'.$a->slug;
+            });
 
         $out = [];
         $this->line('URL INSPECTION:');
@@ -226,17 +245,19 @@ class SearchConsoleAudit extends Command
                 ['inspectionUrl' => $u, 'siteUrl' => $site]
             );
             if (! $resp->successful()) {
-                $this->warn('  ' . $u . ' — ' . $resp->status() . ' ' . substr($resp->body(), 0, 100));
+                $this->warn('  '.$u.' — '.$resp->status().' '.substr($resp->body(), 0, 100));
+
                 continue;
             }
             $r = $resp->json()['inspectionResult']['indexStatusResult'] ?? [];
             $verdict = $r['verdict'] ?? '?';
             $cov = $r['coverageState'] ?? '?';
             $crawled = $r['lastCrawlTime'] ?? 'never';
-            $this->line(sprintf('  %-7s %-32s %s', $verdict, substr($cov, 0, 32), $u . '  [crawled ' . $crawled . ']'));
+            $this->line(sprintf('  %-7s %-32s %s', $verdict, substr($cov, 0, 32), $u.'  [crawled '.$crawled.']'));
             $out[] = ['url' => $u, 'verdict' => $verdict, 'coverage' => $cov, 'last_crawled' => $crawled];
             usleep(300_000);
         }
+
         return $out;
     }
 }

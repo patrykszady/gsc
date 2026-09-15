@@ -2,32 +2,35 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
 class SeoImageIndexDiagnostics extends Command
 {
     protected $signature = 'seo:image-index-diagnostics
-        {--main= : Main sitemap path (default public/sitemap.xml)}
-        {--image= : Image sitemap path (default public/image-sitemap.xml)}
+        {--main= : Main sitemap path (default: the generated sitemap for this site)}
+        {--image= : Image sitemap path (default: the image sitemap for this site)}
         {--markdown : Write reports/image-index-diagnostics.md}';
 
     protected $description = 'Diagnose image-indexing coverage and sitemap quality (counts, hosts, duplicates, thumbnail usage).';
 
     public function handle(): int
     {
-        $mainPath = (string) ($this->option('main') ?: public_path('sitemap.xml'));
-        $imagePath = (string) ($this->option('image') ?: public_path('image-sitemap.xml'));
+        $mainPath = (string) ($this->option('main') ?: CrawlFiles::sitemapPath());
+        $imagePath = (string) ($this->option('image') ?: CrawlFiles::imageSitemapPath());
 
         $mainXml = $this->loadXml($mainPath);
         if (! $mainXml) {
             $this->error("Unable to read main sitemap: {$mainPath}");
+
             return self::FAILURE;
         }
 
         $imageXml = $this->loadXml($imagePath);
         if (! $imageXml) {
             $this->error("Unable to read image sitemap: {$imagePath}");
+
             return self::FAILURE;
         }
 
@@ -83,16 +86,16 @@ class SeoImageIndexDiagnostics extends Command
             $lines = [];
             $lines[] = '# Image index diagnostics';
             $lines[] = '';
-            $lines[] = '_Generated: ' . now()->toIso8601String() . '_';
+            $lines[] = '_Generated: '.now()->toIso8601String().'_';
             $lines[] = '';
-            $lines[] = '- Main sitemap URLs: **' . $mainUrls . '**';
-            $lines[] = '- Main sitemap image entries: **' . $mainImageEntries . '**';
-            $lines[] = '- Image sitemap URLs: **' . $imageUrls . '**';
-            $lines[] = '- Image sitemap image entries: **' . $imageImageEntries . '**';
-            $lines[] = '- Unique image URLs: **' . count($uniqueImageLocs) . '**';
-            $lines[] = '- Thumbnail URLs (unique): **' . $thumbCount . '**';
-            $lines[] = '- External-hosted image URLs (unique): **' . $externalCount . '**';
-            $lines[] = '- Missing from image-sitemap vs main: **' . count($missingInImageSitemap) . '**';
+            $lines[] = '- Main sitemap URLs: **'.$mainUrls.'**';
+            $lines[] = '- Main sitemap image entries: **'.$mainImageEntries.'**';
+            $lines[] = '- Image sitemap URLs: **'.$imageUrls.'**';
+            $lines[] = '- Image sitemap image entries: **'.$imageImageEntries.'**';
+            $lines[] = '- Unique image URLs: **'.count($uniqueImageLocs).'**';
+            $lines[] = '- Thumbnail URLs (unique): **'.$thumbCount.'**';
+            $lines[] = '- External-hosted image URLs (unique): **'.$externalCount.'**';
+            $lines[] = '- Missing from image-sitemap vs main: **'.count($missingInImageSitemap).'**';
             $lines[] = '';
             $lines[] = '## Top hosts';
             $lines[] = '';

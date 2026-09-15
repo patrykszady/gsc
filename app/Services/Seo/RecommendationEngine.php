@@ -2,15 +2,25 @@
 
 namespace App\Services\Seo;
 
+use App\Jobs\RunGscInspectBulkJob;
+use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\GscCoverageState;
 use App\Models\SeoAction;
+use App\Models\Testimonial;
+use App\Services\Seo\Intel\IntelRunner;
+use App\Services\Seo\Intel\IntelStore;
+use App\Support\Seo\CrawlFiles;
+use App\Support\SeoStorage;
+use App\Support\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Generates the SEO report's "Priority Actions" and "Where the clicks come
@@ -130,7 +140,7 @@ class RecommendationEngine
             'recommendations' => $recommendations,
         ];
 
-        Storage::disk('local')->put(\App\Support\SeoStorage::path(self::STORAGE_PATH), json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        Storage::disk('local')->put(SeoStorage::path(self::STORAGE_PATH), json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
         if ($this->healed !== []) {
             Log::info('seo:recommendations-refresh self-healed', ['healed' => $this->healed]);
@@ -144,11 +154,11 @@ class RecommendationEngine
      */
     public static function latest(): ?array
     {
-        if (! Storage::disk('local')->exists(\App\Support\SeoStorage::path(self::STORAGE_PATH))) {
+        if (! Storage::disk('local')->exists(SeoStorage::path(self::STORAGE_PATH))) {
             return null;
         }
 
-        $decoded = json_decode((string) Storage::disk('local')->get(\App\Support\SeoStorage::path(self::STORAGE_PATH)), true);
+        $decoded = json_decode((string) Storage::disk('local')->get(SeoStorage::path(self::STORAGE_PATH)), true);
 
         return is_array($decoded) && isset($decoded['action_items'], $decoded['recommendations']) ? $decoded : null;
     }
@@ -176,7 +186,7 @@ class RecommendationEngine
             return;
         }
 
-        \App\Jobs\RunGscInspectBulkJob::dispatch();
+        RunGscInspectBulkJob::dispatch();
         $this->healed[] = 'URL inspection data was stale (>48h) — queued a background sweep.';
     }
 
@@ -186,7 +196,7 @@ class RecommendationEngine
             return;
         }
 
-        $path = public_path('sitemap.xml');
+        $path = CrawlFiles::sitemapPath();
         if (! is_file($path)) {
             return;
         }
@@ -226,7 +236,7 @@ class RecommendationEngine
         }
 
         $since = now()->subDays(28)->toDateString();
-        $pages = \App\Support\Tenancy::table('gsc_query_metrics')
+        $pages = Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->whereNotNull('page')
             ->where('query', 'not like', '%gs construction%')
@@ -257,7 +267,7 @@ class RecommendationEngine
         // social-post picker biases photo freshness toward these towns so the
         // Business Profile shows recent local work where the Maps pack is
         // taking our clicks.
-        $gbpFocusTowns = \App\Support\Tenancy::table('gsc_query_metrics')
+        $gbpFocusTowns = Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->where('page', 'like', '%/areas-served/%')
             ->where('query', 'not like', '%gs construction%')
@@ -274,12 +284,12 @@ class RecommendationEngine
             ->values()
             ->all();
 
-        Storage::disk('local')->put(\App\Support\SeoStorage::path('seo/priority-pages.json'), json_encode([
+        Storage::disk('local')->put(SeoStorage::path('seo/priority-pages.json'), json_encode([
             'generated_at' => now()->toIso8601String(),
             'items' => array_slice($items, 0, 6),
             'gbp_focus_towns' => $gbpFocusTowns,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        \Illuminate\Support\Facades\Cache::forget(\App\Support\Tenancy::cacheKey('priority_area_links'));
+        Cache::forget(Tenancy::cacheKey('priority_area_links'));
     }
 
     /**
@@ -296,12 +306,12 @@ class RecommendationEngine
             if ($mtime !== null && $mtime >= now()->subHours(30)->getTimestamp()) {
                 continue;
             }
-            \App\Jobs\RunSeoChannelSyncJob::dispatch((string) $meta['command']);
+            RunSeoChannelSyncJob::dispatch((string) $meta['command']);
             $queued[] = $key;
         }
 
         if ($queued !== []) {
-            $this->healed[] = 'Queued regeneration of ' . count($queued) . ' stale report(s): ' . implode(', ', $queued) . '.';
+            $this->healed[] = 'Queued regeneration of '.count($queued).' stale report(s): '.implode(', ', $queued).'.';
         }
     }
 
@@ -319,8 +329,8 @@ class RecommendationEngine
 
         // Dedicated job with a realistic timeout — Artisan::queue()'s generic
         // wrapper dies at the worker's 60s limit mid-pull and retries 5×.
-        \App\Jobs\RunSeoChannelSyncJob::dispatch($command, $options);
-        $this->healed[] = "{$table} was stale (latest: " . ($maxDate ?: 'never') . ") — queued {$command}.";
+        RunSeoChannelSyncJob::dispatch($command, $options);
+        $this->healed[] = "{$table} was stale (latest: ".($maxDate ?: 'never').") — queued {$command}.";
     }
 
     // ── Priority Actions (ops layer) ────────────────────────────────────────
@@ -364,7 +374,7 @@ class RecommendationEngine
             return [];
         }
 
-        $path = public_path('sitemap.xml');
+        $path = CrawlFiles::sitemapPath();
         if (! is_file($path)) {
             return [];
         }
@@ -412,7 +422,7 @@ class RecommendationEngine
             }
 
             if ($status >= 400) {
-                $stillBroken[] = $path . ' (' . $status . ')';
+                $stillBroken[] = $path.' ('.$status.')';
 
                 continue;
             }
@@ -420,23 +430,23 @@ class RecommendationEngine
             $crawled = $row->last_crawl_time
                 ? Carbon::parse($row->last_crawl_time)->toFormattedDateString()
                 : 'unknown date';
-            $staleInGoogle[] = $path . ' (Google last crawled ' . $crawled . ')';
+            $staleInGoogle[] = $path.' (Google last crawled '.$crawled.')';
         }
 
         $items = [];
 
         if ($stillBroken !== []) {
-            $items[] = 'URGENT: ' . count($stillBroken) . ' sitemap URL(s) return 404 to Google AND to us right now: '
-                . implode(', ', array_slice($stillBroken, 0, 3))
-                . (count($stillBroken) > 3 ? '…' : '')
-                . ' — a live sitemap URL should never 404; fix the route or remove it from the sitemap.';
+            $items[] = 'URGENT: '.count($stillBroken).' sitemap URL(s) return 404 to Google AND to us right now: '
+                .implode(', ', array_slice($stillBroken, 0, 3))
+                .(count($stillBroken) > 3 ? '…' : '')
+                .' — a live sitemap URL should never 404; fix the route or remove it from the sitemap.';
         }
 
         if ($staleInGoogle !== []) {
-            $items[] = count($staleInGoogle) . ' sitemap URL(s) serve 200 but Google still has an old 404 on file: '
-                . implode(', ', array_slice($staleInGoogle, 0, 3))
-                . (count($staleInGoogle) > 3 ? '…' : '')
-                . ' — nothing is broken; run `php artisan seo:reindex-problem-pages` so Googlebot re-crawls and the coverage state clears.';
+            $items[] = count($staleInGoogle).' sitemap URL(s) serve 200 but Google still has an old 404 on file: '
+                .implode(', ', array_slice($staleInGoogle, 0, 3))
+                .(count($staleInGoogle) > 3 ? '…' : '')
+                .' — nothing is broken; run `php artisan seo:reindex-problem-pages` so Googlebot re-crawls and the coverage state clears.';
         }
 
         return $items;
@@ -449,13 +459,13 @@ class RecommendationEngine
             return [];
         }
 
-        $maxDate = \App\Support\Tenancy::table('gsc_daily_totals')->max('date');
+        $maxDate = Tenancy::table('gsc_daily_totals')->max('date');
         if (! $maxDate) {
             return [];
         }
         $end = Carbon::parse($maxDate);
-        $recent = (int) \App\Support\Tenancy::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(6)->toDateString(), $end->toDateString()])->sum('clicks');
-        $prior = (int) \App\Support\Tenancy::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), (clone $end)->subDays(7)->toDateString()])->sum('clicks');
+        $recent = (int) Tenancy::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(6)->toDateString(), $end->toDateString()])->sum('clicks');
+        $prior = (int) Tenancy::table('gsc_daily_totals')->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), (clone $end)->subDays(7)->toDateString()])->sum('clicks');
 
         if ($prior < 20 || $recent >= $prior * 0.85) {
             return [];
@@ -469,7 +479,7 @@ class RecommendationEngine
         // outlier at 19 and the "collapse" landed on 9, the median. Reverting a
         // title over that would be chasing noise, and at these volumes a single
         // click is ~10%.
-        $eightWeekAvg = (float) \App\Support\Tenancy::table('gsc_daily_totals')
+        $eightWeekAvg = (float) Tenancy::table('gsc_daily_totals')
             ->whereBetween('date', [(clone $end)->subDays(69)->toDateString(), (clone $end)->subDays(14)->toDateString()])
             ->sum('clicks') / 8;
 
@@ -477,7 +487,7 @@ class RecommendationEngine
             return [];
         }
 
-        $losing = \App\Support\Tenancy::table('gsc_query_metrics')
+        $losing = Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [(clone $end)->subDays(13)->toDateString(), $end->toDateString()])
             ->selectRaw('query, SUM(CASE WHEN date >= ? THEN clicks ELSE 0 END) rc, SUM(CASE WHEN date < ? THEN clicks ELSE 0 END) pc', [
                 (clone $end)->subDays(6)->toDateString(),
@@ -493,8 +503,8 @@ class RecommendationEngine
 
         return [
             "Google clicks down {$pct}% week-over-week ({$prior} → {$recent})."
-            . ($losing->isNotEmpty() ? ' Biggest losing queries: ' . $losing->implode(', ') . '.' : '')
-            . ' Decay monitoring flags the affected pages; title reverts happen automatically if an experiment caused it.',
+            .($losing->isNotEmpty() ? ' Biggest losing queries: '.$losing->implode(', ').'.' : '')
+            .' Decay monitoring flags the affected pages; title reverts happen automatically if an experiment caused it.',
         ];
     }
 
@@ -508,7 +518,7 @@ class RecommendationEngine
             }
             $maxDate = DB::table($table)->max('date');
             if (! $maxDate || Carbon::parse($maxDate)->lt(now()->subDays(4))) {
-                $items[] = "{$label} metrics are stale (latest: " . ($maxDate ?: 'never') . '). The daily refresh re-queues the sync when stale — if this persists more than a day, check API credentials.';
+                $items[] = "{$label} metrics are stale (latest: ".($maxDate ?: 'never').'). The daily refresh re-queues the sync when stale — if this persists more than a day, check API credentials.';
             }
         }
 
@@ -531,7 +541,7 @@ class RecommendationEngine
         }
 
         $since = now()->subDays(28)->toDateString();
-        $pages = \App\Support\Tenancy::table('gsc_query_metrics')
+        $pages = Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->whereNotNull('page')
             ->where('query', 'not like', '%gs construction%')
@@ -575,7 +585,7 @@ class RecommendationEngine
         }
 
         $since = now()->subDays(28)->toDateString();
-        $towns = \App\Support\Tenancy::table('gsc_query_metrics')
+        $towns = Tenancy::table('gsc_query_metrics')
             ->where('date', '>=', $since)
             ->where('page', 'like', '%/areas-served/%')
             ->where('query', 'not like', '%gs construction%')
@@ -601,7 +611,7 @@ class RecommendationEngine
 
         return [[
             't' => 'Win the local pack where we rank but get no clicks',
-            'd' => 'Page-1 visibility with zero organic clicks in ' . $towns->implode(', ') . ' — the Maps 3-pack takes those clicks. Push GBP review volume, weekly posts, and photo freshness for these towns.',
+            'd' => 'Page-1 visibility with zero organic clicks in '.$towns->implode(', ').' — the Maps 3-pack takes those clicks. Push GBP review volume, weekly posts, and photo freshness for these towns.',
             'p' => 'now',
         ]];
     }
@@ -633,7 +643,7 @@ class RecommendationEngine
             return [];
         }
 
-        $maxDate = \App\Support\Tenancy::table('gsc_query_metrics')->max('date');
+        $maxDate = Tenancy::table('gsc_query_metrics')->max('date');
         if (! $maxDate) {
             return [];
         }
@@ -642,7 +652,7 @@ class RecommendationEngine
         // Impressions AND impression-weighted position per page. Position is the
         // half that was missing: without it this fired on pages whose ranking had
         // not moved at all.
-        $agg = fn ($from, $to) => \App\Support\Tenancy::table('gsc_query_metrics')
+        $agg = fn ($from, $to) => Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$from, $to])
             ->whereNotNull('page')
             ->selectRaw('page, SUM(impressions) imp, SUM(impressions * position) / NULLIF(SUM(impressions), 0) wpos')
@@ -656,7 +666,7 @@ class RecommendationEngine
         // A page's own typical week, so a drop is judged against its baseline
         // rather than against whatever last week happened to be. Without this,
         // any one-week spike guarantees a "decay" alert the following week.
-        $median8w = \App\Support\Tenancy::table('gsc_query_metrics')
+        $median8w = Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [(clone $end)->subDays(69)->toDateString(), (clone $end)->subDays(14)->toDateString()])
             ->whereNotNull('page')
             ->selectRaw('page, SUM(impressions) / 8 weekly_avg')
@@ -667,8 +677,8 @@ class RecommendationEngine
         // being measured destroys the experiment and the answer it was going to
         // give. Applied-but-not-yet-measured is exactly "in flight".
         $inFlight = Schema::hasTable('seo_actions')
-            ? \App\Models\SeoAction::query()
-                ->where('status', \App\Models\SeoAction::STATUS_APPLIED)
+            ? SeoAction::query()
+                ->where('status', SeoAction::STATUS_APPLIED)
                 ->whereNull('measured_at')
                 ->whereNotNull('target_url')
                 ->pluck('target_url')
@@ -727,8 +737,8 @@ class RecommendationEngine
         return [[
             't' => 'Refresh pages losing visibility',
             'd' => 'Impressions halved week-over-week on: '
-                . $losers->map(fn ($l) => "{$l['path']} (−{$l['drop']})")->implode('; ')
-                . '. Any content update automatically triggers a re-crawl request via the change-aware reindexer.',
+                .$losers->map(fn ($l) => "{$l['path']} (−{$l['drop']})")->implode('; ')
+                .'. Any content update automatically triggers a re-crawl request via the change-aware reindexer.',
             'p' => 'next',
         ]];
     }
@@ -797,8 +807,8 @@ class RecommendationEngine
             return [];
         }
 
-        $recent = (int) \App\Support\Tenancy::table('testimonials')->where('review_date', '>=', now()->subDays(60)->toDateString())->count();
-        $prior = (int) \App\Support\Tenancy::table('testimonials')
+        $recent = (int) Tenancy::table('testimonials')->where('review_date', '>=', now()->subDays(60)->toDateString())->count();
+        $prior = (int) Tenancy::table('testimonials')
             ->whereBetween('review_date', [now()->subDays(120)->toDateString(), now()->subDays(61)->toDateString()])
             ->count();
 
@@ -832,13 +842,13 @@ class RecommendationEngine
             return [];
         }
         $recs = [];
-        $latestScanIds = \App\Support\Tenancy::table('map_pack_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(6)->pluck('scan_id');
-        $leaders = \App\Support\Tenancy::table('map_pack_competitors')->whereIn('scan_id', $latestScanIds)->where('pack_points', '>', 0)->orderByDesc('pack_points')->limit(12)->get();
+        $latestScanIds = Tenancy::table('map_pack_scans')->whereNotNull('scanned_at')->orderByDesc('scanned_at')->limit(6)->pluck('scan_id');
+        $leaders = Tenancy::table('map_pack_competitors')->whereIn('scan_id', $latestScanIds)->where('pack_points', '>', 0)->orderByDesc('pack_points')->limit(12)->get();
         if ($leaders->isEmpty()) {
             return [];
         }
         $ours = Schema::hasTable('review_urls')
-            ? (int) \App\Models\Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
+            ? (int) Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
             : 0;
         $top = $leaders->sortByDesc('reviews')->first();
         if ($top && (int) $top->reviews > $ours + 15) {
@@ -872,17 +882,17 @@ class RecommendationEngine
     {
         $recs = [];
         if (Schema::hasTable('seo_backlink_prospects')) {
-            $gap = \App\Support\Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30))->orderByDesc('competitor_count')->orderByDesc('rank')->limit(5)->get();
+            $gap = Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30))->orderByDesc('competitor_count')->orderByDesc('rank')->limit(5)->get();
             if ($gap->count() >= 3) {
                 $recs[] = [
                     't' => 'Earn the links the competitors share',
-                    'd' => 'Domains that link to two or more of the map-pack / page-one competitors but not to us: ' . $gap->pluck('domain')->implode(', ') . '. Directories, local press and associations in that list are the cheapest authority we can add — the full list is on the SEO page.',
+                    'd' => 'Domains that link to two or more of the map-pack / page-one competitors but not to us: '.$gap->pluck('domain')->implode(', ').'. Directories, local press and associations in that list are the cheapest authority we can add — the full list is on the SEO page.',
                     'p' => 'next',
                 ];
             }
         }
-        if (Schema::hasTable('seo_ai_mentions') && ($day = \App\Support\Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
-            $rows = \App\Support\Tenancy::table('seo_ai_mentions')->where('asked_on', $day)->get();
+        if (Schema::hasTable('seo_ai_mentions') && ($day = Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
+            $rows = Tenancy::table('seo_ai_mentions')->where('asked_on', $day)->get();
             $rate = $rows->count() ? round(100 * $rows->where('mentioned', 1)->count() / $rows->count()) : null;
             if ($rate !== null && $rate < 25) {
                 $named = [];
@@ -895,8 +905,8 @@ class RecommendationEngine
                 $worst = $rows->groupBy('town')->map(fn ($g) => (int) $g->where('mentioned', 1)->count())
                     ->filter(fn ($named) => $named === 0)->keys()->take(3)->implode(', ');
                 $recs[] = [
-                    't' => "AI answer engines name us in {$rate}% of contractor questions" . ($worst !== '' ? " — never in {$worst}" : ''),
-                    'd' => 'Asked for the best kitchen/bathroom contractors in our core towns, ChatGPT, Gemini, Perplexity and Claude mostly name ' . implode(', ', array_slice(array_keys($named), 0, 4)) . '. They cite Google reviews, directory listings and pages that name the town explicitly — review volume, the town service pages and llms.txt are the levers.',
+                    't' => "AI answer engines name us in {$rate}% of contractor questions".($worst !== '' ? " — never in {$worst}" : ''),
+                    'd' => 'Asked for the best kitchen/bathroom contractors in our core towns, ChatGPT, Gemini, Perplexity and Claude mostly name '.implode(', ', array_slice(array_keys($named), 0, 4)).'. They cite Google reviews, directory listings and pages that name the town explicitly — review volume, the town service pages and llms.txt are the levers.',
                     'p' => 'now',
                 ];
             }
@@ -916,21 +926,21 @@ class RecommendationEngine
         if (! Schema::hasTable('seo_intel_findings')) {
             return [[], []];
         }
-        $open = app(\App\Services\Seo\Intel\IntelStore::class)->openFindings(null, 300);
+        $open = app(IntelStore::class)->openFindings(null, 300);
         $labels = [];
-        foreach (app(\App\Services\Seo\Intel\IntelRunner::class)->sources() as $family => $source) {
+        foreach (app(IntelRunner::class)->sources() as $family => $source) {
             $labels[$family] = $source->label();
         }
         $urgent = $open->where('severity', 'critical')->take(4)
-            ->map(fn ($f) => ($labels[$f->family] ?? $f->family) . ': ' . $f->title . ($f->key ? ' (' . $f->key . ')' : '') . ($f->detail ? ' — ' . \Illuminate\Support\Str::limit($f->detail, 160) : ''))
+            ->map(fn ($f) => ($labels[$f->family] ?? $f->family).': '.$f->title.($f->key ? ' ('.$f->key.')' : '').($f->detail ? ' — '.Str::limit($f->detail, 160) : ''))
             ->values()->all();
         $recs = [];
         foreach ($open->whereIn('severity', ['warn', 'info'])->groupBy('family') as $family => $g) {
             $warn = $g->where('severity', 'warn');
             $lead = $warn->first() ?? $g->first();
             $recs[] = [
-                't' => ($labels[$family] ?? $family) . ': ' . $lead->title,
-                'd' => \Illuminate\Support\Str::limit((string) $lead->detail, 200) . ($g->count() > 1 ? ' Plus ' . ($g->count() - 1) . ' more open finding' . ($g->count() > 2 ? 's' : '') . ' from this source on the SEO page.' : ''),
+                't' => ($labels[$family] ?? $family).': '.$lead->title,
+                'd' => Str::limit((string) $lead->detail, 200).($g->count() > 1 ? ' Plus '.($g->count() - 1).' more open finding'.($g->count() > 2 ? 's' : '').' from this source on the SEO page.' : ''),
                 'p' => $warn->isNotEmpty() ? 'now' : 'next',
             ];
         }

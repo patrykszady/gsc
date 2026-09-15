@@ -2,8 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Models\GscDailyTotal;
 use App\Models\GscQueryMetric;
+use App\Models\Site;
 use App\Services\GoogleSearchConsoleService;
+use App\Support\Seo\SearchConsoleProperty;
+use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -42,10 +46,11 @@ class SyncGoogleSearchConsole extends Command
 
         if (! $svc->isConfigured()) {
             $this->error('Search Console not configured. Run: php artisan seo:gsc-auth');
+
             return self::FAILURE;
         }
 
-        $siteUrl = (string) ($this->option('site') ?: config('services.google.search_console.site_url'));
+        $siteUrl = (string) ($this->option('site') ?: SearchConsoleProperty::url());
         $days = max(1, (int) $this->option('days'));
         $lag = max(0, (int) $this->option('lag-days'));
         $limit = (int) $this->option('limit');
@@ -72,7 +77,8 @@ class SyncGoogleSearchConsole extends Command
             );
 
             if ($rows === null) {
-                $this->error('Query failed: ' . json_encode($svc->getLastError()));
+                $this->error('Query failed: '.json_encode($svc->getLastError()));
+
                 return self::FAILURE;
             }
 
@@ -126,7 +132,7 @@ class SyncGoogleSearchConsole extends Command
             // GSC returns up to `limit` rows; loop until fewer come back.
         } while (isset($count) && $count >= $limit);
 
-        $this->info("Done. Inserted={$totalInserted} Updated={$totalUpdated}" . ($dry ? ' (dry-run)' : ''));
+        $this->info("Done. Inserted={$totalInserted} Updated={$totalUpdated}".($dry ? ' (dry-run)' : ''));
 
         // Also capture true site-wide daily totals. The query-dimension pull
         // above silently drops clicks/impressions from anonymized queries, so
@@ -159,7 +165,8 @@ class SyncGoogleSearchConsole extends Command
         );
 
         if ($rows === null) {
-            $this->warn('Daily-totals query failed: ' . json_encode($svc->getLastError()));
+            $this->warn('Daily-totals query failed: '.json_encode($svc->getLastError()));
+
             return;
         }
 
@@ -172,10 +179,11 @@ class SyncGoogleSearchConsole extends Command
 
             if ($dry) {
                 $written++;
+
                 continue;
             }
 
-            \App\Models\GscDailyTotal::updateOrCreate(
+            GscDailyTotal::updateOrCreate(
                 ['date' => $date, 'site_url' => mb_substr($siteUrl, 0, 191)],
                 [
                     'clicks' => (int) ($r['clicks'] ?? 0),
@@ -187,7 +195,7 @@ class SyncGoogleSearchConsole extends Command
             $written++;
         }
 
-        $this->info("Daily totals upserted: {$written} day(s)" . ($dry ? ' (dry-run)' : ''));
+        $this->info("Daily totals upserted: {$written} day(s)".($dry ? ' (dry-run)' : ''));
     }
 
     /**
@@ -214,7 +222,7 @@ class SyncGoogleSearchConsole extends Command
 
         if ($rows === null) {
             // Older properties can reject the dimension; warn, never fail the sync.
-            $this->warn('searchAppearance query failed: ' . json_encode($svc->getLastError()));
+            $this->warn('searchAppearance query failed: '.json_encode($svc->getLastError()));
 
             return;
         }
@@ -227,8 +235,8 @@ class SyncGoogleSearchConsole extends Command
             }
 
             if (! $dry) {
-                \App\Support\Tenancy::table('gsc_search_appearance_metrics')->updateOrInsert(
-                    ['site_id' => \App\Models\Site::current()?->id, 'date' => $date, 'appearance' => mb_substr($appearance, 0, 64)],
+                Tenancy::table('gsc_search_appearance_metrics')->updateOrInsert(
+                    ['site_id' => Site::current()?->id, 'date' => $date, 'appearance' => mb_substr($appearance, 0, 64)],
                     [
                         'clicks' => (int) ($r['clicks'] ?? 0),
                         'impressions' => (int) ($r['impressions'] ?? 0),

@@ -50,3 +50,5 @@ C:\\Users\\*
 /public/*.log
 /public/*.sql
 /public/*.env
+public/image-sitemap.xml
+public/robots.txt

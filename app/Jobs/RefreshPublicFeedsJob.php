@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\Site;
+use App\Support\Tenancy;
 use Hszope\LaravelAigeo\Modules\LlmsTxt\LlmsTxtGenerator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,7 +35,20 @@ class RefreshPublicFeedsJob implements ShouldQueue
         'geo:llms-txt --full' => ['--full' => true],
     ];
 
+    /** @param  int|null  $siteId  tenant whose feeds to refresh; defaults to whoever dispatched (the queue has no request) */
+    public function __construct(public ?int $siteId = null)
+    {
+        $this->siteId ??= Site::current()->id;
+    }
+
     public function handle(): void
+    {
+        $site = Site::find($this->siteId);
+
+        $site ? Tenancy::for($site, fn () => $this->refresh()) : $this->refresh();
+    }
+
+    protected function refresh(): void
     {
         app()->instance('public-feeds.generating', true);
 

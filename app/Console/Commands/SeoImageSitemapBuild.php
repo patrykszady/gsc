@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,25 +20,30 @@ use Illuminate\Support\Facades\Storage;
 class SeoImageSitemapBuild extends Command
 {
     protected $signature = 'seo:image-sitemap-build
-        {--src= : Source sitemap path (default public/sitemap.xml)}
-        {--out= : Destination path (default public/image-sitemap.xml)}
+        {--src= : Source sitemap path (default: the generated sitemap for this site)}
+        {--out= : Destination path (default: the image sitemap for this site)}
         {--markdown : Write reports/image-sitemap-audit.md}';
 
     protected $description = 'Build a dedicated image-sitemap.xml from the main sitemap for GSC image-search tracking.';
 
     public function handle(): int
     {
-        $src = (string) ($this->option('src') ?: public_path('sitemap.xml'));
-        $out = (string) ($this->option('out') ?: public_path('image-sitemap.xml'));
+        $src = (string) ($this->option('src') ?: CrawlFiles::sitemapPath());
+        $out = (string) ($this->option('out') ?: CrawlFiles::imageSitemapPath());
+        if (! is_dir(dirname($out))) {
+            mkdir(dirname($out), 0775, true);
+        }
 
         if (! is_file($src)) {
             $this->error("Source sitemap not found: {$src}");
+
             return self::FAILURE;
         }
 
         $xml = @simplexml_load_string((string) file_get_contents($src));
         if (! $xml) {
             $this->error('Failed to parse source sitemap.');
+
             return self::FAILURE;
         }
 
@@ -49,11 +55,14 @@ class SeoImageSitemapBuild extends Command
 
         foreach ($xml->url ?? [] as $u) {
             $loc = (string) $u->loc;
-            if ($loc === '') continue;
+            if ($loc === '') {
+                continue;
+            }
             $images = $u->children($imageNs)->image ?? null;
             $count = $images ? count($images) : 0;
             if ($count === 0) {
                 $urlsWithoutImages[] = $loc;
+
                 continue;
             }
             $urlsWithImages++;
@@ -64,23 +73,29 @@ class SeoImageSitemapBuild extends Command
                 $iLoc = (string) $img->loc;
                 $iTitle = (string) ($img->title ?? '');
                 $iCaption = (string) ($img->caption ?? '');
-                if ($iLoc === '') continue;
-                $block = '    <image:image>' . "\n";
-                $block .= '      <image:loc>' . htmlspecialchars($iLoc, ENT_XML1) . '</image:loc>' . "\n";
-                if ($iTitle !== '')   $block .= '      <image:title>'   . htmlspecialchars($iTitle,   ENT_XML1) . '</image:title>'   . "\n";
-                if ($iCaption !== '') $block .= '      <image:caption>' . htmlspecialchars($iCaption, ENT_XML1) . '</image:caption>' . "\n";
+                if ($iLoc === '') {
+                    continue;
+                }
+                $block = '    <image:image>'."\n";
+                $block .= '      <image:loc>'.htmlspecialchars($iLoc, ENT_XML1).'</image:loc>'."\n";
+                if ($iTitle !== '') {
+                    $block .= '      <image:title>'.htmlspecialchars($iTitle, ENT_XML1).'</image:title>'."\n";
+                }
+                if ($iCaption !== '') {
+                    $block .= '      <image:caption>'.htmlspecialchars($iCaption, ENT_XML1).'</image:caption>'."\n";
+                }
                 $block .= '    </image:image>';
                 $imageBlocks[] = $block;
             }
-            $entries[] = "  <url>\n    <loc>" . htmlspecialchars($loc, ENT_XML1) . "</loc>\n"
-                . implode("\n", $imageBlocks) . "\n  </url>";
+            $entries[] = "  <url>\n    <loc>".htmlspecialchars($loc, ENT_XML1)."</loc>\n"
+                .implode("\n", $imageBlocks)."\n  </url>";
         }
 
-        $body = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
-            . '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"' . "\n"
-            . '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n"
-            . implode("\n", $entries) . "\n"
-            . '</urlset>' . "\n";
+        $body = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+            .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'."\n"
+            .'        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">'."\n"
+            .implode("\n", $entries)."\n"
+            .'</urlset>'."\n";
 
         file_put_contents($out, $body);
         $this->info(sprintf(
@@ -92,15 +107,17 @@ class SeoImageSitemapBuild extends Command
             $lines = [];
             $lines[] = '# Image sitemap audit';
             $lines[] = '';
-            $lines[] = '_Generated: ' . now()->toIso8601String() . '_';
+            $lines[] = '_Generated: '.now()->toIso8601String().'_';
             $lines[] = '';
             $lines[] = "- URLs with image entries: **{$urlsWithImages}**";
-            $lines[] = '- Total `<image:image>` entries: **' . $totalImages . '**';
-            $lines[] = '- URLs missing images: **' . count($urlsWithoutImages) . '**';
+            $lines[] = '- Total `<image:image>` entries: **'.$totalImages.'**';
+            $lines[] = '- URLs missing images: **'.count($urlsWithoutImages).'**';
             $lines[] = '';
             $lines[] = '## URLs without any image entry (first 50)';
             $lines[] = '';
-            foreach (array_slice($urlsWithoutImages, 0, 50) as $u) $lines[] = "- {$u}";
+            foreach (array_slice($urlsWithoutImages, 0, 50) as $u) {
+                $lines[] = "- {$u}";
+            }
             $lines[] = '';
             $lines[] = '## Next steps';
             $lines[] = '';

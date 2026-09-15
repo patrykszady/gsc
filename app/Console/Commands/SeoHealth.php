@@ -3,8 +3,12 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
-use App\Models\ProjectImage;
+use App\Models\ImagePlatformUpload;
 use App\Models\ImageSocialPost;
+use App\Models\ProjectImage;
+use App\Models\Site;
+use App\Support\Seo\CrawlFiles;
+use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -38,11 +42,11 @@ class SeoHealth extends Command
     public function handle(): int
     {
         $pillars = [
-            'on_page'         => $this->scoreOnPage(),
-            'internal_links'  => $this->scoreInternalLinks(),
-            'gbp_activity'    => $this->scoreGbpActivity(),
-            'local_rankings'  => $this->scoreLocalRankings(),
-            'freshness'       => $this->scoreFreshness(),
+            'on_page' => $this->scoreOnPage(),
+            'internal_links' => $this->scoreInternalLinks(),
+            'gbp_activity' => $this->scoreGbpActivity(),
+            'local_rankings' => $this->scoreLocalRankings(),
+            'freshness' => $this->scoreFreshness(),
         ];
 
         // Average only the pillars that were actually measured. Treating an
@@ -56,6 +60,7 @@ class SeoHealth extends Command
                 'pillars' => $pillars,
                 'generated_at' => now()->toIso8601String(),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
             return self::SUCCESS;
         }
 
@@ -73,7 +78,7 @@ class SeoHealth extends Command
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Pillars                                                           */
+    /*  Pillars */
     /* ------------------------------------------------------------------ */
 
     /** On-page: alt text coverage + AreaServed content depth. */
@@ -182,7 +187,7 @@ class SeoHealth extends Command
         $photoScore = 100;
         $photosLast90 = null;
         if (Schema::hasTable('image_platform_uploads')) {
-            $photosLast90 = \App\Models\ImagePlatformUpload::query()
+            $photosLast90 = ImagePlatformUpload::query()
                 ->where('platform', 'google_places')
                 ->where('uploaded_at', '>=', now()->subDays(90))
                 ->count();
@@ -194,7 +199,7 @@ class SeoHealth extends Command
         // GBP" when there is no GBP connected to neglect.
         $everPosted = ImageSocialPost::query()->where('platform', 'google_business')->exists();
         $everUploaded = Schema::hasTable('image_platform_uploads')
-            && \App\Models\ImagePlatformUpload::query()->where('platform', 'google_places')->exists();
+            && ImagePlatformUpload::query()->where('platform', 'google_places')->exists();
 
         if (! $everPosted && ! $everUploaded) {
             return [
@@ -211,8 +216,8 @@ class SeoHealth extends Command
             'name' => 'GBP activity',
             'score' => $score,
             'metrics' => array_filter([
-                'posts_last_7d'   => $postsLast7,
-                'posts_last_30d'  => $postsLast30,
+                'posts_last_7d' => $postsLast7,
+                'posts_last_30d' => $postsLast30,
                 'photos_last_90d' => $photosLast90,
             ], fn ($v) => $v !== null),
             'fix' => $postScore < 100
@@ -232,14 +237,14 @@ class SeoHealth extends Command
 
         if (Schema::hasTable('seo_rank_snapshots')) {
             // Latest snapshot per (engine, query, location).
-            $latestPerQuery = \App\Support\Tenancy::table('seo_rank_snapshots as r1')
+            $latestPerQuery = Tenancy::table('seo_rank_snapshots as r1')
                 ->select('r1.engine', 'r1.gsc_position as position')
-                ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, "") AND (r2.site_id = ? OR r2.site_id IS NULL))', [\App\Support\Tenancy::currentId()])
+                ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, "") AND (r2.site_id = ? OR r2.site_id IS NULL))', [Tenancy::currentId()])
                 ->get();
 
             if (! $latestPerQuery->isEmpty()) {
                 $total = $latestPerQuery->count();
-                $top3  = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 3)->count();
+                $top3 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 3)->count();
                 $top10 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 10)->count();
                 $top20 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 20)->count();
 
@@ -261,7 +266,7 @@ class SeoHealth extends Command
             $from = now()->subDays(27)->toDateString();
             $to = now()->toDateString();
 
-            $perPage = \App\Support\Tenancy::table('gsc_query_metrics')
+            $perPage = Tenancy::table('gsc_query_metrics')
                 ->whereBetween('date', [$from, $to])
                 ->whereNotNull('page')
                 ->where('page', '!=', '')
@@ -300,16 +305,16 @@ class SeoHealth extends Command
         $metrics = [];
         if ($queryScore !== null && $total > 0) {
             $metrics['queries_tracked'] = $total;
-            $metrics['top_3'] = "{$top3} (" . (int) round($top3 / $total * 100) . '%)';
-            $metrics['top_10'] = "{$top10} (" . (int) round($top10 / $total * 100) . '%)';
-            $metrics['top_20'] = "{$top20} (" . (int) round($top20 / $total * 100) . '%)';
+            $metrics['top_3'] = "{$top3} (".(int) round($top3 / $total * 100).'%)';
+            $metrics['top_10'] = "{$top10} (".(int) round($top10 / $total * 100).'%)';
+            $metrics['top_20'] = "{$top20} (".(int) round($top20 / $total * 100).'%)';
             $metrics['query_tracker_score'] = $queryScore;
         }
         if ($pageScore !== null && $pagesTracked > 0) {
             $metrics['pages_tracked_28d'] = $pagesTracked;
-            $metrics['pages_top_3_28d'] = "{$pagesTop3} (" . (int) round($pagesTop3 / $pagesTracked * 100) . '%)';
-            $metrics['pages_top_10_28d'] = "{$pagesTop10} (" . (int) round($pagesTop10 / $pagesTracked * 100) . '%)';
-            $metrics['pages_top_20_28d'] = "{$pagesTop20} (" . (int) round($pagesTop20 / $pagesTracked * 100) . '%)';
+            $metrics['pages_top_3_28d'] = "{$pagesTop3} (".(int) round($pagesTop3 / $pagesTracked * 100).'%)';
+            $metrics['pages_top_10_28d'] = "{$pagesTop10} (".(int) round($pagesTop10 / $pagesTracked * 100).'%)';
+            $metrics['pages_top_20_28d'] = "{$pagesTop20} (".(int) round($pagesTop20 / $pagesTracked * 100).'%)';
             $metrics['all_pages_score_28d'] = $pageScore;
         }
 
@@ -331,14 +336,14 @@ class SeoHealth extends Command
         // gs.construction's sync timestamps as its own freshness. Non-default
         // tenants look under their own prefix, so a tenant whose pipelines have
         // never run reports "missing" rather than borrowing someone else's.
-        $slug = \App\Models\Site::current()->slug;
+        $slug = Site::current()->slug;
         $isDefault = $slug === (string) config('sites.default', 'gsc');
         $prefix = $isDefault ? '' : "tenants/{$slug}/";
 
         $checks = [
-            'sitemap.xml'           => $isDefault ? public_path('sitemap.xml') : storage_path("app/private/{$prefix}sitemap.xml"),
-            'gsc-sync log'          => storage_path("logs/{$prefix}seo-gsc-sync.log"),
-            'gbp-metrics-sync log'  => storage_path("logs/{$prefix}gbp-metrics-sync.log"),
+            'sitemap.xml' => CrawlFiles::sitemapPath(),
+            'gsc-sync log' => storage_path("logs/{$prefix}seo-gsc-sync.log"),
+            'gbp-metrics-sync log' => storage_path("logs/{$prefix}gbp-metrics-sync.log"),
         ];
 
         $metrics = [];
@@ -376,7 +381,7 @@ class SeoHealth extends Command
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Helpers                                                           */
+    /*  Helpers */
     /* ------------------------------------------------------------------ */
 
     protected function lastLogModified(string $name): string
@@ -385,7 +390,8 @@ class SeoHealth extends Command
         if (! is_file($path)) {
             return 'never';
         }
-        return (int) abs(now()->diffInDays(Carbon::createFromTimestamp(filemtime($path)))) . 'd ago';
+
+        return (int) abs(now()->diffInDays(Carbon::createFromTimestamp(filemtime($path)))).'d ago';
     }
 
     protected function renderReport(int $total, array $pillars): void
@@ -420,25 +426,25 @@ class SeoHealth extends Command
     protected function saveMarkdown(int $total, array $pillars): void
     {
         $md = "# SEO Health\n\n";
-        $md .= 'Run: ' . now()->toIso8601String() . "\n\n";
+        $md .= 'Run: '.now()->toIso8601String()."\n\n";
         $md .= "Overall score: **{$total}/100** ({$this->grade($total)})\n\n";
         $md .= "| Pillar | Score |\n|---|---:|\n";
 
         foreach ($pillars as $pillar) {
-            $md .= '| ' . $pillar['name'] . ' | ' . (int) $pillar['score'] . " |\n";
+            $md .= '| '.$pillar['name'].' | '.(int) $pillar['score']." |\n";
         }
 
         foreach ($pillars as $pillar) {
             $md .= "\n## {$pillar['name']} ({$pillar['score']}/100)\n\n";
             foreach (($pillar['metrics'] ?? []) as $key => $value) {
-                $md .= '- ' . $key . ': ' . $value . "\n";
+                $md .= '- '.$key.': '.$value."\n";
             }
             if (! empty($pillar['fix'])) {
-                $md .= '- Recommended fix: ' . $pillar['fix'] . "\n";
+                $md .= '- Recommended fix: '.$pillar['fix']."\n";
             }
             if (! empty($pillar['notes']) && is_array($pillar['notes'])) {
                 foreach ($pillar['notes'] as $note) {
-                    $md .= '- Note: ' . $note . "\n";
+                    $md .= '- Note: '.$note."\n";
                 }
             }
         }
@@ -453,23 +459,25 @@ class SeoHealth extends Command
             $s >= 80 => 'B — Good',
             $s >= 70 => 'C — Acceptable',
             $s >= 60 => 'D — Needs work',
-            default  => 'F — Critical',
+            default => 'F — Critical',
         };
     }
 
     protected function scoreColor(?int $s): string
     {
         $s = (int) $s;
+
         return match (true) {
             $s >= 80 => 'green',
             $s >= 60 => 'yellow',
-            default  => 'red',
+            default => 'red',
         };
     }
 
     protected function bar(int $s): string
     {
         $filled = (int) round($s / 5);
-        return str_repeat('▓', $filled) . str_repeat('░', 20 - $filled);
+
+        return str_repeat('▓', $filled).str_repeat('░', 20 - $filled);
     }
 }

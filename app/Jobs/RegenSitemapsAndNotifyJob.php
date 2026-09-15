@@ -2,6 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\Site;
+use App\Support\SEO\RecrawlNudger;
+use App\Support\Tenancy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,11 +30,26 @@ class RegenSitemapsAndNotifyJob implements ShouldQueue
 
     public int $tries = 1;
 
+    /** @param  int|null  $siteId  tenant whose sitemaps to regenerate; defaults to whoever dispatched */
+    public function __construct(public ?int $siteId = null)
+    {
+        // The queue has no request: without this a nudge from another tenant's
+        // admin would regenerate and resubmit gs.construction's sitemaps.
+        $this->siteId ??= Site::current()->id;
+    }
+
     public function handle(): void
+    {
+        $site = Site::find($this->siteId);
+
+        $site ? Tenancy::for($site, fn () => $this->regenerate()) : $this->regenerate();
+    }
+
+    protected function regenerate(): void
     {
         // Release the debounce gate FIRST: changes landing while we regenerate
         // queue a fresh cycle instead of being silently absorbed half-done.
-        Cache::forget(\App\Support\SEO\RecrawlNudger::GATE_KEY);
+        Cache::forget(RecrawlNudger::GATE_KEY);
 
         Artisan::call('sitemap:generate');
         Artisan::call('seo:image-sitemap-build');

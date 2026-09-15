@@ -3,11 +3,21 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Models\BlogPost;
+use App\Models\LandingPage;
 use App\Models\Project;
+use App\Models\Site;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
+use App\Services\ZipCodeService;
+use App\Support\LeadLineInfo;
+use App\Support\PermitGuideInfo;
+use App\Support\SEO\AreaSeoPolicy;
+use App\Support\Seo\CrawlFiles;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Sitemap\Sitemap;
 use Spatie\Sitemap\Tags\Url;
 
@@ -19,14 +29,17 @@ class GenerateSitemap extends Command
 
     public function handle(GoogleBusinessProfileService $googleBusinessProfileService): int
     {
-        $baseUrl = rtrim($this->option('url') ?: config('app.url'), '/');
+        // This site's own origin — APP_URL is the default site's, and under
+        // tenants:run the sitemap must carry the tenant's URLs.
+        $baseUrl = rtrim($this->option('url') ?: Site::current()->url(), '/');
         $isLocalBase = str_contains($baseUrl, '127.0.0.1') || str_contains($baseUrl, 'localhost');
         if (app()->environment('production') && $isLocalBase) {
             $this->error("Invalid base URL for production sitemap: {$baseUrl}");
             $this->line('Set APP_URL to your live domain or pass --url=https://gs.construction');
+
             return Command::FAILURE;
         }
-        
+
         $this->info("Generating sitemap with base URL: {$baseUrl}");
 
         // Prepare URL rewriting for images (Storage::url() uses APP_URL which may be localhost)
@@ -151,7 +164,7 @@ class GenerateSitemap extends Command
         // Static pages from routes (non-parameterized GET routes)
         $staticRoutes = $routes->filter(function ($route) use ($excludePatterns, $excludeExact) {
             $uri = $route->uri();
-            
+
             // Skip routes with parameters
             if (str_contains($uri, '{')) {
                 return false;
@@ -171,19 +184,19 @@ class GenerateSitemap extends Command
             if ($routeName !== '' && str_starts_with($routeName, 'gone.')) {
                 return false;
             }
-            
+
             // Skip exact matches (redirects)
             if (in_array($uri, $excludeExact)) {
                 return false;
             }
-            
+
             // Skip excluded patterns
             foreach ($excludePatterns as $pattern) {
                 if (str_contains($uri, $pattern)) {
                     return false;
                 }
             }
-            
+
             // Only GET routes
             return in_array('GET', $route->methods());
         });
@@ -252,7 +265,7 @@ class GenerateSitemap extends Command
             if (! array_key_exists($file, $cache)) {
                 $ts = null;
                 if (is_dir(base_path('.git'))) {
-                    $out = @shell_exec('git -C ' . escapeshellarg(base_path()) . ' log -1 --format=%ct -- ' . escapeshellarg('config/' . $file) . ' 2>/dev/null');
+                    $out = @shell_exec('git -C '.escapeshellarg(base_path()).' log -1 --format=%ct -- '.escapeshellarg('config/'.$file).' 2>/dev/null');
                     $ts = is_string($out) && ctype_digit(trim($out)) ? (int) trim($out) : null;
                 }
                 $cache[$file] = $ts ?: (@filemtime(config_path($file)) ?: time());
@@ -273,6 +286,7 @@ class GenerateSitemap extends Command
                 // Skip entries explicitly held out of the index (safety valve).
                 if (! empty($competitor['noindex'])) {
                     $this->line("  Skipped compare (noindex): /compare/{$slug}");
+
                     continue;
                 }
                 $sitemap->add(
@@ -330,7 +344,7 @@ class GenerateSitemap extends Command
 
         // Add building-permit guide pages (the /permits hub is a parameterless
         // route and is picked up with the static routes above).
-        $permitGuides = \App\Support\PermitGuideInfo::all();
+        $permitGuides = PermitGuideInfo::all();
         if (! empty($permitGuides)) {
             $this->info('Adding permit-guide pages to sitemap...');
             foreach ($permitGuides as $slug => $permitGuide) {
@@ -376,12 +390,13 @@ class GenerateSitemap extends Command
 
         // Add demand-driven landing pages — only published pages that clear the
         // proof gate (shouldIndex). Draft or thin pages are never sitemapped.
-        $landingPages = \App\Models\LandingPage::published()->get();
+        $landingPages = LandingPage::published()->get();
         if ($landingPages->isNotEmpty()) {
             $this->info('Adding landing pages to sitemap...');
             foreach ($landingPages as $lp) {
                 if (! $lp->shouldIndex()) {
                     $this->line("  Skipped landing (not indexable): /remodeling/{$lp->slug}");
+
                     continue;
                 }
                 $sitemap->add(
@@ -396,7 +411,7 @@ class GenerateSitemap extends Command
         }
 
         // Add area-served pages
-        $this->info("Adding area-served pages to sitemap...");
+        $this->info('Adding area-served pages to sitemap...');
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
         $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
@@ -454,7 +469,7 @@ class GenerateSitemap extends Command
 
         // Get latest project updated_at for area lastmod dates
         $latestProjectDate = Project::where('is_published', true)->max('updated_at');
-        $areaLastmod = $latestProjectDate ? \Carbon\Carbon::parse($latestProjectDate) : now();
+        $areaLastmod = $latestProjectDate ? Carbon::parse($latestProjectDate) : now();
 
         foreach ($areas as $area) {
             // Honest per-city lastmod: most recent of the area row itself and any
@@ -468,7 +483,7 @@ class GenerateSitemap extends Command
             // keeps (never advertise a URL we noindex; see AreaSeoPolicy).
             foreach ($areaPages as $page) {
                 $policyPage = $page === '' ? 'home' : $page;
-                if (! \App\Support\SEO\AreaSeoPolicy::shouldIndex($area, $policyPage)) {
+                if (! AreaSeoPolicy::shouldIndex($area, $policyPage)) {
                     continue;
                 }
 
@@ -496,7 +511,7 @@ class GenerateSitemap extends Command
 
             // Lead service line replacement guide — only when official municipal
             // info was verified for this town (otherwise the page is noindexed).
-            if (\App\Support\LeadLineInfo::hasOfficialInfo($area->slug)) {
+            if (LeadLineInfo::hasOfficialInfo($area->slug)) {
                 $sitemap->add(
                     Url::create("{$baseUrl}/areas-served/{$area->slug}/lead-pipe-replacement")
                         ->setLastModificationDate($thisAreaLastmod)
@@ -509,7 +524,7 @@ class GenerateSitemap extends Command
             // Area-specific service pages — only for cities with real local proof.
             if ($includeAreaServicePages) {
                 foreach ($areaServicePages as $servicePage) {
-                    if (! \App\Support\SEO\AreaSeoPolicy::shouldIndex($area, 'service', $servicePage)) {
+                    if (! AreaSeoPolicy::shouldIndex($area, 'service', $servicePage)) {
                         continue;
                     }
 
@@ -542,8 +557,8 @@ class GenerateSitemap extends Command
         }
 
         // Blog posts (published only — drafts are preview-only and noindex).
-        if (\Illuminate\Support\Facades\Schema::hasTable('blog_posts')) {
-            $posts = \App\Models\BlogPost::published()->get();
+        if (Schema::hasTable('blog_posts')) {
+            $posts = BlogPost::published()->get();
             if ($posts->isNotEmpty()) {
                 $this->info('Adding blog posts to sitemap...');
                 $sitemap->add(Url::create("{$baseUrl}/blog")->setLastModificationDate($posts->max('updated_at'))->setChangeFrequency('weekly')->setPriority(0.6));
@@ -554,11 +569,11 @@ class GenerateSitemap extends Command
         }
 
         // Add ZIP-code service-area landing pages
-        $this->info("Adding ZIP-code service-area pages to sitemap...");
+        $this->info('Adding ZIP-code service-area pages to sitemap...');
         // servedZipMap, not getZipMap: ZIPs for towns outside the admin area
         // list are redirected to /service-area, so listing them here would put
         // known redirects in the sitemap.
-        $zipService = app(\App\Services\ZipCodeService::class);
+        $zipService = app(ZipCodeService::class);
         $zipMap = $zipService->servedZipMap();
         $sitemap->add(
             Url::create("{$baseUrl}/service-area")
@@ -585,7 +600,7 @@ class GenerateSitemap extends Command
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority(0.65);
                 if ($zipLastmod) {
-                    $zipUrl->setLastModificationDate(\Carbon\Carbon::parse($zipLastmod));
+                    $zipUrl->setLastModificationDate(Carbon::parse($zipLastmod));
                 }
 
                 foreach ($zipProjects as $project) {
@@ -622,7 +637,7 @@ class GenerateSitemap extends Command
         }
 
         // Add individual review pages
-        $this->info("Adding review pages to sitemap...");
+        $this->info('Adding review pages to sitemap...');
         $testimonials = Testimonial::visible()->orderBy('review_date', 'desc')->get();
         $testimonialCount = 0;
 
@@ -639,7 +654,7 @@ class GenerateSitemap extends Command
         $this->line("  Added {$testimonialCount} review pages");
 
         // Add project type filter pages (e.g., /projects/kitchens)
-        $this->info("Adding project type filter pages to sitemap...");
+        $this->info('Adding project type filter pages to sitemap...');
         $projectTypePages = [
             'projects/kitchens' => 0.8,
             'projects/bathrooms' => 0.8,
@@ -657,22 +672,21 @@ class GenerateSitemap extends Command
             );
             $urlCount++;
         }
-        $this->line("  Added " . count($projectTypePages) . " project type filter pages");
+        $this->line('  Added '.count($projectTypePages).' project type filter pages');
 
         // Add individual project pages with images
-        $this->info("Adding project pages to sitemap...");
+        $this->info('Adding project pages to sitemap...');
         $projects = Project::where('is_published', true)->with(['images', 'timelapses.frames'])->get();
         $projectCount = 0;
         $imageCount = 0;
         $photoPageCount = 0;
-        
 
         foreach ($projects as $project) {
             $url = Url::create("{$baseUrl}/projects/{$project->slug}")
                 ->setLastModificationDate($project->updated_at ?? now())
                 ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                 ->setPriority(0.7);
-            
+
             // Add project images to sitemap for Google Image Search
             foreach ($project->images as $image) {
                 $imageUrl = $resolveImageUrl($image);
@@ -683,7 +697,7 @@ class GenerateSitemap extends Command
                     $url->addImage(
                         url: $imageUrl,
                         caption: $image->alt_text ?? '',
-                        title: $project->title . ($image->is_cover ? ' - Featured Image' : ''),
+                        title: $project->title.($image->is_cover ? ' - Featured Image' : ''),
                     );
                     $imageCount++;
                 }
@@ -710,10 +724,10 @@ class GenerateSitemap extends Command
                     }
                     $url->addImage(
                         url: $frameUrl,
-                        caption: 'Construction progress of ' . $project->title
-                            . ($project->location ? ' in ' . $project->location : '')
-                            . ' — timelapse frame ' . ($fi + 1) . ' of ' . $tlTotal . '.',
-                        title: $project->title . ' — Construction Timelapse',
+                        caption: 'Construction progress of '.$project->title
+                            .($project->location ? ' in '.$project->location : '')
+                            .' — timelapse frame '.($fi + 1).' of '.$tlTotal.'.',
+                        title: $project->title.' — Construction Timelapse',
                     );
                     $imageCount++;
                 }
@@ -726,7 +740,7 @@ class GenerateSitemap extends Command
             // Add individual photo pages for each project image (using slugs)
             foreach ($project->images as $image) {
                 $imageSlug = $image->slug ?: $image->id; // Fallback to ID if no slug
-                
+
                 // Base photo page (canonical)
                 $photoUrl = Url::create("{$baseUrl}/projects/{$project->slug}/photos/{$imageSlug}")
                     ->setLastModificationDate($image->updated_at ?? $project->updated_at ?? now())
@@ -741,14 +755,14 @@ class GenerateSitemap extends Command
                     $photoUrl->addImage(
                         url: $photoImageUrl,
                         caption: $image->alt_text ?? '',
-                        title: $project->title . ' - Photo',
+                        title: $project->title.' - Photo',
                     );
                 }
 
                 $sitemap->add($photoUrl);
                 $urlCount++;
                 $photoPageCount++;
-                
+
             }
         }
         $this->line("  Added {$projectCount} project pages ({$imageCount} images in sitemap)");
@@ -756,7 +770,7 @@ class GenerateSitemap extends Command
 
         // Write to storage first, then copy to public (for Forge zero-downtime deployments)
         $storagePath = storage_path('app/sitemap.xml');
-        $publicPath = public_path('sitemap.xml');
+        $publicPath = CrawlFiles::sitemapPath();
 
         $sitemap->writeToFile($storagePath);
 
@@ -769,9 +783,9 @@ class GenerateSitemap extends Command
         }
 
         $this->newLine();
-        $this->info("=== Summary ===");
+        $this->info('=== Summary ===');
         $this->info("Total URLs: {$urlCount}");
-        $this->info("  - Static pages: " . $staticRoutes->count());
+        $this->info('  - Static pages: '.$staticRoutes->count());
         $this->info("  - Area pages: {$areaCount}");
         $this->info("  - Testimonial pages: {$testimonialCount}");
         $this->info("  - Project pages: {$projectCount} ({$imageCount} images)");

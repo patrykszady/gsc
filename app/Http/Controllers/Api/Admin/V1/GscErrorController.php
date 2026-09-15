@@ -10,6 +10,8 @@ use App\Models\GscCoverageState;
 use App\Models\GscRichResultIssue;
 use App\Models\Tracked404;
 use App\Services\GoogleSearchConsoleService;
+use App\Support\Seo\CrawlFiles;
+use App\Support\Seo\SearchConsoleProperty;
 use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -198,7 +200,7 @@ class GscErrorController extends Controller
         // What robots.txt keeps Google out of — by rule, since a blocked URL
         // is never in the sitemap to be inspected.
         $disallow = [];
-        $robots = is_file(public_path('robots.txt')) ? (string) file_get_contents(public_path('robots.txt')) : '';
+        $robots = CrawlFiles::robots();
         if (preg_match_all('/^Disallow:\s*(\S+)/mi', $robots, $m)) {
             $disallow = array_values(array_unique($m[1]));
         }
@@ -315,7 +317,7 @@ class GscErrorController extends Controller
         }
 
         $service = app(GoogleSearchConsoleService::class);
-        $site = (string) config('services.google.search_console.site_url');
+        $site = (string) SearchConsoleProperty::url();
 
         UrlInspectionQuota::consume();
         $result = $service->inspectUrl($site, $data['url']);
@@ -367,7 +369,7 @@ class GscErrorController extends Controller
     public function sitemaps(): JsonResponse
     {
         $service = app(GoogleSearchConsoleService::class);
-        $site = (string) config('services.google.search_console.site_url');
+        $site = (string) SearchConsoleProperty::url();
         $list = $service->listSitemaps($site);
 
         return $this->itemResponse([
@@ -393,7 +395,7 @@ class GscErrorController extends Controller
     {
         $data = $request->validate(['url' => ['required', 'url', 'max:2000']]);
         $service = app(GoogleSearchConsoleService::class);
-        $ok = $service->submitSitemap((string) config('services.google.search_console.site_url'), $data['url']);
+        $ok = $service->submitSitemap((string) SearchConsoleProperty::url(), $data['url']);
 
         return $this->itemResponse(['ok' => $ok, 'message' => $ok ? 'Submitted — Google will re-read it shortly.' : ($service->getLastError()['message'] ?? 'Search Console refused the sitemap.')], $ok ? 200 : 502);
     }
@@ -403,7 +405,7 @@ class GscErrorController extends Controller
     {
         $data = $request->validate(['url' => ['required', 'url', 'max:2000']]);
         $service = app(GoogleSearchConsoleService::class);
-        $ok = $service->deleteSitemap((string) config('services.google.search_console.site_url'), $data['url']);
+        $ok = $service->deleteSitemap((string) SearchConsoleProperty::url(), $data['url']);
 
         return $this->itemResponse(['ok' => $ok, 'message' => $ok ? 'Removed from Search Console.' : ($service->getLastError()['message'] ?? 'Search Console refused.')], $ok ? 200 : 502);
     }
@@ -655,7 +657,7 @@ class GscErrorController extends Controller
     /** @return array<string, true> sitemap URLs as a lookup set */
     protected function sitemapUrlSet(): array
     {
-        $path = public_path('sitemap.xml');
+        $path = CrawlFiles::sitemapPath();
         if (! is_file($path)) {
             return [];
         }

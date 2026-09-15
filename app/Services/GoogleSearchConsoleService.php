@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\OAuthToken;
+use App\Models\Site;
+use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -50,14 +52,21 @@ class GoogleSearchConsoleService
             && ! empty($cfg['client_id'])
             && ! empty($cfg['client_secret'])
             && $this->getRefreshToken()
-            && ! empty($cfg['site_url']);
+            && SearchConsoleProperty::url() !== '';
     }
 
     public function getRefreshToken(): ?string
     {
+        // oauth_tokens rows are site-scoped, so this is the current site's grant.
         $dbToken = OAuthToken::forProvider(self::PROVIDER);
         if ($dbToken?->refresh_token) {
             return $dbToken->refresh_token;
+        }
+
+        // The .env token is gs.construction's. Another site without its own
+        // grant is simply not connected — it must never read GS's property.
+        if (Site::current()->slug !== (string) config('sites.default', 'gsc')) {
+            return null;
         }
 
         return config('services.google.search_console.refresh_token') ?: null;

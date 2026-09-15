@@ -67,33 +67,44 @@ run_shell() {
 }
 
 verify_sitemap() {
-    local sitemap="public/sitemap.xml"
+    # One sitemap per site, under storage (shared across releases); nothing in
+    # public/, where nginx would hand one file to every host. Every generated
+    # one is checked; at least the default site's must exist.
+    local found=0 sitemap
+    for sitemap in storage/app/private/tenants/*/sitemap.xml; do
+        [[ -f "$sitemap" ]] || continue
+        found=1
 
-    [[ -f "$sitemap" ]] || {
-        echo "sitemap.xml missing"
+        local first_url
+        first_url="$(grep -oP '(?<=<loc>)[^<]+' "$sitemap" | head -1)"
+
+        [[ -n "$first_url" ]] || {
+            echo "$sitemap has no <loc> entries"
+            return 1
+        }
+
+        # Homepage canonical is slashless: https://gs.construction
+        if [[ "$first_url" =~ /$ ]]; then
+            echo "$sitemap: first URL has trailing slash: $first_url"
+            return 1
+        fi
+
+        local non_html_count
+        non_html_count="$(grep -oP '(?<=<loc>)[^<]+' "$sitemap" | grep -Ec '\\.(txt|json|xml|webmanifest|ico)$' || true)"
+        if [[ "$non_html_count" -gt 0 ]]; then
+            echo "$sitemap contains non-HTML URLs: $non_html_count"
+            return 1
+        fi
+    done
+
+    [[ "$found" -eq 1 ]] || {
+        echo "no generated sitemap under storage/app/private/tenants/"
         return 1
     }
-
-    local first_url
-    first_url="$(grep -oP '(?<=<loc>)[^<]+' "$sitemap" | head -1)"
-
-    [[ -n "$first_url" ]] || {
-        echo "sitemap.xml has no <loc> entries"
+    [[ -f public/sitemap.xml || -f public/robots.txt ]] && {
+        echo "static crawl file left in public/ — it would be served to every host"
         return 1
     }
-
-    # Homepage canonical is slashless: https://gs.construction
-    if [[ "$first_url" =~ /$ ]]; then
-        echo "first sitemap URL has trailing slash: $first_url"
-        return 1
-    fi
-
-    local non_html_count
-    non_html_count="$(grep -oP '(?<=<loc>)[^<]+' "$sitemap" | grep -Ec '\\.(txt|json|xml|webmanifest|ico)$' || true)"
-    if [[ "$non_html_count" -gt 0 ]]; then
-        echo "sitemap contains non-HTML URLs: $non_html_count"
-        return 1
-    fi
 
     return 0
 }
@@ -145,11 +156,13 @@ if [[ "$MODE" == "default" || "$MODE" == "syncs" || "$MODE" == "all" ]]; then
     echo "" | tee -a "$LOG"
     echo "═══ Tier 2: Syncs (pull external → DB) ═══" | tee -a "$LOG"
 
-    # Always regenerate sitemap after deploy and fail fast on malformed output.
-    run "Sitemap generate"             sitemap:generate
+    # Always regenerate the sitemaps after deploy — one per active site, as
+    # that site — and fail fast on malformed output.
+    run "Sitemap generate"             tenants:run sitemap:generate --continue-on-error
+    run "Image sitemap build"          tenants:run seo:image-sitemap-build --continue-on-error
     run_shell "Sitemap validate"       verify_sitemap
 
-    run "GSC sync"                     seo:gsc-sync
+    run "GSC sync"                     tenants:run seo:gsc-sync --continue-on-error
     run "Bing sync"                    seo:bing-sync
     run "Clarity sync"                 seo:clarity-sync --days=3
     run "GBP metrics sync"             gbp:metrics-sync

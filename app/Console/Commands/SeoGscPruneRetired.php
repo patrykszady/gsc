@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\GscCoverageState;
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,7 @@ class SeoGscPruneRetired extends Command
 
     public function handle(): int
     {
-        $path = public_path('sitemap.xml');
+        $path = CrawlFiles::sitemapPath();
         if (! is_file($path)) {
             $this->error('sitemap.xml not found — refusing to prune against an empty URL set.');
 
@@ -60,7 +61,7 @@ class SeoGscPruneRetired extends Command
                 $deleted += GscCoverageState::query()->whereIn('id', $ids)->delete();
             });
 
-        $this->info(($dry ? '[DRY RUN] Would prune ' : 'Pruned ') . $deleted . ' retired coverage row(s); sitemap has ' . count($inSitemap) . ' URLs.');
+        $this->info(($dry ? '[DRY RUN] Would prune ' : 'Pruned ').$deleted.' retired coverage row(s); sitemap has '.count($inSitemap).' URLs.');
 
         if (! $dry && $deleted > 0) {
             Log::info('seo:gsc-prune-retired removed retired coverage rows', [

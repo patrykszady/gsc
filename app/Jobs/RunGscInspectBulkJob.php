@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Models\Site;
+use App\Support\Tenancy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,11 +32,20 @@ class RunGscInspectBulkJob implements ShouldQueue
     /** Never re-run a half-finished sweep automatically. */
     public int $tries = 1;
 
+    /** @param  int|null  $siteId  tenant to run as; defaults to whoever dispatched */
+    public function __construct(public ?int $siteId = null)
+    {
+        // The queue has no request, so Site::current() there is the DEFAULT
+        // site: a refresh queued from another tenant's admin would sweep
+        // gs.construction's sitemap against gs.construction's property.
+        $this->siteId ??= Site::current()->id;
+    }
+
     public function handle(): void
     {
-        Artisan::call('seo:gsc-inspect-bulk', [
-            '--limit' => 0,
-            '--markdown' => true,
-        ]);
+        $run = fn () => Artisan::call('seo:gsc-inspect-bulk', ['--limit' => 0, '--markdown' => true]);
+        $site = Site::find($this->siteId);
+
+        $site ? Tenancy::for($site, $run) : $run();
     }
 }

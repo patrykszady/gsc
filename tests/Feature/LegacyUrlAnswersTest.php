@@ -110,7 +110,7 @@ class LegacyUrlAnswersTest extends TestCase
 
     public function test_the_geo_admin_screens_are_kept_from_crawlers_but_the_public_answers_feed_is_not(): void
     {
-        $robots = (string) file_get_contents(public_path('robots.txt'));
+        $robots = \App\Support\Seo\CrawlFiles::robots();
 
         $this->assertSame(3, substr_count($robots, "Disallow: /geo/\n"));
         $this->assertSame(3, substr_count($robots, "Allow: /geo/answers.json\n"));

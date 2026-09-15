@@ -1,0 +1,26 @@
+# Robots.txt — rendered per site by App\Support\Seo\CrawlFiles.
+# A site without its own resources/robots/{slug}.txt gets this one:
+# everything public is crawlable, the app's private paths are not, and the
+# sitemaps point at this site's own host.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin-legacy
+Disallow: /admin-legacy/
+Disallow: /login
+Disallow: /logout
+Disallow: /register
+Disallow: /password/
+Disallow: /livewire/
+Disallow: /api/
+Disallow: /horizon
+Disallow: /telescope
+Disallow: /_debugbar/
+Disallow: /*_page=
+Disallow: /storage/
+Disallow: /vendor/
+
+Sitemap: {{base}}/sitemap.xml
+Sitemap: {{base}}/image-sitemap.xml

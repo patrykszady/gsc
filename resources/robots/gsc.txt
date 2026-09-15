@@ -1,5 +1,6 @@
 # Robots.txt for GS Construction
-# https://gs.construction/
+# {{base}}/
+# Rendered per site by App\Support\Seo\CrawlFiles: {{base}} is this site's own origin.
 
 # ============================================
 # SEARCH ENGINES - FULLY ALLOWED (SEO Priority)
@@ -144,16 +145,16 @@ Disallow: /node_modules/
 Disallow: /storage/
 
 # Sitemap location
-Sitemap: https://gs.construction/sitemap.xml
-Sitemap: https://gs.construction/image-sitemap.xml
+Sitemap: {{base}}/sitemap.xml
+Sitemap: {{base}}/image-sitemap.xml
 
 # LLM context files (AEO/GEO) — informational only.
 # Note: Googlebot does not understand non-standard fields like "LLMs-Txt:"
 # or "AI-Feed:" and will flag them as syntax errors. Keep them as comments.
 # https://llmstxt.org/
-# llms.txt:      https://gs.construction/llms.txt
-# llms-full.txt: https://gs.construction/llms-full.txt
-# ai-feed.json:  https://gs.construction/ai-feed.json
+# llms.txt:      {{base}}/llms.txt
+# llms-full.txt: {{base}}/llms-full.txt
+# ai-feed.json:  {{base}}/ai-feed.json
 
 # ============================================
 # SPAM/SEO BOTS - BLOCKED

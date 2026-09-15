@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AreaServed;
 use App\Services\ZipCodeService;
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -129,25 +130,19 @@ class CanonicalRoutesTest extends TestCase
         $resp->assertJsonPath('@type', 'FAQPage');
     }
 
-    public function test_static_seo_files_served(): void
+    public function test_the_crawl_files_are_served_per_site(): void
     {
-        // Route-served — the framework can assert this over HTTP.
         $this->get('/llms.txt')->assertStatus(200);
 
-        // robots.txt and sitemap.xml are STATIC files: the web server serves
-        // them from public/, and Laravel's test client only dispatches routes,
-        // so an HTTP assertion here 404s in every environment — which is why
-        // this test was red on every run. Assert presence on disk instead.
-        $this->assertFileExists(public_path('robots.txt'));
+        // robots.txt and the sitemaps are routes now, rendered for the tenant
+        // that answers the host — they used to be static files that nginx
+        // handed to every host of this deployment.
+        $this->get('/robots.txt')->assertOk()->assertHeader('Content-Type', 'text/plain; charset=UTF-8')->assertSee('Sitemap: '.\App\Models\Site::current()->url('sitemap.xml'), false);
 
-        // sitemap.xml is additionally a gitignored deploy artifact (written by
-        // `php artisan sitemap:generate`), so a fresh checkout legitimately
-        // lacks it. Skip loudly rather than fail clean environments.
-        if (! file_exists(public_path('sitemap.xml'))) {
-            $this->markTestSkipped('public/sitemap.xml not generated in this environment (deploy artifact)');
-        }
-
-        $this->assertFileExists(public_path('sitemap.xml'));
+        $path = CrawlFiles::sitemapPath();
+        @mkdir(dirname($path), 0775, true);
+        file_put_contents($path, '<?xml version="1.0"?><urlset><url><loc>'.url('/').'</loc></url></urlset>');
+        $this->get('/sitemap.xml')->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
     }
 
     public function test_legacy_service_urls_redirect(): void

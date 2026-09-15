@@ -2,9 +2,12 @@
 
 namespace App\Livewire\Admin;
 
+use App\Jobs\RunGscInspectBulkJob;
 use App\Models\GscCoverageState;
 use App\Models\GscRichResultIssue;
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -60,11 +63,11 @@ class GscErrors extends Component
         try {
             // Dedicated job (not Artisan::queue) so the long sweep gets its own
             // timeout instead of the worker's 60s default. See RunGscInspectBulkJob.
-            \App\Jobs\RunGscInspectBulkJob::dispatch();
+            RunGscInspectBulkJob::dispatch();
 
             $this->flash = 'Queued full sitemap inspection in background. Data will update as the job writes new results.';
         } catch (\Throwable $e) {
-            $this->flash = 'Failed to queue background refresh: ' . $e->getMessage();
+            $this->flash = 'Failed to queue background refresh: '.$e->getMessage();
         }
     }
 
@@ -103,7 +106,7 @@ class GscErrors extends Component
     /** @return array<string, true> sitemap URLs as a lookup set */
     protected function sitemapUrlSet(): array
     {
-        $path = public_path('sitemap.xml');
+        $path = CrawlFiles::sitemapPath();
         if (! is_file($path)) {
             return [];
         }
@@ -123,7 +126,7 @@ class GscErrors extends Component
 
     public function exportCsv(): StreamedResponse
     {
-        $filename = 'gsc-errors-' . now()->format('Ymd-His') . '.csv';
+        $filename = 'gsc-errors-'.now()->format('Ymd-His').'.csv';
         $rows = $this->filteredQuery()
             ->orderByRaw('COALESCE(last_changed_at, inspected_at) DESC')
             ->limit(5000)
@@ -212,7 +215,7 @@ class GscErrors extends Component
             'pass' => max(0, (int) $tracked - (int) $problem),
             'retired' => $retired,
             'latest_inspected' => ($latest = GscCoverageState::query()->max('inspected_at'))
-                ? \Illuminate\Support\Carbon::parse($latest)->diffForHumans()
+                ? Carbon::parse($latest)->diffForHumans()
                 : null,
             'sitemap_urls' => count($sitemapUrls),
         ];
@@ -356,7 +359,7 @@ class GscErrors extends Component
             'affected_urls' => $affected,
             'product_issues' => $product,
             'shopping_issues' => $shopping,
-            'latest_inspected' => $latest ? \Illuminate\Support\Carbon::parse((string) $latest)->diffForHumans() : null,
+            'latest_inspected' => $latest ? Carbon::parse((string) $latest)->diffForHumans() : null,
             'by_type' => $byType,
         ];
     }
@@ -380,7 +383,7 @@ class GscErrors extends Component
         }
 
         if ($this->search !== '') {
-            $term = '%' . str_replace('%', '\\%', strtolower(trim($this->search))) . '%';
+            $term = '%'.str_replace('%', '\\%', strtolower(trim($this->search))).'%';
             $query->where(function ($q) use ($term) {
                 $q->whereRaw('LOWER(url) like ?', [$term])
                     ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', [$term])
@@ -414,11 +417,13 @@ class GscErrors extends Component
                     ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%robots%'])
                     ->orWhereRaw('LOWER(COALESCE(page_fetch_state, "")) like ?', ['%robots%']);
             });
+
             return;
         }
 
         if ($issueFilter === 'not_indexed') {
             $query->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%']);
+
             return;
         }
 
@@ -427,11 +432,13 @@ class GscErrors extends Component
                 $q->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%'])
                     ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%canonical%']);
             });
+
             return;
         }
 
         if ($issueFilter === 'soft_404') {
             $query->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%']);
+
             return;
         }
 
@@ -442,6 +449,7 @@ class GscErrors extends Component
                     ->orWhereRaw('LOWER(COALESCE(page_fetch_state, "")) like ?', ['%not found%'])
                     ->orWhereRaw('LOWER(COALESCE(page_fetch_state, "")) like ?', ['%redirect%']);
             });
+
             return;
         }
 
@@ -461,7 +469,7 @@ class GscErrors extends Component
 
     protected function classifyIssue(string $coverageState, string $pageFetchState, string $verdict): string
     {
-        $text = strtolower(trim($coverageState . ' ' . $pageFetchState));
+        $text = strtolower(trim($coverageState.' '.$pageFetchState));
 
         if ($text === '' && strtoupper($verdict) === 'PASS') {
             return 'Indexed';

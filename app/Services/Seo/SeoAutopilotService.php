@@ -4,13 +4,24 @@ namespace App\Services\Seo;
 
 use App\Models\AreaServed;
 use App\Models\GscCoverageState;
+use App\Models\LandingPage;
 use App\Models\Project;
 use App\Models\SeoAction;
+use App\Models\SeoPathOverride;
+use App\Services\GoogleBusinessProfileService;
+use App\Services\Seo\Appliers\ContentRefreshApplier;
 use App\Services\Seo\Appliers\CreatePageApplier;
+use App\Services\Seo\Appliers\GbpDescriptionApplier;
 use App\Services\Seo\Appliers\LlmsRegenApplier;
 use App\Services\Seo\Appliers\ReindexApplier;
 use App\Services\Seo\Appliers\TitleMetaApplier;
+use App\Services\Seo\Intel\IntelStore;
 use App\Support\SEO\AreaSeoPolicy;
+use App\Support\Seo\CrawlFiles;
+use App\Support\SEO\ServicePageTarget;
+use App\Support\Tenancy;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -51,21 +62,20 @@ class SeoAutopilotService
     ];
 
     public function __construct(
-        private readonly TitleMetaGenerator $titles = new TitleMetaGenerator(),
-        private readonly MetricProbe $probe = new MetricProbe(),
-    ) {
-    }
+        private readonly TitleMetaGenerator $titles = new TitleMetaGenerator,
+        private readonly MetricProbe $probe = new MetricProbe,
+    ) {}
 
-    /** @return array<string,\App\Services\Seo\ActionApplier> keyed by category */
+    /** @return array<string,ActionApplier> keyed by category */
     private function appliers(): array
     {
         return [
-            'title_meta' => new TitleMetaApplier(),
-            'reindex' => new ReindexApplier(),
-            'llms_regen' => new LlmsRegenApplier(),
-            'create_page' => new CreatePageApplier(),
-            'content_refresh' => new \App\Services\Seo\Appliers\ContentRefreshApplier(),
-            'gbp_description' => new \App\Services\Seo\Appliers\GbpDescriptionApplier(),
+            'title_meta' => new TitleMetaApplier,
+            'reindex' => new ReindexApplier,
+            'llms_regen' => new LlmsRegenApplier,
+            'create_page' => new CreatePageApplier,
+            'content_refresh' => new ContentRefreshApplier,
+            'gbp_description' => new GbpDescriptionApplier,
         ];
     }
 
@@ -103,7 +113,7 @@ class SeoAutopilotService
         if (! config('seo.autopilot.gbp_description_enabled', true)) {
             return 0; // off in the test environment: this step talks to Google and Gemini for real
         }
-        $gbp = app(\App\Services\GoogleBusinessProfileService::class);
+        $gbp = app(GoogleBusinessProfileService::class);
         if (! $gbp->isConfigured()) {
             return 0;
         }
@@ -112,7 +122,7 @@ class SeoAutopilotService
             return 0;
         }
         $current = $gbp->getDescription();
-        $variants = app(\App\Services\Seo\GbpDescriptionWriter::class)->variants($current);
+        $variants = app(GbpDescriptionWriter::class)->variants($current);
         if ($variants === null) {
             return 0;
         }
@@ -124,8 +134,8 @@ class SeoAutopilotService
             'risk' => SeoAction::RISK_REVIEW,
             'target_url' => (string) (config('socials.google.url') ?: self::BASE_URL),
             'title' => 'Refresh the Google Business Profile description (three variants, approve one)',
-            'hypothesis' => ($current ? 'The current description is ' . mb_strlen($current) . ' characters. ' : 'The profile has no description. ')
-                . 'A description that names the services, the core towns and the phrases people search is one of the few free-text signals the map pack reads. Approve to apply the keyword-led variant; edit the action payload first to use the conversion- or trust-led one.',
+            'hypothesis' => ($current ? 'The current description is '.mb_strlen($current).' characters. ' : 'The profile has no description. ')
+                .'A description that names the services, the core towns and the phrases people search is one of the few free-text signals the map pack reads. Approve to apply the keyword-led variant; edit the action payload first to use the conversion- or trust-led one.',
             'metric' => 'impressions',
             'payload' => ['current' => $current, 'variants' => $variants, 'new_description' => $variants['keyword']],
             'impact_score' => 4.0,
@@ -165,14 +175,14 @@ class SeoAutopilotService
             return 0;
         }
 
-        $generator = new LandingPageContentGenerator();
+        $generator = new LandingPageContentGenerator;
         $knownCities = $this->knownCities();          // [lower => Display]
         $areaCities = $this->areaCityKeys();          // set of AreaServed cities (lower)
 
         $end = Carbon::today();
         $start = $end->copy()->subDays(MetricProbe::WINDOW_DAYS - 1);
 
-        $queries = \App\Support\Tenancy::table('gsc_query_metrics')
+        $queries = Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->groupBy('query')
             ->havingRaw('SUM(impressions) >= 30')
@@ -215,7 +225,7 @@ class SeoAutopilotService
             }
 
             // Skip if a page for this slug already exists in any state.
-            if (\App\Models\LandingPage::where('slug', $content['slug'])->exists()) {
+            if (LandingPage::where('slug', $content['slug'])->exists()) {
                 continue;
             }
 
@@ -224,8 +234,8 @@ class SeoAutopilotService
                 'source' => 'demand_gap',
                 'category' => 'create_page',
                 'risk' => SeoAction::RISK_SAFE,
-                'target_url' => self::BASE_URL . '/remodeling/' . $content['slug'],
-                'title' => 'Create landing page: ' . $content['h1'],
+                'target_url' => self::BASE_URL.'/remodeling/'.$content['slug'],
+                'title' => 'Create landing page: '.$content['h1'],
                 'hypothesis' => sprintf(
                     'Query "%s" has %d impressions/28d (pos %.1f) and no dedicated page. Proof-backed landing page can capture it.',
                     $q->query, (int) $q->impressions, (float) $q->position
@@ -265,7 +275,7 @@ class SeoAutopilotService
         if ($tokens === null) {
             $names = collect();
             if (Schema::hasTable('map_pack_competitors')) {
-                $names = $names->concat(\App\Support\Tenancy::table('map_pack_competitors')->pluck('name'));
+                $names = $names->concat(Tenancy::table('map_pack_competitors')->pluck('name'));
             }
             $names = $names->concat(collect((array) config('competitors.competitors', []))->pluck('name'));
             $tokens = $names->map(fn ($n) => Str::lower(trim((string) $n)))
@@ -286,9 +296,9 @@ class SeoAutopilotService
                 ->filter(fn ($n) => mb_strlen($n) >= 8 && ! preg_match('/^(kitchen|bathroom|home|basement|remodeling|renovation|construction|design|general) (remodeling|remodel|renovation|contractor|contractors|construction|design|remodelers)$/', $n))
                 ->unique()->values()->all();
         }
-        $kw = ' ' . preg_replace('/\s+/', ' ', Str::lower((string) $row->keyword)) . ' ';
+        $kw = ' '.preg_replace('/\s+/', ' ', Str::lower((string) $row->keyword)).' ';
         foreach ($tokens as $t) {
-            if (str_contains($kw, ' ' . $t . ' ')) {
+            if (str_contains($kw, ' '.$t.' ')) {
                 return true;
             }
         }
@@ -302,7 +312,7 @@ class SeoAutopilotService
             return 0;
         }
         $minVolume = (int) config('seo.autopilot.research_min_volume', 30);
-        $rows = \App\Support\Tenancy::table('seo_keywords')
+        $rows = Tenancy::table('seo_keywords')
             ->where('volume', '>=', $minVolume)
             ->where('opportunity', '>', 0)
             ->whereNotNull('service')
@@ -323,7 +333,7 @@ class SeoAutopilotService
         $servedTowns = collect((array) config('gbp-services.service_areas', []))
             ->map(fn ($s) => Str::lower(trim((string) Str::before((string) $s, ','))))
             ->filter()->flip()->all();
-        $generator = new LandingPageContentGenerator();
+        $generator = new LandingPageContentGenerator;
         $created = 0;
         $pageBudget = 6;
         $refreshBudget = (int) config('seo.autopilot.content_refresh_per_run', 2);
@@ -341,27 +351,28 @@ class SeoAutopilotService
             }
             if ($pageBudget > 0 && (! $covered || $r->modifier !== null) && ($r->our_position === null || (float) $r->our_position > 20)) {
                 $content = $generator->build((string) $r->service, (string) $r->city, $r->modifier, (string) $r->keyword);
-                if ($content !== null && ! \App\Models\LandingPage::where('slug', $content['slug'])->exists()) {
+                if ($content !== null && ! LandingPage::where('slug', $content['slug'])->exists()) {
                     $created += $this->upsertAction([
                         'fingerprint' => $this->fp('keyword_research', 'create_page', $content['slug']),
                         'source' => 'keyword_research',
                         'category' => 'create_page',
                         'risk' => SeoAction::RISK_SAFE,
-                        'target_url' => self::BASE_URL . '/remodeling/' . $content['slug'],
-                        'title' => 'Create landing page: ' . $content['h1'],
-                        'hypothesis' => sprintf('"%s" has %d searches/month%s and we %s. Proof-backed landing page can capture it.', $r->keyword, (int) $r->volume, $r->competitor_best_position ? " (a competitor ranks #{$r->competitor_best_position})" : '', $r->our_position === null ? 'do not rank' : 'rank ' . round((float) $r->our_position, 1)),
+                        'target_url' => self::BASE_URL.'/remodeling/'.$content['slug'],
+                        'title' => 'Create landing page: '.$content['h1'],
+                        'hypothesis' => sprintf('"%s" has %d searches/month%s and we %s. Proof-backed landing page can capture it.', $r->keyword, (int) $r->volume, $r->competitor_best_position ? " (a competitor ranks #{$r->competitor_best_position})" : '', $r->our_position === null ? 'do not rank' : 'rank '.round((float) $r->our_position, 1)),
                         'metric' => 'clicks',
                         'payload' => ['content' => $content, 'query' => $r->keyword, 'volume' => (int) $r->volume],
                         'impact_score' => round((float) $r->volume * 0.05, 1),
                     ]);
                     $pageBudget--;
                 }
+
                 continue;
             }
 
             // Covered town, plain intent: remember the strongest phrase per town+service.
             if ($covered && $r->modifier === null) {
-                $key = Str::lower((string) $r->city) . '|' . $r->service;
+                $key = Str::lower((string) $r->city).'|'.$r->service;
                 if (! isset($topByCity[$key]) || (int) $r->volume > (int) $topByCity[$key]->volume) {
                     $topByCity[$key] = $r;
                 }
@@ -371,8 +382,8 @@ class SeoAutopilotService
         // (b) + (c): per covered town, title on the top phrase; copy refresh when thin.
         // Towns the AI answer engines never name get first call on the refresh budget.
         $unnamed = [];
-        if (Schema::hasTable('seo_ai_mentions') && ($day = \App\Support\Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
-            $unnamed = \App\Support\Tenancy::table('seo_ai_mentions')->where('asked_on', $day)->get()->groupBy('town')
+        if (Schema::hasTable('seo_ai_mentions') && ($day = Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
+            $unnamed = Tenancy::table('seo_ai_mentions')->where('asked_on', $day)->get()->groupBy('town')
                 ->filter(fn ($g) => (int) $g->where('mentioned', 1)->count() === 0)->keys()->map(fn ($t) => Str::lower($t))->flip()->all();
         }
         uasort($topByCity, fn ($a, $b) => [isset($unnamed[Str::lower((string) $b->city)]) ? 1 : 0, (int) $b->volume] <=> [isset($unnamed[Str::lower((string) $a->city)]) ? 1 : 0, (int) $a->volume]);
@@ -386,14 +397,14 @@ class SeoAutopilotService
                 continue;
             }
             $isHome = $r->service === 'home-remodeling';
-            $url = self::BASE_URL . '/areas-served/' . $area->slug . ($isHome ? '' : '/services/' . $r->service);
+            $url = self::BASE_URL.'/areas-served/'.$area->slug.($isHome ? '' : '/services/'.$r->service);
             $serviceSlug = $isHome ? null : (string) $r->service;
             if (! AreaSeoPolicy::shouldIndex($area, $serviceSlug ? 'service' : 'home', $serviceSlug)) {
                 continue;
             }
 
             // (b) title experiment on the phrase, when the live title lacks its head word.
-            $current = \App\Models\SeoPathOverride::where('path', \App\Models\SeoPathOverride::normalizePath($url))->first()?->title
+            $current = SeoPathOverride::where('path', SeoPathOverride::normalizePath($url))->first()?->title
                 ?? ($this->titles->forArea($area, $serviceSlug)['title'] ?? '');
             // The first distinctive word of the phrase the live title lacks
             // ("renovation" in "kenilworth home remodeling and renovation
@@ -406,14 +417,14 @@ class SeoAutopilotService
             if ($head && ! $inFlight) {
                 $generated = $this->titles->forArea($area, $serviceSlug, (string) $r->keyword);
                 $created += $this->upsertAction([
-                    'fingerprint' => $this->fp('keyword_research', 'title_meta', $url . ':' . $r->keyword),
+                    'fingerprint' => $this->fp('keyword_research', 'title_meta', $url.':'.$r->keyword),
                     'source' => 'keyword_research',
                     'category' => 'title_meta',
                     'risk' => SeoAction::RISK_SAFE,
                     'target_type' => AreaServed::class,
                     'target_id' => $area->getKey(),
                     'target_url' => $url,
-                    'title' => 'Rewrite title/meta on the researched phrase: ' . Str::of($url)->after(self::BASE_URL),
+                    'title' => 'Rewrite title/meta on the researched phrase: '.Str::of($url)->after(self::BASE_URL),
                     'hypothesis' => sprintf('"%s" has %d searches/month; the title does not carry "%s". Title/meta built on the phrase.', $r->keyword, (int) $r->volume, $head),
                     'metric' => 'clicks',
                     'payload' => ['new_title' => $generated['title'], 'new_description' => $generated['description'], 'phrase' => $r->keyword, 'volume' => (int) $r->volume],
@@ -427,14 +438,14 @@ class SeoAutopilotService
                 if (! $recent) {
                     $phrases = collect($topByCity)->filter(fn ($x) => Str::lower((string) $x->city) === Str::lower((string) $r->city))->sortByDesc('volume')->take(4)->pluck('keyword')->all();
                     $created += $this->upsertAction([
-                        'fingerprint' => $this->fp('keyword_research', 'content_refresh', $area->slug . ':' . now()->format('Y-m')),
+                        'fingerprint' => $this->fp('keyword_research', 'content_refresh', $area->slug.':'.now()->format('Y-m')),
                         'source' => 'keyword_research',
                         'category' => 'content_refresh',
                         'risk' => SeoAction::RISK_SAFE,
                         'target_type' => AreaServed::class,
                         'target_id' => $area->getKey(),
-                        'target_url' => self::BASE_URL . '/areas-served/' . $area->slug,
-                        'title' => 'Deepen local copy around researched phrases: /areas-served/' . $area->slug,
+                        'target_url' => self::BASE_URL.'/areas-served/'.$area->slug,
+                        'title' => 'Deepen local copy around researched phrases: /areas-served/'.$area->slug,
                         'hypothesis' => sprintf('%s searches/month across "%s"; the town page carries only %d characters of local copy. A deeper, query-led intro should lift rank and clicks.', (int) $r->volume, implode('", "', $phrases), mb_strlen((string) $area->local_intro)),
                         'metric' => 'clicks',
                         'payload' => ['phrases' => $phrases, 'volume' => (int) $r->volume],
@@ -462,7 +473,7 @@ class SeoAutopilotService
         if (! Schema::hasTable('seo_intel_findings')) {
             return 0;
         }
-        $store = app(\App\Services\Seo\Intel\IntelStore::class);
+        $store = app(IntelStore::class);
         $findings = $store->openFindings(null, 300)->filter(fn ($f) => is_array($f->action) && in_array($f->action['type'] ?? null, self::SAFE_ALLOWLIST, true));
         if ($findings->isEmpty()) {
             return 0;
@@ -470,7 +481,7 @@ class SeoAutopilotService
         $servedTowns = collect((array) config('gbp-services.service_areas', []))
             ->map(fn ($s) => Str::lower(trim((string) Str::before((string) $s, ','))))
             ->filter()->flip()->all();
-        $generator = new LandingPageContentGenerator();
+        $generator = new LandingPageContentGenerator;
         $impact = ['critical' => 8.0, 'warn' => 5.0, 'info' => 2.5, 'win' => 1.0];
         $budgets = ['title_meta' => 6, 'content_refresh' => (int) config('seo.autopilot.content_refresh_per_run', 2), 'create_page' => 3, 'reindex' => 10, 'llms_regen' => 1];
         $created = 0;
@@ -481,37 +492,37 @@ class SeoAutopilotService
             if (($budgets[$type] ?? 0) <= 0) {
                 continue;
             }
-            $why = Str::limit(trim($f->title . ($f->detail ? '. ' . $f->detail : '')), 400);
+            $why = Str::limit(trim($f->title.($f->detail ? '. '.$f->detail : '')), 400);
             $score = round(($impact[$f->severity] ?? 2.0), 1);
-            $path = isset($a['path']) ? '/' . ltrim((string) parse_url((string) $a['path'], PHP_URL_PATH), '/') : null;
+            $path = isset($a['path']) ? '/'.ltrim((string) parse_url((string) $a['path'], PHP_URL_PATH), '/') : null;
             $attrs = null;
 
             switch ($type) {
                 case 'title_meta':
-                    if ($path === null || ! ($target = $this->resolveTarget(self::BASE_URL . $path))) {
+                    if ($path === null || ! ($target = $this->resolveTarget(self::BASE_URL.$path))) {
                         break;
                     }
                     [$model, $serviceSlug] = $target;
                     if ($model instanceof AreaServed && ! AreaSeoPolicy::shouldIndex($model, $serviceSlug ? 'service' : 'home', $serviceSlug)) {
                         break;
                     }
-                    $inFlight = SeoAction::where('category', 'title_meta')->where('target_url', self::BASE_URL . $path)
+                    $inFlight = SeoAction::where('category', 'title_meta')->where('target_url', self::BASE_URL.$path)
                         ->whereIn('status', [SeoAction::STATUS_PROPOSED, SeoAction::STATUS_APPLIED])->whereNull('measured_at')->exists();
                     if ($inFlight) {
                         break;
                     }
                     $generated = $model instanceof AreaServed ? $this->titles->forArea($model, $serviceSlug, $a['phrase'] ?? null) : $this->titles->forProject($model);
                     $attrs = [
-                        'fingerprint' => $this->fp('intel', 'title_meta', $model::class . ':' . $model->getKey() . ':' . ($serviceSlug ?? '')),
-                        'target_type' => $model::class, 'target_id' => $model->getKey(), 'target_url' => self::BASE_URL . $path,
-                        'title' => 'Rewrite title/meta: ' . $path,
+                        'fingerprint' => $this->fp('intel', 'title_meta', $model::class.':'.$model->getKey().':'.($serviceSlug ?? '')),
+                        'target_type' => $model::class, 'target_id' => $model->getKey(), 'target_url' => self::BASE_URL.$path,
+                        'title' => 'Rewrite title/meta: '.$path,
                         'metric' => 'clicks',
                         'payload' => ['new_title' => $generated['title'], 'new_description' => $generated['description'], 'finding' => $f->code],
                     ];
                     break;
 
                 case 'content_refresh':
-                    if ($path === null || ! ($target = $this->resolveTarget(self::BASE_URL . $path)) || ! ($target[0] instanceof AreaServed) || $target[1] !== null) {
+                    if ($path === null || ! ($target = $this->resolveTarget(self::BASE_URL.$path)) || ! ($target[0] instanceof AreaServed) || $target[1] !== null) {
                         break;
                     }
                     $area = $target[0];
@@ -522,9 +533,9 @@ class SeoAutopilotService
                     }
                     $phrases = array_values(array_filter(array_map('strval', (array) ($a['phrases'] ?? []))));
                     $attrs = [
-                        'fingerprint' => $this->fp('intel', 'content_refresh', $area->slug . ':' . now()->format('Y-m')),
-                        'target_type' => AreaServed::class, 'target_id' => $area->getKey(), 'target_url' => self::BASE_URL . '/areas-served/' . $area->slug,
-                        'title' => 'Deepen local copy: /areas-served/' . $area->slug,
+                        'fingerprint' => $this->fp('intel', 'content_refresh', $area->slug.':'.now()->format('Y-m')),
+                        'target_type' => AreaServed::class, 'target_id' => $area->getKey(), 'target_url' => self::BASE_URL.'/areas-served/'.$area->slug,
+                        'title' => 'Deepen local copy: /areas-served/'.$area->slug,
                         'metric' => 'clicks',
                         'payload' => ['phrases' => $phrases, 'finding' => $f->code],
                     ];
@@ -536,14 +547,14 @@ class SeoAutopilotService
                     if ($town === '' || $service === '' || ! isset($servedTowns[Str::lower($town)])) {
                         break;
                     }
-                    $content = $generator->build($service, $town, $a['modifier'] ?? null, (string) ($a['keyword'] ?? ($service . ' ' . $town)));
-                    if ($content === null || \App\Models\LandingPage::where('slug', $content['slug'])->exists()) {
+                    $content = $generator->build($service, $town, $a['modifier'] ?? null, (string) ($a['keyword'] ?? ($service.' '.$town)));
+                    if ($content === null || LandingPage::where('slug', $content['slug'])->exists()) {
                         break;
                     }
                     $attrs = [
                         'fingerprint' => $this->fp('intel', 'create_page', $content['slug']),
-                        'target_url' => self::BASE_URL . '/remodeling/' . $content['slug'],
-                        'title' => 'Create landing page: ' . $content['h1'],
+                        'target_url' => self::BASE_URL.'/remodeling/'.$content['slug'],
+                        'title' => 'Create landing page: '.$content['h1'],
                         'metric' => 'clicks',
                         'payload' => ['content' => $content, 'query' => (string) ($a['keyword'] ?? ''), 'finding' => $f->code],
                     ];
@@ -551,13 +562,13 @@ class SeoAutopilotService
 
                 case 'reindex':
                     $url = (string) ($a['url'] ?? '');
-                    if (! str_starts_with($url, self::BASE_URL . '/')) {
+                    if (! str_starts_with($url, self::BASE_URL.'/')) {
                         break;
                     }
                     $attrs = [
-                        'fingerprint' => $this->fp('intel', 'reindex', $url . ':' . now()->format('oW')),
+                        'fingerprint' => $this->fp('intel', 'reindex', $url.':'.now()->format('oW')),
                         'target_url' => $url,
-                        'title' => 'Reindex: ' . Str::of($url)->after(self::BASE_URL),
+                        'title' => 'Reindex: '.Str::of($url)->after(self::BASE_URL),
                         'metric' => 'impressions',
                         'payload' => ['url' => $url, 'finding' => $f->code],
                     ];
@@ -565,8 +576,8 @@ class SeoAutopilotService
 
                 case 'llms_regen':
                     $attrs = [
-                        'fingerprint' => $this->fp('intel', 'llms_regen', 'llms.txt:' . now()->format('oW')),
-                        'target_url' => self::BASE_URL . '/llms.txt',
+                        'fingerprint' => $this->fp('intel', 'llms_regen', 'llms.txt:'.now()->format('oW')),
+                        'target_url' => self::BASE_URL.'/llms.txt',
                         'title' => 'Regenerate llms.txt / AI feed',
                         'metric' => 'impressions',
                         'payload' => ['finding' => $f->code],
@@ -585,7 +596,7 @@ class SeoAutopilotService
             ]);
             $budgets[$type]--;
             if ($action = SeoAction::where('fingerprint', $attrs['fingerprint'])->first()) {
-                \App\Support\Tenancy::table('seo_intel_findings')->where('id', $f->id)->update(['seo_action_id' => $action->getKey(), 'updated_at' => now()]);
+                Tenancy::table('seo_intel_findings')->where('id', $f->id)->update(['seo_action_id' => $action->getKey(), 'updated_at' => now()]);
             }
         }
 
@@ -601,9 +612,9 @@ class SeoAutopilotService
         $end = Carbon::today();
         $start = $end->copy()->subDays(MetricProbe::WINDOW_DAYS - 1);
 
-        $pages = \App\Support\Tenancy::table('gsc_query_metrics')
+        $pages = Tenancy::table('gsc_query_metrics')
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where('page', 'like', self::BASE_URL . '/%')
+            ->where('page', 'like', self::BASE_URL.'/%')
             ->groupBy('page')
             ->havingRaw('SUM(impressions) >= ?', [self::MIN_IMPRESSIONS])
             ->selectRaw('page, SUM(clicks) clicks, SUM(impressions) impressions, AVG(position) position')
@@ -643,10 +654,10 @@ class SeoAutopilotService
             $generated = match (true) {
                 $model instanceof AreaServed => $this->titles->forArea($model, $serviceSlug),
                 // Money pages: the title carries the page's own top non-branded query.
-                $model instanceof \App\Support\SEO\ServicePageTarget => $this->titles->forService($model->slug, $this->topQueryFor((string) $p->page, $start, $end)),
+                $model instanceof ServicePageTarget => $this->titles->forService($model->slug, $this->topQueryFor((string) $p->page, $start, $end)),
                 default => $this->titles->forProject($model),
             };
-            $isServicePage = $model instanceof \App\Support\SEO\ServicePageTarget;
+            $isServicePage = $model instanceof ServicePageTarget;
 
             $estUplift = round($impressions * $headroom, 1); // est. clicks/28d
             $source = $ctr <= 0.0001 ? 'zero_click' : 'striking_distance';
@@ -668,14 +679,14 @@ class SeoAutopilotService
             }
 
             $created += $this->upsertAction([
-                'fingerprint' => $this->fp($source, 'title_meta', ($isServicePage ? 'service' : $model::class) . ':' . $model->getKey() . ':' . ($serviceSlug ?? '')),
+                'fingerprint' => $this->fp($source, 'title_meta', ($isServicePage ? 'service' : $model::class).':'.$model->getKey().':'.($serviceSlug ?? '')),
                 'source' => $source,
                 'category' => 'title_meta',
                 'risk' => SeoAction::RISK_SAFE,
                 'target_type' => $isServicePage ? null : $model::class,
                 'target_id' => $isServicePage ? null : $model->getKey(),
                 'target_url' => (string) $p->page,
-                'title' => 'Rewrite title/meta: ' . Str::of((string) $p->page)->after(self::BASE_URL),
+                'title' => 'Rewrite title/meta: '.Str::of((string) $p->page)->after(self::BASE_URL),
                 'hypothesis' => sprintf(
                     'Position %.1f with %d impressions but %.2f%% CTR (expected ~%.1f%%). A CTR-led title/meta could recover ~%s clicks/28d.',
                     $position, (int) $impressions, $ctr * 100, $expectedCtr * 100, $estUplift
@@ -748,7 +759,7 @@ class SeoAutopilotService
             // ledger rows still dedup instead of spawning "|initial" twins.
             $stamp = $changedSinceCrawl ? $updatedAt->format('Ymd') : 'initial';
             $fingerprint = $changedSinceCrawl
-                ? $this->fp('coverage_error', 'reindex', $url . '|' . $stamp)
+                ? $this->fp('coverage_error', 'reindex', $url.'|'.$stamp)
                 : $this->fp('coverage_error', 'reindex', $url);
 
             // Collapse repeat edits: if a reindex for this URL was already
@@ -774,7 +785,7 @@ class SeoAutopilotService
                 'category' => 'reindex',
                 'risk' => SeoAction::RISK_SAFE,
                 'target_url' => $url,
-                'title' => 'Reindex: ' . Str::of($url)->after(self::BASE_URL),
+                'title' => 'Reindex: '.Str::of($url)->after(self::BASE_URL),
                 'hypothesis' => $changedSinceCrawl
                     ? sprintf(
                         'Content updated %s — after Google\'s last crawl (%s, state "%s"). Resubmit so the improved page gets re-evaluated.',
@@ -832,7 +843,7 @@ class SeoAutopilotService
         // de-indexed thin spokes) otherwise inflate a family's "not indexed"
         // share and raise alarms about pages we removed on purpose.
         $inSitemap = [];
-        $sitemapPath = public_path('sitemap.xml');
+        $sitemapPath = CrawlFiles::sitemapPath();
         if (is_file($sitemapPath) && ($xml = @simplexml_load_string((string) file_get_contents($sitemapPath))) && isset($xml->url)) {
             foreach ($xml->url as $u) {
                 $inSitemap[(string) $u->loc] = true;
@@ -874,8 +885,8 @@ class SeoAutopilotService
             $sameBand = (int) (floor($currentPct / 20) * 20) === (int) (floor((int) ($alarm->payload['pct'] ?? 0) / 20) * 20);
             if (! $breaches || ! $sameBand) {
                 $alarm->status = SeoAction::STATUS_SKIPPED;
-                $alarm->notes = trim(($alarm->notes ? $alarm->notes . ' ' : '')
-                    . sprintf('Auto-resolved %s: family now %d/%d not indexed.', now()->toDateString(), $unindexed, $total));
+                $alarm->notes = trim(($alarm->notes ? $alarm->notes.' ' : '')
+                    .sprintf('Auto-resolved %s: family now %d/%d not indexed.', now()->toDateString(), $unindexed, $total));
                 $alarm->save();
             }
         }
@@ -894,11 +905,11 @@ class SeoAutopilotService
             $band = (int) (floor($pct / 20) * 20);
 
             $created += $this->upsertAction([
-                'fingerprint' => $this->fp('coverage_cluster', 'content_quality', $family . '|' . $band),
+                'fingerprint' => $this->fp('coverage_cluster', 'content_quality', $family.'|'.$band),
                 'source' => 'coverage_cluster',
                 'category' => 'content_quality',
                 'risk' => SeoAction::RISK_REVIEW,
-                'target_url' => self::BASE_URL . '/' . ltrim(str_replace('*', '', $family), '/'),
+                'target_url' => self::BASE_URL.'/'.ltrim(str_replace('*', '', $family), '/'),
                 'title' => "Index-rate alarm: {$family} ({$pct}% not indexed)",
                 'hypothesis' => sprintf(
                     '%d of %d tracked URLs in the "%s" family are not indexed (%d%%). Google is declining this template as a group — it needs content differentiation (unique copy, proof elements, internal links), not resubmission.',
@@ -947,11 +958,11 @@ class SeoAutopilotService
         }
 
         return $this->upsertAction([
-            'fingerprint' => $this->fp('llms_stale', 'llms_regen', 'llms.txt:' . now()->format('oW')), // weekly bucket
+            'fingerprint' => $this->fp('llms_stale', 'llms_regen', 'llms.txt:'.now()->format('oW')), // weekly bucket
             'source' => 'llms_stale',
             'category' => 'llms_regen',
             'risk' => SeoAction::RISK_SAFE,
-            'target_url' => self::BASE_URL . '/llms.txt',
+            'target_url' => self::BASE_URL.'/llms.txt',
             'title' => 'Regenerate llms.txt / AI feed',
             'hypothesis' => sprintf('AI-answer surface is %d days old; regenerate so ChatGPT/Perplexity/AI Overviews cite current content.', (int) $ageDays),
             'metric' => 'impressions',
@@ -1013,6 +1024,7 @@ class SeoAutopilotService
 
             if ($dryRun) {
                 $items[] = ['id' => $action->id, 'title' => $action->title, 'priority' => $action->priority, 'result' => 'would-apply'];
+
                 continue;
             }
 
@@ -1038,7 +1050,7 @@ class SeoAutopilotService
                 $action->error = Str::limit($e->getMessage(), 480, '');
                 $action->save();
                 $failed++;
-                $items[] = ['id' => $action->id, 'title' => $action->title, 'result' => 'failed: ' . $e->getMessage()];
+                $items[] = ['id' => $action->id, 'title' => $action->title, 'result' => 'failed: '.$e->getMessage()];
             }
         }
 
@@ -1203,6 +1215,7 @@ class SeoAutopilotService
         if ($p <= 10) {
             return self::CTR_CURVE[max(1, $p)] ?? 0.02;
         }
+
         return $p <= 15 ? 0.015 : 0.008;
     }
 
@@ -1210,7 +1223,7 @@ class SeoAutopilotService
      * Resolve a full page URL to [HasSEO model, serviceSlug|null], or null when
      * the page isn't a model we can safely rewrite.
      *
-     * @return array{0:\Illuminate\Database\Eloquent\Model,1:?string}|null
+     * @return array{0:Model,1:?string}|null
      */
     private function resolveTarget(string $url): ?array
     {
@@ -1230,18 +1243,20 @@ class SeoAutopilotService
             if (count($segments) === 2) {
                 return [$area, null];
             }
+
             return null;
         }
 
         if (($segments[0] ?? null) === 'projects' && isset($segments[1]) && count($segments) === 2) {
             $project = Project::where('slug', $segments[1])->first();
+
             return $project ? [$project, null] : null;
         }
 
         // /services/{slug}: the money pages. No model behind them, so the
         // rewrite lands as a path override (TitleMetaApplier) like every other.
         if (($segments[0] ?? null) === 'services' && isset($segments[1]) && count($segments) === 2 && isset(TitleMetaGenerator::SERVICES[$segments[1]])) {
-            return [new \App\Support\SEO\ServicePageTarget($segments[1]), null];
+            return [new ServicePageTarget($segments[1]), null];
         }
 
         return null;
@@ -1251,7 +1266,7 @@ class SeoAutopilotService
     private function topQueryFor(string $page, Carbon $start, Carbon $end): ?string
     {
         $brand = Str::lower((string) config('brand.name'));
-        $rows = \App\Support\Tenancy::table('gsc_query_metrics')
+        $rows = Tenancy::table('gsc_query_metrics')
             ->where('page', $page)->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->groupBy('query')->selectRaw('query, SUM(impressions) impressions, AVG(position) position')
             ->orderByDesc('impressions')->limit(8)->get();
@@ -1260,7 +1275,7 @@ class SeoAutopilotService
             if ($q === '' || (float) $r->position > 20 || (int) $r->impressions < 20) {
                 continue;
             }
-            if ($brand !== '' && (str_contains($q, $brand) || str_contains($q, Str::before($brand, ' ') . ' ') && str_contains($q, 'construction'))) {
+            if ($brand !== '' && (str_contains($q, $brand) || str_contains($q, Str::before($brand, ' ').' ') && str_contains($q, 'construction'))) {
                 continue;
             }
 
@@ -1271,7 +1286,7 @@ class SeoAutopilotService
     }
 
     /**
-     * @param array<string,mixed> $attrs
+     * @param  array<string,mixed>  $attrs
      */
     private function upsertAction(array $attrs): int
     {
@@ -1283,7 +1298,7 @@ class SeoAutopilotService
                 SeoAction::create($attrs);
 
                 return 1;
-            } catch (\Illuminate\Database\QueryException $e) {
+            } catch (QueryException $e) {
                 // Unique-key race: a concurrent run inserted the same fingerprint
                 // between our check and create (production briefly ran the
                 // scheduler twice). Fall through and treat it as existing.
@@ -1372,14 +1387,14 @@ class SeoAutopilotService
 
     private function fp(string $source, string $category, string $key): string
     {
-        return sha1($source . '|' . $category . '|' . $key);
+        return sha1($source.'|'.$category.'|'.$key);
     }
 
     /**
      * Parse a GSC query into [serviceSlug, cityDisplay, modifier|null], or null
      * when it doesn't clearly name both a service and a known city.
      *
-     * @param array<string,string> $knownCities lower => Display
+     * @param  array<string,string>  $knownCities  lower => Display
      * @return array{0:string,1:string,2:?string}|null
      */
     /**
@@ -1402,7 +1417,7 @@ class SeoAutopilotService
         $q = str_replace([',', '.'], ' ', $q);
         $q = preg_replace('/\bmt\b/', 'mount', $q);
         $q = preg_replace('/\bft\b/', 'fort', $q);
-        $q = ' ' . preg_replace('/\s+/', ' ', trim($q)) . ' ';
+        $q = ' '.preg_replace('/\s+/', ' ', trim($q)).' ';
 
         $service = null;
         foreach (self::SERVICE_KEYWORDS as $kw => $slug) {
@@ -1418,7 +1433,7 @@ class SeoAutopilotService
         // Longest city names first so "arlington heights" wins over "heights".
         $city = null;
         foreach ($knownCities as $lower => $display) {
-            if (str_contains($q, ' ' . $lower . ' ')) {
+            if (str_contains($q, ' '.$lower.' ')) {
                 $city = $display;
                 break;
             }
@@ -1468,7 +1483,7 @@ class SeoAutopilotService
             $cities[Str::lower($c)] = $cities[Str::lower($c)] ?? $c;
         }
         // Cities we have project proof in but that may not be AreaServed rows.
-        foreach (\App\Models\Project::whereNotNull('location')->pluck('location') as $loc) {
+        foreach (Project::whereNotNull('location')->pluck('location') as $loc) {
             $cityPart = trim((string) Str::of((string) $loc)->before(','));
             if ($cityPart !== '') {
                 $cities[Str::lower($cityPart)] = $cities[Str::lower($cityPart)] ?? $cityPart;

@@ -132,7 +132,7 @@ class Site extends Model
     /** The local host this site is reachable at: "jpeterson.localhost". */
     public function devHost(): string
     {
-        return $this->slug . '.localhost';
+        return $this->slug.'.localhost';
     }
 
     /**
@@ -181,9 +181,16 @@ class Site extends Model
     public static function active(): Collection
     {
         // Sites are tiny and read on every request; cache per-process.
-        static $sites = null;
+        return static::$activeSites ??= static::query()->where('is_active', true)->get();
+    }
 
-        return $sites ??= static::query()->where('is_active', true)->get();
+    /** @var Collection<int, self>|null */
+    protected static ?Collection $activeSites = null;
+
+    /** Forget the per-process active set — after a site launches (is_active flips) in this process. */
+    public static function forgetActive(): void
+    {
+        static::$activeSites = null;
     }
 
     /**
@@ -210,6 +217,6 @@ class Site extends Model
 
     public function url(string $path = ''): string
     {
-        return 'https://' . $this->primary_host . ($path !== '' ? '/' . ltrim($path, '/') : '');
+        return 'https://'.$this->primary_host.($path !== '' ? '/'.ltrim($path, '/') : '');
     }
 }

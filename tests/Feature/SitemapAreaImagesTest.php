@@ -26,7 +26,7 @@ class SitemapAreaImagesTest extends TestCase
         $this->artisan('sitemap:generate', ['--url' => 'https://gs.construction'])
             ->assertSuccessful();
 
-        $xml = (string) file_get_contents(public_path('sitemap.xml'));
+        $xml = (string) file_get_contents(\App\Support\Seo\CrawlFiles::sitemapPath());
 
         $counts = [];
         preg_match_all('#<url>(.*?)</url>#s', $xml, $blocks);

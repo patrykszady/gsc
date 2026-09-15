@@ -7,6 +7,7 @@ use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscRichResultIssue;
 use App\Models\Tracked404;
+use App\Support\Seo\CrawlFiles;
 use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Console\Command;
 use Illuminate\Http\Client\ConnectionException;
@@ -35,7 +36,7 @@ class SeoGscInspectBulk extends Command
 
     protected $signature = 'seo:gsc-inspect-bulk
         {--limit=0 : Maximum URLs to inspect this run (0 = all sitemap URLs)}
-        {--sitemap= : Path to sitemap XML (default public/sitemap.xml)}
+        {--sitemap= : Path to sitemap XML (default: the generated sitemap for this site)}
         {--strategy=stale : URL selection: stale|random|all}
         {--include=sitemap,coverage,tracked : Pools to sweep: sitemap, coverage (rows the sitemap no longer carries), tracked (paths Googlebot 404s on)}
         {--urls=* : Inspect these URLs instead of the sitemap (a Console export, tracked 404s)}
@@ -58,7 +59,7 @@ class SeoGscInspectBulk extends Command
         if ($explicit !== []) {
             $urls = $explicit;
         } else {
-            $sitemapUrls = $this->loadSitemapUrls((string) ($this->option('sitemap') ?: public_path('sitemap.xml')));
+            $sitemapUrls = $this->loadSitemapUrls((string) ($this->option('sitemap') ?: CrawlFiles::sitemapPath()));
             $pools = array_map('trim', explode(',', (string) $this->option('include')));
             $urls = in_array('sitemap', $pools, true) ? $sitemapUrls : [];
             $offSitemap = $this->offSitemapUrls($pools, $sitemapUrls);
