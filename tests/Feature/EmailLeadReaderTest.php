@@ -304,6 +304,30 @@ class EmailLeadReaderTest extends TestCase
         Queue::assertPushed(SendLeadToHive::class, 1);
     }
 
+    public function test_only_mail_newer_than_the_newest_judged_message_is_read(): void
+    {
+        $this->fakeNylas([]);
+
+        // First run: nothing judged yet, so the lookback window applies.
+        Config::set('services.email_leads.lookback_days', 3);
+        $this->artisan('leads:ingest-email')->assertSuccessful();
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/messages?')
+            && abs((int) $r['received_after'] - now()->subDays(3)->getTimestamp()) < 5);
+
+        // Later: the ledger's newest message is the watermark, with a small overlap.
+        EmailLeadIngest::create([
+            'mailbox' => 'crew@gs.construction', 'grant_id' => 'grant-p', 'nylas_message_id' => 'old-1',
+            'message_at' => now()->subHours(2), 'status' => 'skipped', 'skip_reason' => 'internal',
+        ]);
+        EmailLeadIngest::create([
+            'mailbox' => 'greg@gs.construction', 'grant_id' => 'grant-g', 'nylas_message_id' => 'other-1',
+            'message_at' => now()->subMinutes(5), 'status' => 'skipped', 'skip_reason' => 'internal',
+        ]);
+        $this->artisan('leads:ingest-email')->assertSuccessful();
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/messages?')
+            && abs((int) $r['received_after'] - now()->subHours(2)->subMinutes(10)->getTimestamp()) < 5);
+    }
+
     public function test_nothing_is_read_without_configured_inboxes(): void
     {
         Config::set('services.email_leads.inboxes', []);

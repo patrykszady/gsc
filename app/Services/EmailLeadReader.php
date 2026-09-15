@@ -82,9 +82,6 @@ class EmailLeadReader
                 }]++;
             }
 
-            if (! $dryRun && $messages !== []) {
-                $this->rememberWatermark($mailbox, $messages);
-            }
         }
 
         return $out;
@@ -838,33 +835,24 @@ TXT;
     }
 
     /**
-     * Only look at mail newer than the last run of this mailbox. On the very
-     * first run there is no watermark, so the lookback window applies —
-     * going live must not import weeks of mail as fresh leads.
+     * Only look at mail newer than the newest message this mailbox's ledger
+     * holds. The ledger is the watermark: a cache entry would do, but every
+     * deploy clears the cache here (seen 2026-09-15), and a lost watermark
+     * means re-reading the whole window each run. Before the first judged
+     * message the lookback window applies — going live must not import
+     * weeks of mail as fresh leads.
      */
     protected function since(string $mailbox): \DateTimeInterface
     {
-        $stored = cache()->get("email_leads:watermark:{$mailbox}");
-        if ($stored) {
+        $newest = EmailLeadIngest::where('mailbox', $mailbox)->max('message_at');
+
+        if ($newest) {
             // Small overlap: provider timestamps are not perfectly ordered
             // and the ledger makes re-reads free.
-            return now()->setTimestamp((int) $stored)->subMinutes(10);
+            return \Illuminate\Support\Carbon::parse($newest)->subMinutes(10);
         }
 
         return now()->subDays((int) config('services.email_leads.lookback_days', 2));
-    }
-
-    /** @param array<int, array<string, mixed>> $messages */
-    protected function rememberWatermark(string $mailbox, array $messages): void
-    {
-        $latest = 0;
-        foreach ($messages as $m) {
-            $latest = max($latest, (int) ($m['date'] ?? 0));
-        }
-
-        if ($latest > 0) {
-            cache()->forever("email_leads:watermark:{$mailbox}", $latest);
-        }
     }
 
     protected function http(int $timeout): PendingRequest
