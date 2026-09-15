@@ -80,7 +80,14 @@ of a town that has its own copy is indexable — `AreaSeoPolicy` flags
 `SEO_AREA_INDEX_SUBPAGES` / `SEO_AREA_INDEX_SERVICE_PAGES`); set either to false to
 return to the proof/demand gates. GenerateSitemap follows the same policy, so a flip
 changes the sitemap on the next `sitemap:generate`. A retired town's lead-pipe page 301s
-to its nearest served neighbour like every other spoke. Search Console shows a URL's state as of its LAST crawl and recrawls
+to its nearest served neighbour like every other spoke. **Pitfall:** the `area` route
+binding hands every `/areas-served|areas|locations/{area}/…` closure an `AreaServed`
+model; a closure that declares `string $area` gets the model coerced to its JSON (PHP
+`__toString`), which silently broke ~230 legacy redirects and every lead-pipe page for two
+days. Declare `AreaServed|string $area` and take `->slug`. Old id-shaped URLs answer for
+good: `/projects/{id}` and id-addressed photos 301 to their slug, a review slug whose id no
+longer exists answers 410 (route `missing()`), old `/testimonials/{slug}` links 301 to the
+review's one real address. Search Console shows a URL's state as of its LAST crawl and recrawls
 noindexed/dead URLs slowly, so its "Excluded by noindex" list lags these fixes by weeks
 to months; nothing in the API purges it, and "Validate fix" on that bucket cannot pass
 while deliberately noindexed area sub-pages (AreaSeoPolicy) remain — that is expected.
