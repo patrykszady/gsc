@@ -56,7 +56,7 @@ class FakeScoreSource extends IntelSource
         $now = $this->latest('summary', $this->ourDomain());
         $prev = $this->previous('summary', $this->ourDomain());
         if ($now && $prev && $now['metrics']['score'] < $prev['metrics']['score']) {
-            return [$this->finding('score_drop', Finding::WARN, 'Score dropped', 'From ' . $prev['metrics']['score'] . ' to ' . $now['metrics']['score'], $this->ourDomain(), null,
+            return [$this->finding('score_drop', Finding::WARN, 'Score dropped', 'From '.$prev['metrics']['score'].' to '.$now['metrics']['score'], $this->ourDomain(), null,
                 ['score' => ['prev' => $prev['metrics']['score'], 'now' => $now['metrics']['score']]], ['type' => 'title_meta', 'path' => '/'])];
         }
 
@@ -75,7 +75,8 @@ class IntelRunnerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public static float $balance = 12.5;
+    /** null simulates balance() itself failing (network/auth/outage), not a low reading. */
+    public static ?float $balance = 12.5;
 
     protected function setUp(): void
     {
@@ -83,7 +84,9 @@ class IntelRunnerTest extends TestCase
         config(['app.url' => 'https://gs.construction', 'services.dataforseo.login' => 'u', 'services.dataforseo.password' => 'p', 'seo-intel.sources' => [FakeScoreSource::class, '\\App\\Services\\Seo\\Intel\\Sources\\DoesNotExistSource']]);
         Http::fake(function ($request) {
             if (str_contains($request->url(), 'user_data')) {
-                return Http::response(['tasks' => [['result' => [['money' => ['balance' => self::$balance]]]]]]);
+                return self::$balance === null
+                    ? Http::response('', 500)
+                    : Http::response(['tasks' => [['result' => [['money' => ['balance' => self::$balance]]]]]]);
             }
 
             return Http::response(['tasks' => [['cost' => 0.004, 'status_code' => 20000, 'result' => [['ok' => true]]]]]);
@@ -197,6 +200,20 @@ class IntelRunnerTest extends TestCase
         self::$balance = 0.001;
         $this->artisan('seo:intel', ['family' => ['fake']])->assertExitCode(1);
         $this->assertSame(0, DB::table('seo_intel_runs')->count());
+    }
+
+    public function test_balance_guard_fails_closed_when_the_balance_check_itself_fails(): void
+    {
+        // A failed balance() (null) used to slip straight through
+        // (`$balance !== null && ...`) and let the run spend anyway.
+        self::$balance = null;
+
+        $this->artisan('seo:intel', ['family' => ['fake']])
+            ->expectsOutputToContain('balance unknown')
+            ->assertExitCode(1);
+
+        $this->assertSame(0, DB::table('seo_intel_runs')->count());
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), '/fake/live'));
     }
 
     public function test_poll_until_returns_the_probe_value_or_null_when_it_never_settles(): void

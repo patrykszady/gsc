@@ -36,6 +36,80 @@ class SeoDataForSeoIntelTest extends TestCase
         $this->assertNotNull(DB::table('seo_domain_overviews')->where('domain', 'prism.test')->first());
     }
 
+    public function test_domain_overview_refuses_a_low_budget_before_any_api_call(): void
+    {
+        // Unlike its siblings, domain-overview used to check balance only,
+        // never estimate-vs-budget — so a --budget too small to cover even
+        // one domain's ~$0.04 would sail through and spend anyway.
+        Http::fake(['*/appendix/user_data' => Http::response(['tasks' => [['result' => [['money' => ['balance' => 100]]]]]])]);
+
+        $this->artisan('seo:domain-overview', ['--competitors' => 3, '--budget' => 0.01])
+            ->expectsOutputToContain('exceeds --budget')
+            ->assertExitCode(1);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'domain_rank_overview') || str_contains($r->url(), 'backlinks/summary'));
+        $this->assertSame(0, DB::table('seo_domain_overviews')->count());
+    }
+
+    public function test_domain_overview_fails_closed_when_the_balance_check_itself_fails(): void
+    {
+        // A failed balance() call (network/auth/outage) returns null. The
+        // old guard (`$balance !== null && $balance < $estimate`) treated
+        // null as "unlimited" and ran anyway; this must refuse instead.
+        Http::fake(['*/appendix/user_data' => Http::response('', 500)]);
+
+        $this->artisan('seo:domain-overview', ['--competitors' => 3])
+            ->expectsOutputToContain('balance unknown')
+            ->assertExitCode(1);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'domain_rank_overview') || str_contains($r->url(), 'backlinks/summary'));
+        $this->assertSame(0, DB::table('seo_domain_overviews')->count());
+    }
+
+    public function test_domain_overview_exits_non_zero_when_every_domain_fails(): void
+    {
+        // The balance precheck passes (account is fine), but every per-domain
+        // call then fails (a mid-run outage, a bad location code, etc.) — the
+        // old code just `continue`d past each one and exited SUCCESS having
+        // written nothing.
+        Http::fake([
+            '*/appendix/user_data' => Http::response(['tasks' => [['result' => [['money' => ['balance' => 20]]]]]]),
+            '*/domain_rank_overview/live' => Http::response('', 500),
+            '*/backlinks/summary/live' => Http::response('', 500),
+        ]);
+
+        $this->artisan('seo:domain-overview', ['--competitors' => 3])
+            ->expectsOutputToContain('Every domain failed')
+            ->assertExitCode(1);
+
+        $this->assertSame(0, DB::table('seo_domain_overviews')->count());
+    }
+
+    public function test_backlink_gap_fails_closed_when_the_balance_check_itself_fails(): void
+    {
+        Http::fake(['*/appendix/user_data' => Http::response('', 500)]);
+
+        $this->artisan('seo:backlink-gap', ['--competitors' => 2])
+            ->expectsOutputToContain('balance unknown')
+            ->assertExitCode(1);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'referring_domains'));
+        $this->assertSame(0, DB::table('seo_backlink_prospects')->count());
+    }
+
+    public function test_ai_mentions_fails_closed_when_the_balance_check_itself_fails(): void
+    {
+        config(['seo.ai_mentions.towns' => ['Kenilworth'], 'seo.ai_mentions.services' => ['kitchen remodeling' => 'kitchen-remodeling']]);
+        Http::fake(['*/appendix/user_data' => Http::response('', 500)]);
+
+        $this->artisan('seo:ai-mentions', ['--platforms' => 'chat_gpt', '--budget' => 2])
+            ->expectsOutputToContain('balance unknown')
+            ->assertExitCode(1);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'llm_responses'));
+        $this->assertSame(0, DB::table('seo_ai_mentions')->count());
+    }
+
     public function test_backlink_gap_lists_domains_linking_to_competitors_but_not_us(): void
     {
         DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'p2', 'keyword' => 'kitchen remodeling', 'name' => 'Dream', 'url' => 'https://dream.test/', 'host' => 'dream.test', 'pack_points' => 5, 'seen_points' => 8, 'created_at' => now(), 'updated_at' => now()]);

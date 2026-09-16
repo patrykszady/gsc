@@ -279,15 +279,31 @@ Schedule::command('testimonials:sync-yelp-reviews --only-new')->weeklyOn(1, '07:
 // gbp:metrics-sync.
 // Geo-grid map-pack scan (DataForSEO Google Maps at every grid point) — the
 // Saturday-morning picture of the 3-pack across the service area.
+// DataForSEO-spending schedules are pinned to Chicago so their wall-clock
+// trigger (and the week-over-week comparisons that read it) doesn't shift an
+// hour across DST.
+// The account has been funded once ($51 total, no auto-reload); the failure
+// mode that matters is silent depletion, not overspend — a daily balance log
+// (and cache row for the admin UI) so a $0 balance shows up before a week of
+// scheduled runs quietly produces zero rows.
+Schedule::command('seo:dataforseo-balance-check')->dailyAt('05:50')
+    ->timezone('America/Chicago')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:dataforseo-balance-check failed'));
 Schedule::command('seo:map-pack-grid --budget=2')->weeklyOn(6, '07:00')
+    ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:domain-overview --budget=1')->weeklyOn(0, '05:00')
+    ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:backlink-gap --budget=1')->monthlyOn(2, '05:15')
+    ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:ai-mentions --budget=2')->twiceMonthly(1, 15, '05:30')
+    ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:keyword-research --budget=4 --ideas')->weeklyOn(0, '04:30')
+    ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->warning('Scheduled seo:keyword-research failed (balance?)'));
 // DataForSEO intelligence, one API family per slot (seo:intel --list shows
@@ -303,6 +319,7 @@ foreach ([
     'domain_analytics' => ['monthlyOn', 4, '04:45'], // monthly: competitor tech + whois
 ] as $family => [$method, $day, $at]) {
     Schedule::command("seo:intel {$family} --budget=1")->{$method}($day, $at)
+        ->timezone('America/Chicago')
         ->withoutOverlapping(90)
         ->appendOutputTo(storage_path('logs/schedule.log'))
         ->onFailure(fn () => logger()->warning("Scheduled seo:intel {$family} failed (balance?)"));
@@ -320,9 +337,11 @@ Schedule::command('citations:control inbox')->everyFifteenMinutes()
     ->when(fn () => app(VerificationInbox::class)->isConfigured())
     ->withoutOverlapping(10);
 Schedule::command('seo:intel business_data --budget=1')->weekdays()->dailyAt('06:10') // reviews and the local competitors' profiles (~\$0.06/run)
+    ->timezone('America/Chicago')
     ->withoutOverlapping(60)
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:map-pack-competitors --limit=15')->dailyAt('05:40')
+    ->timezone('America/Chicago')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/schedule.log'));
 

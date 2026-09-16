@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Site;
 use App\Services\DataForSeoService;
+use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -30,32 +32,38 @@ class SeoBacklinkGap extends Command
         $ours = preg_replace('#^https?://(www\.)?#', '', rtrim((string) config('app.url'), '/')) ?: 'gs.construction';
         $competitors = SeoDomainOverview::competitorDomains((int) $this->option('competitors'));
         $estimate = (count($competitors) + 3) * 0.025;
-        if ($estimate > (float) $this->option('budget')) {
-            $this->error(sprintf('Estimated cost $%.2f exceeds --budget; narrow --competitors.', $estimate));
-
-            return self::FAILURE;
-        }
-        $balance = $dfs->balance();
-        if ($balance !== null && $balance < $estimate) {
-            $this->error(sprintf('DataForSEO balance $%.2f cannot cover this run ($%.2f).', $balance, $estimate));
+        $guard = new DataForSeoBudget;
+        if ($msg = $guard->precheck($estimate, (float) $this->option('budget'), $dfs->balance(), $dfs->getLastError())) {
+            $this->error($msg);
 
             return self::FAILURE;
         }
 
         $oursLinks = collect($dfs->referringDomains($ours, 300))->pluck('domain')->flip();
-        $this->line("  {$ours}: " . $oursLinks->count() . ' referring domains');
+        $this->line("  {$ours}: ".$oursLinks->count().' referring domains');
 
         $prospects = [];
+        // A fresh instance per competitor, not the shared $dfs, because
+        // DataForSeoService::$lastError is set-only — it never clears — so
+        // comparing it to its value before THIS call ("unchanged" = success)
+        // misreads a second call that fails with the same error text as a
+        // success. A new instance starts with lastError = null, so any
+        // non-null value after the call belongs to this call alone. Its own
+        // cost is folded into $probeSpent since $dfs->spent() never sees it.
+        $probeSpent = 0.0;
         foreach ($competitors as $c) {
-            if ($dfs->spent() >= (float) $this->option('budget')) {
+            if ($dfs->spent() + $probeSpent >= (float) $this->option('budget')) {
                 $this->warn('Budget reached.');
                 break;
             }
-            $rows = $dfs->referringDomains($c, (int) $this->option('per-domain'));
-            $this->line("  {$c}: " . count($rows) . ' referring domains');
+            $call = new DataForSeoService;
+            $rows = $call->referringDomains($c, (int) $this->option('per-domain'));
+            $guard->record($rows !== [] || $call->getLastError() === null);
+            $probeSpent += $call->spent();
+            $this->line("  {$c}: ".count($rows).' referring domains');
             foreach ($rows as $r) {
                 $d = $r['domain'];
-                if ($d === $ours || $d === $c || str_ends_with($d, '.' . $c)) {
+                if ($d === $ours || $d === $c || str_ends_with($d, '.'.$c)) {
                     continue;
                 }
                 // Free-host spam networks ("housesbathroom.web.app", blogspot farms) are not prospects.
@@ -70,7 +78,7 @@ class SeoBacklinkGap extends Command
             }
         }
 
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $n = 0;
         foreach ($prospects as $d => $p) {
             Tenancy::table('seo_backlink_prospects')->updateOrInsert(
@@ -89,8 +97,13 @@ class SeoBacklinkGap extends Command
             $n++;
         }
         Cache::forget(Tenancy::cacheKey('seo_reports_dataforseo_v1'));
+        if ($guard->allFailed()) {
+            $this->error('Every competitor failed — DataForSEO may be down or misconfigured.');
+
+            return self::FAILURE;
+        }
         $gap = collect($prospects)->filter(fn ($p, $d) => ! isset($oursLinks[$d]) && count($p['links_to']) >= 2 && (int) $p['spam'] < 30 && count($p['links_to']) < 6)->count();
-        $this->info(sprintf('%d prospect domains recorded; %d link to 2+ competitors and not to us. Spent $%.3f.', $n, $gap, $dfs->spent()));
+        $this->info(sprintf('%d prospect domains recorded; %d link to 2+ competitors and not to us. Spent $%.3f.', $n, $gap, $dfs->spent() + $probeSpent));
 
         return self::SUCCESS;
     }

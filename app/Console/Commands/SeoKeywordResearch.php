@@ -6,6 +6,7 @@ use App\Models\AreaServed;
 use App\Models\Site;
 use App\Services\DataForSeoService;
 use App\Services\Seo\SeoAutopilotService;
+use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -121,25 +122,32 @@ class SeoKeywordResearch extends Command
 
             return self::SUCCESS;
         }
-        if ($estimate > $budget) {
-            $this->error('Estimated cost exceeds --budget; raise it or narrow --competitors.');
-
-            return self::FAILURE;
-        }
-        if ($balance !== null && $balance < $estimate) {
-            $this->error(sprintf('DataForSEO balance $%.2f cannot cover this run ($%.2f). Top up at app.dataforseo.com, then re-run.', $balance, $estimate));
+        $guard = new DataForSeoBudget;
+        if ($msg = $guard->precheck($estimate, $budget, $balance, $dfs->getLastError())) {
+            $this->error($msg);
 
             return self::FAILURE;
         }
 
         // ---- 2. competitor ranked keywords -------------------------------
         $competitorHits = []; // keyword => [domain => position]
+        // A fresh instance per domain, not the shared $dfs, because
+        // DataForSeoService::$lastError is set-only — it never clears — so
+        // comparing it to its value before THIS call ("unchanged" = success)
+        // misreads a second call that fails with the same error text as a
+        // success. A new instance starts with lastError = null, so any
+        // non-null value after the call belongs to this call alone. Its own
+        // cost is folded into $probeSpent since $dfs->spent() never sees it.
+        $probeSpent = 0.0;
         foreach ($domains as $domain) {
-            if ($dfs->spent() >= $budget) {
+            if ($dfs->spent() + $probeSpent >= $budget) {
                 $this->warn('Budget reached before all competitors were pulled.');
                 break;
             }
-            $rows = $dfs->rankedKeywords($domain, 300);
+            $call = new DataForSeoService;
+            $rows = $call->rankedKeywords($domain, 300);
+            $guard->record($rows !== [] || $call->getLastError() === null);
+            $probeSpent += $call->spent();
             $n = 0;
             foreach ($rows as $r) {
                 if (! $this->remodelingish($r['keyword'])) {
@@ -151,11 +159,11 @@ class SeoKeywordResearch extends Command
                 $universe[$r['keyword']]['__diff'] = $r['difficulty'] ?? ($universe[$r['keyword']]['__diff'] ?? null);
                 $n++;
             }
-            $this->line("  {$domain}: {$n} remodeling keywords".($dfs->getLastError() ? " ({$dfs->getLastError()})" : ''));
+            $this->line("  {$domain}: {$n} remodeling keywords".($call->getLastError() ? " ({$call->getLastError()})" : ''));
         }
 
         // ---- 2b. ideas (optional) ----------------------------------------
-        if ($this->option('ideas') && $dfs->spent() < $budget) {
+        if ($this->option('ideas') && $dfs->spent() + $probeSpent < $budget) {
             foreach ($dfs->keywordIdeas($services, 300) as $r) {
                 $add($r['keyword'], 'ideas');
                 $universe[$r['keyword']]['__vol'] = max($universe[$r['keyword']]['__vol'] ?? 0, $r['volume']);
@@ -168,7 +176,7 @@ class SeoKeywordResearch extends Command
         $need = array_keys($universe);
         $volumes = [];
         foreach (array_chunk($need, 1000) as $chunk) {
-            if ($dfs->spent() >= $budget) {
+            if ($dfs->spent() + $probeSpent >= $budget) {
                 $this->warn('Budget reached before all volumes were fetched.');
                 break;
             }
@@ -213,7 +221,7 @@ class SeoKeywordResearch extends Command
         }
 
         // ---- 5. intent + difficulty for everything with volume ------------
-        if ($dfs->spent() < $budget) {
+        if ($dfs->spent() + $probeSpent < $budget) {
             $withVolume = Tenancy::table('seo_keywords')->where('volume', '>=', 10)->orderByDesc('volume')->limit(2000)->pluck('keyword')->all();
             $difficulty = $dfs->keywordDifficulty($withVolume);
             $intent = $dfs->searchIntent($withVolume);
@@ -243,7 +251,12 @@ class SeoKeywordResearch extends Command
         Cache::forget(Tenancy::cacheKey('seo.area.service_demand'));
         Cache::forget(Tenancy::cacheKey('seo.area.service_volume'));
         Cache::forget(Tenancy::cacheKey('seo_reports_keywords_v1'));
-        $this->info(sprintf('Wrote %d keywords. Spent $%.3f.', $written, $dfs->spent()));
+        if ($guard->allFailed()) {
+            $this->error('Every competitor domain failed — DataForSEO may be down or misconfigured.');
+
+            return self::FAILURE;
+        }
+        $this->info(sprintf('Wrote %d keywords. Spent $%.3f.', $written, $dfs->spent() + $probeSpent));
 
         return self::SUCCESS;
     }

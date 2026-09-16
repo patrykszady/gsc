@@ -2,7 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AreaServed;
+use App\Models\Site;
 use App\Services\DataForSeoService;
+use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -36,7 +39,7 @@ class SeoAiMentions extends Command
         // Core towns = the six with the most completed projects (the footer's rule), unless overridden.
         $towns = array_values(array_filter(array_map('trim', explode(',', (string) ($this->option('towns') ?: implode(',', (array) config('seo.ai_mentions.towns', [])))))));
         if ($towns === []) {
-            $towns = \App\Models\AreaServed::coreTowns(6);
+            $towns = AreaServed::coreTowns(6);
         }
         $services = (array) config('seo.ai_mentions.services', ['kitchen remodeling' => 'kitchen-remodeling', 'bathroom remodeling' => 'bathroom-remodeling']);
         $platforms = array_values(array_intersect(array_map('trim', explode(',', (string) $this->option('platforms'))), array_keys(self::MODELS)));
@@ -55,19 +58,15 @@ class SeoAiMentions extends Command
             $estimate += count($prompts) * self::COST[$pf];
         }
         $balance = $dfs->balance();
-        $this->line(sprintf('%d prompts × %d engines — estimated $%.2f · balance %s', count($prompts), count($platforms), $estimate, $balance === null ? '?' : '$' . number_format($balance, 2)));
-        if ($estimate > (float) $this->option('budget')) {
-            $this->error('Estimated cost exceeds --budget.');
-
-            return self::FAILURE;
-        }
-        if ($balance !== null && $balance < $estimate) {
-            $this->error('DataForSEO balance cannot cover this run.');
+        $this->line(sprintf('%d prompts × %d engines — estimated $%.2f · balance %s', count($prompts), count($platforms), $estimate, $balance === null ? '?' : '$'.number_format($balance, 2)));
+        $guard = new DataForSeoBudget;
+        if ($msg = $guard->precheck($estimate, (float) $this->option('budget'), $balance, $dfs->getLastError())) {
+            $this->error($msg);
 
             return self::FAILURE;
         }
 
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $today = now()->toDateString();
         $asked = 0;
         $mentioned = 0;
@@ -79,9 +78,12 @@ class SeoAiMentions extends Command
                 }
                 $answer = $dfs->llmAnswer($pf, self::MODELS[$pf], $p['text']);
                 if ($answer === null) {
-                    $this->line("  {$pf} / {$p['town']} {$p['service']}: no answer (" . ($dfs->getLastError() ?? '?') . ')');
+                    $this->line("  {$pf} / {$p['town']} {$p['service']}: no answer (".($dfs->getLastError() ?? '?').')');
+                    $guard->record(false);
+
                     continue;
                 }
+                $guard->record(true);
                 $names = self::businessesNamed($answer);
                 $lower = mb_strtolower($answer);
                 $isMentioned = str_contains($lower, $brandKey) || ($host && str_contains($lower, $host));
@@ -100,10 +102,15 @@ class SeoAiMentions extends Command
                 ]);
                 $asked++;
                 $mentioned += $isMentioned ? 1 : 0;
-                $this->line(sprintf('  %-10s %-18s %-20s %s  named: %s', $pf, $p['town'], $p['service'], $isMentioned ? 'MENTIONED #' . ($rank ?? '?') : 'not named', implode(', ', array_slice($names, 0, 3))));
+                $this->line(sprintf('  %-10s %-18s %-20s %s  named: %s', $pf, $p['town'], $p['service'], $isMentioned ? 'MENTIONED #'.($rank ?? '?') : 'not named', implode(', ', array_slice($names, 0, 3))));
             }
         }
         Cache::forget(Tenancy::cacheKey('seo_reports_dataforseo_v1'));
+        if ($guard->allFailed()) {
+            $this->error('Every prompt failed — DataForSEO may be down or misconfigured.');
+
+            return self::FAILURE;
+        }
         $this->info(sprintf('%d answers, named in %d. Spent $%.3f.', $asked, $mentioned, $dfs->spent()));
 
         return self::SUCCESS;

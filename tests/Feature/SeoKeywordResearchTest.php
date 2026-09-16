@@ -34,6 +34,20 @@ class SeoKeywordResearchTest extends TestCase
         $this->assertSame(0, DB::table('seo_keywords')->count());
     }
 
+    public function test_fails_closed_when_the_balance_check_itself_fails(): void
+    {
+        // A failed balance() call (null) used to slip the old guard
+        // (`$balance !== null && ...`) entirely and let the run spend.
+        Http::fake(['*/appendix/user_data' => Http::response('', 500)]);
+
+        $this->artisan('seo:keyword-research', ['--budget' => 3])
+            ->expectsOutputToContain('balance unknown')
+            ->assertExitCode(1);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'search_volume') || str_contains($r->url(), 'ranked_keywords'));
+        $this->assertSame(0, DB::table('seo_keywords')->count());
+    }
+
     public function test_builds_the_universe_and_writes_volumes_positions_and_competitor_coverage(): void
     {
         DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(5)->toDateString(), 'site_url' => 'sc-domain:gs.construction', 'query' => 'kenilworth home remodeling', 'page' => 'https://gs.construction/areas-served/kenilworth', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 400, 'clicks' => 0, 'position' => 7.5, 'ctr' => 0, 'dim_hash' => 'h1', 'created_at' => now(), 'updated_at' => now()]);
@@ -97,5 +111,35 @@ class SeoKeywordResearchTest extends TestCase
         $this->assertStringContainsString('prism.test', $output);
         $this->assertStringNotContainsString('facebook.com', $output);
         $this->assertStringNotContainsString('houzz.com', $output);
+    /**
+     * DataForSeoService::$lastError is set-only — it is never cleared back to
+     * null — so the old per-item heuristic ("no error, or the error text is
+     * unchanged from before this call, means success") read a SECOND
+     * competitor call that fails with the exact same error text as a
+     * success. Faking every competitor call with an identical failure
+     * reproduces that: this must fail closed, not exit 0.
+     */
+    public function test_two_consecutive_identical_failures_are_not_read_as_success(): void
+    {
+        DB::table('map_pack_competitors')->insert([
+            ['site_id' => null, 'place_id' => 'p2', 'keyword' => 'kitchen remodeling', 'name' => 'C2', 'host' => 'competitor2.test', 'pack_points' => 50, 'seen_points' => 9, 'created_at' => now(), 'updated_at' => now()],
+            ['site_id' => null, 'place_id' => 'p3', 'keyword' => 'kitchen remodeling', 'name' => 'C3', 'host' => 'competitor3.test', 'pack_points' => 40, 'seen_points' => 9, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'user_data')) {
+                return Http::response(['tasks' => [['result' => [['money' => ['balance' => 25]]]]]]);
+            }
+            if (str_contains($request->url(), 'ranked_keywords')) {
+                // The exact same failure, twice in a row.
+                return Http::response(['tasks' => [['cost' => 0, 'status_code' => 40501, 'status_message' => 'Invalid Field: target.']]]);
+            }
+
+            return Http::response([], 200);
+        });
+
+        $this->artisan('seo:keyword-research', ['--budget' => 3, '--competitors' => 2])
+            ->expectsOutputToContain('Every competitor domain failed')
+            ->assertExitCode(1);
     }
 }

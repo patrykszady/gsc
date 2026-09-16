@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Site;
 use App\Services\DataForSeoService;
+use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -10,12 +12,13 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Weekly geo-grid map-pack scan: the Google Maps results at every point of
- * an N×N grid over the service area, per keyword, via DataForSEO
- * (~$0.002 a point — 121 points × 3 keywords ≈ $0.73 a run). Records, per
- * keyword: rank at every point, average rank where found (ARP), average
- * rank with not-found as 21 (ATRP), share of points in the 3-pack (SoLV),
- * and every business seen with its pack appearances, reviews and rating —
- * the same shape the map-pack card and the competitor reader consume.
+ * an N×N grid over the service area, per keyword, via DataForSEO (~$0.002 a
+ * point — 49 points × 3 keywords ≈ $0.30 a run at the default 7×7 grid, vs
+ * ~$0.73 at the old 11×11). Records, per keyword: rank at every point,
+ * average rank where found (ARP), average rank with not-found as 21 (ATRP),
+ * share of points in the 3-pack (SoLV), and every business seen with its
+ * pack appearances, reviews and rating — the same shape the map-pack card
+ * and the competitor reader consume.
  */
 class SeoMapPackGrid extends Command
 {
@@ -46,18 +49,27 @@ class SeoMapPackGrid extends Command
         $points = self::grid($lat, $lng, $n, $radius);
         $estimate = count($points) * count($keywords) * 0.002;
         $balance = $dfs->balance();
-        $this->line(sprintf('%d×%d grid (%d points, %s mi radius) × %d keywords — estimated $%.2f · balance %s', $n, $n, count($points), $radius, count($keywords), $estimate, $balance === null ? '?' : '$' . number_format($balance, 2)));
+        $this->line(sprintf('%d×%d grid (%d points, %s mi radius) × %d keywords — estimated $%.2f · balance %s', $n, $n, count($points), $radius, count($keywords), $estimate, $balance === null ? '?' : '$'.number_format($balance, 2)));
         if ($this->option('dry-run')) {
             return self::SUCCESS;
         }
-        if ($estimate > (float) $this->option('budget') || ($balance !== null && $balance < $estimate)) {
-            $this->error('Estimate exceeds --budget or balance.');
+        $guard = new DataForSeoBudget;
+        if ($msg = $guard->precheck($estimate, (float) $this->option('budget'), $balance, $dfs->getLastError())) {
+            $this->error($msg);
 
             return self::FAILURE;
         }
 
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $today = now();
+        // A fresh instance per grid point, not the shared $dfs, because
+        // DataForSeoService::$lastError is set-only — it never clears — so
+        // comparing it to its value before THIS call ("unchanged" = success)
+        // misreads a second call that fails with the same error text as a
+        // success. A new instance starts with lastError = null, so any
+        // non-null value after the call belongs to this call alone. Its own
+        // cost is folded into $probeSpent since $dfs->spent() never sees it.
+        $probeSpent = 0.0;
         foreach ($keywords as $keyword) {
             $grid = [];
             $competitors = [];
@@ -65,12 +77,20 @@ class SeoMapPackGrid extends Command
             $rankSum = 0;
             $trpSum = 0;
             $top3 = 0;
+            // Set when the budget runs out mid-grid; the points collected so
+            // far for THIS keyword are still persisted (flagged partial)
+            // instead of thrown away, and no further keyword is started.
+            $partial = false;
             foreach ($points as [$plat, $plng]) {
-                if ($dfs->spent() >= (float) $this->option('budget')) {
+                if ($dfs->spent() + $probeSpent >= (float) $this->option('budget')) {
                     $this->warn('Budget reached mid-grid.');
-                    break 2;
+                    $partial = true;
+                    break;
                 }
-                $results = $dfs->mapsResults($keyword, $plat, $plng);
+                $call = new DataForSeoService;
+                $results = $call->mapsResults($keyword, $plat, $plng);
+                $guard->record($results !== [] || $call->getLastError() === null);
+                $probeSpent += $call->spent();
                 $rank = false;
                 foreach ($results as $r) {
                     $pid = (string) ($r['place_id'] ?? '');
@@ -104,7 +124,7 @@ class SeoMapPackGrid extends Command
             usort($competitors, fn ($a, $b) => [$b['pack'], $b['seen']] <=> [$a['pack'], $a['seen']]);
             $competitors = array_slice(array_values($competitors), 0, 25);
             $pointsN = count($grid);
-            $scanId = 'grid-' . $today->format('Ymd') . '-' . substr(md5($keyword), 0, 8);
+            $scanId = 'grid-'.$today->format('Ymd').'-'.substr(md5($keyword), 0, 8);
             $detail = [
                 'source' => 'dataforseo',
                 'grid' => $grid,
@@ -112,8 +132,16 @@ class SeoMapPackGrid extends Command
                 'pack_leaders' => array_map(fn ($c) => ['business' => $c['name'], 'appearances' => $c['pack']], array_slice($competitors, 0, 8)),
                 'found' => $found,
                 'points_total' => $pointsN,
+                'points_expected' => count($points),
+                // A budget cutoff mid-grid used to discard this keyword's
+                // points entirely (break 2 before the persist below ever
+                // ran); now the partial grid is kept, flagged, so the
+                // report can tell "we scanned the whole area" from "we ran
+                // out of budget a third of the way through".
+                'partial' => $partial,
+                'points_collected' => $pointsN,
                 'center' => ['lat' => $lat, 'lng' => $lng],
-                'radius' => $radius . 'mi',
+                'radius' => $radius.'mi',
             ];
             Tenancy::table('map_pack_scans')->updateOrInsert(
                 ['scan_id' => $scanId],
@@ -140,10 +168,18 @@ class SeoMapPackGrid extends Command
                     ]
                 );
             }
-            $this->line(sprintf('  %-24s in pack %3d/%d · found %3d · ARP %s · leader %s', $keyword, $top3, $pointsN, $found, $found ? round($rankSum / $found, 1) : '—', $competitors[0]['name'] ?? '—'));
+            $this->line(sprintf('  %-24s in pack %3d/%d · found %3d · ARP %s · leader %s%s', $keyword, $top3, $pointsN, $found, $found ? round($rankSum / $found, 1) : '—', $competitors[0]['name'] ?? '—', $partial ? '  [PARTIAL — budget reached]' : ''));
+            if ($partial) {
+                break; // budget is gone; no further keyword is started this run
+            }
         }
         Cache::forget(Tenancy::cacheKey('seo_reports_map_pack_v1'));
-        $this->info(sprintf('Done. Spent $%.3f.', $dfs->spent()));
+        if ($guard->allFailed()) {
+            $this->error('Every grid point failed — DataForSEO may be down or misconfigured.');
+
+            return self::FAILURE;
+        }
+        $this->info(sprintf('Done. Spent $%.3f.', $dfs->spent() + $probeSpent));
 
         return self::SUCCESS;
     }
