@@ -111,6 +111,8 @@ class SeoKeywordResearchTest extends TestCase
         $this->assertStringContainsString('prism.test', $output);
         $this->assertStringNotContainsString('facebook.com', $output);
         $this->assertStringNotContainsString('houzz.com', $output);
+    }
+
     /**
      * DataForSeoService::$lastError is set-only — it is never cleared back to
      * null — so the old per-item heuristic ("no error, or the error text is
