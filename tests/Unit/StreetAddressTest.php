@@ -67,4 +67,22 @@ class StreetAddressTest extends TestCase
             'nothing' => ['', null],
         ];
     }
+
+    #[DataProvider('casings')]
+    public function test_tidies_a_streets_casing_without_taking_any_capital_away(string $typed, string $shown): void
+    {
+        $this->assertSame($shown, StreetAddress::tidyCase($typed));
+    }
+
+    public static function casings(): array
+    {
+        return [
+            'all lower' => ['6 drake terrace', '6 Drake Terrace'],
+            'already right' => ['6 Drake Terrace', '6 Drake Terrace'],
+            'internal capitals kept' => ['12 McDonald Ct NE', '12 McDonald Ct NE'],
+            'ordinal and unit untouched' => ['2258 south 8th avenue #4b', '2258 South 8th Avenue #4b'],
+            'joining word stays small' => ['1 avenue of the americas', '1 Avenue of the Americas'],
+            'shouting is left alone' => ['400 N WHEELING RD', '400 N WHEELING RD'],
+        ];
+    }
 }

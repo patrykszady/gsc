@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Request;
+use App\Support\SiteConfig;
+use App\Support\Theme;
+use App\Models\Site;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -72,12 +75,37 @@ class AdminProxyController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
+            // This route runs without ResolveSite (see routes/web.php), so
+            // the tenant, theme and config overlay are not applied — the
+            // fallback page would wear the default site's brand on every
+            // host. Bind them the way bootstrap/app.php's exception hook
+            // does for error pages.
+            $this->applySiteOverlay($request);
+
             return response()
                 ->view('errors.admin-proxy-down', [], 502)
                 ->header('X-Robots-Tag', 'noindex, nofollow');
         }
 
         return $this->relayResponse($upstream, $request);
+    }
+
+    /** Bind the tenant for this host, so a view rendered here carries its brand. */
+    protected function applySiteOverlay(Request $request): void
+    {
+        if (app()->bound('site.overlay_applied')) {
+            return;
+        }
+
+        $site = Site::forDevHost($request->getHost())
+            ?? Site::forHost($request->getHost())
+            ?? Site::forPreviewHost($request->getHost())
+            ?? Site::default();
+
+        Site::setCurrent($site);
+        Theme::apply($site);
+        SiteConfig::applyRuntime($site);
+        app()->instance('site.overlay_applied', true);
     }
 
     protected function targetUrl(Request $request, string $path): string

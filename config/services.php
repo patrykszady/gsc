@@ -202,9 +202,12 @@ return [
     /*
     | Email leads: enquiries arriving in the team's inboxes become contact
     | submissions here — where every lead starts, so ss.systems lists them
-    | first — and go on to hive like a web-form lead. EMAIL_LEADS_INBOXES is
-    | "mailbox|grant_id" pairs, comma-separated; a mailbox other than the
-    | grant's own (crew@ through Patryk's grant) is read as a shared mailbox.
+    | first — and go on to hive like a web-form lead. Which mailboxes: the
+    | ones hive.contractors has connected for the business (HiveProjectsClient
+    | ::mailboxes(), via the connection set on the Platforms page). The
+    | EMAIL_LEADS_INBOXES "mailbox|grant_id" pairs are only the fallback for
+    | a site with no hive connection; a mailbox other than the grant's own
+    | (crew@ through Patryk's grant) is read as a shared mailbox.
     */
     'email_leads' => [
         'enabled' => (bool) env('EMAIL_LEADS_ENABLED', false),

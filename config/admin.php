@@ -22,4 +22,20 @@ return [
 
     'logo' => 'images/logo.svg',
     'logo_dark' => 'images/logo-dark.svg',
+
+    // The standalone "admin is temporarily unavailable" page
+    // (errors/admin-proxy-down) — shown when ss-systems can't be reached, so
+    // it carries no stylesheet of its own and takes its look from here. The
+    // button uses the accent ramp above (Tailwind's sky when null).
+    'proxy_down' => [
+        'eyebrow' => 'Admin',
+        'font' => "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        'heading_font' => "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        'heading_weight' => '600',
+        'background' => '#fafafa',
+        'heading' => '#18181b',
+        'text' => '#52525b',
+        'eyebrow_color' => '#a1a1aa',
+        'radius' => '0.5rem',
+    ],
 ];

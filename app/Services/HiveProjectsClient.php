@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Models\HiveProjectZipCount;
+use App\Models\PlatformSetting;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -14,12 +16,106 @@ use Throwable;
 
 class HiveProjectsClient
 {
+    /** Platform settings for the hive.contractors connection, set from the central admin's Platforms page. */
+    public const SETTING_URL = 'hive.url';
+
+    public const SETTING_TOKEN = 'hive.token';
+
+    /** JSON list of mailbox addresses the email-lead reader must leave alone. */
+    public const SETTING_DISABLED_MAILBOXES = 'hive.mailboxes_disabled';
+
+    protected const MAILBOXES_CACHE = 'hive.mailboxes';
+
     public function __construct(
         protected ?string $baseUrl = null,
         protected ?string $token = null,
     ) {
-        $this->baseUrl ??= (string) config('services.hive.url');
-        $this->token ??= (string) config('services.hive.token');
+        // The connection is a platform setting (Platforms page on
+        // ss.systems), with the env keys as the fallback for a site that was
+        // connected before the page existed.
+        $this->baseUrl ??= (string) (PlatformSetting::get(self::SETTING_URL) ?: config('services.hive.url'));
+        $this->token ??= (string) (PlatformSetting::get(self::SETTING_TOKEN) ?: config('services.hive.token'));
+    }
+
+    public function isConfigured(): bool
+    {
+        return trim($this->baseUrl) !== '' && trim($this->token) !== '';
+    }
+
+    public function baseUrl(): string
+    {
+        return $this->baseUrl;
+    }
+
+    /** A few characters that change when the token changes — enough to tell "set" from "replaced", never the token. */
+    public function tokenFingerprint(): ?string
+    {
+        return trim($this->token) !== '' ? substr(hash('sha256', $this->token), 0, 6) : null;
+    }
+
+    /**
+     * The mailboxes hive has connected for this business — what the
+     * email-lead reader reads (see EmailLeadReader). Cached half an hour:
+     * the reader runs every five minutes and the list changes rarely.
+     *
+     * @return array<int, array{email: string, grant_id: string, shared: bool}>
+     *
+     * With $cachedOnly, what the last call learned (or nothing) — never a request.
+     *
+     * @throws RuntimeException when hive cannot be reached or refuses the token
+     */
+    public function mailboxes(bool $fresh = false, bool $cachedOnly = false): array
+    {
+        if (! $this->isConfigured()) {
+            return [];
+        }
+
+        if ($cachedOnly) {
+            return (array) Cache::get($this->mailboxesCacheKey(), []);
+        }
+
+        if ($fresh) {
+            Cache::forget($this->mailboxesCacheKey());
+        }
+
+        return Cache::remember($this->mailboxesCacheKey(), now()->addMinutes(30), function (): array {
+            try {
+                $response = Http::baseUrl($this->baseUrl)
+                    ->withToken($this->token)
+                    ->acceptJson()
+                    ->timeout(10)
+                    ->connectTimeout(5)
+                    ->retry(2, 500, throw: false)
+                    ->get('/api/v1/mailboxes');
+            } catch (ConnectionException $e) {
+                throw new RuntimeException('Could not reach hive.contractors: '.$e->getMessage(), 0, $e);
+            }
+
+            if (! $response->successful()) {
+                throw new RuntimeException("Hive /api/v1/mailboxes returned HTTP {$response->status()}: ".mb_substr((string) $response->body(), 0, 300));
+            }
+
+            return collect((array) $response->json('data', []))
+                ->filter(fn ($row) => is_array($row) && filled($row['email'] ?? null) && filled($row['grant_id'] ?? null))
+                ->map(fn (array $row) => [
+                    'email' => mb_strtolower(trim((string) $row['email'])),
+                    'grant_id' => trim((string) $row['grant_id']),
+                    'shared' => (bool) ($row['shared'] ?? false),
+                ])
+                ->values()
+                ->all();
+        });
+    }
+
+    public function forgetMailboxes(): void
+    {
+        Cache::forget($this->mailboxesCacheKey());
+    }
+
+    /** Per tenant, like every other admin cache here: one site's list must never answer for another. */
+    protected function mailboxesCacheKey(): string
+    {
+        return \App\Support\Tenancy::cacheKey(self::MAILBOXES_CACHE);
     }
 
     /**
@@ -127,6 +223,7 @@ class HiveProjectsClient
     public function lastSyncedAt(): ?Carbon
     {
         $value = HiveProjectZipCount::query()->max('synced_at');
+
         return $value ? Carbon::parse($value) : null;
     }
 
@@ -160,9 +257,9 @@ class HiveProjectsClient
                 ->retry(2, 500, throw: false)
                 ->post('/api/v1/leads', $payload);
         } catch (ConnectionException $e) {
-            throw new RuntimeException('Could not reach hive.contractors: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('Could not reach hive.contractors: '.$e->getMessage(), 0, $e);
         } catch (Throwable $e) {
-            throw new RuntimeException('Hive API call failed: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('Hive API call failed: '.$e->getMessage(), 0, $e);
         }
 
         if (! $response->successful()) {
@@ -173,8 +270,9 @@ class HiveProjectsClient
         $id = (int) ($response->json('data.id') ?? $response->json('id') ?? 0);
         if ($id <= 0) {
             throw new RuntimeException('Hive /api/v1/leads accepted but returned no id: '
-                . mb_substr((string) $response->body(), 0, 300));
+                .mb_substr((string) $response->body(), 0, 300));
         }
+
         return $id;
     }
 
@@ -209,13 +307,13 @@ class HiveProjectsClient
                     'limit' => $limit,
                 ]));
         } catch (ConnectionException $e) {
-            throw new RuntimeException('Could not reach hive.contractors: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('Could not reach hive.contractors: '.$e->getMessage(), 0, $e);
         }
 
         if (! $response->successful()) {
             throw new RuntimeException(
                 "Hive GET /api/v1/leads returned HTTP {$response->status()}: "
-                . mb_substr((string) $response->body(), 0, 300)
+                .mb_substr((string) $response->body(), 0, 300)
             );
         }
 
@@ -242,22 +340,22 @@ class HiveProjectsClient
                 ->get('/api/v1/projects/zip-counts');
         } catch (ConnectionException $e) {
             Log::error('HiveProjectsClient sync connection failure', ['error' => $e->getMessage()]);
-            throw new RuntimeException('Could not reach hive.contractors: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('Could not reach hive.contractors: '.$e->getMessage(), 0, $e);
         } catch (Throwable $e) {
             Log::error('HiveProjectsClient sync unexpected error', ['error' => $e->getMessage()]);
-            throw new RuntimeException('Hive API call failed: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('Hive API call failed: '.$e->getMessage(), 0, $e);
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('HiveProjectsClient sync non-2xx', [
                 'status' => $response->status(),
                 'body' => mb_substr((string) $response->body(), 0, 500),
             ]);
-            throw new RuntimeException('Hive API returned HTTP ' . $response->status());
+            throw new RuntimeException('Hive API returned HTTP '.$response->status());
         }
 
         $rows = $response->json('data');
-        if (!is_array($rows)) {
+        if (! is_array($rows)) {
             throw new RuntimeException('Hive API returned malformed payload (no "data" array).');
         }
 
@@ -272,16 +370,14 @@ class HiveProjectsClient
         $cityCoords = $existing
             ->filter(fn ($r) => $r->latitude !== null && $r->longitude !== null && $r->city)
             ->mapWithKeys(fn ($r) => [
-                mb_strtolower(trim((string) $r->city)) . '|' . mb_strtolower(trim((string) $r->state))
-                    => ['lat' => (float) $r->latitude, 'lng' => (float) $r->longitude],
+                mb_strtolower(trim((string) $r->city)).'|'.mb_strtolower(trim((string) $r->state)) => ['lat' => (float) $r->latitude, 'lng' => (float) $r->longitude],
             ])
             ->all();
 
         $zipCoords = $existing
             ->filter(fn ($r) => $r->zip_latitude !== null && $r->zip_longitude !== null)
             ->mapWithKeys(fn ($r) => [
-                trim((string) $r->zip)
-                    => ['lat' => (float) $r->zip_latitude, 'lng' => (float) $r->zip_longitude],
+                trim((string) $r->zip) => ['lat' => (float) $r->zip_latitude, 'lng' => (float) $r->zip_longitude],
             ])
             ->all();
 
@@ -294,9 +390,10 @@ class HiveProjectsClient
                 }
                 $city = isset($row['city']) ? trim((string) $row['city']) : '';
                 $state = isset($row['state']) ? trim((string) $row['state']) : '';
-                $cityKey = mb_strtolower($city) . '|' . mb_strtolower($state);
+                $cityKey = mb_strtolower($city).'|'.mb_strtolower($state);
                 $city = $cityCoords[$cityKey] ?? ['lat' => null, 'lng' => null];
                 $zipPt = $zipCoords[$zip] ?? ['lat' => null, 'lng' => null];
+
                 return [
                     'zip' => $zip,
                     'city' => isset($row['city']) && trim((string) $row['city']) !== '' ? trim((string) $row['city']) : null,
@@ -359,8 +456,9 @@ class HiveProjectsClient
             $coords = $this->nominatimGeocodeCity($city, $state);
             usleep(1_100_000);
 
-            if (!$coords) {
+            if (! $coords) {
                 Log::warning('HiveProjectsClient city geocode miss', compact('city', 'state'));
+
                 continue;
             }
 
@@ -385,8 +483,9 @@ class HiveProjectsClient
             $coords = $this->nominatimGeocodeZip($zip);
             usleep(1_100_000);
 
-            if (!$coords) {
+            if (! $coords) {
                 Log::warning('HiveProjectsClient zip geocode miss', compact('zip'));
+
                 continue;
             }
 
@@ -407,6 +506,7 @@ class HiveProjectsClient
         if ($zip === '') {
             return null;
         }
+
         return $this->nominatimRequest(['postalcode' => $zip, 'country' => 'USA']);
     }
 
@@ -418,6 +518,7 @@ class HiveProjectsClient
         if ($city === '') {
             return null;
         }
+
         return $this->nominatimRequest(array_filter([
             'city' => $city,
             'state' => $state !== '' ? $state : null,
@@ -439,23 +540,24 @@ class HiveProjectsClient
 
         try {
             $response = Http::withHeaders([
-                    // Nominatim requires a descriptive UA identifying the app.
-                    'User-Agent' => 'gs.construction hive-sync (contact: patryk@gs.construction)',
-                    'Accept' => 'application/json',
-                ])
+                // Nominatim requires a descriptive UA identifying the app.
+                'User-Agent' => 'gs.construction hive-sync (contact: patryk@gs.construction)',
+                'Accept' => 'application/json',
+            ])
                 ->timeout(8)
                 ->get('https://nominatim.openstreetmap.org/search', $params);
         } catch (Throwable $e) {
             Log::warning('Nominatim request failed', ['params' => $params, 'error' => $e->getMessage()]);
+
             return null;
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return null;
         }
 
         $hit = $response->json(0);
-        if (!is_array($hit) || !isset($hit['lat'], $hit['lon'])) {
+        if (! is_array($hit) || ! isset($hit['lat'], $hit['lon'])) {
             return null;
         }
 

@@ -127,7 +127,9 @@ class ContactSubmission extends Model
 
         $onlyStreet = LeadAddressCompleter::streetOnly($address);
 
-        return $onlyStreet !== null ? rtrim($onlyStreet, '.') : $address;
+        // Cased for reading ("6 drake terrace" -> "6 Drake Terrace"): the
+        // sender's capitals are kept, missing ones added.
+        return \App\Support\StreetAddress::tidyCase($onlyStreet !== null ? rtrim($onlyStreet, '.') : $address);
     }
 
     /**
@@ -144,7 +146,8 @@ class ContactSubmission extends Model
             collect([$this->state, $this->zip])->filter()->implode(' ') ?: null,
         ])->filter()->implode(', ');
 
-        $line = collect([$this->address, $cityStateZip ?: null])->filter()->implode(', ');
+        $street = trim((string) $this->address);
+        $line = collect([$street !== '' ? \App\Support\StreetAddress::tidyCase($street) : null, $cityStateZip ?: null])->filter()->implode(', ');
 
         return $line !== '' ? $line : null;
     }

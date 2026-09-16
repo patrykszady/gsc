@@ -5,12 +5,16 @@ namespace App\Services;
 use App\Jobs\SendLeadToHive;
 use App\Models\ContactSubmission;
 use App\Models\EmailLeadIngest;
+use App\Models\PlatformSetting;
 use App\Support\SenderName;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Opcodes\MailParser\Message;
 
 /**
  * Reads the team's inboxes (crew@, patryk@, greg@) through Nylas and turns
@@ -31,12 +35,123 @@ class EmailLeadReader
 {
     public const SOURCE = 'crew-email';
 
-    public function __construct(private readonly LeadAddressCompleter $completer) {}
+    public function __construct(
+        private readonly LeadAddressCompleter $completer,
+        private readonly HiveProjectsClient $hive,
+    ) {}
 
-    /** @return array<int, array{mailbox: string, grant_id: string}> */
+    /**
+     * Every mailbox this site could read, with whether it does: the ones
+     * hive.contractors has connected for the business (the Platforms page
+     * on ss.systems holds that connection), each switched on unless the
+     * Leads page turned it off. The EMAIL_LEADS_INBOXES env pairs remain
+     * the fallback for a site with no hive connection.
+     *
+     * @return array<int, array{mailbox: string, grant_id: string, shared: bool, enabled: bool, source: string}>
+     */
+    public function mailboxes(bool $live = true): array
+    {
+        $disabled = self::disabledMailboxes();
+        $fromHive = [];
+
+        try {
+            $fromHive = $this->hive->mailboxes(cachedOnly: ! $live);
+        } catch (\Throwable $e) {
+            Log::channel('submissions')->warning('Email leads: could not list mailboxes from hive', ['error' => $e->getMessage()]);
+        }
+
+        if ($fromHive !== []) {
+            // The shared inbox first: an enquiry addressed to it and copied
+            // to someone's own is filed under the shared one.
+            return collect($fromHive)
+                ->sortByDesc('shared')
+                ->values()
+                ->map(fn (array $row) => [
+                    'mailbox' => $row['email'],
+                    'grant_id' => $row['grant_id'],
+                    'shared' => (bool) $row['shared'],
+                    'enabled' => ! in_array($row['email'], $disabled, true),
+                    'source' => 'hive',
+                ])
+                ->all();
+        }
+
+        return collect((array) config('services.email_leads.inboxes', []))
+            ->map(fn (array $row) => [
+                'mailbox' => $row['mailbox'],
+                'grant_id' => $row['grant_id'],
+                'shared' => false,
+                'enabled' => ! in_array($row['mailbox'], $disabled, true),
+                'source' => 'env',
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** The mailboxes actually read this run. @return array<int, array{mailbox: string, grant_id: string}> */
     public function inboxes(): array
     {
-        return array_values((array) config('services.email_leads.inboxes', []));
+        return collect($this->mailboxes())
+            ->filter(fn (array $row) => $row['enabled'])
+            ->map(fn (array $row) => ['mailbox' => $row['mailbox'], 'grant_id' => $row['grant_id']])
+            ->values()
+            ->all();
+    }
+
+    /** @return array<int, string> */
+    public static function disabledMailboxes(): array
+    {
+        $stored = json_decode((string) PlatformSetting::get(HiveProjectsClient::SETTING_DISABLED_MAILBOXES, '[]'), true);
+
+        return collect(is_array($stored) ? $stored : [])
+            ->filter(fn ($v) => is_string($v) && trim($v) !== '')
+            ->map(fn (string $v) => mb_strtolower(trim($v)))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** @param  array<int, string>  $mailboxes */
+    public static function setDisabledMailboxes(array $mailboxes): void
+    {
+        $clean = collect($mailboxes)
+            ->filter(fn ($v) => is_string($v) && trim($v) !== '')
+            ->map(fn (string $v) => mb_strtolower(trim($v)))
+            ->unique()
+            ->values()
+            ->all();
+
+        PlatformSetting::put(HiveProjectsClient::SETTING_DISABLED_MAILBOXES, $clean === [] ? null : json_encode($clean));
+    }
+
+    /**
+     * What the Leads page shows next to each mailbox: whether it is read,
+     * and what the ledger says about it — when it was last read, the
+     * newest message seen, how many messages were judged and how many
+     * became leads.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function mailboxStatus(bool $live = true): array
+    {
+        $ledger = EmailLeadIngest::query()
+            ->selectRaw('mailbox, COUNT(*) AS messages, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS leads, MAX(message_at) AS newest_message_at, MAX(created_at) AS last_read_at', [EmailLeadIngest::STATUS_LEAD])
+            ->groupBy('mailbox')
+            ->get()
+            ->keyBy('mailbox');
+
+        return collect($this->mailboxes($live))
+            ->map(function (array $row) use ($ledger) {
+                $stats = $ledger->get($row['mailbox']);
+
+                return $row + [
+                    'messages' => (int) ($stats->messages ?? 0),
+                    'leads' => (int) ($stats->leads ?? 0),
+                    'newest_message_at' => $stats?->newest_message_at ? Carbon::parse($stats->newest_message_at)->toIso8601String() : null,
+                    'last_read_at' => $stats?->last_read_at ? Carbon::parse($stats->last_read_at)->toIso8601String() : null,
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -93,7 +208,7 @@ class EmailLeadReader
      * time. The old row goes first, or the dedupe would answer "already
      * ingested" before anything else ran.
      *
-     * @return array<string, mixed>  the ingestMessage() summary
+     * @return array<string, mixed> the ingestMessage() summary
      */
     public function reprocessLedgerRow(EmailLeadIngest $row): array
     {
@@ -123,7 +238,7 @@ class EmailLeadReader
      * to the shared mailbox. A grant reading its own inbox needs no such
      * thing — sending it anyway is an error.
      *
-     * @return array<int, array<string, mixed>>|null  null = could not read
+     * @return array<int, array<string, mixed>>|null null = could not read
      */
     protected function fetch(string $grantId, string $mailbox, int $limit, \DateTimeInterface $since): ?array
     {
@@ -426,7 +541,7 @@ class EmailLeadReader
         }
 
         return ContactSubmission::withoutSiteScope()
-            ->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(email)'), $addresses)
+            ->whereIn(DB::raw('LOWER(email)'), $addresses)
             ->exists();
     }
 
@@ -771,7 +886,7 @@ TXT;
 
         try {
             $contents = [];
-            foreach (\Opcodes\MailParser\Message::fromString($raw)->getAttachments() as $part) {
+            foreach (Message::fromString($raw)->getAttachments() as $part) {
                 $filename = trim((string) $part->getFilename());
                 if ($filename !== '') {
                     $contents[$filename] = $part->getContent();
@@ -849,7 +964,7 @@ TXT;
         if ($newest) {
             // Small overlap: provider timestamps are not perfectly ordered
             // and the ledger makes re-reads free.
-            return \Illuminate\Support\Carbon::parse($newest)->subMinutes(10);
+            return Carbon::parse($newest)->subMinutes(10);
         }
 
         return now()->subDays((int) config('services.email_leads.lookback_days', 2));

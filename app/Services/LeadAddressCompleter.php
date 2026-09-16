@@ -122,15 +122,8 @@ class LeadAddressCompleter
             return null;
         }
 
-        $words = explode(' ', explode(',', $normalized)[0]);
-
-        foreach ($words as $i => $word) {
-            if ($word !== '' && $word === mb_strtolower($word)) {
-                $words[$i] = mb_strtoupper(mb_substr($word, 0, 1)).mb_substr($word, 1);
-            }
-        }
-
-        return implode(' ', $words);
+        // One casing rule for capture and display (StreetAddress::tidyCase).
+        return \App\Support\StreetAddress::tidyCase(explode(',', $normalized)[0]);
     }
 
     /**

@@ -35,4 +35,18 @@ return [
 
     'logo' => null,
     'logo_dark' => null,
+
+    // The studio's own look for the standalone "admin unavailable" page:
+    // serif heading, warm stone palette, pill button.
+    'proxy_down' => [
+        'eyebrow' => 'Studio Admin',
+        'font' => "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        'heading_font' => "Georgia, 'Times New Roman', serif",
+        'heading_weight' => 'normal',
+        'background' => '#faf8f5',
+        'heading' => '#292524',
+        'text' => '#57534e',
+        'eyebrow_color' => '#a8a29e',
+        'radius' => '999px',
+    ],
 ];

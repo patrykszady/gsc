@@ -186,6 +186,7 @@ class SyncYelpLeadsTest extends TestCase
         $s = ContactSubmission::create(['name' => 'Kevin R.', 'email' => '', 'message' => 'Bathroom', 'source' => 'yelp', 'status' => 'pending', 'yelp_lead_id' => 'X1']);
         $captured = null;
         $this->mock(HiveProjectsClient::class, function ($mock) use (&$captured) {
+            $mock->shouldReceive('isConfigured')->andReturn(true);
             $mock->shouldReceive('submitLead')->once()->andReturnUsing(function (array $payload) use (&$captured) {
                 $captured = $payload;
 

@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Jobs\SendLeadToHive;
 use App\Models\ContactSubmission;
 use App\Models\EmailLeadIngest;
+use App\Models\PlatformSetting;
 use App\Services\EmailLeadReader;
+use App\Services\HiveProjectsClient;
 use App\Services\LeadAddressCompleter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -38,6 +40,9 @@ class EmailLeadReaderTest extends TestCase
 
         Config::set('services.nylas.api_key', 'nylas-test');
         Config::set('services.nylas.api_uri', self::NYLAS);
+        // No hive connection unless a test makes one: the env pairs below are then the mailboxes.
+        Config::set('services.hive.url', null);
+        Config::set('services.hive.token', null);
         Config::set('services.openai.api_key', 'openai-test');
         Config::set('services.email_leads.inboxes', [
             ['mailbox' => 'crew@gs.construction', 'grant_id' => 'grant-p'],
@@ -59,7 +64,7 @@ class EmailLeadReaderTest extends TestCase
             'to' => [['name' => 'GS Construction', 'email' => 'crew@gs.construction']],
             'cc' => [],
             'subject' => 'Bathroom remodel',
-            'body' => "<div>Hi,<br>We would like to remodel the hall bathroom at 7815 Kenton Ave, Skokie. Attached is the plan.<br><br>Thanks,<br>Will<br>(832) 257-1204</div>",
+            'body' => '<div>Hi,<br>We would like to remodel the hall bathroom at 7815 Kenton Ave, Skokie. Attached is the plan.<br><br>Thanks,<br>Will<br>(832) 257-1204</div>',
             'headers' => [['name' => 'Message-ID', 'value' => self::MESSAGE_ID]],
             'attachments' => [],
         ], $overrides);
@@ -326,6 +331,33 @@ class EmailLeadReaderTest extends TestCase
         $this->artisan('leads:ingest-email')->assertSuccessful();
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/messages?')
             && abs((int) $r['received_after'] - now()->subHours(2)->subMinutes(10)->getTimestamp()) < 5);
+    }
+
+    public function test_the_mailboxes_come_from_hive_when_it_is_connected_and_a_switched_off_one_is_left_alone(): void
+    {
+        Config::set('services.email_leads.inboxes', []); // nothing in the env: hive decides
+        PlatformSetting::put(HiveProjectsClient::SETTING_URL, 'https://hive.test');
+        PlatformSetting::put(HiveProjectsClient::SETTING_TOKEN, 'secret');
+        EmailLeadReader::setDisabledMailboxes(['greg@gs.construction']);
+
+        $this->fakeNylas([$this->message()], extra: [
+            'https://hive.test/api/v1/mailboxes' => Http::response(['data' => [
+                ['email' => 'patryk@gs.construction', 'grant_id' => 'grant-p', 'shared' => false],
+                ['email' => 'greg@gs.construction', 'grant_id' => 'grant-g', 'shared' => false],
+                ['email' => 'crew@gs.construction', 'grant_id' => 'grant-p', 'shared' => true],
+            ]]),
+            self::NYLAS.'/v3/grants/grant-p/messages/msg-1*' => Http::response(['data' => ['raw_mime' => $this->rawMime([])]]),
+        ]);
+
+        $this->artisan('leads:ingest-email')
+            ->expectsOutputToContain('2 inbox(es)')
+            ->assertSuccessful();
+
+        // Shared first, then patryk@; greg@ is off, so its grant is never read.
+        $reads = collect(Http::recorded(fn (Request $r) => str_contains($r->url(), '/messages?')));
+        $this->assertSame(['crew@gs.construction', null], $reads->map(fn ($pair) => $pair[0]['shared_from'] ?? null)->values()->all());
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), '/grants/grant-g/'));
+        $this->assertSame(1, ContactSubmission::withoutSiteScope()->count());
     }
 
     public function test_nothing_is_read_without_configured_inboxes(): void

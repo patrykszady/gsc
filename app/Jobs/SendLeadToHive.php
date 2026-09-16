@@ -30,7 +30,9 @@ class SendLeadToHive implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public int $timeout = 30;
+
     /** @var array<int,int> */
     public array $backoff = [30, 120, 600, 1800];
 
@@ -38,8 +40,8 @@ class SendLeadToHive implements ShouldQueue
 
     public function handle(HiveProjectsClient $hive): void
     {
-        // Quietly no-op if Hive isn't configured — keeps local/dev runs clean.
-        if (! config('services.hive.token') || ! config('services.hive.url')) {
+        // Quietly no-op if Hive isn't connected — keeps local/dev runs clean.
+        if (! $hive->isConfigured()) {
             return;
         }
 

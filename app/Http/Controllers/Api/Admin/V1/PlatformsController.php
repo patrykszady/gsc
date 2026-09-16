@@ -66,6 +66,9 @@ class PlatformsController extends Controller
     public function status(): JsonResponse
     {
         return $this->itemResponse([
+            // The CRM connection, from what is on file — no call to hive
+            // here; GET platforms/hive checks it for real.
+            'hive' => app(PlatformsHiveController::class)->payload(live: false),
             'google' => GoogleOAuthApp::status(),
             'gbp' => $this->gbpStatus(),
             'gsc' => $this->gscStatus(),

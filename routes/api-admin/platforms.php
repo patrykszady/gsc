@@ -5,10 +5,19 @@
 // enclosing group in routes/api.php.
 
 use App\Http\Controllers\Api\Admin\V1\PlatformsController;
+use App\Http\Controllers\Api\Admin\V1\PlatformsHiveController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('platforms')->group(function () {
     Route::get('status', [PlatformsController::class, 'status']);
+
+    // hive.contractors: the CRM the site's leads go to, and whose connected
+    // mailboxes it reads for email enquiries (PlatformsHiveController).
+    Route::get('hive', [PlatformsHiveController::class, 'show']);
+    Route::post('hive/credentials', [PlatformsHiveController::class, 'saveCredentials']);
+    Route::delete('hive', [PlatformsHiveController::class, 'disconnect']);
+    Route::put('hive/mailboxes', [PlatformsHiveController::class, 'saveMailboxes']);
+    Route::post('hive/mailboxes/read', [PlatformsHiveController::class, 'readNow']);
 
     // Read-only Yelp reviews summary (DB only, no yelp.com round trip) and
     // the on-demand sitemap re-submit.
