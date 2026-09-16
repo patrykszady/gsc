@@ -90,6 +90,23 @@ log "npm install + build"
 # `npm ci` would delete it and reinstall everything (the 5-minute step).
 npm install --no-audit --no-fund --prefer-offline
 npm run build
+# Carry the live release's hashed assets forward, then prune by age.
+#
+# Vite gives every build a fresh hash (app-XXXX.css) and only `current` is
+# served, so until now every deploy 404'd the previous stylesheet the moment
+# the symlink moved. Anything that re-fetches a page's CSS after the fact
+# — Microsoft Clarity heatmaps replay a recorded DOM and load its <link>s
+# from us at view time — rendered gs.construction as unstyled HTML for every
+# session older than the last deploy. Hashed assets are immutable by design;
+# keeping them costs disk, not correctness. `cp -an` never overwrites, so the
+# manifest and this build's files win; -a keeps mtimes so the prune below
+# measures original build age. 90 days clears Clarity's 30-day recording
+# retention with margin.
+if [ -n "$PREV" ] && [ -d "$PREV/public/build/assets" ]; then
+    log "Carrying forward hashed assets from live release"
+    cp -an "$PREV/public/build/assets/." public/build/assets/
+    find public/build/assets -type f -mtime +90 -delete
+fi
 # The Chrome build this release's puppeteer expects (the Houzz/Angi review
 # scrapers, the Instagram and Yelp browsers). Cached under ~/.cache/puppeteer,
 # so this is a no-op until puppeteer moves to a new build.
