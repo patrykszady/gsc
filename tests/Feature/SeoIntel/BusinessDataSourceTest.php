@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\SeoIntel;
 
+use App\Services\AiContentService;
 use App\Services\Seo\Intel\Sources\BusinessDataSource;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -20,6 +21,9 @@ class BusinessDataSourceTest extends TestCase
 
     /** Prism's review count, mutated between runs to exercise competitor_review_gain. */
     public static int $prismVotes = 60;
+
+    /** Google Business Profile Q&A items per subject, empty (no questions) unless a test sets them. */
+    public static array $qaByKeyword = ['ours' => [], 'competitor' => []];
 
     protected function setUp(): void
     {
@@ -40,6 +44,7 @@ class BusinessDataSourceTest extends TestCase
         self::$ourVotes = 40;
         self::$ourRating = 4.9;
         self::$prismVotes = 60;
+        self::$qaByKeyword = ['ours' => [], 'competitor' => []];
 
         Http::fake(function ($request) {
             $url = $request->url();
@@ -103,26 +108,33 @@ class BusinessDataSourceTest extends TestCase
             if (str_contains($url, 'reviews/task_post')) {
                 $pid = (string) ($request->data()[0]['place_id'] ?? 'ours');
 
-                return Http::response(['tasks' => [['id' => 'task-' . $pid, 'status_code' => 20100, 'status_message' => 'Task Created', 'cost' => 0.0075]]]);
+                return Http::response(['tasks' => [['id' => 'task-'.$pid, 'status_code' => 20100, 'status_message' => 'Task Created', 'cost' => 0.0075]]]);
             }
 
             if (str_contains($url, 'reviews/task_get/task-p-')) {
                 // A competitor's reviews (place ids start with p-).
                 $who = str_contains($url, 'task-p-prism') ? 'Prism' : 'Dreamline';
                 $items = [
-                    ['profile_name' => 'Dan', 'rating' => ['value' => 5], 'review_text' => "{$who} finished on time and kept us informed every day.", 'timestamp' => Carbon::now()->subDays(4)->format('Y-m-d H:i:s') . ' +00:00'],
-                    ['profile_name' => 'Eve', 'rating' => ['value' => 5], 'review_text' => "Schedule held, crew was on time, site left clean.", 'timestamp' => Carbon::now()->subDays(9)->format('Y-m-d H:i:s') . ' +00:00'],
+                    ['profile_name' => 'Dan', 'rating' => ['value' => 5], 'review_text' => "{$who} finished on time and kept us informed every day.", 'timestamp' => Carbon::now()->subDays(4)->format('Y-m-d H:i:s').' +00:00'],
+                    ['profile_name' => 'Eve', 'rating' => ['value' => 5], 'review_text' => 'Schedule held, crew was on time, site left clean.', 'timestamp' => Carbon::now()->subDays(9)->format('Y-m-d H:i:s').' +00:00'],
                 ];
 
                 return Http::response(['tasks' => [['status_code' => 20000, 'result' => [['reviews_count' => 2, 'items' => $items]]]]]);
             }
 
+            if (str_contains($url, 'questions_and_answers/live')) {
+                $keyword = (string) ($request->data()[0]['keyword'] ?? '');
+                $items = str_contains($keyword, 'p-prism') ? self::$qaByKeyword['competitor'] : self::$qaByKeyword['ours'];
+
+                return Http::response(['tasks' => [['cost' => $items ? 0.0054 : 0, 'status_code' => 20000, 'result' => [['items' => $items]]]]]);
+            }
+
             if (str_contains($url, 'reviews/task_get')) {
                 $now = Carbon::now();
                 $items = [
-                    ['profile_name' => 'Alice H', 'rating' => ['value' => 5], 'review_text' => 'Wonderful team, great kitchen.', 'timestamp' => $now->copy()->subDays(3)->format('Y-m-d H:i:s') . ' +00:00', 'owner_answer' => 'Thank you!'],
-                    ['profile_name' => 'Bob R', 'rating' => ['value' => 1.0], 'review_text' => str_repeat('Terrible experience, would not recommend at all. ', 3), 'timestamp' => $now->copy()->subDays(5)->format('Y-m-d H:i:s') . ' +00:00', 'owner_answer' => null],
-                    ['profile_name' => 'Carla T', 'rating' => ['value' => 5], 'review_text' => 'Solid work.', 'timestamp' => $now->copy()->subDays(10)->format('Y-m-d H:i:s') . ' +00:00', 'owner_answer' => null],
+                    ['profile_name' => 'Alice H', 'rating' => ['value' => 5], 'review_text' => 'Wonderful team, great kitchen.', 'timestamp' => $now->copy()->subDays(3)->format('Y-m-d H:i:s').' +00:00', 'owner_answer' => 'Thank you!'],
+                    ['profile_name' => 'Bob R', 'rating' => ['value' => 1.0], 'review_text' => str_repeat('Terrible experience, would not recommend at all. ', 3), 'timestamp' => $now->copy()->subDays(5)->format('Y-m-d H:i:s').' +00:00', 'owner_answer' => null],
+                    ['profile_name' => 'Carla T', 'rating' => ['value' => 5], 'review_text' => 'Solid work.', 'timestamp' => $now->copy()->subDays(10)->format('Y-m-d H:i:s').' +00:00', 'owner_answer' => null],
                 ];
 
                 return Http::response(['tasks' => [['status_code' => 20000, 'result' => [['reviews_count' => count($items), 'items' => $items]]]]]);
@@ -230,7 +242,7 @@ class BusinessDataSourceTest extends TestCase
             ['site_id' => null, 'reviewer_name' => 'Ann', 'review_description' => 'Beautiful tile work and cabinetry, real craftsmanship.', 'star_rating' => 5, 'is_hidden' => false, 'review_date' => now()->subDays(20)->toDateString(), 'created_at' => now(), 'updated_at' => now()],
             ['site_id' => null, 'reviewer_name' => 'Ben', 'review_description' => 'Great attention to detail throughout the bathroom.', 'star_rating' => 5, 'is_hidden' => false, 'review_date' => now()->subDays(40)->toDateString(), 'created_at' => now(), 'updated_at' => now()],
         ]);
-        $this->mock(\App\Services\AiContentService::class, function ($m) {
+        $this->mock(AiContentService::class, function ($m) {
             $m->shouldReceive('generateText')->times(3)->andReturnUsing(function (string $prompt) {
                 if (str_contains($prompt, '"Prism')) {
                     return json_encode(['praised' => ['on time', 'communication'], 'complaints' => [], 'keywords' => ['on schedule']]);
@@ -345,6 +357,62 @@ class BusinessDataSourceTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_qanda_collects_our_profile_and_pack_leaders_and_flags_unanswered_questions(): void
+    {
+        DB::table('map_pack_competitors')->insert([
+            'site_id' => null, 'place_id' => 'p-prism', 'keyword' => 'kitchen remodeling', 'name' => 'Prism Kitchen & Bath',
+            'pack_points' => 9, 'seen_points' => 11, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        config(['seo-intel.families.business_data.qa_competitors' => 1]);
+        self::$qaByKeyword = [
+            'ours' => [
+                ['question_id' => 'q-ours-1', 'question_text' => 'Do you offer free estimates?', 'timestamp' => '2026-09-02 10:00:00 +00:00', 'items' => []],
+                ['question_id' => 'q-ours-2', 'question_text' => 'Are you licensed and insured?', 'timestamp' => '2026-09-03 10:00:00 +00:00',
+                    'items' => [['answer_text' => 'Yes, fully licensed and insured.']]],
+            ],
+            'competitor' => [
+                ['question_id' => 'q-prism-1', 'question_text' => 'Do you do bathrooms too?', 'timestamp' => '2026-09-01 10:00:00 +00:00',
+                    'items' => [['answer_text' => 'Yes, we do.']]],
+            ],
+        ];
+
+        Carbon::setTestNow('2026-09-05 06:00:00');
+        $this->artisan('seo:intel', ['family' => ['business_data'], '--budget' => 1])->assertExitCode(0);
+
+        $qa = DB::table('seo_intel_snapshots')->where('family', 'business_data')->where('kind', 'qa')->get()->keyBy('subject');
+        $this->assertCount(3, $qa, 'two of our own questions plus one from the tracked pack leader');
+        $this->assertSame(0, json_decode((string) $qa['gs.construction:q-ours-1']->metrics, true)['answered']);
+        $this->assertSame(1, json_decode((string) $qa['gs.construction:q-ours-2']->metrics, true)['answered']);
+        $prismPayload = json_decode((string) $qa['p-prism:q-prism-1']->payload, true);
+        $this->assertFalse($prismPayload['is_us']);
+        $this->assertSame('Prism Kitchen & Bath', $prismPayload['business']);
+
+        $finding = DB::table('seo_intel_findings')->where('code', 'business_data.qa_unanswered')->first();
+        $this->assertNotNull($finding);
+        $this->assertSame('1 question on your Google profile has no answer', $finding->title);
+        $this->assertSame('warn', $finding->severity);
+        // Never a vendor/family-prefixed or jargon title.
+        foreach (['DataForSEO', 'GBP', 'Labs', 'Business Data', 'On-Page'] as $needle) {
+            $this->assertStringNotContainsString($needle, $finding->title);
+        }
+
+        $report = app(BusinessDataSource::class)->report();
+        $this->assertSame(1, collect($report['tiles'])->firstWhere('label', 'Unanswered questions')['value']);
+        $qaTable = collect($report['tables'])->firstWhere('title', 'Questions on your Google Business Profile');
+        $this->assertNotNull($qaTable);
+        $this->assertCount(2, $qaTable['rows'], 'only our own questions, not the pack leader\'s');
+    }
+
+    public function test_qanda_respects_max_cost_and_is_skipped_when_the_cap_is_already_spent(): void
+    {
+        Carbon::setTestNow('2026-09-05 06:00:00');
+        config(['seo-intel.families.business_data.max_cost' => 0.06]);
+        $this->artisan('seo:intel', ['family' => ['business_data'], '--budget' => 1])->assertExitCode(0);
+
+        // Profile + listings + reviews already spend ~$0.06; Q&A must not push past the cap.
+        $this->assertSame(0, DB::table('seo_intel_snapshots')->where('family', 'business_data')->where('kind', 'qa')->count());
     }
 
     public function test_cost_cap_stops_the_run_before_the_reviews_call(): void

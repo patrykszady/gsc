@@ -2,12 +2,16 @@
 
 namespace App\Services\Seo\Intel\Sources;
 
+use App\Services\AiContentService;
 use App\Services\DataForSeoService;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
+use App\Support\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * Our Google Business Profile versus the local competitors' profiles —
@@ -35,6 +39,13 @@ use Illuminate\Support\Collection;
  *  - POST business_data/google/reviews/task_post + GET …/task_get/{id} —
  *    our own reviews (task-based, ~$0.00075 per 10 reviews returned):
  *    velocity, unanswered reviews, and any recent low rating.
+ *  - POST business_data/google/questions_and_answers/live — Google Business
+ *    Profile Q&A for our profile and the tracked map-pack leaders (`keyword`
+ *    accepts "place_id:<id>", same as my_business_info). $0.0054/call at the
+ *    default depth (billed per SERP of up to 20 questions, price confirmed
+ *    from the docs' own example response — not the audit's unsourced
+ *    "+$0.065" guess). Source:
+ *    https://docs.dataforseo.com/v3/business_data/google/questions_and_answers/live.md
  *
  * Cost per run ≈ estimateCost() (~$0.06 at the default knobs), capped by
  * config('max_cost', 0.3) — collect() stops issuing calls once spent
@@ -61,8 +72,11 @@ class BusinessDataSource extends IntelSource
         $reviews = ceil($depth / 10) * 0.00075;
         // Competitor review teardown (monthly): a reviews task per top competitor.
         $reviews += max(0, (int) $this->config('competitor_reviews', 3)) * ceil((int) $this->config('competitor_review_depth', 40) / 10) * 0.00075;
+        // Q&A (weekly): our profile + the tracked map-pack leaders, $0.0054/call
+        // at the default depth — see the class docblock for the sourced price.
+        $qanda = (1 + max(0, (int) $this->config('qa_competitors', 3))) * 0.0054;
 
-        return round($profile + $listings + $reviews, 4);
+        return round($profile + $listings + $reviews + $qanda, 4);
     }
 
     public function collect(): array
@@ -87,6 +101,10 @@ class BusinessDataSource extends IntelSource
             }
         }
 
+        if ($this->dfs->spent() - $spentAtStart < $maxCost) {
+            $snapshots = array_merge($snapshots, $this->collectQanda());
+        }
+
         // Competitor review teardown, monthly: what the top competitors are
         // praised for, next to what our own reviews say.
         if ($this->dfs->spent() - $spentAtStart < $maxCost && $this->reviewThemesDue()) {
@@ -94,7 +112,7 @@ class BusinessDataSource extends IntelSource
         }
 
         if ($snapshots === [] && $this->dfs->getLastError()) {
-            throw new \RuntimeException('BusinessDataSource: ' . $this->dfs->getLastError());
+            throw new \RuntimeException('BusinessDataSource: '.$this->dfs->getLastError());
         }
 
         return $snapshots;
@@ -107,6 +125,7 @@ class BusinessDataSource extends IntelSource
             $this->listingFindings(),
             $this->reviewFindings(),
             $this->reviewThemeFindings(),
+            $this->qandaFindings(),
         );
     }
 
@@ -121,12 +140,21 @@ class BusinessDataSource extends IntelSource
         [$subjects, $ourSubject] = $this->rankedListings($latest);
         $rank = $ourSubject !== null ? (array_search($ourSubject, $subjects, true) + 1) : null;
 
+        $ourQaNow = $this->ourQandaSet($this->latestSet('qa'), $subject);
+        $ourQaPrev = $this->ourQandaSet($this->previousSet('qa'), $subject);
+        $unansweredQa = $ourQaNow->filter(fn ($row) => (int) ($row['metrics']['answered'] ?? 0) === 0)->count();
+
         $tiles = [
             ['label' => 'GBP rating', 'value' => $profNow['metrics']['rating'] ?? null, 'prev' => $profPrev['metrics']['rating'] ?? null, 'unit' => '★', 'good' => 'up'],
             ['label' => 'GBP reviews', 'value' => $profNow['metrics']['votes'] ?? null, 'prev' => $profPrev['metrics']['votes'] ?? null, 'good' => 'up'],
             ['label' => 'Reviews (30d)', 'value' => $reviewsNow['metrics']['last_30_days'] ?? null, 'good' => 'up'],
             ['label' => 'Unanswered reviews', 'value' => $reviewsNow['metrics']['unanswered'] ?? null, 'good' => 'down'],
-            ['label' => 'Rank by review count', 'value' => $rank, 'unit' => $subjects ? ('of ' . count($subjects)) : null, 'good' => 'down'],
+            ['label' => 'Rank by review count', 'value' => $rank, 'unit' => $subjects ? ('of '.count($subjects)) : null, 'good' => 'down'],
+            [
+                'label' => 'Unanswered questions', 'value' => $ourQaNow->isEmpty() ? null : $unansweredQa,
+                'prev' => $ourQaPrev->isEmpty() ? null : $ourQaPrev->filter(fn ($row) => (int) ($row['metrics']['answered'] ?? 0) === 0)->count(),
+                'good' => 'down',
+            ],
         ];
 
         $listingRows = collect($subjects)->take(12)->map(function ($s) use ($latest) {
@@ -147,6 +175,12 @@ class BusinessDataSource extends IntelSource
         $categoryGap = $this->missingCategories($latest, $subjects, $ourSubject);
         if ($categoryGap !== []) {
             $tables[] = ['title' => 'Categories most local competitors list that we do not', 'columns' => ['Category'], 'rows' => array_map(fn ($c) => [$c], $categoryGap)];
+        }
+        $qaRows = $ourQaNow->sortByDesc(fn ($row) => (string) ($row['payload']['asked_on'] ?? ''))->take(15)
+            ->map(fn ($row) => [(string) ($row['payload']['question'] ?? ''), $row['payload']['answer'] ?? '— no answer yet —', $row['payload']['asked_on'] ?? '—'])
+            ->values()->all();
+        if ($qaRows !== []) {
+            $tables[] = ['title' => 'Questions on your Google Business Profile', 'columns' => ['Question', 'Answer', 'Asked'], 'rows' => $qaRows];
         }
         $themeRows = $this->latestSet('review_themes')->sortByDesc(fn ($s) => (int) ($s['metrics']['reviews_analysed'] ?? 0))
             ->map(fn ($s, $subject) => [(string) ($s['payload']['name'] ?? $subject), implode(', ', (array) ($s['payload']['praised'] ?? [])), implode(', ', (array) ($s['payload']['complaints'] ?? []))])
@@ -332,6 +366,80 @@ class BusinessDataSource extends IntelSource
         return new Snapshot('reviews', $this->profileSubject(), $metrics, $payload);
     }
 
+    /**
+     * Google Business Profile Q&A for our own profile and the tracked
+     * map-pack leaders — one 'qa' snapshot per question, so a question that
+     * gets answered (or a new one that appears) shows up as a change on the
+     * next run instead of being buried inside one big per-business blob.
+     *
+     * @return Snapshot[]
+     */
+    protected function collectQanda(): array
+    {
+        [$lat, $lng] = $this->center();
+        $ourPlaceId = $this->rawPlaceId();
+        $subjects = [[
+            'subject' => $this->profileSubject(),
+            'keyword' => $ourPlaceId !== '' ? "place_id:{$ourPlaceId}" : $this->keyword(),
+            'is_us' => true,
+            'name' => null,
+        ]];
+        foreach ($this->packLeaderSubjects(max(0, (int) $this->config('qa_competitors', 3))) as $leader) {
+            $subjects[] = ['subject' => (string) $leader->place_id, 'keyword' => "place_id:{$leader->place_id}", 'is_us' => false, 'name' => (string) $leader->name];
+        }
+
+        $out = [];
+        foreach ($subjects as $s) {
+            $env = $this->dfs->request('POST', '/business_data/google/questions_and_answers/live', [[
+                'keyword' => $s['keyword'],
+                'location_coordinate' => sprintf('%.6f,%.6f,%d', $lat, $lng, $this->pointRadius()),
+                'language_code' => 'en',
+            ]]);
+            $row = DataForSeoService::resultOf($env)[0] ?? null;
+            $items = is_array($row) ? (array) ($row['items'] ?? []) : [];
+
+            foreach (array_slice($items, 0, (int) $this->config('qa_max_questions', 20)) as $q) {
+                $qid = (string) ($q['question_id'] ?? md5((string) ($q['question_text'] ?? '')));
+                $answers = (array) ($q['items'] ?? []);
+                $answer = $answers[0]['answer_text'] ?? null;
+                $askedOn = ! empty($q['timestamp']) ? Carbon::parse((string) $q['timestamp'])->toDateString() : null;
+                $out[] = new Snapshot('qa', $s['subject'].':'.$qid, [
+                    'answered' => $answer !== null ? 1 : 0,
+                ], [
+                    'question' => (string) ($q['question_text'] ?? ''),
+                    'answer' => $answer !== null ? (string) $answer : null,
+                    'asked_on' => $askedOn,
+                    'is_us' => $s['is_us'],
+                    'business' => $s['name'],
+                ]);
+            }
+        }
+
+        return $out;
+    }
+
+    /** The current leading map-pack competitors (place id + name), highest pack appearances first, deduped across keywords. */
+    protected function packLeaderSubjects(int $limit): Collection
+    {
+        if ($limit <= 0 || ! Schema::hasTable('map_pack_competitors')) {
+            return collect();
+        }
+
+        return Tenancy::table('map_pack_competitors')
+            ->where('pack_points', '>', 0)
+            ->orderByDesc('pack_points')
+            ->get(['place_id', 'name'])
+            ->unique('place_id')
+            ->take($limit)
+            ->values();
+    }
+
+    /** Every 'qa' snapshot for our own profile out of a latest/previous set (which spans every subject checked that run). */
+    protected function ourQandaSet(Collection $set, string $subject): Collection
+    {
+        return $set->filter(fn ($row, $key) => str_starts_with((string) $key, $subject.':'));
+    }
+
     // --- findings ---------------------------------------------------------
 
     /** @return Finding[] */
@@ -354,14 +462,14 @@ class BusinessDataSource extends IntelSource
         if ($prev && isset($now['metrics']['rating'], $prev['metrics']['rating'])) {
             $drop = (float) $prev['metrics']['rating'] - (float) $now['metrics']['rating'];
             if ($drop >= 0.1) {
-                $out[] = $this->finding('rating_drop', Finding::CRITICAL, 'GBP rating dropped',
+                $out[] = $this->finding('rating_drop', Finding::CRITICAL, 'Your Google rating dropped',
                     sprintf('Rating fell from %.1f to %.1f.', $prev['metrics']['rating'], $now['metrics']['rating']),
                     $subject, null, ['rating' => ['prev' => $prev['metrics']['rating'], 'now' => $now['metrics']['rating']]]);
             }
         }
 
         if ($prev && isset($now['metrics']['votes'], $prev['metrics']['votes']) && $now['metrics']['votes'] > $prev['metrics']['votes']) {
-            $out[] = $this->finding('reviews_up', Finding::WIN, 'GBP review count grew',
+            $out[] = $this->finding('reviews_up', Finding::WIN, 'Your Google review count grew',
                 sprintf('%d to %d reviews since the last run.', $prev['metrics']['votes'], $now['metrics']['votes']),
                 $subject, null, ['votes' => ['prev' => $prev['metrics']['votes'], 'now' => $now['metrics']['votes']]]);
         }
@@ -369,7 +477,7 @@ class BusinessDataSource extends IntelSource
         $accepted = (array) $this->config('accepted_categories', ['Kitchen remodeler', 'Bathroom remodeler', 'Remodeler']);
         $category = (string) ($now['payload']['category'] ?? '');
         if ($category !== '' && ! in_array($category, $accepted, true)) {
-            $out[] = $this->finding('category_mismatch', Finding::INFO, 'GBP primary category is not a remodeling category',
+            $out[] = $this->finding('category_mismatch', Finding::INFO, 'Your Google profile is filed under the wrong category',
                 "Google lists the primary category as \"{$category}\".", $subject);
         }
 
@@ -391,12 +499,12 @@ class BusinessDataSource extends IntelSource
         $rank = $ourSubject !== null ? array_search($ourSubject, $subjects, true) + 1 : null;
         $ourVotes = $ourSubject !== null ? (int) ($latest[$ourSubject]['metrics']['votes'] ?? 0) : 0;
         $fifthVotes = isset($subjects[4]) ? (int) ($latest[$subjects[4]]['metrics']['votes'] ?? 0) : null;
-        $top3 = collect(array_slice($subjects, 0, 3))->map(fn ($s) => ($latest[$s]['payload']['title'] ?? $s) . ' (' . ($latest[$s]['metrics']['votes'] ?? 0) . ')')->implode(', ');
+        $top3 = collect(array_slice($subjects, 0, 3))->map(fn ($s) => ($latest[$s]['payload']['title'] ?? $s).' ('.($latest[$s]['metrics']['votes'] ?? 0).')')->implode(', ');
         $severity = Finding::INFO;
         if (($rank === null || $rank > 5) && $fifthVotes !== null && $ourVotes > 0 && $fifthVotes <= $ourVotes * 2) {
             $severity = Finding::WARN;
         }
-        $title = $rank === null ? 'Not visible among the top local listings by review count' : "Ranked #{$rank} of " . count($subjects) . ' local listings by review count';
+        $title = $rank === null ? 'Not visible among the top local listings by review count' : "Ranked #{$rank} of ".count($subjects).' local listings by review count';
         $out[] = $this->finding('review_rank', $severity, $title, "Top 3 by reviews: {$top3}.", $ourSubject ?? $this->profileSubject(), null,
             $rank !== null ? ['rank' => ['prev' => null, 'now' => $rank]] : []);
 
@@ -404,14 +512,14 @@ class BusinessDataSource extends IntelSource
         $missing = $this->missingAttributes($latest, $subjects, $ourSubject);
         if ($missing !== []) {
             $out[] = $this->finding('missing_attributes', Finding::INFO, 'Attributes most local competitors show that we do not',
-                implode(', ', $missing) . '.', $this->profileSubject());
+                implode(', ', $missing).'.', $this->profileSubject());
         }
 
         // Categories most of the top 10 list that our profile does not.
         $categoryGap = $this->missingCategories($latest, $subjects, $ourSubject);
         if ($categoryGap !== []) {
             $out[] = $this->finding('category_gap', Finding::INFO, 'Categories most local competitors list that we do not',
-                implode(', ', $categoryGap) . '. Add the ones that fit as additional categories on the Business Profile (config/gbp-services.php pushes them weekly).', $this->profileSubject());
+                implode(', ', $categoryGap).'. Add the ones that fit as additional categories on the Business Profile (config/gbp-services.php pushes them weekly).', $this->profileSubject());
         }
 
         if ($previous->isNotEmpty()) {
@@ -464,9 +572,10 @@ class BusinessDataSource extends IntelSource
         $unanswered = (int) ($now['metrics']['unanswered'] ?? 0);
         if ($unanswered >= 1) {
             $dates = collect((array) ($now['payload']['unanswered_list'] ?? []))
-                ->map(fn ($u) => ($u['date'] ?? '?') . ' (' . ($u['rating'] ?? '?') . '★)')
+                ->map(fn ($u) => ($u['date'] ?? '?').' ('.($u['rating'] ?? '?').'★)')
                 ->take(10)->implode(', ');
-            $out[] = $this->finding('unanswered_reviews', Finding::WARN, sprintf('%d review(s) awaiting an owner response', $unanswered),
+            $out[] = $this->finding('unanswered_reviews', Finding::WARN,
+                sprintf('%d Google review%s waiting for a reply', $unanswered, $unanswered === 1 ? ' is' : 's are'),
                 $dates, $subject, null, ['unanswered' => ['prev' => null, 'now' => $unanswered]]);
         }
 
@@ -474,11 +583,11 @@ class BusinessDataSource extends IntelSource
         $daysAgo = $now['metrics']['latest_review_days_ago'] ?? null;
         if ($daysAgo !== null && $daysAgo >= $silenceDays) {
             $out[] = $this->finding('review_silence', Finding::WARN, "No new review in {$daysAgo} days",
-                'Last review was on ' . ($now['payload']['latest_review_date'] ?? 'unknown') . '.', $subject);
+                'Last review was on '.($now['payload']['latest_review_date'] ?? 'unknown').'.', $subject);
         }
 
         foreach ((array) ($now['payload']['low_rating_recent'] ?? []) as $rv) {
-            $key = 'low:' . ($rv['date'] ?? '') . ':' . ($rv['profile_name'] ?? '');
+            $key = 'low:'.($rv['date'] ?? '').':'.($rv['profile_name'] ?? '');
             $out[] = $this->finding('low_rating_recent', Finding::CRITICAL, sprintf('%s-star review in the last 30 days', $rv['rating'] ?? '?'),
                 mb_substr((string) ($rv['excerpt'] ?? ''), 0, 120), $subject, $key, ['rating' => ['prev' => null, 'now' => $rv['rating'] ?? null]]);
         }
@@ -488,6 +597,28 @@ class BusinessDataSource extends IntelSource
         }
 
         return $out;
+    }
+
+    /** Unanswered questions on OUR profile — the map-pack leaders' Q&A is collected for competitive context only, not findings. */
+    protected function qandaFindings(): array
+    {
+        $subject = $this->profileSubject();
+        $ours = $this->ourQandaSet($this->latestSet('qa'), $subject);
+        if ($ours->isEmpty()) {
+            return [];
+        }
+
+        $unanswered = $ours->filter(fn ($row) => (int) ($row['metrics']['answered'] ?? 0) === 0);
+        if ($unanswered->isEmpty()) {
+            return [];
+        }
+
+        $n = $unanswered->count();
+        $sample = $unanswered->map(fn ($row) => Str::limit((string) ($row['payload']['question'] ?? ''), 100))->take(10)->implode('; ');
+
+        return [$this->finding('qa_unanswered', Finding::WARN,
+            sprintf('%d question%s on your Google profile %s no answer', $n, $n === 1 ? '' : 's', $n === 1 ? 'has' : 'have'),
+            $sample, $subject, null, ['unanswered' => ['prev' => null, 'now' => $n]])];
     }
 
     /** Our review velocity vs. the median of the top-5 local listings', when both runs have listing data. */
@@ -565,7 +696,7 @@ class BusinessDataSource extends IntelSource
         $out = [];
         foreach ($counts as $c => $n) {
             if ($n / count($top) >= $threshold && ! isset($ours[$c])) {
-                $out[] = ucfirst($c) . " ({$n} of " . count($top) . ')';
+                $out[] = ucfirst($c)." ({$n} of ".count($top).')';
             }
         }
 
@@ -642,8 +773,8 @@ class BusinessDataSource extends IntelSource
 
         // Our own reviews: the testimonials we hold (no API cost).
         $ours = [];
-        if (\Illuminate\Support\Facades\Schema::hasTable('testimonials')) {
-            $ours = \App\Support\Tenancy::table('testimonials')->where('is_hidden', false)->orderByDesc('review_date')->limit($depth)
+        if (Schema::hasTable('testimonials')) {
+            $ours = Tenancy::table('testimonials')->where('is_hidden', false)->orderByDesc('review_date')->limit($depth)
                 ->pluck('review_description')->map(fn ($t) => trim((string) $t))->filter()->values()->all();
         }
         if ($ours !== []) {
@@ -668,11 +799,11 @@ class BusinessDataSource extends IntelSource
         $sample = implode("\n---\n", array_map(fn ($t) => mb_substr($t, 0, 600), array_slice($texts, 0, 40)));
         $prompt = implode("\n", [
             "Below are customer reviews of \"{$who}\", a remodeling contractor. Classify what reviewers PRAISE and what they COMPLAIN ABOUT using only these theme labels:",
-            implode(', ', self::REVIEW_THEMES) . '.',
+            implode(', ', self::REVIEW_THEMES).'.',
             'Return ONLY a JSON object: {"praised": [themes mentioned positively by at least two reviews, most common first], "complaints": [themes mentioned negatively], "keywords": [up to 8 short phrases reviewers repeat, e.g. "kitchen island", "on schedule"]}.',
             '', $sample,
         ]);
-        $raw = app(\App\Services\AiContentService::class)->generateText($prompt, 800, 0.2);
+        $raw = app(AiContentService::class)->generateText($prompt, 800, 0.2);
         $data = $raw !== null ? json_decode(trim(preg_replace('/^```(?:json)?|```$/m', '', trim($raw)) ?? $raw), true) : null;
         if (! is_array($data)) {
             return ['praised' => [], 'complaints' => [], 'keywords' => [], 'note' => 'Reviews collected; theme classification needs the Gemini key.'];
@@ -701,6 +832,7 @@ class BusinessDataSource extends IntelSource
             $praised = (array) ($s['payload']['praised'] ?? []);
             if (! empty($s['payload']['is_us'])) {
                 $ours = $praised;
+
                 continue;
             }
             foreach ($praised as $t) {
@@ -713,10 +845,10 @@ class BusinessDataSource extends IntelSource
         if ($gap === []) {
             return [];
         }
-        $detail = collect($gap)->map(fn ($t) => $t . ' (' . implode(', ', $by[$t]) . ')')->implode('; ');
+        $detail = collect($gap)->map(fn ($t) => $t.' ('.implode(', ', $by[$t]).')')->implode('; ');
 
         return [$this->finding('review_theme_gap', Finding::INFO, 'What competitors are praised for that our reviews never mention',
-            $detail . '. Ask recent clients to mention these when they review, and make them visible on the site.', $this->profileSubject())];
+            $detail.'. Ask recent clients to mention these when they review, and make them visible on the site.', $this->profileSubject())];
     }
 
     /** The keyword my_business_info / reviews search for: our brand + home city. */
@@ -739,6 +871,12 @@ class BusinessDataSource extends IntelSource
         $value = (float) $this->config('profile_radius_m', 5000);
 
         return (int) round(max(199.9, min(199999, $value)));
+    }
+
+    /** The configured GBP place id, raw — '' when none is set (see profileSubject() for the identity that falls back to our domain). */
+    protected function rawPlaceId(): string
+    {
+        return (string) config('services.google.business_profile.place_id');
     }
 
     /** Stable identity for our own profile/reviews snapshots: the configured GBP place id, else our domain. */

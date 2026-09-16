@@ -1,5 +1,15 @@
 <?php
 
+use App\Services\Seo\Intel\Sources\AiOptimizationSource;
+use App\Services\Seo\Intel\Sources\BacklinksSource;
+use App\Services\Seo\Intel\Sources\BusinessDataSource;
+use App\Services\Seo\Intel\Sources\ContentAnalysisSource;
+use App\Services\Seo\Intel\Sources\DomainAnalyticsSource;
+use App\Services\Seo\Intel\Sources\LabsSource;
+use App\Services\Seo\Intel\Sources\OnPageSource;
+use App\Services\Seo\Intel\Sources\SerpSource;
+use App\Services\Seo\Intel\Sources\TrendsSource;
+
 /*
 |--------------------------------------------------------------------------
 | DataForSEO intelligence sources
@@ -14,15 +24,15 @@
 return [
 
     'sources' => [
-        \App\Services\Seo\Intel\Sources\OnPageSource::class,
-        \App\Services\Seo\Intel\Sources\BacklinksSource::class,
-        \App\Services\Seo\Intel\Sources\LabsSource::class,
-        \App\Services\Seo\Intel\Sources\SerpSource::class,
-        \App\Services\Seo\Intel\Sources\BusinessDataSource::class,
-        \App\Services\Seo\Intel\Sources\ContentAnalysisSource::class,
-        \App\Services\Seo\Intel\Sources\AiOptimizationSource::class,
-        \App\Services\Seo\Intel\Sources\DomainAnalyticsSource::class,
-        \App\Services\Seo\Intel\Sources\TrendsSource::class,
+        OnPageSource::class,
+        BacklinksSource::class,
+        LabsSource::class,
+        SerpSource::class,
+        BusinessDataSource::class,
+        ContentAnalysisSource::class,
+        AiOptimizationSource::class,
+        DomainAnalyticsSource::class,
+        TrendsSource::class,
     ],
 
     // Per-family knobs (each source also carries these defaults in code).
@@ -78,6 +88,11 @@ return [
             'accepted_categories' => ['Kitchen remodeler', 'Bathroom remodeler', 'Remodeler'],
             'max_findings' => 10,
             'max_cost' => 0.30,
+            // Google Business Profile Q&A (weekly): our profile plus this many
+            // tracked map-pack leaders, and at most this many questions stored
+            // per business per run.
+            'qa_competitors' => 3,
+            'qa_max_questions' => 20,
         ],
         'content_analysis' => [
             'competitors' => 5,

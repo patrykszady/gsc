@@ -919,7 +919,12 @@ class RecommendationEngine
      * DataForSEO intelligence findings: critical ones become action items,
      * the rest (grouped per family) become recommendations.
      *
-     * @return array{0: list<string>, 1: list<array{t: string, d: string, p: string}>}
+     * Titles stay plain, owner-facing text — never prefixed with the vendor
+     * or family name (that used to read "DataForSEO Labs — competitor
+     * keyword gaps: Page lost ranking keywords"). The family label travels
+     * separately as 'source', for a Details accordion instead of the title.
+     *
+     * @return array{0: list<string>, 1: list<array{t: string, d: string, p: string, source: string}>}
      */
     private function intelRecs(): array
     {
@@ -932,14 +937,15 @@ class RecommendationEngine
             $labels[$family] = $source->label();
         }
         $urgent = $open->where('severity', 'critical')->take(4)
-            ->map(fn ($f) => ($labels[$f->family] ?? $f->family).': '.$f->title.($f->key ? ' ('.$f->key.')' : '').($f->detail ? ' — '.Str::limit($f->detail, 160) : ''))
+            ->map(fn ($f) => $f->title.($f->key ? ' ('.$f->key.')' : '').($f->detail ? ' — '.Str::limit($f->detail, 160) : ''))
             ->values()->all();
         $recs = [];
         foreach ($open->whereIn('severity', ['warn', 'info'])->groupBy('family') as $family => $g) {
             $warn = $g->where('severity', 'warn');
             $lead = $warn->first() ?? $g->first();
             $recs[] = [
-                't' => ($labels[$family] ?? $family).': '.$lead->title,
+                't' => $lead->title,
+                'source' => $labels[$family] ?? $family,
                 'd' => Str::limit((string) $lead->detail, 200).($g->count() > 1 ? ' Plus '.($g->count() - 1).' more open finding'.($g->count() > 2 ? 's' : '').' from this source on the SEO page.' : ''),
                 'p' => $warn->isNotEmpty() ? 'now' : 'next',
             ];
