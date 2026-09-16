@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\AreaServed;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SeoKeywordResearchTest extends TestCase
@@ -74,5 +76,26 @@ class SeoKeywordResearchTest extends TestCase
         $this->assertSame(0.0, (float) $national->opportunity, 'a national head term is stored but is no opportunity');
         $this->assertSame(0.0, (float) DB::table('seo_keywords')->where('keyword', 'concrete slab contractors')->value('opportunity'), 'not our trade');
         $this->assertNotNull(DB::table('seo_keywords')->where('keyword', 'kitchen remodeling kenilworth')->first(), 'generated town×service phrases are in the universe');
+    }
+
+    public function test_dry_run_domain_universe_never_includes_an_aggregator_host(): void
+    {
+        // A directory host with far more pack_points than the real rival
+        // seeded in setUp() — it must still be dropped, and even ranking
+        // first must not save it.
+        DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'p2', 'keyword' => 'kitchen remodeling', 'name' => 'A Facebook Page', 'url' => 'https://facebook.com/page', 'host' => 'facebook.com', 'pack_points' => 99, 'seen_points' => 99, 'created_at' => now(), 'updated_at' => now()]);
+
+        Storage::fake('local');
+        Storage::disk('local')->put('reports/competitor-discovery.json', json_encode([
+            'generated_at' => now()->toIso8601String(),
+            'domains' => [['host' => 'houzz.com', 'areas' => 10, 'best_pos' => 1, 'known' => false]],
+        ]));
+
+        Artisan::call('seo:keyword-research', ['--dry-run' => true]);
+        $output = Artisan::output();
+
+        $this->assertStringContainsString('prism.test', $output);
+        $this->assertStringNotContainsString('facebook.com', $output);
+        $this->assertStringNotContainsString('houzz.com', $output);
     }
 }

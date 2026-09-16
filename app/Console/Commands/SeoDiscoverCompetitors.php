@@ -3,8 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Services\BraveSearchService;
+use App\Support\Seo\CompetitorFilter;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -43,6 +45,10 @@ class SeoDiscoverCompetitors extends Command
      * Directories, aggregators, marketplaces, media and big-box hosts that are
      * not direct remodeling-company competitors. Substring-matched on host.
      *
+     * Thin-alias fallback only: the live list is config('seo.competitor_exclusions')
+     * (see App\Support\Seo\CompetitorFilter), used only if that config key is
+     * ever missing.
+     *
      * @var array<int, string>
      */
     protected array $defaultExclusions = [
@@ -63,8 +69,9 @@ class SeoDiscoverCompetitors extends Command
 
     public function handle(): int
     {
-        if (! app(\App\Services\BraveSearchService::class)->isConfigured()) {
+        if (! app(BraveSearchService::class)->isConfigured()) {
             $this->error('BRAVE_SEARCH_API_KEY is not set.');
+
             return self::FAILURE;
         }
 
@@ -72,6 +79,7 @@ class SeoDiscoverCompetitors extends Command
         $areas = $this->resolveAreas();
         if (empty($areas)) {
             $this->error('No areas resolved. Provide --areas or seed the areas_served table.');
+
             return self::FAILURE;
         }
 
@@ -111,8 +119,9 @@ class SeoDiscoverCompetitors extends Command
             $results = $this->fetchSerp($item['q'], $location, $top);
             if ($results === null) {
                 $failed++;
-                $this->warn('  Search failed for: ' . $item['q']);
+                $this->warn('  Search failed for: '.$item['q']);
                 usleep(250000);
+
                 continue;
             }
             $searched++;
@@ -160,6 +169,7 @@ class SeoDiscoverCompetitors extends Command
             ->map(function (array $h) {
                 $h['area_count'] = count($h['cities']);
                 $h['avg_pos'] = $h['appearances'] > 0 ? round($h['sum_pos'] / $h['appearances'], 1) : null;
+
                 return $h;
             })
             ->filter(fn (array $h) => $h['area_count'] >= $minAppear)
@@ -194,6 +204,7 @@ class SeoDiscoverCompetitors extends Command
                 'home remodeling in {city}',
             ];
         }
+
         return array_values(array_filter(array_map('trim', explode(',', $raw))));
     }
 
@@ -212,6 +223,7 @@ class SeoDiscoverCompetitors extends Command
         if ($max > 0) {
             $query->limit($max);
         }
+
         return $query->pluck('city')->filter()->values()->all();
     }
 
@@ -224,38 +236,39 @@ class SeoDiscoverCompetitors extends Command
             fn ($s) => strtolower(trim($s)),
             explode(',', (string) $this->option('exclude')),
         )));
-        return array_values(array_unique(array_merge($this->defaultExclusions, $extra)));
+        $base = array_map('strtolower', (array) config('seo.competitor_exclusions', $this->defaultExclusions));
+
+        return array_values(array_unique(array_merge($base, $extra)));
     }
 
     /**
      * Hosts already configured in config/competitors.php (normalized).
+     * Thin alias over CompetitorFilter::knownLocalHosts() — extracted there,
+     * not duplicated.
      *
      * @return array<int, string>
      */
     protected function knownCompetitorHosts(): array
     {
-        return collect(config('competitors.competitors', []))
-            ->map(fn ($c) => $this->normalizeHost((string) parse_url((string) ($c['website'] ?? ''), PHP_URL_HOST)))
-            ->filter()
-            ->values()
-            ->all();
+        return CompetitorFilter::knownLocalHosts();
     }
 
     /**
-     * @param array<int, string> $known
+     * @param  array<int, string>  $known
      */
     protected function matchesKnown(string $host, array $known): bool
     {
         foreach ($known as $k) {
-            if ($k !== '' && ($host === $k || Str::endsWith($host, '.' . $k) || Str::endsWith($k, '.' . $host))) {
+            if ($k !== '' && ($host === $k || Str::endsWith($host, '.'.$k) || Str::endsWith($k, '.'.$host))) {
                 return true;
             }
         }
+
         return false;
     }
 
     /**
-     * @param array<int, string> $exclusions
+     * @param  array<int, string>  $exclusions
      */
     protected function isExcluded(string $host, array $exclusions): bool
     {
@@ -264,6 +277,7 @@ class SeoDiscoverCompetitors extends Command
                 return true;
             }
         }
+
         return false;
     }
 
@@ -274,7 +288,7 @@ class SeoDiscoverCompetitors extends Command
     {
         // Discovery queries embed the city
         // name, which localizes results well enough to surface competitors.
-        $rows = app(\App\Services\BraveSearchService::class)
+        $rows = app(BraveSearchService::class)
             ->organicResults($query, max(10, $top));
 
         if ($rows === null) {
@@ -297,24 +311,27 @@ class SeoDiscoverCompetitors extends Command
                 break;
             }
         }
+
         return $out;
     }
 
     protected function normalizeHost(string $host): string
     {
         $host = strtolower(trim($host));
+
         return preg_replace('/^www\./', '', $host) ?? $host;
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, array<string, mixed>> $rows
+     * @param  Collection<int, array<string, mixed>>  $rows
      */
     protected function renderTable($rows, int $minAppear): void
     {
         $this->newLine();
         $this->line('<fg=cyan>--- Competitor candidates (ranked by area coverage) ---</>');
         if ($rows->isEmpty()) {
-            $this->line('  (no domains met the --min-appearances=' . $minAppear . ' threshold)');
+            $this->line('  (no domains met the --min-appearances='.$minAppear.' threshold)');
+
             return;
         }
 
@@ -324,7 +341,7 @@ class SeoDiscoverCompetitors extends Command
                 $h['known'] ? '✓ known' : 'new',
                 Str::limit($h['host'], 34),
                 $h['area_count'],
-                '#' . $h['best_pos'],
+                '#'.$h['best_pos'],
                 $h['avg_pos'],
                 Str::limit($h['sample_query'], 30),
             ];
@@ -336,12 +353,12 @@ class SeoDiscoverCompetitors extends Command
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, array<string, mixed>> $rows
+     * @param  Collection<int, array<string, mixed>>  $rows
      */
     protected function saveMarkdown($rows, int $searched, int $failed, int $minAppear): void
     {
         $md = "# Competitor discovery report\n\n";
-        $md .= 'Run: ' . now()->toIso8601String() . "\n\n";
+        $md .= 'Run: '.now()->toIso8601String()."\n\n";
         $md .= "Searched {$searched} SERPs (failed: {$failed}). Showing domains on >= {$minAppear} area-SERPs.\n\n";
         $md .= "Status `new` = not yet in config/competitors.php. `✓ known` = already configured.\n\n";
         $md .= "| Status | Domain | Areas | Best pos | Avg pos | Sample query | Sample title |\n";

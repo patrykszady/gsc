@@ -3,16 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Models\Site;
 use App\Services\DataForSeoService;
 use App\Services\Seo\SeoAutopilotService;
 use App\Support\Tenancy;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * Weekly keyword + competitor research into seo_keywords (DataForSEO):
@@ -109,30 +106,23 @@ class SeoKeywordResearch extends Command
         }
 
         // ---- competitors: map-pack leaders + organic page-one domains ----
-        $domains = collect();
-        if (Schema::hasTable('map_pack_competitors')) {
-            $domains = $domains->concat(Tenancy::table('map_pack_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
-                ->select('host', DB::raw('SUM(pack_points) w'))->groupBy('host')->orderByDesc('w')->limit(30)->pluck('host'));
-        }
-        $disc = Storage::disk('local')->exists('reports/competitor-discovery.json') ? json_decode((string) Storage::disk('local')->get('reports/competitor-discovery.json'), true) : null;
-        foreach ((array) ($disc['domains'] ?? []) as $d) {
-            $domains->push($d['host']);
-        }
-        $domains = $domains->map(fn ($h) => preg_replace('/^www\./', '', mb_strtolower((string) $h)))->filter()->unique()->take((int) $this->option('competitors'))->values();
+        // Same sourcing as SeoDomainOverview::competitorDomains(), which
+        // already dedupes/normalizes and filters through CompetitorFilter.
+        $domains = collect(SeoDomainOverview::competitorDomains((int) $this->option('competitors')));
 
         $this->info(sprintf('Universe: %d keywords (%d from Search Console); %d competitor domains.', count($universe), count($ours), $domains->count()));
 
         // ---- cost estimate + balance guard -------------------------------
         $estimate = ceil((count($universe) + 3000) / 1000) * 0.08 + $domains->count() * 0.03 + ($this->option('ideas') ? count($services) * 0.02 : 0) + 2 * 2 * 0.013; // + intent/difficulty (2 calls each, ≤2,000 kws)
         $balance = $dfs->balance();
-        $this->line(sprintf('Estimated cost: $%.2f · budget: $%.2f · balance: %s', $estimate, $budget, $balance === null ? 'unknown' : '$' . number_format($balance, 2)));
+        $this->line(sprintf('Estimated cost: $%.2f · budget: $%.2f · balance: %s', $estimate, $budget, $balance === null ? 'unknown' : '$'.number_format($balance, 2)));
         if ($dry) {
-            $this->line('Dry run — nothing fetched. Domains: ' . $domains->implode(', '));
+            $this->line('Dry run — nothing fetched. Domains: '.$domains->implode(', '));
 
             return self::SUCCESS;
         }
         if ($estimate > $budget) {
-            $this->error("Estimated cost exceeds --budget; raise it or narrow --competitors.");
+            $this->error('Estimated cost exceeds --budget; raise it or narrow --competitors.');
 
             return self::FAILURE;
         }
@@ -161,7 +151,7 @@ class SeoKeywordResearch extends Command
                 $universe[$r['keyword']]['__diff'] = $r['difficulty'] ?? ($universe[$r['keyword']]['__diff'] ?? null);
                 $n++;
             }
-            $this->line("  {$domain}: {$n} remodeling keywords" . ($dfs->getLastError() ? " ({$dfs->getLastError()})" : ''));
+            $this->line("  {$domain}: {$n} remodeling keywords".($dfs->getLastError() ? " ({$dfs->getLastError()})" : ''));
         }
 
         // ---- 2b. ideas (optional) ----------------------------------------
@@ -186,7 +176,7 @@ class SeoKeywordResearch extends Command
         }
 
         // ---- 4. write ----------------------------------------------------
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $written = 0;
         foreach ($universe as $kw => $meta) {
             $vol = $volumes[$kw]['volume'] ?? ($meta['__vol'] ?? null);

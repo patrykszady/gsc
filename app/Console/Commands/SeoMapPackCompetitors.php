@@ -3,8 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Services\Seo\CompetitorSiteFetcher;
+use App\Support\Seo\CompetitorFilter;
+use App\Support\Tenancy;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Read the homepages of the businesses that own the map pack (recorded by
@@ -20,7 +21,7 @@ class SeoMapPackCompetitors extends Command
 
     public function handle(CompetitorSiteFetcher $fetcher): int
     {
-        $q = \App\Support\Tenancy::table('map_pack_competitors')
+        $q = Tenancy::table('map_pack_competitors')
             ->whereNotNull('url')
             ->where('pack_points', '>', 0)
             ->orderByDesc('pack_points');
@@ -35,6 +36,9 @@ class SeoMapPackCompetitors extends Command
             if (! $host || isset($seen[$host])) {
                 continue;
             }
+            if (CompetitorFilter::isAggregator($host)) {
+                continue; // GBP 'website' field points at a directory/social page, not the business's own site — nothing to read, and reading it would misattribute the same fetched page onto every other business that also happens to list that host
+            }
             $seen[$host] = true;
             if ($read >= (int) $this->option('limit')) {
                 break;
@@ -42,9 +46,9 @@ class SeoMapPackCompetitors extends Command
 
             $data = $fetcher->read((string) $row->url) ?? ['site_fetched_at' => now()];
             $data = array_map(fn ($v) => is_array($v) ? json_encode($v) : $v, $data);
-            \App\Support\Tenancy::table('map_pack_competitors')->where('host', $host)->update($data + ['updated_at' => now()]);
+            Tenancy::table('map_pack_competitors')->where('host', $host)->update($data + ['updated_at' => now()]);
             $read++;
-            $this->line("  {$row->name} — " . (isset($data['site_title']) ? 'read' : 'unreachable'));
+            $this->line("  {$row->name} — ".(isset($data['site_title']) ? 'read' : 'unreachable'));
             usleep(700000);
         }
 

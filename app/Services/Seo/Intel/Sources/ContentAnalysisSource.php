@@ -6,6 +6,7 @@ use App\Services\DataForSeoService;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
+use App\Support\Seo\CompetitorFilter;
 use App\Support\Tenancy;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,11 @@ use Illuminate\Support\Facades\Schema;
  */
 class ContentAnalysisSource extends IntelSource
 {
+    /**
+     * Thin-alias fallback only: no longer read at runtime. isDirectoryDomain()
+     * now checks config('seo.competitor_exclusions') via CompetitorFilter, the
+     * one shared exclusion list every SEO intel source uses.
+     */
     public const DIRECTORY_DOMAINS = ['porch.com', 'homestars.com', 'houzz.com', 'yelp.com', 'angi.com', 'homeadvisor.com', 'bbb.org', 'buildzoom.com', 'thumbtack.com', 'nextdoor.com', 'facebook.com', 'yellowpages.com', 'mapquest.com', 'manta.com', 'bark.com'];
 
     public function family(): string
@@ -99,7 +105,7 @@ class ContentAnalysisSource extends IntelSource
         }
 
         if ($snapshots === [] && $this->dfs->getLastError()) {
-            throw new \RuntimeException('Content Analysis: ' . $this->dfs->getLastError());
+            throw new \RuntimeException('Content Analysis: '.$this->dfs->getLastError());
         }
 
         return $snapshots;
@@ -161,7 +167,7 @@ class ContentAnalysisSource extends IntelSource
             $payload = $data['payload'];
             $metrics = $data['metrics'];
             $isNew = ! $prevMentions->has($url);
-            $label = trim(($payload['domain'] ?? '') . ($payload['title'] ? ': ' . $payload['title'] : ''));
+            $label = trim(($payload['domain'] ?? '').($payload['title'] ? ': '.$payload['title'] : ''));
             $linkToUs = $payload['link_to_us'] ?? null;
 
             if ($isNew && $linkToUs === false) {
@@ -436,20 +442,12 @@ class ContentAnalysisSource extends IntelSource
     /** The docs' exact-phrase form: "\"gs construction & remodeling\"". */
     public static function phrase(string $term): string
     {
-        return '"' . trim($term, '"') . '"';
+        return '"'.trim($term, '"').'"';
     }
 
     /** Aggregators and directories: citations worth counting, sentiment not worth reading. */
     protected function isDirectoryDomain(string $host): bool
     {
-        $host = mb_strtolower($host);
-        foreach ((array) $this->config('directory_domains', self::DIRECTORY_DOMAINS) as $d) {
-            $d = mb_strtolower(trim((string) $d));
-            if ($d !== '' && ($host === $d || str_ends_with($host, '.' . $d))) {
-                return true;
-            }
-        }
-
-        return false;
+        return CompetitorFilter::isAggregator($host);
     }
 }

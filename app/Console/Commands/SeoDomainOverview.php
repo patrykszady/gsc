@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Site;
 use App\Services\DataForSeoService;
+use App\Support\Seo\CompetitorFilter;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -41,7 +43,7 @@ class SeoDomainOverview extends Command
             return self::FAILURE;
         }
 
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $today = now()->toDateString();
         foreach ($domains as $domain) {
             if ($dfs->spent() >= (float) $this->option('budget')) {
@@ -51,7 +53,8 @@ class SeoDomainOverview extends Command
             $o = $dfs->domainRankOverview($domain);
             $b = $dfs->backlinkSummary($domain);
             if ($o === null && $b === null) {
-                $this->line("  {$domain}: no data (" . ($dfs->getLastError() ?? '?') . ')');
+                $this->line("  {$domain}: no data (".($dfs->getLastError() ?? '?').')');
+
                 continue;
             }
             Tenancy::table('seo_domain_overviews')->updateOrInsert(
@@ -72,7 +75,12 @@ class SeoDomainOverview extends Command
         return self::SUCCESS;
     }
 
-    /** Map-pack leaders (geo-grid) then organic page-one domains (Brave discovery), deduplicated. */
+    /**
+     * Map-pack leaders (geo-grid) then organic page-one domains (Brave
+     * discovery), deduplicated and filtered through CompetitorFilter::keep()
+     * — the shared source every other family reads through
+     * IntelSource::competitorDomains().
+     */
     public static function competitorDomains(int $limit): array
     {
         $domains = collect();
@@ -85,6 +93,6 @@ class SeoDomainOverview extends Command
             $domains->push($d['host']);
         }
 
-        return $domains->map(fn ($h) => preg_replace('/^www\./', '', mb_strtolower((string) $h)))->filter()->unique()->take($limit)->values()->all();
+        return collect(CompetitorFilter::keep($domains))->take($limit)->values()->all();
     }
 }

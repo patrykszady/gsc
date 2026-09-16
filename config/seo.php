@@ -370,6 +370,67 @@ return [
         'services' => ['kitchen remodeling' => 'kitchen-remodeling', 'bathroom remodeling' => 'bathroom-remodeling'],
     ],
 
+    /*
+    | Shared "is this a competitor" data — read by App\Support\Seo\CompetitorFilter,
+    | the one place every SEO intel source (LabsSource, SerpSource,
+    | SeoDomainOverview, SeoMapPackCompetitors, SeoKeywordResearch,
+    | ContentAnalysisSource, SeoDiscoverCompetitors) decides whether a host is
+    | a real local remodeling competitor. config/seo.php is shared across
+    | every tenant site (config/sites/{slug}/seo.php overrides it per site,
+    | same convention as ContentAnalysisSource::brandTerms()), so this list is
+    | intentionally NOT tenant-specific — no "gs.construction"-style literal
+    | belongs here; every call site already excludes its own domain
+    | independently.
+    */
+
+    // Directories, marketplaces, review sites, social platforms, big-box
+    // retailers, media and B2B SaaS: never a competing remodeling business,
+    // however they show up in a SERP, a map-pack "website" field, or a Labs
+    // domain list. Union of the old SeoDiscoverCompetitors::$defaultExclusions
+    // and ContentAnalysisSource::DIRECTORY_DOMAINS lists (both kept as thin
+    // aliases), normalized to full domains, plus two aggregators confirmed in
+    // the live labs.competitor snapshots (2026-09-16 read) that were on
+    // neither list: thebluebook.com (a contractor trade directory) and
+    // procore.com (a B2B construction SaaS platform) — never remodeling
+    // competitors. Matched exact-host-or-subdomain (suffix-safe), not by
+    // substring, so a host merely containing an exclusion's letters is never
+    // caught.
+    'competitor_exclusions' => [
+        'google.com', 'yelp.com', 'houzz.com', 'angi.com', 'angieslist.com', 'homeadvisor.com', 'thumbtack.com',
+        'bbb.org', 'facebook.com', 'instagram.com', 'pinterest.com', 'youtube.com', 'tiktok.com', 'linkedin.com',
+        'nextdoor.com', 'mapquest.com', 'yellowpages.com', 'superpages.com', 'manta.com', 'porch.com',
+        'buildzoom.com', 'expertise.com', 'wikipedia.org', 'reddit.com', 'tripadvisor.com', 'indeed.com',
+        'glassdoor.com', 'craigslist.org', 'amazon.com', 'homedepot.com', 'lowes.com', 'menards.com', 'wayfair.com',
+        'ikea.com', 'apple.com', 'bing.com', 'yahoo.com', 'duckduckgo.com', 'birdeye.com', 'trustpilot.com',
+        'betterbusinessbureau.org', 'forbes.com', 'bobvila.com', 'thisoldhouse.com', 'architecturaldigest.com',
+        'hgtv.com', 'fixr.com', 'modernize.com', 'networx.com', 'chamberofcommerce.com',
+        'zillow.com', 'redfin.com', 'realtor.com', 'guildquality.com', 'homeguide.com', 'countryliving.com',
+        'servpro.com', 'mrhandyman.com', 'rebath.com', 'westshorehome.com', 'jacuzzibathremodel.com',
+        'apartments.com', 'trulia.com', 'yellowbook.com', 'mapcarta.com', 'cylex-usa.com', 'opendoor.com',
+        // From ContentAnalysisSource::DIRECTORY_DOMAINS, not already covered above.
+        'homestars.com', 'bark.com',
+        // Confirmed via live prod data (2026-09-16), on neither prior list.
+        'thebluebook.com', 'procore.com',
+        // Note: the pre-existing literal 'gs.construction' (tenant-specific)
+        // and the bare substring 'angi' (subsumed by 'angi.com' above, and
+        // unsafe as a suffix-match entry — it would false-positive on any
+        // host merely containing the four letters "angi") are intentionally
+        // dropped, not carried over.
+    ],
+
+    // A domain whose organic footprint dwarfs any real local remodeler is
+    // treated as a giant (a national directory or B2B platform), never a
+    // competitor — even one that slipped past the static exclusion list
+    // above. Thresholds read live prod data (2026-09-16): the largest real
+    // local competitor observed sits at organic_count=1,537 / etv=$7,896
+    // (airoom.com); the smallest observed non-local subject sits at
+    // organic_count=173,349 / etv=$225,996 (thebluebook.com) — >13x headroom
+    // above every real local company, >3.5x below every observed aggregator.
+    'competitor_giant_thresholds' => [
+        'organic_count' => 20000,
+        'organic_etv' => 50000,
+    ],
+
     'autopilot' => [
         // Propose a fresh Google Business Profile description (three variants, review-risk) this often.
         'gbp_description_days' => (int) env('SEO_AUTOPILOT_GBP_DESCRIPTION_DAYS', 90),
