@@ -1116,12 +1116,12 @@ class SeoAutopilotService
     /**
      * Re-measure applied actions past their window and record the outcome.
      *
-     * @return array{measured:int,worked:int,regressed:int,no_effect:int}
+     * @return array{measured:int,worked:int,regressed:int,no_effect:int,inconclusive:int}
      */
     public function measure(): array
     {
         $due = SeoAction::dueForMeasurement()->get();
-        $worked = $regressed = $noEffect = 0;
+        $worked = $regressed = $noEffect = $inconclusive = 0;
 
         foreach ($due as $action) {
             $metric = (string) ($action->metric ?: 'clicks');
@@ -1169,11 +1169,12 @@ class SeoAutopilotService
             match ($outcome) {
                 SeoAction::OUTCOME_WORKED => $worked++,
                 SeoAction::OUTCOME_REGRESSED => $regressed++,
+                SeoAction::OUTCOME_INCONCLUSIVE => $inconclusive++,
                 default => $noEffect++,
             };
         }
 
-        return ['measured' => $due->count(), 'worked' => $worked, 'regressed' => $regressed, 'no_effect' => $noEffect];
+        return ['measured' => $due->count(), 'worked' => $worked, 'regressed' => $regressed, 'no_effect' => $noEffect, 'inconclusive' => $inconclusive];
     }
 
     /** Categories A5's SERP corroboration applies to (see measure()) — the ones judged off page-level GSC clicks/impressions/position. */

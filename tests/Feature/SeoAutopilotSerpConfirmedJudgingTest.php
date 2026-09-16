@@ -101,6 +101,8 @@ class SeoAutopilotSerpConfirmedJudgingTest extends TestCase
         $this->assertSame(4, $action->payload['serp_position_before']);
         $this->assertSame(3, $action->payload['serp_position_after']);
         $this->assertSame(0, $result['regressed'], 'the disagreement must not count toward the regressed tally the auto-revert safety net reads');
+        $this->assertSame(1, $result['inconclusive'], 'an outcome downgraded to inconclusive must be counted as such, not folded into no_effect');
+        $this->assertSame(0, $result['no_effect']);
     }
 
     public function test_gsc_regression_confirmed_by_a_worse_serp_position_stays_regressed(): void

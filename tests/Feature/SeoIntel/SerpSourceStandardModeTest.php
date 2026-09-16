@@ -97,6 +97,20 @@ class SerpSourceStandardModeTest extends TestCase
         $this->assertSame(2, json_decode((string) $snap->metrics, true)['position']);
     }
 
+    /**
+     * pricePerQuery() must track collect()'s own endpoint choice: the
+     * Standard queue is a flat ~$0.0006/check regardless of depth, so
+     * estimateCost() (the outer seo:intel budget gate) matches what a
+     * standard-mode run actually spends.
+     */
+    public function test_estimate_cost_uses_the_flat_standard_rate(): void
+    {
+        $this->assertSame('standard', config('seo.rank_tracker.serp_mode'));
+
+        // 2 tracked queries (see setUp) × $0.0006, independent of depth=20.
+        $this->assertSame(0.0012, app(SerpSource::class)->estimateCost());
+    }
+
     public function test_falls_back_to_live_when_the_queue_fails_to_post(): void
     {
         Http::fake(function ($request) {

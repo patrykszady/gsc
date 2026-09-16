@@ -345,9 +345,20 @@ class SerpSource extends IntelSource
         return $out;
     }
 
-    /** $0.002 per SERP of up to 10 results (depth above 10 multiplies). */
+    /**
+     * Standard queue: a flat ~$0.0006/check regardless of depth (see
+     * collect()'s use of googleOrganicStandardBatch). Live Advanced (the
+     * fallback path, and whatever collect() runs when serp_mode is not
+     * 'standard'): $0.002 per SERP of up to 10 results, depth above 10
+     * multiplies. Must track collect()'s own mode selection so estimateCost()
+     * matches actual spend — the outer seo:intel budget gate reads it.
+     */
     protected function pricePerQuery(): float
     {
+        if ((string) config('seo.rank_tracker.serp_mode', 'standard') === 'standard') {
+            return 0.0006;
+        }
+
         return round(0.002 * ceil($this->depth() / 10), 4);
     }
 
