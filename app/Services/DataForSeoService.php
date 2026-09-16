@@ -151,6 +151,7 @@ class DataForSeoService
             'filters' => [['keyword_data.keyword_info.search_volume', '>', 0]],
         ]]);
         $items = (array) ($data['tasks'][0]['result'][0]['items'] ?? []);
+        $this->logIfTruncated('rankedKeywords', $domain, (int) ($data['tasks'][0]['result'][0]['total_count'] ?? 0), count($items));
         $out = [];
         foreach ($items as $it) {
             $kd = $it['keyword_data'] ?? [];
@@ -188,8 +189,10 @@ class DataForSeoService
             'limit' => $limit,
             'order_by' => ['keyword_info.search_volume,desc'],
         ]]);
+        $items = (array) ($data['tasks'][0]['result'][0]['items'] ?? []);
+        $this->logIfTruncated('keywordIdeas', implode(',', array_slice($seeds, 0, 3)), (int) ($data['tasks'][0]['result'][0]['total_count'] ?? 0), count($items));
         $out = [];
-        foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $it) {
+        foreach ($items as $it) {
             $keyword = mb_strtolower((string) ($it['keyword'] ?? ''));
             if ($keyword === '') {
                 continue;
@@ -289,8 +292,10 @@ class DataForSeoService
     public function referringDomains(string $domain, int $limit = 100): array
     {
         $data = $this->call('POST', '/backlinks/referring_domains/live', [['target' => $domain, 'limit' => $limit, 'order_by' => ['rank,desc'], 'exclude_internal_backlinks' => true]]);
+        $items = (array) ($data['tasks'][0]['result'][0]['items'] ?? []);
+        $this->logIfTruncated('referringDomains', $domain, (int) ($data['tasks'][0]['result'][0]['total_count'] ?? 0), count($items));
         $out = [];
-        foreach ((array) ($data['tasks'][0]['result'][0]['items'] ?? []) as $it) {
+        foreach ($items as $it) {
             if (empty($it['domain'])) {
                 continue;
             }
@@ -316,7 +321,7 @@ class DataForSeoService
         }
         $text = '';
         foreach ($sections as $s) {
-            $text .= ($s['text'] ?? '') . "\n";
+            $text .= ($s['text'] ?? '')."\n";
         }
 
         return trim($text) !== '' ? trim($text) : null;
@@ -354,41 +359,68 @@ class DataForSeoService
         return $out;
     }
 
+    /**
+     * A6: Labs/Backlinks endpoints return `items` capped at `limit` even when
+     * `total_count` says more exist — there is no paging here, so a caller
+     * silently working off a partial list (e.g. a 300-row keyword pull that
+     * is actually one of 4,000) never finds out. One warning line, no UI.
+     */
+    protected function logIfTruncated(string $method, string $subject, int $totalCount, int $returned): void
+    {
+        if ($totalCount > $returned) {
+            Log::warning("DataForSeoService::{$method} truncated for \"{$subject}\": {$returned} of {$totalCount} returned (no paging).");
+        }
+    }
+
     /** One authenticated call; records the task cost; returns decoded JSON or [] on failure. */
     protected function call(string $method, string $path, array $body = []): array
     {
         try {
             $req = Http::withBasicAuth((string) config('services.dataforseo.login'), (string) config('services.dataforseo.password'))
                 ->timeout(120)->retry(2, 1500, throw: false);
-            $resp = $method === 'GET' ? $req->get(self::BASE . $path) : $req->post(self::BASE . $path, $body);
+            $resp = $method === 'GET' ? $req->get(self::BASE.$path) : $req->post(self::BASE.$path, $body);
         } catch (\Throwable $e) {
-            $this->lastError = 'request failed: ' . mb_substr($e->getMessage(), 0, 160);
+            $this->lastError = 'request failed: '.mb_substr($e->getMessage(), 0, 160);
 
             return [];
         }
         if (! $resp->successful()) {
-            $this->lastError = 'HTTP ' . $resp->status() . ': ' . mb_substr($resp->body(), 0, 200);
+            $this->lastError = 'HTTP '.$resp->status().': '.mb_substr($resp->body(), 0, 200);
 
             return [];
         }
         $data = (array) $resp->json();
         foreach ((array) ($data['tasks'] ?? []) as $task) {
-            $this->spent += (float) ($task['cost'] ?? 0);
-            if (($task['status_code'] ?? 20000) !== 20000) {
-                $this->lastError = ($task['status_code'] ?? '?') . ' ' . ($task['status_message'] ?? '');
-            }
+            $this->recordTask($task);
         }
 
         return $data;
     }
 
     /**
+     * Records one decoded task's billed cost (spent()) and, if it failed,
+     * the error — the bookkeeping call() does per task in its response.
+     * googleOrganicPosition() below makes its own request outside call()
+     * (it has bespoke 40101-retry handling call() doesn't), so it calls
+     * this directly; without it, spend from the Live endpoint never
+     * reached spent(), and A1's mid-loop budget cutoff had nothing to cut
+     * off on.
+     */
+    protected function recordTask(array $task): void
+    {
+        $this->spent += (float) ($task['cost'] ?? 0);
+        if (($task['status_code'] ?? 20000) !== 20000) {
+            $this->lastError = ($task['status_code'] ?? '?').' '.($task['status_message'] ?? '');
+        }
+    }
+
+    /**
      * One live Google-organic SERP check.
      *
      * @return array{position: ?int, url: ?string, local_pack: ?bool, top_domains: array<int,string>}|null
-     *         position = rank_absolute of the first result whose domain matches;
-     *         local_pack = whether a local pack was present on the SERP (null if undetectable);
-     *         null return = the API call itself failed.
+     *                                                                                                     position = rank_absolute of the first result whose domain matches;
+     *                                                                                                     local_pack = whether a local pack was present on the SERP (null if undetectable);
+     *                                                                                                     null return = the API call itself failed.
      */
     public function googleOrganicPosition(string $query, string $targetDomain, string $locationName = 'Chicago,Illinois,United States'): ?array
     {
@@ -397,28 +429,31 @@ class DataForSeoService
                 (string) config('services.dataforseo.login'),
                 (string) config('services.dataforseo.password'),
             )->timeout(90)->retry(2, 1500, throw: false)
-                ->post(self::BASE . '/serp/google/organic/live/advanced', [[
-            'keyword' => $query,
-            'location_name' => $locationName,
-            'language_code' => 'en',
-            'device' => 'desktop',
-            'depth' => 100,
-            ]]);
+                ->post(self::BASE.'/serp/google/organic/live/advanced', [[
+                    'keyword' => $query,
+                    'location_name' => $locationName,
+                    'language_code' => 'en',
+                    'device' => 'desktop',
+                    'depth' => 100,
+                ]]);
         } catch (\Throwable $e) {
             // A single slow SERP must never abort the whole weekly run — the
             // live endpoint occasionally exceeds a minute under load.
-            $this->lastError = 'request failed: ' . mb_substr($e->getMessage(), 0, 160);
+            $this->lastError = 'request failed: '.mb_substr($e->getMessage(), 0, 160);
 
             return null;
         }
 
         if (! $resp->successful()) {
-            $this->lastError = 'HTTP ' . $resp->status() . ': ' . mb_substr($resp->body(), 0, 200);
+            $this->lastError = 'HTTP '.$resp->status().': '.mb_substr($resp->body(), 0, 200);
 
             return null;
         }
 
-        $task = $resp->json('tasks.0');
+        // Cast: a malformed/empty envelope must fall through to "unknown
+        // status" below, not a TypeError out of recordTask()'s array param.
+        $task = (array) $resp->json('tasks.0');
+        $this->recordTask($task);
 
         // 40101 "Internal SE Server Error" is DataForSEO's transient upstream
         // failure — 8 of 31 queries hit it on the first baseline sweep. One
@@ -430,7 +465,7 @@ class DataForSeoService
                 (string) config('services.dataforseo.login'),
                 (string) config('services.dataforseo.password'),
             )->timeout(90)->retry(2, 1500, throw: false)
-                ->post(self::BASE . '/serp/google/organic/live/advanced', [[
+                ->post(self::BASE.'/serp/google/organic/live/advanced', [[
                     'keyword' => $query,
                     'location_name' => $locationName,
                     'language_code' => 'en',
@@ -438,17 +473,29 @@ class DataForSeoService
                     'depth' => 100,
                 ]]);
             if ($retry->successful()) {
-                $task = $retry->json('tasks.0');
+                $task = (array) $retry->json('tasks.0');
+                $this->recordTask($task);
             }
         }
 
         if (($task['status_code'] ?? 0) !== 20000) {
-            $this->lastError = ($task['status_code'] ?? '?') . ' ' . ($task['status_message'] ?? 'unknown');
-
             return null;
         }
 
-        $items = $task['result'][0]['items'] ?? [];
+        return self::parseOrganicResult($task['result'][0] ?? [], $targetDomain);
+    }
+
+    /**
+     * Parse one Google Organic result envelope's `items` array — the shape
+     * shared by Live Advanced (googleOrganicPosition) and the Standard-queue
+     * task_get/advanced result (googleOrganicStandardBatch) — into the
+     * position/url/local-pack/top-domains summary both callers need.
+     *
+     * @return array{position: ?int, url: ?string, local_pack: ?bool, top_domains: array<int,string>}
+     */
+    public static function parseOrganicResult(array $result, string $targetDomain): array
+    {
+        $items = $result['items'] ?? [];
         $position = null;
         $url = null;
         $localPack = false;
@@ -473,5 +520,80 @@ class DataForSeoService
         }
 
         return ['position' => $position, 'url' => $url, 'local_pack' => $localPack, 'top_domains' => $topDomains];
+    }
+
+    /**
+     * Standard-queue Google Organic SERP checks (A4): one task_post for the
+     * WHOLE batch of queries, then poll tasks_ready and collect each ready
+     * task with task_get/advanced — DataForSEO's async queue, billed
+     * ~$0.0006/check versus Live Advanced's ~$0.002 per
+     * https://dataforseo.com/pricing/serp/google-organic-serp-api. Reuses
+     * pollUntil(); task_post/tasks_ready/task_get are new call sites since
+     * postTask() only ever wraps a single task and this needs one task_post
+     * call for up to 100 tasks (DataForSEO's own per-call limit).
+     *
+     * @param  array<int, array{keyword:string, location_name?:string, location_coordinate?:string, depth?:int, device?:string}>  $tasks
+     * @return array<int, array|null>|null Positionally aligned with $tasks
+     *                                     (0-indexed, regardless of $tasks' own keys): each value is
+     *                                     that task's result envelope (same shape parseOrganicResult()
+     *                                     takes), or null if it never completed inside the poll window.
+     *                                     The WHOLE return is null only when task_post itself failed to
+     *                                     queue a single task — callers treat that as "fall back to
+     *                                     Live" for this run.
+     */
+    public function googleOrganicStandardBatch(array $tasks, int $maxSeconds = 240, int $interval = 10): ?array
+    {
+        if ($tasks === []) {
+            return [];
+        }
+
+        $payload = array_map(fn (array $t) => array_merge([
+            'language_code' => 'en',
+            'device' => 'desktop',
+            'depth' => 100,
+        ], $t), array_values($tasks));
+
+        $data = $this->call('POST', '/serp/google/organic/task_post', $payload);
+        $idsByIndex = [];
+        foreach ((array) ($data['tasks'] ?? []) as $i => $task) {
+            $id = $task['id'] ?? null;
+            if (is_string($id) && in_array((int) ($task['status_code'] ?? 0), [20000, 20100], true)) {
+                $idsByIndex[$i] = $id;
+            }
+        }
+
+        if ($idsByIndex === []) {
+            // task_post failed outright — lastError is already set by call();
+            // the caller falls back to per-query Live Advanced for this run.
+            return null;
+        }
+
+        $pending = array_flip($idsByIndex); // task id => original index
+        $ready = [];
+        $this->pollUntil(function () use (&$ready, $pending) {
+            $envelope = $this->call('GET', '/serp/google/organic/tasks_ready');
+            foreach (self::resultOf($envelope) as $row) {
+                $id = $row['id'] ?? null;
+                if (is_string($id) && isset($pending[$id])) {
+                    $ready[$id] = true;
+                }
+            }
+
+            return count($ready) >= count($pending) ? true : null;
+        }, $maxSeconds, $interval);
+
+        $out = array_fill(0, count($tasks), null);
+        foreach ($idsByIndex as $i => $id) {
+            if (! isset($ready[$id])) {
+                continue; // never showed up as ready inside the poll window
+            }
+            $envelope = $this->call('GET', "/serp/google/organic/task_get/advanced/{$id}");
+            $result = self::resultOf($envelope)[0] ?? null;
+            if (is_array($result)) {
+                $out[$i] = $result;
+            }
+        }
+
+        return $out;
     }
 }

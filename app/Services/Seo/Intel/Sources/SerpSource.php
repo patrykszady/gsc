@@ -21,14 +21,17 @@ use App\Support\Tenancy;
  * has us in it, or which competitor just took the spot we lost. Those are
  * the features that quietly erode local traffic and GSC never reports them.
  *
- * Endpoint: POST /serp/google/organic/live/advanced, one call per tracked
- * query, location_coordinate centred on the shop (see center()), device
- * desktop, depth config('depth', 20). Billed per SERP of up to 10 results
- * (https://dataforseo.com/pricing/serp/google-organic-serp-api: $0.002 /
- * SERP; depth above 10 multiplies), so one query at depth 20 costs ~$0.004.
- * calculate_rectangles stays false (no pixel-ranking surcharge) and
- * load_async_ai_overview is never set (no +$0.002 surcharge) — only the AI
- * Overview that renders synchronously is read.
+ * Endpoint: by default the Standard queue (task_post/tasks_ready/task_get,
+ * ~$0.0006/check — see DataForSeoService::googleOrganicStandardBatch and
+ * config seo.rank_tracker.serp_mode), falling back automatically to POST
+ * /serp/google/organic/live/advanced (one call per tracked query, ~$0.002/
+ * SERP of up to 10 results; depth above 10 multiplies, so one query at
+ * depth 20 costs ~$0.004) when the queue path errors. Both use
+ * location_coordinate centred on the shop (see center()), device desktop,
+ * depth config('depth', 20). calculate_rectangles stays false (no
+ * pixel-ranking surcharge) and load_async_ai_overview is never set (no
+ * +$0.002 surcharge) — only the AI Overview that renders synchronously is
+ * read.
  */
 class SerpSource extends IntelSource
 {
@@ -58,6 +61,34 @@ class SerpSource extends IntelSource
         $depth = $this->depth();
         $ourDomain = $this->ourDomain();
         $snapshots = [];
+
+        // A4: the Standard queue (~$0.0006/check, one task_post for the
+        // whole batch — see DataForSeoService::googleOrganicStandardBatch)
+        // is tried first when config seo.rank_tracker.serp_mode says so
+        // (default 'standard'); it falls straight through to the Live loop
+        // below, automatically, whenever the queue path itself errors.
+        $standard = config('seo.rank_tracker.serp_mode', 'standard') === 'standard'
+            ? $this->dfs->googleOrganicStandardBatch(array_map(fn ($q) => [
+                'keyword' => $q,
+                'location_coordinate' => sprintf('%.6f,%.6f,100000', $lat, $lng),
+                'depth' => $depth,
+            ], $queries))
+            : null;
+
+        if ($standard !== null) {
+            foreach ($queries as $i => $query) {
+                $result = $standard[$i] ?? null;
+                if (is_array($result)) {
+                    $snapshots[] = $this->snapshotFor($query, $result, $ourDomain);
+                }
+            }
+
+            if ($snapshots === [] && $this->dfs->getLastError()) {
+                throw new \RuntimeException($this->dfs->getLastError());
+            }
+
+            return $snapshots;
+        }
 
         foreach ($queries as $query) {
             if (($this->dfs->spent() - $spentAtStart) > $maxCost) {
