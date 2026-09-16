@@ -32,6 +32,20 @@ class SeoKeywordResearchTest extends TestCase
         $this->assertSame(0, DB::table('seo_keywords')->count());
     }
 
+    public function test_fails_closed_when_the_balance_check_itself_fails(): void
+    {
+        // A failed balance() call (null) used to slip the old guard
+        // (`$balance !== null && ...`) entirely and let the run spend.
+        Http::fake(['*/appendix/user_data' => Http::response('', 500)]);
+
+        $this->artisan('seo:keyword-research', ['--budget' => 3])
+            ->expectsOutputToContain('balance unknown')
+            ->assertExitCode(1);
+
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'search_volume') || str_contains($r->url(), 'ranked_keywords'));
+        $this->assertSame(0, DB::table('seo_keywords')->count());
+    }
+
     public function test_builds_the_universe_and_writes_volumes_positions_and_competitor_coverage(): void
     {
         DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(5)->toDateString(), 'site_url' => 'sc-domain:gs.construction', 'query' => 'kenilworth home remodeling', 'page' => 'https://gs.construction/areas-served/kenilworth', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 400, 'clicks' => 0, 'position' => 7.5, 'ctr' => 0, 'dim_hash' => 'h1', 'created_at' => now(), 'updated_at' => now()]);

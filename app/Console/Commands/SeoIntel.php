@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\DataForSeoService;
 use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
+use App\Support\Seo\DataForSeoBudget;
 use Illuminate\Console\Command;
 
 /**
@@ -38,7 +39,7 @@ class SeoIntel extends Command
         $only = (array) $this->argument('family') ?: null;
         $sources = $runner->sources($only);
         if ($only && count($sources) !== count($only)) {
-            $this->error('Unknown family: ' . implode(', ', array_diff($only, array_keys($sources))) . '. Registered: ' . implode(', ', array_keys($runner->sources())));
+            $this->error('Unknown family: '.implode(', ', array_diff($only, array_keys($sources))).'. Registered: '.implode(', ', array_keys($runner->sources())));
 
             return self::FAILURE;
         }
@@ -71,6 +72,7 @@ class SeoIntel extends Command
         $findingsOnly = (bool) $this->option('findings');
         $dryRun = (bool) $this->option('dry-run');
         $budget = (float) $this->option('budget');
+        $guard = new DataForSeoBudget;
         if (! $findingsOnly) {
             if (! $dfs->isConfigured()) {
                 $this->comment('DataForSEO not configured — skipping.');
@@ -79,37 +81,42 @@ class SeoIntel extends Command
             }
             $estimate = array_sum(array_map(fn ($s) => $s->estimateCost(), $sources));
             $balance = $dfs->balance();
-            if ($balance !== null && $balance < min($estimate, $budget)) {
-                $this->error(sprintf('DataForSEO balance $%.2f cannot cover this run (~$%.2f).', $balance, min($estimate, $budget)));
+            // --budget here is a soft per-family spending cap (below), not a
+            // hard refusal, so only the balance half of the guard applies —
+            // but it still fails closed: a failed balance() (null) used to
+            // slip straight through instead of refusing the run.
+            if ($msg = $guard->balanceCheck(min($estimate, $budget), $balance, $dfs->getLastError())) {
+                $this->error($msg);
 
                 return self::FAILURE;
             }
             $this->line(sprintf('Balance $%s · budget $%.2f · estimated $%.2f for %s', $balance !== null ? number_format($balance, 2) : '?', $budget, $estimate, implode(', ', array_keys($sources))));
         }
 
-        $failed = 0;
         foreach ($sources as $family => $source) {
             if (! $findingsOnly && $runner->spent() > 0 && $runner->spent() + $source->estimateCost() > $budget) {
                 $this->warn(sprintf('  %s: skipped, budget reached ($%.3f spent).', $family, $runner->spent()));
+
                 continue;
             }
             $r = $runner->run($source, $dryRun, $findingsOnly);
             if (! empty($r['skipped'])) {
                 $this->line(sprintf('  %-18s —    nothing to collect right now', $family));
+
                 continue;
             }
             $line = sprintf('  %-18s %s  %3d snapshots  $%.3f  findings +%d / %d open / -%d resolved  (%.1fs)',
                 $family, $r['ok'] ? 'ok ' : 'ERR', $r['snapshots'], $r['cost'], $r['findings']['new'], $r['findings']['open'], $r['findings']['resolved'], $r['duration_ms'] / 1000);
-            $r['ok'] ? $this->info($line) : $this->error($line . '  ' . $r['error']);
-            $failed += $r['ok'] ? 0 : 1;
+            $r['ok'] ? $this->info($line) : $this->error($line.'  '.$r['error']);
+            $guard->record($r['ok']);
             if ($this->output->isVerbose() || $dryRun) {
                 foreach ($store->openFindings($family, 12) as $f) {
-                    $this->line(sprintf('     [%s] %s%s', $f->severity, $f->title, $f->key ? ' — ' . $f->key : ''));
+                    $this->line(sprintf('     [%s] %s%s', $f->severity, $f->title, $f->key ? ' — '.$f->key : ''));
                 }
             }
         }
         $this->info(sprintf('Done. Spent $%.3f.', $runner->spent()));
 
-        return $failed === count($sources) ? self::FAILURE : self::SUCCESS;
+        return $guard->allFailed() ? self::FAILURE : self::SUCCESS;
     }
 }

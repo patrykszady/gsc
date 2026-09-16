@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Site;
 use App\Services\DataForSeoService;
+use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -33,15 +35,18 @@ class SeoDomainOverview extends Command
         $ours = preg_replace('#^https?://(www\.)?#', '', rtrim((string) config('app.url'), '/')) ?: 'gs.construction';
         $domains = collect([$ours])->concat(self::competitorDomains((int) $this->option('competitors')))->unique()->values();
 
+        // Estimate-vs-budget was missing here (unlike every sibling command),
+        // and the balance check let a failed balance() (null) through
+        // silently; the shared guard fails closed on both.
         $estimate = $domains->count() * 0.04;
-        $balance = $dfs->balance();
-        if ($balance !== null && $balance < $estimate) {
-            $this->error(sprintf('DataForSEO balance $%.2f cannot cover this run ($%.2f).', $balance, $estimate));
+        $guard = new DataForSeoBudget;
+        if ($msg = $guard->precheck($estimate, (float) $this->option('budget'), $dfs->balance(), $dfs->getLastError())) {
+            $this->error($msg);
 
             return self::FAILURE;
         }
 
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $today = now()->toDateString();
         foreach ($domains as $domain) {
             if ($dfs->spent() >= (float) $this->option('budget')) {
@@ -51,9 +56,12 @@ class SeoDomainOverview extends Command
             $o = $dfs->domainRankOverview($domain);
             $b = $dfs->backlinkSummary($domain);
             if ($o === null && $b === null) {
-                $this->line("  {$domain}: no data (" . ($dfs->getLastError() ?? '?') . ')');
+                $this->line("  {$domain}: no data (".($dfs->getLastError() ?? '?').')');
+                $guard->record(false);
+
                 continue;
             }
+            $guard->record(true);
             Tenancy::table('seo_domain_overviews')->updateOrInsert(
                 ['site_id' => $siteId, 'domain' => $domain, 'date' => $today],
                 [
@@ -67,6 +75,11 @@ class SeoDomainOverview extends Command
             $this->line(sprintf('  %-34s top10=%3d  total=%4d  etv=%6.0f  refdomains=%s', $domain, ($o['pos_1'] ?? 0) + ($o['pos_2_3'] ?? 0) + ($o['pos_4_10'] ?? 0), $o['count'] ?? 0, $o['etv'] ?? 0, $b['referring_domains'] ?? '-'));
         }
         Cache::forget(Tenancy::cacheKey('seo_reports_dataforseo_v1'));
+        if ($guard->allFailed()) {
+            $this->error('Every domain failed — DataForSEO may be down or misconfigured.');
+
+            return self::FAILURE;
+        }
         $this->info(sprintf('Done. Spent $%.3f.', $dfs->spent()));
 
         return self::SUCCESS;

@@ -349,15 +349,28 @@ return [
     /*
     | Geo-grid map-pack scan (seo:map-pack-grid, weekly, DataForSEO Google Maps
     | at every point): centered on the business (400 N Wheeling Rd, Prospect
-    | Heights), 11×11 points out to 15 miles — Lake Bluff to Schaumburg,
-    | Barrington to Evanston. ~$0.002 a point.
+    | Heights), 7×7 points out to 15 miles — Lake Bluff to Schaumburg,
+    | Barrington to Evanston. ~$0.002 a point (~$0.30/run for 3 keywords).
+    | Suburb-level tracking doesn't need the block-level density 11×11 gave
+    | (~$0.73/run); the radius — how far out we sample — is unchanged.
     */
     'map_pack' => [
         'center_lat' => (float) env('SEO_MAP_PACK_LAT', 42.102847),
         'center_lng' => (float) env('SEO_MAP_PACK_LNG', -87.9275628),
-        'grid_size' => (int) env('SEO_MAP_PACK_GRID', 11),
+        'grid_size' => (int) env('SEO_MAP_PACK_GRID', 7),
         'radius_miles' => (float) env('SEO_MAP_PACK_RADIUS', 15),
         'keywords' => ['kitchen remodeling', 'bathroom remodeling', 'remodeling contractor'],
+    ],
+
+    /*
+    | DataForSEO account (seo:dataforseo-balance-check, daily). The account
+    | has been funded once ($51 total, no auto-reload) — the failure mode
+    | that matters is silent depletion, not overspend. min_balance is the
+    | floor a warning fires below; the scheduled commands' own --budget caps
+    | still gate any single run.
+    */
+    'dataforseo' => [
+        'min_balance' => (float) env('SEO_DATAFORSEO_MIN_BALANCE', 10.0),
     ],
 
     /*

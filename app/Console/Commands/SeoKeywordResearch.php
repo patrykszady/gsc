@@ -3,16 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Models\Site;
 use App\Services\DataForSeoService;
 use App\Services\Seo\SeoAutopilotService;
+use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * Weekly keyword + competitor research into seo_keywords (DataForSEO):
@@ -125,19 +125,15 @@ class SeoKeywordResearch extends Command
         // ---- cost estimate + balance guard -------------------------------
         $estimate = ceil((count($universe) + 3000) / 1000) * 0.08 + $domains->count() * 0.03 + ($this->option('ideas') ? count($services) * 0.02 : 0) + 2 * 2 * 0.013; // + intent/difficulty (2 calls each, ≤2,000 kws)
         $balance = $dfs->balance();
-        $this->line(sprintf('Estimated cost: $%.2f · budget: $%.2f · balance: %s', $estimate, $budget, $balance === null ? 'unknown' : '$' . number_format($balance, 2)));
+        $this->line(sprintf('Estimated cost: $%.2f · budget: $%.2f · balance: %s', $estimate, $budget, $balance === null ? 'unknown' : '$'.number_format($balance, 2)));
         if ($dry) {
-            $this->line('Dry run — nothing fetched. Domains: ' . $domains->implode(', '));
+            $this->line('Dry run — nothing fetched. Domains: '.$domains->implode(', '));
 
             return self::SUCCESS;
         }
-        if ($estimate > $budget) {
-            $this->error("Estimated cost exceeds --budget; raise it or narrow --competitors.");
-
-            return self::FAILURE;
-        }
-        if ($balance !== null && $balance < $estimate) {
-            $this->error(sprintf('DataForSEO balance $%.2f cannot cover this run ($%.2f). Top up at app.dataforseo.com, then re-run.', $balance, $estimate));
+        $guard = new DataForSeoBudget;
+        if ($msg = $guard->precheck($estimate, $budget, $balance, $dfs->getLastError())) {
+            $this->error($msg);
 
             return self::FAILURE;
         }
@@ -149,7 +145,9 @@ class SeoKeywordResearch extends Command
                 $this->warn('Budget reached before all competitors were pulled.');
                 break;
             }
+            $errBefore = $dfs->getLastError();
             $rows = $dfs->rankedKeywords($domain, 300);
+            $guard->record($rows !== [] || $dfs->getLastError() === $errBefore);
             $n = 0;
             foreach ($rows as $r) {
                 if (! $this->remodelingish($r['keyword'])) {
@@ -161,7 +159,7 @@ class SeoKeywordResearch extends Command
                 $universe[$r['keyword']]['__diff'] = $r['difficulty'] ?? ($universe[$r['keyword']]['__diff'] ?? null);
                 $n++;
             }
-            $this->line("  {$domain}: {$n} remodeling keywords" . ($dfs->getLastError() ? " ({$dfs->getLastError()})" : ''));
+            $this->line("  {$domain}: {$n} remodeling keywords".($dfs->getLastError() ? " ({$dfs->getLastError()})" : ''));
         }
 
         // ---- 2b. ideas (optional) ----------------------------------------
@@ -186,7 +184,7 @@ class SeoKeywordResearch extends Command
         }
 
         // ---- 4. write ----------------------------------------------------
-        $siteId = \App\Models\Site::current()?->id;
+        $siteId = Site::current()?->id;
         $written = 0;
         foreach ($universe as $kw => $meta) {
             $vol = $volumes[$kw]['volume'] ?? ($meta['__vol'] ?? null);
@@ -253,6 +251,11 @@ class SeoKeywordResearch extends Command
         Cache::forget(Tenancy::cacheKey('seo.area.service_demand'));
         Cache::forget(Tenancy::cacheKey('seo.area.service_volume'));
         Cache::forget(Tenancy::cacheKey('seo_reports_keywords_v1'));
+        if ($guard->allFailed()) {
+            $this->error('Every competitor domain failed — DataForSEO may be down or misconfigured.');
+
+            return self::FAILURE;
+        }
         $this->info(sprintf('Wrote %d keywords. Spent $%.3f.', $written, $dfs->spent()));
 
         return self::SUCCESS;
