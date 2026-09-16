@@ -103,19 +103,44 @@ class SeoAutopilotController extends Controller
         ]);
     }
 
+    /** Same-length trailing window used for every '*_prev' value below. */
+    protected const PREV_WINDOW_DAYS = 7;
+
     /**
-     * @return array{open:int,applied:int,reverted:int,worked:int,regressed:int,no_effect:int,est_uplift:float}
+     * @return array{open:int,open_prev:int,applied:int,applied_prev:int,reverted:int,worked:int,worked_prev:int,regressed:int,regressed_prev:int,no_effect:int,no_effect_prev:int,est_uplift:float,est_uplift_prev:float}
      */
     protected function stats(): array
     {
+        $cutoff = Carbon::now()->subDays(self::PREV_WINDOW_DAYS);
+
+        // "Open as of $at": created by then and not yet applied — the ledger
+        // keeps no status-history log, so a skip/fail (which carries no
+        // timestamp of its own) aging out of this reconstruction is the one
+        // known approximation.
+        $openAsOf = fn (Carbon $at) => SeoAction::where('created_at', '<=', $at)
+            ->where(fn ($q) => $q->whereNull('applied_at')->orWhere('applied_at', '>', $at));
+
+        // "Applied as of $at": applied by then and not (yet) reverted by then.
+        $appliedAsOf = fn (Carbon $at) => SeoAction::whereNotNull('applied_at')->where('applied_at', '<=', $at)
+            ->where(fn ($q) => $q->whereNull('reverted_at')->orWhere('reverted_at', '>', $at));
+
         return [
+            // Open actions and est. clicks are point-in-time gauges: 'prev' is
+            // that same gauge as it read PREV_WINDOW_DAYS ago, not a count of
+            // events — an admin tile diffs the two for the chevron.
             'open' => SeoAction::open()->count(),
+            'open_prev' => $openAsOf($cutoff)->count(),
             'applied' => SeoAction::applied()->count(),
+            'applied_prev' => $appliedAsOf($cutoff)->count(),
             'reverted' => SeoAction::where('status', SeoAction::STATUS_REVERTED)->count(),
             'worked' => SeoAction::where('outcome', SeoAction::OUTCOME_WORKED)->count(),
+            'worked_prev' => SeoAction::where('outcome', SeoAction::OUTCOME_WORKED)->where('measured_at', '<=', $cutoff)->count(),
             'regressed' => SeoAction::where('outcome', SeoAction::OUTCOME_REGRESSED)->count(),
+            'regressed_prev' => SeoAction::where('outcome', SeoAction::OUTCOME_REGRESSED)->where('measured_at', '<=', $cutoff)->count(),
             'no_effect' => SeoAction::where('outcome', SeoAction::OUTCOME_NO_EFFECT)->count(),
+            'no_effect_prev' => SeoAction::where('outcome', SeoAction::OUTCOME_NO_EFFECT)->where('measured_at', '<=', $cutoff)->count(),
             'est_uplift' => round((float) SeoAction::open()->sum('impact_score'), 0),
+            'est_uplift_prev' => round((float) $openAsOf($cutoff)->sum('impact_score'), 0),
         ];
     }
 

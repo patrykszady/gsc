@@ -8,13 +8,18 @@ use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\AreaServed;
 use App\Models\GscCoverageState;
 use App\Models\GscDailyTotal;
+use App\Models\Testimonial;
+use App\Services\Seo\Intel\IntelRunner;
+use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -530,7 +535,7 @@ class SeoReportController extends Controller
             return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days];
         }
 
-        return Cache::remember(Tenancy::cacheKey('seo_reports_clarity_v2_' . $days), 1800, function () use ($days): array {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_clarity_v2_'.$days), 1800, function () use ($days): array {
             $latest = Tenancy::table('clarity_daily_metrics')->max('date');
             if (! $latest) {
                 return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days];
@@ -565,6 +570,14 @@ class SeoReportController extends Controller
      * said WHEN its numbers were from — the tracker runs weekly (Sundays), so
      * mid-week the data is legitimately up to 6 days old. as_of makes that
      * visible; prior powers the better/worse chevrons.
+     *
+     * Two instruments share this table under different `engine` values:
+     * 'gsc' (position derived from Search Console impressions) and 'google'
+     * (a live DataForSEO SERP check). Grouping them into one distribution
+     * used to double-count every query tracked by both — 'search_console'
+     * and 'live_serp' below are now counted separately; 'current'/'prior'
+     * stay for backward compatibility, deduped one row per query (the live
+     * check wins when both engines have one) so the total is honest again.
      */
     protected function rankingSnapshot(int $daysBack = 7): array
     {
@@ -572,22 +585,39 @@ class SeoReportController extends Controller
             return ['available' => false];
         }
 
-        return Cache::remember(Tenancy::cacheKey('seo_reports_rankdist_v1_' . $daysBack), 1800, function () use ($daysBack): array {
-            $distribution = function (?string $before) {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_rankdist_v2_'.$daysBack), 1800, function () use ($daysBack): array {
+            // Latest row per (engine, query, location) as of an optional cutoff.
+            $latestRows = function (?string $before) {
                 $q = Tenancy::table('seo_rank_snapshots as r1')
-                    ->selectRaw('r1.gsc_position as position')
+                    ->selectRaw('r1.engine as engine, r1.query as query, r1.gsc_position as position, r1.top_results as top_results, r1.meta as meta')
                     ->whereRaw(
                         'r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine'
-                        . ' AND COALESCE(r2.location, "") = COALESCE(r1.location, "")'
-                        . ' AND (r2.site_id = ? OR r2.site_id IS NULL)'
-                        . ($before ? ' AND r2.created_at <= ?' : '') . ')',
+                        .' AND COALESCE(r2.location, "") = COALESCE(r1.location, "")'
+                        .' AND (r2.site_id = ? OR r2.site_id IS NULL)'
+                        .($before ? ' AND r2.created_at <= ?' : '').')',
                         $before ? [Tenancy::currentId(), $before] : [Tenancy::currentId()],
                     );
                 if ($before) {
                     $q->where('r1.created_at', '<=', $before);
                 }
-                $rows = $q->get();
 
+                return $q->get();
+            };
+
+            $localPackShare = function (Collection $rows): float {
+                if ($rows->isEmpty()) {
+                    return 0.0;
+                }
+                $withLocalPack = $rows->filter(function ($r) {
+                    $meta = json_decode((string) $r->meta, true) ?: [];
+
+                    return ($meta['local_pack_present'] ?? false) === true;
+                })->count();
+
+                return round(100 * $withLocalPack / $rows->count(), 1);
+            };
+
+            $bucket = function (Collection $rows) use ($localPackShare): array {
                 $b = fn ($max) => $rows->filter(fn ($r) => $r->position !== null && $r->position <= $max)->count();
 
                 return [
@@ -596,21 +626,87 @@ class SeoReportController extends Controller
                     'top10' => $b(10),
                     'top20' => $b(20),
                     'below20' => max(0, $rows->count() - $b(20)),
+                    'local_pack_pct' => $localPackShare($rows),
                 ];
             };
 
+            // Backward-compatible merged distribution: one row per query, the
+            // live SERP check preferred over the Search-Console-derived one
+            // when a query has both, so a dual-tracked query is never counted twice.
+            $dedupeByQuery = fn (Collection $rows) => $rows->groupBy('query')
+                ->map(fn ($g) => $g->firstWhere('engine', 'google') ?? $g->first())
+                ->values();
+
+            $stripLocalPack = fn (array $d) => Arr::except($d, 'local_pack_pct');
+
             $asOf = Tenancy::table('seo_rank_snapshots')->max('created_at');
-            $current = $distribution(null);
-            $prior = $distribution($asOf ? Carbon::parse($asOf)->subDays($daysBack)->toDateTimeString() : null);
+            $priorCutoff = $asOf ? Carbon::parse($asOf)->subDays($daysBack)->toDateTimeString() : null;
+
+            $currentRows = $latestRows(null);
+            $priorRows = $latestRows($priorCutoff);
+            $currentByEngine = $currentRows->groupBy('engine');
+            $priorByEngine = $priorRows->groupBy('engine');
+
+            $searchConsoleCurrent = $bucket($currentByEngine->get('gsc', collect()));
+            $searchConsolePrior = $bucket($priorByEngine->get('gsc', collect()));
+            $liveSerpCurrent = $bucket($currentByEngine->get('google', collect()));
+            $liveSerpPrior = $bucket($priorByEngine->get('google', collect()));
+            $mergedCurrent = $bucket($dedupeByQuery($currentRows));
+            $mergedPrior = $bucket($dedupeByQuery($priorRows));
 
             return [
-                'available' => $current['tracked'] > 0,
+                'available' => $mergedCurrent['tracked'] > 0,
                 'as_of' => $asOf ? Carbon::parse($asOf)->toDateString() : null,
                 'days' => $daysBack,
-                'current' => $current,
-                'prior' => $prior,
+                'current' => $stripLocalPack($mergedCurrent),
+                'prior' => $stripLocalPack($mergedPrior),
+                'search_console' => [
+                    'label' => 'Google Search Console',
+                    'current' => $stripLocalPack($searchConsoleCurrent),
+                    'prior' => $stripLocalPack($searchConsolePrior),
+                ],
+                'live_serp' => [
+                    'label' => 'Live Google SERP',
+                    'current' => $stripLocalPack($liveSerpCurrent),
+                    'prior' => $stripLocalPack($liveSerpPrior),
+                ],
+                // Share of tracked queries whose SERP showed a local (map) pack —
+                // only the live SERP check observes this, meta.local_pack_present
+                // is never set on Search-Console-derived rows.
+                'local_pack' => [
+                    'current' => $liveSerpCurrent['local_pack_pct'],
+                    'prior' => $liveSerpPrior['local_pack_pct'],
+                ],
+                'queries' => $this->rankingQueryRows($currentRows, $priorRows),
             ];
         });
+    }
+
+    /**
+     * One row per tracked (engine, query): current + prior position, the top
+     * domains DataForSEO saw on that SERP, and which of our URLs it matched —
+     * stored in seo_rank_snapshots.top_results / meta.matched_url but never
+     * surfaced before.
+     */
+    protected function rankingQueryRows(Collection $current, Collection $prior): array
+    {
+        $priorByKey = $prior->keyBy(fn ($r) => $r->engine.'|'.$r->query);
+
+        return $current->map(function ($r) use ($priorByKey) {
+            $meta = json_decode((string) $r->meta, true) ?: [];
+            $topResults = json_decode((string) $r->top_results, true) ?: [];
+            $priorRow = $priorByKey->get($r->engine.'|'.$r->query);
+
+            return [
+                'query' => $r->query,
+                'engine' => $r->engine,
+                'position' => $r->position !== null ? (int) $r->position : null,
+                'position_prev' => ($priorRow && $priorRow->position !== null) ? (int) $priorRow->position : null,
+                'top_results' => array_slice(array_values((array) $topResults), 0, 5),
+                'matched_url' => $meta['matched_url'] ?? null,
+                'local_pack_present' => ($meta['local_pack_present'] ?? false) === true,
+            ];
+        })->sortBy([['engine', 'asc'], ['query', 'asc']])->values()->all();
     }
 
     protected function geoSnapshot(): array
@@ -654,7 +750,7 @@ class SeoReportController extends Controller
                 return ['available' => false, 'keywords' => []];
             }
 
-            $areas = \App\Models\AreaServed::query()->whereNotNull('latitude')->whereNotNull('longitude')->get(['city', 'slug', 'latitude', 'longitude']);
+            $areas = AreaServed::query()->whereNotNull('latitude')->whereNotNull('longitude')->get(['city', 'slug', 'latitude', 'longitude']);
             $nearestTown = function (float $lat, float $lng) use ($areas): ?array {
                 $best = null;
                 $bestD = 4.0; // miles — a grid point farther than this from any town we serve stays unnamed
@@ -670,7 +766,7 @@ class SeoReportController extends Controller
             };
 
             $ourReviews = Schema::hasTable('review_urls')
-                ? (int) \App\Models\Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
+                ? (int) Testimonial::query()->where('is_hidden', false)->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'))->count()
                 : 0;
             $competitorRows = Schema::hasTable('map_pack_competitors')
                 ? Tenancy::table('map_pack_competitors')->where('pack_points', '>', 0)->get()
@@ -678,7 +774,7 @@ class SeoReportController extends Controller
 
             $aiPlatforms = ['chatgpt', 'gemini', 'aimode', 'gaio', 'grok', 'apple'];
             $ai = [];
-            foreach ($scans->whereIn('platform', $aiPlatforms)->groupBy(fn ($s) => $s->platform . '|' . $s->keyword) as $g) {
+            foreach ($scans->whereIn('platform', $aiPlatforms)->groupBy(fn ($s) => $s->platform.'|'.$s->keyword) as $g) {
                 $s = $g->first();
                 $ai[] = ['platform' => $s->platform, 'keyword' => $s->keyword, 'scanned_at' => Carbon::parse($s->scanned_at)->toDateString(), 'saiv' => $s->saiv !== null ? round((float) $s->saiv, 1) : null, 'arp' => $s->arp !== null ? round((float) $s->arp, 1) : null];
             }
@@ -745,18 +841,44 @@ class SeoReportController extends Controller
                         'services' => $c->site_services ? json_decode($c->site_services, true) : null,
                         'towns' => $c->site_towns ? json_decode($c->site_towns, true) : null,
                         'site_read' => $c->site_fetched_at !== null && $c->site_title !== null,
+                        'claimed' => $c->claimed === null ? null : (bool) $c->claimed,
+                        'categories' => $c->categories ? json_decode($c->categories, true) : null,
                     ])->values()->all() ?: array_slice((array) ($detail['pack_leaders'] ?? []), 0, 5),
                     'review_gap' => (function () use ($competitorRows, $keyword, $latest, $ourReviews) {
                         $top = $competitorRows->where('keyword', $keyword)->where('scan_id', $latest->scan_id)->sortByDesc('pack_points')->take(6)->pluck('reviews')->filter()->max();
+
                         return $top ? ['ours' => $ourReviews, 'leader' => (int) $top, 'gap' => max(0, (int) $top - $ourReviews)] : null;
                     })(),
                     'report_url' => $detail['public_url'] ?? null,
                     'heatmap' => $detail['heatmap'] ?? null,
+                    // Every grid point's rank (or null when not found), row-major
+                    // north-west to south-east — same order SeoMapPackGrid::grid()
+                    // built the point list in — so the admin can paint a heatmap
+                    // without re-deriving it from the flat `grid` list itself.
+                    'heatmap_grid' => $this->heatmapGrid($grid, (int) ($latest->grid_points ?? 0)),
                 ];
             }
 
             return ['available' => true, 'keywords' => $keywords, 'ai' => $ai, 'our_reviews' => $ourReviews, 'latest' => Carbon::parse(($scans->first() ?? collect($ai)->first())?->scanned_at ?? now())->toDateString()];
         });
+    }
+
+    /**
+     * The flat `grid` list (as scanned, row-major) reshaped into an N×N array
+     * of ranks/nulls, so a heatmap can be painted without knowing the scan's
+     * point order. Falls back to a single row when grid_points doesn't
+     * evenly describe the point count (an old or partial scan).
+     *
+     * @return list<list<int|null>>
+     */
+    protected function heatmapGrid(array $grid, int $gridPoints): array
+    {
+        $ranks = array_map(fn ($pt) => ($pt['rank'] ?? false) === false ? null : (int) $pt['rank'], $grid);
+        if ($gridPoints < 1 || count($ranks) !== $gridPoints * $gridPoints) {
+            return $ranks === [] ? [] : [$ranks];
+        }
+
+        return array_chunk($ranks, $gridPoints);
     }
 
     /**
@@ -792,12 +914,21 @@ class SeoReportController extends Controller
                 'opportunity' => (float) $k->opportunity,
             ];
 
+            $volumeTotal = (int) (clone $base)->sum('volume');
+            $opportunitiesCount = (int) (clone $base)->where('opportunity', '>', 0)->count();
+            $researchedAt = optional((clone $base)->max('researched_at'), fn ($d) => Carbon::parse($d)->toDateString());
+            $prior = $this->keywordResearchPriorTotals($researchedAt, $total, $volumeTotal, $opportunitiesCount);
+
             return [
                 'available' => true,
                 'total' => $total,
+                'total_prev' => $prior['total'],
                 'with_volume' => (int) (clone $base)->where('volume', '>', 0)->count(),
-                'researched_at' => optional((clone $base)->max('researched_at'), fn ($d) => Carbon::parse($d)->toDateString()),
-                'volume_total' => (int) (clone $base)->sum('volume'),
+                'researched_at' => $researchedAt,
+                'volume_total' => $volumeTotal,
+                'volume_total_prev' => $prior['volume_total'],
+                'opportunities_count' => $opportunitiesCount,
+                'opportunities_count_prev' => $prior['opportunities_count'],
                 'opportunities' => (clone $base)->where('opportunity', '>', 0)->orderByDesc('opportunity')->limit(15)->get()->map($row)->all(),
                 'competitor_gap' => (clone $base)->whereNotNull('competitor_domains')->whereNull('our_position')->where('opportunity', '>', 0)->orderByDesc('volume')->limit(15)->get()->map($row)->all(),
                 'already_winning' => (clone $base)->where('our_position', '<=', 3)->where('volume', '>', 0)->orderByDesc('volume')->limit(8)->get()->map($row)->all(),
@@ -806,12 +937,40 @@ class SeoReportController extends Controller
     }
 
     /**
+     * seo_keywords is upserted in place every seo:keyword-research run — there
+     * is no history table for "last week's totals". We keep a small rolling
+     * ledger of each run's totals in cache (one entry per distinct
+     * researched_at day this method has seen) so a chevron can compare today's
+     * run with the one from ~7 days ago; the first week a run is seen, prior
+     * is null until a second run exists to compare against.
+     *
+     * @return array{total: ?int, volume_total: ?int, opportunities_count: ?int}
+     */
+    protected function keywordResearchPriorTotals(?string $researchedAt, int $total, int $volumeTotal, int $opportunitiesCount): array
+    {
+        $key = Tenancy::cacheKey('seo_reports_keyword_totals_history');
+        $history = (array) Cache::get($key, []);
+
+        if ($researchedAt !== null && ! isset($history[$researchedAt])) {
+            $history[$researchedAt] = ['total' => $total, 'volume_total' => $volumeTotal, 'opportunities_count' => $opportunitiesCount];
+            ksort($history);
+            $history = array_slice($history, -12, null, true); // ~3 months of weekly runs
+            Cache::forever($key, $history);
+        }
+
+        $cutoff = Carbon::today()->subDays(6)->toDateString();
+        $priorDay = collect(array_keys($history))->filter(fn ($d) => $d <= $cutoff)->sort()->last();
+
+        return $priorDay ? $history[$priorDay] : ['total' => null, 'volume_total' => null, 'opportunities_count' => null];
+    }
+
+    /**
      * DataForSEO intelligence beyond keywords: organic share of voice (us vs
      * competitors, this week vs last), the link gap, and AI answer mentions.
      */
     protected function dataForSeoSnapshot(): array
     {
-        return Cache::remember(Tenancy::cacheKey('seo_reports_dataforseo_v1'), 1800, function (): array {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_dataforseo_v2'), 1800, function (): array {
             $out = ['share_of_voice' => [], 'link_gap' => [], 'ai_mentions' => null];
 
             if (Schema::hasTable('seo_domain_overviews')) {
@@ -827,6 +986,10 @@ class SeoReportController extends Controller
                         'keywords_total' => (int) $latest->keywords_total, 'etv' => round((float) $latest->etv),
                         'referring_domains' => $latest->referring_domains !== null ? (int) $latest->referring_domains : null,
                         'domain_rank' => $latest->domain_rank !== null ? (int) $latest->domain_rank : null,
+                        // Keyword churn: how many keywords newly started/stopped ranking this
+                        // run for this domain — stored every run, never surfaced before.
+                        'is_new' => (int) $latest->is_new, 'is_new_prev' => $prev ? (int) $prev->is_new : null,
+                        'is_lost' => (int) $latest->is_lost, 'is_lost_prev' => $prev ? (int) $prev->is_lost : null,
                     ];
                 }
                 usort($out['share_of_voice'], fn ($a, $b) => [$b['is_us'], $b['top10']] <=> [$a['is_us'], $a['top10']]);
@@ -835,13 +998,29 @@ class SeoReportController extends Controller
             if (Schema::hasTable('seo_backlink_prospects')) {
                 // Link farms link to every competitor at once and carry a spam score; a real
                 // prospect (directory, local press, association) links to a few.
-                $gapQuery = fn () => Tenancy::table('seo_backlink_prospects')->where('links_to_us', false)->whereBetween('competitor_count', [2, 5])
-                    ->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30));
                 $freeHost = fn ($d) => (bool) preg_match('/\\.(web\\.app|blogspot\\.com|wordpress\\.com|weebly\\.com|wixsite\\.com|github\\.io|netlify\\.app|vercel\\.app|pages\\.dev|firebaseapp\\.com)$/', (string) $d);
+                $notUs = fn () => Tenancy::table('seo_backlink_prospects')->where('links_to_us', false);
+                $gapQuery = fn () => $notUs()->whereBetween('competitor_count', [2, 5])
+                    ->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30));
                 $rows = $gapQuery()->orderByDesc('competitor_count')->orderByDesc('rank')->limit(80)->get()->reject(fn ($p) => $freeHost($p->domain));
                 $out['link_gap'] = $rows->take(20)
                     ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->values()->all();
                 $out['link_gap_total'] = $rows->count();
+
+                // Why the rest never make it onto the visible list: each row is
+                // counted under the first filter it fails (they're checked in
+                // the same order the query above applies them).
+                $outOfRange = (int) $notUs()->where(fn ($q) => $q->where('competitor_count', '<', 2)->orWhere('competitor_count', '>', 5))->count();
+                $inRange = $notUs()->whereBetween('competitor_count', [2, 5]);
+                $spamExcluded = (int) (clone $inRange)->where('spam_score', '>=', 30)->count();
+                $cleanDomains = (clone $inRange)->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30))->pluck('domain');
+                $freeHostExcluded = $cleanDomains->filter($freeHost)->count();
+                $out['link_gap_hidden'] = [
+                    'competitor_count_out_of_range' => $outOfRange,
+                    'spam_score' => $spamExcluded,
+                    'free_host' => $freeHostExcluded,
+                    'visible' => $cleanDomains->count() - $freeHostExcluded,
+                ];
             }
 
             if (Schema::hasTable('seo_ai_mentions') && ($latestDay = Tenancy::table('seo_ai_mentions')->max('asked_on'))) {
@@ -863,8 +1042,21 @@ class SeoReportController extends Controller
                     'by_platform' => $rows->groupBy('platform')->map(fn ($g) => ['asked' => $g->count(), 'mentioned' => (int) $g->where('mentioned', 1)->count()])->all(),
                     'by_town' => $rows->groupBy('town')->map(fn ($g) => ['asked' => $g->count(), 'mentioned' => (int) $g->where('mentioned', 1)->count()])->all(),
                     'most_named' => array_slice($named, 0, 8, true),
+                    // The actual prompt/answer text behind the counts above, so an
+                    // operator can read what the AI engines are actually saying.
+                    'by_town_detail' => $rows->groupBy('town')->map(fn ($g) => $g->map(fn ($r) => [
+                        'platform' => $r->platform,
+                        'prompt' => $r->prompt,
+                        'mentioned' => (bool) $r->mentioned,
+                        'answer_excerpt' => $r->answer_excerpt !== null ? mb_substr((string) $r->answer_excerpt, 0, 300) : null,
+                        'businesses_named' => (array) json_decode((string) $r->businesses_named, true),
+                    ])->values()->all())->all(),
                 ];
             }
+
+            // Written by the DataForSEO budget guard (Track B); null when it
+            // has not run yet in this environment.
+            $out['balance'] = Cache::get('seo.dataforseo.balance');
 
             return $out;
         });
@@ -876,20 +1068,22 @@ class SeoReportController extends Controller
      */
     protected function intelSnapshot(): array
     {
-        return Cache::remember(Tenancy::cacheKey(\App\Services\Seo\Intel\IntelRunner::CACHE_KEY), 1800, function (): array {
-            $store = app(\App\Services\Seo\Intel\IntelStore::class);
+        return Cache::remember(Tenancy::cacheKey(IntelRunner::CACHE_KEY), 1800, function (): array {
+            $store = app(IntelStore::class);
             if (! $store->ready()) {
                 return ['families' => [], 'open_findings' => 0, 'critical' => 0, 'spent_30d' => 0];
             }
             $families = [];
-            foreach (app(\App\Services\Seo\Intel\IntelRunner::class)->sources() as $family => $source) {
+            $labels = [];
+            foreach (app(IntelRunner::class)->sources() as $family => $source) {
+                $labels[$family] = $source->label();
                 $runs = $store->runs($family, 8);
                 $last = $runs->first();
                 try {
                     $report = $last ? $source->report() : ['tiles' => [], 'tables' => [], 'note' => 'Not collected yet.'];
                 } catch (\Throwable $e) {
                     report($e);
-                    $report = ['tiles' => [], 'tables' => [], 'note' => 'Report unavailable: ' . mb_substr($e->getMessage(), 0, 120)];
+                    $report = ['tiles' => [], 'tables' => [], 'note' => 'Report unavailable: '.mb_substr($e->getMessage(), 0, 120)];
                 }
                 $open = $store->openFindings($family, 200);
                 $families[$family] = [
@@ -917,7 +1111,10 @@ class SeoReportController extends Controller
                 'open_findings' => $all->count(),
                 'critical' => $all->where('severity', 'critical')->count(),
                 'spent_30d' => round((float) $spent, 2),
-                'top_findings' => $all->take(12)->map(fn ($f) => ['family' => $f->family, 'severity' => $f->severity, 'title' => $f->title, 'detail' => $f->detail, 'key' => $f->key, 'action' => $f->action])->values()->all(),
+                // 'title' is the plain finding text (never vendor/family-prefixed);
+                // 'source' is the family's human label, for a Details accordion —
+                // 'family' (the raw slug) stays for backward-compatible filtering.
+                'top_findings' => $all->take(12)->map(fn ($f) => ['family' => $f->family, 'source' => $labels[$f->family] ?? $f->family, 'severity' => $f->severity, 'title' => $f->title, 'detail' => $f->detail, 'key' => $f->key, 'action' => $f->action])->values()->all(),
             ];
         });
     }

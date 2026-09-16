@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\Admin\V1;
 use App\Models\SeoAction;
 use App\Services\Seo\SeoAutopilotService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
@@ -47,6 +48,56 @@ class SeoAutopilotControllerTest extends TestCase
             'impact_score' => 5.0,
             'status' => SeoAction::STATUS_PROPOSED,
         ], $overrides));
+    }
+
+    public function test_stats_carry_prior_window_values_for_every_kpi_chevron(): void
+    {
+        $now = Carbon::parse('2026-09-15 12:00:00');
+        Carbon::setTestNow($now);
+        $cutoff = $now->copy()->subDays(7); // 2026-09-08
+
+        // Open bucket: A existed and is still open; B existed at the cutoff but has
+        // since been applied; C did not exist yet at the cutoff.
+        $this->makeAction(['fingerprint' => 'a', 'impact_score' => 5, 'created_at' => $now->copy()->subDays(10)]);
+        $this->makeAction(['fingerprint' => 'b', 'impact_score' => 7, 'created_at' => $now->copy()->subDays(10),
+            'status' => SeoAction::STATUS_APPLIED, 'applied_at' => $now->copy()->subDays(3)]);
+        $this->makeAction(['fingerprint' => 'c', 'impact_score' => 3, 'created_at' => $now->copy()->subDays(3)]);
+
+        // Applied bucket: D applied before the cutoff and never reverted; E was
+        // applied before the cutoff but reverted after it; F applied after the cutoff.
+        $this->makeAction(['fingerprint' => 'd', 'status' => SeoAction::STATUS_APPLIED, 'applied_at' => $now->copy()->subDays(10)]);
+        $this->makeAction(['fingerprint' => 'e', 'status' => SeoAction::STATUS_REVERTED, 'applied_at' => $now->copy()->subDays(10), 'reverted_at' => $now->copy()->subDays(3)]);
+        $this->makeAction(['fingerprint' => 'f', 'status' => SeoAction::STATUS_APPLIED, 'applied_at' => $now->copy()->subDays(3)]);
+
+        // Outcome buckets: G was measured before the cutoff, H only just now.
+        $this->makeAction(['fingerprint' => 'g', 'status' => SeoAction::STATUS_APPLIED, 'outcome' => SeoAction::OUTCOME_WORKED, 'measured_at' => $now->copy()->subDays(10)]);
+        $this->makeAction(['fingerprint' => 'h', 'status' => SeoAction::STATUS_APPLIED, 'outcome' => SeoAction::OUTCOME_WORKED, 'measured_at' => $now->copy()->subDays(3)]);
+
+        $stats = $this->getJson('/api/admin/v1/seo/autopilot?tab=open', $this->adminApiHeaders())->assertOk()->json('stats');
+
+        // Point-in-time gauges: 'prev' is the same gauge as of 7 days ago.
+        $this->assertSame(2, $stats['open'], 'A and C are open now');
+        $this->assertSame(2, $stats['open_prev'], 'A and B were open as of the cutoff');
+        $this->assertEquals(8.0, $stats['est_uplift'], 'A(5) + C(3)');
+        $this->assertEquals(12.0, $stats['est_uplift_prev'], 'A(5) + B(7) as of the cutoff');
+
+        // 'applied' counts every row currently in the applied status: B, D, F, G, H
+        // (E moved to reverted, A/C never applied).
+        $this->assertSame(5, $stats['applied']);
+        // 'applied_prev' only cares about applied_at/reverted_at: D (applied before
+        // the cutoff, never reverted) and E (applied before the cutoff, reverted
+        // after it) were "applied as of the cutoff"; B and F applied after it; G
+        // and H never got an applied_at at all in this fixture.
+        $this->assertSame(2, $stats['applied_prev']);
+
+        $this->assertSame(2, $stats['worked']);
+        $this->assertSame(1, $stats['worked_prev'], 'only G was measured by the cutoff');
+        $this->assertSame(0, $stats['regressed']);
+        $this->assertSame(0, $stats['regressed_prev']);
+        $this->assertSame(0, $stats['no_effect']);
+        $this->assertSame(0, $stats['no_effect_prev']);
+
+        Carbon::setTestNow();
     }
 
     public function test_index_lists_open_actions_with_stats_and_weights(): void
