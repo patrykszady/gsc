@@ -7,6 +7,7 @@ use App\Services\DataForSeoService;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
+use App\Support\Seo\CompetitorFilter;
 use App\Support\Tenancy;
 
 /**
@@ -141,7 +142,7 @@ class SerpSource extends IntelSource
                     'local_pack_absent', $metro ? Finding::INFO : Finding::WARN,
                     "Local pack shows for \"{$query}\" — we are not in it",
                     'A 3-pack renders for this query on Google Maps/Search and our listing does not appear in it.'
-                        . ($metro ? ' Measured from the office; for a city this size the pack is city-local — the organic position is the number to move.' : ''),
+                        .($metro ? ' Measured from the office; for a city this size the pack is city-local — the organic position is the number to move.' : ''),
                     $query,
                 );
             }
@@ -344,6 +345,13 @@ class SerpSource extends IntelSource
             $domain = mb_strtolower((string) ($item['domain'] ?? ''));
 
             if ($type === 'organic') {
+                if ($domain !== '' && ! CompetitorFilter::isCompetitor($domain)) {
+                    // A directory/aggregator (Houzz, Yelp, ...): no Labs
+                    // metrics at SERP-scrape time, so only the list-based +
+                    // known-local checks apply. Skip it and keep filling
+                    // top10_domains from the next real organic result.
+                    continue;
+                }
                 if (count($top10) < 10) {
                     $top10[] = $domain;
                 }

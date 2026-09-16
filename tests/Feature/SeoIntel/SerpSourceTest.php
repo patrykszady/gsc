@@ -319,4 +319,48 @@ class SerpSourceTest extends TestCase
         $this->assertSame('warn', $absent['kitchen remodeling Arlington Heights IL']->severity);
         $this->assertStringContainsString('organic position', $absent['chicago kitchen renovation']->detail);
     }
+
+    public function test_an_aggregator_never_becomes_a_competitor_top3_finding_or_the_top_competitor_column(): void
+    {
+        config(['seo-intel.families.serp.queries' => ['kitchen remodeling Arlington Heights IL']]);
+
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'user_data')) {
+                return Http::response(['tasks' => [['result' => [['money' => ['balance' => 50]]]]]]);
+            }
+            $items = self::$run === 'a'
+                ? [
+                    $this->organic(1, 'yelp.com'),
+                    $this->organic(2, 'otherexisting.com'),
+                    $this->organic(3, 'gs.construction'),
+                ]
+                : [
+                    // yelp.com stays #1 (never counts); a real rival newly
+                    // appears above us — that is the only "new to the top 3".
+                    $this->organic(1, 'yelp.com'),
+                    $this->organic(2, 'newlocalrival.com'),
+                    $this->organic(3, 'gs.construction'),
+                ];
+
+            return Http::response(['tasks' => [['cost' => 0.004, 'status_code' => 20000, 'result' => [['keyword' => 'kitchen remodeling Arlington Heights IL', 'items' => $items]]]]]);
+        });
+
+        Carbon::setTestNow('2026-09-05 06:00:00');
+        self::$run = 'a';
+        $this->artisan('seo:intel', ['family' => ['serp'], '--budget' => 1])->assertExitCode(0);
+
+        Carbon::setTestNow('2026-09-12 06:00:00');
+        self::$run = 'b';
+        $this->artisan('seo:intel', ['family' => ['serp'], '--budget' => 1])->assertExitCode(0);
+
+        $findings = DB::table('seo_intel_findings')->where('code', 'serp.competitor_top3')->get();
+        $this->assertTrue($findings->contains(fn ($f) => $f->key === 'newlocalrival.com'), 'the real newly-appearing competitor should be flagged');
+        $this->assertFalse($findings->contains(fn ($f) => $f->key === 'yelp.com'), 'an aggregator must never be named in a competitor_top3 finding');
+
+        $report = app(SerpSource::class)->report();
+        $row = collect($report['tables'][0]['rows'])->firstWhere(0, 'kitchen remodeling Arlington Heights IL');
+        $this->assertNotNull($row);
+        $this->assertNotSame('yelp.com', $row[4], 'the Top competitor column must never show an aggregator');
+        $this->assertSame('newlocalrival.com', $row[4]);
+    }
 }

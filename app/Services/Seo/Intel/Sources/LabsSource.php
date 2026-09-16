@@ -7,6 +7,7 @@ use App\Services\DataForSeoService;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
+use App\Support\Seo\CompetitorFilter;
 use Illuminate\Support\Collection;
 
 /**
@@ -113,6 +114,13 @@ class LabsSource extends IntelSource
                     continue;
                 }
                 $organic = $it['full_domain_metrics']['organic'] ?? [];
+                if (! CompetitorFilter::isCompetitor($domain, (float) ($organic['count'] ?? 0), (float) ($organic['etv'] ?? 0))) {
+                    // A directory/aggregator or a giant SaaS platform, not a
+                    // competing remodeling business — drop it before it can
+                    // consume the paid domain_intersection gap step below or
+                    // appear as a "competitor" subject anywhere downstream.
+                    continue;
+                }
                 $competitorAcc[$domain] = [
                     'metrics' => [
                         'intersections' => (float) ($it['intersections'] ?? 0),
@@ -489,7 +497,7 @@ class LabsSource extends IntelSource
             return ['type' => 'create_page', 'town' => $area->city, 'service' => $service];
         }
         if ($area !== null) {
-            return ['type' => 'content_refresh', 'path' => '/areas/' . $area->slug];
+            return ['type' => 'content_refresh', 'path' => '/areas/'.$area->slug];
         }
 
         return null;

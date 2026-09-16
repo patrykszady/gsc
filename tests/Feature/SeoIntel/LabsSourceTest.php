@@ -240,4 +240,50 @@ class LabsSourceTest extends TestCase
         $this->assertGreaterThan(0, $source->estimateCost());
         $this->assertSame([], $source->findings());
     }
+
+    public function test_aggregators_never_enter_competitor_snapshots_or_consume_the_paid_gap_step(): void
+    {
+        Http::fake([
+            '*appendix/user_data*' => Http::response(['tasks' => [['result' => [['money' => ['balance' => 500]]]]]]),
+            '*dataforseo_labs/google/competitors_domain/live*' => Http::response($this->task(['items' => [
+                // A directory with a huge organic footprint AND the most keyword overlap — must never become a "competitor".
+                ['domain' => 'houzz.com', 'intersections' => 900, 'avg_position' => 3.0, 'full_domain_metrics' => ['organic' => ['count' => 500000, 'etv' => 900000.0]]],
+                // On the static exclusion list even though its own metrics look small — the list wins over the metrics.
+                ['domain' => 'bbb.org', 'intersections' => 800, 'avg_position' => 2.0, 'full_domain_metrics' => ['organic' => ['count' => 50, 'etv' => 50.0]]],
+                ['domain' => 'realrivalco.com', 'intersections' => 20, 'avg_position' => 9.0, 'full_domain_metrics' => ['organic' => ['count' => 300, 'etv' => 700.0]]],
+            ]])),
+            '*dataforseo_labs/google/domain_intersection/live*' => Http::response($this->task(['items' => []])),
+            '*dataforseo_labs/google/historical_rank_overview/live*' => Http::response($this->task(['items' => []])),
+            '*dataforseo_labs/google/relevant_pages/live*' => Http::response($this->task(['items' => []])),
+            '*dataforseo_labs/google/bulk_traffic_estimation/live*' => Http::response($this->task(['items' => []])),
+        ]);
+
+        Carbon::setTestNow('2026-09-05 06:00:00');
+        $this->artisan('seo:intel', ['family' => ['labs'], '--budget' => 5])->assertExitCode(0);
+
+        $subjects = DB::table('seo_intel_snapshots')->where('kind', 'competitor')->pluck('subject');
+        $this->assertContains('realrivalco.com', $subjects);
+        $this->assertNotContains('houzz.com', $subjects, 'a directory must never be stored as a "competitor" snapshot');
+        $this->assertNotContains('bbb.org', $subjects, 'an exclusion-list domain must never be stored even with small metrics');
+
+        // gap_competitors=1 (see setUp): with the aggregators dropped before
+        // storage, the only candidate left for the paid per-competitor gap
+        // step is the real rival — an aggregator can never consume that budget.
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), 'domain_intersection')) {
+                return true;
+            }
+            $body = json_decode($request->body(), true)[0] ?? [];
+
+            return ($body['target1'] ?? null) === 'realrivalco.com';
+        });
+        Http::assertNotSent(function ($request) {
+            if (! str_contains($request->url(), 'domain_intersection')) {
+                return false;
+            }
+            $body = json_decode($request->body(), true)[0] ?? [];
+
+            return in_array($body['target1'] ?? null, ['houzz.com', 'bbb.org'], true);
+        });
+    }
 }
