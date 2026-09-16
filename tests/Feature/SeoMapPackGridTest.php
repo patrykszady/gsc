@@ -121,4 +121,33 @@ class SeoMapPackGridTest extends TestCase
         // Budget is gone: the second keyword is never started this run.
         $this->assertNull(DB::table('map_pack_scans')->where('keyword', 'kitchen remodeling')->first());
     }
+
+    /**
+     * DataForSeoService::$lastError is set-only — it is never cleared back to
+     * null — so the old per-item heuristic ("no error, or the error text is
+     * unchanged from before this call, means success") read a SECOND (and
+     * every later) grid point that fails with the exact same error text as a
+     * success. Faking every point with an identical failure reproduces that:
+     * this must fail closed with nothing persisted, not exit 0.
+     */
+    public function test_two_consecutive_identical_failures_are_not_read_as_success(): void
+    {
+        config(['services.dataforseo.login' => 'u', 'services.dataforseo.password' => 'p', 'brand.name' => 'GS Construction & Remodeling',
+            'seo.map_pack' => ['center_lat' => 42.1, 'center_lng' => -87.9, 'grid_size' => 3, 'radius_miles' => 5, 'keywords' => ['bathroom remodeling']]]);
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'user_data')) {
+                return Http::response(['tasks' => [['result' => [['money' => ['balance' => 20]]]]]]);
+            }
+
+            // The exact same failure, every point in a row.
+            return Http::response(['tasks' => [['cost' => 0, 'status_code' => 40501, 'status_message' => 'Invalid Field: keyword.']]]);
+        });
+
+        $this->artisan('seo:map-pack-grid', ['--budget' => 1])
+            ->expectsOutputToContain('Every grid point failed')
+            ->assertExitCode(1);
+
+        $scan = DB::table('map_pack_scans')->where('keyword', 'bathroom remodeling')->first();
+        $this->assertSame(0, json_decode($scan->raw, true)['detail']['found'], 'no point ever returned a rank');
+    }
 }

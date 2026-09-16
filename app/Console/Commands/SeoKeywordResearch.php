@@ -140,14 +140,23 @@ class SeoKeywordResearch extends Command
 
         // ---- 2. competitor ranked keywords -------------------------------
         $competitorHits = []; // keyword => [domain => position]
+        // A fresh instance per domain, not the shared $dfs, because
+        // DataForSeoService::$lastError is set-only — it never clears — so
+        // comparing it to its value before THIS call ("unchanged" = success)
+        // misreads a second call that fails with the same error text as a
+        // success. A new instance starts with lastError = null, so any
+        // non-null value after the call belongs to this call alone. Its own
+        // cost is folded into $probeSpent since $dfs->spent() never sees it.
+        $probeSpent = 0.0;
         foreach ($domains as $domain) {
-            if ($dfs->spent() >= $budget) {
+            if ($dfs->spent() + $probeSpent >= $budget) {
                 $this->warn('Budget reached before all competitors were pulled.');
                 break;
             }
-            $errBefore = $dfs->getLastError();
-            $rows = $dfs->rankedKeywords($domain, 300);
-            $guard->record($rows !== [] || $dfs->getLastError() === $errBefore);
+            $call = new DataForSeoService;
+            $rows = $call->rankedKeywords($domain, 300);
+            $guard->record($rows !== [] || $call->getLastError() === null);
+            $probeSpent += $call->spent();
             $n = 0;
             foreach ($rows as $r) {
                 if (! $this->remodelingish($r['keyword'])) {
@@ -159,11 +168,11 @@ class SeoKeywordResearch extends Command
                 $universe[$r['keyword']]['__diff'] = $r['difficulty'] ?? ($universe[$r['keyword']]['__diff'] ?? null);
                 $n++;
             }
-            $this->line("  {$domain}: {$n} remodeling keywords".($dfs->getLastError() ? " ({$dfs->getLastError()})" : ''));
+            $this->line("  {$domain}: {$n} remodeling keywords".($call->getLastError() ? " ({$call->getLastError()})" : ''));
         }
 
         // ---- 2b. ideas (optional) ----------------------------------------
-        if ($this->option('ideas') && $dfs->spent() < $budget) {
+        if ($this->option('ideas') && $dfs->spent() + $probeSpent < $budget) {
             foreach ($dfs->keywordIdeas($services, 300) as $r) {
                 $add($r['keyword'], 'ideas');
                 $universe[$r['keyword']]['__vol'] = max($universe[$r['keyword']]['__vol'] ?? 0, $r['volume']);
@@ -176,7 +185,7 @@ class SeoKeywordResearch extends Command
         $need = array_keys($universe);
         $volumes = [];
         foreach (array_chunk($need, 1000) as $chunk) {
-            if ($dfs->spent() >= $budget) {
+            if ($dfs->spent() + $probeSpent >= $budget) {
                 $this->warn('Budget reached before all volumes were fetched.');
                 break;
             }
@@ -221,7 +230,7 @@ class SeoKeywordResearch extends Command
         }
 
         // ---- 5. intent + difficulty for everything with volume ------------
-        if ($dfs->spent() < $budget) {
+        if ($dfs->spent() + $probeSpent < $budget) {
             $withVolume = Tenancy::table('seo_keywords')->where('volume', '>=', 10)->orderByDesc('volume')->limit(2000)->pluck('keyword')->all();
             $difficulty = $dfs->keywordDifficulty($withVolume);
             $intent = $dfs->searchIntent($withVolume);
@@ -256,7 +265,7 @@ class SeoKeywordResearch extends Command
 
             return self::FAILURE;
         }
-        $this->info(sprintf('Wrote %d keywords. Spent $%.3f.', $written, $dfs->spent()));
+        $this->info(sprintf('Wrote %d keywords. Spent $%.3f.', $written, $dfs->spent() + $probeSpent));
 
         return self::SUCCESS;
     }

@@ -89,4 +89,36 @@ class SeoKeywordResearchTest extends TestCase
         $this->assertSame(0.0, (float) DB::table('seo_keywords')->where('keyword', 'concrete slab contractors')->value('opportunity'), 'not our trade');
         $this->assertNotNull(DB::table('seo_keywords')->where('keyword', 'kitchen remodeling kenilworth')->first(), 'generated town×service phrases are in the universe');
     }
+
+    /**
+     * DataForSeoService::$lastError is set-only — it is never cleared back to
+     * null — so the old per-item heuristic ("no error, or the error text is
+     * unchanged from before this call, means success") read a SECOND
+     * competitor call that fails with the exact same error text as a
+     * success. Faking every competitor call with an identical failure
+     * reproduces that: this must fail closed, not exit 0.
+     */
+    public function test_two_consecutive_identical_failures_are_not_read_as_success(): void
+    {
+        DB::table('map_pack_competitors')->insert([
+            ['site_id' => null, 'place_id' => 'p2', 'keyword' => 'kitchen remodeling', 'name' => 'C2', 'host' => 'competitor2.test', 'pack_points' => 50, 'seen_points' => 9, 'created_at' => now(), 'updated_at' => now()],
+            ['site_id' => null, 'place_id' => 'p3', 'keyword' => 'kitchen remodeling', 'name' => 'C3', 'host' => 'competitor3.test', 'pack_points' => 40, 'seen_points' => 9, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'user_data')) {
+                return Http::response(['tasks' => [['result' => [['money' => ['balance' => 25]]]]]]);
+            }
+            if (str_contains($request->url(), 'ranked_keywords')) {
+                // The exact same failure, twice in a row.
+                return Http::response(['tasks' => [['cost' => 0, 'status_code' => 40501, 'status_message' => 'Invalid Field: target.']]]);
+            }
+
+            return Http::response([], 200);
+        });
+
+        $this->artisan('seo:keyword-research', ['--budget' => 3, '--competitors' => 2])
+            ->expectsOutputToContain('Every competitor domain failed')
+            ->assertExitCode(1);
+    }
 }

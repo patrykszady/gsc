@@ -43,14 +43,23 @@ class SeoBacklinkGap extends Command
         $this->line("  {$ours}: ".$oursLinks->count().' referring domains');
 
         $prospects = [];
+        // A fresh instance per competitor, not the shared $dfs, because
+        // DataForSeoService::$lastError is set-only — it never clears — so
+        // comparing it to its value before THIS call ("unchanged" = success)
+        // misreads a second call that fails with the same error text as a
+        // success. A new instance starts with lastError = null, so any
+        // non-null value after the call belongs to this call alone. Its own
+        // cost is folded into $probeSpent since $dfs->spent() never sees it.
+        $probeSpent = 0.0;
         foreach ($competitors as $c) {
-            if ($dfs->spent() >= (float) $this->option('budget')) {
+            if ($dfs->spent() + $probeSpent >= (float) $this->option('budget')) {
                 $this->warn('Budget reached.');
                 break;
             }
-            $errBefore = $dfs->getLastError();
-            $rows = $dfs->referringDomains($c, (int) $this->option('per-domain'));
-            $guard->record($rows !== [] || $dfs->getLastError() === $errBefore);
+            $call = new DataForSeoService;
+            $rows = $call->referringDomains($c, (int) $this->option('per-domain'));
+            $guard->record($rows !== [] || $call->getLastError() === null);
+            $probeSpent += $call->spent();
             $this->line("  {$c}: ".count($rows).' referring domains');
             foreach ($rows as $r) {
                 $d = $r['domain'];
@@ -94,7 +103,7 @@ class SeoBacklinkGap extends Command
             return self::FAILURE;
         }
         $gap = collect($prospects)->filter(fn ($p, $d) => ! isset($oursLinks[$d]) && count($p['links_to']) >= 2 && (int) $p['spam'] < 30 && count($p['links_to']) < 6)->count();
-        $this->info(sprintf('%d prospect domains recorded; %d link to 2+ competitors and not to us. Spent $%.3f.', $n, $gap, $dfs->spent()));
+        $this->info(sprintf('%d prospect domains recorded; %d link to 2+ competitors and not to us. Spent $%.3f.', $n, $gap, $dfs->spent() + $probeSpent));
 
         return self::SUCCESS;
     }
