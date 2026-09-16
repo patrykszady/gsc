@@ -7,6 +7,7 @@ use App\Services\Seo\SeoAutopilotService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * The self-improving SEO/GEO loop. Runs after the seo:* analysis commands have
@@ -39,8 +40,8 @@ class SeoAutopilot extends Command
         // --- Measure first so freshly-closed outcomes inform this run's scoring.
         $measured = $autopilot->measure();
         $this->info(sprintf(
-            'Measured %d due action(s): %d worked, %d regressed, %d no-effect.',
-            $measured['measured'], $measured['worked'], $measured['regressed'], $measured['no_effect']
+            'Measured %d due action(s): %d worked, %d regressed, %d no-effect, %d inconclusive.',
+            $measured['measured'], $measured['worked'], $measured['regressed'], $measured['no_effect'], $measured['inconclusive']
         ));
 
         // Safety net: auto-revert anything that measured as a regression.
@@ -57,17 +58,19 @@ class SeoAutopilot extends Command
 
         if ($measureOnly) {
             $this->maybeWriteReport($autopilot);
+
             return self::SUCCESS;
         }
 
         // --- Synthesize.
         $created = $autopilot->synthesize();
-        $this->info("Synthesized {$created} new action(s). Open ledger: " . SeoAction::open()->count());
+        $this->info("Synthesized {$created} new action(s). Open ledger: ".SeoAction::open()->count());
 
         // --- Act.
         if ($this->option('no-act')) {
             $this->line('Skipping apply (--no-act).');
             $this->maybeWriteReport($autopilot);
+
             return self::SUCCESS;
         }
 
@@ -79,7 +82,7 @@ class SeoAutopilot extends Command
                 $i['id'] ?? '—',
                 isset($i['priority']) ? number_format((float) $i['priority'], 1) : '—',
                 $i['result'] ?? '—',
-                \Illuminate\Support\Str::limit((string) ($i['title'] ?? ''), 60),
+                Str::limit((string) ($i['title'] ?? ''), 60),
             ])->all()
         );
 
@@ -114,7 +117,7 @@ class SeoAutopilot extends Command
         $lines = [];
         $lines[] = '# SEO Autopilot';
         $lines[] = '';
-        $lines[] = '_Generated: ' . now()->toIso8601String() . '_';
+        $lines[] = '_Generated: '.now()->toIso8601String().'_';
         $lines[] = '';
 
         $lines[] = '## Learned weights (what works on this site)';
@@ -135,7 +138,7 @@ class SeoAutopilot extends Command
         $lines[] = '| Priority | Category | Action | Hypothesis |';
         $lines[] = '|---:|---|---|---|';
         foreach ($open as $a) {
-            $lines[] = sprintf('| %.1f | %s | %s | %s |', $a->priority, $a->category, str_replace('|', '\\|', (string) $a->title), str_replace('|', '\\|', \Illuminate\Support\Str::limit((string) $a->hypothesis, 140)));
+            $lines[] = sprintf('| %.1f | %s | %s | %s |', $a->priority, $a->category, str_replace('|', '\\|', (string) $a->title), str_replace('|', '\\|', Str::limit((string) $a->hypothesis, 140)));
         }
         $lines[] = '';
 

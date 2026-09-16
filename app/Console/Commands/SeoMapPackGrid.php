@@ -62,14 +62,6 @@ class SeoMapPackGrid extends Command
 
         $siteId = Site::current()?->id;
         $today = now();
-        // A fresh instance per grid point, not the shared $dfs, because
-        // DataForSeoService::$lastError is set-only — it never clears — so
-        // comparing it to its value before THIS call ("unchanged" = success)
-        // misreads a second call that fails with the same error text as a
-        // success. A new instance starts with lastError = null, so any
-        // non-null value after the call belongs to this call alone. Its own
-        // cost is folded into $probeSpent since $dfs->spent() never sees it.
-        $probeSpent = 0.0;
         foreach ($keywords as $keyword) {
             $grid = [];
             $competitors = [];
@@ -82,15 +74,13 @@ class SeoMapPackGrid extends Command
             // instead of thrown away, and no further keyword is started.
             $partial = false;
             foreach ($points as [$plat, $plng]) {
-                if ($dfs->spent() + $probeSpent >= (float) $this->option('budget')) {
+                if ($dfs->spent() >= (float) $this->option('budget')) {
                     $this->warn('Budget reached mid-grid.');
                     $partial = true;
                     break;
                 }
-                $call = new DataForSeoService;
-                $results = $call->mapsResults($keyword, $plat, $plng);
-                $guard->record($results !== [] || $call->getLastError() === null);
-                $probeSpent += $call->spent();
+                $results = $dfs->mapsResults($keyword, $plat, $plng);
+                $guard->record($results !== [] || $dfs->getLastError() === null);
                 $rank = false;
                 foreach ($results as $r) {
                     $pid = (string) ($r['place_id'] ?? '');
@@ -179,7 +169,7 @@ class SeoMapPackGrid extends Command
 
             return self::FAILURE;
         }
-        $this->info(sprintf('Done. Spent $%.3f.', $dfs->spent() + $probeSpent));
+        $this->info(sprintf('Done. Spent $%.3f.', $dfs->spent()));
 
         return self::SUCCESS;
     }

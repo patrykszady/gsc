@@ -276,6 +276,18 @@ class SerpSourceTest extends TestCase
         }
     }
 
+    /**
+     * pricePerQuery() must track collect()'s own endpoint choice: with
+     * serp_mode=live (pinned in setUp), the rate is the depth-scaled Live
+     * Advanced price, not the flat Standard-queue rate.
+     */
+    public function test_estimate_cost_uses_the_depth_scaled_live_rate(): void
+    {
+        // depth=20 (see setUp) -> ceil(20/10)=2 -> $0.002*2 = $0.004/query;
+        // 4 tracked queries (see setUp) -> $0.016.
+        $this->assertSame(0.016, app(SerpSource::class)->estimateCost());
+    }
+
     public function test_report_and_estimate_are_safe_before_any_run(): void
     {
         $report = app(SerpSource::class)->report();

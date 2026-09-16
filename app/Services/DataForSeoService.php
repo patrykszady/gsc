@@ -375,6 +375,7 @@ class DataForSeoService
     /** One authenticated call; records the task cost; returns decoded JSON or [] on failure. */
     protected function call(string $method, string $path, array $body = []): array
     {
+        $this->lastError = null;
         try {
             $req = Http::withBasicAuth((string) config('services.dataforseo.login'), (string) config('services.dataforseo.password'))
                 ->timeout(120)->retry(2, 1500, throw: false);
@@ -417,13 +418,15 @@ class DataForSeoService
     /**
      * One live Google-organic SERP check.
      *
+     * position = rank_absolute of the first result whose domain matches;
+     * local_pack = whether a local pack was present on the SERP (null if undetectable);
+     * null return = the API call itself failed.
+     *
      * @return array{position: ?int, url: ?string, local_pack: ?bool, top_domains: array<int,string>}|null
-     *                                                                                                     position = rank_absolute of the first result whose domain matches;
-     *                                                                                                     local_pack = whether a local pack was present on the SERP (null if undetectable);
-     *                                                                                                     null return = the API call itself failed.
      */
     public function googleOrganicPosition(string $query, string $targetDomain, string $locationName = 'Chicago,Illinois,United States'): ?array
     {
+        $this->lastError = null;
         try {
             $resp = Http::withBasicAuth(
                 (string) config('services.dataforseo.login'),
