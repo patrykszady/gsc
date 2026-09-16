@@ -27,6 +27,11 @@ class SerpSourceTest extends TestCase
             'app.url' => 'https://gs.construction',
             'services.dataforseo.login' => 'u',
             'services.dataforseo.password' => 'p',
+            // This suite exercises collect()'s query-building, findings and
+            // report logic against the Live per-query endpoint; the
+            // Standard-queue path (default) is covered on its own in
+            // SerpSourceStandardModeTest.
+            'seo.rank_tracker.serp_mode' => 'live',
             'seo-intel.sources' => [SerpSource::class],
             'seo-intel.families.serp.queries' => [
                 'kitchen remodeling Arlington Heights IL',

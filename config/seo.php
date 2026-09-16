@@ -158,6 +158,17 @@ return [
     | hosts to identify "us" — covers GBP name variants and the website host.
     */
     'rank_tracker' => [
+        // Max USD to spend per seo:track-rankings run on the DataForSEO SERP
+        // pass (Standard queue or Live, whichever serp_mode below selects).
+        // --budget on the command overrides this.
+        'budget' => (float) env('SEO_RANK_TRACKER_BUDGET', 1.0),
+
+        // 'standard' queues checks via task_post/tasks_ready/task_get
+        // (~$0.0006/check); 'live' calls serp/google/organic/live/advanced
+        // synchronously (~$0.002/check). TrackRankings and SerpSource fall
+        // back to 'live' automatically when the standard queue errors.
+        'serp_mode' => env('SEO_RANK_TRACKER_SERP_MODE', 'standard'),
+
         'identity_patterns' => [
             'gs construction',
             "greg's bathroom",
@@ -181,8 +192,11 @@ return [
             'chicagoland_remodeling' => ['chicagoland remodeling'],
         ],
 
-        // Google web queries. `location`/`ll` fields are legacy metadata kept
-        // for reference; the GSC engine matches on the query text alone.
+        // Google web queries. `location` is the per-suburb vantage the
+        // DataForSEO live engine now checks from (2026-09, owner's call —
+        // suburb vantage is wanted over one shared Chicago point); the GSC
+        // engine still matches on the query text alone, since Search
+        // Console carries no per-location signal.
         'web_queries' => [
             // Arlington Heights (HQ)
             ['q' => 'kitchen remodeling Arlington Heights IL',  'location' => 'Arlington Heights, Illinois, United States', 'city_slug' => 'arlington-heights'],

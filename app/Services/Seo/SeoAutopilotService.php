@@ -8,6 +8,7 @@ use App\Models\LandingPage;
 use App\Models\Project;
 use App\Models\SeoAction;
 use App\Models\SeoPathOverride;
+use App\Models\SeoRankSnapshot;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\Seo\Appliers\ContentRefreshApplier;
 use App\Services\Seo\Appliers\CreatePageApplier;
@@ -1129,6 +1130,34 @@ class SeoAutopilotService
             $before = (float) ($action->baseline_value ?? 0.0);
 
             $outcome = $this->judge($before, $after, $metric, $sample);
+
+            // A5: SERP-confirmed judging. MetricProbe reads GSC alone, which
+            // is exactly what produced the Aug 2026 false ranking-collapse
+            // documented on DataForSeoService — a flood of new deep-position
+            // impressions read as a collapse with nothing wrong in the SERP.
+            // When GSC calls a regression but the real DataForSEO position
+            // (nearest snapshot to baseline/now, ±3 days) held steady or
+            // improved, the two disagree: record 'inconclusive' instead and
+            // never auto-revert on it. When they agree — or we simply have
+            // no SERP snapshot on one side — behaviour is unchanged.
+            if ($outcome === SeoAction::OUTCOME_REGRESSED && in_array($action->category, self::SERP_CONFIRMED_CATEGORIES, true)) {
+                $serpBefore = $this->nearestSerpPosition($action, $action->baseline_at ?? $action->applied_at ?? now());
+                $serpAfter = $this->nearestSerpPosition($action, now());
+
+                $payload = (array) ($action->payload ?? []);
+                if ($serpBefore['found']) {
+                    $payload['serp_position_before'] = $serpBefore['position'];
+                }
+                if ($serpAfter['found']) {
+                    $payload['serp_position_after'] = $serpAfter['position'];
+                }
+                $action->payload = $payload;
+
+                if ($serpBefore['found'] && $serpAfter['found'] && ! $this->serpConfirmsRegression($serpBefore['position'], $serpAfter['position'])) {
+                    $outcome = SeoAction::OUTCOME_INCONCLUSIVE;
+                }
+            }
+
             $delta = $this->deltaPct($before, $after, $metric);
 
             $action->measured_value = $after;
@@ -1145,6 +1174,60 @@ class SeoAutopilotService
         }
 
         return ['measured' => $due->count(), 'worked' => $worked, 'regressed' => $regressed, 'no_effect' => $noEffect];
+    }
+
+    /** Categories A5's SERP corroboration applies to (see measure()) — the ones judged off page-level GSC clicks/impressions/position. */
+    private const SERP_CONFIRMED_CATEGORIES = ['title_meta', 'content_refresh', 'reindex', 'create_page'];
+
+    /**
+     * Nearest DataForSEO-observed position (engine=google, seo_rank_snapshots)
+     * for the action's query or URL, within 3 days of $when. `found` is
+     * false when nothing in that window matches at all — distinct from a
+     * matched snapshot that shows `position` null (checked, not ranked in
+     * the tracked depth), exactly as TrackRankings persists its own rows.
+     *
+     * @return array{found:bool,position:?int}
+     */
+    private function nearestSerpPosition(SeoAction $action, Carbon $when): array
+    {
+        if (! Schema::hasTable('seo_rank_snapshots')) {
+            return ['found' => false, 'position' => null];
+        }
+
+        $actionPayload = (array) ($action->payload ?? []);
+        $query = mb_strtolower(trim((string) ($actionPayload['query'] ?? $actionPayload['phrase'] ?? '')));
+        $target = rtrim((string) $action->target_url, '/');
+
+        $best = null;
+        $bestDiff = null;
+        foreach (SeoRankSnapshot::query()->where('engine', 'google')
+            ->whereBetween('fetched_at', [$when->copy()->subDays(3), $when->copy()->addDays(3)])
+            ->get(['query', 'gsc_position', 'meta', 'fetched_at']) as $row) {
+            $rowMeta = (array) ($row->meta ?? []);
+            $matchedUrl = rtrim((string) ($rowMeta['matched_url'] ?? ''), '/');
+            $matches = ($query !== '' && mb_strtolower(trim((string) $row->query)) === $query)
+                || ($matchedUrl !== '' && $matchedUrl === $target);
+            if (! $matches) {
+                continue;
+            }
+            $diff = abs($row->fetched_at->diffInSeconds($when));
+            if ($best === null || $diff < $bestDiff) {
+                $best = $row;
+                $bestDiff = $diff;
+            }
+        }
+
+        return $best ? ['found' => true, 'position' => $best->gsc_position] : ['found' => false, 'position' => null];
+    }
+
+    /** True when the real SERP position corroborates a GSC-measured regression: dropped further, or fell out of the tracked depth. */
+    private function serpConfirmsRegression(?int $before, ?int $after): bool
+    {
+        if ($before !== null && $after === null) {
+            return true;
+        }
+
+        return $before !== null && $after !== null && $after > $before;
     }
 
     /**
