@@ -211,7 +211,8 @@ class EmailLeadReaderTest extends TestCase
 
     public function test_a_suppliers_quote_addressed_to_one_of_us_is_refused_without_the_classifier(): void
     {
-        $quote = '<p>Hi Patryk,</p><p>Thanks for your interest in the unique Eze-Breeze panels from EzeBreezeWindows.com.</p>'
+        // As it really arrived: the logo's alt text and the addressee's name above the greeting.
+        $quote = '<p>EzeBreezeWindows.com</p><p>Patryk Szady</p><p>Hi Patryk,</p><p>Thanks for your interest in the unique Eze-Breeze panels from EzeBreezeWindows.com.</p>'
             .'<p>Your revised quote for the BRODSON job including 7 outside mounted Vertical 4-Track units with screens and 8 HD Fixed units is $7,949.85.</p>'
             .'<p>Quoted price is valid for 15 days. Ready to order? Reply to this email and let us know!</p>'
             .'<p>Shipping Update: The factory is currently anticipating lead times of 20-25 business days.</p><p>Quote Team<br>EzeBreezeWindows.com (800) 579-7812</p>';

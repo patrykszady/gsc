@@ -541,12 +541,16 @@ class EmailLeadReader
             return false;
         }
 
-        $opening = mb_substr(ltrim($body), 0, 300);
-        if (preg_match('/^(?:hi|hello|hey|dear|good\s+(?:morning|afternoon|evening))\s+(?:mr\.?\s+|ms\.?\s+|mrs\.?\s+)?([\p{L}\'’\-]+)/iu', $opening, $m) !== 1) {
+        // The greeting opens a line near the top; a logo's alt text or the
+        // addressee's own name may come before it ("EzeBreezeWindows.com /
+        // Patryk Szady / Hi Patryk,").
+        $opening = mb_substr(ltrim($body), 0, 600);
+        if (preg_match_all('/^[ \t]*(?:hi|hello|hey|dear|good[ \t]+(?:morning|afternoon|evening))[ \t]+(?:mr\.?[ \t]+|ms\.?[ \t]+|mrs\.?[ \t]+)?([\p{L}\'’\-]+)/imu', $opening, $m) === 0) {
             return false;
         }
 
-        if (! in_array(strtolower(Str::ascii($m[1])), $names, true)) {
+        $greeted = collect($m[1])->map(fn (string $name) => strtolower(Str::ascii($name)))->intersect($names);
+        if ($greeted->isEmpty()) {
             return false;
         }
 
