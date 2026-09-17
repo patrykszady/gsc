@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * Email submissions filed before the reader could tell a supplier's quote
- * from an enquiry are judged again and taken back: here, on hive, and in
- * the ledger.
+ * Email submissions filed before the reader could tell a supplier's quote or
+ * a retailer's return confirmation from an enquiry are judged again and
+ * taken back: here, on hive, and in the ledger.
  */
-class RefuseSupplierMailCommandTest extends TestCase
+class RetriageEmailCommandTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -43,7 +43,7 @@ class RefuseSupplierMailCommandTest extends TestCase
         return $submission;
     }
 
-    public function test_a_suppliers_quote_is_taken_back_here_on_hive_and_in_the_ledger_while_an_enquiry_stays(): void
+    public function test_a_suppliers_quote_and_a_retailers_return_are_taken_back_here_on_hive_and_in_the_ledger_while_an_enquiry_stays(): void
     {
         Http::fake([
             'https://api.us.nylas.com/v3/grants/grant-p' => Http::response(['data' => ['id' => 'grant-p', 'email' => 'patryk@gs.construction']]),
@@ -55,24 +55,31 @@ class RefuseSupplierMailCommandTest extends TestCase
             'subject' => 'REVISED Eze Breeze Quote for BRODSON job from the Quote Team at EzeBreezeWindows.com',
             'message' => "Hi Patryk,\n\nThanks for your interest in the unique Eze-Breeze panels.\n\nYour revised quote for the BRODSON job is $7,949.85. Ready to order? Reply to this email.",
         ]);
+        $amazon = $this->emailSubmission([
+            'name' => 'return@amazon.com', 'email' => 'return@amazon.com', 'hive_lead_id' => 503,
+            'subject' => 'Return request confirmed for VOOPVOR 200 Inch Projector', 'message' => "Hello,\n\nYour return request has been confirmed. Drop the item at any UPS Store.\n\nAmazon.com, 410 Terry Avenue North, Seattle",
+        ]);
         $enquiry = $this->emailSubmission([
             'name' => 'Dana Kowalski', 'email' => 'dana.kowalski@example.test', 'hive_lead_id' => 502,
             'subject' => 'Kitchen', 'message' => "Hi Patryk,\n\nOur neighbor referred you. We would like a quote for a kitchen remodel.\n\nThanks, Dana Kowalski",
         ]);
 
-        $this->artisan('leads:refuse-supplier-mail')
-            ->expectsOutputToContain('1 supplier message would be removed.')
+        $this->artisan('leads:retriage-email')
+            ->expectsOutputToContain('2 submissions would be removed.')
             ->assertSuccessful();
-        $this->assertSame(2, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame(3, ContactSubmission::withoutSiteScope()->count());
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'hive.test'));
 
-        $this->artisan('leads:refuse-supplier-mail', ['--apply' => true])
-            ->expectsOutputToContain('1 supplier message found, 1 removed.')
+        $this->artisan('leads:retriage-email', ['--apply' => true])
+            ->expectsOutputToContain('2 submissions refused, 2 removed.')
             ->assertSuccessful();
 
         $this->assertNull(ContactSubmission::withoutSiteScope()->find($quote->id));
+        $this->assertNull(ContactSubmission::withoutSiteScope()->find($amazon->id));
         $this->assertNotNull(ContactSubmission::withoutSiteScope()->find($enquiry->id));
         Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/api/v1/leads/501'));
+        Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/api/v1/leads/503'));
+        $this->assertSame('automated', EmailLeadIngest::where('nylas_message_id', 'msg-'.$amazon->id)->sole()->skip_reason);
         Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), '/api/v1/leads/502'));
 
         $row = EmailLeadIngest::where('nylas_message_id', 'msg-'.$quote->id)->sole();
@@ -81,8 +88,8 @@ class RefuseSupplierMailCommandTest extends TestCase
         $this->assertNull($row->submission_id);
 
         // Nothing left to take back.
-        $this->artisan('leads:refuse-supplier-mail', ['--apply' => true])
-            ->expectsOutputToContain('0 supplier messages found, 0 removed.')
+        $this->artisan('leads:retriage-email', ['--apply' => true])
+            ->expectsOutputToContain('0 submissions refused, 0 removed.')
             ->assertSuccessful();
     }
 
@@ -98,8 +105,8 @@ class RefuseSupplierMailCommandTest extends TestCase
             'subject' => 'Your revised quote', 'message' => "Hi Patryk,\n\nYour revised quote is attached. Ready to order?",
         ]);
 
-        $this->artisan('leads:refuse-supplier-mail', ['--apply' => true])
-            ->expectsOutputToContain('1 supplier message found, 0 removed.')
+        $this->artisan('leads:retriage-email', ['--apply' => true])
+            ->expectsOutputToContain('1 submission refused, 0 removed.')
             ->assertSuccessful();
 
         $this->assertNotNull(ContactSubmission::withoutSiteScope()->find($quote->id));

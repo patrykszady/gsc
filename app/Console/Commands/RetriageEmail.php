@@ -9,19 +9,19 @@ use App\Services\HiveProjectsClient;
 use Illuminate\Console\Command;
 
 /**
- * Email submissions filed before the reader learnt to recognise a
- * supplier's side of a purchase ("Hi Patryk, your revised quote…"): judge
- * them again by that rule, and take back the ones it refuses — the
- * submission here, the lead on hive, the ledger marked as skipped. Safe to
- * run again.
+ * Email submissions filed before a rule existed — a supplier's side of a
+ * purchase, a retailer's return confirmation — judged again by the rules
+ * that need no headers, and the refused ones taken back: the submission
+ * here, the lead on hive, the ledger marked skipped with the reason. Safe
+ * to run again.
  */
-class RefuseSupplierMail extends Command
+class RetriageEmail extends Command
 {
-    protected $signature = 'leads:refuse-supplier-mail
+    protected $signature = 'leads:retriage-email
         {--apply : Write the changes (without this it only reports what it would do)}
         {--limit=500 : Most email submissions to examine, newest first}';
 
-    protected $description = 'Take back email submissions that are a supplier writing to us, not an enquiry';
+    protected $description = 'Take back email submissions the reader would refuse today: automated senders, suppliers, our own mail';
 
     public function handle(EmailLeadReader $reader, HiveProjectsClient $hive): int
     {
@@ -37,14 +37,14 @@ class RefuseSupplierMail extends Command
 
         foreach ($submissions as $submission) {
             $row = EmailLeadIngest::where('submission_id', $submission->id)->first();
-            $mailbox = (string) ($row?->mailbox ?? '');
+            $reason = $reader->retriageStored((string) $submission->email, (string) $submission->subject, (string) $submission->message, (string) ($row?->mailbox ?? ''), $row?->grant_id);
 
-            if (! $reader->looksLikeSupplierMail((string) $submission->subject, (string) $submission->message, $mailbox, $row?->grant_id)) {
+            if ($reason === null) {
                 continue;
             }
 
             $found++;
-            $this->line(sprintf('submission %d: %s <%s> — %s%s', $submission->id, $submission->name, $submission->email, mb_substr((string) $submission->subject, 0, 60), $apply ? '' : ' [preview]'));
+            $this->line(sprintf('submission %d [%s]: %s <%s> — %s%s', $submission->id, $reason, $submission->name, $submission->email, mb_substr((string) $submission->subject, 0, 60), $apply ? '' : ' [preview]'));
 
             if (! $apply) {
                 continue;
@@ -56,15 +56,15 @@ class RefuseSupplierMail extends Command
                 continue;
             }
 
-            $row?->forceFill(['status' => EmailLeadIngest::STATUS_SKIPPED, 'skip_reason' => 'supplier', 'is_lead' => false, 'submission_id' => null])->save();
+            $row?->forceFill(['status' => EmailLeadIngest::STATUS_SKIPPED, 'skip_reason' => $reason, 'is_lead' => false, 'submission_id' => null])->save();
             $submission->delete();
             $removed++;
             $this->line('  removed'.($submission->hive_lead_id ? " (hive lead {$submission->hive_lead_id} too)" : ''));
         }
 
         $this->info($apply
-            ? "{$found} supplier message".($found === 1 ? '' : 's').' found, '.$removed.' removed.'
-            : "{$found} supplier message".($found === 1 ? '' : 's').' would be removed. Run with --apply to write.');
+            ? "{$found} submission".($found === 1 ? '' : 's').' refused, '.$removed.' removed.'
+            : "{$found} submission".($found === 1 ? '' : 's').' would be removed. Run with --apply to write.');
 
         return self::SUCCESS;
     }

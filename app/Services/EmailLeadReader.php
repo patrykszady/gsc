@@ -161,6 +161,29 @@ class EmailLeadReader
     {
         $out = ['inboxes' => 0, 'fetched' => 0, 'leads' => 0, 'skipped' => 0, 'failed' => 0, 'details' => []];
 
+        // Messages the model could not be asked about last time get another
+        // go first — they are older than the watermark, so the read below
+        // would never see them again.
+        if (! $dryRun) {
+            $retries = EmailLeadIngest::where('status', EmailLeadIngest::STATUS_FAILED)
+                ->where('skip_reason', 'classifier')
+                ->where('created_at', '>=', now()->subDays(3))
+                ->latest('id')
+                ->limit(20)
+                ->get();
+
+            foreach ($retries as $row) {
+                $result = $this->reprocessLedgerRow($row);
+                $result['retried'] = true;
+                $out['details'][] = $result;
+                $out[match ($result['status']) {
+                    EmailLeadIngest::STATUS_LEAD => 'leads',
+                    EmailLeadIngest::STATUS_FAILED => 'failed',
+                    default => 'skipped',
+                }]++;
+            }
+        }
+
         // Config order is precedence: crew@ first, so an enquiry addressed to
         // the shared mailbox and copied to someone's own is filed under crew@.
         foreach ($this->inboxes() as $inbox) {
@@ -380,9 +403,29 @@ class EmailLeadReader
 
         $verdict = $this->classify($subject, $body, $fromEmail);
 
-        // Only a CONFIDENT "not a lead" discards. An unsure model creates the
-        // submission — the asymmetry is intentional.
-        if ($verdict['is_lead'] === false && $verdict['confidence'] >= 0.8) {
+        // No verdict is not a verdict: a message the model could not be asked
+        // about (outage, bad answer, no key) is held as failed and judged again
+        // on a later run, never filed on the strength of nothing (2026-09-16:
+        // an Amazon return confirmation became a lead this way).
+        if ($verdict['extraction_status'] !== 'ok') {
+            if (! $dryRun) {
+                EmailLeadIngest::updateOrCreate(['nylas_message_id' => $nylasId], $base + [
+                    'status' => EmailLeadIngest::STATUS_FAILED,
+                    'skip_reason' => 'classifier',
+                    'is_lead' => null,
+                    'confidence' => null,
+                    'submission_id' => null,
+                    'error' => 'classifier '.$verdict['extraction_status'],
+                ]);
+            }
+
+            return $summary + ['status' => EmailLeadIngest::STATUS_FAILED, 'reason' => 'classifier'];
+        }
+
+        // A "not a lead" the model is at least half sure of discards; only a
+        // genuinely torn answer still files, so a real enquiry is not lost to
+        // a hedge.
+        if ($verdict['is_lead'] === false && $verdict['confidence'] >= 0.5) {
             return $this->skip($base, 'not_a_lead', $dryRun, $summary, ['confidence' => $verdict['confidence']]);
         }
 
@@ -463,11 +506,13 @@ class EmailLeadReader
             return 'internal';
         }
 
-        // Machine senders by local part. The first live read (2026-09-15)
-        // paid the model to reject Apple's no_reply@, Amazon's
-        // order-update@ / shipment-tracking@ / auto-confirm@ — none of
-        // which a person ever writes from.
-        if (preg_match('/^(no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer-daemon|postmaster|bounces?|auto-confirm|order-update|shipment-tracking|notifications?|alerts?|newsletter|marketing)([-_.+@]|$)/i', $fromEmail)) {
+        // Machine senders, by local part or by domain. The first live read
+        // (2026-09-15) paid the model to reject Apple's no_reply@, Amazon's
+        // order-update@ / shipment-tracking@ / auto-confirm@; the next day
+        // return@amazon.com got through and became a lead while the model
+        // was down. Nobody enquires about a remodel from a retailer's or a
+        // bank's domain.
+        if ($this->isMachineSender($fromEmail)) {
             return 'automated';
         }
 
@@ -519,15 +564,6 @@ class EmailLeadReader
         }
 
         return null;
-    }
-
-    /**
-     * The supplier rule, for judging a submission already on file from what
-     * was kept of it: its subject and body, and the mailbox it arrived in.
-     */
-    public function looksLikeSupplierMail(string $subject, string $body, string $mailbox, ?string $grantId = null): bool
-    {
-        return $this->isSupplierMail($subject, $body, ['to' => [['email' => $mailbox]]], $grantId);
     }
 
     /**
@@ -587,6 +623,55 @@ class EmailLeadReader
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * An address no person writes an enquiry from: a role or robot local
+     * part, or a retailer, carrier, bank or platform domain.
+     */
+    public function isMachineSender(string $fromEmail): bool
+    {
+        $fromEmail = mb_strtolower(trim($fromEmail));
+
+        if (preg_match('/^(no[-_.]?reply|do[-_.]?not[-_.]?reply|donotreply|mailer-daemon|postmaster|bounces?|auto-?confirm(?:ation)?s?|order-?updates?|orders?|shipment-?tracking|shipping|deliver(?:y|ies)|returns?|refunds?|receipts?|billing|invoices?|payments?|accounts?|customer[-_.]?(?:service|care|support)|support|help(?:desk)?|service|updates?|confirm(?:ation)?s?|verif(?:y|ication)|security|reminders?|digest|feedback|survey|promo(?:tions?)?|offers?|deals?|news|store|shop|system|robot|bot|daemon|notifications?|alerts?|newsletter|marketing)([-_.+@]|$)/i', $fromEmail)) {
+            return true;
+        }
+
+        $domain = Str::after($fromEmail, '@');
+        if ($domain === '' || $domain === $fromEmail) {
+            return false;
+        }
+
+        foreach ((array) config('services.email_leads.machine_domains', []) as $machine) {
+            $machine = mb_strtolower(trim((string) $machine));
+            if ($machine !== '' && ($domain === $machine || str_ends_with($domain, '.'.$machine))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The cheap rules that can be re-applied to a submission already on
+     * file from what was kept of it — no headers, so not the bulk-mail
+     * markers. A skip reason, or null when nothing here refuses it.
+     */
+    public function retriageStored(string $fromEmail, string $subject, string $body, string $mailbox, ?string $grantId = null): ?string
+    {
+        if ($this->isInternal(mb_strtolower(trim($fromEmail)))) {
+            return 'internal';
+        }
+
+        if ($this->isMachineSender($fromEmail)) {
+            return 'automated';
+        }
+
+        if ($this->isSupplierMail($subject, $body, ['to' => [['email' => $mailbox]]], $grantId)) {
+            return 'supplier';
+        }
+
+        return null;
     }
 
     protected function isInternal(string $email): bool
@@ -658,7 +743,9 @@ Also NOT enquiries: mail the company itself sent; anything where GS is the
 CUSTOMER — a supplier's quote or revised quote, a price, an order
 confirmation, a shipping or lead-time update, or a "thanks for your
 interest" reply to something GS asked for, especially when it greets one of
-GS's own people by first name; invoices and payment notices; newsletters and
+GS's own people by first name; order, return, refund and shipping
+confirmations, receipts and account notices from retailers, carriers, banks
+and online services; invoices and payment notices; newsletters and
 promotions; legal or demand letters; automated notifications; and platform
 emails that merely announce a lead exists elsewhere.
 

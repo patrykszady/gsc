@@ -238,6 +238,62 @@ class EmailLeadReaderTest extends TestCase
         $this->assertSame(1, $this->openaiCalls());
     }
 
+    public function test_retailers_carriers_and_role_addresses_are_refused_without_the_classifier(): void
+    {
+        $this->fakeNylas([
+            $this->message(['id' => 'm-return', 'from' => [['name' => 'return@amazon.com', 'email' => 'return@amazon.com']], 'subject' => 'Return request confirmed for VOOPVOR 200 Inch Projector', 'body' => '<p>Hello,</p><p>Your return request has been confirmed.</p>', 'headers' => [['name' => 'Message-ID', 'value' => '<ret@amazon>']]]),
+            $this->message(['id' => 'm-orders', 'from' => [['name' => 'Ferguson', 'email' => 'orders@mail.ferguson.com']], 'subject' => 'Your order 4471 has shipped', 'headers' => [['name' => 'Message-ID', 'value' => '<o@ferguson>']]]),
+            $this->message(['id' => 'm-billing', 'from' => [['name' => 'Some Tool', 'email' => 'billing@sometool.example']], 'subject' => 'Your receipt', 'headers' => [['name' => 'Message-ID', 'value' => '<b@tool>']]]),
+        ]);
+
+        $this->artisan('leads:ingest-email')->expectsOutputToContain('3 skipped')->assertSuccessful();
+
+        $this->assertSame(['m-return' => 'automated', 'm-orders' => 'automated', 'm-billing' => 'automated'], EmailLeadIngest::pluck('skip_reason', 'nylas_message_id')->all());
+        $this->assertSame(0, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame(0, $this->openaiCalls());
+    }
+
+    public function test_a_message_the_model_could_not_judge_is_held_and_judged_again_next_run(): void
+    {
+        $verdict = json_encode([
+            'is_lead' => true, 'confidence' => 0.96, 'reason' => 'Homeowner asking for a bathroom remodel',
+            'name' => 'Will', 'phone' => '(832) 257-1204', 'address' => '7815 Kenton Ave', 'city' => 'Skokie', 'zip' => null,
+            'project_type' => 'Bathroom remodel', 'scope_summary' => 'Remodel the hall bathroom.', 'timeline' => null, 'budget' => null,
+        ]);
+
+        // First run: the model is down. Second run: the inbox has nothing new, the model is back.
+        $this->fakeNylas([$this->message()], extra: [
+            'https://api.openai.com/*' => Http::sequence()->push('down', 503)->push(['choices' => [['message' => ['content' => $verdict]]]]),
+            self::NYLAS.'/v3/grants/grant-p/messages?*' => Http::sequence()->push(['data' => [$this->message()]])->push(['data' => []]),
+            self::NYLAS.'/v3/grants/grant-p/messages/msg-1*' => Http::response(['data' => $this->message()]),
+        ]);
+
+        $this->artisan('leads:ingest-email')->expectsOutputToContain('1 failed')->assertSuccessful();
+
+        $row = EmailLeadIngest::sole();
+        $this->assertSame(EmailLeadIngest::STATUS_FAILED, $row->status);
+        $this->assertSame('classifier', $row->skip_reason);
+        $this->assertSame(0, ContactSubmission::withoutSiteScope()->count());
+        Queue::assertNothingPushed();
+
+        // The held message is fetched again and filed.
+        $this->artisan('leads:ingest-email')->expectsOutputToContain('1 lead(s)')->assertSuccessful();
+
+        $this->assertSame(1, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame(EmailLeadIngest::STATUS_LEAD, EmailLeadIngest::sole()->status);
+        Queue::assertPushed(SendLeadToHive::class, 1);
+    }
+
+    public function test_a_not_a_lead_the_model_is_half_sure_of_is_refused(): void
+    {
+        $this->fakeNylas([$this->message()], ['is_lead' => false, 'confidence' => 0.6, 'reason' => 'Looks like a vendor']);
+
+        $this->artisan('leads:ingest-email')->assertSuccessful();
+
+        $this->assertSame(0, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame('not_a_lead', EmailLeadIngest::sole()->skip_reason);
+    }
+
     public function test_a_forward_is_an_enquiry_not_a_reply(): void
     {
         $this->fakeNylas([

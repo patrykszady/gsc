@@ -223,6 +223,26 @@ return [
         'team_names' => array_values(array_filter(array_map('trim', explode(',', (string) env('EMAIL_LEADS_TEAM_NAMES', ''))))),
         'lookback_days' => (int) env('EMAIL_LEADS_LOOKBACK_DAYS', 2),
         'poll_limit' => (int) env('EMAIL_LEADS_POLL_LIMIT', 25),
+        // Nobody enquires about a remodel from these domains: retailers,
+        // carriers, banks, platforms and tools that mail us as their customer.
+        // Subdomains count. EMAIL_LEADS_MACHINE_DOMAINS adds more.
+        'machine_domains' => array_values(array_unique(array_merge(
+            [
+                'amazon.com', 'ebay.com', 'paypal.com', 'apple.com', 'google.com', 'microsoft.com', 'walmart.com', 'target.com',
+                'costco.com', 'homedepot.com', 'lowes.com', 'menards.com', 'ferguson.com', 'grainger.com', 'wayfair.com', 'build.com',
+                'harborfreight.com', 'ups.com', 'fedex.com', 'usps.com', 'dhl.com', 'stripe.com', 'intuit.com', 'quickbooks.com',
+                'squareup.com', 'shopify.com', 'chase.com', 'bankofamerica.com', 'wellsfargo.com', 'capitalone.com', 'americanexpress.com', 'discover.com',
+                'citi.com', 'zellepay.com', 'venmo.com', 'plaid.com', 'facebook.com', 'facebookmail.com', 'instagram.com', 'linkedin.com',
+                'x.com', 'twitter.com', 'youtube.com', 'nextdoor.com', 'yelp.com', 'thumbtack.com', 'angi.com', 'homeadvisor.com',
+                'houzz.com', 'porch.com', 'bbb.org', 'zoom.us', 'dropbox.com', 'docusign.com', 'docusign.net', 'adobe.com',
+                'canva.com', 'godaddy.com', 'namecheap.com', 'cloudflare.com', 'github.com', 'atlassian.com', 'slack.com', 'notion.so',
+                'hubspot.com', 'mailchimp.com', 'sendgrid.net', 'calendly.com', 'nylas.com', 'telnyx.com', 'twilio.com', 'gusto.com',
+                'adp.com', 'paychex.com', 'indeed.com', 'ziprecruiter.com', 'glassdoor.com', 'uber.com', 'lyft.com', 'doordash.com',
+                'tesla.com', 'ring.com', 'comcast.com', 'xfinity.com', 'att.com', 'verizon.com', 't-mobile.com', 'comed.com',
+                'nicorgas.com', 'peoplesgasdelivery.com',
+            ],
+            array_values(array_filter(array_map('trim', explode(',', (string) env('EMAIL_LEADS_MACHINE_DOMAINS', ''))))),
+        ))),
     ],
 
     'openai' => [
