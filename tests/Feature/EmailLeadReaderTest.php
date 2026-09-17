@@ -209,6 +209,34 @@ class EmailLeadReaderTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_a_suppliers_quote_addressed_to_one_of_us_is_refused_without_the_classifier(): void
+    {
+        $quote = '<p>Hi Patryk,</p><p>Thanks for your interest in the unique Eze-Breeze panels from EzeBreezeWindows.com.</p>'
+            .'<p>Your revised quote for the BRODSON job including 7 outside mounted Vertical 4-Track units with screens and 8 HD Fixed units is $7,949.85.</p>'
+            .'<p>Quoted price is valid for 15 days. Ready to order? Reply to this email and let us know!</p>'
+            .'<p>Shipping Update: The factory is currently anticipating lead times of 20-25 business days.</p><p>Quote Team<br>EzeBreezeWindows.com (800) 579-7812</p>';
+
+        $this->fakeNylas([
+            // Their quoting system sends a fresh message: no Re:, no In-Reply-To.
+            $this->message(['id' => 'm-supplier', 'from' => [['name' => 'Quote Team', 'email' => 'quotes@ezebreezewindows.com']], 'to' => [['email' => 'patryk@gs.construction']],
+                'subject' => 'REVISED Eze Breeze Quote for BRODSON job from the Quote Team at EzeBreezeWindows.com', 'body' => $quote, 'headers' => [['name' => 'Message-ID', 'value' => '<q@ezebreeze>']]]),
+            // A homeowner who happens to know the name is still an enquiry.
+            $this->message(['id' => 'm-referred', 'from' => [['name' => 'Dana Kowalski', 'email' => 'dana.kowalski@example.test']],
+                'subject' => 'Kitchen', 'body' => '<p>Hi Patryk,</p><p>Our neighbor Madeleine referred you. We would like a quote for a kitchen remodel at 12 Oak St, Park Ridge.</p><p>Thanks, Dana Kowalski (847) 555-0102</p>',
+                'headers' => [['name' => 'Message-ID', 'value' => '<d@x>']]]),
+        ], ['name' => 'Dana Kowalski', 'phone' => '(847) 555-0102', 'address' => '12 Oak St', 'city' => 'Park Ridge', 'project_type' => 'Kitchen remodel', 'scope_summary' => 'Kitchen remodel.']);
+
+        $this->artisan('leads:ingest-email')
+            ->expectsOutputToContain('1 lead(s)')
+            ->assertSuccessful();
+
+        $this->assertSame('supplier', EmailLeadIngest::where('nylas_message_id', 'm-supplier')->value('skip_reason'));
+        $this->assertSame(1, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame('dana.kowalski@example.test', ContactSubmission::withoutSiteScope()->sole()->email);
+        // Only the homeowner was worth asking the model about.
+        $this->assertSame(1, $this->openaiCalls());
+    }
+
     public function test_a_forward_is_an_enquiry_not_a_reply(): void
     {
         $this->fakeNylas([

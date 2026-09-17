@@ -218,6 +218,9 @@ return [
             ->values()
             ->all(),
         'internal_domains' => ['gs.construction', 'hive.contractors'],
+        // People here, by first name, beyond the mailbox names: a supplier's
+        // "Hi Patryk, thanks for your interest" is mail TO us, not an enquiry.
+        'team_names' => array_values(array_filter(array_map('trim', explode(',', (string) env('EMAIL_LEADS_TEAM_NAMES', ''))))),
         'lookback_days' => (int) env('EMAIL_LEADS_LOOKBACK_DAYS', 2),
         'poll_limit' => (int) env('EMAIL_LEADS_POLL_LIMIT', 25),
     ],

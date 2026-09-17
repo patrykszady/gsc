@@ -107,6 +107,36 @@ class HiveProjectsClient
         });
     }
 
+    /**
+     * Take back a lead this site pushed to hive — a submission it has since
+     * recognised as not an enquiry. True when hive removed it or never had
+     * it; false (logged) when hive could not be told.
+     */
+    public function deleteLead(int $hiveLeadId): bool
+    {
+        try {
+            $response = Http::baseUrl($this->baseUrl)
+                ->withToken($this->token)
+                ->acceptJson()
+                ->timeout(15)
+                ->connectTimeout(5)
+                ->retry(2, 500, throw: false)
+                ->delete("/api/v1/leads/{$hiveLeadId}");
+        } catch (ConnectionException $e) {
+            Log::channel('submissions')->warning('Hive lead removal: could not reach hive', ['hive_lead_id' => $hiveLeadId, 'error' => $e->getMessage()]);
+
+            return false;
+        }
+
+        if ($response->successful() || $response->status() === 404) {
+            return true;
+        }
+
+        Log::channel('submissions')->warning('Hive lead removal refused', ['hive_lead_id' => $hiveLeadId, 'status' => $response->status(), 'body' => mb_substr((string) $response->body(), 0, 300)]);
+
+        return false;
+    }
+
     public function forgetMailboxes(): void
     {
         Cache::forget($this->mailboxesCacheKey());

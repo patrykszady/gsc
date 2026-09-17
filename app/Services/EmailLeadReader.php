@@ -374,7 +374,7 @@ class EmailLeadReader
             return $this->skip($base, 'duplicate', $dryRun, $summary, ['submission_id' => $twin->id]);
         }
 
-        if ($reason = $this->triage($fromEmail, $subject, $body, $message, $headers)) {
+        if ($reason = $this->triage($fromEmail, $subject, $body, $message, $headers, $grantId)) {
             return $this->skip($base, $reason, $dryRun, $summary);
         }
 
@@ -451,7 +451,7 @@ class EmailLeadReader
      *
      * @param  array<string, string>  $headers  lowercased header name => value
      */
-    protected function triage(string $fromEmail, string $subject, string $body, array $message, array $headers): ?string
+    protected function triage(string $fromEmail, string $subject, string $body, array $message, array $headers, ?string $grantId = null): ?string
     {
         if ($fromEmail === '') {
             return 'no_sender';
@@ -507,7 +507,82 @@ class EmailLeadReader
             return 'reply';
         }
 
+        // A supplier answering something WE asked for — "Hi Patryk, thanks
+        // for your interest… your revised quote for the Brodson job is
+        // $7,949.85" — greets one of us by name and talks quotes, orders,
+        // lead times. It carries no In-Reply-To (their quoting system sent
+        // a fresh message), so the reply check above never sees it (2026-09-16,
+        // EzeBreezeWindows.com). We are the customer; it is not a lead and
+        // not spam either — just not ours to file.
+        if ($this->isSupplierMail($subject, $body, $message, $grantId)) {
+            return 'supplier';
+        }
+
         return null;
+    }
+
+    /**
+     * The supplier rule, for judging a submission already on file from what
+     * was kept of it: its subject and body, and the mailbox it arrived in.
+     */
+    public function looksLikeSupplierMail(string $subject, string $body, string $mailbox, ?string $grantId = null): bool
+    {
+        return $this->isSupplierMail($subject, $body, ['to' => [['email' => $mailbox]]], $grantId);
+    }
+
+    /**
+     * Mail addressed to one of our own people by first name that reads like
+     * a vendor's side of a purchase.
+     */
+    protected function isSupplierMail(string $subject, string $body, array $message, ?string $grantId = null): bool
+    {
+        $names = $this->teamNames($message, $grantId);
+        if ($names === []) {
+            return false;
+        }
+
+        $opening = mb_substr(ltrim($body), 0, 300);
+        if (preg_match('/^(?:hi|hello|hey|dear|good\s+(?:morning|afternoon|evening))\s+(?:mr\.?\s+|ms\.?\s+|mrs\.?\s+)?([\p{L}\'’\-]+)/iu', $opening, $m) !== 1) {
+            return false;
+        }
+
+        if (! in_array(strtolower(Str::ascii($m[1])), $names, true)) {
+            return false;
+        }
+
+        $text = $subject."\n".$body;
+
+        // Their side of a sale, not ours: "a quote for our kitchen" is what a
+        // homeowner asks for, so "quote for" alone is not on this list.
+        return preg_match('/\b(?:your\s+(?:revised\s+|updated\s+|new\s+)?quote|revised\s+quote|quote\s+(?:#|no\.?|number)\s*\d|quoted\s+price|ready\s+to\s+order|your\s+order\b|order\s+(?:confirmation|number|#)|purchase\s+order|invoice\b|price\s+list|thanks?\s+(?:you\s+)?for\s+your\s+interest|lead\s+times?\b|shipping\s+update|tracking\s+(?:number|info)|attached\s+(?:is|are)\s+(?:your|the)\s+(?:quote|estimate|proposal))\b/iu', $text) === 1;
+    }
+
+    /**
+     * Our people by first name: the mailbox names that are a person's
+     * (patryk@, greg@ — not crew@ or info@), the person whose grant this
+     * message was read through (already looked up for the read, so no
+     * extra call), whoever at our domains it was addressed to, plus
+     * whatever is configured.
+     *
+     * @return array<int, string>
+     */
+    protected function teamNames(array $message = [], ?string $grantId = null): array
+    {
+        $generic = ['crew', 'info', 'office', 'team', 'sales', 'hello', 'contact', 'admin', 'support', 'mail', 'jobs', 'estimates', 'service', 'billing', 'accounting'];
+
+        $recipients = collect(array_merge((array) ($message['to'] ?? []), (array) ($message['cc'] ?? [])))
+            ->pluck('email')
+            ->filter(fn ($email) => is_string($email) && $this->isInternal(mb_strtolower(trim($email))));
+
+        return collect((array) config('services.email_leads.team_names', []))
+            ->merge(collect($this->mailboxes(live: false))->pluck('mailbox'))
+            ->merge($grantId !== null ? [$this->grantEmail($grantId)] : [])
+            ->merge($recipients)
+            ->map(fn ($name) => Str::before(strtolower(trim(Str::ascii((string) $name))), '@'))
+            ->filter(fn (string $name) => preg_match('/^[a-z]{2,}$/', $name) === 1 && ! in_array($name, $generic, true))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     protected function isInternal(string $email): bool
@@ -575,10 +650,13 @@ agencies, recruiters, software vendors. This holds in any language: a Polish
 "oferta współpracy" or "współpraca" is a cooperation offer, i.e. a
 solicitation, not an enquiry.
 
-Also NOT enquiries: mail the company itself sent, invoices and payment
-notices, newsletters and promotions, legal or demand letters, automated
-notifications, and platform emails that merely announce a lead exists
-elsewhere.
+Also NOT enquiries: mail the company itself sent; anything where GS is the
+CUSTOMER — a supplier's quote or revised quote, a price, an order
+confirmation, a shipping or lead-time update, or a "thanks for your
+interest" reply to something GS asked for, especially when it greets one of
+GS's own people by first name; invoices and payment notices; newsletters and
+promotions; legal or demand letters; automated notifications; and platform
+emails that merely announce a lead exists elsewhere.
 
 When a message IS an enquiry, extract what it actually states. Never invent a
 value — use null for anything not present. Quote the address exactly as
