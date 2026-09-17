@@ -107,6 +107,17 @@ if [ -n "$PREV" ] && [ -d "$PREV/public/build/assets" ]; then
     cp -an "$PREV/public/build/assets/." public/build/assets/
     find public/build/assets -type f -mtime +90 -delete
 fi
+# Same idea for the generated AI-crawler feeds. llms.txt and llms-full.txt are
+# static files in public/ (nginx serves them, no route fallback) and are only
+# rewritten by public-feeds:refresh AFTER the switch below, so a release that
+# starts without them 404s /llms.txt until that step lands — or until the 01:40
+# schedule if it fails. Seed them from the live release; a copy already in the
+# clone (or the post-switch refresh) wins.
+for f in llms.txt llms-full.txt; do
+    if [ -n "$PREV" ] && [ -f "$PREV/public/$f" ] && [ ! -f "public/$f" ]; then
+        cp -a "$PREV/public/$f" "public/$f"
+    fi
+done
 # The Chrome build this release's puppeteer expects (the Houzz/Angi review
 # scrapers, the Instagram and Yelp browsers). Cached under ~/.cache/puppeteer,
 # so this is a no-op until puppeteer moves to a new build.
