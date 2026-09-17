@@ -607,28 +607,28 @@
                      /about does the same, this call was just missing it. --}}
                 <livewire:about-section variant="team" :area="$area" />
 
-                {{-- The founders' story and full bios, shared with /about.
-                     These pages had only the short team summary; the story of
-                     how the company grew, the individual bios, and why the
-                     father-son pairing works are the reason someone trusts a
-                     contractor, and they were main-page-only. --}}
-                @include('partials.about-story')
-
-                @include('partials.about-founder-bios')
-
-                @include('partials.about-pairing')
-
-                {{-- Same partials the main /about renders. Both were already
-                     written to be area-aware ("Our Values Serving {city}"), but
-                     only /about ever included them, so these pages were missing
-                     content that had been authored for them.
-
-                     The comparison block also links /compare and its competitor
-                     pages from ~70 more crawled pages, which is exactly what it
-                     exists to do. --}}
-                @include('partials.about-values', ['area' => $area])
-
-                @include('partials.about-comparison')
+                {{-- The founders' story, full bios, the pairing, values and the
+                     comparison block live on /about only. Rendered here too,
+                     every town's about page was 73% the same prose as every
+                     other town's (2026-09-17); what stays is what is about
+                     THIS town, and a link to the full story. --}}
+                @if (filled($area->how_we_work) || filled($area->popular_projects))
+                    <section class="bg-white py-12 sm:py-16 dark:bg-zinc-900" data-area-about-local>
+                        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                            <div class="mx-auto max-w-3xl">
+                                <h2 class="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">How we work in {{ $area->city }}</h2>
+                                @if (filled($area->how_we_work))
+                                    <p class="mt-4 text-base leading-7 text-zinc-600 dark:text-zinc-300">{{ $area->how_we_work }}</p>
+                                @endif
+                                @if (filled($area->popular_projects))
+                                    <h3 class="mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">What {{ $area->city }} homeowners bring us</h3>
+                                    <p class="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-300">{{ $area->popular_projects }}</p>
+                                @endif
+                                <a href="{{ url('/about') }}" class="mt-6 inline-block text-sm font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400">Read the whole story of Greg &amp; Patryk on our About page →</a>
+                            </div>
+                        </div>
+                    </section>
+                @endif
 
                 <x-cta-section 
                     variant="blue"
@@ -901,7 +901,11 @@
                     ];
                 }
 
-                $config['faqs'] = array_merge($config['faqs'], $dynamicFaqs);
+                // The town's own questions for this service replace the
+                // templated "How do you scope…" trio, which read the same on
+                // every one of these pages.
+                $serviceFaq = $area->serviceContent($config['urlSlug'])?->faqItems() ?? [];
+                $config['faqs'] = array_merge($config['faqs'], $serviceFaq !== [] ? $serviceFaq : $dynamicFaqs);
             @endphp
             
             {{-- Service Schema for rich results --}}
@@ -961,11 +965,12 @@
                 :service-short-title="$config['label']" 
             />
 
-            {{-- Per-city unique content — breaks the 12 /services/kitchen-remodeling
-                 (and adjacent service) near-duplicate clusters surfaced by
-                 seo:area-pages-audit (May 2026). Heading + landmarks + permit notes
-                 are interpolated per (city, service) so each URL has unique prose. --}}
-            @include('partials.area-unique-content', ['area' => $area, 'context' => $config['urlSlug']])
+            {{-- Copy written for THIS service in THIS town (AreaServiceContent):
+                 the town's own description used to render here on all five
+                 service pages, so a town's kitchen and bathroom pages were
+                 70-80% the same prose (2026-09-17). Until a pair has its copy
+                 the old shared block still renders — see the partial. --}}
+            @include('partials.area-service-content', ['area' => $area, 'config' => $config])
 
 
             {{-- REMOVED: the "Long-Form Content Sections (SEO depth)" block —
@@ -1007,8 +1012,9 @@
                  read how the job runs is at the point of asking "do people
                  actually get that?" — proof answers it. The coverage/ZIP list
                  is reference material and sits further up with the service
-                 detail. --}}
-            <livewire:testimonials-section :area="$area" />
+                 detail. This trade's reviews first, so a kitchen page and a
+                 bathroom page in the same town do not quote the same three. --}}
+            <livewire:testimonials-section :area="$area" :project-type="$config['projectType']" />
 
             {{-- Timelapse Section --}}
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -1029,7 +1035,7 @@
                 :more-projects-type="$config['projectType']" />
 
             {{-- Town-attributed review quotes (real reviewer towns, never faked) --}}
-            @include('livewire.partials.town-review-quotes')
+            @include('livewire.partials.town-review-quotes', ['projectType' => $config['projectType']])
 
             {{-- Cost-guide cross-link: pairs the money page with its matching
                  cost guide the way searchers actually navigate (service ↔ cost). --}}
@@ -1072,7 +1078,7 @@
             </section>
 
             {{-- Contact Section --}}
-            <livewire:contact-section :area="$area" />
+            <livewire:contact-section :area="$area" :service-label="$config['label']" />
 
             {{-- Coverage (ZIPs + nearby towns) sits AFTER the contact form.
                  It is reference material — "do you come to my street?" — not

@@ -8,6 +8,7 @@ use App\Services\HiveProjectsClient;
 use App\Support\Tenancy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
@@ -90,6 +91,18 @@ class AreaServed extends Model
     }
 
     /** Does the page render this section: switched on, and there is something to show. */
+    /** Copy written for each service spoke in this town (AreaServiceContent). */
+    public function serviceContents(): HasMany
+    {
+        return $this->hasMany(AreaServiceContent::class, 'area_served_id');
+    }
+
+    /** The town's own copy for one service page, or null when none has been written yet. */
+    public function serviceContent(string $service): ?AreaServiceContent
+    {
+        return $this->serviceContents->firstWhere('service', $service);
+    }
+
     public function showsSection(string $key): bool
     {
         if (! array_key_exists($key, self::SECTIONS) || ! $this->sectionsMap()[$key]) {
@@ -409,8 +422,19 @@ class AreaServed extends Model
      *
      * @return Collection<int, Testimonial>
      */
-    public function testimonialsWithNeighbours(int $limit = 3): Collection
+    public function testimonialsWithNeighbours(int $limit = 3, ?string $projectType = null): Collection
     {
+        // With a trade named, this town's and its neighbours' reviews of that
+        // trade lead, so a kitchen page and a bathroom page in the same town
+        // do not quote the same three homeowners.
+        if ($projectType !== null && $projectType !== '') {
+            $type = mb_strtolower($projectType);
+            $pool = $this->localTestimonials(20)->concat($this->nearbyTestimonials(20))->unique('id');
+            [$matching, $others] = $pool->partition(fn (Testimonial $t) => str_contains(mb_strtolower((string) $t->project_type), $type));
+
+            return $matching->concat($others)->take($limit)->values();
+        }
+
         $local = $this->localTestimonials($limit);
 
         if ($local->count() >= $limit) {

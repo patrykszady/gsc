@@ -99,6 +99,15 @@ class TestimonialsSection extends Component
                     ->reject(fn (Testimonial $t) => $local->contains('id', $t->id))
             );
 
+            // On a service page, this trade's reviews lead — a town's kitchen
+            // page and its bathroom page opened on the same review otherwise,
+            // and the review is the longest block of prose on the page.
+            if ($this->projectType) {
+                $type = mb_strtolower($this->projectType);
+                [$matching, $others] = $ordered->partition(fn (Testimonial $t) => str_contains(mb_strtolower((string) $t->project_type), $type));
+                $ordered = $matching->concat($others)->values();
+            }
+
             // Top up with anything else visible so the carousel never runs dry
             // in a town with few nearby reviews.
             if ($ordered->count() < 10) {

@@ -21,6 +21,9 @@ class ContactSection extends Component
 {
     public ?AreaServed $area = null;
 
+    /** The trade the page is about ("Kitchen Remodeling"), so the blurb names it. */
+    public ?string $serviceLabel = null;
+
     #[Validate('required|min:2|max:100')]
     public string $name = '';
 

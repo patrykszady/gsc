@@ -637,6 +637,127 @@ PROMPT;
      *
      * @return array{intro:string,local_intro:string,landmarks:string,neighborhoods:string,popular_projects:string,how_we_work:string,faq:list<array{question:string,answer:string}>,permit_notes:string}|null
      */
+    /**
+     * Copy for ONE service page in ONE town — what a kitchen remodel in this
+     * town involves, not what the town is like (that is the town page's job,
+     * and the town's own local copy is handed in so it is not restated).
+     *
+     * @return array{intro: string, popular_requests: string, permit_notes: string, faq: list<array{question: string, answer: string}>}|null
+     */
+    public function generateAreaServiceContent(AreaServed $area, string $service): ?array
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $place = TownCatalog::find((string) $area->city);
+        $city = $place ? $place['name'] : trim((string) Str::before((string) $area->city, ','));
+        $stateName = TownCatalog::stateName($place['state'] ?? TownCatalog::homeState());
+        $brand = (string) config('brand.display_name', config('brand.name'));
+        $label = \App\Models\AreaServiceContent::label($service);
+        $siblings = collect(\App\Models\AreaServiceContent::SERVICES)->reject(fn ($s) => $s === $service)->map(fn ($s) => \App\Models\AreaServiceContent::label($s))->implode(', ');
+
+        $tradeNotes = match ($service) {
+            'kitchen-remodeling' => 'electrical and plumbing permits, gas line work, load-bearing walls when a kitchen is opened up, ventilation, and the lead time on cabinets',
+            'bathroom-remodeling' => 'plumbing permits, drain and vent changes, waterproofing and tile substrates, exhaust ventilation, and second-floor bathrooms in older homes',
+            'home-remodeling' => 'structural permits and engineering, phasing a whole-home job so the family can stay, knob-and-tube or galvanized replacement in older homes, and sequencing trades',
+            'basement-remodeling' => 'egress windows, ceiling height, moisture and drain tile, bathroom rough-ins and ejector pumps, and finishing around mechanicals',
+            'home-additions' => 'zoning, setbacks and lot coverage, foundations and tying a new roof into the old one, matching exterior materials, and plan review timelines',
+            default => 'permits, sequencing and the decisions that shape the budget',
+        };
+
+        $town = collect([
+            'What the town page already says (do NOT restate any of it): '.trim((string) $area->local_intro),
+            'Neighborhoods on file: '.trim((string) $area->neighborhoods),
+            'Landmarks on file: '.trim((string) $area->landmarks),
+            'General permit note already on the town page: '.trim((string) $area->permit_notes),
+            'Requests already listed for the town in general: '.trim((string) $area->popular_projects),
+        ])->filter(fn ($line) => ! Str::endsWith($line, ': '))->implode("\n");
+
+        $prompt = <<<PROMPT
+You are an SEO copywriter for {$brand}, a family-owned remodeling contractor
+(Gregory and Patryk, father and son, founded 2015, 40+ years combined
+experience) serving the Chicago suburbs.
+
+Write the copy for ONE page: {$label} in **{$city}, {$stateName}**.
+
+This page sits under the town's own page, and beside sibling pages for
+{$siblings} in the same town. Those pages already carry the town's
+description, its neighborhoods, landmarks and general permit note. Your job
+is what {$label} in {$city} specifically involves — the housing stock and
+home eras there and what they mean for this trade, what homeowners there ask
+for in this trade, and the practical constraints: {$tradeNotes}.
+
+Context you must not restate (Google reads all of these pages as one site;
+every sentence here must be new):
+{$town}
+
+Return ONLY a valid JSON object with EXACTLY these four keys:
+- "intro": 4–6 sentences (600–900 characters). Open on {$label} in {$city}
+  itself: the homes this trade meets there, the layouts and eras, what a
+  typical job changes. Concrete, specific to this trade in this town. No
+  "welcome", no "nestled", no "premier", no "your trusted".
+- "popular_requests": 2–4 sentences. What {$city} homeowners most often ask
+  for in {$label}, tied to their homes' era and layout. Different from the
+  town-wide requests above.
+- "permit_notes": 2 sentences (200–320 characters). What this particular
+  trade needs from the {$city} building department — inspections, the
+  parts of a {$label} job that trigger review — and that {$brand} handles the
+  applications and inspection scheduling. Do NOT invent codes, fees or
+  ordinance numbers.
+- "faq": An array of exactly 3 objects, each {"question": "...", "answer": "..."},
+  questions a {$city} homeowner would ask about {$label} specifically
+  (not about the company in general, not "do you handle permits" — that is
+  answered elsewhere). Answers 1–3 sentences, factual, no prices.
+
+Hard rules:
+- Plain text only. No markdown, no emoji.
+- Do NOT mention competitors. Do NOT invent project names or client names.
+- Do NOT copy or paraphrase the context lines above.
+- Return ONLY the JSON object. No code fences, no preamble.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 1100, 0.8);
+        if ($raw === null) {
+            return null;
+        }
+
+        $raw = preg_replace('/^```json\s*/i', '', $raw);
+        $raw = preg_replace('/^```\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/i', '', $raw);
+        $decoded = json_decode(trim((string) $raw), true);
+
+        if (! is_array($decoded)) {
+            $this->lastError = 'Failed to parse area-service JSON: '.mb_substr((string) $raw, 0, 300);
+
+            return null;
+        }
+
+        foreach (['intro', 'popular_requests', 'permit_notes'] as $key) {
+            if (! is_string($decoded[$key] ?? null) || trim($decoded[$key]) === '') {
+                $this->lastError = "Area-service JSON missing \"{$key}\"";
+
+                return null;
+            }
+        }
+
+        $faq = AreaServed::normaliseFaq($decoded['faq'] ?? []);
+        if ($faq === []) {
+            $this->lastError = 'Area-service JSON has no usable faq';
+
+            return null;
+        }
+
+        return [
+            'intro' => trim($decoded['intro']),
+            'popular_requests' => trim($decoded['popular_requests']),
+            'permit_notes' => trim($decoded['permit_notes']),
+            'faq' => $faq,
+        ];
+    }
+
     public function generateAreaContent(AreaServed $area): ?array
     {
         if (empty($this->apiKey)) {

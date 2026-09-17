@@ -38,7 +38,9 @@
                 </div>
 
                 <p class="mt-5 text-lg/8 text-gray-600 dark:text-gray-400">
-                    @if($area)
+                    @if($area && $serviceLabel)
+                        GS Construction is a father-and-son construction company, and {{ \Illuminate\Support\Str::lower($serviceLabel) }} in {{ $area->city }} is work Greg and Patryk run themselves. Expect clear communication, quality craftsmanship, and a straightforward plan—reach out today to schedule a free in-home consultation and get a detailed estimate and honest feedback.
+                    @elseif($area)
                         GS Construction is a father-and-son construction company specializing in residential remodeling and renovations in {{ $area->city }}. Expect clear communication, quality craftsmanship, and a straightforward plan—reach out today to schedule a free in-home consultation and get a detailed estimate and honest feedback.
                     @else
                         GS Construction is a father-and-son Chicagoland construction company specializing in residential remodeling and renovations. Expect clear communication, quality craftsmanship, and a straightforward plan—reach out today to schedule a free in-home consultation and get a detailed estimate and honest feedback.
