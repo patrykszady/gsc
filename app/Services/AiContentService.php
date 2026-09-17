@@ -852,14 +852,26 @@ PROMPT;
 
         // The split must be the same copy in a new order: reject a reply that
         // lost or invented a large share of it, or a "history" that is a stub.
-        // Three parts need a few joining words a single block did not, and on a
-        // short intro those weigh more: Barrington Hills went 139 → 181 words
-        // (+30%) on the first production run and was refused at a flat 25%.
-        // So the ceiling is a quarter more OR 45 words more, whichever is larger.
+        // The two folds must be the same copy in a new order. The lead is a
+        // summary shown above them and may repeat a sentence a fold also has
+        // (the model does that for every short town: Gurnee's lead of 40
+        // words was all repeated, 160 → 226 counted three ways), so it is
+        // capped on its own and left out of the length check. Three parts
+        // need a few joining words a single block did not, and on a short
+        // intro those weigh more (Barrington Hills 139 → 150 in the folds),
+        // so the ceiling is a quarter more OR 45 words more, whichever is larger.
+        if (\App\Support\TownCopy::words($out['lead']) > 70) {
+            $this->lastError = 'Intro split lead too long ('.\App\Support\TownCopy::words($out['lead']).' words)';
+
+            return null;
+        }
         $before = \App\Support\TownCopy::words($text);
-        $after = \App\Support\TownCopy::words($out['history']) + \App\Support\TownCopy::words($out['potential']) + \App\Support\TownCopy::words($out['lead']);
-        if ($after < $before * 0.8 || $after > max($before * 1.25, $before + 45)) {
-            $this->lastError = "Intro split changed the length too much ({$before} → {$after} words)";
+        $after = \App\Support\TownCopy::words($out['history']) + \App\Support\TownCopy::words($out['potential']);
+        if ($after < $before * 0.75 || $after > max($before * 1.25, $before + 45)) {
+            // The refused parts go into the error so a log shows what the
+            // model added or dropped, not just the counts (Gurnee, 2026-09-17).
+            $shape = collect($out)->map(fn ($v, $k) => $k.' '.\App\Support\TownCopy::words($v).'w: '.mb_substr(str_replace(["\n", "\r"], ' ', $v), 0, 160))->implode(' | ');
+            $this->lastError = "Intro split changed the length too much ({$before} → {$after} words): {$shape}";
 
             return null;
         }
