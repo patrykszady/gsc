@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Console\Commands\SeoHealth;
+use App\Http\Controllers\Api\Admin\V1\SeoReportController;
+use App\Models\Site;
+use App\Support\Tenancy;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -12,7 +15,7 @@ use Tests\TestCase;
 
 /**
  * seo:health keeps a rolling daily score ledger (reports/health-history.json,
- * same disk and tenant-path convention as reports/health.md — see
+ * tenant-scoped via App\Support\SeoStorage — see
  * SeoHealth::appendHealthLedger()) so the admin snapshot can show a
  * week-over-week trend chevron next to the health score.
  *
@@ -50,9 +53,26 @@ class SeoHealthPriorScoreTest extends TestCase
         $method->invoke($command, $score);
     }
 
-    protected function ledger(): array
+    protected function ledger(string $path = self::LEDGER_PATH): array
     {
-        return json_decode(Storage::disk('local')->get(self::LEDGER_PATH), true);
+        return json_decode(Storage::disk('local')->get($path), true);
+    }
+
+    protected function priorScore(): ?int
+    {
+        $controller = app(SeoReportController::class);
+        $method = new ReflectionMethod($controller, 'priorHealthScore');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller);
+    }
+
+    /** The migrated jpeterson row is inactive until launch. */
+    protected function jpd(): Site
+    {
+        return Site::query()->firstOrCreate(['slug' => 'jpeterson'], [
+            'name' => 'J. Peterson Design', 'theme' => 'jpeterson', 'hosts' => ['jpeterson-design.com'], 'primary_host' => 'jpeterson-design.com',
+        ]);
     }
 
     public function test_it_appends_todays_score_and_prunes_to_the_newest_120_entries(): void
@@ -155,5 +175,48 @@ class SeoHealthPriorScoreTest extends TestCase
         $this->assertArrayHasKey('pillars', $data['health']);
         $this->assertArrayHasKey('prior_score', $data['health']);
         $this->assertIsArray($data['health']['pillars']);
+    }
+
+    public function test_a_non_default_tenants_ledger_is_written_under_its_own_prefix(): void
+    {
+        Storage::fake('local');
+        Carbon::setTestNow(Carbon::parse('2026-03-01'));
+
+        Tenancy::for($this->jpd(), function (): void {
+            $this->appendLedger(55);
+        });
+
+        $this->assertTrue(Storage::disk('local')->exists('tenants/jpeterson/reports/health-history.json'));
+        $this->assertFalse(Storage::disk('local')->exists(self::LEDGER_PATH), 'the default site ledger must stay untouched');
+        $this->assertSame(55, $this->ledger('tenants/jpeterson/reports/health-history.json')[now()->toDateString()]);
+    }
+
+    public function test_a_tenants_prior_score_never_leaks_from_another_tenants_ledger(): void
+    {
+        Storage::fake('local');
+        Carbon::setTestNow(Carbon::parse('2026-03-15'));
+
+        // The default site (gsc) has a week-old score of 65.
+        Storage::disk('local')->put(self::LEDGER_PATH, json_encode([
+            now()->subDays(6)->toDateString() => 65,
+        ]));
+
+        $jpd = $this->jpd();
+
+        // jpeterson has never been measured — no ledger of its own.
+        Tenancy::for($jpd, function (): void {
+            $this->assertNull($this->priorScore(), "another tenant's ledger must not be read back as this tenant's prior score");
+        });
+
+        // Once jpeterson gets its own entry, it reads its own file — not gsc's.
+        Storage::disk('local')->put('tenants/jpeterson/reports/health-history.json', json_encode([
+            now()->subDays(6)->toDateString() => 40,
+        ]));
+        Tenancy::for($jpd, function (): void {
+            $this->assertSame(40, $this->priorScore());
+        });
+
+        // The default site's own prior score is unaffected.
+        $this->assertSame(65, $this->priorScore());
     }
 }

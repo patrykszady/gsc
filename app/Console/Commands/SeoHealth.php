@@ -8,6 +8,7 @@ use App\Models\ImageSocialPost;
 use App\Models\ProjectImage;
 use App\Models\Site;
 use App\Support\Seo\CrawlFiles;
+use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -459,9 +460,14 @@ class SeoHealth extends Command
      * Append today's overall score to the health ledger (one entry per
      * calendar day, last write wins), pruned to the newest 120 entries.
      *
-     * Same disk and path convention as health.md — no per-tenant prefix,
-     * because health.md itself carries none; the admin's healthSnapshot()
-     * reads this file back to compute a week-over-week trend chevron.
+     * Tenant-scoped via SeoStorage (unlike health.md, which is written only
+     * by the untenanted daily cron and genuinely has no per-tenant prefix):
+     * this ledger is also appended from live, per-request `seo:health --json`
+     * calls made inside a tenant-bound admin request (SeoReportController's
+     * and Admin\SeoReports' healthSnapshot()), so without scoping every
+     * tenant's dashboard would read and overwrite the same shared file.
+     * The admin's healthSnapshot() reads this file back (via the same
+     * SeoStorage::path()) to compute a week-over-week trend chevron.
      *
      * Best effort: the ledger is a nice-to-have trend line, not the report
      * itself, so any failure here (corrupt JSON, disk error) is swallowed
@@ -475,7 +481,7 @@ class SeoHealth extends Command
 
         try {
             $disk = Storage::disk('local');
-            $path = 'reports/health-history.json';
+            $path = SeoStorage::path('reports/health-history.json');
 
             $ledger = [];
             if ($disk->exists($path)) {

@@ -528,7 +528,7 @@ class SeoReportController extends Controller
      * The health ledger entry closest to 7 days before today, so the admin
      * can show a week-over-week trend chevron next to the health score.
      *
-     * Same disk and (lack of) tenant prefix as seo:health's health.md and
+     * Tenant-scoped via SeoStorage, same convention as seo:health's
      * health-history.json — see SeoHealth::appendHealthLedger().
      *
      * Only entries aged 5–14 days count as "the prior week" — anything
@@ -538,7 +538,7 @@ class SeoReportController extends Controller
     protected function priorHealthScore(): ?int
     {
         $disk = Storage::disk('local');
-        $path = 'reports/health-history.json';
+        $path = SeoStorage::path('reports/health-history.json');
 
         if (! $disk->exists($path)) {
             return null;
