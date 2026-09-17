@@ -55,6 +55,8 @@ class SeoHealth extends Command
         $total = $measured->isEmpty() ? null : (int) round($measured->avg('score'));
 
         if ($this->option('json')) {
+            $this->appendHealthLedger($total);
+
             $this->line(json_encode([
                 'score' => $total,
                 'pillars' => $pillars,
@@ -70,6 +72,7 @@ class SeoHealth extends Command
 
         if ($this->option('markdown')) {
             $this->saveMarkdown($total, $pillars);
+            $this->appendHealthLedger($total);
         }
 
         $this->renderReport($total, $pillars);
@@ -450,6 +453,52 @@ class SeoHealth extends Command
         }
 
         Storage::disk('local')->put('reports/health.md', $md);
+    }
+
+    /**
+     * Append today's overall score to the health ledger (one entry per
+     * calendar day, last write wins), pruned to the newest 120 entries.
+     *
+     * Same disk and path convention as health.md — no per-tenant prefix,
+     * because health.md itself carries none; the admin's healthSnapshot()
+     * reads this file back to compute a week-over-week trend chevron.
+     *
+     * Best effort: the ledger is a nice-to-have trend line, not the report
+     * itself, so any failure here (corrupt JSON, disk error) is swallowed
+     * rather than failing the seo:health run.
+     */
+    protected function appendHealthLedger(?int $total): void
+    {
+        if ($total === null) {
+            return;
+        }
+
+        try {
+            $disk = Storage::disk('local');
+            $path = 'reports/health-history.json';
+
+            $ledger = [];
+            if ($disk->exists($path)) {
+                $decoded = json_decode((string) $disk->get($path), true);
+                if (is_array($decoded)) {
+                    $ledger = $decoded;
+                }
+            }
+
+            $ledger[now()->toDateString()] = $total;
+
+            // Chronological order so pruning below drops the oldest days,
+            // regardless of the order entries were originally written in.
+            ksort($ledger);
+
+            if (count($ledger) > 120) {
+                $ledger = array_slice($ledger, -120, null, true);
+            }
+
+            $disk->put($path, json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        } catch (\Throwable) {
+            // Best effort — never fail seo:health over the ledger.
+        }
     }
 
     protected function grade(int $s): string
