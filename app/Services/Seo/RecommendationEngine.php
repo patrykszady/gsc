@@ -906,7 +906,7 @@ class RecommendationEngine
                     ->filter(fn ($named) => $named === 0)->keys()->take(3)->implode(', ');
                 $recs[] = [
                     't' => "AI answer engines name us in {$rate}% of contractor questions".($worst !== '' ? " — never in {$worst}" : ''),
-                    'd' => 'Asked for the best kitchen/bathroom contractors in our core towns, ChatGPT, Gemini, Perplexity and Claude mostly name '.implode(', ', array_slice(array_keys($named), 0, 4)).'. They cite Google reviews, directory listings and pages that name the town explicitly — review volume, the town service pages and llms.txt are the levers.',
+                    'd' => 'Asked for the best kitchen/bathroom contractors in our core towns, ChatGPT, Gemini, Perplexity and Claude mostly name '.implode(', ', array_slice(array_keys($named), 0, 4)).'. They cite Google reviews, directory listings and pages that name the town explicitly — review volume and the town service pages are the levers.',
                     'p' => 'now',
                 ];
             }

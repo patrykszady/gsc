@@ -149,4 +149,22 @@ class RecommendationEngineIntelTitlesTest extends TestCase
         $this->assertSame([], $urgent);
         $this->assertSame([], $recs);
     }
+
+    /**
+     * The central admin shows recommendation titles and bodies to operators
+     * verbatim (it stopped rewriting vendor language once this engine went
+     * plain-spoken), so the copy itself must never name pipeline files or
+     * data vendors — those belong in the 'source' field, which the admin
+     * renders only inside a Details accordion.
+     */
+    public function test_recommendation_copy_never_names_pipeline_files_or_vendors(): void
+    {
+        $source = file_get_contents(app_path('Services/Seo/RecommendationEngine.php'));
+        preg_match_all("/'(?:t|d)'\\s*=>\\s*(.+)$/m", $source, $m);
+        $copy = implode("\n", $m[1]);
+
+        foreach (['llms.txt', 'llms-full', 'Search Console', 'GSC', 'DataForSEO', 'Clarity', 'IndexNow', 'SERP'] as $raw) {
+            $this->assertStringNotContainsString($raw, $copy, "Recommendation copy names '{$raw}' — move it to the source field.");
+        }
+    }
 }
