@@ -60,4 +60,34 @@ class PermitGuideInfo
     {
         Cache::forget(self::CACHE_KEY);
     }
+
+    /**
+     * The first sentence of a researched field, quotes stripped, for a page
+     * that has room for one line (the town contact page). The guide pages
+     * print the full text.
+     */
+    public static function sentence(mixed $text, int $max = 260): ?string
+    {
+        if (is_array($text)) {
+            $text = (string) (reset($text) ?: '');
+        }
+        $text = trim(preg_replace('/\s+/', ' ', str_replace(['"', '“', '”'], '', (string) $text)) ?? '');
+        // "1) Historic Overlay District: …" — the list numbering belongs to the guide page.
+        $text = preg_replace('/^\d+[.)]\s*/', '', $text) ?? $text;
+        if ($text === '') {
+            return null;
+        }
+        // The first sentence or clause, but not a split on "approx." or a number like 8-10 business days.
+        if (preg_match('/^(.+?)(?:[.!?](?:\s+[A-Z\d(]|$)|;\s)/', $text, $m) && mb_strlen($m[1]) >= 40) {
+            $text = rtrim($m[1], ';').(str_ends_with($m[1], '.') ? '' : '.');
+        }
+        if (mb_strlen($text) > $max) {
+            // Cut on a word, never mid-word ("a building permi…").
+            $cut = mb_substr($text, 0, $max - 1);
+            $space = mb_strrpos($cut, ' ');
+            $text = rtrim($space !== false && $space > $max / 2 ? mb_substr($cut, 0, $space) : $cut, ' ,;:').'…';
+        }
+
+        return $text;
+    }
 }

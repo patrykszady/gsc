@@ -31,10 +31,19 @@ class AreaServiceDemandGateTest extends TestCase
     {
         Cache::flush();
         $a = $this->area('Kenilworth', 'kenilworth');
-        foreach (['contact', 'about', 'services', 'projects', 'testimonials'] as $page) {
+        foreach (['about', 'services'] as $page) {
             $this->assertTrue(AreaSeoPolicy::shouldIndex($a, $page), "{$page} is indexable");
         }
         $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'service', 'basement-remodeling'), 'no proof, no demand, still indexable');
+        // Contact carries the town's own booking facts and is indexed; the
+        // projects/testimonials lists need a project or review of the town's own.
+        $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'contact'));
+        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'projects'));
+        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'testimonials'));
+        config(['seo.area_index_contact_pages' => false, 'seo.area_index_list_spokes_without_proof' => true]);
+        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'contact'), 'the flag closes contact again');
+        $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'projects'), 'the flag opens the lists again');
+        config(['seo.area_index_contact_pages' => true, 'seo.area_index_list_spokes_without_proof' => false]);
 
         $bare = AreaServed::create(['city' => 'Nowhere', 'slug' => 'nowhere']);
         $this->assertFalse(AreaSeoPolicy::shouldIndex($bare, 'home'));

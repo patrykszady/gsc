@@ -108,6 +108,9 @@
          index was not being indexed (2026-09-17). --}}
     @include('partials.blog-strip', ['posts' => \App\Models\BlogPost::forStrip($data['projectType'] ?? null), 'heading' => ($data['label'] ?? $data['title'] ?? 'Our work').' stories from the blog'])
 
+    {{-- This trade's in-depth landing pages. --}}
+    @include('partials.landing-page-links', ['pages' => \App\Models\LandingPage::published()->where('service', $service)->orderBy('title')->get(), 'heading' => 'In-depth guides'])
+
     {{-- Process --}}
     <x-process-steps :steps="$data['process'] ?? []" heading="Our Process" />
 

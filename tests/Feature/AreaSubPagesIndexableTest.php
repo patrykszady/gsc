@@ -25,14 +25,21 @@ class AreaSubPagesIndexableTest extends TestCase
         $this->area('Kenilworth', 'kenilworth');
 
         foreach ([
-            '/areas-served/kenilworth/contact',
             '/areas-served/kenilworth/about',
             '/areas-served/kenilworth/services',
-            '/areas-served/kenilworth/projects',
-            '/areas-served/kenilworth/testimonials',
             '/areas-served/kenilworth/services/basement-remodeling',
+            '/areas-served/kenilworth/contact',
         ] as $url) {
             $this->get($url)->assertOk()->assertDontSee('noindex', false);
+        }
+
+        // Lists of the neighbours' work in a town with no project or review of
+        // its own: served, but kept out of the index.
+        foreach ([
+            '/areas-served/kenilworth/projects',
+            '/areas-served/kenilworth/testimonials',
+        ] as $url) {
+            $this->get($url)->assertOk()->assertSee('noindex', false);
         }
     }
 

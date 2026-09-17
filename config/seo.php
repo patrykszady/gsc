@@ -355,6 +355,30 @@ return [
     // the proof/demand gates in AreaSeoPolicy without touching code.
     'area_index_subpages' => (bool) env('SEO_AREA_INDEX_SUBPAGES', true),
     'area_index_service_pages' => (bool) env('SEO_AREA_INDEX_SERVICE_PAGES', true),
+    // Town contact pages carry their own booking facts since 2026-09-17 (drive
+    // time from the office, the village's permit rules, neighbours on the route)
+    // and are indexed; set false to keep them out again. A town's projects/
+    // testimonials lists without a project or review of its own stay out: Google
+    // crawled them and declined (2026-09-17). Flip to open them again.
+    'area_index_contact_pages' => (bool) env('SEO_AREA_INDEX_CONTACT_PAGES', true),
+    'area_index_list_spokes_without_proof' => (bool) env('SEO_AREA_INDEX_LIST_SPOKES_WITHOUT_PROOF', false),
+
+    /*
+    | When a page FAMILY's template last changed in a way a reader would see.
+    | The sitemap dates a town page by the later of its own data and this, so
+    | a template change (the About pages losing the company story, the service
+    | pages gaining their own copy) is announced honestly, once, and stamping
+    | every URL with the deploy date — which Google learns to ignore — is not.
+    */
+    'area_family_dates' => [
+        'contact' => '2026-09-17',
+        'about' => '2026-09-17',
+        'service' => '2026-09-17',
+        'services' => '2026-09-14',
+        'projects' => '2026-09-14',
+        'testimonials' => '2026-09-14',
+        'lead-pipe-replacement' => '2026-09-14',
+    ],
 
     'area_service_demand_impressions' => (int) env('SEO_AREA_SERVICE_DEMAND_IMPRESSIONS', 100),
     // …or this much researched monthly search volume for the town + service (seo_keywords).

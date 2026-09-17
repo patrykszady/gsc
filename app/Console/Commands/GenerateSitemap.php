@@ -477,6 +477,23 @@ class GenerateSitemap extends Command
             // project completed in this city (falls back to the global date).
             $thisAreaLastmod = $area->lastmod() ?? $areaLastmod;
 
+            // ...or the day the page family's template last changed, when later
+            // (config seo.area_family_dates).
+            $familyLastmod = function (string $family) use ($thisAreaLastmod): Carbon {
+                $date = config("seo.area_family_dates.{$family}");
+                $stamp = $date ? Carbon::parse($date, config('app.timezone'))->endOfDay() : null;
+                if ($stamp && $stamp->gt(now())) {
+                    // A family dated today is announced as of now, never as a
+                    // time still to come; a date in the future is ignored.
+                    // (Until 2026-09-17 the end-of-day stamp failed the "not in
+                    // the future" test all day, so a family dated the day it
+                    // deployed was not announced until the next run.)
+                    $stamp = $stamp->copy()->startOfDay()->lte(now()) ? now() : null;
+                }
+
+                return $stamp && $stamp->gt($thisAreaLastmod) ? $stamp : $thisAreaLastmod;
+            };
+
             // Computed once per area: every page family below renders the same strip.
             $areaImages = $areaImagesFor($area);
 
@@ -492,7 +509,7 @@ class GenerateSitemap extends Command
                 $priority = $page === '' ? 0.7 : 0.6; // Area home pages slightly higher
 
                 $areaUrl = Url::create("{$baseUrl}/{$uri}")
-                    ->setLastModificationDate($thisAreaLastmod)
+                    ->setLastModificationDate($familyLastmod($policyPage))
                     ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                     ->setPriority($priority);
 
@@ -515,7 +532,7 @@ class GenerateSitemap extends Command
             if (LeadLineInfo::hasOfficialInfo($area->slug)) {
                 $sitemap->add(
                     Url::create("{$baseUrl}/areas-served/{$area->slug}/lead-pipe-replacement")
-                        ->setLastModificationDate($thisAreaLastmod)
+                        ->setLastModificationDate($familyLastmod('lead-pipe-replacement'))
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
                         ->setPriority(0.6)
                 );
@@ -531,8 +548,17 @@ class GenerateSitemap extends Command
 
                     $uri = "areas-served/{$area->slug}/services/{$servicePage}";
 
+                    // The page's own copy (AreaServiceContent) is what changed
+                    // most recently once it has been written: say so, or Google
+                    // has no reason to come back for the new text.
+                    $serviceCopyDate = $area->serviceContent($servicePage)?->updated_at;
+                    $serviceLastmod = $familyLastmod('service');
+                    if ($serviceCopyDate && $serviceCopyDate->gt($serviceLastmod)) {
+                        $serviceLastmod = $serviceCopyDate;
+                    }
+
                     $serviceUrl = Url::create("{$baseUrl}/{$uri}")
-                        ->setLastModificationDate($thisAreaLastmod)
+                        ->setLastModificationDate($serviceLastmod)
                         ->setChangeFrequency(Url::CHANGE_FREQUENCY_WEEKLY)
                         ->setPriority(0.8); // High priority for local service keywords
 

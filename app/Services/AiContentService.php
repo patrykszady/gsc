@@ -766,6 +766,192 @@ PROMPT;
         ];
     }
 
+    /**
+     * Sort a town's existing long copy (local_intro) into the lead a reader
+     * sees and two accordion folds — how the town was built, and what that
+     * means for remodeling — without adding or dropping a fact. The text is
+     * rearranged, not rewritten: the town pages are indexed on this copy.
+     *
+     * @return array{lead: string, history: string, potential: string}|null
+     */
+    public function splitAreaIntro(AreaServed $area): ?array
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $text = trim((string) $area->local_intro);
+        if (\App\Support\TownCopy::words($text) < 80) {
+            $this->lastError = 'Copy too short to split';
+
+            return null;
+        }
+
+        $city = trim((string) Str::before((string) $area->city, ','));
+
+        $prompt = <<<PROMPT
+You are an editor. Below is the copy a remodeling contractor's website carries
+about the homes in {$city}. It is one long block. Reorganise it into three parts
+for a page that shows the first part and folds the other two behind headings.
+
+Return ONLY a valid JSON object with EXACTLY these three keys:
+- "lead": 1–2 sentences (30–60 words) that stand on their own above the fold:
+  what kind of homes {$city} has and what that means for a remodel. Take them
+  from the text.
+- "history": how {$city} was built — the eras, when and where the subdivisions
+  and neighborhoods went up, the landmarks, the housing styles of each period.
+  Every sentence of the original that describes the town's development goes
+  here, in the original order.
+- "potential": what that means for remodeling — layouts and what opens up,
+  mechanical and plumbing realities, basements, additions, permits and village
+  rules, the projects homeowners there take on. Every sentence of the original
+  about remodeling goes here, in the original order.
+
+Hard rules:
+- Use ONLY the sentences and facts in the text. Do not add a fact, a name, a
+  date or an opinion that is not there. Do not drop a fact. Do not embellish.
+- You may lightly rephrase a sentence so it reads well in its new place; keep
+  every specific detail (names, years, streets, programs).
+- A sentence goes in exactly one part; nothing appears twice.
+- Plain text. Paragraph breaks as a blank line. No markdown, no headings, no
+  bullet points, no emoji.
+- Return ONLY the JSON object. No code fences, no preamble.
+
+THE TEXT:
+{$text}
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 2500, 0.3, json: true);
+        if ($raw === null) {
+            return null;
+        }
+
+        $raw = preg_replace('/^```json\s*/i', '', $raw);
+        $raw = preg_replace('/^```\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/i', '', $raw);
+        $decoded = json_decode(trim((string) $raw), true);
+        if (! is_array($decoded)) {
+            $this->lastError = 'Failed to parse intro-split JSON: '.mb_substr((string) $raw, 0, 300);
+
+            return null;
+        }
+
+        $out = [];
+        foreach (['lead', 'history', 'potential'] as $key) {
+            if (! is_string($decoded[$key] ?? null) || trim($decoded[$key]) === '') {
+                $this->lastError = "Intro-split JSON missing \"{$key}\"";
+
+                return null;
+            }
+            $out[$key] = trim($decoded[$key]);
+        }
+
+        // The split must be the same copy in a new order: reject a reply that
+        // lost or invented a large share of it, or a "history" that is a stub.
+        $before = \App\Support\TownCopy::words($text);
+        $after = \App\Support\TownCopy::words($out['history']) + \App\Support\TownCopy::words($out['potential']) + \App\Support\TownCopy::words($out['lead']);
+        if ($after < $before * 0.8 || $after > $before * 1.25) {
+            $this->lastError = "Intro split changed the length too much ({$before} → {$after} words)";
+
+            return null;
+        }
+        if (\App\Support\TownCopy::words($out['history']) < 30 || \App\Support\TownCopy::words($out['potential']) < 30) {
+            $this->lastError = 'Intro split left one fold nearly empty';
+
+            return null;
+        }
+
+        return $out;
+    }
+
+    /**
+     * "What that means for kitchen remodeling in Palatine": the town's housing
+     * history read through one trade, 4–6 sentences per (town, service). The
+     * town page folds the town-wide version (intro_folds.potential); a service
+     * page folds this one, so the same fold is unique on every page of the town.
+     */
+    public function generateAreaServicePotential(AreaServed $area, string $service): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $copy = $area->serviceContent($service);
+        $city = trim((string) Str::before((string) $area->city, ','));
+        $label = \App\Models\AreaServiceContent::label($service);
+        $brand = (string) config('brand.display_name', config('brand.name'));
+        $folds = $area->introFolds();
+        $history = $folds['folds'] !== [] ? implode("\n\n", array_column($folds['folds'], 'body')) : trim((string) $area->local_intro);
+        if (\App\Support\TownCopy::words($history) < 40) {
+            $this->lastError = 'No town history to read from';
+
+            return null;
+        }
+
+        $tradeLens = match ($service) {
+            'kitchen-remodeling' => 'kitchens: original footprints, walls between kitchen and dining or family rooms, gas and electrical service, venting, water supply lines and what the era of the house did to all of them',
+            'bathroom-remodeling' => 'bathrooms: how many the era gave a house and where, cast-iron or galvanized drains and supply, venting, floor structure under tile, primary suites carved from small bedrooms',
+            'home-remodeling' => 'whole-home work: what the era\'s floor plan, structure, wiring and plumbing mean for opening a house up, and sequencing a family living through it',
+            'basement-remodeling' => 'basements: ceiling height, moisture and drain tile in that era of construction, egress, ejector pumps, mechanicals in the way, and what the local ground and flood history mean',
+            'home-additions' => 'additions: lot sizes and setbacks in each era of subdivision, roof lines and foundations to tie into, and how the village reviews exterior changes',
+            default => 'this trade',
+        };
+
+        $avoid = collect([
+            'The service page already says (do NOT restate): '.trim((string) ($copy->intro ?? '')),
+            'It also already lists what homeowners ask for: '.trim((string) ($copy->popular_requests ?? '')),
+            'And its permit paragraph: '.trim((string) ($copy->permit_notes ?? '')),
+        ])->filter(fn ($line) => ! Str::endsWith($line, ': '))->implode("\n");
+
+        $prompt = <<<PROMPT
+You are an editor for {$brand}, a family remodeling contractor in the Chicago suburbs.
+
+Below is how the homes in {$city} came to be — the eras, subdivisions and
+housing styles — as written on the town's page. Read it through the lens of
+{$label} and write "What that means for {$label} in {$city}": what those eras
+and layouts mean for {$tradeLens}.
+
+Write 4–6 sentences (500–800 characters), plain text, one paragraph. Every
+sentence must connect a fact from the history below to this trade. Do not add
+a fact, name, year or program that is not in the history. No prices. No
+"welcome", no "nestled", no "premier". Do not mention competitors.
+
+{$avoid}
+
+THE TOWN'S HISTORY:
+{$history}
+
+Return ONLY a valid JSON object with EXACTLY one key: {"what_it_means": "..."}.
+No code fences, no preamble.
+PROMPT;
+
+        $raw = $this->callGeminiMultiImage($prompt, [], 1200, 0.6, json: true);
+        if ($raw === null) {
+            return null;
+        }
+        $raw = preg_replace('/^```json\s*/i', '', $raw);
+        $raw = preg_replace('/^```\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/i', '', $raw);
+        $decoded = json_decode(trim((string) $raw), true);
+        $text = is_array($decoded) ? trim((string) ($decoded['what_it_means'] ?? '')) : '';
+        if ($text === '') {
+            $this->lastError = 'Failed to parse what_it_means JSON: '.mb_substr((string) $raw, 0, 300);
+
+            return null;
+        }
+        if (\App\Support\TownCopy::words($text) < 40) {
+            $this->lastError = 'what_it_means too short';
+
+            return null;
+        }
+
+        return $text;
+    }
+
     public function generateAreaContent(AreaServed $area): ?array
     {
         if (empty($this->apiKey)) {

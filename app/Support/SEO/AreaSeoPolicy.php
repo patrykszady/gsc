@@ -97,6 +97,17 @@ class AreaSeoPolicy
             return $area->hasUniqueContent();
         }
 
+        // A town's contact page carries the town's own booking facts since
+        // 2026-09-17 — the drive from the office, the village's permit rules,
+        // the neighbours on the route (partials/area-contact-details). Before
+        // that it repeated the town page, and Google crawled 34 without
+        // indexing one. seo.area_index_contact_pages=false closes them again.
+        if ($page === 'contact') {
+            return (bool) config('seo.area_index_contact_pages', true)
+                && (bool) config('seo.area_index_subpages', true)
+                && $area->hasUniqueContent();
+        }
+
         if (in_array($page, self::THIN_PAGES, true)) {
             // A town without its own copy is a bare template, and so is every
             // page under it — the flag opens the sub-pages of real towns only.
@@ -106,6 +117,14 @@ class AreaSeoPolicy
         if (in_array($page, self::PROOF_GATED_PAGES, true)) {
             if (self::isPriority($area)) {
                 return true;
+            }
+
+            // A town's projects and testimonials lists are only its own when the
+            // town has a project or a review of its own; otherwise they list the
+            // neighbours' and read as a copy of the next town's (32 of them were
+            // "Crawled - currently not indexed" on 2026-09-17).
+            if ($page !== 'service' && ! (bool) config('seo.area_index_list_spokes_without_proof', false)) {
+                return false;
             }
 
             $opened = $page === 'service'

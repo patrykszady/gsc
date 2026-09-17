@@ -33,6 +33,13 @@
         <script type="application/ld+json">{!! json_encode($serviceSchema, JSON_UNESCAPED_SLASHES) !!}</script>
     @endif
 
+    {{-- Every other page type carries a trail (and its BreadcrumbList); these did not. --}}
+    <x-breadcrumbs :items="[
+        ['label' => 'Services', 'url' => route('services.index')],
+        ['label' => $serviceLabel, 'url' => url('/services/'.$p->service)],
+        ['label' => $p->h1 ?: $p->title],
+    ]" padding="py-4" />
+
     {{-- Hero: the same slider the homepage leads with, filtered to this
          page's service. Filtered mode maps images onto caller-provided slide
          stubs (see service-page.blade.php) — without them it renders nothing,

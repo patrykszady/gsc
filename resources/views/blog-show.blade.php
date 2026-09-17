@@ -13,7 +13,6 @@
     @endif
     @if ($post->isPublished())
         <x-blog-posting-schema :post="$post" />
-        <x-breadcrumb-schema :items="[['name' => 'Blog', 'url' => route('blog.index')], ['name' => $post->title, 'url' => $post->url()]]" />
     @endif
 
     @push('head')

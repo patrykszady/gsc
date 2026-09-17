@@ -61,6 +61,19 @@ $perTenant = fn (string $command) => 'tenants:run '.escapeshellarg($command).' -
 // Schedule sitemap regeneration daily
 Schedule::command($perTenant('sitemap:generate'))->daily();
 
+// Town copy edited in admin loses its history / remodeling-potential split
+// (the fingerprint no longer matches); sort it again overnight. Skips every
+// town whose split is current, so most days this makes no model call.
+Schedule::command($perTenant('seo:split-area-intros --yes --limit=20'))->dailyAt('04:20')
+    ->withoutOverlapping()
+    ->onFailure(fn () => logger()->error('Scheduled seo:split-area-intros failed'));
+
+// A town-service page that got its copy without its "what that means for
+// {service} in {town}" fold (a new town, a failed call) gets it the next night.
+Schedule::command($perTenant('seo:generate-area-service-potential --yes --limit=40'))->dailyAt('04:40')
+    ->withoutOverlapping()
+    ->onFailure(fn () => logger()->error('Scheduled seo:generate-area-service-potential failed'));
+
 // Then tell Google to re-fetch it. The ping endpoint died in June 2023 and
 // IndexNow never reaches Google, so without this the regenerated sitemap sat
 // unread for days (the Sitemaps report showed 3-6 day old reads). Runs 30

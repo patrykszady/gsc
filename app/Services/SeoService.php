@@ -219,9 +219,17 @@ class SeoService
             ? "Free {$city} Remodeling Estimate"
             : 'Get a Free Chicagoland Remodeling Estimate';
         
-        $description = $city
-            ? "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call (224) 735-4200 or schedule online. Same-week consultations available!"
-            : 'Get a free kitchen or bathroom remodeling estimate in Chicago suburbs. Call (224) 735-4200 or schedule online. Same-week consultations available!';
+        // Per town, with the town's own drive time from the office, so the 66
+        // contact pages do not share one description with the city swapped in.
+        $trip = $area ? \App\Support\OfficeTrip::to($area) : null;
+        $phone = (string) config('brand.phone', '(224) 735-4200');
+        $officeCity = (string) config('brand.address.city', 'Prospect Heights');
+        // Under 160 characters with the longest town name (normalizeMetaText cuts at a sentence).
+        $description = match (true) {
+            $city && $trip => "Free in-home remodeling consultation in {$city}, IL, about {$trip['minutes_low']}–{$trip['minutes_high']} minutes from our {$officeCity} office. Call {$phone} or book online.",
+            (bool) $city => "Request a free kitchen or bathroom remodeling estimate in {$city}, IL. Call {$phone} or schedule online. Same-week consultations available!",
+            default => "Get a free kitchen or bathroom remodeling estimate in Chicago suburbs. Call {$phone} or schedule online. Same-week consultations available!",
+        };
 
         // Use the team photo for contact page — builds trust
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));

@@ -71,7 +71,61 @@ class AreaServed extends Model
         'longitude' => 'float',
         'faq' => 'array',
         'sections' => 'array',
+        'intro_folds' => 'array',
     ];
+
+    /**
+     * The town's long copy (local_intro) as one short visible lead and the
+     * folds an accordion holds. Palatine's ran 478 words in one block
+     * (2026-09-17). When seo:split-area-intros has sorted the text into
+     * "how the town was built" and "what that means for remodeling" — and
+     * the copy has not been edited since (source_hash) — those are the folds;
+     * otherwise the first sentences lead and the rest sits behind one fold.
+     *
+     * @return array{lead: string, folds: list<array{key: string, heading: string, body: string}>}
+     */
+    public function introFolds(): array
+    {
+        $text = trim((string) $this->local_intro);
+        if ($text === '') {
+            return ['lead' => '', 'folds' => []];
+        }
+
+        $split = $this->intro_folds;
+        if (is_array($split)
+            && ($split['source_hash'] ?? null) === self::introHash($text)
+            && filled($split['lead'] ?? null)
+            && filled($split['history'] ?? null)
+            && filled($split['potential'] ?? null)) {
+            return [
+                'lead' => trim((string) $split['lead']),
+                'folds' => [
+                    ['key' => 'history', 'heading' => "How {$this->city} was built", 'body' => trim((string) $split['history'])],
+                    ['key' => 'potential', 'heading' => "What that means for remodeling in {$this->city}", 'body' => trim((string) $split['potential'])],
+                ],
+            ];
+        }
+
+        ['lead' => $lead, 'rest' => $rest] = \App\Support\TownCopy::leadAndRest($text);
+
+        return [
+            'lead' => $lead,
+            'folds' => $rest === '' ? [] : [['key' => 'more', 'heading' => "More about the homes in {$this->city}", 'body' => $rest]],
+        ];
+    }
+
+    /** Fingerprint of the copy a stored split was made from; a later edit in admin retires the split. */
+    public static function introHash(?string $text): string
+    {
+        return sha1(trim(preg_replace('/\s+/', ' ', (string) $text) ?? ''));
+    }
+
+    /** Whether the stored history/potential split still matches the current copy. */
+    public function hasCurrentIntroSplit(): bool
+    {
+        return ($this->intro_folds['source_hash'] ?? null) === self::introHash($this->local_intro)
+            && filled($this->intro_folds['history'] ?? null);
+    }
 
     /**
      * Show/hide per section, every key present. An absent key defaults to

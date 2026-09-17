@@ -24,6 +24,12 @@
 @php
     $heading ??= "Remodeling in {$area->city}, IL";
     $serviceLine ??= 'remodeling projects';
+    // On a service page with its own copy (AreaServiceContent) the right
+    // column is that copy — the trade in this town — and the town's own
+    // history folds under it; null on the town page and on a service page
+    // whose copy has not been written yet.
+    $serviceCopy ??= null;
+    $serviceLabel ??= null;
 
     // Project::project_type slug. Set on a service page so the slider shows
     // THAT trade's work — a bathroom page proving itself with kitchen photos
@@ -55,12 +61,17 @@
     $hasLocalProjects = $localSliderImages->isNotEmpty()
         && $localSliderImages->count() === $citySliderImages->count();
 @endphp
-<section class="overflow-hidden bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} {{ $serviceLine }}">
+{{-- No overflow-hidden here: it would make this section the scroll
+     container for the sticky photo column and the column would never stick.
+     The slider clips its own overflow. --}}
+<section class="bg-white py-10 sm:py-14 dark:bg-zinc-900" aria-label="About {{ $area->city }} {{ $serviceLine }}">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-start">
 
             {{-- LEFT: project image slider --}}
-            <div class="lg:mt-2">
+            {{-- Sticky on desktop: the photos stay in view while the copy and
+                 its folds scroll on the right (Patryk, 2026-09-17). --}}
+            <div class="lg:sticky lg:top-24 lg:mt-2 lg:self-start">
                 @if($citySliderImages->count() > 0)
                     <div
                         x-data="{
@@ -186,44 +197,98 @@
                     {{ $heading }}
                 </h2>
 
-                @if($area->showsSection('intro'))
-                    <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
-                        {{ $area->intro }}
-                    </p>
+                @php
+                    $introFolds = $area->showsSection('local_intro') ? $area->introFolds() : ['lead' => '', 'folds' => []];
+                @endphp
+
+                @if($serviceCopy)
+                    {{-- The trade in this town: written per (town, service). --}}
+                    <div class="mt-4 space-y-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
+                        @foreach (preg_split('/\n{2,}/', trim($serviceCopy->intro)) ?: [] as $paragraph)
+                            <p>{{ trim($paragraph) }}</p>
+                        @endforeach
+                    </div>
+
+                    @if (filled($serviceCopy->popular_requests))
+                        <div class="mt-6">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">What {{ $area->city }} homeowners ask for</h3>
+                            <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $serviceCopy->popular_requests }}</p>
+                        </div>
+                    @endif
+
+                    {{-- The town's own story under the trade's copy: the lead in
+                         view, then the folds. "What that means for …" is this
+                         trade's reading of the town (town_potential) once
+                         seo:generate-area-service-potential has written it; the
+                         town-wide fold stands in until then. The permits fold is
+                         this trade's paragraph, not the town-wide note. --}}
+                    @php
+                        $copyFolds = [];
+                        foreach ($introFolds['folds'] as $fold) {
+                            if ($fold['key'] === 'potential' && filled($serviceCopy->town_potential)) {
+                                $fold = ['key' => 'potential', 'heading' => "What that means for {$serviceLabel} in {$area->city}", 'body' => (string) $serviceCopy->town_potential];
+                            }
+                            $copyFolds[] = $fold;
+                        }
+                        if (filled($serviceCopy->permit_notes)) {
+                            $copyFolds[] = ['key' => 'permits', 'heading' => "Permits for {$serviceLabel} in {$area->city}", 'body' => (string) $serviceCopy->permit_notes];
+                        }
+                    @endphp
+                    @if($introFolds['lead'] !== '' || $copyFolds !== [])
+                        <div class="mt-6">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">About {{ $area->city }}</h3>
+                            @if($introFolds['lead'] !== '')
+                                <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $introFolds['lead'] }}</p>
+                            @endif
+                            @include('partials.town-copy-folds', ['folds' => $copyFolds])
+                        </div>
+                    @endif
+                @else
+                    @if($area->showsSection('intro'))
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
+                            {{ $area->intro }}
+                        </p>
+                    @endif
+
+                    {{-- The long copy: a short lead in view, the rest behind the
+                         accordion (partials/town-copy-folds) — "how the town was
+                         built" and "what that means for remodeling" once
+                         seo:split-area-intros has sorted it, one "more" fold until
+                         then, and the permit notes as a fold of their own.
+                         Palatine's ran 478 words in a single block (2026-09-17). --}}
+                    @php
+                        $copyFolds = $introFolds['folds'];
+                        if ($area->showsSection('permit_notes')) {
+                            $copyFolds[] = ['key' => 'permits', 'heading' => "{$area->city} permits & building codes for {$serviceLine}", 'body' => (string) $area->permit_notes];
+                        }
+                    @endphp
+                    @if($introFolds['lead'] !== '')
+                        <p class="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
+                            {{ $introFolds['lead'] }}
+                        </p>
+                    @endif
+                    @include('partials.town-copy-folds', ['folds' => $copyFolds])
+
+                    @if($area->showsSection('popular_projects'))
+                        <div class="mt-6">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                What homeowners in {{ $area->city }} ask for
+                            </h3>
+                            <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $area->popular_projects }}</p>
+                        </div>
+                    @endif
+
+                    @if($area->showsSection('how_we_work'))
+                        <div class="mt-6">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                How we work in {{ $area->city }}
+                            </h3>
+                            <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $area->how_we_work }}</p>
+                        </div>
+                    @endif
                 @endif
 
-                @if($area->showsSection('local_intro'))
-                    <div class="mt-4 prose prose-zinc dark:prose-invert max-w-none">
-                        {!! nl2br(e($area->local_intro)) !!}
-                    </div>
-                @endif
-
-                @if($area->showsSection('popular_projects'))
-                    <div class="mt-6">
-                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            What homeowners in {{ $area->city }} ask for
-                        </h3>
-                        <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $area->popular_projects }}</p>
-                    </div>
-                @endif
-
-                @if($area->showsSection('how_we_work'))
-                    <div class="mt-6">
-                        <h3 class="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                            How we work in {{ $area->city }}
-                        </h3>
-                        <p class="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $area->how_we_work }}</p>
-                    </div>
-                @endif
-
-                @if($area->showsSection('permit_notes'))
-                    <div class="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
-                        <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">
-                            {{ $area->city }} permits &amp; building codes for {{ $serviceLine }}
-                        </h3>
-                        <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">{{ $area->permit_notes }}</p>
-                    </div>
-                @endif
+                {{-- Permit notes live in the accordion above with the rest of the long copy. --}}
             </div>
         </div>
     </div>

@@ -49,13 +49,16 @@
                      and fires `beforematch`, which opens the card on a hit — the
                      same behaviour Flux 2.x gives its own accordion. Chrome/Edge
                      honour until-found; other browsers treat it as plain hidden. --}}
+                {{-- The border and padding sit on the <dl>, not on the hidden
+                     element: content-visibility: hidden (what until-found is)
+                     hides the contents but keeps the element's own box, which
+                     drew a blank band under every collapsed FAQ heading. --}}
                 <div
                     x-bind:hidden="open ? false : 'until-found'"
                     x-on:beforematch="open = true"
                     hidden="until-found"
-                    class="border-t border-zinc-200/80 px-0 py-5 dark:border-white/10"
                 >
-                    <dl class="space-y-4 px-5 sm:px-6">
+                    <dl class="space-y-4 border-t border-zinc-200/80 px-5 py-5 sm:px-6 dark:border-white/10">
             @else
             <h2 class="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl dark:text-white">
                 {{ $heading }}

@@ -222,6 +222,9 @@
                 </section>
             @endif
             @include('livewire.partials.town-review-quotes')
+
+            {{-- In-depth landing pages written for this town. --}}
+            @include('partials.landing-page-links', ['pages' => \App\Models\LandingPage::published()->where('city', $area->city)->orderBy('title')->get(), 'heading' => 'Guides for '.$area->city])
             {{-- City-scoped Product schema for the services linked below — makes this
                  primary local landing page eligible for review-star / offer rich
                  results on "{service} {city}" searches. @id points at each canonical
@@ -431,16 +434,22 @@
                 <livewire:contact-section :area="$area" />
             </div>
 
-            {{-- Per-city unique content — breaks the 25-cluster /contact near-duplicate
-                 group surfaced by seo:area-pages-audit (May 2026). --}}
-            @include('partials.area-unique-content', ['area' => $area, 'context' => 'contact'])
+            {{-- What a homeowner here needs to book us: the drive from the
+                 office, hours, what the village's building department asks
+                 for, the neighbours on the same route, our record nearby. Until
+                 2026-09-17 this page repeated the town page (its intro slider,
+                 map, review carousel and services grid) and measured 80%
+                 identical to it; Google crawled 34 of them and indexed none. --}}
+            @include('partials.area-contact-details', ['area' => $area])
 
-            <livewire:map-section :area="$area" />
-
-            <livewire:testimonials-section :area="$area" />
-
-            {{-- Services Section --}}
-            @include('partials.services-grid', ['area' => $area])
+            {{-- Three real projects, this town's first, so the page shows work
+                 without restating the town page's review carousel. --}}
+            <livewire:projects-grid
+                :area="$area"
+                :limit="3"
+                :hide-filters="true"
+                :show-pagination="false"
+                :hide-when-empty="true" />
 
             {{-- Closing CTA, scoped to this town: About Us goes to the area's
                  own about page, not the company-wide one. --}}

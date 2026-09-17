@@ -45,21 +45,27 @@ class AreaServiceContentTest extends TestCase
         ]);
     }
 
-    public function test_a_service_page_carries_its_own_copy_and_only_a_teaser_of_the_town(): void
+    public function test_a_service_page_carries_its_own_copy_with_the_towns_story_folded_under_it(): void
     {
         $area = $this->town();
         $this->kitchenCopy($area);
 
         $page = $this->get('/areas-served/western-springs/services/kitchen-remodeling')->assertOk();
 
-        $page->assertSee('Kitchens in the Old Town foursquares are boxed off')
-            ->assertSee('Islands with seating and a pantry')
-            ->assertSee('Permits for kitchen remodeling in Western Springs')
+        $page->assertSeeInOrder([
+            'Kitchen remodeling in Western Springs, IL',
+            'Kitchens in the Old Town foursquares are boxed off',
+            'What Western Springs homeowners ask for',
+            'Islands with seating and a pantry',
+            // The town's own copy follows: its lead in view, the rest folded (2026-09-17, no link).
+            'About Western Springs',
+            'Western Springs grew in distinct rings around its Metra stop.',
+            'Permits for kitchen remodeling in Western Springs',
+        ])
+            ->assertSee('Timber Trails brought newer construction on larger lots.')
             ->assertSee('Can an Old Town foursquare kitchen be opened to the dining room?')
-            // The town's own description is a two-sentence teaser and a link, not the whole block.
-            ->assertSee('Western Springs grew in distinct rings around its Metra stop.')
-            ->assertDontSee('Timber Trails brought newer construction on larger lots.')
-            ->assertSee('More about our work in Western Springs')
+            ->assertSee('lg:sticky', false)
+            ->assertDontSee('More about our work in Western Springs')
             // The templated trio of questions is gone from this page.
             ->assertDontSee('How do you scope Kitchen Remodeling projects in Western Springs?');
 
