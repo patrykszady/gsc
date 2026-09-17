@@ -8,6 +8,7 @@ use App\Models\ImageSocialPost;
 use App\Models\ProjectImage;
 use App\Models\Site;
 use App\Support\Seo\CrawlFiles;
+use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -55,6 +56,8 @@ class SeoHealth extends Command
         $total = $measured->isEmpty() ? null : (int) round($measured->avg('score'));
 
         if ($this->option('json')) {
+            $this->appendHealthLedger($total);
+
             $this->line(json_encode([
                 'score' => $total,
                 'pillars' => $pillars,
@@ -70,6 +73,7 @@ class SeoHealth extends Command
 
         if ($this->option('markdown')) {
             $this->saveMarkdown($total, $pillars);
+            $this->appendHealthLedger($total);
         }
 
         $this->renderReport($total, $pillars);
@@ -450,6 +454,57 @@ class SeoHealth extends Command
         }
 
         Storage::disk('local')->put('reports/health.md', $md);
+    }
+
+    /**
+     * Append today's overall score to the health ledger (one entry per
+     * calendar day, last write wins), pruned to the newest 120 entries.
+     *
+     * Tenant-scoped via SeoStorage (unlike health.md, which is written only
+     * by the untenanted daily cron and genuinely has no per-tenant prefix):
+     * this ledger is also appended from live, per-request `seo:health --json`
+     * calls made inside a tenant-bound admin request (SeoReportController's
+     * and Admin\SeoReports' healthSnapshot()), so without scoping every
+     * tenant's dashboard would read and overwrite the same shared file.
+     * The admin's healthSnapshot() reads this file back (via the same
+     * SeoStorage::path()) to compute a week-over-week trend chevron.
+     *
+     * Best effort: the ledger is a nice-to-have trend line, not the report
+     * itself, so any failure here (corrupt JSON, disk error) is swallowed
+     * rather than failing the seo:health run.
+     */
+    protected function appendHealthLedger(?int $total): void
+    {
+        if ($total === null) {
+            return;
+        }
+
+        try {
+            $disk = Storage::disk('local');
+            $path = SeoStorage::path('reports/health-history.json');
+
+            $ledger = [];
+            if ($disk->exists($path)) {
+                $decoded = json_decode((string) $disk->get($path), true);
+                if (is_array($decoded)) {
+                    $ledger = $decoded;
+                }
+            }
+
+            $ledger[now()->toDateString()] = $total;
+
+            // Chronological order so pruning below drops the oldest days,
+            // regardless of the order entries were originally written in.
+            ksort($ledger);
+
+            if (count($ledger) > 120) {
+                $ledger = array_slice($ledger, -120, null, true);
+            }
+
+            $disk->put($path, json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        } catch (\Throwable) {
+            // Best effort — never fail seo:health over the ledger.
+        }
     }
 
     protected function grade(int $s): string

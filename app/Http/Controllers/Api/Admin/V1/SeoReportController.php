@@ -515,12 +515,73 @@ class SeoReportController extends Controller
 
                 return [
                     'score' => isset($data['score']) ? (int) $data['score'] : null,
+                    'prior_score' => $this->priorHealthScore(),
                     'pillars' => $pillars,
                 ];
             } catch (\Throwable) {
-                return ['score' => null, 'pillars' => []];
+                return ['score' => null, 'prior_score' => null, 'pillars' => []];
             }
         });
+    }
+
+    /**
+     * The health ledger entry closest to 7 days before today, so the admin
+     * can show a week-over-week trend chevron next to the health score.
+     *
+     * Tenant-scoped via SeoStorage, same convention as seo:health's
+     * health-history.json — see SeoHealth::appendHealthLedger().
+     *
+     * Only entries aged 5–14 days count as "the prior week" — anything
+     * closer reads as noise (yesterday's run), anything further is a stale
+     * fallback that would misrepresent a week-over-week comparison.
+     */
+    protected function priorHealthScore(): ?int
+    {
+        $disk = Storage::disk('local');
+        $path = SeoStorage::path('reports/health-history.json');
+
+        if (! $disk->exists($path)) {
+            return null;
+        }
+
+        try {
+            $ledger = json_decode((string) $disk->get($path), true, flags: JSON_THROW_ON_ERROR);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! is_array($ledger)) {
+            return null;
+        }
+
+        $today = Carbon::today();
+        $bestScore = null;
+        $bestDistance = null;
+
+        foreach ($ledger as $date => $score) {
+            if (! is_string($date) || ! is_numeric($score)) {
+                continue;
+            }
+
+            try {
+                $age = (int) Carbon::createFromFormat('Y-m-d', $date)->startOfDay()->diffInDays($today);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($age < 5 || $age > 14) {
+                continue;
+            }
+
+            $distance = abs($age - 7);
+
+            if ($bestDistance === null || $distance < $bestDistance) {
+                $bestDistance = $distance;
+                $bestScore = (int) $score;
+            }
+        }
+
+        return $bestScore;
     }
 
     /** Allowed comparison windows for the Clarity and Ranking cards. */
