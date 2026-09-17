@@ -201,12 +201,19 @@ class Site extends Model
      */
     public static function listAll(): Collection
     {
-        static $sites = null;
-
-        return $sites ??= static::query()
+        return static::$allSites ??= static::query()
             ->orderByDesc('is_active')
             ->orderBy('slug')
             ->get();
+    }
+
+    /** @var Collection<int, self>|null */
+    protected static ?Collection $allSites = null;
+
+    /** Forget the per-process full-site-list cache — same hazard as $activeSites (see forgetActive()). */
+    public static function forgetListAll(): void
+    {
+        static::$allSites = null;
     }
 
     /** Per-site setting with dot access: $site->setting('seo.gsc_property'). */

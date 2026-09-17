@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Models\Site;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
@@ -20,4 +21,29 @@ abstract class TestCase extends BaseTestCase
      * Lazily, so pure unit tests keep paying nothing.
      */
     use LazilyRefreshDatabase;
+
+    /**
+     * Site::active() memoizes its query in a `protected static` property that
+     * lives for the whole PHPUnit process — RefreshDatabase/LazilyRefreshDatabase
+     * only roll back the SQL transaction, they never touch PHP statics. A test
+     * that flips is_active, calls Site::forgetActive(), and then makes a real
+     * request/artisan call that resolves a site (AdminProxyController,
+     * PerSiteSearchConsole's robots/sitemap routes, ...) repopulates that
+     * static from inside its own still-open transaction. Nothing re-nulls it
+     * afterwards, so the cache is left holding a row that only ever existed
+     * for the rolled-back transaction — poisoning every later test's
+     * Site::active()/forHost() for the rest of the process (e.g.
+     * DevHostPreviewTest and AiTrafficTrackingTest failing only when run
+     * after AdminProxyDownPageTest, never alone).
+     *
+     * Resetting it here, once, after every test closes that class of leak at
+     * the source instead of patching each polluting test individually.
+     */
+    protected function tearDown(): void
+    {
+        Site::forgetActive();
+        Site::forgetListAll();
+
+        parent::tearDown();
+    }
 }

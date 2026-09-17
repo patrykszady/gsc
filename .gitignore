@@ -51,3 +51,22 @@ C:\\Users\\*
 /public/*.sql
 /public/*.env
 public/image-sitemap.xml
+
+# geo:llms-txt output, same category as the sitemap files above: regenerated
+# by RefreshPublicFeedsJob/AnnounceBlogPostJob (and the nightly scheduler) via
+# a raw file_put_contents in the vendor package, so any test that lets one of
+# those jobs run for real (forgets Queue::fake()) permanently rewrites these
+# tracked files with that test's own transient content. Build artifact, not
+# source — untracked below.
+/public/llms.txt
+/public/llms-full.txt
+
+# Storage::fake()'s disk root — Laravel wipes and recreates this SAME path on
+# every call, in every test, with no per-test isolation and no rollback (only
+# the DB gets that). It was never gitignored here (stock Laravel ships this
+# ignored), so committed fixtures under it kept getting silently overwritten
+# or deleted by whichever test using Storage::fake('local')/('public') last
+# touched a given path, poisoning `git status` after every full test run.
+# Test-only scratch space, not source — untracked below.
+/storage/framework/testing/*
+!/storage/framework/testing/.gitkeep
