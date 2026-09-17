@@ -815,6 +815,8 @@ Hard rules:
 - You may lightly rephrase a sentence so it reads well in its new place; keep
   every specific detail (names, years, streets, programs).
 - A sentence goes in exactly one part; nothing appears twice.
+- Keep the total length: the three parts together should have about as many
+  words as the text (a short text stays short). Do not expand, pad or explain.
 - Plain text. Paragraph breaks as a blank line. No markdown, no headings, no
   bullet points, no emoji.
 - Return ONLY the JSON object. No code fences, no preamble.
@@ -850,9 +852,13 @@ PROMPT;
 
         // The split must be the same copy in a new order: reject a reply that
         // lost or invented a large share of it, or a "history" that is a stub.
+        // Three parts need a few joining words a single block did not, and on a
+        // short intro those weigh more: Barrington Hills went 139 → 181 words
+        // (+30%) on the first production run and was refused at a flat 25%.
+        // So the ceiling is a quarter more OR 45 words more, whichever is larger.
         $before = \App\Support\TownCopy::words($text);
         $after = \App\Support\TownCopy::words($out['history']) + \App\Support\TownCopy::words($out['potential']) + \App\Support\TownCopy::words($out['lead']);
-        if ($after < $before * 0.8 || $after > $before * 1.25) {
+        if ($after < $before * 0.8 || $after > max($before * 1.25, $before + 45)) {
             $this->lastError = "Intro split changed the length too much ({$before} → {$after} words)";
 
             return null;
