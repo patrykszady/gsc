@@ -204,7 +204,7 @@ PROMPT;
     /**
      * Call Gemini API with multiple images.
      */
-    protected function callGeminiMultiImage(string $prompt, array $imagesData = [], int $maxOutputTokens = 500, float $temperature = 0.7): ?string
+    protected function callGeminiMultiImage(string $prompt, array $imagesData = [], int $maxOutputTokens = 500, float $temperature = 0.7, bool $json = false): ?string
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:generateContent?key={$this->apiKey}";
 
@@ -231,6 +231,12 @@ PROMPT;
             'maxOutputTokens' => $maxOutputTokens,
             'thinkingConfig' => ['thinkingBudget' => 0],
         ];
+
+        // JSON mode: the model may only answer with a JSON document, so a
+        // stray preamble or code fence can no longer break the parse.
+        if ($json) {
+            $generationConfig['responseMimeType'] = 'application/json';
+        }
 
         try {
             $response = Http::timeout(120)
@@ -719,7 +725,9 @@ Hard rules:
 - Return ONLY the JSON object. No code fences, no preamble.
 PROMPT;
 
-        $raw = $this->callGeminiMultiImage($prompt, [], 1100, 0.8);
+        // 2,000 tokens: at 1,100 two of the first fifteen answers on
+        // production were cut off mid-JSON (2026-09-17).
+        $raw = $this->callGeminiMultiImage($prompt, [], 2000, 0.8, json: true);
         if ($raw === null) {
             return null;
         }

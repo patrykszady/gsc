@@ -166,6 +166,35 @@ class BlogPost extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * The latest published posts for a strip: of one trade when given (by the
+     * project's type), and with a town named, that town's posts first. Falls
+     * back to the latest of any trade so a strip is never empty while the
+     * blog has posts at all.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, static>
+     */
+    public static function forStrip(?string $projectType = null, ?string $city = null, int $limit = 3, ?int $exclude = null): \Illuminate\Database\Eloquent\Collection
+    {
+        $base = fn () => static::published()->with('project.images')->when($exclude, fn ($q) => $q->whereKeyNot($exclude))->orderByDesc('published_at')->orderByDesc('dated_at');
+
+        $posts = $projectType
+            ? (clone $base())->whereHas('project', fn ($q) => $q->where('project_type', $projectType))->limit(12)->get()
+            : (clone $base())->limit($limit)->get();
+
+        if ($city) {
+            $needle = mb_strtolower(trim($city));
+            [$here, $elsewhere] = $posts->partition(fn (self $post) => mb_strtolower(trim((string) \Illuminate\Support\Str::before((string) $post->project?->location, ','))) === $needle);
+            $posts = $here->concat($elsewhere);
+        }
+
+        if ($posts->count() < $limit) {
+            $posts = $posts->concat((clone $base())->whereNotIn('id', $posts->pluck('id')->all() ?: [0])->limit($limit)->get());
+        }
+
+        return $posts->take($limit)->values();
+    }
+
     public function scopePublished(Builder $q): Builder
     {
         return $q->where('status', self::STATUS_PUBLISHED)->whereNotNull('published_at')->where('published_at', '<=', now());

@@ -1037,6 +1037,9 @@
             {{-- Town-attributed review quotes (real reviewer towns, never faked) --}}
             @include('livewire.partials.town-review-quotes', ['projectType' => $config['projectType']])
 
+            {{-- This trade's stories from the blog, this town's first. --}}
+            @include('partials.blog-strip', ['posts' => \App\Models\BlogPost::forStrip($config['projectType'], $area->city), 'heading' => $config['label'].' stories from the blog'])
+
             {{-- Cost-guide cross-link: pairs the money page with its matching
                  cost guide the way searchers actually navigate (service ↔ cost). --}}
             @php

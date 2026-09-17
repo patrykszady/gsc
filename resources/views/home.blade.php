@@ -210,6 +210,10 @@
         collapsed
     />
 
+    {{-- From the blog — server-rendered, so the three newest posts get a
+         link from the strongest page on the site on first load. --}}
+    @include('partials.blog-strip', ['posts' => \App\Models\BlogPost::forStrip(), 'heading' => 'From the blog', 'subheading' => 'Recent projects, told from the first walkthrough to the punch list.'])
+
     {{-- Explore (server-rendered internal links). The sections above are lazy
          Livewire components that don't appear in the initial HTML, so this gives
          crawlers a set of contextual links on first load. --}}

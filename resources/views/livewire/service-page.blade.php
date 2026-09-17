@@ -104,6 +104,10 @@
             :moreProjectsType="$data['projectType']" />
     @endif
 
+    {{-- This trade's stories from the blog: a post linked only from the
+         index was not being indexed (2026-09-17). --}}
+    @include('partials.blog-strip', ['posts' => \App\Models\BlogPost::forStrip($data['projectType'] ?? null), 'heading' => ($data['label'] ?? $data['title'] ?? 'Our work').' stories from the blog'])
+
     {{-- Process --}}
     <x-process-steps :steps="$data['process'] ?? []" heading="Our Process" />
 

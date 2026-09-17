@@ -517,13 +517,18 @@ class AreaServed extends Model
      */
     public function localProjectImages(int $limit = 6, ?string $projectType = null): Collection
     {
-        return $this->localProjects(12, $projectType)
+        // A project with no images maps to null, which turns the Eloquent
+        // collection into a plain one and made the town page 500 for any
+        // town with such a project (2026-09-17). Filter, then rebuild.
+        $images = $this->localProjects(12, $projectType)
             // setRelation, not a fresh query: the slide overlay links to the
             // project, and the parent is already loaded here.
             ->map(fn (Project $project) => ($project->images->firstWhere('is_cover', true) ?? $project->images->first())?->setRelation('project', $project))
             ->filter()
             ->take($limit)
             ->values();
+
+        return new Collection($images->all());
     }
 
     /**
