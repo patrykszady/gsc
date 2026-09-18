@@ -121,7 +121,7 @@ class SitesCheck extends Command
         if ($missingIcons === []) {
             $this->line('  icons        public/'.SiteIcons::dir($site).'/');
         } else {
-            $this->line('  <fg=red>icons missing under public/'.SiteIcons::dir($site).'/: '.implode(', ', $missingIcons).' — run icons:build '.$site->slug.' with her mark as --from</>');
+            $this->line('  <fg=red>icons missing under public/'.SiteIcons::dir($site).'/: '.implode(', ', $missingIcons).' — run icons:build '.$site->slug.' --from=/path/to/its-mark.svg</>');
             $failures++;
         }
 
