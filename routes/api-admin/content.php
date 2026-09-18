@@ -25,6 +25,7 @@ Route::delete('landing-pages/{landingPage}', [LandingPageController::class, 'des
 Route::get('social-media', [SocialMediaController::class, 'index']);
 Route::put('social-media/urls', [SocialMediaController::class, 'saveUrls']);
 Route::post('social-media/post', [SocialMediaController::class, 'post']);
+Route::put('social-media/automation/{platform}', [SocialMediaController::class, 'saveAutomation']);
 
 // Analytics — filtered/paginated event rows, plus a compact aggregate
 // (headline stats + top pages + trend series) so chart data never ships as

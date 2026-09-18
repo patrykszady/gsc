@@ -2,7 +2,6 @@
 
 use App\Jobs\SendLeadToHive;
 use App\Models\ContactSubmission;
-use App\Models\ImageSocialPost;
 use App\Models\Project;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
@@ -17,8 +16,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Random\Engine\Mt19937;
-use Random\Randomizer;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -712,148 +709,23 @@ Schedule::command('seo:bing-sync')
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
     ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
 
-/*
- * Meta cadence: each platform posts TWICE a week, and never on the same day as
- * the other.
- *
- * Was an every-other-day cron on both — roughly 3-4 posts a week each, and
- * because the two crons shared the same day-of-month parity they fired on the
- * SAME days, so the audience saw Facebook and Instagram light up together and
- * then nothing for 48h. A day-of-month step also drifts on 31-day months,
- * firing on the 31st and again on the 1st.
- *
- * Both the DAYS and the TIME OF DAY are redrawn every week from one stream
- * seeded by the ISO week number. Instagram takes the first two days of the
- * shuffle, Facebook the next two, so a same-day collision is impossible rather
- * than merely unlikely; each also gets its own start hour, so the posts do not
- * land at the same clock time week after week. Seeded rather than live rand()
- * on purpose: the plan must be identical every time the scheduler re-evaluates
- * this file (once a minute), or a post could fire twice or never. Same technique
- * the GBP schedule below uses; that one keeps its own independent draw.
- */
-$metaPostPlan = function (string $platform): array {
-    $week = now('America/Chicago')->format('o-W');
-    $randomizer = new Randomizer(new Mt19937(crc32('meta-social-'.$week)));
-
-    // One shuffle, split in two: Instagram takes the first pair of days,
-    // Facebook the next. Drawing both from the same deal is what makes a
-    // same-day collision impossible rather than merely unlikely.
-    $days = $randomizer->shuffleArray(range(1, 7));
-
-    // Start hour is drawn per platform per week too, so the time of day moves
-    // as well as the day. Each window is chosen so that start + the command's
-    // own --random-delay jitter still lands inside working hours: Instagram
-    // 10:00-16:00 + up to 3h => 10:00-19:00; Facebook 09:00-15:00 + up to 4h
-    // => 09:00-19:00. Drawn from the SAME seeded stream, so the whole plan is
-    // reproducible for the week — a re-run or a missed tick recomputes the
-    // identical schedule instead of posting twice.
-    $igHour = $randomizer->getInt(10, 16);
-    $fbHour = $randomizer->getInt(9, 15);
-
-    return $platform === 'instagram'
-        ? ['days' => array_slice($days, 0, 2), 'at' => sprintf('%02d:00', $igHour)]
-        : ['days' => array_slice($days, 2, 2), 'at' => sprintf('%02d:00', $fbHour)];
-};
-
-$igPlan = $metaPostPlan('instagram');
-$fbPlan = $metaPostPlan('facebook');
-
-// Uses --via=puppeteer so the post is also location-tagged via the IG web UI
-// (Graph API can't tag location without App Review).
-Schedule::command('social:post --platform=instagram --via=puppeteer --yes --random-delay=180')
-    ->dailyAt($igPlan['at'])
-    ->timezone('America/Chicago')
-    ->withoutOverlapping(60 * 4) // command can sleep up to 3h + run ~1m, give it 4h
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Instagram twice-weekly post failed'))
-    ->when(fn () => config('services.meta.enabled')
-        && in_array(now('America/Chicago')->dayOfWeekIso, $igPlan['days'], true));
-
-// Facebook: the other two days of the same shuffle, earlier in the day.
-Schedule::command('social:post --platform=facebook --yes --random-delay=240')
-    ->dailyAt($fbPlan['at'])
-    ->timezone('America/Chicago')
-    ->withoutOverlapping(60 * 5) // command can sleep up to 4h + run ~1m, give it 5h
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled Facebook twice-weekly post failed'))
-    ->when(fn () => config('services.meta.enabled')
-        && in_array(now('America/Chicago')->dayOfWeekIso, $fbPlan['days'], true));
-
-// Google Business Profile: twice-weekly posts (image + Gemini-generated caption)
-// on TWO RANDOM days each week rather than fixed weekdays, so the cadence looks
-// natural instead of clockwork. Queued so processing runs on the social-media
-// worker (AI caption generation — never a direct API publish). The command runs
-// daily at 09:30 CT but the ->when() gate only lets it through on the two days
-// chosen for the current ISO week; --random-delay then spreads the actual post
-// time across a ~4h window (posts land ~09:30–13:30 CT).
-Schedule::command('social:post --platform=google_business --queue --random-delay=240 --themed')
-    ->dailyAt('09:30')
-    ->timezone('America/Chicago')
+// Social automation: Instagram/Facebook/Google Business posts and the GBP
+// catch-up safety net used to be hard-coded, single-tenant Schedule blocks
+// right here — each platform's days and start time drawn from one seeded
+// weekly shuffle, plus a daily Schedule::call() safety net for GBP. They are
+// now one per-site settings table (App\Models\SocialAutomationSetting,
+// editable from /admin/{site}/social-media) and a single 5-minute tick that
+// computes and dispatches each site's own deterministic weekly plan under
+// its own tenant — see App\Console\Commands\SocialAutomationTick and
+// App\Services\Social\AutomationPlanner. The migration that introduced the
+// settings table seeded ENABLED rows for gs.construction reproducing this
+// exact cadence, so production posting is unaffected by the switch; every
+// other site gets no row (automation off) until someone turns it on.
+Schedule::command('social:automation-tick')->everyFiveMinutes()
     ->onOneServer()
     ->withoutOverlapping(30)
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled GBP post failed'))
-    ->when(function (): bool {
-        if (! config('services.google.business_profile.enabled')) {
-            return false;
-        }
-
-        // Two distinct weekdays per ISO week, deterministically seeded by the
-        // week number: stable within the week, but different (and unpredictable)
-        // week to week. This is what makes it "2× a week on random days".
-        $now = now('America/Chicago');
-        $randomizer = new Randomizer(new Mt19937(crc32($now->format('o-W'))));
-        $chosenDays = array_slice($randomizer->shuffleArray(range(1, 7)), 0, 2);
-
-        return in_array($now->dayOfWeekIso, $chosenDays, true);
-    });
-
-// GBP safety-net: if cadence slips (no published GBP post in 6+ days), queue
-// one catch-up post daily. This avoids long dry spells — e.g. when the two
-// random days land far apart across a week boundary — while deferring to the
-// normal 2×/week random cadence when healthy.
-Schedule::call(function (): void {
-    if (! config('services.google.business_profile.enabled')) {
-        return;
-    }
-
-    $lastPublishedAt = ImageSocialPost::query()
-        ->where('platform', 'google_business')
-        ->where('status', 'published')
-        ->max('published_at');
-
-    if ($lastPublishedAt !== null && Carbon::parse($lastPublishedAt)->greaterThanOrEqualTo(now()->subDays(6))) {
-        return;
-    }
-
-    $exitCode = Artisan::call('social:post', [
-        '--platform' => 'google_business',
-        '--queue' => true,
-    ]);
-
-    if ($exitCode !== 0) {
-        logger()->error('GBP safety-net could not queue catch-up post', [
-            'last_published_at' => $lastPublishedAt,
-            'exit_code' => $exitCode,
-            'output' => trim(Artisan::output()),
-        ]);
-
-        return;
-    }
-
-    logger()->warning('GBP safety-net queued catch-up post', [
-        'last_published_at' => $lastPublishedAt,
-    ]);
-})
-    ->dailyAt('10:20')
     ->timezone('America/Chicago')
-    ->name('gbp-safety-net-catchup-post')
-    ->onOneServer()
-    ->withoutOverlapping(30)
-    ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled GBP safety-net post failed'));
+    ->appendOutputTo(storage_path('logs/schedule.log'));
 
 // Social Media: weekly health check
 Schedule::command('social:health')->weeklyOn(1, '09:00') // Monday 9 AM

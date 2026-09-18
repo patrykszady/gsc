@@ -3,12 +3,15 @@
 namespace App\Observers;
 
 use App\Jobs\GenerateAiContentJob;
+use App\Jobs\GenerateProjectBlogPostJob;
 use App\Jobs\SubmitUrlsToIndexNow;
 use App\Jobs\UploadProjectImageToGooglePlaces;
+use App\Jobs\UploadProjectImageToYelpBusinessPhotos;
 use App\Models\AreaServed;
 use App\Models\Project;
-use App\Services\OpenStreetMapGeocoder;
 use App\Services\IndexNowService;
+use App\Services\OpenStreetMapGeocoder;
+use App\Services\YelpBusinessService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -25,7 +28,7 @@ class ProjectObserver
         // Draft a blog post for every new project — delayed so the AI
         // description and image captions (queued just below) exist first;
         // the writer grounds the post in them. Draft only; a human publishes.
-        \App\Jobs\GenerateProjectBlogPostJob::dispatch($project)->delay(now()->addMinutes(12));
+        GenerateProjectBlogPostJob::dispatch($project)->delay(now()->addMinutes(12));
 
         $this->syncAreaCoordinatesFromProjectLocation($project);
 
@@ -63,6 +66,26 @@ class ProjectObserver
                 ->each(fn ($imageId) => UploadProjectImageToGooglePlaces::dispatch($imageId)
                     ->onQueue('media-sync')
                     ->delay(now()->addSeconds(10))
+                );
+        }
+
+        // Yelp Business Photos: same re-sync on publish as Google above, so a
+        // project photographed before it went live still lands in both
+        // galleries the moment it publishes rather than only for images
+        // uploaded afterward (see ProjectImageObserver::created for the
+        // upload-time path). No artificial delay — media-sync runs with a
+        // single worker (balance=simple, maxProcesses=1) so uploads are
+        // processed FIFO one-at-a-time regardless of dispatch order.
+        if (
+            $project->wasChanged('is_published')
+            && $project->is_published
+            && app(YelpBusinessService::class)->isConfigured()
+        ) {
+            $project->images()
+                ->notUploadedTo('yelp_biz')
+                ->pluck('id')
+                ->each(fn ($imageId) => UploadProjectImageToYelpBusinessPhotos::dispatch($imageId)
+                    ->onQueue('media-sync')
                 );
         }
     }
@@ -148,6 +171,7 @@ class ProjectObserver
                 'project_id' => $project->id,
                 'city' => $city,
             ]);
+
             return;
         }
 
@@ -160,6 +184,7 @@ class ProjectObserver
     protected function normalizeCity(string $location): string
     {
         $parts = preg_split('/[,.]/', $location) ?: [];
+
         return trim((string) ($parts[0] ?? ''));
     }
 }

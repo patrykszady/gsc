@@ -7,8 +7,11 @@ use App\Jobs\PublishToSocialMediaJob;
 use App\Models\ImageSocialPost;
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
+use App\Models\SocialAutomationSetting;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\MetaSocialService;
+use App\Services\Social\AutomationSettingsService;
+use App\Support\SiteConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -109,6 +112,8 @@ class SocialMediaController extends Controller
             ? ProjectImage::with('project')->uploadedTo('yelp_biz')->orderByUploadedTo('yelp_biz')->get()
             : null;
 
+        $automationService = app(AutomationSettingsService::class);
+
         return response()->json([
             'data' => [
                 'stats' => $stats,
@@ -119,12 +124,75 @@ class SocialMediaController extends Controller
                     'any' => $igConfigured || $fbConfigured || $gbpConfigured,
                 ],
                 'platforms' => $this->platformsPayload(),
+                'automation' => [
+                    'timezone' => $automationService->timezone(),
+                    'items' => $automationService->items(),
+                ],
                 'uploaded_posts' => $uploadedPosts->map(fn (ImageSocialPost $post) => $post->toApiArray())->values()->all(),
                 'remaining_images' => $remainingImages->values()->all(),
                 'gbp_images' => $gbpImages->map(fn (ProjectImage $image) => $image->toSocialApiArray())->values()->all(),
                 'yelp_images' => $yelpImages?->map(fn (ProjectImage $image) => $image->toSocialApiArray())->values()->all(),
             ],
         ]);
+    }
+
+    /**
+     * PUT social-media/automation/{platform} — persist one automation card's
+     * settings. Enabling an unconfigured platform is allowed (it simply
+     * never fires until the platform is connected; the item keeps reporting
+     * configured=false).
+     */
+    public function saveAutomation(Request $request, string $platform): JsonResponse
+    {
+        if (! in_array($platform, SocialAutomationSetting::PLATFORMS, true)) {
+            abort(404, 'Unknown automation platform.');
+        }
+
+        $rules = [
+            'enabled' => ['required', 'boolean'],
+            'cadence' => ['required', 'array'],
+            'cadence.per_week' => ['required', 'integer', 'between:1,7'],
+            'cadence.days' => ['nullable', 'array'],
+            'cadence.days.*' => ['integer', 'between:1,7', 'distinct'],
+            'cadence.window' => ['required', 'array'],
+            'cadence.window.start' => ['required', 'date_format:H:i'],
+            'cadence.window.end' => ['required', 'date_format:H:i', 'after:cadence.window.start'],
+            'options' => ['array'],
+        ];
+
+        if ($platform === 'instagram') {
+            $rules['options.location_tag'] = ['nullable', 'boolean'];
+        } elseif ($platform === 'google_business') {
+            $rules['options.themed'] = ['nullable', 'boolean'];
+            $rules['options.catch_up_after_days'] = ['nullable', 'integer', 'between:2,30'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $days = $validated['cadence']['days'] ?? null;
+        $cadence = [
+            'per_week' => (int) $validated['cadence']['per_week'],
+            'days' => empty($days) ? null : array_values(array_map('intval', $days)),
+            'window' => [
+                'start' => $validated['cadence']['window']['start'],
+                'end' => $validated['cadence']['window']['end'],
+            ],
+        ];
+
+        $options = match ($platform) {
+            'instagram' => ['location_tag' => $request->boolean('options.location_tag')],
+            'google_business' => [
+                'themed' => $request->boolean('options.themed'),
+                'catch_up_after_days' => $request->filled('options.catch_up_after_days')
+                    ? (int) $request->input('options.catch_up_after_days')
+                    : null,
+            ],
+            default => [],
+        };
+
+        $item = app(AutomationSettingsService::class)->save($platform, (bool) $validated['enabled'], $cadence, $options);
+
+        return response()->json(['data' => $item]);
     }
 
     public function saveUrls(Request $request): JsonResponse
@@ -213,7 +281,7 @@ class SocialMediaController extends Controller
                     'placeholder' => $cat['placeholder'] ?? 'https://…',
                     // A site inherits no profile URL from the shared (default site's) config:
                     // the Houzz import and the footer would otherwise carry another business.
-                    'url' => PlatformSetting::get('socials.url.'.$key, \App\Support\SiteConfig::owns("socials.{$key}.url") ? (string) config("socials.{$key}.url", '') : ''),
+                    'url' => PlatformSetting::get('socials.url.'.$key, SiteConfig::owns("socials.{$key}.url") ? (string) config("socials.{$key}.url", '') : ''),
                 ];
             })
             ->values()
