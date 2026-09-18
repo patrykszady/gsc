@@ -74,9 +74,10 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
 - New site: `php artisan icons:build {slug} --from=<mark.svg|png>` (ImageMagick; slug only, no DB).
   `sites:check` fails a site whose set is incomplete. Colours: `brand.theme_color` /
   `brand.background_color` (JPD: `#408085`, the teal of her favicon disc, as her old site's theme-color).
-- nginx: Forge's `site.conf` has a static-only `location = /favicon.ico`; like robots.txt it needs
-  `try_files $uri /index.php?$query_string;` or a direct hit on `/favicon.ico` is a 404 (the head's
-  `<link>` tags still work, since those point into `/icons/{slug}/`).
+- nginx: Forge's `/etc/nginx/forge-conf/3017357/site.conf` had static-only `location = /favicon.ico`
+  and `/favicon.svg` blocks; since 2026-09-17 both carry `try_files $uri /index.php?$query_string;`
+  like robots.txt (Patryk, over SSH with sudo; backup `site.conf.bak-20260918`). A new Forge
+  site/server needs all three lines again or those root URLs are 404s with the right body.
 
 ## Search Console in the admin (2026-09-12)
 
