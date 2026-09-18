@@ -422,18 +422,24 @@ class ContactSection extends Component
             $this->area = $this->resolveAreaFromAddress($this->address);
         }
 
-        // Send email notification to THIS site's inbox — not the deployment's
-        // MAIL_FROM, which is the default site's. See App\Support\LeadInbox.
+        // Store the lead BEFORE anything is mailed. Both sends are synchronous
+        // SMTP calls inside the request: expired credentials, an unreachable
+        // host or a provider rate limit throws, and in that order the visitor
+        // saw a Livewire error and the enquiry was never written down at all.
+        $this->storeSubmission();
+
+        // Notify THIS site's inbox — not the deployment's MAIL_FROM, which is
+        // the default site's. See App\Support\LeadInbox.
         $inbox = LeadInbox::recipients();
 
         if ($inbox === []) {
-            // No address for this tenant: the submission is still stored and
-            // logged below, so the lead survives the misconfiguration.
+            // No address for this tenant: the submission is stored and logged,
+            // so the lead survives the misconfiguration.
             Log::error('Contact form: no lead inbox configured for this site', [
                 'site' => Site::current()->slug,
             ]);
         } else {
-            Mail::to($inbox)->send(new ContactFormSubmission(
+            $this->mailQuietly(fn () => Mail::to($inbox)->send(new ContactFormSubmission(
                 name: $this->name,
                 email: $this->email,
                 phone: $this->phone,
@@ -441,15 +447,14 @@ class ContactSection extends Component
                 userMessage: $this->message,
                 availability: $this->availability,
                 area: $this->area?->city,
-            ));
+            )), 'lead notification');
         }
 
-        Mail::to($this->email)->send(new ContactFormAutoReply(
+        // Its own attempt: a bounced auto-reply must not stop the notification
+        // above, and neither must cost the lead.
+        $this->mailQuietly(fn () => Mail::to($this->email)->send(new ContactFormAutoReply(
             name: $this->name,
-        ));
-
-        // Store submission in database (independent of GA/email)
-        $this->storeSubmission();
+        )), 'visitor auto-reply');
 
         // Log the contact form submission with full details
         Log::channel('submissions')->info('Contact form submitted', [
@@ -948,6 +953,23 @@ class ContactSection extends Component
      * @param  string  $status  'pending' for legitimate, 'spam' for blocked
      * @param  string|null  $spamReason  Reason for spam classification
      */
+    /**
+     * Send, and treat a mail failure as a logged incident rather than a lost
+     * enquiry: the submission is already stored, and the visitor is told their
+     * message went through because, as far as the business is concerned, it did.
+     */
+    protected function mailQuietly(callable $send, string $what): void
+    {
+        try {
+            $send();
+        } catch (\Throwable $e) {
+            Log::error("Contact form: {$what} could not be sent", [
+                'site' => Site::current()->slug,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     protected function storeSubmission(string $status = 'pending', ?string $spamReason = null): void
     {
         try {

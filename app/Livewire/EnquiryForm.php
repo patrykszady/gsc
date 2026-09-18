@@ -83,7 +83,9 @@ class EnquiryForm extends Component
                 'site' => $submission?->site_id,
             ]);
         } else {
-            Mail::to($recipients)->send(new ContactFormSubmission(
+            // The submission is already stored, so a mail failure is an
+            // incident to log, not an enquiry to lose and an error to show.
+            $this->mailQuietly(fn () => Mail::to($recipients)->send(new ContactFormSubmission(
                 name: $this->name,
                 email: $this->email,
                 phone: $this->phone,
@@ -91,12 +93,22 @@ class EnquiryForm extends Component
                 userMessage: $this->message,
                 availability: [],
                 area: $this->market ?: null,
-            ));
+            )), 'lead notification');
 
-            Mail::to($this->email)->send(new ContactFormAutoReply(name: $this->name));
+            $this->mailQuietly(fn () => Mail::to($this->email)->send(new ContactFormAutoReply(name: $this->name)), 'visitor auto-reply');
         }
 
         $this->finish();
+    }
+
+    /** Send, and log a failure instead of surfacing it: the lead is already saved. */
+    protected function mailQuietly(callable $send, string $what): void
+    {
+        try {
+            $send();
+        } catch (\Throwable $e) {
+            Log::error("Enquiry form: {$what} could not be sent", ['error' => $e->getMessage()]);
+        }
     }
 
     protected function store(string $status = 'pending', ?string $spamReason = null): ?ContactSubmission
