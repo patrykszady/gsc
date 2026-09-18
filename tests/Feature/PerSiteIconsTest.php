@@ -71,4 +71,20 @@ class PerSiteIconsTest extends TestCase
         $this->assertFileDoesNotExist(public_path('favicon.ico'), 'a static root favicon would be served to every host');
         $this->assertFileDoesNotExist(public_path('site.webmanifest'));
     }
+
+    /** The old root URLs — Google's stored logo, the favicon it first found — land on the tenant's own file. */
+    public function test_the_old_root_icon_urls_redirect_to_the_sites_own_set(): void
+    {
+        $this->jpd();
+
+        $this->get('https://gs.construction/android-chrome-512x512.png')
+            ->assertRedirect('https://gs.construction/icons/gsc/android-chrome-512x512.png')->assertStatus(301);
+        $this->get('https://gs.construction/favicon-32x32.png')
+            ->assertRedirect('https://gs.construction/icons/gsc/favicon-96x96.png')->assertStatus(301);
+        $this->get('https://gs.construction/favicon-dark.svg')
+            ->assertRedirect('https://gs.construction/icons/gsc/favicon.svg')->assertStatus(301);
+        $this->get('https://jpeterson-design.com/apple-touch-icon.png')
+            ->assertRedirect('https://jpeterson-design.com/icons/jpeterson/apple-touch-icon.png')->assertStatus(301);
+        $this->get('https://gs.construction/favicon-999x999.png')->assertNotFound();
+    }
 }

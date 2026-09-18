@@ -104,6 +104,20 @@ Route::get('/favicon.ico', function () {
         ? response()->file($path, ['Content-Type' => 'image/x-icon', 'Cache-Control' => 'public, max-age=86400'])
         : abort(404);
 })->name('site.favicon');
+// The icons used to sit at the public root. Whatever kept those URLs — Google's
+// stored Organization logo, the favicon it first found, a saved touch icon —
+// lands on the tenant's own file. A 301, not a 404: a favicon URL Google
+// already has is worth keeping, and the sizes we dropped map to the 96px one.
+Route::get('/{file}', function (string $file) {
+    $target = match ($file) {
+        'favicon-16x16.png', 'favicon-32x32.png', 'favicon-48x48.png', 'favicon-144x144.png' => 'favicon-96x96.png',
+        'favicon-dark.svg' => 'favicon.svg',
+        default => $file,
+    };
+
+    return redirect()->to(SiteIcons::url($target), 301);
+})->where('file', 'favicon-(?:16x16|32x32|48x48|96x96|144x144)\.png|favicon(?:-dark)?\.svg|apple-touch-icon\.png|android-chrome-(?:192x192|512x512)\.png')
+    ->name('site.legacy-icon');
 
 // IndexNow key verification file
 Route::get('/{key}.txt', function (string $key) {
