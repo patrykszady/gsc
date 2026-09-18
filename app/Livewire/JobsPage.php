@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Mail\JobApplicationSubmission;
 use App\Services\SeoService;
+use App\Support\LeadInbox;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -81,7 +82,7 @@ class JobsPage extends Component
         $this->validate();
 
         // Rate limit: 3 submissions per hour per IP.
-        $key = 'job-application:' . request()->ip();
+        $key = 'job-application:'.request()->ip();
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $seconds = RateLimiter::availableIn($key);
             $minutes = (int) ceil($seconds / 60);
@@ -111,7 +112,7 @@ class JobsPage extends Component
         RateLimiter::hit($key, 3600);
 
         // Notify the company.
-        Mail::to(config('mail.from.address'))->send(new JobApplicationSubmission(
+        Mail::to(LeadInbox::address())->send(new JobApplicationSubmission(
             name: $this->name,
             email: $this->email,
             applicantTypeLabel: $this->applicantTypeLabel(),
@@ -199,10 +200,10 @@ class JobsPage extends Component
             'redesign your website', 'website redesign',
             'takeoff services', 'construction takeoffs', 'cost estimation services',
         ];
-        $content = strtolower($this->name . ' ' . $this->company . ' ' . $this->message);
+        $content = strtolower($this->name.' '.$this->company.' '.$this->message);
         foreach ($spamKeywords as $keyword) {
             if (str_contains($content, $keyword)) {
-                return 'spam_keyword: ' . $keyword;
+                return 'spam_keyword: '.$keyword;
             }
         }
 

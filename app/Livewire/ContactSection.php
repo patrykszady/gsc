@@ -8,7 +8,9 @@ use App\Mail\ContactFormSubmission;
 use App\Models\AreaServed;
 use App\Models\ContactSubmission;
 use App\Models\LeadFilterRule;
+use App\Models\Site;
 use App\Services\LeadAddressCompleter;
+use App\Support\LeadInbox;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -420,16 +422,27 @@ class ContactSection extends Component
             $this->area = $this->resolveAreaFromAddress($this->address);
         }
 
-        // Send email notification
-        Mail::to(config('mail.from.address'))->send(new ContactFormSubmission(
-            name: $this->name,
-            email: $this->email,
-            phone: $this->phone,
-            address: $this->address,
-            userMessage: $this->message,
-            availability: $this->availability,
-            area: $this->area?->city,
-        ));
+        // Send email notification to THIS site's inbox — not the deployment's
+        // MAIL_FROM, which is the default site's. See App\Support\LeadInbox.
+        $inbox = LeadInbox::address();
+
+        if ($inbox === '') {
+            // No address for this tenant: the submission is still stored and
+            // logged below, so the lead survives the misconfiguration.
+            Log::error('Contact form: no lead inbox configured for this site', [
+                'site' => Site::current()->slug,
+            ]);
+        } else {
+            Mail::to($inbox)->send(new ContactFormSubmission(
+                name: $this->name,
+                email: $this->email,
+                phone: $this->phone,
+                address: $this->address,
+                userMessage: $this->message,
+                availability: $this->availability,
+                area: $this->area?->city,
+            ));
+        }
 
         Mail::to($this->email)->send(new ContactFormAutoReply(
             name: $this->name,
