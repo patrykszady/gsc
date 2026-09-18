@@ -49,6 +49,37 @@ if [ "$FORCE_RESTART" = true ]; then
   pkill -f "$PWD/node_modules/.bin/vite" >/dev/null 2>&1 || true
 fi
 
+# The services the app cannot run without.
+#
+# This WSL box has no systemd, so nothing starts MySQL or Redis at boot and
+# this script only ever started the PHP servers — the app came up, every page
+# 500'd on a refused connection, and the cause looked like the app. Redis we
+# can start ourselves; MySQL needs root, so ask for it only if it is actually
+# down, and say plainly what to run when sudo would prompt.
+echo "🗄️  Checking MySQL and Redis..."
+
+if ! redis-cli ping >/dev/null 2>&1; then
+  # setsid, so it outlives the shell that started it.
+  setsid redis-server --port 6379 --save '' --appendonly no \
+    >"$LOG_DIR/redis.log" 2>&1 < /dev/null &
+  disown
+  sleep 1
+  redis-cli ping >/dev/null 2>&1 && echo "   Redis started." || echo "   ⚠️  Redis would not start — see $LOG_DIR/redis.log"
+else
+  echo "   Redis already running."
+fi
+
+if ! mysqladmin ping --silent >/dev/null 2>&1; then
+  if sudo -n service mysql start >/dev/null 2>&1; then
+    echo "   MySQL started."
+  else
+    echo "   ⚠️  MySQL is down and starting it needs your password. Run:"
+    echo "        sudo service mysql start"
+  fi
+else
+  echo "   MySQL already running."
+fi
+
 # Clear Laravel caches to re-read .env
 echo "🧹 Clearing Laravel caches..."
 php artisan config:clear --no-interaction >"$LOG_DIR/config_clear.log" 2>&1 || true
