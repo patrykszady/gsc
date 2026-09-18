@@ -9,17 +9,20 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\RateLimitedWithRedis;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class GenerateAiContentJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
     public array $backoff = [60, 120, 300, 600]; // Aggressive backoff for Gemini rate limits (1, 2, 5, 10 min)
 
     /**
@@ -33,10 +36,19 @@ class GenerateAiContentJob implements ShouldQueue
 
     /**
      * Apply global Gemini rate limiting across all workers.
+     *
+     * The Redis-backed limiter is the right one where the queue runs on
+     * Redis (production: every Horizon worker shares one budget). Anywhere
+     * the queue is sync or database — the test suite above all — it would
+     * open a Redis connection from inside the job middleware, so creating a
+     * project photo in a test needed a live Redis no matter what phpunit.xml
+     * said. The cache-backed limiter uses the same named limiter.
      */
     public function middleware(): array
     {
-        return [new RateLimitedWithRedis('gemini-ai-content')];
+        return config('queue.default') === 'redis'
+            ? [new RateLimitedWithRedis('gemini-ai-content')]
+            : [new RateLimited('gemini-ai-content')];
     }
 
     /**
@@ -58,10 +70,10 @@ class GenerateAiContentJob implements ShouldQueue
 
         // Skip if already has content and not overwriting
         $rawSeoAltText = $image->getRawOriginal('seo_alt_text');
-        $skipContent = !$this->overwrite
-            && !empty($image->alt_text)
-            && !empty($image->caption)
-            && !empty($rawSeoAltText);
+        $skipContent = ! $this->overwrite
+            && ! empty($image->alt_text)
+            && ! empty($image->caption)
+            && ! empty($rawSeoAltText);
         if ($skipContent) {
             Log::channel('ai_content')->debug('GenerateAiContentJob: Skipping image content, already has alt_text, caption, and seo_alt_text', [
                 'image_id' => $image->id,
@@ -70,7 +82,7 @@ class GenerateAiContentJob implements ShouldQueue
 
         // Check if image file exists before trying to process
         $disk = 'public';
-        if (!\Illuminate\Support\Facades\Storage::disk($disk)->exists($image->path)) {
+        if (! Storage::disk($disk)->exists($image->path)) {
             Log::channel('ai_content')->warning('GenerateAiContentJob: Image file not found, skipping', [
                 'image_id' => $image->id,
                 'path' => $image->path,
@@ -90,7 +102,7 @@ class GenerateAiContentJob implements ShouldQueue
                 $fallbackData['caption'] = $image->caption ?: "{$projectTitle} photo by GS Construction.";
             }
 
-            if (!empty($fallbackData)) {
+            if (! empty($fallbackData)) {
                 $image->updateQuietly($fallbackData);
                 $shouldRegenerateSitemap = true;
             }
@@ -99,7 +111,7 @@ class GenerateAiContentJob implements ShouldQueue
             // Still allow slug generation below even if file is missing
         }
 
-        if (!$skipContent) {
+        if (! $skipContent) {
             $content = $service->generateImageContent($image);
 
             if ($content === null) {
@@ -116,6 +128,7 @@ class GenerateAiContentJob implements ShouldQueue
                     ]);
 
                     $this->release($delay);
+
                     return;
                 }
 
@@ -138,8 +151,7 @@ class GenerateAiContentJob implements ShouldQueue
                     $updateData['caption'] = $content['caption'];
                 }
 
-
-                if (!empty($updateData)) {
+                if (! empty($updateData)) {
                     $image->updateQuietly($updateData);
                     $shouldRegenerateSitemap = true;
 
@@ -185,7 +197,7 @@ class GenerateAiContentJob implements ShouldQueue
     protected function maybeGenerateProjectDescription(ProjectImage $image): void
     {
         $project = $image->project;
-        if (!$project) {
+        if (! $project) {
             return;
         }
 
@@ -202,6 +214,7 @@ class GenerateAiContentJob implements ShouldQueue
                 'completed' => $completedImages,
                 'total' => $totalImages,
             ]);
+
             return;
         }
 
@@ -214,7 +227,7 @@ class GenerateAiContentJob implements ShouldQueue
         $lockKey = "ai-content:project-description-dispatch:{$project->id}";
         $acquired = Cache::add($lockKey, true, now()->addMinutes(10));
 
-        if (!$acquired) {
+        if (! $acquired) {
             Log::channel('ai_content')->debug('GenerateAiContentJob: Project description dispatch already queued', [
                 'project_id' => $project->id,
             ]);
@@ -233,10 +246,11 @@ class GenerateAiContentJob implements ShouldQueue
         $project = $this->model;
 
         // Skip if already has description and not overwriting
-        if (!$this->overwrite && !empty($project->description)) {
+        if (! $this->overwrite && ! empty($project->description)) {
             Log::channel('ai_content')->debug('GenerateAiContentJob: Skipping project, already has description', [
                 'project_id' => $project->id,
             ]);
+
             return;
         }
 
@@ -256,6 +270,7 @@ class GenerateAiContentJob implements ShouldQueue
                 ]);
 
                 $this->release($delay);
+
                 return;
             }
 
@@ -263,6 +278,7 @@ class GenerateAiContentJob implements ShouldQueue
                 'project_id' => $project->id,
                 'error' => $error,
             ]);
+
             return;
         }
 
@@ -286,7 +302,7 @@ class GenerateAiContentJob implements ShouldQueue
 
     protected function shouldRetryAiError(?string $error): bool
     {
-        if (!is_string($error) || trim($error) === '') {
+        if (! is_string($error) || trim($error) === '') {
             return false;
         }
 
