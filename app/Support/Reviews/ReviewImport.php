@@ -10,6 +10,7 @@ use App\Support\SiteConfig;
 use App\Support\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * A review site we import from by reading its public profile page: Houzz,
@@ -139,9 +140,28 @@ abstract class ReviewImport
         return $dispatched;
     }
 
-    /** @param  array<string, int|string|null>  $summary */
+    /**
+     * Record the outcome of a run.
+     *
+     * A failure's full text goes to the log, not to the Platforms card: the
+     * card is read by the site owner, and a raw scraper stack ("Could not find
+     * Chrome (ver. 148.0.7778.97). This can occur if either…") tells them
+     * nothing they can act on while burying the one fact that matters, that
+     * the import did not work. The card says it failed and when; the log is
+     * where the reason lives.
+     *
+     * @param  array<string, int|string|null>  $summary
+     */
     public static function recordRun(array $summary, ?string $error = null): void
     {
+        if ($error !== null && $error !== '') {
+            Log::warning('Review import failed', [
+                'platform' => static::platform(),
+                'error' => $error,
+                'summary' => $summary,
+            ]);
+        }
+
         PlatformSetting::put(static::lastRunKey(), (string) json_encode([
             'at' => now()->toIso8601String(),
             'error' => $error,
