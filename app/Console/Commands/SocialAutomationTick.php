@@ -11,6 +11,7 @@ use App\Services\Social\AutomationPlanner;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 
@@ -46,8 +47,13 @@ class SocialAutomationTick extends Command
 
     protected function tickSite(Site $site, AutomationPlanner $planner, MetaSocialService $meta, GoogleBusinessProfileService $gbp, Carbon $now): void
     {
+        // Fetched once per site so instagram/facebook can hand each other
+        // their sibling's cadence below (AutomationPlanner's day-collision
+        // guarantee needs both), instead of one query per platform.
+        $settingsByPlatform = SocialAutomationSetting::query()->get()->keyBy('platform');
+
         foreach (SocialAutomationSetting::PLATFORMS as $platform) {
-            $setting = SocialAutomationSetting::where('platform', $platform)->first();
+            $setting = $settingsByPlatform->get($platform);
 
             if (! $setting || ! $setting->enabled) {
                 continue;
@@ -61,7 +67,7 @@ class SocialAutomationTick extends Command
             $cadence = $setting->cadence ?? $defaults['cadence'];
             $options = $setting->options ?? $defaults['options'];
 
-            $slot = $planner->due($site->slug, $platform, $cadence, $now);
+            $slot = $planner->due($site->slug, $platform, $cadence, $now, $this->metaSiblingCadence($platform, $settingsByPlatform));
             if ($slot !== null && $setting->last_dispatched_slot !== $slot) {
                 $this->dispatchSlot($site, $setting, $platform, $options, $slot);
             }
@@ -70,6 +76,31 @@ class SocialAutomationTick extends Command
                 $this->maybeCatchUp($site, $setting, (int) $options['catch_up_after_days'], $now);
             }
         }
+    }
+
+    /**
+     * Instagram and Facebook must never land on the same day (see
+     * AutomationPlanner's class docblock) — this hands the planner the
+     * OTHER meta platform's cadence so it can offset its day draw from
+     * their shared weekly shuffle. Null for any other platform.
+     *
+     * @param  Collection<string, SocialAutomationSetting>  $settingsByPlatform
+     */
+    protected function metaSiblingCadence(string $platform, Collection $settingsByPlatform): ?array
+    {
+        $sibling = match ($platform) {
+            'instagram' => 'facebook',
+            'facebook' => 'instagram',
+            default => null,
+        };
+
+        if ($sibling === null) {
+            return null;
+        }
+
+        $setting = $settingsByPlatform->get($sibling);
+
+        return $setting->cadence ?? SocialAutomationSetting::defaultsFor($sibling)['cadence'];
     }
 
     protected function isConfigured(string $platform, MetaSocialService $meta, GoogleBusinessProfileService $gbp): bool

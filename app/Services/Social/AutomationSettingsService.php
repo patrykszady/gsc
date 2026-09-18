@@ -48,10 +48,33 @@ class AutomationSettingsService
             'enabled' => (bool) ($setting->enabled ?? false),
             'cadence' => $cadence,
             'options' => $options,
-            'plan' => $this->planner->plan(Site::current()->slug, $platform, $cadence),
+            'plan' => $this->planner->plan(Site::current()->slug, $platform, $cadence, null, $this->metaSiblingCadence($platform)),
             'last' => $this->lastStats($platform),
             'updated_at' => optional($setting?->updated_at)->toIso8601String(),
         ];
+    }
+
+    /**
+     * Instagram and Facebook must never land on the same day (see
+     * AutomationPlanner's class docblock) — this hands the planner the
+     * OTHER meta platform's cadence so it can offset its day draw from
+     * their shared weekly shuffle. Null for any other platform.
+     */
+    protected function metaSiblingCadence(string $platform): ?array
+    {
+        $sibling = match ($platform) {
+            'instagram' => 'facebook',
+            'facebook' => 'instagram',
+            default => null,
+        };
+
+        if ($sibling === null) {
+            return null;
+        }
+
+        $setting = SocialAutomationSetting::where('platform', $sibling)->first();
+
+        return $setting->cadence ?? SocialAutomationSetting::defaultsFor($sibling)['cadence'];
     }
 
     /** Persist a validated {enabled, cadence, options} payload and return the refreshed item. */

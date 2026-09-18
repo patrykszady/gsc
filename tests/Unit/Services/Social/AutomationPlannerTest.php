@@ -121,6 +121,40 @@ class AutomationPlannerTest extends TestCase
         $this->assertNull($planner->due('gsc', 'instagram', $cadence, $slotAt->copy()->addMinutes(5)->addSecond()));
     }
 
+    /**
+     * The removed routes/console.php schedule drew Instagram's and
+     * Facebook's days from ONE shared shuffle specifically so they could
+     * never post on the same day. Regression coverage for that guarantee:
+     * for the seeded-defaults cadence (per_week=2 each, gs.construction's
+     * cadence since the migration that introduced this settings table),
+     * the two platforms' day sets must be disjoint every single ISO week —
+     * not just usually.
+     */
+    public function test_instagram_and_facebook_never_share_a_day_across_a_year_of_weeks(): void
+    {
+        $planner = $this->planner();
+        $instagramCadence = $this->randomDaysCadence(2);
+        $facebookCadence = $this->randomDaysCadence(2);
+
+        $monday = Carbon::parse('2026-01-05', 'America/Chicago'); // first Monday of ISO week 2026-W02
+
+        for ($week = 0; $week < 52; $week++) {
+            $reference = $monday->copy()->addWeeks($week);
+
+            $instagramPlan = $planner->plan('gsc', 'instagram', $instagramCadence, $reference, $facebookCadence);
+            $facebookPlan = $planner->plan('gsc', 'facebook', $facebookCadence, $reference, $instagramCadence);
+
+            $instagramDays = array_column($instagramPlan['slots'], 'day');
+            $facebookDays = array_column($facebookPlan['slots'], 'day');
+
+            $this->assertSame(
+                [],
+                array_intersect($instagramDays, $facebookDays),
+                "Instagram and Facebook share a day in week {$instagramPlan['week']}: instagram=".implode(',', $instagramDays).' facebook='.implode(',', $facebookDays),
+            );
+        }
+    }
+
     public function test_next_at_finds_the_upcoming_slot_across_a_week_boundary(): void
     {
         $planner = $this->planner();
