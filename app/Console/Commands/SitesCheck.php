@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Site;
 use App\Support\DevSites;
 use App\Support\ExclusivePaths;
+use App\Support\LeadInbox;
 use App\Support\LeadLineInfo;
 use App\Support\SiteIcons;
 use App\Support\Tenancy;
@@ -52,6 +53,12 @@ class SitesCheck extends Command
         $shared = require config_path('brand.php');
 
         foreach ($sites as $site) {
+            if ($site->hasLeftPlatform()) {
+                $failures += $this->reportDeparted($site);
+
+                continue;
+            }
+
             $failures += Tenancy::for($site, function (Site $site) use ($shared): int {
                 return $this->checkSite($site, $shared);
             });
@@ -68,6 +75,34 @@ class SitesCheck extends Command
         $this->info('All sites check out.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A tenant that left the platform: nothing here to validate.
+     *
+     * The one thing still worth checking is the contradiction — a retired slug
+     * that is somehow active would resolve its old hosts to shared views with
+     * another business's identity.
+     *
+     * @return int number of failures
+     */
+    protected function reportDeparted(Site $site): int
+    {
+        $this->newLine();
+        $this->line(sprintf(
+            '<options=bold>%s</> <fg=gray>(%s)</> <fg=gray>left this platform — no theme, no overlay, no host here</>',
+            $site->name,
+            $site->slug,
+        ));
+        $this->line('  <fg=gray>row kept for its tracked_404s / ai_traffic_daily history; checks skipped</>');
+
+        if ($site->is_active) {
+            $this->line("  <fg=red>but is_active = true — {$site->primary_host} would resolve here, on shared views and another site's identity</>");
+
+            return 1;
+        }
+
+        return 0;
     }
 
     /** @return int number of failures */
@@ -114,6 +149,18 @@ class SitesCheck extends Command
                     $failures++;
                 }
             }
+        }
+
+        // --- leads --------------------------------------------------------
+        // A form that posts another business's enquiries into gs.construction's
+        // inbox fails silently: the visitor sees "thank you", the owner sees
+        // nothing. Catch it here, before the site is live.
+        $inbox = LeadInbox::address($site);
+        if (LeadInbox::isSharedWithDefaultSite($site)) {
+            $this->line('  <fg=red>leads        '.($inbox ?: 'nowhere').' — this is the default site\'s inbox; set brand.lead_email (or brand.email) for '.$site->slug.'</>');
+            $failures++;
+        } else {
+            $this->line('  leads        '.$inbox);
         }
 
         // --- icons -------------------------------------------------------

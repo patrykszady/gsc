@@ -15,6 +15,16 @@ return [
     // console commands, queue workers, and unknown hosts.
     'default' => env('SITES_DEFAULT', 'gsc'),
 
+    // Slugs that were tenants here and now run elsewhere. The `sites` row stays
+    // (it still owns tracked_404s / ai_traffic_daily history) with is_active =
+    // false, so no host resolves to it. `sites:check` skips these: there is no
+    // theme, no config overlay and no nav left to validate, and their failures
+    // would drown the sites that are still ours — which is what stopped the
+    // command being usable as a deploy gate. Explicit, not inferred: a brand-new
+    // tenant also has no theme on day one, and must NOT be mistaken for a
+    // departed one. See docs/sites/README.md, "Sites that left this platform".
+    'retired' => ['ss'],
+
     // NOTE: 'admin_hosts' used to live here, listing ss.systems as the host
     // the cross-site admin was mounted on. It is gone with the ss tenant —
     // and it was already dead config: nothing in app/, routes/ or bootstrap/

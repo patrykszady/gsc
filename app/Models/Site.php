@@ -207,6 +207,16 @@ class Site extends Model
             ->get();
     }
 
+    /**
+     * A tenant that moved off this platform — its row is kept for the history
+     * it owns, but it has no theme, no config overlay and no host here.
+     * Listed in config/sites.php 'retired'.
+     */
+    public function hasLeftPlatform(): bool
+    {
+        return in_array($this->slug, (array) config('sites.retired', []), true);
+    }
+
     /** @var Collection<int, self>|null */
     protected static ?Collection $allSites = null;
 

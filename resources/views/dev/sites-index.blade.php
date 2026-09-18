@@ -54,7 +54,9 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <h2 class="text-lg font-semibold text-white">{{ $s->name }}</h2>
                     <code class="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">{{ $s->slug }}</code>
-                    @if ($s->is_active)
+                    @if ($row['retired'])
+                        <span class="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-700">left this platform</span>
+                    @elseif ($s->is_active)
                         <span class="rounded bg-emerald-950 px-1.5 py-0.5 text-xs text-emerald-300 ring-1 ring-emerald-800">live</span>
                     @else
                         <span class="rounded bg-amber-950 px-1.5 py-0.5 text-xs text-amber-300 ring-1 ring-amber-800">in build</span>

@@ -46,6 +46,7 @@ class DevSites
                 'url' => static::urlFor($site, $path, $port),
                 'theme_dir' => $themeDir,
                 'theme_exists' => is_dir($themeDir),
+                'retired' => $site->hasLeftPlatform(),
                 'overlays' => static::overlays($site),
                 'claims' => (array) config("sites.exclusive_paths.{$site->slug}", []),
                 'status' => $status,
@@ -73,9 +74,9 @@ class DevSites
     /** The same path on that tenant's local host. */
     public static function urlFor(Site $site, string $path, int $port): string
     {
-        return 'http://' . $site->devHost()
-            . ($port !== 80 ? ':' . $port : '')
-            . '/' . ltrim($path, '/');
+        return 'http://'.$site->devHost()
+            .($port !== 80 ? ':'.$port : '')
+            .'/'.ltrim($path, '/');
     }
 
     /**
@@ -90,19 +91,19 @@ class DevSites
      */
     public static function verdict(Site $site, string $path): array
     {
-        $path = '/' . ltrim($path, '/');
+        $path = '/'.ltrim($path, '/');
 
         $owners = ExclusivePaths::ownersOf($path);
 
         if ($owners !== [] && ! in_array($site->slug, $owners, true)) {
-            return ['404', 'claimed by ' . implode(' + ', $owners)];
+            return ['404', 'claimed by '.implode(' + ', $owners)];
         }
 
         if (! static::routeExists($path)) {
             return ['404', 'no route'];
         }
 
-        return ['200', $owners === [] ? 'universal' : 'claimed by ' . implode(' + ', $owners)];
+        return ['200', $owners === [] ? 'universal' : 'claimed by '.implode(' + ', $owners)];
     }
 
     /**
