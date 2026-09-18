@@ -122,6 +122,11 @@ class TimelapseController extends Controller
         $extension = strtolower(pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg');
         $sourceContent = Storage::disk('public')->get($galleryImage->path);
 
+        // The row can outlive its file (a failed upload, a purge, a restore
+        // that missed the disk). get() returns null, and passing that on is a
+        // TypeError — a 500 that says nothing to whoever clicked the button.
+        abort_if($sourceContent === null, 422, 'That gallery image is missing from storage.');
+
         $frame = $this->createFrameFromBinary(
             $project, $model, $sourceContent, $galleryImage->original_filename, $extension,
         );

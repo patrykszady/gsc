@@ -118,6 +118,10 @@ class BeforeAfterController extends Controller
         $extension = strtolower(pathinfo($galleryImage->filename, PATHINFO_EXTENSION) ?: 'jpg');
         $binary = Storage::disk('public')->get($galleryImage->path);
 
+        // Same as the timelapse copy: a gallery row whose file is gone must
+        // not become a TypeError in fillSlot().
+        abort_if($binary === null, 422, 'That gallery image is missing from storage.');
+
         $this->fillSlot($project, $model, $slot, $binary, $extension);
 
         return $this->itemResponse($model->fresh()->toApiArray());

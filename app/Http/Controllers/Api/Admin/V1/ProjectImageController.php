@@ -38,6 +38,14 @@ class ProjectImageController extends Controller
 
         $file = $request->file('image');
         $path = $file->store('projects/'.$project->id, 'public');
+
+        // store() returns false when the disk refuses the write — full, wrong
+        // permissions, a remote error. Recording the row anyway leaves an image
+        // whose file does not exist, and the failure surfaces later and
+        // elsewhere: as a 500 in whatever reads it back (timelapse frames and
+        // before/after slots copy from the gallery), or a broken <img> on the
+        // site. Fail here, where the cause is still visible.
+        abort_if($path === false, 500, 'Could not save the image to storage.');
         $dimensions = @getimagesize($file->getRealPath());
 
         $isCover = (bool) ($data['is_cover'] ?? false);
