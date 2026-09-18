@@ -5,6 +5,7 @@ namespace Tests;
 use App\Models\Site;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\ParallelTesting;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -39,6 +40,23 @@ abstract class TestCase extends BaseTestCase
      * Resetting it here, once, after every test closes that class of leak at
      * the source instead of patching each polluting test individually.
      */
+    /**
+     * Give this worker its own crawl-file directory.
+     *
+     * Sitemaps are written to a real path under storage/, which every paratest
+     * worker shares. Two workers generating the same site's sitemap overwrote
+     * each other, and the reader saw the other's file — one test adding a town
+     * and then failing to find it in "its" sitemap, only when run in parallel.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $token = (string) (ParallelTesting::token() ?: '');
+
+        config(['seo.crawl_files_root' => storage_path('framework/testing/tenants'.($token !== '' ? '_test_'.$token : ''))]);
+    }
+
     protected function tearDown(): void
     {
         Site::forgetActive();

@@ -4,6 +4,17 @@ use App\Models\SeoOverride;
 use RalphJSmit\Laravel\SEO\Models\SEO;
 
 return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Where a tenant's crawl files are written
+    |--------------------------------------------------------------------------
+    | Null means storage/app/private/tenants, which is what production uses.
+    | The test suite overrides it per parallel worker so two workers cannot
+    | write and read the same site's sitemap (App\Support\Seo\CrawlFiles).
+    */
+    'crawl_files_root' => env('SEO_CRAWL_FILES_ROOT'),
+
     /**
      * The SEO model. You can use this setting to override the model used by the package.
      * Make sure to always extend the old model, so that you'll not lose functionality during upgrades.

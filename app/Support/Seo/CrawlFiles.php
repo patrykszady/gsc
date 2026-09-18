@@ -19,11 +19,26 @@ use Illuminate\Http\Response;
  */
 final class CrawlFiles
 {
+    /**
+     * The root every tenant's crawl files live under.
+     *
+     * Configurable for one reason: the parallel test suite. Each paratest
+     * worker runs in its own process but shares this machine's storage
+     * directory, so two workers generating gs.construction's sitemap wrote the
+     * same file and read each other's — a test that had just added a town
+     * found a sitemap without it. The suite points this at a per-worker
+     * directory; in production nothing sets it and it is storage as before.
+     */
+    public static function root(): string
+    {
+        return (string) (config('seo.crawl_files_root') ?: storage_path('app/private/tenants'));
+    }
+
     public static function dir(?Site $site = null): string
     {
         $site ??= Site::current();
 
-        return storage_path("app/private/tenants/{$site->slug}");
+        return self::root()."/{$site->slug}";
     }
 
     public static function sitemapPath(?Site $site = null): string

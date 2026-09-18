@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Admin\V1;
 
 use App\Jobs\RunGscInspectBulkJob;
 use App\Models\GscCoverageState;
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\Feature\Api\Admin\V1\Concerns\WithAdminApiAuth;
@@ -73,9 +74,13 @@ class GscErrorControllerTest extends TestCase
 
     public function test_prune_retired_deletes_only_urls_that_left_a_readable_sitemap(): void
     {
-        if (! is_file(\App\Support\Seo\CrawlFiles::sitemapPath())) {
-            $this->markTestSkipped('No generated sitemap on this box to exercise the readable-sitemap branch.');
-        }
+        // Write the sitemap this branch needs instead of hoping the machine
+        // has one: it used to skip on a clean checkout, and under the parallel
+        // suite it only ever passed because another worker happened to leave a
+        // file in the shared storage directory.
+        $path = CrawlFiles::sitemapPath();
+        @mkdir(dirname($path), 0775, true);
+        file_put_contents($path, '<?xml version="1.0"?><urlset><url><loc>https://gs.construction/</loc></url><url><loc>https://gs.construction/contact</loc></url></urlset>');
 
         GscCoverageState::create(['url' => 'https://gs.construction/this-url-is-definitely-not-in-the-sitemap-xyz', 'verdict' => 'FAIL', 'inspected_at' => now()]);
 

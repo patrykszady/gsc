@@ -59,6 +59,27 @@ php artisan tenants:run "sitemap:generate"          # every active site
 8. Cloudflare zone + Forge **alias** (never a new Forge site) + Let's Encrypt.
 9. Flip `is_active` when the theme is ready — that is what makes the host resolve and become indexable.
 
+## What goes in a tenant's sitemap
+
+`GenerateSitemap` discovers pages from things every site shares: one global
+route table and config files like `remodel-costs` or `design-partners`.
+`App\Support\Seo\SitemapTenantFilter` decides which of those a given tenant
+actually serves, structurally — no requests are dispatched:
+
+- a `/services/{slug}` page needs that slug in the tenant's own
+  `services-content` overlay (a shared `services` claim is not enough);
+- a config-backed family (`compare`, `costs`, `insurance-claims`, `trades`,
+  `permits`, `design-partners`) needs that config overridden by the tenant;
+- `/portfolio` and `/testimonials` are real pages on one site and legacy
+  redirects on another, so a tenant gets them when its own `nav.php` links them;
+- `/blog` appears only where that tenant has a published post;
+- market pages (`markets.list`) are added for the tenant that defines them.
+
+Two consequences worth knowing. A page that is real but linked from nowhere in
+`nav.php` will be left out for a non-default tenant, so link it or add a gate.
+And the command refuses to write a sitemap that collapses to under a quarter of
+what that tenant published last time, on the assumption that a gate broke.
+
 ## Brief template
 
 ```md

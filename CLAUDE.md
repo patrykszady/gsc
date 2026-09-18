@@ -40,6 +40,10 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   gs.construction's inbox, and the visitor still sees "thank you". `sites:check` fails a
   site whose leads would land there, and skips tenants listed in `config/sites.php`
   `'retired'` (they left the platform; the check is a deploy gate again).
+- **A tenant's sitemap is filtered by `App\Support\Seo\SitemapTenantFilter`**, not just by
+  path claims: a shared prefix (`services`) says nothing about whether this site has that
+  page. See docs/sites/README.md. Tests write crawl files under a per-worker directory
+  (`seo.crawl_files_root`) — before that, parallel workers overwrote each other's sitemap.
 - **A tenant that does not book crew visits uses `App\Livewire\EnquiryForm`**, not
   `ContactSection` (which asks for a street address and two days of availability so GS can
   schedule a visit). Leads are stored site-scoped by `BelongsToSite` either way, and

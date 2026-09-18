@@ -10,11 +10,12 @@ use App\Models\Site;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\ZipCodeService;
-use App\Support\ExclusivePaths;
 use App\Support\LeadLineInfo;
 use App\Support\PermitGuideInfo;
 use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Seo\CrawlFiles;
+use App\Support\Seo\SitemapTenantFilter;
+use App\Support\SiteConfig;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
@@ -127,15 +128,13 @@ class GenerateSitemap extends Command
         $excludeExact = [
             'areas',        // alias of /areas-served (noindex)
             'locations',    // alias of /areas-served (noindex)
-            // On gs.construction /portfolio 301s to /projects (the route only
-            // renders for jpeterson). It sat in this tenant's sitemap anyway,
-            // and Google flagged the contradiction: "Page with redirect",
-            // source sitemap.xml. This filter only sees route ACTIONS, so a
-            // middleware- or closure-issued redirect must be listed here.
-            'portfolio',
+            // 'portfolio' and 'testimonials' USED to be listed here, because on
+            // gs.construction both 301 (from RedirectLegacyUrls, which this
+            // filter cannot see — it only reads route actions). But they are
+            // real pages on J. Peterson Design, and excluding them for every
+            // tenant dropped hers. SitemapTenantFilter now answers per site.
             's/{code}',     // short link redirects
             'up',           // health check
-            'testimonials', // redirect to /reviews
             'contact-us',   // redirect to /contact
             'review',       // 302 shortlink → Google write-a-review (no HTML/schema)
             // Root-level legacy redirects → /services/*
@@ -274,6 +273,29 @@ class GenerateSitemap extends Command
 
             return \Illuminate\Support\Carbon::createFromTimestamp($cache[$file]);
         };
+
+        // Market pages — a tenant's own metros (/chicago, /atlanta, …). They
+        // ride a parameterised route, which the static walk above skips, so
+        // without this loop a studio's three real pages were simply missing
+        // while six of gs.construction's service pages were present.
+        $markets = (array) config('markets.list', []);
+        if ($markets !== [] && SiteConfig::owns('markets.list')) {
+            $this->info('Adding market pages to sitemap...');
+            foreach ($markets as $market) {
+                $slug = (string) ($market['slug'] ?? '');
+                if ($slug === '') {
+                    continue;
+                }
+                $sitemap->add(
+                    Url::create("{$baseUrl}/{$slug}")
+                        ->setLastModificationDate($configMtime('sites/'.Site::current()->slug.'/markets.php'))
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                        ->setPriority(0.8)
+                );
+                $urlCount++;
+                $this->line("  Added market: /{$slug}");
+            }
+        }
 
         // Add competitor comparison pages
         $competitors = (array) config('competitors.competitors', []);
@@ -799,12 +821,15 @@ class GenerateSitemap extends Command
         // shared route table and the guides from shared config, so another
         // tenant's sitemap advertised /reviews, /compare/… — 80-odd URLs that
         // 404 on that site (TenantRouteGuard). Drop what it does not claim.
-        $slug = Site::current()->slug;
+        $site = Site::current();
+        $slug = $site->slug;
         $kept = [];
         $dropped = 0;
+        $total = 0;
         foreach ($sitemap->getTags() as $tag) {
             $tagPath = (string) parse_url((string) ($tag->url ?? ''), PHP_URL_PATH);
-            if ($tagPath !== '' && ! ExclusivePaths::allows($slug, $tagPath)) {
+            $total++;
+            if ($tagPath !== '' && ! SitemapTenantFilter::allows($tagPath, $site)) {
                 $dropped++;
 
                 continue;
@@ -812,9 +837,26 @@ class GenerateSitemap extends Command
             $kept[] = $tag;
         }
         if ($dropped > 0) {
-            $this->line("  Dropped {$dropped} URL(s) another tenant owns (not served on {$slug})");
+            $this->line("  Dropped {$dropped} URL(s) this tenant does not serve (not on {$slug})");
             $urlCount -= $dropped;
         }
+
+        // A tenant dropping most of the shared candidate pool is ordinary — a
+        // six-page studio shares a route table with a twelve-hundred-page
+        // contractor. What is not ordinary is a site's OWN sitemap collapsing
+        // between runs, which is what a broken gate would look like. Compare
+        // with what this tenant published last time and refuse to overwrite a
+        // real sitemap with a husk.
+        $previous = $this->countPreviousUrls(CrawlFiles::sitemapPath());
+        if ($previous >= 20 && count($kept) < $previous / 4) {
+            $this->error(sprintf(
+                'Refusing to write %s\'s sitemap: %d URLs this run against %d last time. Check SitemapTenantFilter, config/sites.php and the site\'s own content.',
+                $slug, count($kept), $previous,
+            ));
+
+            return self::FAILURE;
+        }
+
         $sitemap = Sitemap::create()->add($kept);
 
         // One sitemap per site, served by the /sitemap.xml route for the
@@ -840,5 +882,15 @@ class GenerateSitemap extends Command
         $this->call('seo:image-sitemap-build');
 
         return Command::SUCCESS;
+    }
+
+    /** How many URLs this tenant published last time, 0 when it never has. */
+    protected function countPreviousUrls(string $path): int
+    {
+        if (! is_file($path)) {
+            return 0;
+        }
+
+        return substr_count((string) file_get_contents($path), '<loc>');
     }
 }
