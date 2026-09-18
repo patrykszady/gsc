@@ -79,7 +79,10 @@ return [
      *
      * You can use the following filetypes: ico, png, gif, jpeg, svg.
      */
-    'favicon' => 'favicon.ico',
+    // The layout declares the icons itself (one candidate per consumer, on
+    // stable URLs); the package's own unversioned <link> was a second .ico
+    // candidate ahead of them in the head.
+    'favicon' => null,
 
     'title' => [
         /**

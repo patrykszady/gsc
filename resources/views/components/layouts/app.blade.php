@@ -34,10 +34,15 @@
     <link rel="alternate" hreflang="x-default" href="{{ url()->current() }}" />
 
     {{-- Additional SEO --}}
-    <meta name="application-name" content="GS Construction">
-    <meta name="apple-mobile-web-app-title" content="GS Construction">
-    <meta name="author" content="GS Construction">
-    <meta name="publisher" content="GS Construction">
+    {{-- One name everywhere. Google picks the site name from the WebSite
+         schema, og:site_name, the title and headings, and shows the bare
+         domain when those disagree — these used to say "GS Construction"
+         while everything else said "GS Construction & Remodeling". From
+         config, so another tenant never renders this business's name. --}}
+    <meta name="application-name" content="{{ config('brand.display_name', config('brand.name')) }}">
+    <meta name="apple-mobile-web-app-title" content="{{ config('brand.display_name', config('brand.name')) }}">
+    <meta name="author" content="{{ config('brand.display_name', config('brand.name')) }}">
+    <meta name="publisher" content="{{ config('brand.display_name', config('brand.name')) }}">
     <meta name="copyright" content="GS Construction">
     <meta name="geo.region" content="US-IL">
     <meta name="geo.placename" content="Chicago">
@@ -69,31 +74,19 @@
     </script>
     @endif
 
-        {{-- Favicons.
-                 Browser-first order:
-                     • Modern browsers get the SVG first for the sharpest rendering.
-                     • Search engines still have the large PNGs Google prefers around 48px.
-                         https://developers.google.com/search/docs/appearance/favicon-in-search
-                     • Smaller PNGs and the .ico file remain as fallbacks for older clients.
-                     • We do not advertise the dark-mode SVG as a separate rel=icon entry
-                         because crawlers may ignore media queries and pick the wrong asset.
-                         Dark mode should stay handled inside favicon.svg itself. --}}
-        <link rel="icon" type="image/svg+xml" sizes="any" href="{{ asset('favicon.svg?v=20260707') }}">
-        {{-- Google Search prefers a favicon whose size is a multiple of 48px;
-             48x48 is the base it downscales for the SERP. --}}
-        <link rel="icon" type="image/png" sizes="48x48" href="{{ asset('favicon-48x48.png?v=20260707') }}">
-        <link rel="icon" type="image/png" sizes="96x96" href="{{ asset('favicon-96x96.png?v=20260707') }}">
-        <link rel="icon" type="image/png" sizes="144x144" href="{{ asset('favicon-144x144.png?v=20260707') }}">
-        <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('android-chrome-512x512.png?v=20260707') }}">
-        <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('android-chrome-192x192.png?v=20260707') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png?v=20260707') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png?v=20260707') }}">
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico?v=20260707') }}">
-    {{-- Legacy `shortcut icon` is still the strongest signal Bingbot honors;
-         without it Bing sometimes fails to attach any favicon to the SERP. --}}
-    <link rel="shortcut icon" href="{{ asset('favicon.ico?v=20260707') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png?v=20260707') }}">
-    <link rel="manifest" href="{{ asset('site.webmanifest?v=20260707') }}">
+    {{-- Favicons — one clear candidate per consumer, on STABLE URLs.
+         Google shows one favicon per host and asks for a square PNG that is a
+         multiple of 48px; it does not read SVG, and it warns against URLs that
+         change (the old ?v= stamps changed the URL every bump). It used to
+         have twelve candidates here plus the SEO package's unversioned .ico
+         first in the head, and picked a tiny one. Bing reads rel=icon and the
+         root /favicon.ico. Modern browsers take the SVG; the manifest keeps
+         the 192/512 PNGs for install icons. --}}
+    <link rel="icon" type="image/png" sizes="96x96" href="{{ asset('favicon-96x96.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
     <meta name="theme-color" content="#1a1a1a">
 
     {{-- Preconnect to third-party origins for faster loading --}}
