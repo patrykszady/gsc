@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 /**
@@ -251,6 +252,50 @@ class EmailLeadReaderTest extends TestCase
         $this->assertSame(['m-return' => 'automated', 'm-orders' => 'automated', 'm-billing' => 'automated'], EmailLeadIngest::pluck('skip_reason', 'nylas_message_id')->all());
         $this->assertSame(0, ContactSubmission::withoutSiteScope()->count());
         $this->assertSame(0, $this->openaiCalls());
+    }
+
+    public function test_a_rate_limited_classification_is_retried_rather_than_filed_unclassified(): void
+    {
+        // 2026-09-18: five messages in one run came back 429 and were filed
+        // unclassified, a real enquiry among them. A 429 is a "later".
+        Sleep::fake();
+
+        $this->fakeNylas([$this->message()], extra: [
+            'https://api.openai.com/*' => Http::sequence()
+                ->push(['error' => ['message' => 'Rate limit reached']], 429, ['Retry-After' => '2'])
+                ->push(['choices' => [['message' => ['content' => json_encode([
+                    'is_lead' => true, 'confidence' => 0.96, 'reason' => 'Homeowner asking for a bathroom remodel',
+                    'name' => 'Will', 'phone' => '(832) 257-1204', 'address' => '7815 Kenton Ave', 'city' => 'Skokie', 'zip' => null,
+                    'project_type' => 'Bathroom remodel', 'scope_summary' => 'Remodel the hall bathroom.', 'timeline' => null, 'budget' => null,
+                ])]]]]),
+        ]);
+
+        $this->artisan('leads:ingest-email')
+            ->expectsOutputToContain('1 lead(s)')
+            ->assertSuccessful();
+
+        $this->assertSame(2, $this->openaiCalls(), 'the rate-limited call is tried again');
+        $this->assertSame('pending', ContactSubmission::withoutSiteScope()->sole()->status);
+
+        // It waited the provider's own Retry-After, not a guess.
+        Sleep::assertSlept(fn (\DateInterval $duration): bool => $duration->s === 2, 1);
+    }
+
+    public function test_a_classifier_that_keeps_refusing_gives_up_instead_of_hanging_the_run(): void
+    {
+        Sleep::fake();
+
+        $this->fakeNylas([$this->message()], extra: [
+            'https://api.openai.com/*' => Http::response(['error' => ['message' => 'Rate limit reached']], 429),
+        ]);
+
+        $this->artisan('leads:ingest-email')->assertSuccessful();
+
+        $this->assertSame(
+            EmailLeadReader::CLASSIFY_ATTEMPTS,
+            $this->openaiCalls(),
+            'three tries and then the run moves on',
+        );
     }
 
     public function test_a_message_the_model_could_not_judge_is_held_and_judged_again_next_run(): void

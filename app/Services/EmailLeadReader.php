@@ -8,11 +8,13 @@ use App\Models\EmailLeadIngest;
 use App\Models\PlatformSetting;
 use App\Support\SenderName;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Opcodes\MailParser\Message;
 
@@ -34,6 +36,9 @@ use Opcodes\MailParser\Message;
 class EmailLeadReader
 {
     public const SOURCE = 'crew-email';
+
+    /** Tries per classification, including the first: a 429 is a "later", not a "no". */
+    public const CLASSIFY_ATTEMPTS = 3;
 
     public function __construct(
         private readonly LeadAddressCompleter $completer,
@@ -710,6 +715,52 @@ class EmailLeadReader
     }
 
     /**
+     * Post one classification, retrying a rate limit or a server error.
+     *
+     * A run reads several inboxes back to back, so a batch can walk straight
+     * into the provider's per-minute limit: on 2026-09-18 five messages in one
+     * run came back 429 and were filed unclassified, a real enquiry among them.
+     * A 429 is a "later", not a "no" — wait out the provider's own Retry-After
+     * when it sends one, otherwise back off, and give up after three tries so a
+     * scheduled run can never hang on a sulking API. Only 429: a 5xx is already
+     * held and re-read on the next run.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function classificationRequest(string $apiKey, array $payload): Response
+    {
+        $attempt = 0;
+
+        while (true) {
+            $attempt++;
+
+            $response = Http::withToken($apiKey)
+                ->timeout(45)
+                ->post('https://api.openai.com/v1/chat/completions', $payload);
+
+            // A rate limit only. A 5xx already has an answer in this design:
+            // the message is held as failed and read again next run, which
+            // test_a_message_the_model_could_not_judge_is_held_and_judged_again_next_run
+            // pins. A 429 is different — the next run arrives in the same
+            // burst and is refused the same way, so the lead waits hours.
+            if ($response->status() !== 429 || $attempt >= self::CLASSIFY_ATTEMPTS) {
+                return $response;
+            }
+
+            $after = (int) $response->header('Retry-After');
+            $wait = $after > 0 ? min($after, 20) : $attempt * 3;
+
+            Log::channel('submissions')->info('Email leads: classifier asked us to wait', [
+                'status' => $response->status(),
+                'attempt' => $attempt,
+                'sleeping' => $wait,
+            ]);
+
+            Sleep::for($wait)->seconds();
+        }
+    }
+
+    /**
      * Ask the model whether this is a prospect enquiry, and pull out the
      * details worth having on the lead. One call does both.
      *
@@ -784,28 +835,30 @@ TXT;
         ];
 
         try {
-            $response = Http::withToken($apiKey)
-                ->timeout(45)
-                ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => config('services.openai.model', 'gpt-4o-mini'),
-                    // The same email must get the same verdict on every
-                    // read: a dry run said "not a lead", the scheduled run
-                    // minutes later filed it (2026-09-15, Apple's terms
-                    // notice), because sampling at the default temperature
-                    // differed.
-                    'temperature' => 0,
-                    'messages' => [
-                        ['role' => 'system', 'content' => $system],
-                        ['role' => 'user', 'content' => "From: {$fromEmail}\nSubject: {$subject}\n\n".Str::limit($body, 6000, '')],
-                    ],
-                    'response_format' => [
-                        'type' => 'json_schema',
-                        'json_schema' => ['name' => 'email_lead_triage', 'strict' => true, 'schema' => $schema],
-                    ],
-                ]);
+            $response = $this->classificationRequest($apiKey, [
+                'model' => config('services.openai.model', 'gpt-4o-mini'),
+                // The same email must get the same verdict on every
+                // read: a dry run said "not a lead", the scheduled run
+                // minutes later filed it (2026-09-15, Apple's terms
+                // notice), because sampling at the default temperature
+                // differed.
+                'temperature' => 0,
+                'messages' => [
+                    ['role' => 'system', 'content' => $system],
+                    ['role' => 'user', 'content' => "From: {$fromEmail}\nSubject: {$subject}\n\n".Str::limit($body, 6000, '')],
+                ],
+                'response_format' => [
+                    'type' => 'json_schema',
+                    'json_schema' => ['name' => 'email_lead_triage', 'strict' => true, 'schema' => $schema],
+                ],
+            ]);
 
             if (! $response->successful()) {
-                Log::channel('submissions')->warning('Email leads: classification request failed', ['status' => $response->status()]);
+                Log::channel('submissions')->warning('Email leads: classification request failed', [
+                    'status' => $response->status(),
+                    'from' => $fromEmail,
+                    'subject' => Str::limit($subject, 80),
+                ]);
 
                 return array_merge($fallback, ['extraction_status' => 'failed']);
             }
