@@ -23,7 +23,10 @@
   claims* in `config/sites.php exclusive_paths` (gsc serves 200s or legacy 301s at the
   same paths). `RedirectLegacyUrls` is gsc-scoped — its /portfolio→/projects and
   /testimonials→/reviews mappings must never fire on this tenant. Contact form is a
-  disabled skeleton pending per-site lead routing (audit item).
+  disabled skeleton: the routing is done (`App\Support\LeadInbox` mails this tenant's
+  own inbox, never the deployment's MAIL_FROM), the form UI and Jenn's real address are
+  not — `hello@jpeterson-design.com` is still a placeholder, so enabling the form before
+  she confirms it would drop enquiries.
 
 ## Before launch
 Real content from Jenn · brand.php with real NAP · theme build · DNS + Forge alias +

@@ -34,6 +34,12 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   or email in shared code renders on every tenant. Per-site overrides live in
   `config/sites/{slug}/brand.php` and **must** set `'__replace' => true` — merging inherits
   another business's contact details and review-profile URLs.
+- **Leads are per tenant.** `App\Support\LeadInbox::address()` — explicit
+  `brand.lead_email`, else a non-default tenant's own `brand.email`, else (default site
+  only) `mail.from.address`. A tenant must never inherit MAIL_FROM: that is
+  gs.construction's inbox, and the visitor still sees "thank you". `sites:check` fails a
+  site whose leads would land there, and skips tenants listed in `config/sites.php`
+  `'retired'` (they left the platform; the check is a deploy gate again).
 - **Content for a client site must be supplied by that client.** Do not copy text or images
   from their existing site (see `docs/legal/`).
 

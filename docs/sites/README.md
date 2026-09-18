@@ -50,9 +50,14 @@ php artisan tenants:run "sitemap:generate"          # every active site
    `/site.webmanifest` and `/favicon.ico` routes and the schema `logo` all read that set for
    the tenant answering the host; nothing icon-shaped goes at the public root. Theme colour
    comes from `brand.theme_color` / `brand.background_color` in the site's brand.php.
-6. `docs/sites/{slug}.md` from the template below.
-7. Cloudflare zone + Forge **alias** (never a new Forge site) + Let's Encrypt.
-8. Flip `is_active` when the theme is ready — that is what makes the host resolve and become indexable.
+6. Leads: a tenant that is not the default never inherits this deployment's
+   MAIL_FROM — `App\Support\LeadInbox` sends contact-form mail to its own
+   `brand.lead_email`, else its `brand.email`. Set one of them to an address the
+   client actually reads; `sites:check` fails a site whose leads would land in
+   gs.construction's inbox.
+7. `docs/sites/{slug}.md` from the template below.
+8. Cloudflare zone + Forge **alias** (never a new Forge site) + Let's Encrypt.
+9. Flip `is_active` when the theme is ready — that is what makes the host resolve and become indexable.
 
 ## Brief template
 
@@ -66,10 +71,17 @@ php artisan tenants:run "sitemap:generate"          # every active site
 - **Routes:** shared, or site-specific set
 - **SEO:** GSC property, GBP location, IndexNow key — per site
 - **Icons:** public/icons/{slug}/ — built from the client's mark with `icons:build`
+- **Leads:** where the contact form mails (brand.lead_email / brand.email)
 - **Launch checklist:** DNS · Forge alias · cert · theme · icons · is_active · sitemap · GSC verify
 ```
 
 ## Sites that left this platform
+
+Listed in `config/sites.php` `'retired'`. `sites:check` skips them — there is no
+theme, overlay or nav left to validate — but still fails if one is somehow
+`is_active`, because its old hosts would then resolve to shared views carrying
+another business's identity. The list is explicit on purpose: a brand-new tenant
+also has no theme on day one and must not be mistaken for a departed one.
 
 `ss` (ss.systems) was a tenant here until 2026-08-18. It now runs as its own
 Laravel application — repo `patrykszady/ss-systems`, its own Forge site — so
