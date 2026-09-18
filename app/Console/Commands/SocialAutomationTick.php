@@ -34,12 +34,17 @@ class SocialAutomationTick extends Command
 
     protected $description = "Dispatch every site's due automatic social posts for this 5-minute tick";
 
-    public function handle(AutomationPlanner $planner, MetaSocialService $meta, GoogleBusinessProfileService $gbp): int
+    public function handle(MetaSocialService $meta, GoogleBusinessProfileService $gbp): int
     {
-        $now = Carbon::now($planner->timezone());
+        Tenancy::each(function (Site $site) use ($meta, $gbp) {
+            // Resolved INSIDE the tenant bind, so a site's own timezone
+            // (config/sites/{slug}/social-automation.php via SiteConfig)
+            // governs its clock. Resolving one planner up front would judge
+            // every site against whichever timezone happened to be live
+            // first — slots firing at the wrong local hour, or skipped.
+            $planner = app()->make(AutomationPlanner::class);
 
-        Tenancy::each(function (Site $site) use ($planner, $meta, $gbp, $now) {
-            $this->tickSite($site, $planner, $meta, $gbp, $now);
+            $this->tickSite($site, $planner, $meta, $gbp, Carbon::now($planner->timezone()));
         });
 
         return self::SUCCESS;
