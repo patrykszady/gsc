@@ -63,6 +63,21 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
 - **Legacy:** `jpeterson-design.on-forge.com` is an OLD separate Forge site from the
   `patrykszady/jpeterson-design` repo, not this app — its own public/robots.txt is not ours.
 
+## Icons are PER SITE (2026-09-17)
+
+- `App\Support\SiteIcons` — every tenant's set lives in `public/icons/{slug}/` (favicon-96x96.png,
+  favicon.svg, favicon.ico, apple-touch-icon.png, android-chrome-192/512). `<x-site-icons />` in a
+  layout head links the current tenant's set; `/site.webmanifest` and `/favicon.ico` are routes that
+  answer per host; the structured-data `logo` uses `SiteIcons::url(...)`. **Nothing icon-shaped at the
+  public root** — nginx would serve one file to every host. Stable URLs, no `?v=` stamp: Google keeps
+  the favicon URL it first found.
+- New site: `php artisan icons:build {slug} --from=<mark.svg|png>` (ImageMagick; slug only, no DB).
+  `sites:check` fails a site whose set is incomplete. Colours: `brand.theme_color` /
+  `brand.background_color`. JPD's set is a placeholder "JP" monogram until Jenn supplies her mark.
+- nginx: Forge's `site.conf` has a static-only `location = /favicon.ico`; like robots.txt it needs
+  `try_files $uri /index.php?$query_string;` or a direct hit on `/favicon.ico` is a 404 (the head's
+  `<link>` tags still work, since those point into `/icons/{slug}/`).
+
 ## Search Console in the admin (2026-09-12)
 
 The central admin's GSC Errors page reads and writes Search Console through this

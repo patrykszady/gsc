@@ -14,8 +14,8 @@
     <meta property="og:site_name" content="{{ config('brand.display_name') }}" />
     <meta property="og:title" content="{{ $title ?? config('brand.display_name') }}" />
     <meta property="og:description" content="{{ $description ?? config('geo.site_description') }}" />
-
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f5f3ef'/%3E%3Ctext x='50' y='66' font-size='46' font-family='Georgia,serif' text-anchor='middle' fill='%233f3a34'%3EJP%3C/text%3E%3C/svg%3E" />
+    {{-- Her own icon set under public/icons/jpeterson/ (placeholder monogram until Jenn supplies a mark) — see App\Support\SiteIcons. --}}
+    <x-site-icons />
 
     <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2') }}" crossorigin>
     @vite(\App\Support\Theme::viteEntries(\App\Models\Site::current()))

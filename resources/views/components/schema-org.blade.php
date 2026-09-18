@@ -26,7 +26,7 @@ if (empty($businessImages)) {
 // Raster logo for Organization/logo structured data. Google's logo guidelines
 // require a crawlable raster (PNG/JPG) — an SVG can be ignored — so we point the
 // machine-readable logo at the PNG app icon while the UI still uses the SVG.
-$logoPng = asset('android-chrome-512x512.png');
+$logoPng = \App\Support\SiteIcons::url('android-chrome-512x512.png');
 
 // Get featured testimonials for embedding in LocalBusiness schema
 // Google requires reviews to be nested in the parent entity, not standalone
@@ -365,7 +365,7 @@ $website = [
 // hints for voice assistants.
 $__seoBuilderInstance = app(\App\Support\SEO\SEOBuilder::class);
 $__pageData = $__seoBuilderInstance->build();
-$pageImage = $__pageData->image ?: asset('android-chrome-512x512.png');
+$pageImage = $__pageData->image ?: \App\Support\SiteIcons::url('android-chrome-512x512.png');
 $pageTitle = $__pageData->title ?: 'GS Construction';
 
 // Specialize the WebPage @type by route so Google understands the page's role

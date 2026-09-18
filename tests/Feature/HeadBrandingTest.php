@@ -36,6 +36,7 @@ class HeadBrandingTest extends TestCase
 
         $this->assertCount(3, $icons, 'one PNG for Google, one SVG for browsers, one .ico for Bing: '.implode("\n", $icons));
         $this->assertStringContainsString('sizes="96x96"', implode("\n", $icons), 'Google wants a square PNG that is a multiple of 48px');
+        $this->assertStringContainsString('/icons/gsc/favicon-96x96.png', implode("\n", $icons), 'this site\'s own set, not files at the public root');
         foreach ($icons as $tag) {
             $this->assertStringNotContainsString('?v=', $tag, 'a favicon URL must not change: '.$tag);
         }

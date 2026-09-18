@@ -45,9 +45,14 @@ php artisan tenants:run "sitemap:generate"          # every active site
 2. `resources/themes/{theme}/` — override only the views that differ; everything else falls through.
 3. `config/sites/{slug}/brand.php` — **must** set `'__replace' => true`. Merging inherits another business's phone, email and review-profile URLs.
 4. Optional `resources/css/themes/{theme}/app.css` + a Vite input for its own styling.
-5. `docs/sites/{slug}.md` from the template below.
-6. Cloudflare zone + Forge **alias** (never a new Forge site) + Let's Encrypt.
-7. Flip `is_active` when the theme is ready — that is what makes the host resolve and become indexable.
+5. Icons: `php artisan icons:build {slug} --from=<the client's mark.svg|png>` writes
+   `public/icons/{slug}/` (favicon PNG/SVG/ICO, touch and install icons). The head, the
+   `/site.webmanifest` and `/favicon.ico` routes and the schema `logo` all read that set for
+   the tenant answering the host; nothing icon-shaped goes at the public root. Theme colour
+   comes from `brand.theme_color` / `brand.background_color` in the site's brand.php.
+6. `docs/sites/{slug}.md` from the template below.
+7. Cloudflare zone + Forge **alias** (never a new Forge site) + Let's Encrypt.
+8. Flip `is_active` when the theme is ready — that is what makes the host resolve and become indexable.
 
 ## Brief template
 
@@ -60,7 +65,8 @@ php artisan tenants:run "sitemap:generate"          # every active site
 - **Identity:** config/sites/{slug}/brand.php
 - **Routes:** shared, or site-specific set
 - **SEO:** GSC property, GBP location, IndexNow key — per site
-- **Launch checklist:** DNS · Forge alias · cert · theme · is_active · sitemap · GSC verify
+- **Icons:** public/icons/{slug}/ — built from the client's mark with `icons:build`
+- **Launch checklist:** DNS · Forge alias · cert · theme · icons · is_active · sitemap · GSC verify
 ```
 
 ## Sites that left this platform

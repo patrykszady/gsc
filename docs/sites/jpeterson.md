@@ -26,5 +26,7 @@
   disabled skeleton pending per-site lead routing (audit item).
 
 ## Before launch
-Real content from Jenn · brand.php with real NAP · theme build · DNS + Forge alias +
-cert · `is_active = true` · sitemap · GSC property.
+Real content from Jenn · brand.php with real NAP · theme build · her real mark for the
+icons (`public/icons/jpeterson/` is a placeholder "JP" monogram until then — rebuild with
+`php artisan icons:build jpeterson --from=<mark>`) · DNS + Forge alias + cert ·
+`is_active = true` · sitemap · GSC property.

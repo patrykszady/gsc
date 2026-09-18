@@ -12,6 +12,9 @@ return [
 
     'name' => 'J. Peterson Design',
     'display_name' => 'J. Peterson Design',
+    // Manifest / browser-chrome colours from her palette (cream page, teal accent).
+    'theme_color' => '#4e9da2',
+    'background_color' => '#faf8f5',
     'legal_name' => 'J. Peterson Design',
     'also_known_as' => '',
 

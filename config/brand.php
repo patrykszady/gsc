@@ -21,6 +21,9 @@ return [
 
     'name' => 'GS Construction',
     'display_name' => 'GS Construction & Remodeling',
+    // Browser chrome / web-manifest colours; the icons themselves live under public/icons/{slug}/.
+    'theme_color' => '#1a1a1a',
+    'background_color' => '#ffffff',
     'legal_name' => 'GS Construction & Remodeling, Inc.',
     'also_known_as' => 'Greg & Son Construction Company',
 

@@ -68,6 +68,7 @@ use App\Support\OAuthState;
 use App\Support\PermitGuideInfo;
 use App\Support\Seo\CrawlFiles;
 use App\Support\SEO\SEOBuilder;
+use App\Support\SiteIcons;
 use App\Support\Theme;
 use Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -89,6 +90,20 @@ Route::get('/robots.txt', fn () => response(CrawlFiles::robots(), 200, [
 ]))->name('robots');
 Route::get('/sitemap.xml', fn () => CrawlFiles::serve(CrawlFiles::sitemapPath()))->name('sitemap');
 Route::get('/image-sitemap.xml', fn () => CrawlFiles::serve(CrawlFiles::imageSitemapPath()))->name('image-sitemap');
+// The web manifest and the root favicon, per tenant — see App\Support\SiteIcons.
+// (nginx serves a static /favicon.ico from disk only, as it did robots.txt:
+// its block needs the same `try_files $uri /index.php?$query_string;`.)
+Route::get('/site.webmanifest', fn () => response()->json(SiteIcons::manifest(), 200, [
+    'Content-Type' => 'application/manifest+json',
+    'Cache-Control' => 'public, max-age=3600',
+]))->name('site.manifest');
+Route::get('/favicon.ico', function () {
+    $path = SiteIcons::path('favicon.ico');
+
+    return is_file($path)
+        ? response()->file($path, ['Content-Type' => 'image/x-icon', 'Cache-Control' => 'public, max-age=86400'])
+        : abort(404);
+})->name('site.favicon');
 
 // IndexNow key verification file
 Route::get('/{key}.txt', function (string $key) {

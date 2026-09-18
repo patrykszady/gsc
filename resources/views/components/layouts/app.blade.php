@@ -74,20 +74,8 @@
     </script>
     @endif
 
-    {{-- Favicons — one clear candidate per consumer, on STABLE URLs.
-         Google shows one favicon per host and asks for a square PNG that is a
-         multiple of 48px; it does not read SVG, and it warns against URLs that
-         change (the old ?v= stamps changed the URL every bump). It used to
-         have twelve candidates here plus the SEO package's unversioned .ico
-         first in the head, and picked a tiny one. Bing reads rel=icon and the
-         root /favicon.ico. Modern browsers take the SVG; the manifest keeps
-         the 192/512 PNGs for install icons. --}}
-    <link rel="icon" type="image/png" sizes="96x96" href="{{ asset('favicon-96x96.png') }}">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
-    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
-    <meta name="theme-color" content="#1a1a1a">
+    {{-- This site's own icons and manifest (per tenant) — see App\Support\SiteIcons. --}}
+    <x-site-icons />
 
     {{-- Preconnect to third-party origins for faster loading --}}
     {{-- Only preconnect to Google Analytics for US visitors (privacy/GDPR compliance) --}}

@@ -21,7 +21,7 @@
             'email' => config('brand.email'),
             'priceRange' => '$$$',
             'image' => (\App\Models\ProjectImage::curatedCover()?->url) ?: asset('images/greg-patryk.jpg'),
-            'logo' => asset('android-chrome-512x512.png'),
+            'logo' => \App\Support\SiteIcons::url('android-chrome-512x512.png'),
             'address' => [
                 '@type' => 'PostalAddress',
                 'addressLocality' => $city,

@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Models\Site;
 use App\Support\DevSites;
 use App\Support\ExclusivePaths;
+use App\Support\LeadLineInfo;
+use App\Support\SiteIcons;
 use App\Support\Tenancy;
 use App\Support\Theme;
 use Illuminate\Console\Command;
@@ -89,7 +91,7 @@ class SitesCheck extends Command
             $this->line("  theme        themes/{$site->theme}");
         } elseif ($site->slug === (string) config('sites.default')) {
             // The default site has no theme dir by design — it IS resources/views.
-            $this->line("  theme        <fg=gray>none — uses resources/views directly</>");
+            $this->line('  theme        <fg=gray>none — uses resources/views directly</>');
         } else {
             $this->line("  theme        <fg=yellow>themes/{$site->theme} missing — inherits every shared view</>");
         }
@@ -114,18 +116,27 @@ class SitesCheck extends Command
             }
         }
 
+        // --- icons -------------------------------------------------------
+        $missingIcons = SiteIcons::missing($site);
+        if ($missingIcons === []) {
+            $this->line('  icons        public/'.SiteIcons::dir($site).'/');
+        } else {
+            $this->line('  <fg=red>icons missing under public/'.SiteIcons::dir($site).'/: '.implode(', ', $missingIcons).' — run icons:build '.$site->slug.' with her mark as --from</>');
+            $failures++;
+        }
+
         // --- overlays / claims -------------------------------------------
         $overlays = DevSites::overlays($site);
-        $this->line('  overrides    ' . ($overlays ? implode(', ', $overlays) : '<fg=gray>nothing</>'));
+        $this->line('  overrides    '.($overlays ? implode(', ', $overlays) : '<fg=gray>nothing</>'));
 
         $claims = (array) config("sites.exclusive_paths.{$site->slug}", []);
-        $this->line('  claims       ' . ($claims ? implode(' · ', $claims) : '<fg=gray>no exclusive paths</>'));
+        $this->line('  claims       '.($claims ? implode(' · ', $claims) : '<fg=gray>no exclusive paths</>'));
 
         // --- nav ---------------------------------------------------------
         $nav = DevSites::nav($site);
 
         if (! $nav) {
-            $this->line('  nav          <fg=yellow>none — add config/sites/' . $site->slug . '/nav.php</>');
+            $this->line('  nav          <fg=yellow>none — add config/sites/'.$site->slug.'/nav.php</>');
 
             return $failures;
         }
@@ -146,7 +157,7 @@ class SitesCheck extends Command
         $unlinked = array_values(array_diff($claims, $linked));
 
         if ($unlinked && $site->slug !== (string) config('sites.default')) {
-            $this->line('  <fg=gray>claimed but not in nav: ' . implode(', ', $unlinked) . '</>');
+            $this->line('  <fg=gray>claimed but not in nav: '.implode(', ', $unlinked).'</>');
         }
 
         // Sanity: the guard must let this site serve everything it claims.
@@ -165,7 +176,7 @@ class SitesCheck extends Command
         // quietly noindexed themselves while area + ZIP pages kept linking to
         // them. Google carried 66 "excluded by noindex" URLs nobody wanted.
         if ($site->slug === 'gsc') {
-            $leadTowns = count(\App\Support\LeadLineInfo::all());
+            $leadTowns = count(LeadLineInfo::all());
             if ($leadTowns === 0) {
                 $this->line('  <fg=red>lead-service-lines data missing — every lead-pipe page will noindex itself</>');
                 $failures++;
