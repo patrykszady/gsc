@@ -165,7 +165,7 @@
 
     {{-- ---------------- contact CTA ---------------- --}}
     <x-cta>
-        {{-- TODO: Jenn's own line inviting enquiries, and what to expect after. --}}
-        Placeholder: a line inviting enquiries, and what to expect after getting in touch.
+        {{-- TODO: Jenn's own line inviting inquiries, and what to expect after. --}}
+        Placeholder: a line inviting inquiries, and what to expect after getting in touch.
     </x-cta>
 </x-layouts.app>

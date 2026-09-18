@@ -13,11 +13,11 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * An enquiry is worth more than the email about it.
+ * An inquiry is worth more than the email about it.
  *
  * Both forms send over SMTP inside the request. Expired credentials, an
  * unreachable host or a provider rate limit throws, and the contact form used
- * to send before it stored: the visitor got a Livewire error and the enquiry
+ * to send before it stored: the visitor got a Livewire error and the inquiry
  * was never written down. Now the row is written first and a failed send is a
  * line in the log.
  */
@@ -61,7 +61,7 @@ class LeadSurvivesMailFailureTest extends TestCase
             ->assertHasNoErrors();
 
         $lead = ContactSubmission::withoutSiteScope()->latest('id')->first();
-        $this->assertNotNull($lead, 'the enquiry is stored even though no mail could go out');
+        $this->assertNotNull($lead, 'the inquiry is stored even though no mail could go out');
         $this->assertSame('visitor@example.com', $lead->email);
         $this->assertSame('pending', $lead->status);
     }

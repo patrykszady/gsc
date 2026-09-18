@@ -7,7 +7,7 @@ use App\Services\EmailLeadReader;
 use Illuminate\Console\Command;
 
 /**
- * Read the team's inboxes for new enquiries and file each as a contact
+ * Read the team's inboxes for new inquiries and file each as a contact
  * submission (see EmailLeadReader). Scheduled every five minutes.
  */
 class IngestEmailLeads extends Command
@@ -18,7 +18,7 @@ class IngestEmailLeads extends Command
         {--days= : Look back this many days instead of from the last run}
         {--reprocess=* : Ledger row ids to fetch and judge again}';
 
-    protected $description = 'Turn enquiries emailed to crew@, patryk@ and greg@ into contact submissions';
+    protected $description = 'Turn inquiries emailed to crew@, patryk@ and greg@ into contact submissions';
 
     public function handle(EmailLeadReader $reader): int
     {

@@ -20,17 +20,17 @@ use Opcodes\MailParser\Message;
 
 /**
  * Reads the team's inboxes (crew@, patryk@, greg@) through Nylas and turns
- * each fresh enquiry into a contact submission — the record every lead
+ * each fresh inquiry into a contact submission — the record every lead
  * starts as, whatever door it came in by, so ss.systems lists it first and
  * hive receives it the way it receives a web-form lead.
  *
  * Ported from hive's CrewLeadEmailService, which read crew@ alone and minted
  * leads straight into the CRM. That reader now only files replies; new
- * enquiries are this site's job.
+ * inquiries are this site's job.
  *
  * Each message is judged once, whichever run sees it: the ledger
  * (email_lead_ingests) keeps the verdict, and a message that reached two of
- * our inboxes is one enquiry because the RFC Message-ID hash on the
+ * our inboxes is one inquiry because the RFC Message-ID hash on the
  * submission is checked before anything is created.
  */
 class EmailLeadReader
@@ -66,7 +66,7 @@ class EmailLeadReader
         }
 
         if ($fromHive !== []) {
-            // The shared inbox first: an enquiry addressed to it and copied
+            // The shared inbox first: an inquiry addressed to it and copied
             // to someone's own is filed under the shared one.
             return collect($fromHive)
                 ->sortByDesc('shared')
@@ -189,7 +189,7 @@ class EmailLeadReader
             }
         }
 
-        // Config order is precedence: crew@ first, so an enquiry addressed to
+        // Config order is precedence: crew@ first, so an inquiry addressed to
         // the shared mailbox and copied to someone's own is filed under crew@.
         foreach ($this->inboxes() as $inbox) {
             $mailbox = $inbox['mailbox'];
@@ -395,7 +395,7 @@ class EmailLeadReader
             return $summary + ['status' => EmailLeadIngest::STATUS_SKIPPED, 'reason' => 'already_ingested'];
         }
 
-        // The same enquiry is already on file: it reached two of our inboxes,
+        // The same inquiry is already on file: it reached two of our inboxes,
         // or hive read it before this site did and pushed it here.
         $twin = ContactSubmission::withoutSiteScope()->where('email_message_id', $identity)->first();
         if ($twin) {
@@ -428,7 +428,7 @@ class EmailLeadReader
         }
 
         // A "not a lead" the model is at least half sure of discards; only a
-        // genuinely torn answer still files, so a real enquiry is not lost to
+        // genuinely torn answer still files, so a real inquiry is not lost to
         // a hedge.
         if ($verdict['is_lead'] === false && $verdict['confidence'] >= 0.5) {
             return $this->skip($base, 'not_a_lead', $dryRun, $summary, ['confidence' => $verdict['confidence']]);
@@ -515,7 +515,7 @@ class EmailLeadReader
         // (2026-09-15) paid the model to reject Apple's no_reply@, Amazon's
         // order-update@ / shipment-tracking@ / auto-confirm@; the next day
         // return@amazon.com got through and became a lead while the model
-        // was down. Nobody enquires about a remodel from a retailer's or a
+        // was down. Nobody inquires about a remodel from a retailer's or a
         // bank's domain.
         if ($this->isMachineSender($fromEmail)) {
             return 'automated';
@@ -532,7 +532,7 @@ class EmailLeadReader
         // answering an estimate or a consultation email. That lead exists;
         // hive files the reply on it. A FORWARD is not a reply: a homeowner
         // who prepared one bid request and forwards it to every contractor
-        // she found is exactly the enquiry this reader exists to catch, and
+        // she found is exactly the inquiry this reader exists to catch, and
         // her subject says "Fwd:" while her headers reference the original
         // in her own mailbox. So a forward goes on to the classifier.
         $isForward = (bool) preg_match('/^\s*(fw|fwd|tr|wg|pd|i)\s*(\[\d+\])?\s*:/i', $subject);
@@ -551,7 +551,7 @@ class EmailLeadReader
 
         // Someone already on file is never a NEW lead, whatever the subject
         // line says — a client mid-project writing "window order" with three
-        // questions is answering us, not enquiring. Writing from a second
+        // questions is answering us, not inquiring. Writing from a second
         // address with the one we know in CC is that same someone.
         if ($this->knownSender($fromEmail, $message)) {
             return 'reply';
@@ -631,7 +631,7 @@ class EmailLeadReader
     }
 
     /**
-     * An address no person writes an enquiry from: a role or robot local
+     * An address no person writes an inquiry from: a role or robot local
      * part, or a retailer, carrier, bank or platform domain.
      */
     public function isMachineSender(string $fromEmail): bool
@@ -719,7 +719,7 @@ class EmailLeadReader
      *
      * A run reads several inboxes back to back, so a batch can walk straight
      * into the provider's per-minute limit: on 2026-09-18 five messages in one
-     * run came back 429 and were filed unclassified, a real enquiry among them.
+     * run came back 429 and were filed unclassified, a real inquiry among them.
      * A 429 is a "later", not a "no" — wait out the provider's own Retry-After
      * when it sends one, otherwise back off, and give up after three tries so a
      * scheduled run can never hang on a sulking API. Only 429: a 5xx is already
@@ -761,7 +761,7 @@ class EmailLeadReader
     }
 
     /**
-     * Ask the model whether this is a prospect enquiry, and pull out the
+     * Ask the model whether this is a prospect inquiry, and pull out the
      * details worth having on the lead. One call does both.
      *
      * @return array{is_lead:?bool, confidence:float, reason:?string, extraction_status:string, fields:array<string,mixed>}
@@ -779,7 +779,7 @@ class EmailLeadReader
 You triage the inboxes of GS Construction, a residential remodeling
 general contractor in the Chicago suburbs.
 
-Decide whether a message is a PROSPECT ENQUIRY: someone outside the company
+Decide whether a message is a PROSPECT INQUIRY: someone outside the company
 asking about work they want done, or responding to an estimate they requested.
 
 The direction of the offer is what decides it. A lead is someone who wants to
@@ -788,9 +788,9 @@ however friendly the wording — subcontractors and suppliers touting their
 services, partnership or "collaboration" proposals, marketing and SEO
 agencies, recruiters, software vendors. This holds in any language: a Polish
 "oferta współpracy" or "współpraca" is a cooperation offer, i.e. a
-solicitation, not an enquiry.
+solicitation, not an inquiry.
 
-Also NOT enquiries: mail the company itself sent; anything where GS is the
+Also NOT inquiries: mail the company itself sent; anything where GS is the
 CUSTOMER — a supplier's quote or revised quote, a price, an order
 confirmation, a shipping or lead-time update, or a "thanks for your
 interest" reply to something GS asked for, especially when it greets one of
@@ -800,18 +800,18 @@ and online services; invoices and payment notices; newsletters and
 promotions; legal or demand letters; automated notifications; and platform
 emails that merely announce a lead exists elsewhere.
 
-When a message IS an enquiry, extract what it actually states. Never invent a
+When a message IS an inquiry, extract what it actually states. Never invent a
 value — use null for anything not present. Quote the address exactly as
 written. Keep scope_summary to one or two sentences in plain language.
 
-Enquiries often come from a couple: put EVERY name in `name` as written
+Inquiries often come from a couple: put EVERY name in `name` as written
 ("Amy Dusto and Chris Ecker") and EVERY number in `phone` separated by " / ",
 in the same order as the names. Give `zip` only when the message states it —
 a guessed ZIP is worse than none.
 
 `confidence` is how sure you are of your `is_lead` answer, from 0 to 1 —
 NOT how likely the message is to be a lead. A newsletter you are certain is
-not an enquiry is is_lead=false with confidence 0.95.
+not an inquiry is is_lead=false with confidence 0.95.
 TXT;
 
         $schema = [
@@ -933,7 +933,7 @@ TXT;
             'timeline' => $this->text($fields['timeline'] ?? null, 255),
             'budget' => $this->text($fields['budget'] ?? null, 255),
             // Couples write in together and CC each other — the other
-            // people on the enquiry.
+            // people on the inquiry.
             'cc_emails' => $this->partnerEmails($message, (string) $base['from_email']),
             'address_candidates' => $data['address_candidates'] ?? null,
             'is_lead' => $verdict['is_lead'],
@@ -947,8 +947,8 @@ TXT;
         // Filed when it arrived, not when it was read — the admin sorts by created_at.
         $submission->forceFill(['created_at' => $base['message_at'] ?? now()])->saveQuietly();
 
-        // Whatever the enquirer attached — a bid request form, drawings,
-        // photos of the damage — is often the substance of the enquiry.
+        // Whatever the inquirer attached — a bid request form, drawings,
+        // photos of the damage — is often the substance of the inquiry.
         // Failure is non-fatal: the lead exists either way.
         try {
             $files = $this->storeAttachments($message, $base, $submission);
@@ -982,7 +982,7 @@ TXT;
     }
 
     /**
-     * Addresses on the enquiry that belong to the enquirers — everyone on it
+     * Addresses on the inquiry that belong to the inquirers — everyone on it
      * except the sender and our own mailboxes.
      *
      * @return array<int, string>
@@ -1000,7 +1000,7 @@ TXT;
     }
 
     /**
-     * Download the enquiry's real attachments onto the public disk.
+     * Download the inquiry's real attachments onto the public disk.
      *
      * Images, PDFs and Word documents — bid-request forms arrive as .docx and
      * carry the contact details the body leaves out. Inline parts (logos,

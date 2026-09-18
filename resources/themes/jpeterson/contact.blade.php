@@ -14,7 +14,7 @@
             <p class="text-xs uppercase tracking-[0.3em] text-stone-400">Contact</p>
             <h1 class="mt-5 font-heading text-4xl text-ink sm:text-5xl">Let&rsquo;s talk about your space</h1>
             <p class="mt-6 max-w-md leading-relaxed text-stone-600">
-                {{-- TODO: Jenn's preferred enquiry note + response expectation --}}
+                {{-- TODO: Jenn's preferred inquiry note + response expectation --}}
                 Placeholder: a short note on how to get in touch and what happens after you do.
             </p>
             <ul class="mt-9 space-y-2 text-sm text-stone-700">
@@ -28,7 +28,7 @@
             </ul>
         </div>
 
-        {{-- The studio's enquiry form: App\Livewire\EnquiryForm. It stores the
+        {{-- The studio's inquiry form: App\Livewire\EnquiryForm. It stores the
              submission against this tenant and mails the studio's own inbox
              (brand.lead_email), never gs.construction's. TODO: Jenn's own
              wording for the labels and the confirmation line. --}}

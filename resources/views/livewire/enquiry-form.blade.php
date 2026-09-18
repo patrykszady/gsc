@@ -1,5 +1,5 @@
 {{--
-    The enquiry form's markup is deliberately class-light: the tenant's theme
+    The inquiry form's markup is deliberately class-light: the tenant's theme
     sets the look through its own CSS variables, and this form is used by a
     site whose styling is not gs.construction's. See App\Livewire\EnquiryForm.
 --}}
@@ -7,7 +7,7 @@
     @if ($sent)
         <div class="rounded-sm border border-brand-200 bg-brand-50 px-5 py-4 text-sm text-stone-700">
             <p class="font-medium text-ink">Thank you — your message is on its way.</p>
-            <p class="mt-1">We reply to every enquiry personally, usually within a working day.</p>
+            <p class="mt-1">We reply to every inquiry personally, usually within a working day.</p>
         </div>
     @else
         <form wire:submit="submit" class="space-y-5">

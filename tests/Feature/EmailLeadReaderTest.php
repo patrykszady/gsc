@@ -20,7 +20,7 @@ use Tests\TestCase;
 
 /**
  * leads:ingest-email reads crew@ (shared, through Patryk's grant), patryk@
- * and greg@ and files each fresh enquiry as a pending contact submission —
+ * and greg@ and files each fresh inquiry as a pending contact submission —
  * where every lead starts — then hands it to hive. Nylas and OpenAI are
  * faked; these tests hold what is filed, what is refused, and that one
  * email is one lead however many inboxes it reached.
@@ -222,7 +222,7 @@ class EmailLeadReaderTest extends TestCase
             // Their quoting system sends a fresh message: no Re:, no In-Reply-To.
             $this->message(['id' => 'm-supplier', 'from' => [['name' => 'Quote Team', 'email' => 'quotes@ezebreezewindows.com']], 'to' => [['email' => 'patryk@gs.construction']],
                 'subject' => 'REVISED Eze Breeze Quote for BRODSON job from the Quote Team at EzeBreezeWindows.com', 'body' => $quote, 'headers' => [['name' => 'Message-ID', 'value' => '<q@ezebreeze>']]]),
-            // A homeowner who happens to know the name is still an enquiry.
+            // A homeowner who happens to know the name is still an inquiry.
             $this->message(['id' => 'm-referred', 'from' => [['name' => 'Dana Kowalski', 'email' => 'dana.kowalski@example.test']],
                 'subject' => 'Kitchen', 'body' => '<p>Hi Patryk,</p><p>Our neighbor Madeleine referred you. We would like a quote for a kitchen remodel at 12 Oak St, Park Ridge.</p><p>Thanks, Dana Kowalski (847) 555-0102</p>',
                 'headers' => [['name' => 'Message-ID', 'value' => '<d@x>']]]),
@@ -257,7 +257,7 @@ class EmailLeadReaderTest extends TestCase
     public function test_a_rate_limited_classification_is_retried_rather_than_filed_unclassified(): void
     {
         // 2026-09-18: five messages in one run came back 429 and were filed
-        // unclassified, a real enquiry among them. A 429 is a "later".
+        // unclassified, a real inquiry among them. A 429 is a "later".
         Sleep::fake();
 
         $this->fakeNylas([$this->message()], extra: [

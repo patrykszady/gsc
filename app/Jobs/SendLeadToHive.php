@@ -59,7 +59,7 @@ class SendLeadToHive implements ShouldQueue
 
         $payload = [
             // Hive identifies a lead by (source, external_id). An email
-            // enquiry's identity is its RFC Message-ID hash — the very value
+            // inquiry's identity is its RFC Message-ID hash — the very value
             // hive's own crew@ reader keyed its leads by, so the two readers
             // can never make twins of one email.
             'external_id' => $isEmail && $submission->email_message_id ? $submission->email_message_id : (string) $submission->id,
@@ -88,7 +88,7 @@ class SendLeadToHive implements ShouldQueue
             'attachments' => $submission->attachmentsForApi(),
             'extracted' => $extracted,
             // The email's RFC Message-ID, so hive's missing-info reply
-            // threads under the enquiry in the sender's mailbox.
+            // threads under the inquiry in the sender's mailbox.
             'in_reply_to' => $isEmail
                 ? EmailLeadIngest::where('submission_id', $submission->id)->value('rfc_message_id')
                 : null,

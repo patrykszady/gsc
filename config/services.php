@@ -200,7 +200,7 @@ return [
     ],
 
     /*
-    | Email leads: enquiries arriving in the team's inboxes become contact
+    | Email leads: inquiries arriving in the team's inboxes become contact
     | submissions here — where every lead starts, so ss.systems lists them
     | first — and go on to hive like a web-form lead. Which mailboxes: the
     | ones hive.contractors has connected for the business (HiveProjectsClient
@@ -219,11 +219,11 @@ return [
             ->all(),
         'internal_domains' => ['gs.construction', 'hive.contractors'],
         // People here, by first name, beyond the mailbox names: a supplier's
-        // "Hi Patryk, thanks for your interest" is mail TO us, not an enquiry.
+        // "Hi Patryk, thanks for your interest" is mail TO us, not an inquiry.
         'team_names' => array_values(array_filter(array_map('trim', explode(',', (string) env('EMAIL_LEADS_TEAM_NAMES', ''))))),
         'lookback_days' => (int) env('EMAIL_LEADS_LOOKBACK_DAYS', 2),
         'poll_limit' => (int) env('EMAIL_LEADS_POLL_LIMIT', 25),
-        // Nobody enquires about a remodel from these domains: retailers,
+        // Nobody inquires about a remodel from these domains: retailers,
         // carriers, banks, platforms and tools that mail us as their customer.
         // Subdomains count. EMAIL_LEADS_MACHINE_DOMAINS adds more.
         'machine_domains' => array_values(array_unique(array_merge(
@@ -296,7 +296,7 @@ return [
     ],
 
     // Geoapify — fills in city/state/zip on leads whose address arrived
-    // incomplete (contact form street-only, or a crew-email enquiry). See
+    // incomplete (contact form street-only, or a crew-email inquiry). See
     // App\Services\GeoapifyService / LeadAddressCompleter.
     // Cross-site spam-filter sync (gsc <-> jpeterson-design) — see
     // App\Jobs\SyncLeadFilterToPeer / Api\LeadFilterSyncController.

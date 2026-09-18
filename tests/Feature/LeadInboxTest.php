@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * Leads go to the site that earned them. The contact form used to mail
  * `mail.from.address` — one inbox for the whole deployment, gs.construction's
- * — so another business's enquiries would have arrived somewhere she cannot
+ * — so another business's inquiries would have arrived somewhere she cannot
  * read, behind a "thank you" that says they went through.
  */
 class LeadInboxTest extends TestCase

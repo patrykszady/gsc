@@ -27,7 +27,7 @@ class LeadController extends Controller
                 : $query->where('status', $status);
         }
 
-        // How the enquiry reached us: web (the site form), crew-email (the
+        // How the inquiry reached us: web (the site form), crew-email (the
         // shared inbox), yelp (Request a Quote) — the same values the
         // Source column badges.
         if ($source = $request->string('source')->toString()) {
@@ -89,7 +89,7 @@ class LeadController extends Controller
             ->first();
 
         // An email this site read first is already here without a hive id:
-        // this push is hive answering it, not a second enquiry.
+        // this push is hive answering it, not a second inquiry.
         if (! $existing && $identity !== null) {
             $existing = ContactSubmission::query()
                 ->where('source', $data['source'])

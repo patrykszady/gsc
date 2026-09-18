@@ -102,7 +102,7 @@ Schedule::command('hive:sync')->dailyAt('02:00')
     ->onFailure(fn () => logger()->error('Scheduled hive:sync failed'));
 
 // Mirror leads hive captured that did not originate on this site — currently
-// enquiries emailed to crew@gs.construction, which hive reads via its Nylas
+// inquiries emailed to crew@gs.construction, which hive reads via its Nylas
 // grant. Without this the leads admin shows only web-form submissions and
 // silently omits everything that arrived by email. Every 15 minutes: hive
 // polls the mailbox every 5, so this trails it closely without hammering the
@@ -113,8 +113,8 @@ Schedule::command('leads:pull-from-hive --source=crew-email')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled leads:pull-from-hive failed'));
 
-// Email enquiries start HERE now: the reader watches crew@, patryk@ and
-// greg@ through the same Nylas grants hive uses and files each new enquiry
+// Email inquiries start HERE now: the reader watches crew@, patryk@ and
+// greg@ through the same Nylas grants hive uses and files each new inquiry
 // as a contact submission, which then goes to hive like a web-form lead.
 // Every five minutes, and only once the inboxes are configured — an empty
 // EMAIL_LEADS_INBOXES means the site is not the reader yet.

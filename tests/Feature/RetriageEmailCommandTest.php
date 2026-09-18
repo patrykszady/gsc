@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * Email submissions filed before the reader could tell a supplier's quote or
- * a retailer's return confirmation from an enquiry are judged again and
+ * a retailer's return confirmation from an inquiry are judged again and
  * taken back: here, on hive, and in the ledger.
  */
 class RetriageEmailCommandTest extends TestCase
@@ -59,7 +59,7 @@ class RetriageEmailCommandTest extends TestCase
             'name' => 'return@amazon.com', 'email' => 'return@amazon.com', 'hive_lead_id' => 503,
             'subject' => 'Return request confirmed for VOOPVOR 200 Inch Projector', 'message' => "Hello,\n\nYour return request has been confirmed. Drop the item at any UPS Store.\n\nAmazon.com, 410 Terry Avenue North, Seattle",
         ]);
-        $enquiry = $this->emailSubmission([
+        $inquiry = $this->emailSubmission([
             'name' => 'Dana Kowalski', 'email' => 'dana.kowalski@example.test', 'hive_lead_id' => 502,
             'subject' => 'Kitchen', 'message' => "Hi Patryk,\n\nOur neighbor referred you. We would like a quote for a kitchen remodel.\n\nThanks, Dana Kowalski",
         ]);
@@ -76,7 +76,7 @@ class RetriageEmailCommandTest extends TestCase
 
         $this->assertNull(ContactSubmission::withoutSiteScope()->find($quote->id));
         $this->assertNull(ContactSubmission::withoutSiteScope()->find($amazon->id));
-        $this->assertNotNull(ContactSubmission::withoutSiteScope()->find($enquiry->id));
+        $this->assertNotNull(ContactSubmission::withoutSiteScope()->find($inquiry->id));
         Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/api/v1/leads/501'));
         Http::assertSent(fn (Request $r) => $r->method() === 'DELETE' && str_ends_with($r->url(), '/api/v1/leads/503'));
         $this->assertSame('automated', EmailLeadIngest::where('nylas_message_id', 'msg-'.$amazon->id)->sole()->skip_reason);

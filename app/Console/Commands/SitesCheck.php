@@ -152,7 +152,7 @@ class SitesCheck extends Command
         }
 
         // --- leads --------------------------------------------------------
-        // A form that posts another business's enquiries into gs.construction's
+        // A form that posts another business's inquiries into gs.construction's
         // inbox fails silently: the visitor sees "thank you", the owner sees
         // nothing. Catch it here, before the site is live.
         $inbox = implode(', ', LeadInbox::recipients($site));

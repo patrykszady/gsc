@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * Allow a contact submission with no phone number.
  *
  * The column was NOT NULL because the website form requires a phone. Leads
- * mirrored from the crew@ inbox have no such guarantee — the enquiry that
+ * mirrored from the crew@ inbox have no such guarantee — the inquiry that
  * prompted this feature ("Basement gaming, theater and lounge renovation —
  * Gurnee") gives a name, an address and a full scope, and no phone at all.
  *

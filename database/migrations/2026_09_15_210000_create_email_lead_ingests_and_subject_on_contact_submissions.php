@@ -5,11 +5,11 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Email enquiries (crew@, patryk@, greg@) are read here now (EmailLeadIngest)
+ * Email inquiries (crew@, patryk@, greg@) are read here now (EmailLeadIngest)
  * and become contact submissions. The ledger records every message looked
  * at, so a message is judged once whichever run sees it, and so a skipped one
  * can be re-run after a rule changes. `email_message_id` on the submission is
- * the RFC Message-ID, hashed: the same enquiry copied to two of our inboxes
+ * the RFC Message-ID, hashed: the same inquiry copied to two of our inboxes
  * is one lead.
  */
 return new class extends Migration

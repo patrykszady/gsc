@@ -13,9 +13,9 @@ use Illuminate\Support\Str;
 /**
  * Mirror leads that hive captured into this site's admin.
  *
- * Enquiries emailed to crew@gs.construction are captured by hive2025, which
+ * Inquiries emailed to crew@gs.construction are captured by hive2025, which
  * owns the mailbox grant and the CRM. This pulls them back so /admin/…/leads
- * shows every inbound enquiry — web form and email — in one list, instead of
+ * shows every inbound inquiry — web form and email — in one list, instead of
  * only the ones that happened to arrive through the form.
  *
  * The direction matters: hive stays the source of truth. Rows created here
@@ -30,7 +30,7 @@ class PullLeadsFromHive extends Command
         {--days=30 : How far back to look}
         {--limit=100 : Max leads to request}';
 
-    protected $description = 'Mirror leads captured by hive (e.g. crew@ inbox enquiries) into this site\'s leads admin.';
+    protected $description = 'Mirror leads captured by hive (e.g. crew@ inbox inquiries) into this site\'s leads admin.';
 
     public function handle(HiveProjectsClient $hive, LeadAddressCompleter $completer): int
     {
@@ -65,7 +65,7 @@ class PullLeadsFromHive extends Command
             // real customer's details. That is not hypothetical: it destroyed
             // two rows here before this clause existed.
             //
-            // Deliberately NOT matching on email: the same person can enquire
+            // Deliberately NOT matching on email: the same person can inquire
             // twice and both are real leads.
             $existing = ContactSubmission::where('source', $source)
                 ->where('hive_lead_id', $hiveId)
@@ -98,7 +98,7 @@ class PullLeadsFromHive extends Command
 
             // Not mass-assignable, and it matters: the leads admin sorts by
             // created_at, so mirroring with now() would file a week-old
-            // enquiry at the top as if it just arrived.
+            // inquiry at the top as if it just arrived.
             $receivedAt = ! empty($lead['date'])
                 ? Carbon::parse($lead['date'])
                 : now();

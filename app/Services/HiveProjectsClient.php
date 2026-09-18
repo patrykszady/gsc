@@ -109,7 +109,7 @@ class HiveProjectsClient
 
     /**
      * Take back a lead this site pushed to hive — a submission it has since
-     * recognised as not an enquiry. True when hive removed it or never had
+     * recognised as not an inquiry. True when hive removed it or never had
      * it; false (logged) when hive could not be told.
      */
     public function deleteLead(int $hiveLeadId): bool
@@ -309,7 +309,7 @@ class HiveProjectsClient
     /**
      * Read leads back from hive.contractors.
      *
-     * The reverse of submitLead(). Enquiries emailed to crew@gs.construction
+     * The reverse of submitLead(). Inquiries emailed to crew@gs.construction
      * are captured by hive (it owns the mailbox grant), but this site's admin
      * is where that team looks — so those leads are mirrored back here.
      *

@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 /**
  * A person's name from the display name on an email's From header.
  *
- * Enquirers sign off with a first name ("Thanks, Will") while their mail
+ * Inquirers sign off with a first name ("Thanks, Will") while their mail
  * client sends "William Johnson89 wa" — the account's display name, plus
  * whatever the provider or the person tacked on. The header is where the
  * surname lives; the sign-off is what they like to be called. Pairing the two

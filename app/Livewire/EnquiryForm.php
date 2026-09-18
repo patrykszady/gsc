@@ -11,12 +11,12 @@ use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 
 /**
- * A plain enquiry form, for a tenant that does not book crew visits.
+ * A plain inquiry form, for a tenant that does not book crew visits.
  *
  * ContactSection is gs.construction's: it asks for a street address, resolves
  * the town, and makes the visitor pick two days and three time windows so the
  * crew can schedule a site visit. An interior design studio has none of that —
- * the enquiry is a conversation, and a form that demands a booking window
+ * the inquiry is a conversation, and a form that demands a booking window
  * before it will send is a form people abandon.
  *
  * What it keeps from the bigger form: the honeypot, the "submitted within
@@ -79,12 +79,12 @@ class EnquiryForm extends Component
         $recipients = LeadInbox::recipients();
 
         if ($recipients === []) {
-            Log::error('Enquiry form: no lead inbox configured for this site', [
+            Log::error('Inquiry form: no lead inbox configured for this site', [
                 'site' => $submission?->site_id,
             ]);
         } else {
             // The submission is already stored, so a mail failure is an
-            // incident to log, not an enquiry to lose and an error to show.
+            // incident to log, not an inquiry to lose and an error to show.
             $this->mailQuietly(fn () => Mail::to($recipients)->send(new ContactFormSubmission(
                 name: $this->name,
                 email: $this->email,
@@ -107,7 +107,7 @@ class EnquiryForm extends Component
         try {
             $send();
         } catch (\Throwable $e) {
-            Log::error("Enquiry form: {$what} could not be sent", ['error' => $e->getMessage()]);
+            Log::error("Inquiry form: {$what} could not be sent", ['error' => $e->getMessage()]);
         }
     }
 
@@ -133,9 +133,9 @@ class EnquiryForm extends Component
                 'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
             ]);
         } catch (\Throwable $e) {
-            // A database that refuses the row must not cost the enquiry: the
+            // A database that refuses the row must not cost the inquiry: the
             // mail above still goes out, and this is in the log.
-            Log::error('Enquiry form: could not store the submission', ['error' => $e->getMessage()]);
+            Log::error('Inquiry form: could not store the submission', ['error' => $e->getMessage()]);
 
             return null;
         }

@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 /**
  * The hive.contractors connection as a platform: where the site sends its
  * leads, and which of the business's hive-connected mailboxes it reads for
- * email enquiries. Set up from the central admin's Platforms page; the
+ * email inquiries. Set up from the central admin's Platforms page; the
  * mailboxes and their switches live on its Leads page.
  *
  * The API token is stored encrypted (PlatformSetting) and never returned —

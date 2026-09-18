@@ -33,7 +33,7 @@ return [
 
     // Where contact-form leads are delivered (App\Support\LeadInbox). Null
     // keeps the default site on MAIL_FROM, which is where GS's leads have
-    // always gone — changing it moves a live business's enquiries, so it is
+    // always gone — changing it moves a live business's inquiries, so it is
     // set deliberately or not at all. A tenant that leaves it unset gets its
     // own brand.email, never this deployment's MAIL_FROM.
     'lead_email' => env('LEAD_EMAIL'),

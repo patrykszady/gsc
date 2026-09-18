@@ -15,9 +15,9 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * The studio's own enquiry form. gs.construction's form books a crew visit —
+ * The studio's own inquiry form. gs.construction's form books a crew visit —
  * street address, two days, three time windows — which is not how anyone
- * enquires about interior design. This one asks for a message.
+ * inquires about interior design. This one asks for a message.
  */
 class EnquiryFormTest extends TestCase
 {

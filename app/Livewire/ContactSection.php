@@ -279,7 +279,7 @@ class ContactSection extends Component
     /**
      * How much notice a visit needs.
      *
-     * Three BUSINESS days, so a Thursday enquiry offers Tuesday rather than
+     * Three BUSINESS days, so a Thursday inquiry offers Tuesday rather than
      * Sunday. Weekends are already excluded from the calendar, but counting
      * calendar days would still let a Friday request land on Monday — one
      * working day of notice.
@@ -425,7 +425,7 @@ class ContactSection extends Component
         // Store the lead BEFORE anything is mailed. Both sends are synchronous
         // SMTP calls inside the request: expired credentials, an unreachable
         // host or a provider rate limit throws, and in that order the visitor
-        // saw a Livewire error and the enquiry was never written down at all.
+        // saw a Livewire error and the inquiry was never written down at all.
         $this->storeSubmission();
 
         // Notify THIS site's inbox — not the deployment's MAIL_FROM, which is
@@ -955,7 +955,7 @@ class ContactSection extends Component
      */
     /**
      * Send, and treat a mail failure as a logged incident rather than a lost
-     * enquiry: the submission is already stored, and the visitor is told their
+     * inquiry: the submission is already stored, and the visitor is told their
      * message went through because, as far as the business is concerned, it did.
      */
     protected function mailQuietly(callable $send, string $what): void
@@ -1005,7 +1005,7 @@ class ContactSection extends Component
             // Forward clean leads to hive.contractors. Spam stays local.
             // Job no-ops when HIVE_API_TOKEN is missing, so no extra gate needed.
             // Only the default site's, though: hive is GS Construction's lead
-            // pipeline, and another tenant's enquiries do not belong in it.
+            // pipeline, and another tenant's inquiries do not belong in it.
             if ($status === 'pending' && Site::current()->slug === (string) config('sites.default')) {
                 SendLeadToHive::dispatch($submission->id)
                     ->afterCommit();

@@ -193,10 +193,10 @@
                                 </flux:table.cell>
                                 <flux:table.cell>
                                     <div class="text-xs">
-                                        {{-- How the enquiry reached us. Web-form rows carry UTM data;
+                                        {{-- How the inquiry reached us. Web-form rows carry UTM data;
                                              rows mirrored from the crew@ inbox have none, so without
                                              this badge their Source column was simply blank and there
-                                             was no way to tell an emailed enquiry from a form one. --}}
+                                             was no way to tell an emailed inquiry from a form one. --}}
                                         @php
                                             $channel = $submission->source === 'web' ? null : match ($submission->source) {
                                                 'crew-email' => ['Email', 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'],

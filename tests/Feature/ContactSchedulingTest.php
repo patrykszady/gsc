@@ -42,7 +42,7 @@ class ContactSchedulingTest extends TestCase
 
     public function test_lead_time_counts_business_days_not_calendar_days(): void
     {
-        // The case that makes calendar days wrong: a Thursday enquiry must
+        // The case that makes calendar days wrong: a Thursday inquiry must
         // offer Tuesday, not Monday — otherwise the weekend absorbs two of
         // the three days and the crew gets one working day of notice.
         Carbon::setTestNow(Carbon::parse('2026-08-06 09:00')); // a Thursday

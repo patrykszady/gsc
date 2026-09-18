@@ -9,7 +9,7 @@ use App\Models\Site;
  *
  * The contact form mailed `mail.from.address` — one inbox for the whole
  * deployment, which is gs.construction's. That is fine while GS is the only
- * site and wrong the moment another business's form goes live: her enquiries
+ * site and wrong the moment another business's form goes live: her inquiries
  * would arrive in a competitor-adjacent inbox she does not own, and she would
  * never see them.
  *

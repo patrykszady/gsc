@@ -13,8 +13,8 @@ use Illuminate\Support\Arr;
  * changed except the docblock's framing to gsc's leads.
  *
  * A lead's address becomes a client record eventually, so it has to be
- * whole — street, city, state and ZIP. Enquiries rarely arrive that way: the
- * website form often carries only a street, and emailed enquiries scatter
+ * whole — street, city, state and ZIP. Inquiries rarely arrive that way: the
+ * website form often carries only a street, and emailed inquiries scatter
  * the parts through the prose. Whatever the sender stated always wins; the
  * geocoder only fills blanks, and only when the address is anchored well
  * enough to trust (see GeoapifyService::geocodeAddress — an unanchored

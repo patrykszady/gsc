@@ -99,7 +99,7 @@ class PullLeadsFromHiveTest extends TestCase
 
     public function test_a_lead_without_a_phone_is_stored(): void
     {
-        // The enquiry that prompted this feature has no phone number at all.
+        // The inquiry that prompted this feature has no phone number at all.
         $this->fakeHiveReturns([$this->lead(139)]);
 
         $this->artisan('leads:pull-from-hive --source=crew-email')->assertSuccessful();
@@ -147,7 +147,7 @@ class PullLeadsFromHiveTest extends TestCase
     public function test_it_files_the_lead_at_the_time_it_was_received(): void
     {
         // The admin sorts by created_at; stamping now() would file a week-old
-        // enquiry at the top as though it had just arrived.
+        // inquiry at the top as though it had just arrived.
         $this->fakeHiveReturns([$this->lead(139)]);
 
         $this->artisan('leads:pull-from-hive --source=crew-email')->assertSuccessful();
