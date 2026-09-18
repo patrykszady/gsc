@@ -112,7 +112,7 @@ class JobsPage extends Component
         RateLimiter::hit($key, 3600);
 
         // Notify the company.
-        Mail::to(LeadInbox::address())->send(new JobApplicationSubmission(
+        Mail::to(LeadInbox::recipients() ?: [config('mail.from.address')])->send(new JobApplicationSubmission(
             name: $this->name,
             email: $this->email,
             applicantTypeLabel: $this->applicantTypeLabel(),

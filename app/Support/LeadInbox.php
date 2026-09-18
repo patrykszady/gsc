@@ -23,20 +23,32 @@ use App\Models\Site;
  */
 final class LeadInbox
 {
-    public static function address(?Site $site = null): string
+    /**
+     * Every address this tenant's leads go to. `brand.lead_email` may name
+     * several, comma-separated — a two-person studio wants both inboxes, and
+     * a lead nobody reads is the failure mode this class exists for.
+     *
+     * @return list<string>
+     */
+    public static function recipients(?Site $site = null): array
     {
-        $explicit = trim((string) config('brand.lead_email', ''));
-        if ($explicit !== '') {
-            return $explicit;
-        }
-
         $site ??= Site::current();
 
-        if ($site->slug !== (string) config('sites.default')) {
-            return trim((string) config('brand.email', ''));
+        $configured = (string) config('brand.lead_email', '');
+
+        if (trim($configured) === '') {
+            $configured = $site->slug !== (string) config('sites.default')
+                ? (string) config('brand.email', '')
+                : (string) config('mail.from.address', '');
         }
 
-        return trim((string) config('mail.from.address', ''));
+        return array_values(array_filter(array_map('trim', explode(',', $configured))));
+    }
+
+    /** The address a single-recipient caller should use — the first, or none. */
+    public static function address(?Site $site = null): string
+    {
+        return self::recipients($site)[0] ?? '';
     }
 
     /**
@@ -51,18 +63,20 @@ final class LeadInbox
             return false;
         }
 
-        $address = strtolower(self::address($site));
+        $addresses = array_map('strtolower', self::recipients($site));
 
-        if ($address === '') {
+        if ($addresses === []) {
             return true;
         }
 
         $default = require config_path('brand.php');
 
-        return in_array($address, array_filter([
+        $theirs = array_filter([
             strtolower(trim((string) config('mail.from.address', ''))),
             strtolower(trim((string) ($default['lead_email'] ?? ''))),
             strtolower(trim((string) ($default['email'] ?? ''))),
-        ]), true);
+        ]);
+
+        return array_intersect($addresses, $theirs) !== [];
     }
 }

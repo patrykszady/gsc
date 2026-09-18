@@ -424,9 +424,9 @@ class ContactSection extends Component
 
         // Send email notification to THIS site's inbox — not the deployment's
         // MAIL_FROM, which is the default site's. See App\Support\LeadInbox.
-        $inbox = LeadInbox::address();
+        $inbox = LeadInbox::recipients();
 
-        if ($inbox === '') {
+        if ($inbox === []) {
             // No address for this tenant: the submission is still stored and
             // logged below, so the lead survives the misconfiguration.
             Log::error('Contact form: no lead inbox configured for this site', [

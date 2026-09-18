@@ -155,7 +155,7 @@ class SitesCheck extends Command
         // A form that posts another business's enquiries into gs.construction's
         // inbox fails silently: the visitor sees "thank you", the owner sees
         // nothing. Catch it here, before the site is live.
-        $inbox = LeadInbox::address($site);
+        $inbox = implode(', ', LeadInbox::recipients($site));
         if (LeadInbox::isSharedWithDefaultSite($site)) {
             $this->line('  <fg=red>leads        '.($inbox ?: 'nowhere').' — this is the default site\'s inbox; set brand.lead_email (or brand.email) for '.$site->slug.'</>');
             $failures++;

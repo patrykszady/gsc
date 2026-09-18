@@ -14,8 +14,11 @@
       here. Given the open 4Ever demand letter, an undocumented verbal OK is the gap.
     - **Photography is NOT covered.** Portraits and studio images are still TODO and must
       be supplied by Jenn — do not pull images from the live site.
-- **Identity:** `config/sites/jpeterson/{brand,geo,seo,socials}.php` — all `__replace`,
-  all placeholders (phone `(847) 000-0000`, email `hello@jpeterson-design.com`).
+- **Identity:** `config/sites/jpeterson/{brand,geo,seo,socials}.php` — all `__replace`.
+  Real contact details as of 2026-09-17: Jennifer Peterson, `jenn@jpeterson-design.com`,
+  (847) 809-7344 — the studio's default line — and Jill Kearns,
+  `jill@jpeterson-design.com`, (404) 626-6952, who leads Atlanta. **There is no `hello@`
+  address**; it was a placeholder and is gone from this repo.
 - **Status:** `is_active = false`. Domain not yet on Cloudflare/Forge.
 - **Pages (skeletons, all TODO-marked placeholder copy):** `/` `/portfolio` `/services`
   `/about` `/testimonials` `/contact` — all in the jpeterson theme layout.
@@ -23,13 +26,13 @@
   claims* in `config/sites.php exclusive_paths` (gsc serves 200s or legacy 301s at the
   same paths). `RedirectLegacyUrls` is gsc-scoped — its /portfolio→/projects and
   /testimonials→/reviews mappings must never fire on this tenant. Contact form is a
-  disabled skeleton: the routing is done (`App\Support\LeadInbox` mails this tenant's
-  own inbox, never the deployment's MAIL_FROM), the form UI and Jenn's real address are
-  not — `hello@jpeterson-design.com` is still a placeholder, so enabling the form before
-  she confirms it would drop enquiries.
+  disabled skeleton: the routing is done (`App\Support\LeadInbox` mails this tenant's own
+  inbox, never the deployment's MAIL_FROM, and `brand.lead_email` takes a comma-separated
+  list), the form UI is not. Leads currently resolve to `jenn@jpeterson-design.com`; add
+  Jill's address there if both should receive them.
 
 ## Before launch
-Real content from Jenn · brand.php with real NAP · theme build · DNS + Forge alias +
+Real content from Jenn · theme build · DNS + Forge alias +
 cert · `is_active = true` · sitemap · GSC property. Icons are done: `public/icons/jpeterson/`
 is built from her favicon (the teal disc with the script JP monogram, from her old site's
 repo); rebuild with `php artisan icons:build jpeterson --from=<mark>` only if the mark changes.

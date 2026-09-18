@@ -66,6 +66,34 @@ class LeadInboxTest extends TestCase
         });
     }
 
+    public function test_a_studio_can_send_leads_to_more_than_one_inbox(): void
+    {
+        Tenancy::for($this->jpd(), function (Site $site): void {
+            config(['brand.lead_email' => 'jenn@jpeterson-design.com, jill@jpeterson-design.com']);
+
+            $this->assertSame(
+                ['jenn@jpeterson-design.com', 'jill@jpeterson-design.com'],
+                LeadInbox::recipients($site),
+            );
+            $this->assertFalse(LeadInbox::isSharedWithDefaultSite($site));
+        });
+    }
+
+    public function test_the_studio_has_no_hello_address(): void
+    {
+        Tenancy::for($this->jpd(), function (): void {
+            $contacts = [config('brand.email'), config('brand.lead_email'), config('brand.phone')];
+
+            foreach ($contacts as $value) {
+                $this->assertStringNotContainsString('hello@', (string) $value);
+                $this->assertStringNotContainsString('000-0000', (string) $value);
+            }
+
+            $this->assertSame('jenn@jpeterson-design.com', config('brand.email'));
+            $this->assertSame('(847) 809-7344', config('brand.phone'));
+        });
+    }
+
     public function test_the_contact_form_mails_the_tenants_own_inbox(): void
     {
         Mail::fake();
@@ -90,7 +118,7 @@ class LeadInboxTest extends TestCase
                 ->assertHasNoErrors();
         });
 
-        Mail::assertSent(ContactFormSubmission::class, fn ($mail): bool => $mail->hasTo('hello@jpeterson-design.com'));
+        Mail::assertSent(ContactFormSubmission::class, fn ($mail): bool => $mail->hasTo('jenn@jpeterson-design.com'));
         Mail::assertNotSent(ContactFormSubmission::class, fn ($mail): bool => $mail->hasTo('crew@gs.construction'));
     }
 
