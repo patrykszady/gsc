@@ -28,24 +28,10 @@
             </ul>
         </div>
 
-        {{-- TODO: wire to a Livewire form + per-site lead routing (audit item:
-             leads currently mail the global MAIL_FROM address). Static until then. --}}
-        <form class="space-y-5" onsubmit="return false">
-            @foreach ([['Name', 'text'], ['Email', 'email'], ['Phone', 'tel']] as [$label, $type])
-                <label class="block">
-                    <span class="text-xs uppercase tracking-[0.18em] text-stone-500">{{ $label }}</span>
-                    <input type="{{ $type }}" disabled placeholder="Coming soon"
-                           class="mt-2 w-full rounded-sm border border-stone-300 bg-white/60 px-4 py-3 text-sm text-stone-800 placeholder:text-stone-400" />
-                </label>
-            @endforeach
-            <label class="block">
-                <span class="text-xs uppercase tracking-[0.18em] text-stone-500">About your project</span>
-                <textarea rows="5" disabled placeholder="Coming soon"
-                          class="mt-2 w-full rounded-sm border border-stone-300 bg-white/60 px-4 py-3 text-sm text-stone-800 placeholder:text-stone-400"></textarea>
-            </label>
-            <button type="button" disabled class="cursor-not-allowed rounded-full bg-stone-400 px-8 py-3.5 text-sm tracking-wide text-white">
-                Form coming soon — email us instead
-            </button>
-        </form>
+        {{-- The studio's enquiry form: App\Livewire\EnquiryForm. It stores the
+             submission against this tenant and mails the studio's own inbox
+             (brand.lead_email), never gs.construction's. TODO: Jenn's own
+             wording for the labels and the confirmation line. --}}
+        <livewire:enquiry-form />
     </section>
 </x-layouts.app>

@@ -6,7 +6,9 @@ use App\Jobs\SendLeadToHive;
 use App\Jobs\SyncLeadFilterToPeer;
 use App\Models\Concerns\BelongsToSite;
 use App\Services\LeadAddressCompleter;
+use App\Support\StreetAddress;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class ContactSubmission extends Model
 {
@@ -84,7 +86,7 @@ class ContactSubmission extends Model
                 'encid' => $a['encid'] ?? null,
                 'name' => $a['name'] ?? null,
                 'path' => $a['path'],
-                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($a['path']),
+                'url' => Storage::disk('public')->url($a['path']),
                 'mime' => $a['mime'] ?? null,
                 'size' => isset($a['size']) ? (int) $a['size'] : null,
             ])
@@ -129,7 +131,7 @@ class ContactSubmission extends Model
 
         // Cased for reading ("6 drake terrace" -> "6 Drake Terrace"): the
         // sender's capitals are kept, missing ones added.
-        return \App\Support\StreetAddress::tidyCase($onlyStreet !== null ? rtrim($onlyStreet, '.') : $address);
+        return StreetAddress::tidyCase($onlyStreet !== null ? rtrim($onlyStreet, '.') : $address);
     }
 
     /**
@@ -147,7 +149,7 @@ class ContactSubmission extends Model
         ])->filter()->implode(', ');
 
         $street = trim((string) $this->address);
-        $line = collect([$street !== '' ? \App\Support\StreetAddress::tidyCase($street) : null, $cityStateZip ?: null])->filter()->implode(', ');
+        $line = collect([$street !== '' ? StreetAddress::tidyCase($street) : null, $cityStateZip ?: null])->filter()->implode(', ');
 
         return $line !== '' ? $line : null;
     }
@@ -173,7 +175,11 @@ class ContactSubmission extends Model
         SyncLeadFilterToPeer::dispatch('allow', $this->email, $this->phone, $this->ip_address, 'allowed from gsc lead #'.$this->id)
             ->afterCommit();
 
-        SendLeadToHive::dispatch($this->id)->afterCommit();
+        // Same gate as the form's: hive.contractors is the default site's
+        // pipeline, so a lead that belongs to another tenant stays here.
+        if ($this->site_id === null || $this->site_id === Site::query()->where('slug', config('sites.default'))->value('id')) {
+            SendLeadToHive::dispatch($this->id)->afterCommit();
+        }
     }
 
     public function markAsSpam(): void

@@ -40,6 +40,10 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   gs.construction's inbox, and the visitor still sees "thank you". `sites:check` fails a
   site whose leads would land there, and skips tenants listed in `config/sites.php`
   `'retired'` (they left the platform; the check is a deploy gate again).
+- **A tenant that does not book crew visits uses `App\Livewire\EnquiryForm`**, not
+  `ContactSection` (which asks for a street address and two days of availability so GS can
+  schedule a visit). Leads are stored site-scoped by `BelongsToSite` either way, and
+  `SendLeadToHive` runs for the default site only — hive.contractors is GS's pipeline.
 - **Content for a client site must be supplied by that client.** Do not copy text or images
   from their existing site (see `docs/legal/`).
 

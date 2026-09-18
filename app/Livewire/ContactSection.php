@@ -982,7 +982,9 @@ class ContactSection extends Component
 
             // Forward clean leads to hive.contractors. Spam stays local.
             // Job no-ops when HIVE_API_TOKEN is missing, so no extra gate needed.
-            if ($status === 'pending') {
+            // Only the default site's, though: hive is GS Construction's lead
+            // pipeline, and another tenant's enquiries do not belong in it.
+            if ($status === 'pending' && Site::current()->slug === (string) config('sites.default')) {
                 SendLeadToHive::dispatch($submission->id)
                     ->afterCommit();
             }

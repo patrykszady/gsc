@@ -26,10 +26,19 @@
   claims* in `config/sites.php exclusive_paths` (gsc serves 200s or legacy 301s at the
   same paths). `RedirectLegacyUrls` is gsc-scoped — its /portfolio→/projects and
   /testimonials→/reviews mappings must never fire on this tenant. Contact form is a
-  disabled skeleton: the routing is done (`App\Support\LeadInbox` mails this tenant's own
-  inbox, never the deployment's MAIL_FROM, and `brand.lead_email` takes a comma-separated
-  list), the form UI is not. Leads currently resolve to `jenn@jpeterson-design.com`; add
-  Jill's address there if both should receive them.
+  live: `App\Livewire\EnquiryForm` (name, email, phone, market, message, honeypot and a
+  three-second gate) stores the lead against this tenant and mails both designers.
+  gs.construction's form is not used here — it books a crew visit. Nothing goes to
+  hive.contractors, which is GS's pipeline. Still TODO: Jenn's own wording for the labels
+  and the confirmation line.
+
+## Open decision: the markets in the nav
+
+Her previous site put an **Areas** link after About, covering the markets, their towns and
+the ZIP pages (her call, 2026-09-11). That path is `/areas`, which gs.construction claims
+here, so it cannot be copied as-is. Either link `/chicago`, `/atlanta` and `/south-haven`
+directly in `config/sites/jpeterson/nav.php`, or claim a path of her own (e.g. `/markets`)
+and build the index. Until then `sites:check` notes the three claimed-but-unlinked paths.
 
 ## Before launch
 Real content from Jenn · theme build · DNS + Forge alias +

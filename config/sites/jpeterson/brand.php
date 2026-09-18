@@ -30,7 +30,8 @@ return [
 
     // Where the contact form delivers (App\Support\LeadInbox). Jennifer today;
     // add jill@jpeterson-design.com, comma-separated, to send to both.
-    'lead_email' => 'jenn@jpeterson-design.com',
+    'lead_email' => 'jenn@jpeterson-design.com, jill@jpeterson-design.com',
+    'reply_signature' => 'J. Peterson Design',
 
     // The two designers a visitor actually reaches, and the market slugs each
     // one leads — the roster the contact blocks use once they are built.

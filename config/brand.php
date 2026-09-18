@@ -38,6 +38,10 @@ return [
     // own brand.email, never this deployment's MAIL_FROM.
     'lead_email' => env('LEAD_EMAIL'),
 
+    // How the visitor's auto-reply signs off. GS answers as its crew; another
+    // tenant answers as itself unless it says otherwise.
+    'reply_signature' => 'GS Crew',
+
     'city' => 'Prospect Heights',
     'state' => 'IL',
 
