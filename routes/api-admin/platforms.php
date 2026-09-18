@@ -12,7 +12,7 @@ Route::prefix('platforms')->group(function () {
     Route::get('status', [PlatformsController::class, 'status']);
 
     // hive.contractors: the CRM the site's leads go to, and whose connected
-    // mailboxes it reads for email enquiries (PlatformsHiveController).
+    // mailboxes it reads for email inquiries (PlatformsHiveController).
     Route::get('hive', [PlatformsHiveController::class, 'show']);
     Route::post('hive/credentials', [PlatformsHiveController::class, 'saveCredentials']);
     Route::delete('hive', [PlatformsHiveController::class, 'disconnect']);
@@ -36,6 +36,13 @@ Route::prefix('platforms')->group(function () {
     // Console sign in with. Per site: never shared between sites.
     Route::post('google/credentials', [PlatformsController::class, 'saveGoogleCredentials']);
     Route::delete('google/credentials', [PlatformsController::class, 'clearGoogleCredentials']);
+
+    // Which Business Profile listing this site publishes to. The ids only
+    // exist after the OAuth grant, so they are discovered here and stored in
+    // platform_settings rather than asked for as env values nobody can edit.
+    Route::get('gbp/listings', [PlatformsController::class, 'gbpListings']);
+    Route::post('gbp/listing', [PlatformsController::class, 'saveGbpListing']);
+    Route::post('gbp/publishing', [PlatformsController::class, 'saveGbpPublishing']);
     Route::post('yelp/credentials', [PlatformsController::class, 'saveYelpCredentials']);
     Route::delete('yelp/credentials/password', [PlatformsController::class, 'clearYelpPassword']);
     Route::post('yelp/session/check', [PlatformsController::class, 'checkYelpSession']);

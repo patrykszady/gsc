@@ -17,6 +17,7 @@ use App\Services\InstagramRemoteLoginService;
 use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\OAuthState;
 use App\Support\Reviews\ReviewImport;
@@ -813,6 +814,92 @@ class PlatformsController extends Controller
 
     // ---- internals -------------------------------------------------------
 
+    /**
+     * The Business Profile accounts and listings this authorisation can see,
+     * so the admin can offer them instead of asking for ids nobody has.
+     */
+    public function gbpListings(): JsonResponse
+    {
+        $service = app(GoogleBusinessProfileService::class);
+
+        if (! $service->hasRefreshToken()) {
+            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
+        }
+
+        if (! $service->hasBusinessScope()) {
+            return response()->json([
+                'message' => 'This authorisation only covers signing in. Reconnect and allow Business Profile access.',
+                'data' => ['business_scope_granted' => false, 'accounts' => []],
+            ], 422);
+        }
+
+        $accounts = [];
+
+        foreach ($service->listAccounts() as $account) {
+            $accountId = GoogleBusinessListing::bareId((string) ($account['name'] ?? ''));
+
+            if ($accountId === '') {
+                continue;
+            }
+
+            $accounts[] = [
+                'account_id' => $accountId,
+                'name' => $account['accountName'] ?? $account['name'] ?? $accountId,
+                'type' => $account['type'] ?? null,
+                'locations' => array_map(fn (array $location) => [
+                    'location_id' => GoogleBusinessListing::bareId((string) ($location['name'] ?? '')),
+                    'title' => $location['title'] ?? null,
+                    'website' => $location['websiteUri'] ?? null,
+                    'address' => implode(', ', array_filter([
+                        implode(' ', (array) ($location['storefrontAddress']['addressLines'] ?? [])),
+                        $location['storefrontAddress']['locality'] ?? null,
+                        $location['storefrontAddress']['administrativeArea'] ?? null,
+                    ])) ?: null,
+                ], $service->listLocations($accountId)),
+            ];
+        }
+
+        if ($accounts === [] && $service->getLastError()) {
+            return response()->json([
+                'message' => 'Google refused the listing lookup: '.($service->getLastError()['message'] ?? 'unknown error'),
+            ], 422);
+        }
+
+        return response()->json(['data' => [
+            'business_scope_granted' => true,
+            'accounts' => $accounts,
+            'selected' => [
+                'account_id' => config(GoogleBusinessListing::CONFIG_PATH.'.account_id'),
+                'location_id' => config(GoogleBusinessListing::CONFIG_PATH.'.location_id'),
+            ],
+        ]]);
+    }
+
+    /** Choose which listing this site publishes to. */
+    public function saveGbpListing(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'string', 'max:191'],
+            'location_id' => ['required', 'string', 'max:191'],
+        ]);
+
+        GoogleBusinessListing::link($data['account_id'], $data['location_id']);
+        GoogleBusinessListing::apply();
+
+        return response()->json(['data' => $this->gbpStatus()]);
+    }
+
+    /** Turn publishing to the listing on or off. */
+    public function saveGbpPublishing(Request $request): JsonResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+
+        GoogleBusinessListing::setEnabled((bool) $data['enabled']);
+        GoogleBusinessListing::apply();
+
+        return response()->json(['data' => $this->gbpStatus()]);
+    }
+
     protected function gbpStatus(): array
     {
         $service = app(GoogleBusinessProfileService::class);
@@ -841,6 +928,12 @@ class PlatformsController extends Controller
             'account_id_configured' => ! empty($config['account_id']),
             'location_id_configured' => ! empty($config['location_id']),
             'refresh_token_present' => $service->hasRefreshToken(),
+            // A connection can exist and still be useless: Google's consent
+            // screen lets the user approve sign-in while declining Business
+            // Profile, which yields a token that can name the user and do
+            // nothing else. Report that plainly instead of a green tick.
+            'business_scope_granted' => $service->hasBusinessScope(),
+            'listing_source' => \App\Models\PlatformSetting::get(\App\Support\GoogleBusinessListing::SETTING_LOCATION_ID) ? 'admin' : (! empty($config['location_id']) ? 'env' : null),
         ];
     }
 

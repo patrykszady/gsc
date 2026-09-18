@@ -28,6 +28,9 @@ class GoogleBusinessProfileService
 
     protected const SCOPES = 'https://www.googleapis.com/auth/business.manage openid email';
 
+    /** The scope every Business Profile call needs; identity scopes alone are not enough. */
+    public const BUSINESS_SCOPE = 'https://www.googleapis.com/auth/business.manage';
+
     public const PROVIDER = 'google_business_profile';
 
     protected ?array $lastError = null;
@@ -157,7 +160,12 @@ class GoogleBusinessProfileService
             accessToken: $accessToken,
             expiresIn: $expiresIn,
             email: $email,
-            scopes: explode(' ', self::SCOPES),
+            // What Google GRANTED, not what we asked for. The consent screen
+            // lets a user untick Business Profile and approve only the identity
+            // scopes; storing self::SCOPES recorded a business.manage grant that
+            // did not exist, so the admin showed a healthy "Authorisation on
+            // file" while every Business Profile call came back 403.
+            scopes: array_values(array_filter(explode(' ', (string) ($data['scope'] ?? self::SCOPES)))),
         );
 
         // Clear any cooldown from previous invalid_grant errors
@@ -1743,6 +1751,19 @@ class GoogleBusinessProfileService
                 ]);
             }
 
+            // Every refresh response states the scopes the grant actually
+            // carries. Recording them here repairs a row written before we
+            // stored the granted set (older code stored the REQUESTED scopes),
+            // so a connection that only ever covered sign-in stops claiming
+            // otherwise without anyone having to reconnect to find out.
+            if (! empty($data['scope']) && $dbToken) {
+                $granted = array_values(array_filter(explode(' ', (string) $data['scope'])));
+
+                if ($granted !== [] && $granted !== (array) $dbToken->scopes) {
+                    $dbToken->forceFill(['scopes' => $granted])->save();
+                }
+            }
+
             // If Google returned a rotated refresh token, persist it
             if (! empty($data['refresh_token']) && $data['refresh_token'] !== $refreshToken) {
                 $stored = $dbToken ?? OAuthToken::storeTokens(
@@ -1759,5 +1780,21 @@ class GoogleBusinessProfileService
         }
 
         return $token;
+    }
+
+    /** The scopes recorded against the stored authorisation. */
+    public function grantedScopes(): array
+    {
+        return (array) (OAuthToken::forProvider(self::PROVIDER)?->scopes ?? []);
+    }
+
+    /**
+     * Whether the stored authorisation actually carries business.manage.
+     * Without it the connection signs the user in and nothing else: every
+     * listing, photo and post call returns 403.
+     */
+    public function hasBusinessScope(): bool
+    {
+        return in_array(self::BUSINESS_SCOPE, $this->grantedScopes(), true);
     }
 }
