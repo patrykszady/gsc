@@ -46,7 +46,7 @@ class PerSiteIconsTest extends TestCase
         $jpd = $this->get('https://jpeterson-design.com/')->assertOk()->getContent();
         $this->assertStringContainsString('href="https://jpeterson-design.com/icons/jpeterson/favicon-96x96.png"', $jpd);
         $this->assertStringContainsString('href="https://jpeterson-design.com/icons/jpeterson/favicon.svg"', $jpd);
-        $this->assertStringContainsString('<meta name="theme-color" content="#4e9da2">', $jpd);
+        $this->assertStringContainsString('<meta name="theme-color" content="#408085">', $jpd);
         // Hero placeholders are data URIs too; only the icon links matter here.
         $this->assertDoesNotMatchRegularExpression('/<link[^>]+rel="(?:shortcut )?icon"[^>]+href="data:/', $jpd, 'the inline placeholder icon is gone');
         $this->assertStringNotContainsString('/icons/gsc/', $jpd, 'never another site\'s icons');
@@ -63,7 +63,7 @@ class PerSiteIconsTest extends TestCase
 
         $this->get('https://jpeterson-design.com/site.webmanifest')->assertOk()
             ->assertJsonPath('name', 'J. Peterson Design')
-            ->assertJsonPath('theme_color', '#4e9da2')
+            ->assertJsonPath('theme_color', '#408085')
             ->assertJsonPath('icons.0.src', 'https://jpeterson-design.com/icons/jpeterson/android-chrome-192x192.png');
 
         $this->get('https://gs.construction/favicon.ico')->assertOk()->assertHeader('Content-Type', 'image/x-icon');

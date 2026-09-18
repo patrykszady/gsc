@@ -73,7 +73,7 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   the favicon URL it first found.
 - New site: `php artisan icons:build {slug} --from=<mark.svg|png>` (ImageMagick; slug only, no DB).
   `sites:check` fails a site whose set is incomplete. Colours: `brand.theme_color` /
-  `brand.background_color`. JPD's set is a placeholder "JP" monogram until Jenn supplies her mark.
+  `brand.background_color` (JPD: `#408085`, the teal of her favicon disc, as her old site's theme-color).
 - nginx: Forge's `site.conf` has a static-only `location = /favicon.ico`; like robots.txt it needs
   `try_files $uri /index.php?$query_string;` or a direct hit on `/favicon.ico` is a 404 (the head's
   `<link>` tags still work, since those point into `/icons/{slug}/`).
