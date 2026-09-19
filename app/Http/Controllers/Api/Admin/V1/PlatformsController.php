@@ -920,6 +920,15 @@ class PlatformsController extends Controller
         GoogleBusinessListing::link($data['account_id'], $data['location_id']);
         GoogleBusinessListing::apply();
 
+        // Ask Google for the listing's place id once, here, rather than on
+        // every admin page load: it is what the public Maps link is built
+        // from, and it only changes when the listing does.
+        GoogleBusinessListing::rememberPlaceId(app(GoogleBusinessProfileService::class)->fetchPlaceId());
+
+        // And put the public Maps address on the Social Media page for this
+        // site, unless it already has a Google link of its own.
+        GoogleBusinessListing::adoptAsSocialUrl();
+
         return response()->json(['data' => $this->gbpStatus()]);
     }
 
@@ -957,6 +966,10 @@ class PlatformsController extends Controller
             // platforms-settings.blade.php ~136-144). NEVER the client
             // secret / IDs themselves — just whether each is set.
             'enabled' => (bool) ($config['enabled'] ?? false),
+            // The listing's public address, for the admin to show and for the
+            // Social Media page's Google field. Null until this site links a
+            // listing of its own — never another tenant's.
+            'maps_url' => GoogleBusinessListing::mapsUrl(),
             'client_id_configured' => ! empty($config['client_id']),
             'client_secret_configured' => ! empty($config['client_secret']),
             'account_id_configured' => ! empty($config['account_id']),

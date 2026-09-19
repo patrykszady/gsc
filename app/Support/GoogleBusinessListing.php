@@ -80,6 +80,89 @@ class GoogleBusinessListing
     }
 
     /** "accounts/123" and "accounts/123/locations/456" both reduce to the last segment. */
+    public const SETTING_PLACE_ID = 'gbp.place_id';
+
+    /**
+     * The listing's public address on Google Maps, or null when this site has
+     * no listing of its own yet.
+     *
+     * config/social-platforms.php already documents this exact shape as the
+     * Google field's placeholder, and every site that has linked a listing can
+     * produce it without anyone typing a place id.
+     */
+    public static function mapsUrl(?Site $site = null): ?string
+    {
+        $placeId = static::placeId($site);
+
+        return $placeId === null ? null : 'https://www.google.com/maps/place/?q=place_id:'.$placeId;
+    }
+
+    /**
+     * This site's Google place id.
+     *
+     * Stored per site when a listing is linked. The env fallback
+     * (GOOGLE_BUSINESS_PROFILE_PLACE_ID) is the DEFAULT SITE'S — it predates
+     * multi-tenancy — so another tenant must never inherit it: J. Peterson
+     * Design reading that value would publish GS Construction's Maps link as
+     * her own.
+     */
+    public static function placeId(?Site $site = null): ?string
+    {
+        $site ??= Site::current();
+
+        $stored = static::hasTable() ? PlatformSetting::get(self::SETTING_PLACE_ID) : null;
+
+        if ($stored) {
+            return $stored;
+        }
+
+        if ($site->slug !== (string) config('sites.default', 'gsc')) {
+            return null;
+        }
+
+        return config(self::CONFIG_PATH.'.place_id') ?: null;
+    }
+
+    /** Remember the place id Google gave for the linked listing. */
+    public static function rememberPlaceId(?string $placeId): void
+    {
+        PlatformSetting::put(self::SETTING_PLACE_ID, $placeId ?: null);
+    }
+
+    /** Where the Social Media page keeps this site's Google profile link. */
+    public const SOCIAL_URL_SETTING = 'socials.url.google';
+
+    /**
+     * Fill in the site's Google link from the listing it just chose.
+     *
+     * Linking a listing is the moment we learn a site's place id, and the
+     * public Maps address follows from it — so nobody should have to find and
+     * paste that URL by hand. An address already on file wins: it may be the
+     * short link the owner hands out, and this is not the place to overrule a
+     * person's own choice.
+     *
+     * @return bool whether a link was written
+     */
+    public static function adoptAsSocialUrl(): bool
+    {
+        $existing = trim((string) (PlatformSetting::get(self::SOCIAL_URL_SETTING)
+            ?: (SiteConfig::owns('socials.google.url') ? config('socials.google.url') : '')));
+
+        if ($existing !== '') {
+            return false;
+        }
+
+        $url = static::mapsUrl();
+
+        if ($url === null) {
+            return false;
+        }
+
+        PlatformSetting::put(self::SOCIAL_URL_SETTING, $url);
+
+        return true;
+    }
+
     /**
      * Does this Google listing belong to the site asking about it?
      *

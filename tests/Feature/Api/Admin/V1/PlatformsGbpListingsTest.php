@@ -3,8 +3,10 @@
 namespace Tests\Feature\Api\Admin\V1;
 
 use App\Models\PlatformSetting;
+use App\Models\Site;
 use App\Services\GoogleBusinessProfileService;
 use App\Support\GoogleBusinessListing;
+use App\Support\Tenancy;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -36,6 +38,9 @@ class PlatformsGbpListingsTest extends TestCase
             $mock->shouldReceive('listAccounts')->andReturn([
                 ['name' => 'accounts/900', 'accountName' => 'Patryk Szady'],
             ]);
+            $mock->shouldReceive('fetchPlaceId')->andReturn('ChIJtestplaceid');
+            $mock->shouldReceive('getStoredToken')->andReturn(null);
+            $mock->shouldReceive('isConfigured')->andReturn(true);
             $mock->shouldReceive('listLocations')->with('900')->andReturn([
                 ['name' => self::GS, 'title' => 'GS Construction & Remodeling', 'websiteUri' => 'https://gs.construction/'],
                 ['name' => self::JPD, 'title' => 'J. Peterson Design, LLC', 'websiteUri' => 'https://www.jpeterson-design.com'],
@@ -88,5 +93,55 @@ class PlatformsGbpListingsTest extends TestCase
             ->all();
 
         $this->assertContains('J. Peterson Design, LLC', $titles);
+    }
+
+    public function test_linking_a_listing_records_its_place_id_and_fills_the_google_link(): void
+    {
+        // A site with no Google link yet: the shared config builds one from
+        // the default site's env place id, which is what "already has one"
+        // means for gs.construction.
+        config(['socials.google.url' => '']);
+
+        $this->postJson('/api/admin/v1/platforms/gbp/listing', [
+            'account_id' => '900',
+            'location_id' => '111',
+        ], $this->headers())->assertOk();
+
+        $this->assertSame('ChIJtestplaceid', PlatformSetting::get(GoogleBusinessListing::SETTING_PLACE_ID));
+        $this->assertSame(
+            'https://www.google.com/maps/place/?q=place_id:ChIJtestplaceid',
+            PlatformSetting::get(GoogleBusinessListing::SOCIAL_URL_SETTING),
+            'the Social Media page gets the listing address without anyone pasting it',
+        );
+    }
+
+    public function test_a_google_link_already_on_file_is_left_alone(): void
+    {
+        config(['socials.google.url' => '']);
+        PlatformSetting::put(GoogleBusinessListing::SOCIAL_URL_SETTING, 'https://g.page/gs-construction');
+
+        $this->postJson('/api/admin/v1/platforms/gbp/listing', [
+            'account_id' => '900',
+            'location_id' => '111',
+        ], $this->headers())->assertOk();
+
+        $this->assertSame('https://g.page/gs-construction', PlatformSetting::get(GoogleBusinessListing::SOCIAL_URL_SETTING));
+    }
+
+    public function test_another_tenant_never_inherits_the_default_sites_place_id(): void
+    {
+        config(['services.google.business_profile.place_id' => 'ChIJgsconstruction']);
+
+        $this->assertSame(
+            'https://www.google.com/maps/place/?q=place_id:ChIJgsconstruction',
+            GoogleBusinessListing::mapsUrl(Site::query()->where('slug', 'gsc')->firstOrFail()),
+        );
+
+        Tenancy::for(Site::query()->where('slug', 'jpeterson')->firstOrFail(), function (): void {
+            $this->assertNull(
+                GoogleBusinessListing::mapsUrl(),
+                'the env place id is gs.construction\'s — hers is empty until she links her own listing',
+            );
+        });
     }
 }
