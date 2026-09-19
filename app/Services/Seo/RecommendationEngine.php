@@ -129,9 +129,7 @@ class RecommendationEngine
             ];
         }
 
-        // "Do now" first, cap the list so the panel stays scannable.
-        usort($recommendations, fn ($a, $b) => ($a['p'] === 'now' ? 0 : 1) <=> ($b['p'] === 'now' ? 0 : 1));
-        $recommendations = array_slice($recommendations, 0, 8);
+        $recommendations = $this->scannable($recommendations);
         $actionItems = array_slice($actionItems, 0, 8);
 
         // Publish the striking-distance + decaying pages as a machine-readable
@@ -530,6 +528,37 @@ class RecommendationEngine
         }
 
         return $items;
+    }
+
+    /**
+     * Eight recommendations, "do now" first — but never only "do now".
+     *
+     * This used to sort by priority and slice the first eight, which read as
+     * fine until the day there were eight "do now" items: from then on every
+     * "next" recommendation was computed, stored, and never shown. The panel
+     * had quietly become a list of fires, with the forward-looking advice —
+     * the striking-distance pages, the search-engine divergence — cut off
+     * below the fold that does not exist.
+     *
+     * So "next" is guaranteed two of the eight slots whenever it has two to
+     * fill. Whatever either side cannot use goes back to the other: with no
+     * "next" items, "do now" takes all eight; with only three "do now" items,
+     * "next" fills the remaining five. Insertion order survives within each
+     * side, which is the rule order — the same ranking as before.
+     *
+     * @param  array<int, array{t:string,d:string,p:string}>  $recs
+     * @return array<int, array{t:string,d:string,p:string}>
+     */
+    private function scannable(array $recs, int $cap = 8, int $reservedForNext = 2): array
+    {
+        $now = array_values(array_filter($recs, fn (array $r) => ($r['p'] ?? 'next') === 'now'));
+        $next = array_values(array_filter($recs, fn (array $r) => ($r['p'] ?? 'next') !== 'now'));
+
+        $nextTake = min(count($next), $reservedForNext);
+        $nowTake = min(count($now), $cap - $nextTake);
+        $nextTake = min(count($next), $cap - $nowTake);
+
+        return array_merge(array_slice($now, 0, $nowTake), array_slice($next, 0, $nextTake));
     }
 
     // ── Recommendations (strategy layer) ────────────────────────────────────
