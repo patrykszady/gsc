@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api\Admin\V1;
 
 use App\Models\AreaServed;
+use App\Models\BingDailyTotal;
+use App\Models\GscDailyTotal;
 use App\Support\Tenancy;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -122,14 +124,101 @@ class SeoReportControllerTest extends TestCase
         $this->assertArrayHasKey('gsc', $data['search']['channels']);
     }
 
+    /**
+     * Forty days of Google totals ending three days ago and forty of Bing
+     * ending two days ago — Search Console's real lag, with Bing fresher.
+     */
+    private function seedDailyTotals(): void
+    {
+        $today = Carbon::parse('2026-09-19');
+        Carbon::setTestNow($today);
+
+        for ($i = 0; $i < 40; $i++) {
+            GscDailyTotal::create([
+                'date' => $today->copy()->subDays(3 + $i)->toDateString(), 'site_url' => 'sc-domain:example.test',
+                'clicks' => 5, 'impressions' => 200, 'ctr' => 0.025, 'position' => 8.5,
+            ]);
+            BingDailyTotal::create([
+                'date' => $today->copy()->subDays(2 + $i)->toDateString(), 'site_url' => 'https://example.test/',
+                'clicks' => 1, 'impressions' => 20, 'ctr' => 0.05,
+            ]);
+        }
+    }
+
     public function test_snapshot_accepts_trend_and_top_controls(): void
     {
-        $data = $this->getJson('/api/admin/v1/seo/snapshot?trend_days=30&trend_metric=impressions&top_days=90&top_queries_sort=impressions&top_queries_dir=asc', $this->adminApiHeaders())
+        $this->seedDailyTotals();
+
+        $data = $this->getJson('/api/admin/v1/seo/snapshot?trend_days=30&top_days=90&top_queries_sort=impressions&top_queries_dir=asc', $this->adminApiHeaders())
             ->assertOk()
             ->json('data');
 
-        // 30 days of trend rows, one per day.
+        // 30 days of trend rows, one per day, ending on the last day with data.
         $this->assertCount(30, $data['trend']);
+        $this->assertSame('Sep 17', $data['trend_through']);
+        $this->assertSame('2026-09-17', end($data['trend'])['day']);
+    }
+
+    public function test_the_trend_ends_on_the_last_day_with_data_and_never_draws_a_missing_day_as_zero(): void
+    {
+        $this->seedDailyTotals();
+
+        $trend = $this->getJson('/api/admin/v1/seo/snapshot?trend_days=14', $this->adminApiHeaders())->json('data.trend');
+        $last = end($trend);
+
+        // The window ends on Bing's last day. Google has not reported it yet:
+        // null, so the chart draws a gap — not a zero that reads as a collapse.
+        $this->assertSame('2026-09-17', $last['day']);
+        $this->assertNull($last['gsc_clicks']);
+        $this->assertNull($last['gsc_impressions']);
+        $this->assertNull($last['gsc_ctr']);
+        $this->assertSame(1, $last['bing_clicks']);
+        $this->assertSame(20, $last['bing_impressions']);
+        // Combined still carries what did arrive.
+        $this->assertSame(1, $last['combined_clicks']);
+
+        // A day both reported carries every metric for both.
+        $full = $trend[0];
+        $this->assertSame(5, $full['gsc_clicks']);
+        $this->assertSame(2.5, $full['gsc_ctr']);
+        $this->assertSame(8.5, $full['gsc_position']);
+        $this->assertSame(6, $full['combined_clicks']);
+        $this->assertSame(220, $full['combined_impressions']);
+        $this->assertSame(2.73, $full['combined_ctr']);
+        // Position does not add across engines.
+        $this->assertNull($full['combined_position']);
+    }
+
+    public function test_a_year_window_returns_only_the_days_that_exist(): void
+    {
+        $this->seedDailyTotals();
+
+        $trend = $this->getJson('/api/admin/v1/seo/snapshot?trend_days=360', $this->adminApiHeaders())->json('data.trend');
+
+        // Forty-one distinct days between the two channels; the 319 blank
+        // days before them are not rows.
+        $this->assertCount(41, $trend);
+        $this->assertSame('2026-08-08', $trend[0]['day']);
+        // Bing had not started on Google's first day.
+        $this->assertNull($trend[0]['bing_clicks']);
+        $this->assertSame(5, $trend[0]['gsc_clicks']);
+    }
+
+    public function test_an_unknown_trend_window_falls_back_to_two_weeks(): void
+    {
+        $this->seedDailyTotals();
+
+        $trend = $this->getJson('/api/admin/v1/seo/snapshot?trend_days=45', $this->adminApiHeaders())->json('data.trend');
+
+        $this->assertCount(14, $trend);
+    }
+
+    public function test_no_data_at_all_is_an_empty_trend_not_a_row_of_zeros(): void
+    {
+        $data = $this->getJson('/api/admin/v1/seo/snapshot?trend_days=30', $this->adminApiHeaders())->json('data');
+
+        $this->assertSame([], $data['trend']);
+        $this->assertNull($data['trend_through']);
     }
 
     public function test_snapshot_refresh_busts_the_cached_health_and_search_snapshots(): void

@@ -106,7 +106,6 @@ class SeoReportController extends Controller
     public function snapshot(Request $request): JsonResponse
     {
         $trendDays = $this->normalizeTrendDays((int) $request->integer('trend_days', 14));
-        $trendMetric = $this->normalizeTrendMetric($request->string('trend_metric', 'clicks')->toString());
         $topDays = $this->normalizeTopDays((int) $request->integer('top_days', 28));
         $topQueriesSort = $request->string('top_queries_sort', 'clicks')->toString();
         $topQueriesDir = $request->string('top_queries_dir', 'desc')->toString() === 'asc' ? 'asc' : 'desc';
@@ -120,7 +119,8 @@ class SeoReportController extends Controller
             'report_stats' => $this->reportStats($this->files()),
             'diagnostic' => $this->diagnostic(),
             'search' => $search,
-            'trend' => $this->trendChartData($search, $trendMetric),
+            'trend' => $this->trendChartData($search),
+            'trend_through' => $search['through'] ?? null,
             'top_queries' => $this->topRows('query', $topQueriesSort, $topQueriesDir, $topDays),
             'top_pages' => $this->topRows('page', $topPagesSort, $topPagesDir, $topDays),
             'clarity' => $this->claritySnapshot($this->normalizeWindowDays((int) $request->integer('clarity_days', 7))),
@@ -247,14 +247,12 @@ class SeoReportController extends Controller
 
     // -- Search snapshot -----------------------------------------------------
 
+    /** Trend windows the chart offers; 360 shows a whole year on a site that has one. */
+    public const TREND_DAYS = [7, 14, 30, 60, 90, 180, 360];
+
     protected function normalizeTrendDays(int $days): int
     {
-        return in_array($days, [7, 14, 30], true) ? $days : 14;
-    }
-
-    protected function normalizeTrendMetric(string $metric): string
-    {
-        return in_array($metric, ['clicks', 'impressions'], true) ? $metric : 'clicks';
+        return in_array($days, self::TREND_DAYS, true) ? $days : 14;
     }
 
     protected function normalizeTopDays(int $days): int
@@ -360,54 +358,7 @@ class SeoReportController extends Controller
                 ];
             }
 
-            $dailyClicks = [];
-            $hasDailyTotalsTable = Schema::hasTable('gsc_daily_totals');
-            $hasBingDailyTotalsTable = Schema::hasTable('bing_daily_totals');
-            for ($i = $trendDays - 1; $i >= 0; $i--) {
-                $day = $today->copy()->subDays($i)->toDateString();
-
-                $dailyTotal = $hasDailyTotalsTable
-                    ? Tenancy::table('gsc_daily_totals')->whereDate('date', $day)->first()
-                    : null;
-
-                if ($dailyTotal) {
-                    $gscDayClicks = (int) $dailyTotal->clicks;
-                    $gscDayImpressions = (int) $dailyTotal->impressions;
-                } else {
-                    $gscDayClicks = Schema::hasTable('gsc_query_metrics')
-                        ? (int) Tenancy::table('gsc_query_metrics')->whereDate('date', $day)->sum('clicks')
-                        : 0;
-                    $gscDayImpressions = Schema::hasTable('gsc_query_metrics')
-                        ? (int) Tenancy::table('gsc_query_metrics')->whereDate('date', $day)->sum('impressions')
-                        : 0;
-                }
-
-                $bingDailyTotal = $hasBingDailyTotalsTable
-                    ? Tenancy::table('bing_daily_totals')->whereDate('date', $day)->first()
-                    : null;
-
-                if ($bingDailyTotal) {
-                    $bingDayClicks = (int) $bingDailyTotal->clicks;
-                    $bingDayImpressions = (int) $bingDailyTotal->impressions;
-                } else {
-                    $bingDayClicks = Schema::hasTable('bing_traffic_stats')
-                        ? (int) Tenancy::table('bing_traffic_stats')->whereDate('date', $day)->sum('clicks')
-                        : 0;
-                    $bingDayImpressions = Schema::hasTable('bing_traffic_stats')
-                        ? (int) Tenancy::table('bing_traffic_stats')->whereDate('date', $day)->sum('impressions')
-                        : 0;
-                }
-
-                $dailyClicks[] = [
-                    'date' => Carbon::parse($day)->format('M j'),
-                    'gsc_clicks' => $gscDayClicks,
-                    'bing_clicks' => $bingDayClicks,
-                    'combined_clicks' => $gscDayClicks + $bingDayClicks,
-                    'gsc_impressions' => $gscDayImpressions,
-                    'bing_impressions' => $bingDayImpressions,
-                    'combined_impressions' => $gscDayImpressions + $bingDayImpressions,
-                ];
-            }
+            ['rows' => $dailyClicks, 'through' => $through] = $this->dailySeries($trendDays);
 
             $coverage = ['total' => 0, 'problem' => 0, 'forbidden' => 0, 'not_indexed' => 0, 'duplicate' => 0];
             if (Schema::hasTable('gsc_coverage_states')) {
@@ -449,6 +400,7 @@ class SeoReportController extends Controller
             return [
                 'channels' => $channels,
                 'daily_clicks' => $dailyClicks,
+                'through' => $through,
                 'coverage' => $coverage,
                 'rankings' => $rankings,
                 'action_items' => $actionItems,
@@ -456,17 +408,183 @@ class SeoReportController extends Controller
         });
     }
 
-    protected function trendChartData(array $snapshot, string $trendMetric): array
+    /**
+     * The chart rows: one per day with every metric for every channel, flat
+     * keys (`gsc_clicks`, `bing_ctr`, `combined_impressions`…) because the
+     * chart binds a line to a top-level field. Null means "this channel has
+     * not reported this day", which the chart draws as a gap — a trailing
+     * null is Search Console's two-day lag, a leading one is a channel that
+     * was connected later. Neither is zero traffic, so neither is drawn as
+     * zero.
+     */
+    protected function trendChartData(array $snapshot): array
     {
-        $rows = $snapshot['daily_clicks'] ?? [];
-        $suffix = $trendMetric === 'impressions' ? 'impressions' : 'clicks';
+        return array_values($snapshot['daily_clicks'] ?? []);
+    }
 
-        return collect($rows)->map(fn (array $row): array => [
-            'date' => (string) ($row['date'] ?? ''),
-            'gsc' => (int) ($row['gsc_'.$suffix] ?? 0),
-            'bing' => (int) ($row['bing_'.$suffix] ?? 0),
-            'combined' => (int) ($row['combined_'.$suffix] ?? 0),
-        ])->all();
+    /**
+     * Day-by-day clicks, impressions, CTR and position per channel over the
+     * last `$trendDays` days — ending on the LAST DAY THAT HAS DATA, not
+     * today. Search Console publishes two to three days behind; a window
+     * that ran to today filled the gap with zeros and read as a collapse.
+     *
+     * Per channel, a day inside its collected range with no row is 0 (a
+     * quiet day); a day outside that range is null (not collected). Rows
+     * at either end where no channel has anything are dropped, so a 360-day
+     * request on a site with 100 days of history returns 100 rows, not 260
+     * blank ones. Gaps in the middle stay as gaps.
+     *
+     * @return array{rows: list<array<string, mixed>>, through: ?string}
+     */
+    protected function dailySeries(int $trendDays): array
+    {
+        $gsc = $this->channelDaily('gsc_daily_totals', 'gsc_query_metrics');
+        $bing = $this->channelDaily('bing_daily_totals', 'bing_traffic_stats');
+
+        $through = max((string) $gsc['max'], (string) $bing['max']);
+        if ($through === '') {
+            return ['rows' => [], 'through' => null];
+        }
+
+        $end = Carbon::parse($through);
+        $start = (clone $end)->subDays($trendDays - 1);
+        $gscRows = $this->channelRows('gsc_daily_totals', 'gsc_query_metrics', $start, $end, $gsc['source']);
+        $bingRows = $this->channelRows('bing_daily_totals', 'bing_traffic_stats', $start, $end, $bing['source']);
+        $bingPositions = $this->bingDailyPositions($start, $end);
+
+        $rows = [];
+        for ($d = clone $start; $d->lte($end); $d->addDay()) {
+            $day = $d->toDateString();
+            $g = $this->channelDay($gscRows[$day] ?? null, $day, $gsc);
+            $b = $this->channelDay($bingRows[$day] ?? null, $day, $bing);
+            if ($b['position'] === null && isset($bingPositions[$day]) && $b['clicks'] !== null) {
+                $b['position'] = $bingPositions[$day];
+            }
+
+            $combinedClicks = ($g['clicks'] === null && $b['clicks'] === null) ? null : (int) $g['clicks'] + (int) $b['clicks'];
+            $combinedImpressions = ($g['impressions'] === null && $b['impressions'] === null) ? null : (int) $g['impressions'] + (int) $b['impressions'];
+
+            $rows[] = [
+                'date' => $d->format('M j'),
+                'day' => $day,
+                'gsc_clicks' => $g['clicks'],
+                'gsc_impressions' => $g['impressions'],
+                'gsc_ctr' => $g['ctr'],
+                'gsc_position' => $g['position'],
+                'bing_clicks' => $b['clicks'],
+                'bing_impressions' => $b['impressions'],
+                'bing_ctr' => $b['ctr'],
+                'bing_position' => $b['position'],
+                'combined_clicks' => $combinedClicks,
+                'combined_impressions' => $combinedImpressions,
+                'combined_ctr' => $combinedImpressions === null ? null : ($combinedImpressions > 0 ? round($combinedClicks / $combinedImpressions * 100, 2) : 0.0),
+                // Position does not add across engines; the panel says so.
+                'combined_position' => null,
+            ];
+        }
+
+        // Nothing at either end: not a quiet day, an uncollected one.
+        $hasData = fn (array $r): bool => $r['gsc_clicks'] !== null || $r['bing_clicks'] !== null;
+        while ($rows !== [] && ! $hasData($rows[0])) {
+            array_shift($rows);
+        }
+        while ($rows !== [] && ! $hasData($rows[array_key_last($rows)])) {
+            array_pop($rows);
+        }
+
+        return ['rows' => array_values($rows), 'through' => $end->format('M j')];
+    }
+
+    /**
+     * Where a channel's data lives and how far it reaches. The totals table
+     * is preferred; the per-query table is the fallback for a site synced
+     * before totals existed.
+     *
+     * @return array{source: ?string, min: ?string, max: ?string}
+     */
+    protected function channelDaily(string $totalsTable, string $fallbackTable): array
+    {
+        foreach ([$totalsTable, $fallbackTable] as $table) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
+            $range = Tenancy::table($table)->selectRaw('MIN(DATE(date)) as min_day, MAX(DATE(date)) as max_day')->first();
+            if ($range && $range->max_day) {
+                return ['source' => $table, 'min' => (string) $range->min_day, 'max' => (string) $range->max_day];
+            }
+        }
+
+        return ['source' => null, 'min' => null, 'max' => null];
+    }
+
+    /** @return array<string, object> keyed by Y-m-d */
+    protected function channelRows(string $totalsTable, string $fallbackTable, Carbon $start, Carbon $end, ?string $source): array
+    {
+        if ($source === null) {
+            return [];
+        }
+
+        $query = Tenancy::table($source)
+            ->whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<=', $end->toDateString());
+
+        $rows = $source === $totalsTable
+            ? $query->selectRaw('DATE(date) as day, SUM(clicks) as clicks, SUM(impressions) as impressions, '
+                .(Schema::hasColumn($source, 'position') ? 'AVG(NULLIF(position, 0))' : 'NULL').' as position')
+                ->groupBy('day')->get()
+            : $query->selectRaw('DATE(date) as day, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(NULLIF(position, 0)) as position')
+                ->groupBy('day')->get();
+
+        return $rows->keyBy(fn ($r) => (string) $r->day)->all();
+    }
+
+    /**
+     * Bing's daily totals carry no position; the per-query table does.
+     *
+     * @return array<string, float>
+     */
+    protected function bingDailyPositions(Carbon $start, Carbon $end): array
+    {
+        if (! Schema::hasTable('bing_traffic_stats')) {
+            return [];
+        }
+
+        return Tenancy::table('bing_traffic_stats')
+            ->whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<=', $end->toDateString())
+            ->selectRaw('DATE(date) as day, AVG(NULLIF(position, 0)) as position')
+            ->groupBy('day')
+            ->get()
+            ->filter(fn ($r) => $r->position !== null)
+            ->mapWithKeys(fn ($r) => [(string) $r->day => round((float) $r->position, 2)])
+            ->all();
+    }
+
+    /**
+     * One channel, one day: 0 for a quiet day inside the collected range,
+     * null for a day the channel never reported.
+     *
+     * @param  array{min: ?string, max: ?string}  $range
+     * @return array{clicks: ?int, impressions: ?int, ctr: ?float, position: ?float}
+     */
+    protected function channelDay(?object $row, string $day, array $range): array
+    {
+        $collected = $range['min'] !== null && $day >= $range['min'] && $day <= $range['max'];
+
+        if (! $row && ! $collected) {
+            return ['clicks' => null, 'impressions' => null, 'ctr' => null, 'position' => null];
+        }
+
+        $clicks = (int) ($row->clicks ?? 0);
+        $impressions = (int) ($row->impressions ?? 0);
+        $position = isset($row->position) && (float) $row->position > 0 ? round((float) $row->position, 2) : null;
+
+        return [
+            'clicks' => $clicks,
+            'impressions' => $impressions,
+            'ctr' => $impressions > 0 ? round($clicks / $impressions * 100, 2) : 0.0,
+            'position' => $position,
+        ];
     }
 
     protected function topRows(string $dimension, string $sort, string $direction, int $topDays): array
@@ -1454,7 +1572,7 @@ class SeoReportController extends Controller
 
     protected function searchSnapshotCacheKey(int $trendDays): string
     {
-        return Tenancy::cacheKey('admin.seo-reports.search-snapshot.'.$trendDays);
+        return Tenancy::cacheKey('admin.seo-reports.search-snapshot.v2.'.$trendDays);
     }
 
     protected function percentDelta(int $current, int $previous): float
