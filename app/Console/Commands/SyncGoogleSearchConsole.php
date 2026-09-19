@@ -183,15 +183,32 @@ class SyncGoogleSearchConsole extends Command
                 continue;
             }
 
-            GscDailyTotal::updateOrCreate(
-                ['date' => $date, 'site_url' => mb_substr($siteUrl, 0, 191)],
-                [
-                    'clicks' => (int) ($r['clicks'] ?? 0),
-                    'impressions' => (int) ($r['impressions'] ?? 0),
-                    'ctr' => round((float) ($r['ctr'] ?? 0), 5),
-                    'position' => round((float) ($r['position'] ?? 0), 2),
-                ]
-            );
+            $attrs = [
+                'clicks' => (int) ($r['clicks'] ?? 0),
+                'impressions' => (int) ($r['impressions'] ?? 0),
+                'ctr' => round((float) ($r['ctr'] ?? 0), 5),
+                'position' => round((float) ($r['position'] ?? 0), 2),
+            ];
+
+            // Not updateOrCreate(['date' => $date, ...]): Eloquent's `date`
+            // cast always writes the column as a full 'Y-m-d H:i:s' string,
+            // and only MySQL's DATE type truncates that back on write — which
+            // is the single reason the exact-string match finds the row in
+            // production. Anywhere without that truncation (sqlite, which the
+            // suite runs on) every re-sync misses and falls through to an
+            // insert that hits the (date, site_url) unique index. whereDate()
+            // normalizes both sides through SQL's DATE(), so it works on both.
+            // Found by jpeterson-design's port, which is tested on sqlite.
+            $siteKey = mb_substr($siteUrl, 0, 191);
+
+            $row = GscDailyTotal::whereDate('date', $date)->where('site_url', $siteKey)->first();
+
+            if ($row) {
+                $row->update($attrs);
+            } else {
+                GscDailyTotal::create($attrs + ['date' => $date, 'site_url' => $siteKey]);
+            }
+
             $written++;
         }
 
