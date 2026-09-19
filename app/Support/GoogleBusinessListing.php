@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\PlatformSetting;
+use App\Models\Site;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -79,6 +80,64 @@ class GoogleBusinessListing
     }
 
     /** "accounts/123" and "accounts/123/locations/456" both reduce to the last segment. */
+    /**
+     * Does this Google listing belong to the site asking about it?
+     *
+     * One Google account can manage several businesses — Patryk's manages both
+     * GS Construction and J. Peterson Design — and the API returns all of them
+     * to whichever site holds the grant. The picker on gs.construction's
+     * Platforms page therefore listed a client's business by name, which is
+     * that client's relationship to disclose, not ours.
+     *
+     * The listing's own website is the link back to the tenant: GS's points at
+     * gs.construction, the studio's at jpeterson-design.com. A listing with no
+     * website, or one pointing somewhere else entirely, matches nothing and is
+     * only reachable by explicitly asking to see the whole account.
+     *
+     * @param  array<string, mixed>  $location  a location as Google returns it
+     */
+    public static function belongsToSite(array $location, ?Site $site = null): bool
+    {
+        $site ??= Site::current();
+
+        $host = static::host((string) ($location['websiteUri'] ?? ''));
+
+        if ($host === '') {
+            return false;
+        }
+
+        return in_array($host, static::siteHosts($site), true);
+    }
+
+    /** Every host this site answers to, without www. */
+    /** @return list<string> */
+    public static function siteHosts(?Site $site = null): array
+    {
+        $site ??= Site::current();
+
+        $hosts = array_merge((array) $site->hosts, [$site->primary_host]);
+
+        return array_values(array_unique(array_filter(array_map(
+            fn ($host) => static::host((string) $host),
+            $hosts,
+        ))));
+    }
+
+    /** A bare, comparable host: no scheme, no www, no trailing slash, lowercase. */
+    protected static function host(string $value): string
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        $host = str_contains($value, '//') ? (string) parse_url($value, PHP_URL_HOST) : $value;
+        $host = strtolower(trim($host, '/'));
+
+        return (string) preg_replace('/^www\./', '', $host);
+    }
+
     public static function bareId(string $value): string
     {
         $parts = array_values(array_filter(explode('/', trim($value))));

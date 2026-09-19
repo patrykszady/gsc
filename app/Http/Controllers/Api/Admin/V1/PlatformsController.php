@@ -818,7 +818,7 @@ class PlatformsController extends Controller
      * The Business Profile accounts and listings this authorisation can see,
      * so the admin can offer them instead of asking for ids nobody has.
      */
-    public function gbpListings(): JsonResponse
+    public function gbpListings(Request $request): JsonResponse
     {
         $service = app(GoogleBusinessProfileService::class);
 
@@ -833,7 +833,16 @@ class PlatformsController extends Controller
             ], 422);
         }
 
+        // One Google account can manage several businesses, and the API hands
+        // every one of them to whichever site holds the grant — so this page
+        // listed another client's business by name. Show the listings that
+        // belong to THIS site (matched on the listing's own website), plus the
+        // one already linked, and let the operator ask for the rest.
+        $showAll = $request->boolean('all');
+        $linkedId = (string) config(GoogleBusinessListing::CONFIG_PATH.'.location_id');
+
         $accounts = [];
+        $hidden = 0;
 
         foreach ($service->listAccounts() as $account) {
             $accountId = GoogleBusinessListing::bareId((string) ($account['name'] ?? ''));
@@ -842,12 +851,20 @@ class PlatformsController extends Controller
                 continue;
             }
 
-            $accounts[] = [
-                'account_id' => $accountId,
-                'name' => $account['accountName'] ?? $account['name'] ?? $accountId,
-                'type' => $account['type'] ?? null,
-                'locations' => array_map(fn (array $location) => [
-                    'location_id' => GoogleBusinessListing::bareId((string) ($location['name'] ?? '')),
+            $locations = [];
+
+            foreach ($service->listLocations($accountId) as $location) {
+                $locationId = GoogleBusinessListing::bareId((string) ($location['name'] ?? ''));
+                $isLinked = $locationId !== '' && $locationId === $linkedId;
+
+                if (! $showAll && ! $isLinked && ! GoogleBusinessListing::belongsToSite($location)) {
+                    $hidden++;
+
+                    continue;
+                }
+
+                $locations[] = [
+                    'location_id' => $locationId,
                     'title' => $location['title'] ?? null,
                     'website' => $location['websiteUri'] ?? null,
                     'address' => implode(', ', array_filter([
@@ -855,7 +872,19 @@ class PlatformsController extends Controller
                         $location['storefrontAddress']['locality'] ?? null,
                         $location['storefrontAddress']['administrativeArea'] ?? null,
                     ])) ?: null,
-                ], $service->listLocations($accountId)),
+                ];
+            }
+
+            // An account with nothing of ours left in it is noise on the card.
+            if ($locations === [] && ! $showAll) {
+                continue;
+            }
+
+            $accounts[] = [
+                'account_id' => $accountId,
+                'name' => $account['accountName'] ?? $account['name'] ?? $accountId,
+                'type' => $account['type'] ?? null,
+                'locations' => $locations,
             ];
         }
 
@@ -868,6 +897,11 @@ class PlatformsController extends Controller
         return response()->json(['data' => [
             'business_scope_granted' => true,
             'accounts' => $accounts,
+            // What this site is not being shown, so the admin can offer it
+            // rather than leaving someone hunting for a missing listing.
+            'filtered' => ! $showAll,
+            'hidden_count' => $hidden,
+            'site_hosts' => GoogleBusinessListing::siteHosts(),
             'selected' => [
                 'account_id' => config(GoogleBusinessListing::CONFIG_PATH.'.account_id'),
                 'location_id' => config(GoogleBusinessListing::CONFIG_PATH.'.location_id'),
@@ -933,7 +967,7 @@ class PlatformsController extends Controller
             // Profile, which yields a token that can name the user and do
             // nothing else. Report that plainly instead of a green tick.
             'business_scope_granted' => $service->hasBusinessScope(),
-            'listing_source' => \App\Models\PlatformSetting::get(\App\Support\GoogleBusinessListing::SETTING_LOCATION_ID) ? 'admin' : (! empty($config['location_id']) ? 'env' : null),
+            'listing_source' => PlatformSetting::get(GoogleBusinessListing::SETTING_LOCATION_ID) ? 'admin' : (! empty($config['location_id']) ? 'env' : null),
         ];
     }
 
