@@ -6,6 +6,7 @@ use App\Jobs\GenerateAreaContentJob;
 use App\Models\Concerns\BelongsToSite;
 use App\Services\HiveProjectsClient;
 use App\Support\Tenancy;
+use App\Support\TownCopy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,10 @@ class AreaServed extends Model
         'slug',
         'latitude',
         'longitude',
+        // OSM place=* value this area was added as — 'neighbourhood'/'suburb'/
+        // 'quarter' for a subdivision of a big city, or a settlement kind for
+        // an ordinary town. See the add_kind_to_areas_served_table migration.
+        'kind',
         'intro',
         'local_intro',
         'landmarks',
@@ -38,6 +43,17 @@ class AreaServed extends Model
         'ig_location_id',
         'fb_place_id',
     ];
+
+    /**
+     * OSM place values that mean "inside a big city", not "a town of its
+     * own" — Chicago's 77 official community areas are tagged suburb, plus
+     * neighbourhood and quarter elsewhere in the gazetteer. One list, so
+     * TownsImport's tighter market-only Overpass pass, TownCatalog's search
+     * merge and AreaMapController's addability check all read the same set
+     * rather than three separately-maintained copies of it. Mirrors
+     * jpeterson-design's identical Area::NEIGHBOURHOOD_KINDS.
+     */
+    public const NEIGHBOURHOOD_KINDS = ['neighbourhood', 'suburb', 'quarter'];
 
     /**
      * The pieces of page copy an area can carry, in page order, with the
@@ -106,7 +122,7 @@ class AreaServed extends Model
             ];
         }
 
-        ['lead' => $lead, 'rest' => $rest] = \App\Support\TownCopy::leadAndRest($text);
+        ['lead' => $lead, 'rest' => $rest] = TownCopy::leadAndRest($text);
 
         return [
             'lead' => $lead,
@@ -702,6 +718,7 @@ class AreaServed extends Model
             'slug' => $this->slug,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
+            'kind' => $this->kind,
             'intro' => $this->intro,
             'local_intro' => $this->local_intro,
             'landmarks' => $this->landmarks,

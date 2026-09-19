@@ -8,6 +8,8 @@ use App\Models\AreaServed;
 use App\Models\Town;
 use App\Models\TownImport;
 use App\Services\OpenStreetMapGeocoder;
+use App\Support\Areas\MajorCityMarkets;
+use App\Support\Areas\StateLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -73,9 +75,17 @@ class AreaMapController extends Controller
             ->inBounds($south, $west, $north, $east)
             ->orderBy('name')
             ->limit(400)
-            ->get(['name', 'latitude', 'longitude'])
+            // kind travels with each town so the ADMIN decides what earns a dot
+            // and what is merely a clickable label. That policy belongs in one
+            // place, and the admin is the one place both sites share.
+            ->get(['name', 'latitude', 'longitude', 'kind'])
             ->reject(fn ($t) => isset($existing[mb_strtolower($t->name)]))
-            ->map(fn ($t) => ['name' => $t->name, 'lat' => $t->latitude, 'lng' => $t->longitude])
+            ->map(fn ($t) => [
+                'name' => $t->name,
+                'lat' => $t->latitude,
+                'lng' => $t->longitude,
+                'kind' => (string) ($t->kind ?? ''),
+            ])
             ->values()
             ->all();
 
@@ -96,13 +106,41 @@ class AreaMapController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
-        $town = app(OpenStreetMapGeocoder::class)->reverseTown((float) $data['lat'], (float) $data['lng']);
-        $allowed = $this->allowedStates();
+        $lat = (float) $data['lat'];
+        $lng = (float) $data['lng'];
+
+        // The gazetteer answers this, not a reverse-geocode: local, instant,
+        // and it returns the name shown on the map. Reverse-geocoding the
+        // "Riverside" label gives "Lincoln Charter Township" — correct and
+        // useless for adding a service area. Hamlets are included here even
+        // though they get no dot, which is the point: a place the map labels
+        // but does not dot is exactly what this resolves.
+        //
+        // No nearby town means no answer, which is what keeps a click on open
+        // countryside from offering to add whatever was nearest.
+        $nearest = Town::nearestTo($lat, $lng);
+
+        $town = [
+            'city' => $nearest?->name,
+            'state' => $nearest?->state ?: StateLocator::forTown((string) $nearest?->name, $lat, $lng),
+        ];
+        $allowedStates = $this->allowedStates();
+
+        // The nearest gazetteer town can be a neighbourhood even though it
+        // got no dot (see AreaMapController::candidates) — a click on its
+        // label must obey the SAME addability rule createFromMap enforces,
+        // or "allowed" here would promise an add that createFromMap then
+        // refuses.
+        $isNeighbourhood = $nearest !== null && in_array($nearest->kind, AreaServed::NEIGHBOURHOOD_KINDS, true);
 
         return response()->json([
             'data' => $town + [
-                'allowed' => $town['state'] !== null && in_array($town['state'], $allowed, true),
-                'allowed_states' => $allowed,
+                // No town means nothing to allow.
+                'allowed' => $town['city'] !== null
+                    && $town['state'] !== null
+                    && in_array($town['state'], $allowedStates, true)
+                    && (! $isNeighbourhood || MajorCityMarkets::contains($lat, $lng)),
+                'allowed_states' => $allowedStates,
             ],
         ]);
     }
@@ -118,11 +156,16 @@ class AreaMapController extends Controller
             'city' => ['required', 'string', 'max:120'],
             'lat' => ['required', 'numeric', 'between:-90,90'],
             'lng' => ['required', 'numeric', 'between:-180,180'],
+            // The candidate's OSM place=* value, passed straight through from
+            // candidates()'s 'kind' field when this click was on a dot rather
+            // than empty ground. Optional — a typed-in area has none.
+            'kind' => ['nullable', 'string', 'max:32'],
         ]);
 
         $city = trim($data['city']);
         $lat = (float) $data['lat'];
         $lng = (float) $data['lng'];
+        $kind = filled($data['kind'] ?? null) ? trim((string) $data['kind']) : null;
 
         if ($city === '' || $lat === 0.0 || $lng === 0.0) {
             return response()->json([
@@ -134,12 +177,36 @@ class AreaMapController extends Controller
             ]);
         }
 
-        $state = app(OpenStreetMapGeocoder::class)->reverseTown($lat, $lng)['state'];
+        // The bundled ZIP gazetteer answers this locally in ~15ms. It used to be
+        // a Nominatim reverse-geocode, ~1.5s of every add — and its 30-day cache
+        // never helped, because a town being added for the first time is always
+        // a miss, which is the only click that matters. Nominatim stays as the
+        // fallback for a point the gazetteer cannot place.
+        $state = StateLocator::forTown($city, $lat, $lng)
+            ?? app(OpenStreetMapGeocoder::class)->reverseTown($lat, $lng)['state'];
         if ($state !== null && ! in_array($state, $this->allowedStates(), true)) {
             return response()->json([
                 'data' => [
                     'created' => false,
                     'message' => "{$city} is in {$state} — outside this site's service states (".implode(', ', $this->allowedStates()).'). Use the New Area form if this is intentional.',
+                    'area' => null,
+                ],
+            ]);
+        }
+
+        // Neighbourhoods get no dot any more (the admin decides what is
+        // drawn — see candidates() above), but this endpoint is also reached
+        // from a resolve-town click and from anywhere a caller supplies a
+        // 'kind', so the rule still has to be enforced here: a big city's
+        // named subdivision is only a real, addable place inside one of
+        // THIS site's major-city markets — outside one it is at best an
+        // unincorporated area with a confusing name, not somewhere to build
+        // a page around. Same refusal shape as the out-of-state check above.
+        if ($kind !== null && in_array($kind, AreaServed::NEIGHBOURHOOD_KINDS, true) && ! MajorCityMarkets::contains($lat, $lng)) {
+            return response()->json([
+                'data' => [
+                    'created' => false,
+                    'message' => "{$city} is a {$kind} — those are only addable inside one of this site's major-city markets. Use the New Area form if this is intentional.",
                     'area' => null,
                 ],
             ]);
@@ -164,6 +231,7 @@ class AreaMapController extends Controller
             'slug' => $slug,
             'latitude' => $lat,
             'longitude' => $lng,
+            'kind' => $kind,
         ]);
 
         // Every field is written for this site: nothing is copied from
@@ -204,6 +272,10 @@ class AreaMapController extends Controller
             ->get()
             ->map(fn ($a) => [
                 'id' => $a->id,
+                // kind rides with every persisted area, not just the create
+                // response, so the admin can style a neighbourhood after a
+                // reload as well as right after adding it.
+                'kind' => $a->kind,
                 'city' => (string) $a->city,
                 'slug' => (string) $a->slug,
                 'lat' => (float) $a->latitude,

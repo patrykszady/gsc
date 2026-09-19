@@ -181,6 +181,13 @@
                     e.target.disabled = true;
                     e.target.textContent = 'Adding…';
                     infoWindow.close();
+                    // This legacy screen sends no `kind`, on purpose. The
+                    // central admin (ss.systems) is where a town's OSM kind
+                    // flows through an add; this surface predates that and
+                    // is kept for parity only. Porting the plumbing here would
+                    // mean two admins to keep in step, which is the thing the
+                    // shared admin exists to end. A town added from here is
+                    // simply a town.
                     $wire.createFromMap(town.name, town.lat, town.lng);
                 });
                 el.querySelector('[data-cancel]').addEventListener('click', () => infoWindow.close());

@@ -7,12 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAreaContentJob;
 use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\AreaServed;
+use App\Support\Areas\MajorCityMarkets;
 use App\Support\Areas\TownCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * gsc-only resource (jpeterson's ping omits the "areas" capability, so the
@@ -55,6 +57,19 @@ class AreaController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate($this->rules() + ['generate' => ['sometimes', 'boolean']]);
+
+        // A hand-typed neighbourhood is held to the SAME major-city rule
+        // createFromMap enforces for a map click, so the rule cannot be routed
+        // around by typing instead of clicking.
+        if (filled($data['kind'] ?? null)
+            && in_array($data['kind'], AreaServed::NEIGHBOURHOOD_KINDS, true)
+            && ! MajorCityMarkets::contains((float) ($data['latitude'] ?? 0), (float) ($data['longitude'] ?? 0))) {
+            throw ValidationException::withMessages([
+                // `name` is the request key; mapped() renames it to `city` further down.
+                'kind' => ($data['name'] ?? 'That place')." is a neighbourhood outside this site's major-city markets.",
+            ]);
+        }
+
         $generate = (bool) ($data['generate'] ?? false);
         unset($data['generate']);
         $data = $this->mapped($data);
@@ -159,6 +174,11 @@ class AreaController extends Controller
         return [
             'name' => ['required', 'string', 'max:120'],
             'slug' => ['sometimes', 'nullable', 'string', 'max:150', Rule::unique('areas_served', 'slug')->ignore($ignoreId)],
+            // Sent by the central admin's picker for a neighbourhood candidate.
+            // Accepted and gated here so a hand-typed neighbourhood is held to
+            // the same major-city rule createFromMap enforces for a map click,
+            // rather than slipping it by using this form instead.
+            'kind' => ['sometimes', 'nullable', 'string', 'max:32'],
             'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
             'intro' => ['sometimes', 'nullable', 'string'],

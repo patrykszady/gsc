@@ -7,6 +7,7 @@ use App\Models\AreaServed;
 use App\Models\Town;
 use App\Models\TownImport;
 use App\Services\OpenStreetMapGeocoder;
+use App\Support\Areas\MajorCityMarkets;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -107,8 +108,16 @@ class AreaList extends Component
             ->inBounds($south, $west, $north, $east)
             ->orderBy('name')
             ->limit(400)
-            ->get(['name', 'latitude', 'longitude'])
+            ->get(['name', 'latitude', 'longitude', 'kind'])
             ->reject(fn ($t) => isset($existing[mb_strtolower($t->name)]))
+            // This legacy screen's JS predates the central admin's kind-aware
+            // dot policy and sends no kind when it adds, so a neighbourhood
+            // reaching it could be added as a plain town and route around the
+            // major-city rule. Rather than teach a second admin the policy —
+            // two admins to keep in step is what the shared one exists to end —
+            // neighbourhoods simply do not appear here. They are added from the
+            // central admin, by search.
+            ->reject(fn ($t) => in_array((string) $t->kind, AreaServed::NEIGHBOURHOOD_KINDS, true))
             ->map(fn ($t) => ['name' => $t->name, 'lat' => $t->latitude, 'lng' => $t->longitude])
             ->values()
             ->all();
@@ -130,6 +139,17 @@ class AreaList extends Component
      */
     public function createFromMap(string $city, float $lat, float $lng): void
     {
+        // Belt and braces with the reject above: the client is a Livewire call
+        // anyone signed in can make with any coordinates, so the rule is
+        // enforced here too rather than trusted to the list it was offered.
+        $nearest = Town::nearestTo($lat, $lng);
+
+        if ($nearest && in_array((string) $nearest->kind, AreaServed::NEIGHBOURHOOD_KINDS, true) && ! MajorCityMarkets::contains($lat, $lng)) {
+            $this->mapFlash = "{$city} is a neighbourhood outside this site's major-city markets.";
+
+            return;
+        }
+
         $city = trim($city);
         if ($city === '' || $lat === 0.0 || $lng === 0.0) {
             $this->mapFlash = 'Could not resolve a town at that point — try clicking closer to its center.';

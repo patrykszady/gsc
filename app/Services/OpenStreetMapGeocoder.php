@@ -33,11 +33,11 @@ class OpenStreetMapGeocoder
             return [(float) $cached['lat'], (float) $cached['lng']];
         }
 
-        $query = trim($city . ($state !== '' ? ', ' . $state : '') . ($country !== '' ? ', ' . $country : ''));
+        $query = trim($city.($state !== '' ? ', '.$state : '').($country !== '' ? ', '.$country : ''));
 
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'GS-Construction-GBP-Geotag/1.0 (' . config('app.url') . ')',
+                'User-Agent' => 'GS-Construction-GBP-Geotag/1.0 ('.config('app.url').')',
                 'Accept' => 'application/json',
             ])
                 ->timeout(15)
@@ -96,7 +96,7 @@ class OpenStreetMapGeocoder
 
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'GS-Construction-GBP-Geotag/1.0 (' . config('app.url') . ')',
+                'User-Agent' => 'GS-Construction-GBP-Geotag/1.0 ('.config('app.url').')',
                 'Accept' => 'application/json',
             ])
                 ->timeout(15)
@@ -143,8 +143,16 @@ class OpenStreetMapGeocoder
      * fail-fast 6s for anything running inside a request; towns:import passes a
      * generous value because nobody is waiting on it.
      *
+     * $kinds: which OSM place=* values to ask Overpass for. Defaults to the
+     * settlement set every existing caller wants; towns:import passes
+     * ['neighbourhood', 'suburb', 'quarter'] for its tighter per-market pass —
+     * Chicago alone has 307 of those around its centre, and mixing them into
+     * the settlement query would flood every viewport with dots the admin
+     * never asked to draw there. Part of the cache key so the two passes
+     * never shadow each other.
+     *
      * @return array<int, array{name: string, lat: float, lng: float}>|null
-     *         null = the lookup itself failed (distinct from "no towns here")
+     *                                                                      null = the lookup itself failed (distinct from "no towns here")
      */
     public function townsInBounds(
         float $south,
@@ -152,17 +160,28 @@ class OpenStreetMapGeocoder
         float $north,
         float $east,
         ?float $budgetSeconds = null,
+        ?array $kinds = null,
     ): ?array {
-        $cacheKey = sprintf('osm:towns:%.2f,%.2f,%.2f,%.2f', $south, $west, $north, $east);
+        // hamlet is included deliberately. Without it the coverage map's
+        // orange dots covered villages and up, so a place the base map
+        // plainly labels had no dot and no way to be added, while the
+        // village beside it did. Near South Haven that was 3 villages
+        // against 9 hamlets, i.e. most of the small places were invisible
+        // to that screen.
+        $kinds ??= ['city', 'town', 'village', 'hamlet'];
+
+        $cacheKey = sprintf('osm:towns:%.2f,%.2f,%.2f,%.2f:%s', $south, $west, $north, $east, implode(',', $kinds));
 
         $cached = Cache::get($cacheKey);
         if (is_array($cached)) {
             return $cached;
         }
 
+        $pattern = implode('|', array_map(fn (string $kind) => preg_quote($kind, '/'), $kinds));
+
         $query = sprintf(
-            '[out:json][timeout:25];node["place"~"^(city|town|village)$"](%.4f,%.4f,%.4f,%.4f);out 800;',
-            $south, $west, $north, $east,
+            '[out:json][timeout:25];node["place"~"^(%s)$"](%.4f,%.4f,%.4f,%.4f);out 800;',
+            $pattern, $south, $west, $north, $east,
         );
 
         // Overpass throttles hard and answers an HTML error page rather than a
@@ -190,7 +209,7 @@ class OpenStreetMapGeocoder
 
             try {
                 $attempt = Http::withHeaders([
-                    'User-Agent' => 'GS-Construction-GBP-Geotag/1.0 (' . config('app.url') . ')',
+                    'User-Agent' => 'GS-Construction-GBP-Geotag/1.0 ('.config('app.url').')',
                     'Accept' => 'application/json',
                 ])
                     ->asForm()

@@ -2,10 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AreaServed;
 use App\Models\Site;
 use App\Models\Town;
 use App\Models\TownImport;
 use App\Services\OpenStreetMapGeocoder;
+use App\Support\Areas\MajorCityMarkets;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 
@@ -27,6 +29,7 @@ class TownsImport extends Command
         {--market= : slug of a market from a site\'s markets.php}
         {--all-markets : every market declared by every site}
         {--radius=0.45 : half-height in degrees of the box drawn around a market}
+        {--neighbourhood-radius= : half-height in degrees of the tighter box used for the neighbourhood/suburb/quarter pass (default: config areas.neighbourhood_radius_degrees — the same value App\Support\Areas\MajorCityMarkets checks addability against, so leave this alone unless you mean to move both)}
         {--retries=4 : attempts per box before giving up}
         {--from-areas : seed from existing AreaServed rows instead of Overpass}';
 
@@ -49,50 +52,84 @@ class TownsImport extends Command
         $imported = 0;
         $failed = 0;
 
-        foreach ($boxes as $label => [$south, $west, $north, $east]) {
-            $this->line("Importing <options=bold>{$label}</> ({$south},{$west} → {$north},{$east})…");
-
-            $towns = null;
-            $attempts = (int) $this->option('retries');
-
-            for ($i = 1; $i <= $attempts; $i++) {
-                // Patient: an import can afford to wait where a request cannot.
-                $towns = $geocoder->townsInBounds($south, $west, $north, $east, 90.0);
-
-                if ($towns !== null) {
-                    break;
-                }
-
-                // Overpass rejects instantly when throttled and hangs when
-                // loaded; a widening pause covers both.
-                $wait = 5 * $i;
-                $this->warn("  attempt {$i}/{$attempts} failed — retrying in {$wait}s");
-                sleep($wait);
-            }
-
-            if ($towns === null) {
-                $this->error("  gave up on {$label}");
-                $failed++;
-
-                continue;
-            }
-
-            $count = $this->store($towns);
+        foreach ($boxes as $label => $box) {
+            [$count, $ok] = $this->importBox($geocoder, $label, $box);
             $imported += $count;
+            $failed += $ok ? 0 : 1;
+        }
 
-            TownImport::updateOrCreate(
-                ['south' => $south, 'west' => $west, 'north' => $north, 'east' => $east],
-                ['towns_found' => count($towns)],
-            );
-
-            $this->info("  {$count} towns stored (" . count($towns) . ' returned)');
+        // A second, tighter pass for named subdivisions — OSM's
+        // place=neighbourhood|suburb|quarter. Chicago alone has 307 of those
+        // around its centre (218 neighbourhood, 77 suburb — OSM's tag for
+        // Chicago's 77 official community areas — 12 quarter), which the
+        // settlement pass above never asks for. Skipped for a hand-drawn
+        // --bbox: whoever typed the box can widen it themselves, and a raw
+        // bbox has no "market" to keep the tighter query from bleeding into
+        // a neighbouring one.
+        if (! $this->option('bbox')) {
+            foreach ($this->neighbourhoodBoxes() as $label => $box) {
+                [$count, $ok] = $this->importBox($geocoder, "{$label} neighbourhoods", $box, AreaServed::NEIGHBOURHOOD_KINDS);
+                $imported += $count;
+                $failed += $ok ? 0 : 1;
+            }
         }
 
         $this->newLine();
         $this->info("Done. {$imported} towns upserted, {$failed} box(es) failed.");
-        $this->line('Gazetteer now holds ' . Town::count() . ' towns.');
+        $this->line('Gazetteer now holds '.Town::count().' towns.');
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Fetch one box with retries, store what comes back, and record it as
+     * imported. Shared by the settlement pass and the neighbourhood pass —
+     * only the kinds asked for and the label differ.
+     *
+     * @param  array{0: float, 1: float, 2: float, 3: float}  $box
+     * @param  array<int, string>|null  $kinds
+     * @return array{0: int, 1: bool} [towns stored, box succeeded]
+     */
+    private function importBox(OpenStreetMapGeocoder $geocoder, string $label, array $box, ?array $kinds = null): array
+    {
+        [$south, $west, $north, $east] = $box;
+
+        $this->line("Importing <options=bold>{$label}</> ({$south},{$west} → {$north},{$east})…");
+
+        $towns = null;
+        $attempts = (int) $this->option('retries');
+
+        for ($i = 1; $i <= $attempts; $i++) {
+            // Patient: an import can afford to wait where a request cannot.
+            $towns = $geocoder->townsInBounds($south, $west, $north, $east, 90.0, $kinds);
+
+            if ($towns !== null) {
+                break;
+            }
+
+            // Overpass rejects instantly when throttled and hangs when
+            // loaded; a widening pause covers both.
+            $wait = 5 * $i;
+            $this->warn("  attempt {$i}/{$attempts} failed — retrying in {$wait}s");
+            sleep($wait);
+        }
+
+        if ($towns === null) {
+            $this->error("  gave up on {$label}");
+
+            return [0, false];
+        }
+
+        $count = $this->store($towns);
+
+        TownImport::updateOrCreate(
+            ['south' => $south, 'west' => $west, 'north' => $north, 'east' => $east],
+            ['towns_found' => count($towns)],
+        );
+
+        $this->info("  {$count} towns stored (".count($towns).' returned)');
+
+        return [$count, true];
     }
 
     /**
@@ -107,7 +144,7 @@ class TownsImport extends Command
      */
     private function seedFromAreas(): int
     {
-        $areas = \App\Models\AreaServed::withoutSiteScope()
+        $areas = AreaServed::withoutSiteScope()
             ->whereNotNull('latitude')->whereNotNull('longitude')
             ->get(['city', 'latitude', 'longitude']);
 
@@ -121,7 +158,7 @@ class TownsImport extends Command
         $count = $this->store($towns);
 
         $this->info("Seeded {$count} towns from existing service areas.");
-        $this->line('Gazetteer now holds ' . Town::count() . ' towns.');
+        $this->line('Gazetteer now holds '.Town::count().' towns.');
         $this->comment('Run without --from-areas to enrich from OpenStreetMap when Overpass is reachable.');
 
         return self::SUCCESS;
@@ -164,8 +201,6 @@ class TownsImport extends Command
      */
     private function boxes(): array
     {
-        $radius = (float) $this->option('radius');
-
         if ($raw = $this->option('bbox')) {
             $parts = array_map('floatval', explode(',', (string) $raw));
 
@@ -178,6 +213,40 @@ class TownsImport extends Command
             return ['bbox' => $parts];
         }
 
+        return $this->marketBoxes((float) $this->option('radius'));
+    }
+
+    /**
+     * The same markets, boxed tighter — for the neighbourhood/suburb/quarter
+     * pass. The settlement radius (0.45°, ~50km) is wide enough to straddle
+     * two markets' territory; a neighbourhood box that wide would pull in
+     * named subdivisions that belong to a market next door. --bbox has no
+     * notion of "market", so it never reaches this — see handle().
+     *
+     * No literal default here: MajorCityMarkets::radiusDegrees() (config
+     * areas.neighbourhood_radius_degrees) is the one place that number
+     * lives, because AreaMapController::createFromMap and TownCatalog read
+     * the exact same value to decide what THIS PASS is allowed to have
+     * imported. A --neighbourhood-radius override only changes what gets
+     * fetched here, not what the addability check accepts.
+     *
+     * @return array<string, array{0: float, 1: float, 2: float, 3: float}>
+     */
+    private function neighbourhoodBoxes(): array
+    {
+        $radius = $this->option('neighbourhood-radius');
+
+        return $this->marketBoxes($radius !== null ? (float) $radius : MajorCityMarkets::radiusDegrees());
+    }
+
+    /**
+     * Every declared market (of every site, via Tenancy::for — see the class
+     * docblock) boxed at $radius degrees, keyed "{site}/{market}".
+     *
+     * @return array<string, array{0: float, 1: float, 2: float, 3: float}>
+     */
+    private function marketBoxes(float $radius): array
+    {
         $boxes = [];
         $wanted = $this->option('market');
 
@@ -201,14 +270,13 @@ class TownsImport extends Command
                     continue;
                 }
 
-                // Longitude degrees are narrower than latitude at these
-                // latitudes; widening keeps the box roughly square on screen.
-                $boxes["{$site->slug}/{$slug}"] = [
-                    round($market['lat'] - $radius, 7),
-                    round($market['lng'] - $radius * 1.35, 7),
-                    round($market['lat'] + $radius, 7),
-                    round($market['lng'] + $radius * 1.35, 7),
-                ];
+                // Same box shape MajorCityMarkets checks a point against —
+                // sharing it means a town this pass actually imports is
+                // always, by construction, "inside" for the addability check.
+                $boxes["{$site->slug}/{$slug}"] = array_map(
+                    fn (float $n) => round($n, 7),
+                    MajorCityMarkets::boxAround((float) $market['lat'], (float) $market['lng'], $radius),
+                );
             }
         }
 

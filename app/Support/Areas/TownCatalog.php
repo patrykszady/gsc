@@ -4,6 +4,7 @@ namespace App\Support\Areas;
 
 use App\Models\AreaServed;
 use App\Models\Project;
+use App\Models\Town;
 use App\Support\Tenancy;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -57,7 +58,7 @@ class TownCatalog
     /** "Atlanta, GA" */
     public static function label(array $town): string
     {
-        return $town['name'] . ', ' . $town['state'];
+        return $town['name'].', '.$town['state'];
     }
 
     /** Bare slug at home (palatine), state-suffixed elsewhere (atlanta-ga). */
@@ -65,7 +66,7 @@ class TownCatalog
     {
         $slug = Str::slug($town['name']);
 
-        return strtoupper($town['state']) === self::homeState() ? $slug : $slug . '-' . strtolower($town['state']);
+        return strtoupper($town['state']) === self::homeState() ? $slug : $slug.'-'.strtolower($town['state']);
     }
 
     /** The city string an area row carries: bare at home, "Name, ST" elsewhere. */
@@ -167,21 +168,107 @@ class TownCatalog
                 'in_service_area' => $inArea,
                 'score' => round($p * 60 + min($v, 3000) / 10 + ($inArea ? 100 : 0) - $distance * 2, 1),
                 'why' => implode(' · ', array_filter([
-                    $p ? "{$p} project" . ($p === 1 ? '' : 's') : null,
-                    $v ? number_format($v) . ' searches/mo researched' : null,
+                    $p ? "{$p} project".($p === 1 ? '' : 's') : null,
+                    $v ? number_format($v).' searches/mo researched' : null,
                     $inArea ? 'Business Profile service area' : null,
                     $t['kind'] !== 'CDP' ? $t['kind'] : 'unincorporated',
-                    number_format($distance) . ' mi from the office',
+                    number_format($distance).' mi from the office',
                 ])),
                 '_starts' => $qLower !== '' && str_starts_with(mb_strtolower($t['name']), $qLower) ? 1 : 0,
             ];
         }
         if ($qSlug !== '') {
+            foreach (self::neighbourhoodMatches($qSlug, $qLower, $existing) as $row) {
+                $out[] = $row;
+            }
             usort($out, fn ($a, $b) => [$b['_starts'], $b['land_sqmi'], $a['distance_mi']] <=> [$a['_starts'], $a['land_sqmi'], $b['distance_mi']]);
         } else {
             usort($out, fn ($a, $b) => [$b['score'], $a['distance_mi']] <=> [$a['score'], $b['distance_mi']]);
         }
 
         return array_map(fn ($c) => array_diff_key($c, ['_starts' => true]), array_slice($out, 0, max(1, $limit)));
+    }
+
+    /**
+     * Neighbourhood/suburb/quarter towns (App\Models\AreaServed::NEIGHBOURHOOD_KINDS)
+     * from the shared `towns` gazetteer whose name matches the typed query —
+     * never on an untyped browse, the same restraint the map's dots now
+     * apply (App\Http\Controllers\Api\Admin\V1\AreaMapController::candidates)
+     * — for the reason the owner gave: 128 of them on one city's map is too
+     * much, but hiding a real place by name entirely just because it isn't
+     * in the Census catalog (self::all()) is wrong the other way. They are
+     * NOT in that catalog at all, so without this merge a neighbourhood was
+     * simply unsearchable, dot or no dot.
+     *
+     * Same addability gate as AreaMapController::createFromMap — a
+     * subdivision only surfaces here INSIDE one of this tenant's major-city
+     * markets (App\Support\Areas\MajorCityMarkets) — so nothing this method
+     * offers can then be refused when someone tries to add it.
+     *
+     * @param  array<string, int>  $existing  slug/bare-name => 1, from candidates()
+     * @return list<array<string, mixed>>
+     */
+    protected static function neighbourhoodMatches(string $qSlug, string $qLower, array $existing): array
+    {
+        $home = self::homeState();
+        $rows = [];
+
+        $towns = Town::query()->whereIn('kind', AreaServed::NEIGHBOURHOOD_KINDS)->get(['name', 'state', 'latitude', 'longitude', 'kind']);
+
+        foreach ($towns as $town) {
+            $bare = Str::slug((string) $town->name);
+            if (! str_contains($bare, $qSlug)) {
+                continue;
+            }
+
+            $market = MajorCityMarkets::matchingMarket((float) $town->latitude, (float) $town->longitude);
+            if ($market === null) {
+                continue;
+            }
+
+            // towns.state is almost always null (the OSM gazetteer carries
+            // no administrative boundary, only a point) — the market it sits
+            // inside knows its state reliably, and every declared market
+            // carries one.
+            $state = strtoupper((string) ($town->state ?: ($market['state'] ?? '') ?: $home));
+            $inHome = $state === $home;
+            $slug = $inHome ? $bare : $bare.'-'.strtolower($state);
+
+            if (isset($existing[$slug]) || ($inHome && isset($existing[$bare]))) {
+                continue;
+            }
+
+            $marketName = trim((string) ($market['city'] ?? $market['label'] ?? ''));
+            $distance = self::distance((float) $town->latitude, (float) $town->longitude);
+
+            $rows[] = [
+                'name' => $town->name,
+                'state' => $state,
+                // Obviously a neighbourhood, not a town of its own — the
+                // "carrying kind and an obviously-a-neighbourhood label"
+                // half of the rule: a bare "Logan Square" reads exactly like
+                // any other candidate town until the parenthetical says
+                // otherwise.
+                'label' => $marketName !== '' ? "{$town->name} ({$marketName} {$town->kind})" : "{$town->name} ({$town->kind})",
+                'slug' => $slug,
+                'city' => $inHome ? (string) $town->name : $town->name.', '.$state,
+                'kind' => $town->kind,
+                'latitude' => (float) $town->latitude,
+                'longitude' => (float) $town->longitude,
+                'distance_mi' => $distance,
+                'land_sqmi' => 0.0,
+                'projects' => 0,
+                'researched_volume' => 0,
+                'researched_keywords' => 0,
+                'in_service_area' => false,
+                'score' => 0.0,
+                'why' => $marketName !== ''
+                    ? "{$marketName} {$town->kind} · ".number_format($distance).' mi from the office'
+                    : ucfirst((string) $town->kind),
+                '_starts' => $qLower !== '' && str_starts_with(mb_strtolower((string) $town->name), $qLower) ? 1 : 0,
+            ];
+        }
+
+        return $rows;
     }
 }
