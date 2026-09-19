@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Controller;
+use Hive\Platform\Kit;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -17,6 +18,13 @@ class PingController extends Controller
         return response()->json([
             'data' => [
                 'site' => config('brand.display_name', config('app.name')),
+                // The version of the shared backend package this site runs.
+                // The central admin compares it across sites and says so when
+                // they disagree — the check that replaces "remember to copy
+                // the file to the other repo". class_exists keeps this honest
+                // before the package is installed: null reads as "not
+                // reporting", never as drift.
+                'platform_kit' => class_exists(Kit::class) ? Kit::VERSION : null,
                 'domains' => [
                     'dashboard-stats', 'projects', 'tags', 'testimonials', 'areas', 'leads',
                     // Ops domains — the central admin shows these screens
