@@ -63,6 +63,7 @@ use App\Services\MetaSocialService;
 use App\Services\SeoService;
 use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\DevSites;
+use App\Support\GoogleBusinessListing;
 use App\Support\LeadLineInfo;
 use App\Support\OAuthState;
 use App\Support\PermitGuideInfo;
@@ -190,10 +191,13 @@ Route::get('/reviews/{testimonial}', TestimonialPage::class)
 // customers and it drops them straight onto the Google write-review form —
 // review volume + recency is the single biggest local-pack ranking lever.
 Route::get('/review', function () {
-    $placeId = (string) config('services.google.business_profile.place_id');
+    // This site's own place id, never the deployment's: the env value is
+    // gs.construction's, and sending another business's customers to GS's
+    // review form is the one mistake this link must not make.
+    $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
     $target = $placeId !== ''
         ? 'https://search.google.com/local/writereview?placeid='.urlencode($placeId)
-        : 'https://www.google.com/maps/search/?api=1&query='.urlencode('GS Construction Remodeling');
+        : 'https://www.google.com/maps/search/?api=1&query='.urlencode((string) config('brand.display_name', config('brand.name')));
 
     return redirect()->away($target, 302);
 })->name('review.write');

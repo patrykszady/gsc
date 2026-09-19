@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
+use App\Support\GoogleBusinessListing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -41,15 +42,17 @@ class SyncGoogleReviews extends Command
         if (empty($reviews)) {
             $error = $service->getLastError();
             if ($error) {
-                $this->error('Failed to fetch reviews: ' . ($error['message'] ?? 'Unknown error'));
+                $this->error('Failed to fetch reviews: '.($error['message'] ?? 'Unknown error'));
+
                 return self::FAILURE;
             }
 
             $this->info('No reviews found.');
+
             return self::SUCCESS;
         }
 
-        $this->info(count($reviews) . ' review(s) fetched from Google.');
+        $this->info(count($reviews).' review(s) fetched from Google.');
 
         $created = 0;
         $skipped = 0;
@@ -60,12 +63,14 @@ class SyncGoogleReviews extends Command
             if (! $reviewId) {
                 $this->warn('Skipping review with missing name.');
                 $skipped++;
+
                 continue;
             }
 
             // Skip reviews we already have (by review_urls.external_id)
             if (ReviewUrl::where('platform', 'google')->where('external_id', $reviewId)->exists()) {
                 $skipped++;
+
                 continue;
             }
 
@@ -90,6 +95,7 @@ class SyncGoogleReviews extends Command
                         }
                     }
                     $skipped++;
+
                     continue;
                 }
             }
@@ -111,19 +117,21 @@ class SyncGoogleReviews extends Command
                         $existing->update(['star_rating' => $starRating]);
                     }
                     $skipped++;
+
                     continue;
                 }
             }
 
             if ($this->option('dry-run')) {
-                $this->line("[DRY RUN] Would create: {$displayName} — {$starRating}★ — " . mb_substr($comment, 0, 60) . '...');
+                $this->line("[DRY RUN] Would create: {$displayName} — {$starRating}★ — ".mb_substr($comment, 0, 60).'...');
                 $created++;
+
                 continue;
             }
 
             $testimonial = Testimonial::create([
                 'reviewer_name' => $displayName,
-                'review_description' => $comment ?: 'Left a ' . ($starRating ?? 5) . '-star review.',
+                'review_description' => $comment ?: 'Left a '.($starRating ?? 5).'-star review.',
                 'review_date' => $reviewDate,
                 'star_rating' => $starRating,
             ]);
@@ -195,7 +203,7 @@ class SyncGoogleReviews extends Command
 
     protected function buildFallbackGoogleUrl(string $reviewId): string
     {
-        $placeId = (string) config('services.google.business_profile.place_id', '');
+        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
 
         if ($placeId !== '') {
             return 'https://search.google.com/local/reviews?placeid='.$placeId;

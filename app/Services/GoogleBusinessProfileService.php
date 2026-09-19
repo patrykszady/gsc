@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AreaServed;
 use App\Models\OAuthToken;
 use App\Models\ProjectImage;
+use App\Support\GoogleBusinessListing;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -907,7 +908,7 @@ class GoogleBusinessProfileService
      */
     public function fetchPlaceReviews(): ?array
     {
-        $placeId = config('services.google.business_profile.place_id');
+        $placeId = GoogleBusinessListing::placeId();
         $apiKey = config('services.google.places_api_key');
 
         if (! $placeId || ! $apiKey) {

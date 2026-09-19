@@ -3,9 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\ReviewUrl;
+use App\Support\GoogleBusinessListing;
+use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class RepairTestimonialsProduction extends Command
@@ -115,7 +116,7 @@ class RepairTestimonialsProduction extends Command
             return;
         }
 
-        $rows = \App\Support\Tenancy::table('testimonials')
+        $rows = Tenancy::table('testimonials')
             ->whereNotNull('google_review_id')
             ->where('google_review_id', '!=', '')
             ->get(['id', 'google_review_id']);
@@ -145,6 +146,7 @@ class RepairTestimonialsProduction extends Command
                         'external_id' => $row->google_review_id,
                     ]);
                 }
+
                 continue;
             }
 
@@ -161,16 +163,16 @@ class RepairTestimonialsProduction extends Command
             }
         }
 
-        $this->line(($dryRun ? '[DRY RUN] ' : '') . "Backfill summary: created {$created}, updated {$updated}.");
+        $this->line(($dryRun ? '[DRY RUN] ' : '')."Backfill summary: created {$created}, updated {$updated}.");
     }
 
     /**
-     * @param array<string, mixed> $arguments
+     * @param  array<string, mixed>  $arguments
      */
     private function runStep(string $title, string $command, array $arguments = []): bool
     {
         $this->newLine();
-        $this->info($title . '...');
+        $this->info($title.'...');
 
         $exitCode = Artisan::call($command, $arguments);
         $output = trim((string) Artisan::output());
@@ -189,10 +191,10 @@ class RepairTestimonialsProduction extends Command
 
     private function buildFallbackGoogleUrl(): string
     {
-        $placeId = (string) config('services.google.business_profile.place_id', '');
+        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
 
         if ($placeId !== '') {
-            return 'https://search.google.com/local/reviews?placeid=' . $placeId;
+            return 'https://search.google.com/local/reviews?placeid='.$placeId;
         }
 
         return 'https://www.google.com/maps';

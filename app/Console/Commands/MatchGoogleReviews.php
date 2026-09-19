@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
+use App\Support\GoogleBusinessListing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -42,7 +43,7 @@ class MatchGoogleReviews extends Command
         if (empty($reviews)) {
             $error = $service->getLastError();
             if ($error) {
-                $this->error('Failed to fetch reviews: ' . ($error['message'] ?? 'Unknown error'));
+                $this->error('Failed to fetch reviews: '.($error['message'] ?? 'Unknown error'));
 
                 return self::FAILURE;
             }
@@ -51,7 +52,7 @@ class MatchGoogleReviews extends Command
             return self::SUCCESS;
         }
 
-        $this->info(count($reviews) . ' review(s) fetched from Google.');
+        $this->info(count($reviews).' review(s) fetched from Google.');
         $this->newLine();
 
         // Load all testimonials
@@ -127,7 +128,7 @@ class MatchGoogleReviews extends Command
             $this->newLine();
             $this->info('Normalizing non-data Google review URLs...');
 
-            $placeId = (string) config('services.google.business_profile.place_id', '');
+            $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
             if ($placeId === '') {
                 $this->warn('Skipping URL normalization: GOOGLE_BUSINESS_PROFILE_PLACE_ID is not configured.');
             } else {
@@ -160,16 +161,19 @@ class MatchGoogleReviews extends Command
         $urlsLinked = 0;
 
         // Auto-detect Place ID if not configured
-        if (! config('services.google.business_profile.place_id')) {
+        if (! (GoogleBusinessListing::placeId() ?? '')) {
             $this->line('Place ID not set in .env, fetching from GBP API...');
             $detectedPlaceId = $service->fetchPlaceId();
             if ($detectedPlaceId) {
                 $this->info("Detected Place ID: {$detectedPlaceId}");
                 config(['services.google.business_profile.place_id' => $detectedPlaceId]);
-                $this->warn("Add this to your .env: GOOGLE_BUSINESS_PROFILE_PLACE_ID={$detectedPlaceId}");
+                // Per site, not in a shared .env: one env value cannot be two
+                // businesses' place ids.
+                GoogleBusinessListing::rememberPlaceId($detectedPlaceId);
+                $this->line('Saved for this site.');
             } else {
                 $error = $service->getLastError();
-                $this->warn('Could not auto-detect Place ID: ' . ($error['message'] ?? 'Unknown error'));
+                $this->warn('Could not auto-detect Place ID: '.($error['message'] ?? 'Unknown error'));
             }
         }
 
@@ -177,10 +181,10 @@ class MatchGoogleReviews extends Command
 
         if ($placeReviews === null) {
             $error = $service->getLastError();
-            $this->warn('Could not fetch Places API reviews: ' . ($error['message'] ?? 'Unknown error'));
+            $this->warn('Could not fetch Places API reviews: '.($error['message'] ?? 'Unknown error'));
             $this->warn('Set GOOGLE_BUSINESS_PROFILE_PLACE_ID in .env to enable review URL fetching.');
         } else {
-            $this->info(count($placeReviews) . ' review(s) fetched from Places API (max 5).');
+            $this->info(count($placeReviews).' review(s) fetched from Places API (max 5).');
 
             // Reload testimonials to include any newly matched Google references
             $testimonials = Testimonial::with('reviewUrls')->get();
@@ -219,7 +223,7 @@ class MatchGoogleReviews extends Command
         $this->info("{$prefix}Summary:");
         $this->line("  Already matched (has google external_id): {$alreadyMatched}");
         $this->line("  Newly matched: {$matched}");
-        $this->line("  Unmatched Google reviews: " . count($unmatched));
+        $this->line('  Unmatched Google reviews: '.count($unmatched));
         if ($urlsCleaned) {
             $this->line("  Generic URLs removed: {$urlsCleaned}");
         }
@@ -372,7 +376,7 @@ class MatchGoogleReviews extends Command
 
     protected function buildFallbackGoogleUrl(string $reviewId): string
     {
-        $placeId = (string) config('services.google.business_profile.place_id', '');
+        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
 
         if ($placeId !== '') {
             return 'https://search.google.com/local/reviews?placeid='.$placeId;
