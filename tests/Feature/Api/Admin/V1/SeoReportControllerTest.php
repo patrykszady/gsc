@@ -115,6 +115,9 @@ class SeoReportControllerTest extends TestCase
         $this->assertFalse($data['diagnostic']['available']);
         $this->assertSame([], $data['top_queries']);
         $this->assertSame([], $data['top_pages']);
+        // The behaviour card's page list: present (and empty) even with no
+        // per-page rows, so the shared admin view never sees it missing.
+        $this->assertSame([], $data['clarity']['pages']);
         $this->assertArrayHasKey('channels', $data['search']);
         $this->assertArrayHasKey('gsc', $data['search']['channels']);
     }

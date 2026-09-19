@@ -13,6 +13,7 @@ use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
+use App\Support\Seo\FrustratedPages;
 use App\Support\Seo\SearchAppearance;
 use App\Support\Seo\SearchConsoleProperty;
 use App\Support\Seo\SitemapStatus;
@@ -610,13 +611,13 @@ class SeoReportController extends Controller
     protected function claritySnapshot(int $days = 7): array
     {
         if (! Schema::hasTable('clarity_daily_metrics')) {
-            return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days];
+            return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days, 'pages' => []];
         }
 
-        return Cache::remember(Tenancy::cacheKey('seo_reports_clarity_v2_'.$days), 1800, function () use ($days): array {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_clarity_v3_'.$days), 1800, function () use ($days): array {
             $latest = Tenancy::table('clarity_daily_metrics')->max('date');
             if (! $latest) {
-                return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days];
+                return ['available' => false, 'latest' => null, 'week' => [], 'prior' => [], 'scroll' => null, 'days' => $days, 'pages' => []];
             }
 
             $end = Carbon::parse($latest);
@@ -638,6 +639,9 @@ class SeoReportController extends Controller
                 'prior' => $prior,
                 'scroll' => $week['scroll_depth'] !== null ? round((float) $week['scroll_depth'], 1) : null,
                 'days' => $days,
+                // The pages behind the tiles — the same selection the
+                // recommendation engine acts on, so card and advice agree.
+                'pages' => FrustratedPages::rising($days, 5),
             ];
         });
     }

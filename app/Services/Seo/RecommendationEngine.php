@@ -10,6 +10,7 @@ use App\Models\Testimonial;
 use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
 use App\Support\Seo\CrawlFiles;
+use App\Support\Seo\FrustratedPages;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Support\Carbon;
@@ -105,6 +106,9 @@ class RecommendationEngine
         });
         $this->rule(function () use (&$recommendations): void {
             $recommendations = array_merge($recommendations, $this->searchEngineDivergenceRecs());
+        });
+        $this->rule(function () use (&$recommendations): void {
+            $recommendations = array_merge($recommendations, $this->frustratedPagesRecs());
         });
         $this->rule(function () use (&$recommendations): void {
             $recommendations = array_merge($recommendations, $this->liveFaqCheckRecs());
@@ -662,6 +666,52 @@ class RecommendationEngine
             ),
             'p' => 'next',
             'source' => $source,
+        ]];
+    }
+
+    /**
+     * Pages where visitors are getting more frustrated than they were — and
+     * that search already sends people to.
+     *
+     * The behaviour data has been on the SEO screen for months as a site-wide
+     * tile, and the engine never read it: a page whose rage clicks tripled
+     * produced no recommendation, even though that is traffic the rankings
+     * already paid for being wasted on arrival. FrustratedPages owns the
+     * selection (the card shows the same list, so they cannot disagree);
+     * this rule only decides what to say about it.
+     *
+     * "Do now" because unlike a ranking gap, nothing has to be earned first:
+     * the visitors are already there.
+     *
+     * @return array<int, array{t:string,d:string,p:string,source:string}>
+     */
+    private function frustratedPagesRecs(): array
+    {
+        $pages = FrustratedPages::rising(days: 7, limit: 3);
+        if ($pages === []) {
+            return [];
+        }
+
+        $list = implode('; ', array_map(function (array $pg): string {
+            $line = sprintf(
+                '%s — %d of %d visits hit a dead end (was %d%%)',
+                $pg['path'],
+                $pg['frustrations'],
+                $pg['sessions'],
+                (int) round($pg['prior_rate'] * 100),
+            );
+            if ($pg['impressions'] > 0) {
+                $line .= sprintf(', %s search views this month', number_format($pg['impressions']));
+            }
+
+            return $line;
+        }, $pages));
+
+        return [[
+            't' => 'Fix the pages that frustrate the visitors search already sends',
+            'd' => "Frustration rose this week on: {$list}. Repeated clicks and clicks that do nothing usually mean something looks tappable and is not, or a form that fails quietly — open each page on a phone and try what a visitor would.",
+            'p' => 'now',
+            'source' => 'Microsoft Clarity per-page frustration signals (rage clicks, dead clicks, quickbacks) against Google Search Console impressions — last 7 days versus the 7 before',
         ]];
     }
 
