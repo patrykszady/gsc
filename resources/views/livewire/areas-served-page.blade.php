@@ -45,29 +45,15 @@
         ['name' => $pageLabel],
     ]" padding="py-4" />
 
-    {{-- Hero Section --}}
-    <section 
-        x-data="{ mapExploring: false }"
-        @map-interaction.window="mapExploring = $event.detail.active"
-        class="relative overflow-hidden bg-zinc-900 min-h-[420px] sm:min-h-[520px] lg:min-h-[640px]"
-    >
-        <div class="absolute inset-0 z-0">
-            <livewire:map-section height-classes="h-[420px] sm:h-[520px] lg:h-[640px]" />
-        </div>
-        <div 
-            x-show="!mapExploring"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-zinc-900/40"
-        ></div>
-        <div 
-            x-show="!mapExploring"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="pointer-events-none relative z-20 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8"
-        >
+    {{-- Heading, then the map.
+
+         The map used to be the hero's background behind a dark gradient, with
+         the title over it — so the thing the page is about was a texture until
+         you moused over it. The words come first now and the map is shown as
+         itself, at full contrast, where the towns are legible without
+         interacting. --}}
+    <section class="pt-10 sm:pt-14">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="text-center">
                 @php
                     $heroHeading = match ($currentRoute) {
@@ -119,8 +105,15 @@
                     };
                 @endphp
 
-                <h1 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">{{ $heroHeading }}</h1>
-                <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300">{{ $heroDescription }}</p>
+                <h1 class="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl lg:text-6xl dark:text-white">{{ $heroHeading }}</h1>
+                <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-600 dark:text-zinc-300">{{ $heroDescription }}</p>
+            </div>
+        </div>
+
+        {{-- The map itself: every project we have built, by ZIP. --}}
+        <div class="mx-auto mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="overflow-hidden rounded-2xl border border-zinc-200 shadow-sm dark:border-zinc-700">
+                <livewire:map-section height-classes="h-[420px] sm:h-[520px] lg:h-[640px]" />
             </div>
         </div>
     </section>
