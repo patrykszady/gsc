@@ -104,6 +104,9 @@ class RecommendationEngine
             $recommendations = array_merge($recommendations, $this->reviewVelocityRecs());
         });
         $this->rule(function () use (&$recommendations): void {
+            $recommendations = array_merge($recommendations, $this->searchEngineDivergenceRecs());
+        });
+        $this->rule(function () use (&$recommendations): void {
             $recommendations = array_merge($recommendations, $this->liveFaqCheckRecs());
             $recommendations = array_merge($recommendations, $this->localPackRecs());
             $recommendations = array_merge($recommendations, $this->dataForSeoRecs());
@@ -574,6 +577,91 @@ class RecommendationEngine
             't' => 'Push striking-distance pages to page 1',
             'd' => "Real demand at positions 8–20: {$list}. Deepen content and internal links on these first — autopilot has {$titleTests} title experiment(s) in flight.",
             'p' => 'now',
+        ]];
+    }
+
+    /**
+     * The two search engines moving apart.
+     *
+     * Both channels have been synced side by side for months and the engine
+     * only ever checked that the syncs stayed fresh — nobody compared what
+     * flowed through them. The comparison matters because Bing is what
+     * Copilot and ChatGPT's browsing use, so Bing impressions rising while
+     * Google holds flat is the earliest sign the AI assistants have started
+     * surfacing the site, weeks before it shows in AI referrals. The reverse
+     * — Bing falling while Google holds — is losing that ground quietly.
+     *
+     * Bing volume here is small (hundreds of impressions a month against
+     * Google's tens of thousands), so the floor and the size of move required
+     * are set so a handful of impressions cannot trip it. A Google-only move
+     * is deliberately NOT this rule's business: clickDropActionItems() owns
+     * that, and reporting it twice would just be noise.
+     *
+     * @return array<int, array{t:string,d:string,p:string,source:string}>
+     */
+    private function searchEngineDivergenceRecs(): array
+    {
+        if (! Schema::hasTable('bing_daily_totals') || ! Schema::hasTable('gsc_daily_totals')) {
+            return [];
+        }
+
+        $bingMax = Tenancy::table('bing_daily_totals')->max('date');
+        $gscMax = Tenancy::table('gsc_daily_totals')->max('date');
+        if (! $bingMax || ! $gscMax) {
+            return [];
+        }
+
+        // End both windows on the earlier of the two latest days, so neither
+        // channel's current window is missing days the other one has.
+        $end = Carbon::parse(min($bingMax, $gscMax));
+        $window = fn (string $table, int $fromDaysAgo, int $toDaysAgo): int => (int) Tenancy::table($table)
+            ->whereBetween('date', [(clone $end)->subDays($fromDaysAgo)->toDateString(), (clone $end)->subDays($toDaysAgo)->toDateString()])
+            ->sum('impressions');
+
+        $bingNow = $window('bing_daily_totals', 27, 0);
+        $bingPrior = $window('bing_daily_totals', 55, 28);
+        $gscNow = $window('gsc_daily_totals', 27, 0);
+        $gscPrior = $window('gsc_daily_totals', 55, 28);
+
+        // Below this, a percentage is a handful of impressions wearing a suit.
+        if ($bingPrior < 100 || $gscPrior < 100) {
+            return [];
+        }
+
+        $bingPct = ($bingNow - $bingPrior) / $bingPrior * 100;
+        $gscPct = ($gscNow - $gscPrior) / $gscPrior * 100;
+
+        // It has to be Bing that moved (not merely Google), and moved away
+        // from Google by a margin that survives a noisy month.
+        if (abs($bingPct) < 20 || abs($bingPct - $gscPct) < 25) {
+            return [];
+        }
+
+        $fmt = fn (float $pct): string => ($pct >= 0 ? '+' : '−').abs((int) round($pct)).'%';
+        $source = 'Bing Webmaster Tools against Google Search Console — impressions over the last 28 days versus the 28 before';
+
+        if ($bingPct > 0) {
+            return [[
+                't' => 'Bing is showing you more often — an early sign from the AI assistants',
+                'd' => sprintf(
+                    'Bing impressions moved %s over the last four weeks while Google moved %s. Bing is what Copilot and ChatGPT browsing draw on, so this usually shows up as AI referrals a few weeks later — watch the AI traffic card, and make sure the pages Bing is surfacing have a clear answer above the fold.',
+                    $fmt($bingPct),
+                    $fmt($gscPct),
+                ),
+                'p' => 'next',
+                'source' => $source,
+            ]];
+        }
+
+        return [[
+            't' => 'Bing is showing you less while Google holds — ground lost with the AI assistants',
+            'd' => sprintf(
+                'Bing impressions moved %s over the last four weeks while Google moved %s. Google rankings did not cause this, so title and content changes will not fix it: check the site is verified and error-free in Bing Webmaster Tools, and that nothing recently blocked its crawler.',
+                $fmt($bingPct),
+                $fmt($gscPct),
+            ),
+            'p' => 'next',
+            'source' => $source,
         ]];
     }
 
