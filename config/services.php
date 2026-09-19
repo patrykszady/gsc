@@ -90,17 +90,6 @@ return [
         // Falls back to the old key so nothing breaks before the new,
         // restricted one is issued — remove the fallback once it is.
         'maps_browser_key' => env('GOOGLE_MAPS_BROWSER_KEY', env('GOOGLE_PLACES_API_KEY')),
-        'analytics_id' => env('GOOGLE_ANALYTICS_GTAG', env('GOOGLE_MEASUREMENT_ID')),
-        'ads_id' => env('GOOGLE_ADS_ID'),
-        'ads_conversions' => [
-            'form' => env('GOOGLE_ADS_CONVERSION_FORM'),
-            'phone' => env('GOOGLE_ADS_CONVERSION_PHONE'),
-            'email' => env('GOOGLE_ADS_CONVERSION_EMAIL'),
-            'call' => env('GOOGLE_ADS_CONVERSION_CALL'),
-            'lead' => env('GOOGLE_ADS_CONVERSION_LEAD'),
-        ],
-        'measurement_id' => env('GOOGLE_MEASUREMENT_ID'), // GA4 Measurement ID (G-XXXXXXXXXX)
-        'measurement_api_secret' => env('GOOGLE_MEASUREMENT_API_SECRET'), // GA4 Measurement Protocol API Secret
         'gemini_api_key' => env('GOOGLE_GEMINI_API_KEY'),
         'gemini_model' => env('GOOGLE_GEMINI_MODEL', 'gemini-2.5-flash'),
         'business_profile' => [

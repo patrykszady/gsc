@@ -63,25 +63,11 @@
     {{-- Hreflang for bilingual support --}}
     <x-hreflang />
 
-    @if(config('services.google.ads_id'))
-    <!-- Google Ads (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google.ads_id') }}"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', '{{ config('services.google.ads_id') }}');
-    </script>
-    @endif
 
     {{-- This site's own icons and manifest (per tenant) — see App\Support\SiteIcons. --}}
     <x-site-icons />
 
     {{-- Preconnect to third-party origins for faster loading --}}
-    {{-- Only preconnect to Google Analytics for US visitors (privacy/GDPR compliance) --}}
-    @if(($isUSVisitor ?? false) && config('services.google.analytics_id'))
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-    @endif
     <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin>
     @if(config('services.google.maps_browser_key'))
     <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
@@ -304,27 +290,6 @@
     <x-footer />
 
     @fluxScripts
-@if(config('services.google.ads_id'))
-<script>
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('button') && e.target.closest('button').innerText.includes("Send message")) {
-      setTimeout(function () {
-        var textToTrack = "Thank you for your message! We'll get back to you soon.";
-        if (document.body.textContent.includes(textToTrack)) {
-            gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.form') }}'});
-        }
-      }, 3000);
-    }
-
-    if(e.target.closest('a[href^="tel:"]')){
-      gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.phone') }}'});
-    }
-    if(e.target.closest('a[href^="mailto:"]')){
-      gtag('event', 'conversion', {'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.email') }}'});
-    }
-  });
-</script>
-@endif
     {{-- Analytics event tracking (deferred to reduce TBT) --}}
     <script>
         // Defer analytics setup to after page is interactive
@@ -374,9 +339,6 @@
                     if (scrollPercent >= milestone && !scrollMilestones[milestone]) {
                         scrollMilestones[milestone] = true;
                         window.trackEventLocal('scroll_depth', { depth: milestone });
-                        if (typeof gtag !== 'undefined') {
-                            gtag('event', 'scroll', { percent_scrolled: milestone });
-                        }
                     }
                 });
             }, { passive: true });
@@ -390,12 +352,6 @@
                     max_scroll: maxScroll 
                 });
                 // Send beacon for reliable tracking even on page exit
-                if (navigator.sendBeacon && typeof gtag !== 'undefined') {
-                    const data = new FormData();
-                    data.append('time_on_page', timeOnPage);
-                    data.append('max_scroll', maxScroll);
-                    // GA4 doesn't support sendBeacon directly, but we log locally
-                }
             });
             
             // Track engagement time (user is actively interacting)
@@ -448,9 +404,7 @@
                         referrer: document.referrer ? document.referrer.substring(0, 255) : null,
                         session_id: sessionId,
                         // Tell the server whether client-side GA already fired this
-                        // event, so it only mirrors to GA4 when gtag is absent
                         // (non-US / ad-blocked) — avoids double counting.
-                        gtag_active: (typeof gtag !== 'undefined')
                     })
                 }).catch(function () {});
             } catch (e) {}
@@ -465,12 +419,8 @@
                 page_title: document.title,
                 engagement_time: window.getEngagementTime ? window.getEngagementTime() : 0
             };
-            console.log('[GA Event] cta_click', eventData);
             window.trackEventLocal('cta_click', eventData);
             window.trackServerEvent('cta_click', buttonText);
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'cta_click', eventData);
-            }
         };
 
         // Track form interactions with timing
@@ -480,11 +430,7 @@
                 page_path: window.location.pathname,
                 time_to_form: window.getEngagementTime ? window.getEngagementTime() : 0
             };
-            console.log('[GA Event] form_start', eventData);
             window.trackEventLocal('form_start', eventData);
-            if (typeof gtag !== 'undefined') {
-                gtag('event', 'form_start', eventData);
-            }
         };
         
         // Track outbound link clicks
@@ -497,12 +443,6 @@
                     page_path: window.location.pathname
                 };
                 window.trackEventLocal('outbound_click', eventData);
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', 'click', { 
-                        event_category: 'outbound',
-                        event_label: link.href
-                    });
-                }
             }
         });
         
@@ -518,18 +458,6 @@
                 };
                 window.trackEventLocal('contact_click', eventData);
                 window.trackServerEvent(isPhone ? 'phone_click' : 'email_click', eventData.contact_value);
-                if (typeof gtag !== 'undefined') {
-                    gtag('event', isPhone ? 'phone_call' : 'email_click', eventData);
-                    
-                    // Google Ads click-to-call conversion tracking
-                    if (isPhone) {
-                        gtag('event', 'conversion', {
-                            'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.call') }}',
-                            'value': 1.0,
-                            'currency': 'USD'
-                        });
-                    }
-                }
             }
         });
         }, { timeout: 2000 }); // End requestIdleCallback
@@ -539,45 +467,6 @@
     <script>
         // Load analytics after page is interactive
         function loadDeferredScripts() {
-            {{-- Google Analytics: Only load for US visitors (privacy/GDPR compliance) --}}
-            {{-- Country detection via Cloudflare CF-IPCountry header in DetectCountry middleware --}}
-            @if(($isUSVisitor ?? false) && config('services.google.analytics_id'))
-            // Google Analytics (US visitors only)
-            const gaScript = document.createElement('script');
-            gaScript.async = true;
-            gaScript.src = 'https://www.googletagmanager.com/gtag/js?id={{ config('services.google.analytics_id') }}';
-            document.head.appendChild(gaScript);
-            
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            window.gtag = gtag;
-            gtag('js', new Date());
-            gtag('config', '{{ config('services.google.analytics_id') }}', {
-                'custom_map': {
-                    'dimension1': 'entry_domain',
-                    'dimension2': 'domain_source',
-                    'dimension3': 'visitor_country'
-                }
-            });
-            
-            @if(config('services.google.ads_id'))
-            // Google Ads conversion tracking
-            gtag('config', '{{ config('services.google.ads_id') }}');
-            @endif
-            @if(isset($domainSource) && $domainSource !== 'direct')
-            gtag('event', 'domain_entry', {
-                'entry_domain': '{{ session('entry_domain', request()->getHost()) }}',
-                'domain_source': '{{ $domainSource }}',
-                'event_category': 'acquisition',
-                'event_label': '{{ $domainSource }}'
-            });
-            @endif
-            @else
-            // Analytics disabled for non-US visitors (country: {{ $visitorCountry ?? 'unknown' }})
-            // Define gtag as no-op so existing gtag() calls don't throw errors
-            window.dataLayer = window.dataLayer || [];
-            window.gtag = function() {};
-            @endif
 
             @if(config('services.microsoft.clarity_id'))
             // Microsoft Clarity
@@ -598,48 +487,6 @@
         }
     </script>
 
-    {{-- GA conversion tracking for form submissions (US visitors only) --}}
-    @if(($isUSVisitor ?? false) && config('services.google.analytics_id'))
-        <script>
-            document.addEventListener('livewire:init', () => {
-                // Track successful form submission (GA4 recommended event)
-                Livewire.on('contact-form-submitted', () => {
-                    const eventData = {
-                        form_name: 'contact',
-                        page_path: window.location.pathname,
-                        currency: 'USD',
-                        value: 100 // Estimated lead value
-                    };
-                    console.log('[GA Event] generate_lead', eventData);
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', 'generate_lead', eventData);
-                        
-                        // Google Ads form submission conversion tracking
-                        gtag('event', 'conversion', {
-                            'send_to': '{{ config('services.google.ads_id') }}/{{ config('services.google.ads_conversions.lead') }}',
-                            'value': 1.0,
-                            'currency': 'USD'
-                        });
-                    }
-                });
-
-                // Track careers / partnership form submissions
-                Livewire.on('job-application-submitted', () => {
-                    const eventData = {
-                        form_name: 'careers_partnership',
-                        page_path: window.location.pathname,
-                        currency: 'USD',
-                        value: 50
-                    };
-                    console.log('[GA Event] generate_lead (careers)', eventData);
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', 'generate_lead', eventData);
-                        gtag('event', 'sign_up', { method: 'careers_form' });
-                    }
-                });
-            });
-        </script>
-    @endif
 
     {{-- First-party form-submission tracking (all visitors, even when GA is off) --}}
     <script>

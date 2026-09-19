@@ -469,9 +469,6 @@ class ContactSection extends Component
             'time_taken' => time() - $this->formLoadedAt,
         ]);
 
-        // Server-side GA4 tracking (works even if client blocks GA)
-        $this->sendServerSideAnalytics();
-
         session()->flash('success', 'Thank you for your message! We\'ll get back to you soon.');
 
         // Dispatch browser event for analytics tracking
@@ -886,63 +883,6 @@ class ContactSection extends Component
 
             // Allow form submission if Turnstile API fails (graceful degradation)
             return true;
-        }
-    }
-
-    /**
-     * Send server-side analytics to GA4 via Measurement Protocol.
-     * This tracks form submissions even when client-side GA is blocked.
-     */
-    protected function sendServerSideAnalytics(): void
-    {
-        $measurementId = config('services.google.measurement_id');
-        $apiSecret = config('services.google.measurement_api_secret');
-
-        if (! $measurementId || ! $apiSecret) {
-            return;
-        }
-
-        try {
-            // Try to get GA client_id in order of reliability:
-            // 1. GA's own cookie (most reliable)
-            // 2. Our session-stored ID
-            // 3. Generate new UUID (VPN/incognito sessions)
-            $gaCookie = request()->cookie('_ga');
-            if ($gaCookie && preg_match('/GA\d+\.\d+\.(.+)/', $gaCookie, $matches)) {
-                $clientId = $matches[1]; // Extract client_id from _ga cookie
-                $trackingSource = 'ga_cookie';
-            } elseif (session()->has('ga_client_id')) {
-                $clientId = session('ga_client_id');
-                $trackingSource = 'session';
-            } else {
-                // Generate and store for this session
-                $clientId = \Str::uuid()->toString();
-                session(['ga_client_id' => $clientId]);
-                $trackingSource = 'generated';
-            }
-
-            Http::timeout(5)->post("https://www.google-analytics.com/mp/collect?measurement_id={$measurementId}&api_secret={$apiSecret}", [
-                'client_id' => $clientId,
-                'events' => [
-                    [
-                        'name' => 'generate_lead',
-                        'params' => [
-                            'event_category' => 'contact',
-                            'event_label' => 'contact_form_submission',
-                            'value' => 1,
-                            'tracking_method' => 'server_side',
-                            'client_id_source' => $trackingSource, // 'ga_cookie', 'session', or 'generated' (VPN/incognito)
-                            'page_location' => request()->fullUrl(),
-                            'page_referrer' => request()->header('referer'),
-                            'user_agent' => request()->userAgent(),
-                            'city' => $this->area?->city ?? 'not_specified',
-                        ],
-                    ],
-                ],
-            ]);
-        } catch (\Exception $e) {
-            // Don't let analytics failure affect form submission
-            \Log::warning('Server-side GA4 tracking failed', ['error' => $e->getMessage()]);
         }
     }
 
