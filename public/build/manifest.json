@@ -16,11 +16,11 @@
     "src": "node_modules/@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2"
   },
   "resources/css/app.css": {
-    "file": "assets/app-C83FPO0Z.css",
+    "file": "assets/app-Dt3b1IDh.css",
     "src": "resources/css/app.css"
   },
   "resources/css/themes/jpeterson/app.css": {
-    "file": "assets/app-noMGIZEe.css",
+    "file": "assets/app-R6J1tIhz.css",
     "src": "resources/css/themes/jpeterson/app.css",
     "isEntry": true,
     "name": "app",
@@ -29,7 +29,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DFHdTKA0.js",
+    "file": "assets/app-LReoBNuk.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -38,7 +38,7 @@
     ]
   },
   "resources/js/projectZipMap.js": {
-    "file": "assets/projectZipMap-BCIGq6cC.js",
+    "file": "assets/projectZipMap-Byj8rH3w.js",
     "name": "projectZipMap",
     "src": "resources/js/projectZipMap.js",
     "isDynamicEntry": true,

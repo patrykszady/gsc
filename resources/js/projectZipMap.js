@@ -18,8 +18,24 @@ export function createProjectZipMap(zipPoints, maxCount, mapCenter) {
             // Await the pre-warm promise set up in <head> — by the time Alpine
             // calls init(), the API is usually already downloaded; the shared
             // loader only fetches it itself when nothing has.
-            await (window.__mapsPrewarm || Promise.resolve());
-            const libs = await load(window.__mapsKey, ['maps', 'geocoding']);
+            //
+            // Wrapped because the Maps API does not always arrive: an ad
+            // blocker, a flaky network or a bad key all reject here, and an
+            // uncaught rejection in an Alpine method surfaces to the visitor's
+            // console (and our error reporting) as `Could not load "map"`.
+            // A map is an enhancement — the page reads fine without it — so
+            // failing releases the `initialized` latch instead, letting a
+            // later intersection or navigation try again rather than leaving
+            // a permanently blank box.
+            let libs;
+            try {
+                await (window.__mapsPrewarm || Promise.resolve());
+                libs = await load(window.__mapsKey, ['maps', 'geocoding']);
+            } catch (e) {
+                this.initialized = false;
+
+                return;
+            }
 
             // Start with map locked - requires click to interact. The tint
             // is the site's sky ramp, like every other map here.
