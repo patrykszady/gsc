@@ -228,45 +228,64 @@ class SyncGoogleSearchConsole extends Command
         Carbon $end,
         bool $dry,
     ): void {
-        $rows = $svc->querySearchAnalytics(
-            siteUrl: $siteUrl,
-            startDate: $start->toDateString(),
-            endDate: $end->toDateString(),
-            dimensions: ['date', 'searchAppearance'],
-            rowLimit: 5000,
-            startRow: 0,
-        );
-
-        if ($rows === null) {
-            // Older properties can reject the dimension; warn, never fail the sync.
-            $this->warn('searchAppearance query failed: '.json_encode($svc->getLastError()));
-
-            return;
-        }
-
         $written = 0;
-        foreach ($rows as $r) {
-            [$date, $appearance] = [$r['keys'][0] ?? null, $r['keys'][1] ?? null];
-            if (! $date || ! $appearance) {
-                continue;
+
+        // One request PER DAY, with searchAppearance as the ONLY dimension.
+        //
+        // This used to ask for ['date', 'searchAppearance'] in a single call,
+        // which Google answers with a flat
+        //   400 "Cannot group by search appearance dimension together with
+        //        another dimension."
+        // The failure branch below only warns, so the sync looked fine and this
+        // table sat at zero rows from the day it was created — nothing ever
+        // reached the dashboard. Asking day by day is the only way to keep the
+        // daily granularity the rest of the dashboard is built on: the nightly
+        // run covers --days=1 and costs one extra call.
+        foreach ($start->toPeriod($end) as $day) {
+            $date = $day->toDateString();
+
+            $rows = $svc->querySearchAnalytics(
+                siteUrl: $siteUrl,
+                startDate: $date,
+                endDate: $date,
+                dimensions: ['searchAppearance'],
+                rowLimit: 100,
+                startRow: 0,
+            );
+
+            if ($rows === null) {
+                // A property that rejects the dimension rejects it for every
+                // day, so stop rather than repeat the same failure N times.
+                $this->warn('searchAppearance query failed: '.json_encode($svc->getLastError()));
+
+                return;
             }
 
-            if (! $dry) {
-                Tenancy::table('gsc_search_appearance_metrics')->updateOrInsert(
-                    ['site_id' => Site::current()?->id, 'date' => $date, 'appearance' => mb_substr($appearance, 0, 64)],
-                    [
-                        'clicks' => (int) ($r['clicks'] ?? 0),
-                        'impressions' => (int) ($r['impressions'] ?? 0),
-                        'ctr' => round((float) ($r['ctr'] ?? 0), 5),
-                        'position' => round((float) ($r['position'] ?? 0), 2),
-                        'updated_at' => now(),
-                        'created_at' => now(),
-                    ]
-                );
+            foreach ($rows as $r) {
+                $appearance = $r['keys'][0] ?? null;
+
+                if (! $appearance) {
+                    continue;
+                }
+
+                if (! $dry) {
+                    Tenancy::table('gsc_search_appearance_metrics')->updateOrInsert(
+                        ['site_id' => Site::current()?->id, 'date' => $date, 'appearance' => mb_substr($appearance, 0, 64)],
+                        [
+                            'clicks' => (int) ($r['clicks'] ?? 0),
+                            'impressions' => (int) ($r['impressions'] ?? 0),
+                            'ctr' => round((float) ($r['ctr'] ?? 0), 5),
+                            'position' => round((float) ($r['position'] ?? 0), 2),
+                            'updated_at' => now(),
+                            'created_at' => now(),
+                        ]
+                    );
+                }
+
+                $written++;
             }
-            $written++;
         }
 
-        $this->info("Search-appearance rows: {$written}");
+        $this->info("Search-appearance rows: {$written}".($dry ? ' (dry-run)' : ''));
     }
 }

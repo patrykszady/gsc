@@ -93,6 +93,38 @@ tenant; `App\Models\Site::current()` is the ambient tenant everywhere.
   like robots.txt (Patryk, over SSH with sudo; backup `site.conf.bak-20260918`). A new Forge
   site/server needs all three lines again or those root URLs are 404s with the right body.
 
+## Search appearance, and sitemaps in the admin (2026-09-18)
+
+Two SEO sections the admin gained, both because they were silently missing.
+
+- **`gsc_search_appearance_metrics` had ZERO rows on every site from the day it
+  was created.** `SyncGoogleSearchConsole::syncSearchAppearance()` asked Google
+  for `['date', 'searchAppearance']` in one call, and Google answers that with a
+  flat `400 Cannot group by search appearance dimension together with another
+  dimension.` — the failure branch only warns, so the sync reported success
+  forever. **searchAppearance can only be requested on its own**, so the sync now
+  issues one request PER DAY with that single dimension, which preserves the daily
+  granularity everything else here uses and costs one extra call on the nightly
+  `--days=1` run. `App\Support\Seo\SearchAppearance` turns the table into the
+  snapshot's `search_appearance` section; the raw SCREAMING_SNAKE keys are mapped
+  to owner-readable labels THERE, never in the admin's Blade.
+- **Sitemaps are reported too** — `App\Support\Seo\SitemapStatus` →
+  `snapshot['sitemaps']`; `seo:gsc-submit-sitemaps` warms its 15-minute cache
+  while already authenticated, so nobody pays for a live 20s-timeout call inside
+  an admin page load.
+
+Both support classes are kept **BYTE-IDENTICAL** with jpeterson-design's copies
+(change one, copy it over): the ss-systems admin renders ONE card per section for
+every tenant, so a key present on one site and missing on the other renders an
+empty card for that tenant alone. Each takes the thing that genuinely differs —
+the property, or the table query — as a parameter, which is what lets the files
+be shared at all.
+
+Also fixed alongside: daily totals were re-matched with
+`updateOrCreate(['date' => $date, …])`, which only ever worked because MySQL's
+`DATE` column truncates the datetime string Eloquent's `date` cast writes. Use
+`whereDate()`. Production was unaffected, and now has a regression test.
+
 ## Search Console in the admin (2026-09-12)
 
 The central admin's GSC Errors page reads and writes Search Console through this

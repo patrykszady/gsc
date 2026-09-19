@@ -13,6 +13,7 @@ use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
+use App\Support\Seo\SearchAppearance;
 use App\Support\Seo\SearchConsoleProperty;
 use App\Support\Seo\SitemapStatus;
 use App\Support\SeoStorage;
@@ -135,6 +136,14 @@ class SeoReportController extends Controller
             // screen stayed silent, so "is our sitemap on Search Console?"
             // could only be answered from the Search Console UI.
             'sitemaps' => SitemapStatus::snapshot(SearchConsoleProperty::url()),
+            // How our results LOOK on Google (star ratings, product details,
+            // AI Overviews). Thin non-brand CTR reads as a ranking problem
+            // until you can see the impressions are landing in a result
+            // shape nobody clicks.
+            'search_appearance' => SearchAppearance::snapshot(
+                fn () => Tenancy::table(SearchAppearance::TABLE),
+                $this->normalizeTopDays((int) $request->integer('appearance_days', 28)),
+            ),
         ]);
     }
 
