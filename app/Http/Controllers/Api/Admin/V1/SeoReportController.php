@@ -13,6 +13,8 @@ use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
+use App\Support\Seo\SearchConsoleProperty;
+use App\Support\Seo\SitemapStatus;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Http\JsonResponse;
@@ -128,6 +130,11 @@ class SeoReportController extends Controller
             'intel' => $this->intelSnapshot(),
             'ai_traffic' => $this->aiTrafficSnapshot(),
             'gsc_errors' => $this->gscErrorSnapshot(),
+            // What Google actually knows about our sitemaps. Submitting them
+            // nightly told nobody anything: the run logged success and the
+            // screen stayed silent, so "is our sitemap on Search Console?"
+            // could only be answered from the Search Console UI.
+            'sitemaps' => SitemapStatus::snapshot(SearchConsoleProperty::url()),
         ]);
     }
 
@@ -137,6 +144,7 @@ class SeoReportController extends Controller
 
         Cache::forget(Tenancy::cacheKey('admin.seo-reports.health-snapshot'));
         Cache::forget($this->searchSnapshotCacheKey($trendDays));
+        SitemapStatus::forget(SearchConsoleProperty::url());
 
         $response = $this->snapshot($request);
         $data = $response->getData(true)['data'];

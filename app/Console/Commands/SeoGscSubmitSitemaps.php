@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\GoogleSearchConsoleService;
+use App\Support\Seo\SitemapStatus;
 use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 
@@ -63,6 +64,13 @@ class SeoGscSubmitSitemaps extends Command
             $failures++;
             $this->error("  {$sitemap}: ".($err['message'] ?? 'unknown error'));
         }
+
+        // Warm the admin's Sitemaps card while we are already talking to
+        // Google. Without this the first person to open the SEO screen after
+        // the cache expires pays for a live sitemaps.list call inside their
+        // page load — and that call can take the full 20s timeout, which the
+        // central admin sees as the whole site API timing out.
+        SitemapStatus::snapshot($site, fresh: true);
 
         return $failures === 0 ? self::SUCCESS : self::FAILURE;
     }
