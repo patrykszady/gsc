@@ -13,14 +13,17 @@ use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
+use App\Support\Seo\CompetitorFilter;
 use App\Support\Seo\FrustratedPages;
 use App\Support\Seo\SearchAppearance;
 use App\Support\Seo\SearchConsoleProperty;
 use App\Support\Seo\SitemapStatus;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -461,8 +464,22 @@ class SeoReportController extends Controller
                 $b['position'] = $bingPositions[$day];
             }
 
-            $combinedClicks = ($g['clicks'] === null && $b['clicks'] === null) ? null : (int) $g['clicks'] + (int) $b['clicks'];
-            $combinedImpressions = ($g['impressions'] === null && $b['impressions'] === null) ? null : (int) $g['impressions'] + (int) $b['impressions'];
+            // Combined is a sum, and a sum with a missing term is not a
+            // smaller sum — it is unknown. On the day Search Console has not
+            // published yet, Google is null and Bing is 0, and adding them
+            // drew the combined line plunging to zero on the last day of
+            // every chart. So: any channel that reports at all in this
+            // window and is null on this day makes combined null too, which
+            // the chart draws as the same gap Google's own line shows. A
+            // channel with no data anywhere (never connected) does not
+            // block — a Google-only site still gets a combined line.
+            $complete = ! ($gsc['max'] !== null && $g['clicks'] === null)
+                && ! ($bing['max'] !== null && $b['clicks'] === null);
+
+            $combinedClicks = $complete && ! ($g['clicks'] === null && $b['clicks'] === null)
+                ? (int) $g['clicks'] + (int) $b['clicks'] : null;
+            $combinedImpressions = $complete && ! ($g['impressions'] === null && $b['impressions'] === null)
+                ? (int) $g['impressions'] + (int) $b['impressions'] : null;
 
             $rows[] = [
                 'date' => $d->format('M j'),
@@ -587,12 +604,44 @@ class SeoReportController extends Controller
         ];
     }
 
+    /**
+     * Every query (or page) in the window, a page at a time — the screen's
+     * two tables read this, sorted and paged, with the prior window on each
+     * row. The snapshot's top_queries/top_pages stay a top ten for anything
+     * still reading them.
+     */
+    public function topRowsPage(Request $request): JsonResponse
+    {
+        $dimension = $request->string('dimension')->toString() === 'page' ? 'page' : 'query';
+        $days = $this->normalizeTopDays((int) $request->integer('days', 28));
+        $sort = $request->string('sort', 'clicks')->toString();
+        $direction = $request->string('dir', 'desc')->toString() === 'asc' ? 'asc' : 'desc';
+
+        if (! Schema::hasTable('gsc_query_metrics')) {
+            return $this->paginatedResponse(new LengthAwarePaginator([], 0, $this->perPage($request)), fn ($r) => $r);
+        }
+
+        $paginator = $this->topRowsQuery($dimension, $sort, $direction, $days)->paginate($this->perPage($request));
+        $prior = $this->priorTopRows($dimension, $days, collect($paginator->items())->pluck('dim')->all());
+
+        return $this->paginatedResponse($paginator, fn ($r) => $this->shapeTopRow($dimension, $r, $prior));
+    }
+
     protected function topRows(string $dimension, string $sort, string $direction, int $topDays): array
     {
         if (! Schema::hasTable('gsc_query_metrics')) {
             return [];
         }
 
+        $rows = $this->topRowsQuery($dimension, $sort, $direction, $topDays)->limit(10)->get();
+        $prior = $this->priorTopRows($dimension, $topDays, $rows->pluck('dim')->all());
+
+        return $rows->map(fn ($r) => $this->shapeTopRow($dimension, $r, $prior))->all();
+    }
+
+    /** One row per query (or page) over the window, sorted; the caller limits or paginates. */
+    protected function topRowsQuery(string $dimension, string $sort, string $direction, int $topDays): Builder
+    {
         $sortableColumns = ['clicks', 'impressions', 'ctr', 'position'];
         if (! in_array($sort, [$dimension, ...$sortableColumns], true)) {
             $sort = 'clicks';
@@ -607,24 +656,57 @@ class SeoReportController extends Controller
         ];
 
         $orderBy = $orderExpressions[$sort] ?? 'SUM(clicks)';
-        $start = Carbon::today()->subDays(max(1, $topDays) - 1)->toDateString();
-        $end = Carbon::today()->toDateString();
+        $days = max(1, $topDays);
 
         return Tenancy::table('gsc_query_metrics')
-            ->whereBetween('date', [$start, $end])
+            ->whereBetween('date', [Carbon::today()->subDays($days - 1)->toDateString(), Carbon::today()->toDateString()])
             ->groupBy($dimension)
             ->selectRaw("{$dimension} as dim, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position")
-            ->orderByRaw("{$orderBy} {$direction}")
-            ->limit(10)
-            ->get()
-            ->map(fn ($r) => [
-                $dimension => (string) $r->dim,
-                'clicks' => (int) $r->clicks,
-                'impressions' => (int) $r->impressions,
-                'ctr' => (int) $r->impressions > 0 ? round(((int) $r->clicks / (int) $r->impressions) * 100, 2) : 0.0,
-                'position' => round((float) $r->position, 2),
+            ->orderByRaw("{$orderBy} {$direction}");
+    }
+
+    /**
+     * The same keys over the window before this one, for the screen's ▲/▼
+     * against the prior period. Only the keys on the board are fetched; a
+     * key with nothing in the prior window gets no entry, and the screen
+     * shows no chevron rather than a made-up zero.
+     *
+     * @param  array<int, string>  $keys
+     * @return Collection<string, object>
+     */
+    protected function priorTopRows(string $dimension, int $topDays, array $keys): Collection
+    {
+        if ($keys === []) {
+            return collect();
+        }
+
+        $days = max(1, $topDays);
+
+        return Tenancy::table('gsc_query_metrics')
+            ->whereBetween('date', [
+                Carbon::today()->subDays(2 * $days - 1)->toDateString(),
+                Carbon::today()->subDays($days)->toDateString(),
             ])
-            ->all();
+            ->whereIn($dimension, $keys)
+            ->groupBy($dimension)
+            ->selectRaw("{$dimension} as dim, SUM(clicks) as clicks, SUM(impressions) as impressions, AVG(position) as position")
+            ->get()
+            ->keyBy(fn ($r) => (string) $r->dim);
+    }
+
+    /** @param  Collection<string, object>  $prior */
+    protected function shapeTopRow(string $dimension, object $r, Collection $prior): array
+    {
+        $shape = fn ($row) => [
+            'clicks' => (int) $row->clicks,
+            'impressions' => (int) $row->impressions,
+            'ctr' => (int) $row->impressions > 0 ? round(((int) $row->clicks / (int) $row->impressions) * 100, 2) : 0.0,
+            'position' => round((float) $row->position, 2),
+        ];
+
+        return [$dimension => (string) $r->dim] + $shape($r) + [
+            'prior' => ($p = $prior->get((string) $r->dim)) ? $shape($p) : null,
+        ];
     }
 
     protected function healthSnapshot(): array
@@ -785,7 +867,7 @@ class SeoReportController extends Controller
             return ['available' => false];
         }
 
-        return Cache::remember(Tenancy::cacheKey('seo_reports_rankdist_v2_'.$daysBack), 1800, function () use ($daysBack): array {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_rankdist_v3_'.$daysBack), 1800, function () use ($daysBack): array {
             // Latest row per (engine, query, location) as of an optional cutoff.
             $latestRows = function (?string $before) {
                 $q = Tenancy::table('seo_rank_snapshots as r1')
@@ -877,9 +959,61 @@ class SeoReportController extends Controller
                     'current' => $liveSerpCurrent['local_pack_pct'],
                     'prior' => $liveSerpPrior['local_pack_pct'],
                 ],
+                // Bing beside Google (2026-09-20): the same four buckets from
+                // Bing's own query report. Null on a site without Bing data,
+                // and the screen shows the two Google panels alone.
+                'bing' => $this->bingRankingBuckets($daysBack),
                 'queries' => $this->rankingQueryRows($currentRows, $priorRows),
             ];
         });
+    }
+
+    /**
+     * Where we rank on Bing: each query's average position over the last
+     * `$daysBack` days Bing has reported, bucketed like the Google panels,
+     * against the `$daysBack` days before. Bing is not in seo_rank_snapshots
+     * (no live check, no tracker) — its own daily query report is the source,
+     * so a query counts once per window whatever days it appeared on.
+     *
+     * @return array{label: string, as_of: string, current: array<string, int>, prior: array<string, int>}|null
+     */
+    protected function bingRankingBuckets(int $daysBack): ?array
+    {
+        if (! Schema::hasTable('bing_traffic_stats')) {
+            return null;
+        }
+
+        $latest = Tenancy::table('bing_traffic_stats')->where('position', '>', 0)->max('date');
+        if (! $latest) {
+            return null;
+        }
+
+        $end = Carbon::parse($latest);
+        $positions = fn (Carbon $from, Carbon $to): Collection => Tenancy::table('bing_traffic_stats')
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->where('position', '>', 0)
+            ->groupBy('query')
+            ->selectRaw('query, AVG(position) as position')
+            ->get();
+
+        $bucket = function (Collection $rows): array {
+            $b = fn ($max) => $rows->filter(fn ($r) => (float) $r->position <= $max)->count();
+
+            return [
+                'tracked' => $rows->count(),
+                'top3' => $b(3),
+                'top10' => $b(10),
+                'top20' => $b(20),
+                'below20' => max(0, $rows->count() - $b(20)),
+            ];
+        };
+
+        return [
+            'label' => 'Bing',
+            'as_of' => $end->toDateString(),
+            'current' => $bucket($positions($end->copy()->subDays($daysBack - 1), $end)),
+            'prior' => $bucket($positions($end->copy()->subDays(2 * $daysBack - 1), $end->copy()->subDays($daysBack))),
+        ];
     }
 
     /**
@@ -1170,14 +1304,24 @@ class SeoReportController extends Controller
      */
     protected function dataForSeoSnapshot(): array
     {
-        return Cache::remember(Tenancy::cacheKey('seo_reports_dataforseo_v2'), 1800, function (): array {
+        return Cache::remember(Tenancy::cacheKey('seo_reports_dataforseo_v3'), 1800, function (): array {
             $out = ['share_of_voice' => [], 'link_gap' => [], 'ai_mentions' => null];
 
             if (Schema::hasTable('seo_domain_overviews')) {
+                // Only the domains in the LATEST run. This used to render every
+                // domain that had ever had a row, so a competitor dropped from
+                // the weekly set months ago — and, before the aggregator filter
+                // existed, a directory — stayed on the card forever with stale
+                // numbers. The run itself decides who is a competitor now.
                 $rows = Tenancy::table('seo_domain_overviews')->orderByDesc('date')->get();
-                foreach ($rows->groupBy('domain') as $domain => $g) {
+                $latestRun = $rows->max('date');
+                $current = $rows->where('date', $latestRun)->pluck('domain')->all();
+                foreach ($rows->whereIn('domain', $current)->groupBy('domain') as $domain => $g) {
                     $latest = $g->first();
                     $prev = $g->skip(1)->first();
+                    if (! $latest->is_us && ! CompetitorFilter::isCompetitor($domain)) {
+                        continue; // a directory that slipped into a run is still not a competitor
+                    }
                     $top10 = fn ($r) => (int) $r->pos_1 + (int) $r->pos_2_3 + (int) $r->pos_4_10;
                     $out['share_of_voice'][] = [
                         'domain' => $domain, 'is_us' => (bool) $latest->is_us, 'date' => $latest->date,
@@ -1202,7 +1346,11 @@ class SeoReportController extends Controller
                 $notUs = fn () => Tenancy::table('seo_backlink_prospects')->where('links_to_us', false);
                 $gapQuery = fn () => $notUs()->whereBetween('competitor_count', [2, 5])
                     ->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30));
-                $rows = $gapQuery()->orderByDesc('competitor_count')->orderByDesc('rank')->limit(80)->get()->reject(fn ($p) => $freeHost($p->domain));
+                // Houzz, Yelp, Angi and the rest link to every contractor alive; a
+                // "gap" there is not one, and the card's small print already
+                // promised directories were hidden.
+                $rows = $gapQuery()->orderByDesc('competitor_count')->orderByDesc('rank')->limit(80)->get()
+                    ->reject(fn ($p) => $freeHost($p->domain) || CompetitorFilter::isAggregator($p->domain));
                 $out['link_gap'] = $rows->take(20)
                     ->map(fn ($p) => ['domain' => $p->domain, 'rank' => (int) $p->rank, 'competitors' => array_keys((array) json_decode((string) $p->links_to, true)), 'platform' => $p->platform_type])->values()->all();
                 $out['link_gap_total'] = $rows->count();
@@ -1215,11 +1363,13 @@ class SeoReportController extends Controller
                 $spamExcluded = (int) (clone $inRange)->where('spam_score', '>=', 30)->count();
                 $cleanDomains = (clone $inRange)->where(fn ($q) => $q->whereNull('spam_score')->orWhere('spam_score', '<', 30))->pluck('domain');
                 $freeHostExcluded = $cleanDomains->filter($freeHost)->count();
+                $directoryExcluded = $cleanDomains->reject($freeHost)->filter(fn ($d) => CompetitorFilter::isAggregator($d))->count();
                 $out['link_gap_hidden'] = [
                     'competitor_count_out_of_range' => $outOfRange,
                     'spam_score' => $spamExcluded,
                     'free_host' => $freeHostExcluded,
-                    'visible' => $cleanDomains->count() - $freeHostExcluded,
+                    'directory' => $directoryExcluded,
+                    'visible' => $cleanDomains->count() - $freeHostExcluded - $directoryExcluded,
                 ];
             }
 

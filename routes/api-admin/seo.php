@@ -23,6 +23,7 @@ Route::prefix('seo')->group(function () {
     Route::get('reports/{report}', [SeoReportController::class, 'show']);
     Route::post('reports/{report}/regenerate', [SeoReportController::class, 'regenerate']);
     Route::get('snapshot', [SeoReportController::class, 'snapshot']);
+    Route::get('top-rows', [SeoReportController::class, 'topRowsPage']);
     Route::post('snapshot/refresh', [SeoReportController::class, 'refreshSnapshot']);
 
     // SeoAutopilotPanel: the scored action ledger + learned weights.

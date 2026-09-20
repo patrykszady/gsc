@@ -303,7 +303,7 @@ Schedule::command('seo:dataforseo-balance-check')->dailyAt('05:50')
 Schedule::command('seo:map-pack-grid --budget=2')->weeklyOn(6, '07:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
-Schedule::command('seo:domain-overview --budget=1')->weeklyOn(0, '05:00')
+Schedule::command('seo:domain-overview --budget=2')->weeklyOn(0, '05:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:backlink-gap --budget=1')->monthlyOn(2, '05:15')

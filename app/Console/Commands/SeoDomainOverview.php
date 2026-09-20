@@ -8,6 +8,7 @@ use App\Support\Seo\CompetitorFilter;
 use App\Support\Seo\DataForSeoBudget;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,11 +19,12 @@ use Illuminate\Support\Facades\Storage;
  * competitor rank for, by position band, plus estimated traffic and the
  * backlink profile (domain rank, referring domains). One row per domain per
  * week in seo_domain_overviews — the trend the SEO page charts.
- * ~$0.036 per domain (overview + backlink summary), ~$0.40 a week for 11.
+ * ~$0.036 per domain (overview + backlink summary); ~$1.10 a week for us
+ * plus the 26 curated competitors and a few discovered ones.
  */
 class SeoDomainOverview extends Command
 {
-    protected $signature = 'seo:domain-overview {--competitors=10 : Competitor domains to include} {--budget=1}';
+    protected $signature = 'seo:domain-overview {--competitors=30 : Competitor domains to include} {--budget=2}';
 
     protected $description = 'Weekly organic footprint + backlink profile for us and the competitors (DataForSEO) into seo_domain_overviews';
 
@@ -34,7 +36,7 @@ class SeoDomainOverview extends Command
             return self::SUCCESS;
         }
         $ours = preg_replace('#^https?://(www\.)?#', '', rtrim((string) config('app.url'), '/')) ?: 'gs.construction';
-        $domains = collect([$ours])->concat(self::competitorDomains((int) $this->option('competitors')))->unique()->values();
+        $domains = collect([$ours])->concat(self::shareOfVoiceDomains((int) $this->option('competitors')))->unique()->values();
 
         // Estimate-vs-budget was missing here (unlike every sibling command),
         // and the balance check let a failed balance() (null) through
@@ -87,6 +89,38 @@ class SeoDomainOverview extends Command
     }
 
     /**
+     * The "vs. competitors" set for the weekly footprint, in the order the
+     * slots are filled:
+     *
+     *  1. the owner-curated /compare companies (config/competitors.php) —
+     *     the businesses the site publicly positions against, so the card
+     *     on the SEO screen shows the same names the public comparison
+     *     pages do;
+     *  2. organic page-one domains (Brave discovery), the feed the SEO
+     *     screen's "Competitor discovery" list already shows;
+     *  3. map-pack leaders (geo-grid) last.
+     *
+     * competitorDomains() below used to feed this run, and it puts the map
+     * pack first: with a limit of ten that filled every slot with hyper-local
+     * map-pack hosts and never let a curated or discovered competitor in —
+     * the card showed ten names the owner had never heard of while /compare
+     * named twenty-six he chose. That order is right for the other intel
+     * families (which is why competitorDomains() is unchanged); it is wrong
+     * for a card whose whole point is "us against the businesses we compete
+     * with".
+     *
+     * @return array<int, string>
+     */
+    public static function shareOfVoiceDomains(int $limit): array
+    {
+        $domains = collect(CompetitorFilter::knownLocalHosts())
+            ->concat(self::discoveredHosts())
+            ->concat(self::mapPackHosts());
+
+        return collect(CompetitorFilter::keep($domains))->take($limit)->values()->all();
+    }
+
+    /**
      * Map-pack leaders (geo-grid) then organic page-one domains (Brave
      * discovery), deduplicated and filtered through CompetitorFilter::keep()
      * — the shared source every other family reads through
@@ -94,16 +128,29 @@ class SeoDomainOverview extends Command
      */
     public static function competitorDomains(int $limit): array
     {
-        $domains = collect();
-        if (Schema::hasTable('map_pack_competitors')) {
-            $domains = $domains->concat(Tenancy::table('map_pack_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
-                ->select('host', DB::raw('SUM(pack_points) w'))->groupBy('host')->orderByDesc('w')->limit(30)->pluck('host'));
-        }
-        $disc = Storage::disk('local')->exists('reports/competitor-discovery.json') ? json_decode((string) Storage::disk('local')->get('reports/competitor-discovery.json'), true) : null;
-        foreach ((array) ($disc['domains'] ?? []) as $d) {
-            $domains->push($d['host']);
-        }
+        $domains = self::mapPackHosts()->concat(self::discoveredHosts());
 
         return collect(CompetitorFilter::keep($domains))->take($limit)->values()->all();
+    }
+
+    /** @return Collection<int, string> */
+    protected static function mapPackHosts(): Collection
+    {
+        if (! Schema::hasTable('map_pack_competitors')) {
+            return collect();
+        }
+
+        return Tenancy::table('map_pack_competitors')->whereNotNull('host')->where('pack_points', '>', 0)
+            ->select('host', DB::raw('SUM(pack_points) w'))->groupBy('host')->orderByDesc('w')->limit(30)->pluck('host');
+    }
+
+    /** @return Collection<int, string> */
+    protected static function discoveredHosts(): Collection
+    {
+        $disc = Storage::disk('local')->exists('reports/competitor-discovery.json')
+            ? json_decode((string) Storage::disk('local')->get('reports/competitor-discovery.json'), true)
+            : null;
+
+        return collect((array) ($disc['domains'] ?? []))->map(fn ($d) => $d['host'] ?? null)->filter()->values();
     }
 }

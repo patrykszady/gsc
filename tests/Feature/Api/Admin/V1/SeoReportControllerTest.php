@@ -174,8 +174,11 @@ class SeoReportControllerTest extends TestCase
         $this->assertNull($last['gsc_ctr']);
         $this->assertSame(1, $last['bing_clicks']);
         $this->assertSame(20, $last['bing_impressions']);
-        // Combined still carries what did arrive.
-        $this->assertSame(1, $last['combined_clicks']);
+        // Combined is a sum with a missing term: unknown, not "just Bing" —
+        // otherwise every chart ended in a plunge to almost nothing.
+        $this->assertNull($last['combined_clicks']);
+        $this->assertNull($last['combined_impressions']);
+        $this->assertNull($last['combined_ctr']);
 
         // A day both reported carries every metric for both.
         $full = $trend[0];
@@ -428,5 +431,129 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame(10, $second['total_prev']);
         $this->assertSame(1000, $second['volume_total_prev']);
         $this->assertSame(1400, $second['volume_total']);
+    }
+
+    public function test_share_of_voice_shows_only_the_latest_run_and_never_a_directory(): void
+    {
+        Cache::flush();
+        $row = fn (array $o) => array_merge(['site_id' => null, 'is_us' => false, 'pos_1' => 1, 'pos_2_3' => 1, 'pos_4_10' => 1, 'pos_11_20' => 0, 'keywords_total' => 3, 'etv' => 10, 'is_new' => 0, 'is_lost' => 0, 'created_at' => now(), 'updated_at' => now()], $o);
+        DB::table('seo_domain_overviews')->insert([
+            $row(['domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-09-06']),
+            $row(['domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-09-13']),
+            // A competitor in both runs: shown, with a prior for the chevron.
+            $row(['domain' => 'stillhere.com', 'date' => '2026-09-06', 'pos_1' => 2]),
+            $row(['domain' => 'stillhere.com', 'date' => '2026-09-13', 'pos_1' => 4]),
+            // Dropped from the weekly set after the first run: must not linger.
+            $row(['domain' => 'longgone.com', 'date' => '2026-09-06']),
+            // A directory that slipped into a run before the filter existed.
+            $row(['domain' => 'houzz.com', 'date' => '2026-09-13', 'pos_1' => 900]),
+        ]);
+
+        $sov = collect($this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.dataforseo.share_of_voice'));
+
+        $this->assertSame(['gs.construction', 'stillhere.com'], $sov->pluck('domain')->all());
+        $this->assertSame(6, $sov->firstWhere('domain', 'stillhere.com')['top10']);
+        $this->assertSame(4, $sov->firstWhere('domain', 'stillhere.com')['top10_prev']);
+    }
+
+    public function test_link_gap_hides_directories_and_says_so(): void
+    {
+        Cache::flush();
+        $prospect = fn (array $o) => array_merge(['site_id' => null, 'rank' => 40, 'competitor_count' => 3, 'links_to_us' => false, 'spam_score' => null, 'links_to' => json_encode(['a.com' => 1, 'b.com' => 1, 'c.com' => 1]), 'created_at' => now(), 'updated_at' => now()], $o);
+        DB::table('seo_backlink_prospects')->insert([
+            $prospect(['domain' => 'localpaper.com']),
+            $prospect(['domain' => 'yelp.com', 'rank' => 900]),
+            $prospect(['domain' => 'pro.houzz.com', 'rank' => 880]),
+        ]);
+
+        $dfs = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.dataforseo');
+
+        $this->assertSame(['localpaper.com'], array_column($dfs['link_gap'], 'domain'));
+        $this->assertSame(2, $dfs['link_gap_hidden']['directory']);
+        $this->assertSame(1, $dfs['link_gap_hidden']['visible']);
+    }
+
+    /** Three queries this week; one of them was also seen the week before. */
+    private function seedQueryMetrics(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-19'));
+
+        // This window (7 days to today).
+        DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(1)->toDateString(), 'site_url' => 'sc-domain:example.test', 'query' => 'kitchen remodel', 'page' => 'https://example.test/kitchens', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 100, 'clicks' => 10, 'position' => 4.0, 'ctr' => 0, 'dim_hash' => 'a1', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(2)->toDateString(), 'site_url' => 'sc-domain:example.test', 'query' => 'kitchen remodel', 'page' => 'https://example.test/kitchens', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 100, 'clicks' => 10, 'position' => 6.0, 'ctr' => 0, 'dim_hash' => 'a2', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(1)->toDateString(), 'site_url' => 'sc-domain:example.test', 'query' => 'bathroom remodel', 'page' => 'https://example.test/bathrooms', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 50, 'clicks' => 5, 'position' => 9.0, 'ctr' => 0, 'dim_hash' => 'b1', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(3)->toDateString(), 'site_url' => 'sc-domain:example.test', 'query' => 'basement finishing', 'page' => 'https://example.test/basements', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 20, 'clicks' => 1, 'position' => 15.0, 'ctr' => 0, 'dim_hash' => 'c1', 'created_at' => now(), 'updated_at' => now()]);
+        // The window before: only "kitchen remodel" existed, doing worse.
+        DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(10)->toDateString(), 'site_url' => 'sc-domain:example.test', 'query' => 'kitchen remodel', 'page' => 'https://example.test/kitchens', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 80, 'clicks' => 4, 'position' => 8.0, 'ctr' => 0, 'dim_hash' => 'p1', 'created_at' => now(), 'updated_at' => now()]);
+        // Older than both windows: never counted.
+        DB::table('gsc_query_metrics')->insert(['site_id' => null, 'date' => now()->subDays(30)->toDateString(), 'site_url' => 'sc-domain:example.test', 'query' => 'bathroom remodel', 'page' => 'https://example.test/bathrooms', 'country' => 'usa', 'device' => 'MOBILE', 'impressions' => 999, 'clicks' => 99, 'position' => 1.0, 'ctr' => 0, 'dim_hash' => 'z1', 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    public function test_top_rows_page_through_every_query_sorted_with_the_prior_window_on_each_row(): void
+    {
+        $this->seedQueryMetrics();
+
+        $response = $this->getJson('/api/admin/v1/seo/top-rows?dimension=query&days=7&sort=clicks&dir=desc&per_page=2', $this->adminApiHeaders())
+            ->assertOk();
+
+        $rows = $response->json('data');
+        $meta = $response->json('meta');
+
+        $this->assertSame(3, $meta['total']);
+        $this->assertSame(2, $meta['last_page']);
+        $this->assertSame(['kitchen remodel', 'bathroom remodel'], array_column($rows, 'query'));
+
+        // Summed over the window, with the window before beside it.
+        $this->assertSame(20, $rows[0]['clicks']);
+        $this->assertSame(200, $rows[0]['impressions']);
+        // round() hands back an int when the division is exact; the screen formats either.
+        $this->assertEquals(10.0, $rows[0]['ctr']);
+        $this->assertEquals(5.0, $rows[0]['position']);
+        $this->assertEquals(['clicks' => 4, 'impressions' => 80, 'ctr' => 5.0, 'position' => 8.0], $rows[0]['prior']);
+        // Nothing in the prior window: null, never a made-up zero.
+        $this->assertNull($rows[1]['prior']);
+
+        // The second page carries the rest.
+        $page2 = $this->getJson('/api/admin/v1/seo/top-rows?dimension=query&days=7&sort=clicks&dir=desc&per_page=2&page=2', $this->adminApiHeaders())->json('data');
+        $this->assertSame(['basement finishing'], array_column($page2, 'query'));
+
+        // Sorting by position ascending puts the best-ranked first.
+        $byPosition = $this->getJson('/api/admin/v1/seo/top-rows?dimension=query&days=7&sort=position&dir=asc', $this->adminApiHeaders())->json('data');
+        $this->assertSame(['kitchen remodel', 'bathroom remodel', 'basement finishing'], array_column($byPosition, 'query'));
+
+        // Pages are the same shape on the other dimension.
+        $pages = $this->getJson('/api/admin/v1/seo/top-rows?dimension=page&days=7', $this->adminApiHeaders())->json('data');
+        $this->assertSame('https://example.test/kitchens', $pages[0]['page']);
+        $this->assertSame(4, $pages[0]['prior']['clicks']);
+
+        // The snapshot's own top ten carries the prior window too.
+        $snapshot = $this->getJson('/api/admin/v1/seo/snapshot?top_days=7', $this->adminApiHeaders())->json('data');
+        $this->assertSame(4, $snapshot['top_queries'][0]['prior']['clicks']);
+        $this->assertCount(3, $snapshot['top_queries']);
+    }
+
+    public function test_rankings_carry_bings_report_beside_googles(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-19'));
+        $row = fn (int $daysAgo, string $query, float $position, string $hash) => DB::table('bing_traffic_stats')->insert([
+            'date' => now()->subDays($daysAgo)->toDateString(), 'site_url' => 'https://example.test/', 'query' => $query,
+            'impressions' => 10, 'clicks' => 1, 'position' => $position, 'dim_hash' => $hash, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        // This week: one query on page one's top, one on page one, one further down.
+        $row(1, 'kitchen remodel', 2.0, 'b1');
+        $row(3, 'kitchen remodel', 4.0, 'b2');   // averages to 3.0: still top 3
+        $row(2, 'bathroom remodel', 8.0, 'b3');
+        $row(2, 'basement finishing', 25.0, 'b4');
+        // The week before: only one query, and it ranked worse.
+        $row(9, 'kitchen remodel', 12.0, 'b5');
+        // A row Bing reported without a position is not a ranking.
+        $row(1, 'garage doors', 0.0, 'b6');
+
+        $bing = $this->getJson('/api/admin/v1/seo/snapshot?rank_days=7', $this->adminApiHeaders())->assertOk()->json('data.rankings.bing');
+
+        $this->assertSame('2026-09-18', $bing['as_of']);
+        $this->assertSame(['tracked' => 3, 'top3' => 1, 'top10' => 2, 'top20' => 2, 'below20' => 1], $bing['current']);
+        $this->assertSame(['tracked' => 1, 'top3' => 0, 'top10' => 0, 'top20' => 1, 'below20' => 0], $bing['prior']);
     }
 }

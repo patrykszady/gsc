@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Api\Admin\V1;
 
+use App\Jobs\SendLeadToHive;
 use App\Models\ContactSubmission;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Tests\Feature\Api\Admin\V1\Concerns\WithAdminApiAuth;
 use Tests\TestCase;
 
@@ -158,7 +161,7 @@ class LeadControllerTest extends TestCase
 
     public function test_hive_can_push_a_lead_it_captured_and_a_second_push_updates_it(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
 
         $payload = [
             'hive_lead_id' => 170,
@@ -184,9 +187,9 @@ class LeadControllerTest extends TestCase
 
         $row = ContactSubmission::withoutSiteScope()->findOrFail($created['id']);
         $this->assertSame(170, $row->hive_lead_id);
-        $this->assertTrue($row->created_at->equalTo(\Illuminate\Support\Carbon::parse('2026-09-15T20:06:27Z')));
+        $this->assertTrue($row->created_at->equalTo(Carbon::parse('2026-09-15T20:06:27Z')));
         // Born forwarded: nothing sends it back to hive.
-        \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\SendLeadToHive::class);
+        Queue::assertNotPushed(SendLeadToHive::class);
 
         $this->postJson('/api/admin/v1/leads', ['phone' => '8475550100'] + $payload, $this->adminApiHeaders())->assertOk();
         $this->assertSame(1, ContactSubmission::withoutSiteScope()->where('hive_lead_id', 170)->count());
@@ -198,7 +201,7 @@ class LeadControllerTest extends TestCase
 
     public function test_hive_answering_an_email_this_site_read_first_updates_that_row(): void
     {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
 
         // Read out of crew@ here; hive has not answered yet, so no hive id.
         $mine = ContactSubmission::create([
@@ -279,5 +282,27 @@ class LeadControllerTest extends TestCase
         $this->assertArrayHasKey('today', $data);
         $this->assertArrayHasKey('week', $data);
         $this->assertArrayHasKey('month', $data);
+    }
+
+    public function test_stats_counts_new_leads_since_a_moment_for_the_sidebar_badge(): void
+    {
+        $this->makeLead(['created_at' => now()->subDays(3)]);                                        // before: already seen
+        $this->makeLead(['created_at' => now()->subHours(2)]);                                       // new
+        $this->makeLead(['status' => 'spam', 'created_at' => now()->subHour()]);                     // new, but spam
+        $this->makeLead(['status' => 'legitimate', 'created_at' => now()->subMinutes(5)]);           // new
+
+        $since = urlencode(now()->subDay()->toIso8601String());
+        $data = $this->getJson("/api/admin/v1/leads/stats?since={$since}", $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame(2, $data['new']);
+        $this->assertSame(4, $data['total'], 'the rest of the grid is untouched by since');
+
+        // Nothing asked, nothing answered — the Leads screen's own stats call.
+        $this->assertNull($this->getJson('/api/admin/v1/leads/stats', $this->adminApiHeaders())->assertOk()->json('data.new'));
+
+        // A moment the site cannot read is the same as none, never a 500.
+        $this->assertNull($this->getJson('/api/admin/v1/leads/stats?since=not-a-moment', $this->adminApiHeaders())->assertOk()->json('data.new'));
     }
 }

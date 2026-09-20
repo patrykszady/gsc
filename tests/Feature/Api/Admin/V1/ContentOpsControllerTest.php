@@ -160,34 +160,69 @@ class ContentOpsControllerTest extends TestCase
 
     // -- Analytics -----------------------------------------------------------
 
-    public function test_analytics_events_and_summary_reflect_seeded_events(): void
+    public function test_analytics_events_and_summary_answer_for_one_window(): void
     {
         TrackedEvent::create(['type' => TrackedEvent::TYPE_PHONE_CLICK, 'label' => '555-1212', 'page_path' => '/contact']);
         TrackedEvent::create(['type' => TrackedEvent::TYPE_CTA_CLICK, 'page_path' => '/']);
+        // Ten days back: outside a 7-day window, inside the 7 days before it.
+        TrackedEvent::forceCreate(['type' => TrackedEvent::TYPE_PHONE_CLICK, 'page_path' => '/old', 'created_at' => now()->subDays(10)]);
 
-        $this->getJson('/api/admin/v1/analytics/events?date_filter=all', $this->adminApiHeaders())
+        $this->getJson('/api/admin/v1/analytics/events?days=7', $this->adminApiHeaders())
             ->assertOk()
             ->assertJsonCount(2, 'data');
 
-        $summary = $this->getJson('/api/admin/v1/analytics/summary?date_filter=all&trend_days=7', $this->adminApiHeaders())
+        $summary = $this->getJson('/api/admin/v1/analytics/summary?days=7', $this->adminApiHeaders())
             ->assertOk()
             ->json('data');
 
+        $this->assertSame(7, $summary['days']);
         $this->assertSame(1, $summary['stats']['phone']);
         $this->assertSame(1, $summary['stats']['cta']);
         $this->assertSame(2, $summary['stats']['total']);
+        // The tiles' chevrons compare against the 7 days before the window.
+        $this->assertSame(1, $summary['stats_prev']['phone']);
+        $this->assertSame(1, $summary['stats_prev']['total']);
+        $this->assertEqualsCanonicalizing(['/contact', '/'], array_keys($summary['top_pages']));
         $this->assertCount(7, $summary['trend']);
+        $this->assertSame(1, $summary['trend'][6]['phone'], 'today is the last row');
     }
 
-    public function test_analytics_type_filter_narrows_both_endpoints(): void
+    public function test_analytics_type_filter_narrows_the_rows_and_the_pages_but_not_the_tiles(): void
     {
-        TrackedEvent::create(['type' => TrackedEvent::TYPE_PHONE_CLICK]);
-        TrackedEvent::create(['type' => TrackedEvent::TYPE_CTA_CLICK]);
+        TrackedEvent::create(['type' => TrackedEvent::TYPE_PHONE_CLICK, 'page_path' => '/contact']);
+        TrackedEvent::create(['type' => TrackedEvent::TYPE_CTA_CLICK, 'page_path' => '/']);
 
-        $this->getJson('/api/admin/v1/analytics/events?date_filter=all&type_filter=phone_click', $this->adminApiHeaders())
+        $this->getJson('/api/admin/v1/analytics/events?type_filter=phone_click', $this->adminApiHeaders())
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.type', 'phone_click');
+
+        $summary = $this->getJson('/api/admin/v1/analytics/summary?type_filter=phone_click', $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame(['/contact' => 1], $summary['top_pages']);
+        // The tiles stay the window's full breakdown; the screen highlights
+        // the selected one instead of zeroing the rest.
+        $this->assertSame(1, $summary['stats']['phone']);
+        $this->assertSame(1, $summary['stats']['cta']);
+        // One series serves every type filter: each row carries every type,
+        // and the screen draws only the selected line.
+        $this->assertSame(28, $summary['days'], 'the default window is four whole weeks');
+        $this->assertCount(28, $summary['trend']);
+        $this->assertSame(1, end($summary['trend'])['cta']);
+    }
+
+    public function test_analytics_window_accepts_only_the_pickers_spans(): void
+    {
+        $this->assertCount(60, $this->getJson('/api/admin/v1/analytics/summary?days=60', $this->adminApiHeaders())->json('data.trend'));
+
+        // 30 is not on the picker (28 is), and neither is anything made up.
+        foreach ([30, 999] as $days) {
+            $summary = $this->getJson("/api/admin/v1/analytics/summary?days={$days}", $this->adminApiHeaders())->assertOk()->json('data');
+            $this->assertSame(28, $summary['days']);
+            $this->assertCount(28, $summary['trend']);
+        }
     }
 
     // -- JS errors -------------------------------------------------------

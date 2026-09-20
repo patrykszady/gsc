@@ -6,6 +6,7 @@ use App\Console\Commands\SeoAiMentions;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SeoDataForSeoIntelTest extends TestCase
@@ -16,6 +17,13 @@ class SeoDataForSeoIntelTest extends TestCase
     {
         parent::setUp();
         config(['services.dataforseo.login' => 'u', 'services.dataforseo.password' => 'p', 'app.url' => 'https://gs.construction']);
+        // These tests seed their competitors through the map pack. The
+        // weekly footprint (SeoDomainOverview::shareOfVoiceDomains) leads
+        // with the owner-curated /compare list and then the discovery
+        // report, so isolate both — otherwise the real config and this dev
+        // box's real discovery file fill every slot.
+        config(['competitors.competitors' => []]);
+        Storage::fake('local');
         DB::table('map_pack_competitors')->insert(['site_id' => null, 'place_id' => 'p1', 'keyword' => 'kitchen remodeling', 'name' => 'Prism', 'url' => 'https://prism.test/', 'host' => 'prism.test', 'pack_points' => 9, 'seen_points' => 12, 'created_at' => now(), 'updated_at' => now()]);
     }
 

@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api\Admin\V1;
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\ContactSubmission;
+use App\Services\EmailLeadReader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class LeadController extends Controller
@@ -80,7 +83,7 @@ class LeadController extends Controller
             'received_at' => ['nullable', 'date'],
         ]);
 
-        $isEmail = $data['source'] === \App\Services\EmailLeadReader::SOURCE;
+        $isEmail = $data['source'] === EmailLeadReader::SOURCE;
         $identity = $isEmail && ! empty($data['external_id']) ? (string) $data['external_id'] : null;
 
         $existing = ContactSubmission::query()
@@ -98,15 +101,15 @@ class LeadController extends Controller
         }
 
         $attributes = [
-            'name' => \Illuminate\Support\Str::limit((string) ($data['name'] ?? 'Unknown'), 250, ''),
-            'email' => \Illuminate\Support\Str::limit((string) ($data['email'] ?? ''), 250, ''),
-            'phone' => ! empty($data['phone']) ? \Illuminate\Support\Str::limit((string) $data['phone'], 20, '') : null,
+            'name' => Str::limit((string) ($data['name'] ?? 'Unknown'), 250, ''),
+            'email' => Str::limit((string) ($data['email'] ?? ''), 250, ''),
+            'phone' => ! empty($data['phone']) ? Str::limit((string) $data['phone'], 20, '') : null,
             'address' => $data['address'] ?? null,
             'city' => $data['city'] ?? null,
             'state' => $data['state'] ?? null,
             'zip' => $data['zip'] ?? null,
             'message' => (string) ($data['message'] ?? ''),
-            'subject' => isset($data['subject']) ? \Illuminate\Support\Str::limit((string) $data['subject'], 255, '') : null,
+            'subject' => isset($data['subject']) ? Str::limit((string) $data['subject'], 255, '') : null,
             'source' => $data['source'],
             'hive_lead_id' => (int) $data['hive_lead_id'],
             'hive_sent_at' => now(),
@@ -120,7 +123,7 @@ class LeadController extends Controller
 
         $submission = ContactSubmission::create($attributes + ['status' => 'pending']);
         // Filed when it arrived, not when it was pushed — the admin sorts by created_at.
-        $submission->forceFill(['created_at' => ! empty($data['received_at']) ? \Illuminate\Support\Carbon::parse($data['received_at']) : now()])->saveQuietly();
+        $submission->forceFill(['created_at' => ! empty($data['received_at']) ? Carbon::parse($data['received_at']) : now()])->saveQuietly();
 
         return $this->itemResponse($submission->fresh()->toApiArray(), 201);
     }
@@ -138,10 +141,20 @@ class LeadController extends Controller
      * plus the Top Cities / Traffic Sources (UTM) aggregate cards, computed
      * here with a server-side GROUP BY rather than shipped as raw rows.
      */
-    public function stats(): JsonResponse
+    public function stats(Request $request): JsonResponse
     {
+        // `new`: for the sidebar's Leads badge — leads that arrived after
+        // the operator last opened the Leads screen (ss-systems sends that
+        // moment as `since`), spam excluded. Null when nothing was asked.
+        $since = $request->filled('since')
+            ? rescue(fn () => Carbon::parse($request->string('since')->toString()), null, false)
+            : null;
+
         $stats = [
             'total' => ContactSubmission::count(),
+            'new' => $since
+                ? ContactSubmission::where('status', '!=', 'spam')->where('created_at', '>', $since)->count()
+                : null,
             'today' => ContactSubmission::whereDate('created_at', today())->count(),
             'week' => ContactSubmission::where('created_at', '>=', now()->subWeek())->count(),
             'month' => ContactSubmission::where('created_at', '>=', now()->subMonth())->count(),
