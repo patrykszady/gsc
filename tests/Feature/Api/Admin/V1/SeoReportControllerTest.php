@@ -4,6 +4,8 @@ namespace Tests\Feature\Api\Admin\V1;
 
 use App\Models\AreaServed;
 use App\Models\BingDailyTotal;
+use App\Models\GscCoverageState;
+use App\Models\GscCoverageStateHistory;
 use App\Models\GscDailyTotal;
 use App\Support\Tenancy;
 use Carbon\Carbon;
@@ -555,5 +557,29 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame('2026-09-18', $bing['as_of']);
         $this->assertSame(['tracked' => 3, 'top3' => 1, 'top10' => 2, 'top20' => 2, 'below20' => 1], $bing['current']);
         $this->assertSame(['tracked' => 1, 'top3' => 0, 'top10' => 0, 'top20' => 1, 'below20' => 0], $bing['prior']);
+    }
+
+    public function test_trouble_card_totals_carry_the_week_before_from_the_inspection_history(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-20 12:00:00'));
+        $state = fn (string $url, string $verdict, string $coverage) => GscCoverageState::create(['url' => $url, 'verdict' => $verdict, 'coverage_state' => $coverage, 'inspected_at' => now()]);
+        $seen = fn (string $url, int $daysAgo, string $verdict, string $coverage) => GscCoverageStateHistory::create(['url' => $url, 'verdict' => $verdict, 'coverage_state' => $coverage, 'page_fetch_state' => 'SUCCESSFUL', 'observed_at' => now()->subDays($daysAgo)]);
+
+        // Today: A and C indexed, B not.
+        $state('https://example.test/a', 'PASS', 'Submitted and indexed');
+        $state('https://example.test/b', 'NEUTRAL', 'Discovered - currently not indexed');
+        $state('https://example.test/c', 'PASS', 'Submitted and indexed');
+        // Ten days ago: A was the one not indexed, B was fine, C was not yet
+        // on the board, and D has since been dropped — only A and B count.
+        $seen('https://example.test/a', 10, 'NEUTRAL', 'Discovered - currently not indexed');
+        $seen('https://example.test/a', 1, 'PASS', 'Submitted and indexed');
+        $seen('https://example.test/b', 10, 'PASS', 'Submitted and indexed');
+        $seen('https://example.test/c', 2, 'PASS', 'Submitted and indexed');
+        $seen('https://example.test/d', 10, 'FAIL', 'Not found (404)');
+
+        $errors = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.gsc_errors');
+
+        $this->assertSame(['tracked' => 3, 'problem' => 1, 'pass' => 2, 'not_indexed' => 1], $errors['totals']);
+        $this->assertSame(['tracked' => 2, 'problem' => 1, 'pass' => 1, 'not_indexed' => 1, 'as_of' => '2026-09-13'], $errors['totals_prev']);
     }
 }

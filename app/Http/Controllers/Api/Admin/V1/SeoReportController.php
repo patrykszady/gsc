@@ -1507,7 +1507,8 @@ class SeoReportController extends Controller
         if (! Schema::hasTable('gsc_coverage_states')) {
             return [
                 'available' => false,
-                'totals' => ['tracked' => 0, 'problem' => 0, 'pass' => 0],
+                'totals' => ['tracked' => 0, 'problem' => 0, 'pass' => 0, 'not_indexed' => 0],
+                'totals_prev' => null,
                 'buckets' => [],
                 'latest_inspected' => null,
                 'rows' => [],
@@ -1571,13 +1572,74 @@ class SeoReportController extends Controller
             ->all();
 
         $latestInspected = GscCoverageState::query()->max('inspected_at');
+        $notIndexed = (int) GscCoverageState::query()->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])->count();
 
         return [
             'available' => true,
-            'totals' => ['tracked' => $tracked, 'problem' => $problem, 'pass' => max(0, $tracked - $problem)],
+            'totals' => ['tracked' => $tracked, 'problem' => $problem, 'pass' => max(0, $tracked - $problem), 'not_indexed' => $notIndexed],
+            // The tiles' ▲/▼: the same totals a week ago, from the inspection history.
+            'totals_prev' => $this->coverageTotalsAsOf(now()->subDays(7)),
             'buckets' => $buckets,
             'latest_inspected' => $latestInspected ? Carbon::parse((string) $latestInspected)->diffForHumans() : null,
             'rows' => $rows,
+        ];
+    }
+
+    /**
+     * The same totals as they stood at $cutoff, rebuilt from the inspection
+     * history: each currently tracked URL's last observation on or before
+     * that moment. URLs with no observation by then were not on the board
+     * yet and are left out, so "tracked" is honest too. Null without a
+     * history table or when nothing had been observed by then — the screen
+     * then shows no chevron rather than a made-up zero.
+     *
+     * @return array{tracked: int, problem: int, pass: int, not_indexed: int, as_of: string}|null
+     */
+    protected function coverageTotalsAsOf(Carbon $cutoff): ?array
+    {
+        if (! Schema::hasTable('gsc_coverage_state_history')) {
+            return null;
+        }
+
+        $latest = Tenancy::table('gsc_coverage_state_history')
+            ->where('observed_at', '<=', $cutoff)
+            ->selectRaw('url, MAX(observed_at) as observed_at')
+            ->groupBy('url');
+
+        $rows = Tenancy::table('gsc_coverage_state_history as h')
+            ->joinSub($latest, 'latest', fn ($join) => $join->on('latest.url', '=', 'h.url')->on('latest.observed_at', '=', 'h.observed_at'))
+            ->whereIn('h.url', GscCoverageState::query()->select('url'))
+            ->distinct()
+            ->get(['h.url', 'h.verdict', 'h.coverage_state']);
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        // The same reading of a row as the live totals above.
+        $state = fn ($r) => strtolower((string) ($r->coverage_state ?? ''));
+        $isProblem = function ($r) use ($state): bool {
+            if ($r->verdict === null || strtoupper((string) $r->verdict) !== 'PASS') {
+                return true;
+            }
+            foreach (['forbidden', 'not indexed', 'duplicate', 'soft 404'] as $needle) {
+                if (str_contains($state($r), $needle)) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        $tracked = $rows->count();
+        $problem = $rows->filter($isProblem)->count();
+
+        return [
+            'tracked' => $tracked,
+            'problem' => $problem,
+            'pass' => max(0, $tracked - $problem),
+            'not_indexed' => $rows->filter(fn ($r) => str_contains($state($r), 'not indexed'))->count(),
+            'as_of' => $cutoff->toDateString(),
         ];
     }
 
