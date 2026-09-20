@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Api\Admin\V1;
 
+use App\Http\Controllers\Api\Admin\V1\SeoReportController;
 use App\Models\AreaServed;
 use App\Models\BingDailyTotal;
 use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscDailyTotal;
+use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -581,5 +583,35 @@ class SeoReportControllerTest extends TestCase
 
         $this->assertSame(['tracked' => 3, 'problem' => 1, 'pass' => 2, 'not_indexed' => 1], $errors['totals']);
         $this->assertSame(['tracked' => 2, 'problem' => 1, 'pass' => 1, 'not_indexed' => 1, 'as_of' => '2026-09-13'], $errors['totals_prev']);
+    }
+
+    /** @return array{score: int, date: string}|null */
+    private function priorHealth(array $ledger): ?array
+    {
+        Storage::disk('local')->put(SeoStorage::path('reports/health-history.json'), json_encode($ledger));
+        $method = new \ReflectionMethod(SeoReportController::class, 'priorHealth');
+
+        return $method->invoke(app(SeoReportController::class));
+    }
+
+    public function test_the_prior_health_score_prefers_last_week_and_falls_back_to_the_oldest_day_the_ledger_has(): void
+    {
+        Storage::fake('local');
+        Carbon::setTestNow(Carbon::parse('2026-09-20'));
+
+        // A week-old entry wins, the closest to seven days when there are several.
+        $this->assertSame(['score' => 70, 'date' => '2026-09-13'], $this->priorHealth([
+            '2026-09-01' => 50, '2026-09-08' => 66, '2026-09-13' => 70, '2026-09-18' => 79, '2026-09-20' => 62,
+        ]));
+
+        // A ledger that only began on the 17th: the oldest day stands in, so
+        // the card still moves — production the week it started recording.
+        $this->assertSame(['score' => 79, 'date' => '2026-09-17'], $this->priorHealth([
+            '2026-09-17' => 79, '2026-09-18' => 79, '2026-09-19' => 62, '2026-09-20' => 62,
+        ]));
+
+        // Today alone is no comparison at all.
+        $this->assertNull($this->priorHealth(['2026-09-20' => 62]));
+        $this->assertNull($this->priorHealth([]));
     }
 }

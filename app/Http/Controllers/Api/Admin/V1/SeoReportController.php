@@ -731,13 +731,16 @@ class SeoReportController extends Controller
                     ->values()
                     ->all();
 
+                $prior = $this->priorHealth();
+
                 return [
                     'score' => isset($data['score']) ? (int) $data['score'] : null,
-                    'prior_score' => $this->priorHealthScore(),
+                    'prior_score' => $prior['score'] ?? null,
+                    'prior_as_of' => $prior['date'] ?? null,
                     'pillars' => $pillars,
                 ];
             } catch (\Throwable) {
-                return ['score' => null, 'prior_score' => null, 'pillars' => []];
+                return ['score' => null, 'prior_score' => null, 'prior_as_of' => null, 'pillars' => []];
             }
         });
     }
@@ -753,7 +756,19 @@ class SeoReportController extends Controller
      * closer reads as noise (yesterday's run), anything further is a stale
      * fallback that would misrepresent a week-over-week comparison.
      */
-    protected function priorHealthScore(): ?int
+    /**
+     * The score to compare this week's against, from the ledger seo:health
+     * appends to (SeoStorage::path('reports/health-history.json')).
+     *
+     * Preferred: the entry closest to a week old, between 5 and 14 days.
+     * When the ledger is younger than that — production's began on
+     * 2026-09-17 — the oldest entry that is not today's stands in, so the
+     * card still says which way the score has moved; the date travels with
+     * it so the screen can say what it compared against.
+     *
+     * @return array{score: int, date: string}|null
+     */
+    protected function priorHealth(): ?array
     {
         $disk = Storage::disk('local');
         $path = SeoStorage::path('reports/health-history.json');
@@ -773,8 +788,9 @@ class SeoReportController extends Controller
         }
 
         $today = Carbon::today();
-        $bestScore = null;
+        $best = null;
         $bestDistance = null;
+        $oldest = null;
 
         foreach ($ledger as $date => $score) {
             if (! is_string($date) || ! is_numeric($score)) {
@@ -787,6 +803,10 @@ class SeoReportController extends Controller
                 continue;
             }
 
+            if ($age >= 1 && ($oldest === null || $age > $oldest['age'])) {
+                $oldest = ['score' => (int) $score, 'date' => $date, 'age' => $age];
+            }
+
             if ($age < 5 || $age > 14) {
                 continue;
             }
@@ -795,11 +815,20 @@ class SeoReportController extends Controller
 
             if ($bestDistance === null || $distance < $bestDistance) {
                 $bestDistance = $distance;
-                $bestScore = (int) $score;
+                $best = ['score' => (int) $score, 'date' => $date];
             }
         }
 
-        return $bestScore;
+        if ($best !== null) {
+            return $best;
+        }
+
+        return $oldest ? ['score' => $oldest['score'], 'date' => $oldest['date']] : null;
+    }
+
+    protected function priorHealthScore(): ?int
+    {
+        return $this->priorHealth()['score'] ?? null;
     }
 
     /** Allowed comparison windows for the Clarity and Ranking cards. */
