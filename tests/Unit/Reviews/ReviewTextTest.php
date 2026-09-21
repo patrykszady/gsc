@@ -18,7 +18,7 @@ class ReviewTextTest extends TestCase
         ]);
 
         $this->assertSame('Bonnie R.', $review['reviewer_name']);
-        $this->assertSame("Jen is the greatest.\r\nI am in love with my new kitchen.", $review['review_description']);
+        $this->assertSame("Jen is the greatest.\nI am in love with my new kitchen.", $review['review_description']);
         $this->assertSame('2015-01-01', $review['review_date']->toDateString());
         $this->assertSame(5, $review['star_rating']);
     }
@@ -73,5 +73,37 @@ class ReviewTextTest extends TestCase
     {
         $this->assertSame('jpetersondesign', ReviewText::normalizeName('J. Peterson Design'));
         $this->assertSame('gsconstructionremodeling', ReviewText::normalizeName('GS Construction & Remodeling'));
+    }
+
+    /** A React flight reference that nobody resolved is a bug upstream, never a review. */
+    public function test_an_unresolved_flight_reference_is_not_a_review_body(): void
+    {
+        $this->assertNull(ReviewText::normalizeAngiReview(['reviewer_name' => 'Linda M.', 'review_description' => '$43', 'star_rating' => 5]));
+        $this->assertNull(ReviewText::normalizeAngiReview(['reviewer_name' => 'Linda M.', 'review_description' => '$2e', 'star_rating' => 5]));
+        $this->assertNotNull(ReviewText::normalizeAngiReview(['reviewer_name' => 'B.', 'review_description' => '$5 well spent.', 'star_rating' => 5]));
+    }
+
+    /** Angi escapes the markup people typed and mangles their quotes; the stored body is prose. */
+    public function test_a_body_is_stored_as_prose(): void
+    {
+        $review = ReviewText::normalizeAngiReview([
+            'reviewer_name' => 'Linda M.',
+            'review_description' => 'She spoke their and quot;construction languageand quot; well.  &lt;br /&gt;  &lt;br /&gt; In the end, <b>great</b>.  ',
+            'review_date_raw' => 'September 2011',
+        ]);
+
+        $this->assertSame("She spoke their \"construction language\" well.\n\nIn the end, great.", $review['review_description']);
+        $this->assertSame('Great & fast.', ReviewText::cleanBody('Great &amp;amp; fast.'));
+    }
+
+    /** A reviewer is signed as a name, however the source cased it. */
+    public function test_a_reviewer_name_is_proper_cased(): void
+    {
+        $this->assertSame('Todd & Kristen M.', ReviewText::properName('TODD & KRISTEN M.'));
+        $this->assertSame('Don K.', ReviewText::properName('don K.'));
+        $this->assertSame('William and Sheila P.', ReviewText::properName('WILLIAM AND SHEILA P.'));
+        $this->assertSame("Mary-Jane O'Neil M.", ReviewText::properName("  mary-jane   o'neil  m. "));
+        $this->assertSame('José Á.', ReviewText::properName('JOSÉ Á.'));
+        $this->assertSame('Don K.', ReviewText::normalizeAngiReview(['reviewer_name' => 'don K.', 'review_description' => 'Fine.'])['reviewer_name']);
     }
 }

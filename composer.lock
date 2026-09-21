@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bf3657552e4ce0e48512314925599dd2",
+    "content-hash": "77a4e9fc563a5d66cb780a1610b8e0dd",
     "packages": [
         {
             "name": "brick/math",
@@ -1131,11 +1131,11 @@
         },
         {
             "name": "hive/platform-kit",
-            "version": "0.2.0",
+            "version": "0.2.1",
             "dist": {
                 "type": "zip",
-                "url": "packages/hive-platform-kit-0.2.0.zip",
-                "shasum": "b55c30027e698e0417e99c4bedd2d1eb888bf946"
+                "url": "packages/hive-platform-kit-0.2.1.zip",
+                "shasum": "850a51f6f3fc7ef7a38d3ec37aee1085750721ea"
             },
             "require": {
                 "illuminate/database": "^12.0|^13.0",
