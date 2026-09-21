@@ -197,4 +197,31 @@ class SyncAngiReviewsMatchingTest extends TestCase
         $this->assertSame(0, $existing->reviewUrls()->count(), 'nothing cited');
         $this->assertNull(AngiReviews::lastRun());
     }
+
+    /**
+     * Angi lets a customer leave a rating without a write-up and publishes
+     * the body as the word "unknown" — a rating, not a review.
+     */
+    public function test_a_rating_without_a_write_up_is_not_imported(): void
+    {
+        $this->payload([
+            $this->review('don K.', 'unknown', 'October 2014'),
+            $this->review('Bonnie R.', 'Jen is the greatest.', 'January 2015'),
+        ]);
+
+        $this->importFromPayload()->assertExitCode(0);
+
+        $this->assertSame(['Bonnie R.'], Testimonial::pluck('reviewer_name')->all());
+        $this->assertSame(1, AngiReviews::lastRun()['parse_failures'], 'counted, so the summary says one card was unusable');
+    }
+
+    /** The new Angi page publishes the month only; it lands on the first. */
+    public function test_a_month_only_date_lands_on_the_first_of_the_month(): void
+    {
+        $this->payload([$this->review('Bonnie R.', 'Jen is the greatest.', 'January 2015')]);
+
+        $this->importFromPayload()->assertExitCode(0);
+
+        $this->assertSame('2015-01-01', Testimonial::first()->review_date->toDateString());
+    }
 }

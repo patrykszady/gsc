@@ -6,16 +6,21 @@ use App\Models\ReviewUrl;
 use App\Models\Site;
 use App\Models\Testimonial;
 use App\Support\Reviews\AngiReviews;
+use Hive\Platform\Reviews\AngiScraper;
+use Hive\Platform\Reviews\ReviewText;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Import the reviews on this site's Angi profile.
  *
- * Angi has no API and no per-review permalink, so the scraper reads the
- * profile page's schema.org block (full review bodies) in a real browser on
- * a virtual display, and each imported review links back to the profile.
+ * Angi has no API and no per-review permalink, so the scraper that ships
+ * with hive/platform-kit reads the profile page in a real browser on a
+ * virtual display, and each imported review links back to the profile. The
+ * browser, the page's markup and the words for each failure live in the
+ * package (`AngiScraper`), the text rules in `ReviewText`; what stays here
+ * is this site's own: where its profile URL and brand name come from, its
+ * Chrome profile, and the testimonials it writes.
  *
  * A scraped review is matched against the testimonials we already have —
  * same text, or same reviewer and date — so a review left on several sites
@@ -30,7 +35,9 @@ class SyncAngiReviews extends Command
         {--max-pages=10 : How many review pages to walk at most}
         {--timeout-ms=90000 : Per-page navigation timeout}
         {--proxy= : Residential proxy URL to fall back to (default: the configured scraper proxy)}
+        {--proxy-region= : Country the proxy sessions exit from (default: services.scraper.proxy_region, "us")}
         {--direct-only : Never fall back to the residential proxy}
+        {--skip-direct : Go straight to the residential proxy — for a server Angi is known to refuse}
         {--headless : Run without a virtual display (Angi usually blocks this)}
         {--from-json= : Read scraper output from this JSON file instead of running a browser}
         {--dry-run : Show what would change without writing to the database}';
@@ -72,16 +79,10 @@ class SyncAngiReviews extends Command
         $this->info('Reading '.$profileUrl);
         $scraped = ($fromJson = (string) $this->option('from-json')) !== ''
             ? $this->readScrapedJson($fromJson)
-            : $this->scrape($profileUrl);
+            : $this->scraper()->run($profileUrl, fn (string $line) => $this->line('  <comment>[scraper]</comment> '.$line));
 
         if ($error = ($scraped['error'] ?? null)) {
-            $message = match ($error) {
-                'blocked' => 'Angi’s bot protection blocked the read, from this server and from the backup connection. It often works again on the next run.',
-                'not_found' => 'Angi returned "page not found" for the profile URL — check it under Admin → Social Media.',
-                'wrong_business' => 'That Angi page belongs to '.($scraped['business_name'] ?: 'another business').', not '.AngiReviews::brandName().'.',
-                'brand_not_configured' => 'This site has no business name configured, so the Angi page could not be checked against one.',
-                default => 'Angi’s profile page carried no review data.',
-            };
+            $message = AngiScraper::explain($error, $scraped['business_name'] ?? null, AngiReviews::brandName());
             $this->warn($message);
             if (! $dryRun) {
                 AngiReviews::recordRun(['scraped' => 0, 'created' => 0], $message);
@@ -95,7 +96,7 @@ class SyncAngiReviews extends Command
         // worse than importing none.
         $businessName = (string) ($scraped['business_name'] ?? '');
         if ($businessName !== '' && ! AngiReviews::pageBelongsToBrand($businessName, AngiReviews::brandName())) {
-            $message = 'That Angi page belongs to '.$businessName.', not '.AngiReviews::brandName().'.';
+            $message = AngiScraper::explain('wrong_business', $businessName, AngiReviews::brandName());
             $this->warn($message);
             if (! $dryRun) {
                 AngiReviews::recordRun(['scraped' => 0, 'created' => 0], $message);
@@ -105,7 +106,7 @@ class SyncAngiReviews extends Command
         }
 
         $payloads = collect($scraped['reviews'] ?? [])
-            ->map(fn (array $review) => $this->normalize($review))
+            ->map(fn (array $review) => ReviewText::normalizeAngiReview($review))
             ->filter()
             ->values();
 
@@ -116,7 +117,7 @@ class SyncAngiReviews extends Command
         $seen = [];
 
         foreach ($payloads as $payload) {
-            $key = $this->payloadKey($payload);
+            $key = ReviewText::payloadKey($payload);
             if (isset($seen[$key])) {
                 continue;
             }
@@ -185,6 +186,30 @@ class SyncAngiReviews extends Command
         return self::SUCCESS;
     }
 
+    /** The package's scraper, set up with this site's particulars and this run's options. */
+    private function scraper(): AngiScraper
+    {
+        // Cloudflare refuses some addresses outright. The scraper tries this
+        // server first and falls back to residential sessions.
+        $proxy = (string) ($this->option('direct-only')
+            ? ''
+            : ($this->option('proxy') ?: config('services.scraper.proxy', '')));
+
+        return new AngiScraper(
+            brandName: AngiReviews::brandName(),
+            chromeProfileDir: $this->chromeProfileDir(),
+            nodeModules: base_path('node_modules'),
+            proxy: $proxy !== '' ? $proxy : null,
+            proxyRegion: (string) ($this->option('proxy-region') ?: config('services.scraper.proxy_region', AngiScraper::DEFAULT_PROXY_REGION)),
+            skipDirect: (bool) $this->option('skip-direct') && $proxy !== '',
+            headless: (bool) $this->option('headless'),
+            maxPages: (int) $this->option('max-pages'),
+            timeoutMs: (int) $this->option('timeout-ms'),
+            xvfb: (string) config('services.scraper.xvfb', 'xvfb-run'),
+            screen: (string) config('services.scraper.screen', '1440x2400x24'),
+        );
+    }
+
     /**
      * Same review, already stored? Angi gives no permalink, so this is text
      * first (a review syndicated from another site is word for word), then
@@ -195,7 +220,7 @@ class SyncAngiReviews extends Command
      */
     private function matchExisting($existing, array $payload): ?Testimonial
     {
-        $byText = $existing->first(fn (Testimonial $t) => $this->comparable($t->review_description) === $this->comparable($payload['review_description']));
+        $byText = $existing->first(fn (Testimonial $t) => ReviewText::comparable($t->review_description) === ReviewText::comparable($payload['review_description']));
         if ($byText) {
             return $byText;
         }
@@ -206,77 +231,6 @@ class SyncAngiReviews extends Command
 
             return $sameName && $sameDate && $payload['review_date'] !== null;
         });
-    }
-
-    /**
-     * @param  array<string, mixed>  $review
-     * @return array<string, mixed>|null
-     */
-    private function normalize(array $review): ?array
-    {
-        $name = trim($this->decodeEntities((string) ($review['reviewer_name'] ?? '')));
-        $description = trim($this->decodeEntities((string) ($review['review_description'] ?? '')));
-        if ($name === '' || $description === '') {
-            return null;
-        }
-
-        $date = null;
-        $rawDate = trim((string) ($review['review_date_raw'] ?? ''));
-        if ($rawDate !== '') {
-            try {
-                $date = Carbon::parse($rawDate)->startOfDay();
-            } catch (\Throwable) {
-                $date = null;
-            }
-        }
-
-        $rating = isset($review['star_rating']) ? (int) $review['star_rating'] : null;
-        if ($rating !== null && ($rating < 1 || $rating > 5)) {
-            $rating = null;
-        }
-
-        return [
-            'reviewer_name' => $name,
-            'review_description' => $description,
-            'review_date' => $date,
-            'star_rating' => $rating,
-        ];
-    }
-
-    /** @param  array<string, mixed>  $payload */
-    private function payloadKey(array $payload): string
-    {
-        return mb_strtolower(trim($payload['reviewer_name']))
-            .'|'.($payload['review_date']?->toDateString() ?? 'no-date')
-            .'|'.$this->comparable($payload['review_description']);
-    }
-
-    /**
-     * HTML entities decoded, in case a stored review kept them: "couldn&#39;t"
-     * and "couldn't" are the same review and must compare equal.
-     */
-    private function decodeEntities(string $value): string
-    {
-        for ($pass = 0; $pass < 3; $pass++) {
-            $decoded = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            if ($decoded === $value) {
-                break;
-            }
-            $value = $decoded;
-        }
-
-        return $value;
-    }
-
-    /** Letters, digits and single spaces only — punctuation and encoding differ between sites. */
-    private function comparable(?string $text, int $length = 160): string
-    {
-        $text = $this->decodeEntities((string) $text);
-        $text = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text) ?: $text;
-        $text = (string) preg_replace('/[^a-zA-Z0-9 ]/', '', $text);
-        $text = mb_strtolower((string) preg_replace('/\s+/', ' ', trim($text)));
-
-        return mb_substr($text, 0, $length);
     }
 
     /**
@@ -296,100 +250,5 @@ class SyncAngiReviews extends Command
     private function chromeProfileDir(): string
     {
         return storage_path('app/angi/chrome-profile/'.Site::current()->slug);
-    }
-
-    /**
-     * Run the scraper. Angi refuses headless Chromium, so the browser runs
-     * headed on a virtual display (xvfb-run) unless --headless is passed.
-     *
-     * @return array<string, mixed>
-     */
-    private function scrape(string $profileUrl): array
-    {
-        $script = base_path('scripts/scrape-angi-reviews.mjs');
-        if (! is_file($script)) {
-            return ['error' => 'scraper_missing', 'reviews' => []];
-        }
-
-        $headless = (bool) $this->option('headless');
-        // xvfb-run merges the child's stderr into stdout, so the result comes
-        // back through a file and stdout carries only progress.
-        $resultFile = tempnam(sys_get_temp_dir(), 'angi-reviews-');
-        // Cloudflare refuses some addresses outright. The scraper tries this
-        // server first and falls back to residential sessions.
-        $proxy = (string) ($this->option('direct-only')
-            ? ''
-            : ($this->option('proxy') ?: config('services.scraper.proxy', '')));
-
-        $node = sprintf(
-            'node %s --url=%s --brand=%s --out=%s --max-pages=%d --timeout-ms=%d --profile-dir=%s %s %s',
-            escapeshellarg($script),
-            escapeshellarg($profileUrl),
-            escapeshellarg(AngiReviews::brandName()),
-            escapeshellarg($resultFile),
-            max(1, (int) $this->option('max-pages')),
-            max(10000, (int) $this->option('timeout-ms')),
-            escapeshellarg($this->chromeProfileDir()),
-            $headless ? '--headless' : '',
-            $proxy !== '' ? '--proxy='.escapeshellarg($proxy) : '',
-        );
-
-        $command = $headless
-            ? $node
-            : sprintf('%s -a --server-args=%s %s', escapeshellarg((string) config('services.scraper.xvfb', 'xvfb-run')), escapeshellarg('-screen 0 '.config('services.scraper.screen', '1440x2400x24')), $node);
-
-        @mkdir($this->chromeProfileDir(), 0775, true);
-
-        $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-        $process = proc_open($command, $descriptors, $pipes);
-        if (! is_resource($process)) {
-            @unlink($resultFile);
-
-            return ['error' => 'scraper_failed', 'reviews' => []];
-        }
-
-        fclose($pipes[0]);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
-        $open = [$pipes[1], $pipes[2]];
-
-        while ($open) {
-            $read = $open;
-            $write = null;
-            $except = null;
-            if (stream_select($read, $write, $except, 1) === false) {
-                break;
-            }
-
-            foreach ($read as $pipe) {
-                $chunk = fread($pipe, 65536);
-                if ($chunk === false || $chunk === '') {
-                    if (feof($pipe)) {
-                        $key = array_search($pipe, $open, true);
-                        if ($key !== false) {
-                            unset($open[$key]);
-                        }
-                    }
-
-                    continue;
-                }
-
-                foreach (explode("\n", trim($chunk)) as $line) {
-                    if ($line !== '') {
-                        $this->line('  <comment>[scraper]</comment> '.$line);
-                    }
-                }
-            }
-        }
-
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($process);
-
-        $decoded = json_decode((string) @file_get_contents($resultFile), true);
-        @unlink($resultFile);
-
-        return is_array($decoded) ? $decoded + ['reviews' => []] : ['error' => 'scraper_failed', 'reviews' => []];
     }
 }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "10f7f1b4f02a603e8a3868b26abbf377",
+    "content-hash": "bf3657552e4ce0e48512314925599dd2",
     "packages": [
         {
             "name": "brick/math",
@@ -1128,6 +1128,36 @@
                 }
             ],
             "time": "2026-08-24T09:15:32+00:00"
+        },
+        {
+            "name": "hive/platform-kit",
+            "version": "0.2.0",
+            "dist": {
+                "type": "zip",
+                "url": "packages/hive-platform-kit-0.2.0.zip",
+                "shasum": "b55c30027e698e0417e99c4bedd2d1eb888bf946"
+            },
+            "require": {
+                "illuminate/database": "^12.0|^13.0",
+                "illuminate/http": "^12.0|^13.0",
+                "illuminate/support": "^12.0|^13.0",
+                "php": "^8.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Hive\\Platform\\": "src/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "node --test tests/js/*.test.mjs"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Backend shared by the sites the ss.systems admin drives — one copy, run inside each site."
         },
         {
             "name": "hszope/laravel-aigeo",

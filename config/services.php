@@ -355,6 +355,9 @@ return [
 
     'scraper' => [
         'proxy' => env('SCRAPER_PROXY_URL') ?: $compose2captchaProxy(),
+        // Country the residential sessions exit from. The pool's default exits
+        // are not North American and a US site's Cloudflare turns them away.
+        'proxy_region' => env('CAPTCHA_PROXY_REGION', 'us'),
         // Angi's bot protection refuses headless Chromium, so its scrape runs
         // a headed browser on a virtual display.
         'xvfb' => env('SCRAPER_XVFB_BINARY', 'xvfb-run'),

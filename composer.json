@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "hive/platform-kit": "^0.2.0",
         "hszope/laravel-aigeo": "^1.0",
         "intervention/image-laravel": "^1.5",
         "laravel/framework": "^12.0",
@@ -114,6 +115,10 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "repositories": {
+        "hive-platform-kit": {
+            "type": "artifact",
+            "url": "packages"
+        },
         "flux-pro": {
             "type": "composer",
             "url": "https://composer.fluxui.dev"
