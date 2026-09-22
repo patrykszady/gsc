@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin\V1;
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Jobs\YelpAutoLogin;
+use App\Models\ImagePlatformUpload;
 use App\Models\OAuthToken;
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -1016,6 +1018,130 @@ class PlatformsController extends Controller
             'total_review_count' => $page['totalReviewCount'],
             'average_rating' => $page['averageRating'],
         ]]);
+    }
+
+    /** Google's media category enum, for validating the optional override. */
+    protected const GBP_MEDIA_CATEGORIES = [
+        'COVER', 'PROFILE', 'LOGO', 'EXTERIOR', 'INTERIOR', 'PRODUCT',
+        'AT_WORK', 'FOOD_AND_DRINK', 'MENU', 'COMMON_AREA', 'ROOMS', 'TEAMS', 'ADDITIONAL',
+    ];
+
+    /**
+     * POST platforms/gbp/media — upload one of THIS site's project photos to
+     * a Business Profile listing (2026-09-21), for the central admin's
+     * per-market photo pass-through: the account and location are passed in,
+     * exactly as gbpReviews's are, so the same grant can publish to a
+     * listing that need not be this site's own. The Google call itself is
+     * GoogleBusinessProfileService::uploadProjectImage()'s, generalized to a
+     * given account/location by uploadMediaFor() — same source-URL choice
+     * (the geotagged JPEG when there's one, else the public image URL) and
+     * the same category/description defaults when the caller omits them.
+     *
+     * Recorded on success exactly as UploadProjectImageToGooglePlaces
+     * records a self-upload, so the Social Media counters and
+     * DeleteGooglePlacesMedia keep working for an image uploaded this way.
+     */
+    public function uploadGbpMedia(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'string', 'max:191'],
+            'location_id' => ['required', 'string', 'max:191'],
+            'image_id' => ['required', 'integer', function ($attribute, $value, $fail) {
+                $image = ProjectImage::query()->with('project')->find($value);
+
+                if (! $image || ! $image->project?->is_published) {
+                    $fail('That image is not available — its project must be published.');
+                }
+            }],
+            'category' => ['sometimes', 'nullable', 'string', Rule::in(self::GBP_MEDIA_CATEGORIES)],
+            'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
+        ]);
+
+        $service = app(GoogleBusinessProfileService::class);
+
+        if (! $service->hasRefreshToken()) {
+            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
+        }
+
+        $image = ProjectImage::query()->with('project')->findOrFail($data['image_id']);
+
+        $accountId = GoogleBusinessListing::bareId($data['account_id']);
+        $locationId = GoogleBusinessListing::bareId($data['location_id']);
+
+        $result = $service->uploadMediaFor(
+            $accountId,
+            $locationId,
+            (string) $service->getPublicImageUrl($image),
+            $data['category'] ?? $service->mapCategory($image),
+            $data['description'] ?? $service->buildDescription($image),
+        );
+
+        if ($result === null) {
+            $message = 'Google refused the photo: '.($service->getLastError()['message'] ?? 'unknown error');
+
+            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
+        }
+
+        ImagePlatformUpload::record($image->id, ImagePlatformUpload::PLATFORM_GOOGLE_PLACES, [
+            'remote_id' => $result['name'],
+            'remote_url' => $result['url'],
+            'metadata' => ['account_id' => $accountId, 'location_id' => $locationId],
+        ]);
+
+        return $this->itemResponse([
+            'ok' => true,
+            'image_id' => $image->id,
+            'media_name' => $result['name'],
+            'media_url' => $result['url'],
+        ]);
+    }
+
+    /**
+     * DELETE platforms/gbp/media — undo an upload the pass-through made (or
+     * any google_places upload), for the central admin. A 404 from Google
+     * means the media is already gone, which counts as success here so a
+     * retry after a partial failure doesn't get stuck.
+     */
+    public function deleteGbpMedia(Request $request): JsonResponse|Response
+    {
+        $data = $request->validate([
+            'media_name' => ['required', 'string', 'max:255'],
+            'image_id' => ['sometimes', 'nullable', 'integer'],
+        ]);
+
+        $service = app(GoogleBusinessProfileService::class);
+
+        if (! $service->hasRefreshToken()) {
+            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
+        }
+
+        $deleted = $service->deleteMedia($data['media_name']);
+
+        if (! $deleted && (int) ($service->getLastError()['status'] ?? 0) !== 404) {
+            $message = 'Google refused the delete: '.($service->getLastError()['message'] ?? 'unknown error');
+
+            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
+        }
+
+        // remote_id is the primary match; the given image's own row is an
+        // alternate locator so a caller that only knows the image still
+        // clears the right row even if the stored remote_id has drifted.
+        ImagePlatformUpload::query()
+            ->where('platform', ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)
+            ->where(function ($query) use ($data) {
+                $query->where('remote_id', $data['media_name']);
+
+                if (! empty($data['image_id'])) {
+                    $query->orWhere('project_image_id', $data['image_id']);
+                }
+            })
+            ->delete();
+
+        // google_places_media_name / google_places_uploaded_at are accessors
+        // over the row just deleted (ProjectImage::platformUpload()) — no
+        // column to clear separately.
+
+        return response()->noContent();
     }
 
     protected function gbpStatus(): array

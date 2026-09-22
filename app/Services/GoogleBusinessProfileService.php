@@ -225,21 +225,48 @@ class GoogleBusinessProfileService
             return null;
         }
 
+        $accountId = (string) config('services.google.business_profile.account_id');
+        $locationId = (string) config('services.google.business_profile.location_id');
+
+        $result = $this->uploadMediaFor($accountId, $locationId, $imageUrl, $this->mapCategory($image), $this->buildDescription($image));
+
+        if ($result) {
+            Log::channel('gbp')->info('GBP: Uploaded image', [
+                'image_id' => $image->id,
+                'media_name' => $result['name'],
+                'has_url' => $result['url'] !== null,
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * The same Google call uploadProjectImage() makes, generalized to any
+     * account/location this grant can reach instead of the site's own
+     * locationBaseUrl() — the central admin's project-photo pass-through
+     * (2026-09-21): one Google grant, many listings, account and location
+     * passed in exactly as fetchReviewsFor()'s are.
+     *
+     * @return array{name: string, url: ?string}|null
+     */
+    public function uploadMediaFor(string $accountId, string $locationId, string $sourceUrl, string $category, ?string $description): ?array
+    {
         $accessToken = $this->getAccessToken();
         if (! $accessToken) {
             return null;
         }
 
-        $payload = [
+        $payload = array_filter([
             'mediaFormat' => 'PHOTO',
             'locationAssociation' => [
-                'category' => $this->mapCategory($image),
+                'category' => $category,
             ],
-            'sourceUrl' => $imageUrl,
-            'description' => $this->buildDescription($image),
-        ];
+            'sourceUrl' => $sourceUrl,
+            'description' => $description,
+        ], fn ($value) => $value !== null);
 
-        $url = $this->mediaBaseUrl().'/media';
+        $url = self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}/media";
 
         $response = Http::withToken($accessToken)
             ->timeout(60)
@@ -252,7 +279,8 @@ class GoogleBusinessProfileService
                 'body' => $response->body(),
             ];
             Log::channel('gbp')->warning('GBP: Failed to upload media', [
-                'image_id' => $image->id,
+                'account_id' => $accountId,
+                'location_id' => $locationId,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -273,11 +301,12 @@ class GoogleBusinessProfileService
         // a 512px thumbnail — see sizedMediaUrl().
         $googleUrl = self::sizedMediaUrl($data['googleUrl'] ?? $data['thumbnailUrl'] ?? null);
 
-        Log::channel('gbp')->info('GBP: Uploaded image', [
-            'image_id' => $image->id,
+        Log::channel('gbp')->info('GBP: Uploaded media', [
+            'account_id' => $accountId,
+            'location_id' => $locationId,
             'media_name' => $mediaName,
             'has_url' => $googleUrl !== null,
-            'category' => $payload['locationAssociation']['category'],
+            'category' => $category,
         ]);
 
         return [
@@ -1013,8 +1042,12 @@ class GoogleBusinessProfileService
     /**
      * Get a publicly accessible URL for the image.
      * GBP requires the URL to be reachable from the internet.
+     *
+     * Public (2026-09-21) so the admin API's media pass-through can resolve
+     * the same source URL uploadProjectImage() sends Google, for a listing
+     * that need not be this site's own — see uploadMediaFor().
      */
-    protected function getPublicImageUrl(ProjectImage $image): ?string
+    public function getPublicImageUrl(ProjectImage $image): ?string
     {
         // Build URL using the production domain
         $productionUrl = config('services.google.business_profile.production_url')
@@ -1145,8 +1178,11 @@ class GoogleBusinessProfileService
      *
      * Categories: COVER, PROFILE, LOGO, EXTERIOR, INTERIOR, PRODUCT,
      *             AT_WORK, FOOD_AND_DRINK, MENU, COMMON_AREA, ROOMS, TEAMS, ADDITIONAL
+     *
+     * Public (2026-09-21): the admin API's media pass-through defaults its
+     * optional `category` param to this, same as uploadProjectImage() does.
      */
-    protected function mapCategory(ProjectImage $image): string
+    public function mapCategory(ProjectImage $image): string
     {
         $project = $image->project;
 
@@ -1159,7 +1195,11 @@ class GoogleBusinessProfileService
         return 'ADDITIONAL';
     }
 
-    protected function buildDescription(ProjectImage $image): string
+    /**
+     * Public (2026-09-21): the admin API's media pass-through defaults its
+     * optional `description` param to this, same as uploadProjectImage() does.
+     */
+    public function buildDescription(ProjectImage $image): string
     {
         $text = $image->caption
             ?: $image->getRawOriginal('seo_alt_text')

@@ -43,6 +43,10 @@ Route::prefix('platforms')->group(function () {
     Route::get('gbp/listings', [PlatformsController::class, 'gbpListings']);
     // One listing's Google reviews, for the central admin's per-market import.
     Route::get('gbp/reviews', [PlatformsController::class, 'gbpReviews']);
+    // Upload/delete a project photo on one listing, for the central admin's
+    // per-market photo pass-through.
+    Route::post('gbp/media', [PlatformsController::class, 'uploadGbpMedia']);
+    Route::delete('gbp/media', [PlatformsController::class, 'deleteGbpMedia']);
     Route::post('gbp/listing', [PlatformsController::class, 'saveGbpListing']);
     Route::post('gbp/publishing', [PlatformsController::class, 'saveGbpPublishing']);
     Route::post('yelp/credentials', [PlatformsController::class, 'saveYelpCredentials']);
