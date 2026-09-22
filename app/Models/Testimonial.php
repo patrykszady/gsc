@@ -238,11 +238,12 @@ class Testimonial extends Model
      * review_urls, project_ids and public_url are gsc-only pixel-parity
      * restorations for the legacy TestimonialList/Form (multi-platform
      * review links, linked-projects picker, "View on site"). jpeterson has
-     * no review_urls/projects pivot at all, so its own
-     * Testimonial::toApiArray() omits these three keys entirely rather than
-     * serializing empty placeholders — the central admin gates on the
-     * 'review-platforms' / 'testimonial-projects' ping capabilities, not on
-     * key presence, but omitting them keeps the two apps' shapes honest.
+     * its own review_urls/projects pivot now too (its 2026_09_10_151000
+     * migration), so only public_url is jpeterson-specific to omit — it has
+     * no public per-review route to link to — the central admin gates on
+     * the 'review-platforms' / 'testimonial-projects' ping capabilities,
+     * not on key presence, but omitting the one key it lacks keeps the two
+     * apps' shapes honest.
      */
     public function toApiArray(): array
     {
@@ -260,6 +261,7 @@ class Testimonial extends Model
             'review_urls' => $this->reviewUrls->map(fn (ReviewUrl $u) => [
                 'platform' => $u->platform,
                 'url' => $u->url,
+                'external_id' => $u->external_id,
             ])->values()->all(),
             'project_ids' => $this->projects->pluck('id')->values()->all(),
             // slug + public_url: the same two keys jpeterson-design carries.

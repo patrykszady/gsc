@@ -68,7 +68,7 @@ class TestimonialControllerTest extends TestCase
             'reviewer_name' => 'Jane Doe',
             'review_description' => 'Fantastic work on our kitchen remodel.',
             'review_urls' => [
-                ['platform' => 'google', 'url' => 'https://google.com/review/abc'],
+                ['platform' => 'google', 'url' => 'https://google.com/review/abc', 'external_id' => 'g-abc'],
                 ['platform' => '', 'url' => ''], // blank row, must be dropped
             ],
             'project_ids' => [$project->id],
@@ -80,6 +80,9 @@ class TestimonialControllerTest extends TestCase
 
         $this->assertCount(1, $data['review_urls']);
         $this->assertSame('google', $data['review_urls'][0]['platform']);
+        // external_id round-trips through toApiArray() so a duplicate-review merge
+        // (ss.systems) can carry a platform's own review id onto the survivor.
+        $this->assertSame('g-abc', $data['review_urls'][0]['external_id']);
         $this->assertSame([$project->id], $data['project_ids']);
         $this->assertStringContainsString('/reviews/', $data['public_url']);
 
@@ -93,6 +96,7 @@ class TestimonialControllerTest extends TestCase
 
         $this->assertCount(1, $updated['review_urls']);
         $this->assertSame('yelp', $updated['review_urls'][0]['platform']);
+        $this->assertNull($updated['review_urls'][0]['external_id']);
         $this->assertSame([], $updated['project_ids']);
     }
 }
