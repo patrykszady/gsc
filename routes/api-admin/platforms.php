@@ -56,6 +56,9 @@ Route::prefix('platforms')->group(function () {
     Route::delete('pagespeed/credentials', [PlatformsController::class, 'clearPagespeedCredentials']);
     Route::post('dataforseo/credentials', [PlatformsController::class, 'saveDataForSeoCredentials']);
     Route::delete('dataforseo/credentials', [PlatformsController::class, 'clearDataForSeoCredentials']);
+    // Run seo:credentials-import-from-env over the API, per source, from the
+    // SEO screen's Connect Services modal — see SeoCredentialsImport.
+    Route::post('seo-credentials/import', [PlatformsController::class, 'importSeoCredentialsFromEnv']);
 
     // Which Business Profile listing this site publishes to. The ids only
     // exist after the OAuth grant, so they are discovered here and stored in

@@ -28,6 +28,7 @@ use App\Support\Seo\BingSettings;
 use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\DataForSeoSettings;
 use App\Support\Seo\PsiSettings;
+use App\Support\Seo\SeoCredentialsImport;
 use App\Support\Tenancy;
 use App\Support\YelpCookieJar;
 use Illuminate\Http\JsonResponse;
@@ -402,6 +403,37 @@ class PlatformsController extends Controller
         PlatformSetting::put(DataForSeoSettings::SETTING_PASSWORD, null);
 
         return $this->itemResponse(['dataforseo' => $this->dataForSeoCredentialStatus()]);
+    }
+
+    /**
+     * POST platforms/seo-credentials/import — the API door onto
+     * seo:credentials-import-from-env (App\Support\Seo\SeoCredentialsImport),
+     * so the central admin's SEO screen Connect Services modal can run the
+     * same env-to-platform_settings copy per source without an ssh session.
+     * Always a real import, never a dry run. Same rules as the command:
+     * never overwrites a stored value, never logs or returns a value —
+     * only which labels moved, plus each source's fresh status block.
+     */
+    public function importSeoCredentialsFromEnv(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'sources' => ['sometimes', 'array'],
+            'sources.*' => ['string', Rule::in(SeoCredentialsImport::SOURCES)],
+        ]);
+
+        $result = app(SeoCredentialsImport::class)->run($data['sources'] ?? []);
+
+        return $this->itemResponse([
+            'imported' => $result['imported'],
+            'already_stored' => $result['already_stored'],
+            'absent' => $result['absent'],
+            'status' => [
+                'bing' => $this->bingStatus(),
+                'clarity' => $this->clarityStatus(),
+                'pagespeed' => $this->pagespeedStatus(),
+                'dataforseo' => $this->dataForSeoCredentialStatus(),
+            ],
+        ]);
     }
 
     public function saveYelpCredentials(Request $request): JsonResponse
