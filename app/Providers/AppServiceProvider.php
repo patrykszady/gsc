@@ -202,6 +202,15 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
 
+            // The central admin (ss.systems) reads this site's logs
+            // server-to-server with its own dedicated token, separate from
+            // production_token so either can be rotated alone.
+            $hubToken = trim((string) config('log-viewer.hub_token', ''));
+
+            if ($hubToken !== '' && hash_equals($hubToken, (string) $request->bearerToken())) {
+                return true;
+            }
+
             $user = $request->user();
 
             return $user && in_array($user->email, $allowedEmails, true);

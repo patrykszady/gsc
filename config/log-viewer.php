@@ -47,6 +47,11 @@ return [
 
     'production_token' => env('LOG_VIEWER_PRODUCTION_TOKEN'),
 
+    // The token the central admin (ss.systems) presents to read this site's
+    // logs server-to-server. Kept separate from production_token so either
+    // can be rotated without touching the other.
+    'hub_token' => env('LOG_VIEWER_HUB_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Log Viewer Domain
