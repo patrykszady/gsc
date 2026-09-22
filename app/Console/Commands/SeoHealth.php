@@ -409,14 +409,16 @@ class SeoHealth extends Command
         foreach ($pillars as $pillar) {
             $rows[] = [
                 $pillar['name'],
-                "<fg={$this->scoreColor($pillar['score'])}>{$pillar['score']}</>",
+                $pillar['score'] === null
+                    ? '<fg=gray>not measured</>'
+                    : "<fg={$this->scoreColor($pillar['score'])}>{$pillar['score']}</>",
                 $this->bar($pillar['score']),
             ];
         }
         $this->table(['Pillar', 'Score', 'Bar'], $rows);
 
         foreach ($pillars as $pillar) {
-            $this->line("<options=bold>{$pillar['name']}</> — {$pillar['score']}/100");
+            $this->line("<options=bold>{$pillar['name']}</> — ".($pillar['score'] === null ? 'not measured yet' : "{$pillar['score']}/100"));
             foreach ($pillar['metrics'] as $key => $val) {
                 $this->line("  · {$key}: {$val}");
             }
@@ -435,11 +437,11 @@ class SeoHealth extends Command
         $md .= "| Pillar | Score |\n|---|---:|\n";
 
         foreach ($pillars as $pillar) {
-            $md .= '| '.$pillar['name'].' | '.(int) $pillar['score']." |\n";
+            $md .= '| '.$pillar['name'].' | '.($pillar['score'] === null ? 'not measured yet' : (int) $pillar['score'])." |\n";
         }
 
         foreach ($pillars as $pillar) {
-            $md .= "\n## {$pillar['name']} ({$pillar['score']}/100)\n\n";
+            $md .= "\n## {$pillar['name']} (".($pillar['score'] === null ? 'not measured yet' : "{$pillar['score']}/100").")\n\n";
             foreach (($pillar['metrics'] ?? []) as $key => $value) {
                 $md .= '- '.$key.': '.$value."\n";
             }
@@ -529,9 +531,18 @@ class SeoHealth extends Command
         };
     }
 
-    protected function bar(int $s): string
+    /**
+     * An unmeasured pillar (null, never 0) draws an empty bar: the report
+     * used to crash here on the first null, which is why production had no
+     * health.md at all until 2026-09-22.
+     */
+    protected function bar(?int $s): string
     {
-        $filled = (int) round($s / 5);
+        if ($s === null) {
+            return str_repeat('░', 20);
+        }
+
+        $filled = max(0, min(20, (int) round($s / 5)));
 
         return str_repeat('▓', $filled).str_repeat('░', 20 - $filled);
     }

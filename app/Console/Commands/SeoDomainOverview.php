@@ -96,7 +96,7 @@ class SeoDomainOverview extends Command
      *     the businesses the site publicly positions against, so the card
      *     on the SEO screen shows the same names the public comparison
      *     pages do;
-     *  2. organic page-one domains (Brave discovery), the feed the SEO
+     *  2. organic page-one domains (the competitor discovery file, when one exists), the feed the SEO
      *     screen's "Competitor discovery" list already shows;
      *  3. map-pack leaders (geo-grid) last.
      *
@@ -121,7 +121,7 @@ class SeoDomainOverview extends Command
     }
 
     /**
-     * Map-pack leaders (geo-grid) then organic page-one domains (Brave
+     * Map-pack leaders (geo-grid) then organic page-one domains (the competitor discovery file
      * discovery), deduplicated and filtered through CompetitorFilter::keep()
      * — the shared source every other family reads through
      * IntelSource::competitorDomains().

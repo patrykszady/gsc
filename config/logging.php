@@ -188,6 +188,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Every Run/Refresh from the admin's SEO screen, start to finish.
+        'seo-reports' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/seo-reports.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         // Front-end JavaScript errors captured by the client beacon
         // (window.onerror / unhandledrejection -> POST /client-error).
         // The Microsoft Clarity API only exposes an error *count*, never the

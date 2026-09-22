@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Models\Site;
+use App\Support\Seo\ClaritySettings;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\ParallelTesting;
@@ -61,6 +62,13 @@ abstract class TestCase extends BaseTestCase
     {
         Site::forgetActive();
         Site::forgetListAll();
+
+        // ClaritySettings::projectId() memoizes the same way Site::active()
+        // does (a `private static` surviving the whole PHPUnit process) —
+        // without this reset, one test's stored/cleared Clarity project id
+        // leaks into the next test's read of it even though the database
+        // and the (per-test, array-driver) cache store are both fresh.
+        ClaritySettings::forgetProjectIdCache();
 
         parent::tearDown();
     }

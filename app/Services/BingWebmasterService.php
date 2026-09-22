@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Seo\BingSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,10 +16,13 @@ class BingWebmasterService
 {
     protected const API_BASE = 'https://ssl.bing.com/webmaster/api.svc/json';
 
+    public function __construct(protected BingSettings $settings)
+    {
+    }
+
     public function isConfigured(): bool
     {
-        return ! empty(config('services.bing.webmaster_api_key'))
-            && ! empty(config('services.bing.site_url'));
+        return $this->settings->isConfigured();
     }
 
     /**
@@ -26,8 +30,8 @@ class BingWebmasterService
      */
     public function fetchQueryStats(?string $siteUrl = null): ?array
     {
-        $siteUrl ??= config('services.bing.site_url');
-        $apiKey = config('services.bing.webmaster_api_key');
+        $siteUrl ??= $this->settings->siteUrl();
+        $apiKey = $this->settings->apiKey();
 
         $resp = Http::timeout(45)->get(self::API_BASE . '/GetQueryStats', [
             'siteUrl' => $siteUrl,
@@ -76,8 +80,8 @@ class BingWebmasterService
      */
     public function fetchRankAndTrafficStats(?string $siteUrl = null): ?array
     {
-        $siteUrl ??= config('services.bing.site_url');
-        $apiKey = config('services.bing.webmaster_api_key');
+        $siteUrl ??= $this->settings->siteUrl();
+        $apiKey = $this->settings->apiKey();
 
         $resp = Http::timeout(45)->get(self::API_BASE . '/GetRankAndTrafficStats', [
             'siteUrl' => $siteUrl,

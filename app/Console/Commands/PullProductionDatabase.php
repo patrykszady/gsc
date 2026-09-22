@@ -95,6 +95,14 @@ class PullProductionDatabase extends Command
 
         $this->line('Run `php artisan migrate` if local code carries newer migrations than production.');
 
+        // The local cache was built from the database this command just
+        // replaced (jpeterson's SEO snapshot is cached for 15 minutes, for
+        // one), so a pull that left it in place kept showing the old
+        // numbers and read as "the pull did nothing". Cleared here rather
+        // than by the caller, so the four-command sequence in every README
+        // stays as it is.
+        $this->call('cache:clear');
+
         return self::SUCCESS;
     }
 

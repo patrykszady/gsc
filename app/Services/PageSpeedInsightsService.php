@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Seo\PsiSettings;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,10 @@ class PageSpeedInsightsService
 {
     protected const API = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
 
+    public function __construct(protected PsiSettings $settings)
+    {
+    }
+
     /**
      * Run PSI for a URL. Returns null on failure.
      *
@@ -28,7 +33,9 @@ class PageSpeedInsightsService
      */
     public function run(string $url, string $strategy = 'mobile'): ?array
     {
-        $key = config('services.google.pagespeed.api_key');
+        // No hard gate: PSI runs keyless on Google's shared, lower-quota
+        // limit when no key is configured — see PsiSettings' own docblock.
+        $key = $this->settings->apiKey();
 
         // Build query with repeated category= entries.
         $query = 'url=' . urlencode($url)

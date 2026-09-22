@@ -135,6 +135,14 @@ return [
             // see App\Support\Seo\UrlInspectionQuota.
             'inspection_daily_quota' => (int) env('GSC_INSPECTION_DAILY_QUOTA', 2000),
             'inspection_per_minute_quota' => (int) env('GSC_INSPECTION_PER_MINUTE_QUOTA', 600),
+            // Who runs this site's Search Console sync (2026-09-22): 'site'
+            // — this app's own three-hourly schedule — or 'ss-systems', if
+            // the central admin ever fans the shared kit's sync out to every
+            // tenant itself instead. Mirrors GBP's photos_owned_by exactly;
+            // see App\Support\Seo\SearchConsoleSyncOwnership. Only the
+            // SCHEDULE is gated by this — a manual sync (the command, or the
+            // admin's "sync now") always runs.
+            'sync_owned_by' => env('GSC_SYNC_OWNED_BY', 'site'),
         ],
         // PageSpeed Insights API (free, 25k req/day; API key recommended).
         'pagespeed' => [
@@ -146,7 +154,13 @@ return [
     // Bing Webmaster Tools API (free, simple API-key auth).
     'bing' => [
         'webmaster_api_key' => env('BING_WEBMASTER_API_KEY'),
-        'site_url' => env('APP_URL', 'https://gs.construction'),
+        // This app hosts several tenants (Site::current()) behind one
+        // APP_URL, so a literal 'https://gs.construction' fallback here
+        // would silently hand every OTHER tenant gs.construction's own
+        // Bing property whenever APP_URL happened to be unset — worse than
+        // reporting "not configured". No literal default: an unset APP_URL
+        // now reads as empty, same as an unset API key.
+        'site_url' => env('APP_URL'),
     ],
 
     'microsoft' => [
@@ -320,12 +334,6 @@ return [
 
     'twocaptcha' => [
         'api_key' => env('TWOCAPTCHA_API_KEY'),
-    ],
-
-    // Brave Search API — SERP data for competitor/backlink discovery.
-    // Free tier (~2k queries/mo, 1 req/s) covers the scheduled cadences.
-    'brave' => [
-        'api_key' => env('BRAVE_SEARCH_API_KEY'),
     ],
 
     // Laravel Forge API — used by `php artisan forge:deploy-script` to read and

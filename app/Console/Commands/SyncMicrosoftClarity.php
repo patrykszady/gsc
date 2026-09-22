@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ClarityDailyMetric;
 use App\Models\ClarityPageMetric;
 use App\Services\MicrosoftClarityService;
+use App\Support\Seo\ClaritySettings;
 use Illuminate\Console\Command;
 
 class SyncMicrosoftClarity extends Command
@@ -16,10 +17,10 @@ class SyncMicrosoftClarity extends Command
 
     protected $description = 'Sync Microsoft Clarity daily metrics for SEO/GEO monitoring';
 
-    public function handle(MicrosoftClarityService $svc): int
+    public function handle(MicrosoftClarityService $svc, ClaritySettings $settings): int
     {
         if (! $svc->isConfigured()) {
-            $this->error('Clarity not configured. Set MICROSOFT_CLARITY_ID and MICROSOFT_CLARITY_API_TOKEN in .env.');
+            $this->error('Clarity not configured. Set MICROSOFT_CLARITY_ID and MICROSOFT_CLARITY_API_TOKEN in .env, or add it from /admin.');
 
             return self::FAILURE;
         }
@@ -27,7 +28,10 @@ class SyncMicrosoftClarity extends Command
         $requestedDays = max(1, (int) $this->option('days'));
         $days = min($requestedDays, MicrosoftClarityService::MAX_DAYS);
         $dry = (bool) $this->option('dry-run');
-        $projectId = (string) config('services.microsoft.clarity.project_id');
+        // Through the same Settings class the service itself reads, so a
+        // project id stored via /admin (not env) still gets stamped onto
+        // the rows this command writes.
+        $projectId = (string) ($settings->projectId() ?? '');
 
         if ($requestedDays !== $days) {
             $this->warn('Clarity API supports max '.MicrosoftClarityService::MAX_DAYS." days; using {$days}.");

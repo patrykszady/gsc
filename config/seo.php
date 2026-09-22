@@ -288,7 +288,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Domain patterns considered "high-quality" referring hosts for a quick
-    | authority signal in seo:backlinks-monitor. These are regex snippets
+    | authority signal in competitor filtering. These are regex snippets
     | evaluated case-insensitively against referring hosts.
     */
     'backlinks' => [
@@ -439,7 +439,7 @@ return [
     | Shared "is this a competitor" data — read by App\Support\Seo\CompetitorFilter,
     | the one place every SEO intel source (LabsSource, SerpSource,
     | SeoDomainOverview, SeoMapPackCompetitors, SeoKeywordResearch,
-    | ContentAnalysisSource, SeoDiscoverCompetitors) decides whether a host is
+    | ContentAnalysisSource) decides whether a host is
     | a real local remodeling competitor. config/seo.php is shared across
     | every tenant site (config/sites/{slug}/seo.php overrides it per site,
     | same convention as ContentAnalysisSource::brandTerms()), so this list is
@@ -451,7 +451,7 @@ return [
     // Directories, marketplaces, review sites, social platforms, big-box
     // retailers, media and B2B SaaS: never a competing remodeling business,
     // however they show up in a SERP, a map-pack "website" field, or a Labs
-    // domain list. Union of the old SeoDiscoverCompetitors::$defaultExclusions
+    // domain list. Union of the retired competitor-discovery exclusions
     // and ContentAnalysisSource::DIRECTORY_DOMAINS lists (both kept as thin
     // aliases), normalized to full domains, plus two aggregators confirmed in
     // the live labs.competitor snapshots (2026-09-16 read) that were on

@@ -4,13 +4,14 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
+use App\Jobs\RunSeoChannelSyncJob;
 use App\Jobs\YelpAutoLogin;
 use App\Models\ImagePlatformUpload;
 use App\Models\OAuthToken;
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
-use App\Models\Site;
 use App\Models\ReviewUrl;
+use App\Models\Site;
 use App\Models\Testimonial;
 use App\Services\AiContentService;
 use App\Services\GoogleBusinessProfileService;
@@ -23,6 +24,11 @@ use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\OAuthState;
 use App\Support\Reviews\ReviewImport;
+use App\Support\Seo\BingSettings;
+use App\Support\Seo\ClaritySettings;
+use App\Support\Seo\DataForSeoSettings;
+use App\Support\Seo\PsiSettings;
+use App\Support\Tenancy;
 use App\Support\YelpCookieJar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,9 +37,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 
 /**
  * Ops-domain API for the central admin's Platforms screen: connection
@@ -81,6 +89,10 @@ class PlatformsController extends Controller
             'instagram' => $this->instagramStatus(),
             // Houzz and Angi: the scraped review imports, each keyed by platform.
             ...collect(ReviewImport::sources())->mapWithKeys(fn (string $source) => [$source::platform() => $source::status()])->all(),
+            'bing' => $this->bingStatus(),
+            'clarity' => $this->clarityStatus(),
+            'pagespeed' => $this->pagespeedStatus(),
+            'dataforseo' => $this->dataForSeoCredentialStatus(),
         ]);
     }
 
@@ -202,6 +214,20 @@ class PlatformsController extends Controller
         return $this->itemResponse(['output' => $output]);
     }
 
+    /**
+     * POST platforms/gsc/sync — runs the shared kit's Search Console sync
+     * on the queue right now, instead of waiting for the schedule's next
+     * three-hour tick. Queued rather than run inline (unlike
+     * submitGscSitemaps() above) because a full paginated pull can take
+     * minutes — the same reason RunSeoChannelSyncJob exists at all.
+     */
+    public function syncGsc(): JsonResponse
+    {
+        RunSeoChannelSyncJob::dispatch('seo:gsc-sync');
+
+        return $this->itemResponse(['queued' => true]);
+    }
+
     // ---- Yelp: credentials -------------------------------------------
 
     /**
@@ -258,6 +284,124 @@ class PlatformsController extends Controller
             'gbp' => $this->gbpStatus(),
             'gsc' => $this->gscStatus(),
         ]);
+    }
+
+    // ---- SEO sources: Bing, Clarity, PageSpeed, DataForSEO -------------
+
+    /**
+     * POST platforms/bing/credentials — cloned from saveGoogleCredentials():
+     * a blank field never overwrites what is already stored (there is no
+     * "harmless to blank" identifier field here the way Yelp's email is),
+     * and the fresh status block comes back, never the key itself.
+     */
+    public function saveBingCredentials(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'api_key' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (! empty($data['api_key'])) {
+            PlatformSetting::put(BingSettings::SETTING_API_KEY, $data['api_key']);
+        }
+
+        return $this->itemResponse(['bing' => $this->bingStatus()]);
+    }
+
+    /** DELETE platforms/bing/credentials — back to whatever the server's env provides (usually nothing). */
+    public function clearBingCredentials(): JsonResponse
+    {
+        PlatformSetting::put(BingSettings::SETTING_API_KEY, null);
+
+        return $this->itemResponse(['bing' => $this->bingStatus()]);
+    }
+
+    public function saveClarityCredentials(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'project_id' => ['nullable', 'string', 'max:255'],
+            'api_token' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (! empty($data['project_id'])) {
+            PlatformSetting::put(ClaritySettings::SETTING_PROJECT_ID, $data['project_id']);
+        }
+        if (! empty($data['api_token'])) {
+            PlatformSetting::put(ClaritySettings::SETTING_API_TOKEN, $data['api_token']);
+        }
+
+        // The public layout caches projectId() for a few minutes (it reads
+        // on every page); without this the new id would not show up there
+        // until that TTL expired.
+        ClaritySettings::forgetProjectIdCache();
+
+        return $this->itemResponse(['clarity' => $this->clarityStatus()]);
+    }
+
+    public function clearClarityCredentials(): JsonResponse
+    {
+        PlatformSetting::put(ClaritySettings::SETTING_PROJECT_ID, null);
+        PlatformSetting::put(ClaritySettings::SETTING_API_TOKEN, null);
+        ClaritySettings::forgetProjectIdCache();
+
+        return $this->itemResponse(['clarity' => $this->clarityStatus()]);
+    }
+
+    /**
+     * POST platforms/pagespeed/credentials — the one optional credential of
+     * the four: PageSpeedInsightsService runs keyless on Google's shared
+     * limit either way, so clearing this never breaks the sync, only
+     * lowers its daily quota.
+     */
+    public function savePagespeedCredentials(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'api_key' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (! empty($data['api_key'])) {
+            PlatformSetting::put(PsiSettings::SETTING_API_KEY, $data['api_key']);
+        }
+
+        return $this->itemResponse(['pagespeed' => $this->pagespeedStatus()]);
+    }
+
+    public function clearPagespeedCredentials(): JsonResponse
+    {
+        PlatformSetting::put(PsiSettings::SETTING_API_KEY, null);
+
+        return $this->itemResponse(['pagespeed' => $this->pagespeedStatus()]);
+    }
+
+    /**
+     * POST platforms/dataforseo/credentials — same shape as the other
+     * three, but the caller is ss.systems provisioning this tenant's share
+     * of its own metered account (Patryk's call, 2026-09-22) once the
+     * tenant is switched on, not this site's own admin typing a key in —
+     * see DataForSeoSettings.
+     */
+    public function saveDataForSeoCredentials(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'login' => ['nullable', 'string', 'max:255'],
+            'password' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (! empty($data['login'])) {
+            PlatformSetting::put(DataForSeoSettings::SETTING_LOGIN, $data['login']);
+        }
+        if (! empty($data['password'])) {
+            PlatformSetting::put(DataForSeoSettings::SETTING_PASSWORD, $data['password']);
+        }
+
+        return $this->itemResponse(['dataforseo' => $this->dataForSeoCredentialStatus()]);
+    }
+
+    public function clearDataForSeoCredentials(): JsonResponse
+    {
+        PlatformSetting::put(DataForSeoSettings::SETTING_LOGIN, null);
+        PlatformSetting::put(DataForSeoSettings::SETTING_PASSWORD, null);
+
+        return $this->itemResponse(['dataforseo' => $this->dataForSeoCredentialStatus()]);
     }
 
     public function saveYelpCredentials(Request $request): JsonResponse
@@ -1027,6 +1171,41 @@ class PlatformsController extends Controller
     ];
 
     /**
+     * GET platforms/gbp/media?account_id=&location_id= — every media item on
+     * one listing (2026-09-22), for the central admin's per-market photo
+     * pass-through to check what Google already has before it uploads more.
+     * Same account/location shape as gbp/reviews and gbp/media's own
+     * POST/DELETE — this grant can read any listing it manages, not only
+     * this site's own.
+     */
+    public function gbpListMedia(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'string', 'max:191'],
+            'location_id' => ['required', 'string', 'max:191'],
+        ]);
+
+        $service = app(GoogleBusinessProfileService::class);
+
+        if (! $service->hasRefreshToken()) {
+            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
+        }
+
+        $items = $service->listMediaFor(
+            GoogleBusinessListing::bareId($data['account_id']),
+            GoogleBusinessListing::bareId($data['location_id']),
+        );
+
+        if ($items === null) {
+            $message = 'Google refused the media lookup: '.($service->getLastError()['message'] ?? 'unknown error');
+
+            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
+        }
+
+        return $this->itemResponse(['items' => $items, 'count' => count($items)]);
+    }
+
+    /**
      * POST platforms/gbp/media — upload one of THIS site's project photos to
      * a Business Profile listing (2026-09-21), for the central admin's
      * per-market photo pass-through: the account and location are passed in,
@@ -1207,6 +1386,14 @@ class PlatformsController extends Controller
         $token = $service->getStoredToken();
         $config = config('services.google.search_console');
 
+        // Bookkeeping from the last seo:gsc-sync run, written by
+        // App\Support\Seo\SearchConsoleWriter::recordSyncRun(). Null-safe
+        // throughout: a site that has never synced — or was never
+        // connected — has no metadata to read yet, and the card must
+        // render calmly rather than assume a run happened.
+        $sync = $token?->metadata['sync'] ?? null;
+        $syncedAt = $sync['finished_at'] ?? null;
+
         return [
             'connected' => (bool) $token?->refresh_token,
             'app_credentials_configured' => ! empty($config['client_id']) && ! empty($config['client_secret']),
@@ -1216,7 +1403,131 @@ class PlatformsController extends Controller
             'access_token_expires_at' => $token?->access_token_expires_at?->toIso8601String(),
             'scopes' => $token?->scopes,
             'configured' => $service->isConfigured(),
+            'last_synced_at' => $syncedAt,
+            'last_sync_status' => $sync['status'] ?? null,
+            'last_sync_error' => $sync['error'] ?? null,
+            // Rows the last run wrote, the same key jpeterson reports.
+            'last_sync_rows' => $sync ? (($sync['inserted'] ?? 0) + ($sync['updated'] ?? 0)) : null,
+            // Twice the schedule's cadence (SearchConsoleSyncRule's own
+            // definition of "stale") — a site still inside that window is
+            // simply due any minute now, not broken.
+            'sync_stale' => $syncedAt
+                ? Carbon::parse($syncedAt)->lt(now()->subHours(SearchConsoleSyncRule::SYNCED_STALE_AFTER_HOURS))
+                : null,
         ];
+    }
+
+    /**
+     * Bing Webmaster Tools. No live sync bookkeeping exists yet (that is
+     * Phase 2's BingSyncDispatcher/reconcile work), so the last-sync
+     * fields stay null for now rather than faking a check — this block
+     * only reports the credential itself, presence/fingerprint only,
+     * never the key.
+     */
+    protected function bingStatus(): array
+    {
+        $settings = app(BingSettings::class);
+        $apiKey = (string) ($settings->apiKey() ?? '');
+
+        return [
+            'configured' => $settings->isConfigured(),
+            'api_key_configured' => filled($apiKey),
+            'api_key_fingerprint' => filled($apiKey) ? substr(hash('sha256', $apiKey), 0, 6) : null,
+            'source' => $settings->source(),
+            'last_synced_at' => null,
+            'last_sync_status' => null,
+            'last_sync_error' => null,
+        ];
+    }
+
+    /**
+     * Microsoft Clarity. 'configured' needs BOTH the project id and the
+     * API token — the same requirement ClaritySettings::isConfigured()
+     * enforces before any export call is attempted.
+     */
+    protected function clarityStatus(): array
+    {
+        $settings = app(ClaritySettings::class);
+        $projectId = (string) ($settings->projectId() ?? '');
+        $apiToken = (string) ($settings->apiToken() ?? '');
+
+        return [
+            'configured' => $settings->isConfigured(),
+            'project_id_configured' => filled($projectId),
+            'project_id_fingerprint' => filled($projectId) ? substr(hash('sha256', $projectId), 0, 6) : null,
+            'api_token_configured' => filled($apiToken),
+            'api_token_fingerprint' => filled($apiToken) ? substr(hash('sha256', $apiToken), 0, 6) : null,
+            'source' => $settings->source(),
+            'last_synced_at' => null,
+            'last_sync_status' => null,
+            'last_sync_error' => null,
+        ];
+    }
+
+    /**
+     * PageSpeed Insights. Never a broken/disconnected state while
+     * unconfigured — PSI runs keyless on Google's shared limit either way
+     * (PsiSettings has no isConfigured() gate on purpose). 'configured'
+     * here mirrors usingOwnKey() only so the shape matches the other three
+     * blocks; the card reads using_own_key for its actual copy.
+     */
+    protected function pagespeedStatus(): array
+    {
+        $settings = app(PsiSettings::class);
+        $apiKey = (string) ($settings->apiKey() ?? '');
+
+        return [
+            'configured' => $settings->usingOwnKey(),
+            'using_own_key' => $settings->usingOwnKey(),
+            'api_key_configured' => filled($apiKey),
+            'api_key_fingerprint' => filled($apiKey) ? substr(hash('sha256', $apiKey), 0, 6) : null,
+            'source' => $settings->source(),
+            'last_synced_at' => null,
+            'last_sync_status' => null,
+            'last_sync_error' => null,
+        ];
+    }
+
+    /**
+     * DataForSEO. 'configured' just means this tenant has a working
+     * login/password, from wherever it came from — the "switched on for
+     * this site" business decision lives on ss.systems, not here (see
+     * DataForSeoSettings). spend_this_month sums this month's
+     * seo_intel_runs cost rows when that bookkeeping table exists; null on
+     * a site that has never run seo:intel, never a live spend call.
+     */
+    protected function dataForSeoCredentialStatus(): array
+    {
+        $settings = app(DataForSeoSettings::class);
+        $login = (string) ($settings->login() ?? '');
+        $password = (string) ($settings->password() ?? '');
+
+        return [
+            'configured' => $settings->isConfigured(),
+            'login_configured' => filled($login),
+            'login_fingerprint' => filled($login) ? substr(hash('sha256', $login), 0, 6) : null,
+            'password_configured' => filled($password),
+            'password_fingerprint' => filled($password) ? substr(hash('sha256', $password), 0, 6) : null,
+            'source' => $settings->source(),
+            'last_synced_at' => null,
+            'last_sync_status' => null,
+            'last_sync_error' => null,
+            'spend_this_month' => $this->dataForSeoSpendThisMonth(),
+        ];
+    }
+
+    /** This calendar month's total seo_intel_runs cost, or null before that table exists. */
+    protected function dataForSeoSpendThisMonth(): ?float
+    {
+        if (! Schema::hasTable('seo_intel_runs')) {
+            return null;
+        }
+
+        $spent = Tenancy::table('seo_intel_runs')
+            ->where('taken_on', '>=', now()->startOfMonth()->toDateString())
+            ->sum('cost');
+
+        return round((float) $spent, 2);
     }
 
     protected function metaStatus(): array

@@ -8,6 +8,7 @@ use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\AreaServed;
 use App\Models\GscCoverageState;
 use App\Models\GscDailyTotal;
+use App\Models\Site;
 use App\Models\Testimonial;
 use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
@@ -18,6 +19,7 @@ use App\Support\Seo\FrustratedPages;
 use App\Support\Seo\SearchAppearance;
 use App\Support\Seo\SearchConsoleProperty;
 use App\Support\Seo\SitemapStatus;
+use App\Support\SeoReportRun;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Database\Query\Builder;
@@ -30,9 +32,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
+use Throwable;
 
 /**
  * Ported from the Livewire admin's SeoReports page (app/Livewire/Admin/SeoReports.php).
@@ -46,7 +50,7 @@ use League\CommonMark\GithubFlavoredMarkdownConverter;
  *     diagnostic).
  *
  * regenerate() runs the report's artisan command SYNCHRONOUSLY, same as the
- * Livewire original — some of those commands call external APIs (Brave
+ * Livewire original — some of those commands call external APIs (PageSpeed
  * Search, etc.). Never exercised against the live app in verification; see
  * the phpunit coverage instead.
  */
@@ -86,22 +90,23 @@ class SeoReportController extends Controller
             abort(404, "Unknown report \"{$report}\".");
         }
 
-        try {
-            Artisan::call($reports[$report]['command']);
-            $message = $reports[$report]['label'].' regenerated.';
-        } catch (\Throwable $e) {
-            $message = 'Failed to regenerate: '.$e->getMessage();
-        }
+        $trendDays = (int) $request->integer('trend_days', 14);
+
+        $run = SeoReportRun::run($report, $reports[$report], $request, $trendDays);
 
         // Same cache-busting as the Livewire original's regenerate(): health
         // snapshot plus the search snapshot for whichever trend window the
         // caller is currently looking at (defaults match the page default).
-        $trendDays = (int) $request->integer('trend_days', 14);
+        // Busted regardless of the run's outcome, same as before — a failed
+        // run can still have left a stale cache from an earlier good run.
         Cache::forget(Tenancy::cacheKey('admin.seo-reports.health-snapshot'));
         Cache::forget($this->searchSnapshotCacheKey($trendDays));
 
         $payload = $this->reportPayload($report, $reports[$report]);
-        $payload['message'] = $message;
+        $payload['ok'] = $run['ok'];
+        $payload['status'] = $run['status'];
+        $payload['message'] = $run['message'];
+        $payload['run'] = $run;
 
         return $this->itemResponse($payload);
     }
@@ -155,15 +160,67 @@ class SeoReportController extends Controller
     {
         $trendDays = $this->normalizeTrendDays((int) $request->integer('trend_days', 14));
 
-        Cache::forget(Tenancy::cacheKey('admin.seo-reports.health-snapshot'));
-        Cache::forget($this->searchSnapshotCacheKey($trendDays));
-        SitemapStatus::forget(SearchConsoleProperty::url());
+        $context = [
+            'trend_days' => $trendDays,
+            'site' => Site::current()?->slug,
+            'requested_by' => $request->header('X-Admin-User'),
+            'screen' => $request->header('X-Admin-Screen'),
+        ];
 
-        $response = $this->snapshot($request);
-        $data = $response->getData(true)['data'];
-        $data['message'] = 'Dashboard metrics refreshed.';
+        Log::channel('seo-reports')->info('snapshot refresh started', $context);
 
-        return $this->itemResponse($data);
+        $startedAt = Carbon::now();
+        $start = microtime(true);
+
+        try {
+            $healthKey = Tenancy::cacheKey('admin.seo-reports.health-snapshot');
+            $searchKey = $this->searchSnapshotCacheKey($trendDays);
+            Cache::forget($healthKey);
+            Cache::forget($searchKey);
+            SitemapStatus::forget(SearchConsoleProperty::url());
+            $cachesCleared = [$healthKey, $searchKey, 'sitemap-status'];
+
+            $response = $this->snapshot($request);
+            $data = $response->getData(true)['data'];
+
+            $finishedAt = Carbon::now();
+            $durationMs = (int) round((microtime(true) - $start) * 1000);
+
+            Log::channel('seo-reports')->info('snapshot refresh finished', $context + [
+                'duration_ms' => $durationMs,
+                'caches_cleared' => $cachesCleared,
+                'top_queries' => count($data['top_queries'] ?? []),
+                'top_pages' => count($data['top_pages'] ?? []),
+                'trend_points' => count($data['trend'] ?? []),
+                'health_score_present' => isset($data['health']['score']),
+            ]);
+
+            $seconds = number_format($durationMs / 1000, 1);
+            $data['ok'] = true;
+            $data['message'] = "Dashboard metrics refreshed in {$seconds} s.";
+            $data['run'] = [
+                'duration_ms' => $durationMs,
+                'caches_cleared' => $cachesCleared,
+                'started_at' => $startedAt->toIso8601String(),
+                'finished_at' => $finishedAt->toIso8601String(),
+                'log_channel' => 'seo-reports',
+            ];
+
+            return $this->itemResponse($data);
+        } catch (Throwable $e) {
+            $durationMs = (int) round((microtime(true) - $start) * 1000);
+
+            Log::channel('seo-reports')->error('snapshot refresh failed', $context + [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'duration_ms' => $durationMs,
+            ]);
+
+            return $this->itemResponse([
+                'ok' => false,
+                'message' => 'Could not refresh dashboard metrics: '.$e->getMessage(),
+            ]);
+        }
     }
 
     // -- Reports -----------------------------------------------------------

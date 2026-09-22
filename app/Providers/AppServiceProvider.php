@@ -18,11 +18,13 @@ use App\Observers\BlogPostObserver;
 use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use App\Services\GoogleSearchConsoleService;
 use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\SEO\RecrawlNudger;
+use App\Support\Seo\SearchConsoleWriter as SiteSearchConsoleWriter;
 use App\Support\SEO\SEOBuilder;
 use App\Support\Tenancy;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -40,6 +42,9 @@ use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
 use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
+use SsSystems\Platform\Seo\SearchConsoleClient;
+use SsSystems\Platform\Seo\SearchConsoleSyncClient;
+use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -50,6 +55,19 @@ class AppServiceProvider extends ServiceProvider
     {
         // Per-request SEO state accumulator (consumed by app layout).
         $this->app->singleton(SEOBuilder::class);
+
+        // The shared kit's Search Console interfaces, bound to this site's
+        // own implementations: GoogleSearchConsoleService already carries
+        // everything SearchConsoleClient needs (SitemapStatus's resolution
+        // of it keeps working unchanged) and now everything the fuller
+        // SearchConsoleSyncClient needs too, and
+        // SsSystems\Platform\Seo\SearchConsoleSync::run() writes through
+        // App\Support\Seo\SearchConsoleWriter — see
+        // App\Console\Commands\SyncGoogleSearchConsole for the command that
+        // drives them.
+        $this->app->bind(SearchConsoleClient::class, GoogleSearchConsoleService::class);
+        $this->app->bind(SearchConsoleSyncClient::class, GoogleSearchConsoleService::class);
+        $this->app->bind(SearchConsoleWriterContract::class, SiteSearchConsoleWriter::class);
     }
 
     /**

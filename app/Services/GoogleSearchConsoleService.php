@@ -8,6 +8,7 @@ use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 
 /**
  * Google Search Console API wrapper (free, official).
@@ -23,8 +24,14 @@ use Illuminate\Support\Facades\Log;
  *
  * Docs:
  *   https://developers.google.com/webmaster-tools/v1/searchanalytics/query
+ *
+ * Implements the shared kit's SearchConsoleSyncClient (on top of the
+ * sitemap-only SearchConsoleClient it already satisfied) so
+ * SsSystems\Platform\Seo\SearchConsoleSync::run() can drive this site's sync
+ * — see App\Console\Commands\SyncGoogleSearchConsole, the thin wrapper that
+ * calls it, and App\Support\Seo\SearchConsoleWriter, where the results land.
  */
-class GoogleSearchConsoleService
+class GoogleSearchConsoleService implements SearchConsoleSyncClient
 {
     protected const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
@@ -167,6 +174,18 @@ class GoogleSearchConsoleService
         }
 
         return $resp->json('rows', []);
+    }
+
+    /**
+     * The property this site's sync runs against — the one method
+     * SearchConsoleSyncClient adds beyond what SitemapStatus already needed.
+     * Resolved without touching the network, so SearchConsoleSync can read
+     * it even to describe a run that turns out to be skipped for lack of a
+     * grant.
+     */
+    public function siteUrl(): string
+    {
+        return SearchConsoleProperty::url();
     }
 
     public function listSites(): ?array

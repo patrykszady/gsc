@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  *
  *  1. Universe: every Search Console query with impressions, the generated
  *     town × service phrases for every area we serve, and the keywords the
- *     map-pack leaders (geo-grid) and organic page-one competitors (Brave
+ *     map-pack leaders (geo-grid) and organic page-one competitors (from the competitor
  *     discovery) rank for. Remodeling-ish terms only.
  *  2. Search volume for the universe (one task per 1,000 keywords).
  *  3. Our own standing from gsc_query_metrics (position, impressions, clicks).

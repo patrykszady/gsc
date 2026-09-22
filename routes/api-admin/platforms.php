@@ -23,6 +23,9 @@ Route::prefix('platforms')->group(function () {
     // the on-demand sitemap re-submit.
     Route::get('yelp/reviews-summary', [PlatformsController::class, 'yelpReviewsSummary']);
     Route::post('gsc/submit-sitemaps', [PlatformsController::class, 'submitGscSitemaps']);
+    // On-demand "sync now": queues seo:gsc-sync rather than waiting for the
+    // schedule's next three-hour tick.
+    Route::post('gsc/sync', [PlatformsController::class, 'syncGsc']);
 
     // ---- Scraped review imports (Houzz, Angi): import now. Each profile URL is
     // that platform's link on the Social Media page — social-media/urls — and the
@@ -37,14 +40,32 @@ Route::prefix('platforms')->group(function () {
     Route::post('google/credentials', [PlatformsController::class, 'saveGoogleCredentials']);
     Route::delete('google/credentials', [PlatformsController::class, 'clearGoogleCredentials']);
 
+    // ---- SEO sources: Bing, Clarity, PageSpeed, DataForSEO ----
+    // Same shape as google/credentials above: validate, write only the
+    // fields actually sent (never overwrite a stored secret with a blank
+    // re-submit), return the fresh status block, never the raw value.
+    // DataForSEO's is written by ss.systems provisioning the tenant's
+    // share of its own metered account, not typed by this site's owner —
+    // see App\Support\Seo\DataForSeoSettings — but the endpoint shape is
+    // identical so the site never needs to know the difference.
+    Route::post('bing/credentials', [PlatformsController::class, 'saveBingCredentials']);
+    Route::delete('bing/credentials', [PlatformsController::class, 'clearBingCredentials']);
+    Route::post('clarity/credentials', [PlatformsController::class, 'saveClarityCredentials']);
+    Route::delete('clarity/credentials', [PlatformsController::class, 'clearClarityCredentials']);
+    Route::post('pagespeed/credentials', [PlatformsController::class, 'savePagespeedCredentials']);
+    Route::delete('pagespeed/credentials', [PlatformsController::class, 'clearPagespeedCredentials']);
+    Route::post('dataforseo/credentials', [PlatformsController::class, 'saveDataForSeoCredentials']);
+    Route::delete('dataforseo/credentials', [PlatformsController::class, 'clearDataForSeoCredentials']);
+
     // Which Business Profile listing this site publishes to. The ids only
     // exist after the OAuth grant, so they are discovered here and stored in
     // platform_settings rather than asked for as env values nobody can edit.
     Route::get('gbp/listings', [PlatformsController::class, 'gbpListings']);
     // One listing's Google reviews, for the central admin's per-market import.
     Route::get('gbp/reviews', [PlatformsController::class, 'gbpReviews']);
-    // Upload/delete a project photo on one listing, for the central admin's
-    // per-market photo pass-through.
+    // List/upload/delete a project photo on one listing, for the central
+    // admin's per-market photo pass-through.
+    Route::get('gbp/media', [PlatformsController::class, 'gbpListMedia']);
     Route::post('gbp/media', [PlatformsController::class, 'uploadGbpMedia']);
     Route::delete('gbp/media', [PlatformsController::class, 'deleteGbpMedia']);
     Route::post('gbp/listing', [PlatformsController::class, 'saveGbpListing']);

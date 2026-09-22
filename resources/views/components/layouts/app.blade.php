@@ -468,13 +468,22 @@
         // Load analytics after page is interactive
         function loadDeferredScripts() {
 
-            @if(config('services.microsoft.clarity_id'))
+            {{-- The project id is stored per tenant from /admin (App\Support\Seo\ClaritySettings),
+                 with the env value only as a fallback until every tenant is imported off it — see
+                 seo:credentials-import-from-env. Reading config('services.microsoft.clarity_id')
+                 here directly, like this used to, would go stale the moment an owner sets the id
+                 from /admin or the env key is retired: the tag would just stop rendering, silently,
+                 with nothing in any log. ClaritySettings::projectId() is the one resolver every
+                 Clarity reader goes through (it's also what the export sync uses), and it caches the
+                 lookup per tenant so this costs at most one query per few minutes, not one per page. --}}
+            @php($__clarityProjectId = app(\App\Support\Seo\ClaritySettings::class)->projectId())
+            @if($__clarityProjectId)
             // Microsoft Clarity
             (function(c,l,a,r,i,t,y){
                 c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
                 t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
                 y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", "{{ config('services.microsoft.clarity_id') }}");
+            })(window, document, "clarity", "script", "{{ $__clarityProjectId }}");
             @endif
 
         }

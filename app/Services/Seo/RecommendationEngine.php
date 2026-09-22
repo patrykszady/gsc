@@ -9,6 +9,7 @@ use App\Models\SeoAction;
 use App\Models\Testimonial;
 use App\Services\Seo\Intel\IntelRunner;
 use App\Services\Seo\Intel\IntelStore;
+use App\Support\Seo\BingSettings;
 use App\Support\Seo\CrawlFiles;
 use App\Support\Seo\FrustratedPages;
 use App\Support\SeoStorage;
@@ -62,7 +63,7 @@ class RecommendationEngine
             if (config('services.google.search_console.enabled')) {
                 $this->rule(fn () => $this->healStaleChannelSync('gsc_daily_totals', 'seo:gsc-sync', ['--days' => 7]));
             }
-            if (! empty(config('services.bing.webmaster_api_key'))) {
+            if (app(BingSettings::class)->isConfigured()) {
                 $this->rule(fn () => $this->healStaleChannelSync('bing_daily_totals', 'seo:bing-sync', []));
             }
         }

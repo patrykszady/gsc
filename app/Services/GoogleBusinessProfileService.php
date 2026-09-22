@@ -553,6 +553,76 @@ class GoogleBusinessProfileService
     }
 
     /**
+     * EVERY media item of a given listing (2026-09-22), for the central
+     * admin's per-market photo pass-through: unlike listMedia()/listAllMedia()
+     * above, which read THIS site's own configured location, the account and
+     * location are passed in — same shape as fetchReviewsFor() and
+     * uploadMediaFor() — so the same grant can read any listing it manages.
+     * Auto-paginates (Google returns up to 100 items per page) and flattens
+     * the result to just what the admin needs to show and match against its
+     * own upload ledger. Null + getLastError() on failure, same as every
+     * other pass-through here.
+     *
+     * @return list<array{name: string, source_url: ?string, google_url: ?string, category: ?string, create_time: ?string}>|null
+     */
+    public function listMediaFor(string $accountId, string $locationId): ?array
+    {
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            $this->lastError ??= ['message' => 'No Google authorization on file'];
+
+            return null;
+        }
+
+        $url = self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}/media";
+        $items = [];
+        $pageToken = null;
+
+        do {
+            $params = ['pageSize' => 100];
+            if ($pageToken) {
+                $params['pageToken'] = $pageToken;
+            }
+
+            $response = Http::withToken($accessToken)->timeout(30)->get($url, $params);
+
+            if (! $response->successful()) {
+                $this->lastError = [
+                    'message' => 'List media failed',
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ];
+                Log::channel('gbp')->warning('GBP: Failed to list media for listing', [
+                    'account_id' => $accountId,
+                    'location_id' => $locationId,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return null;
+            }
+
+            $data = $response->json();
+
+            foreach ($data['mediaItems'] ?? [] as $item) {
+                $items[] = [
+                    'name' => $item['name'] ?? '',
+                    'source_url' => $item['sourceUrl'] ?? null,
+                    'google_url' => $item['googleUrl'] ?? null,
+                    'category' => $item['locationAssociation']['category'] ?? null,
+                    'create_time' => $item['createTime'] ?? null,
+                ];
+            }
+
+            $pageToken = $data['nextPageToken'] ?? null;
+        } while ($pageToken);
+
+        $this->lastError = null;
+
+        return $items;
+    }
+
+    /**
      * One listing's reviews, a page at a time (2026-09-22), for the central
      * admin's per-market review import: unlike fetchReviews(), which reads
      * the site's own single listing, the account and location are passed

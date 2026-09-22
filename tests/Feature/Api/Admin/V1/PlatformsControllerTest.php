@@ -73,6 +73,46 @@ class PlatformsControllerTest extends TestCase
         // value here isn't something this test can predict.
     }
 
+    /**
+     * The four SEO-source blocks added 2026-09-22 (Bing, Clarity,
+     * PageSpeed, DataForSEO) — each of PlatformsBingCredentialsTest /
+     * PlatformsClarityCredentialsTest / PlatformsPagespeedCredentialsTest /
+     * PlatformsDataForSeoCredentialsTest covers its own save/clear round
+     * trip; this just pins that status() carries all four with nothing
+     * configured, on a box with none of these env vars set.
+     */
+    public function test_status_reports_the_four_seo_source_blocks_disconnected_by_default(): void
+    {
+        config([
+            'services.bing.webmaster_api_key' => null,
+            'services.microsoft.clarity.project_id' => null,
+            'services.microsoft.clarity.api_token' => null,
+            'services.google.pagespeed.api_key' => null,
+            'services.dataforseo.login' => null,
+            'services.dataforseo.password' => null,
+        ]);
+
+        $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data');
+
+        $this->assertFalse($data['bing']['configured']);
+        $this->assertNull($data['bing']['source']);
+        $this->assertNull($data['bing']['api_key_fingerprint']);
+
+        $this->assertFalse($data['clarity']['configured']);
+        $this->assertNull($data['clarity']['source']);
+
+        $this->assertFalse($data['pagespeed']['configured']);
+        $this->assertFalse($data['pagespeed']['using_own_key']);
+        $this->assertNull($data['pagespeed']['source']);
+
+        $this->assertFalse($data['dataforseo']['configured']);
+        $this->assertNull($data['dataforseo']['source']);
+        // seo_intel_runs exists (migrated) but has no rows yet — a real
+        // zero, not "unknown"; PlatformsDataForSeoCredentialsTest pins the
+        // null-before-the-table-exists case separately.
+        $this->assertEquals(0, $data['dataforseo']['spend_this_month']);
+    }
+
     public function test_status_reports_connected_providers_and_never_leaks_token_values(): void
     {
         OAuthToken::create([
@@ -132,6 +172,63 @@ class PlatformsControllerTest extends TestCase
         $this->assertSame('testpage', $data['meta']['instagram_username']);
         $this->assertArrayNotHasKey('access_token', $data['meta']);
         $this->assertArrayNotHasKey('refresh_token', $data['meta']);
+    }
+
+    /**
+     * gscStatus()'s four last-sync keys (2026-09-22), written by
+     * App\Support\Seo\SearchConsoleWriter::recordSyncRun() onto the
+     * oauth_tokens row's metadata — null-safe for a site that has never
+     * synced, and a bool for staleness once it has.
+     */
+    public function test_gsc_status_reports_the_last_sync_summary_null_safe_before_any_run(): void
+    {
+        $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data');
+
+        $this->assertNull($data['gsc']['last_synced_at']);
+        $this->assertNull($data['gsc']['last_sync_status']);
+        $this->assertNull($data['gsc']['last_sync_error']);
+        $this->assertNull($data['gsc']['sync_stale']);
+    }
+
+    public function test_gsc_status_reports_a_recent_ok_run_as_not_stale(): void
+    {
+        $token = OAuthToken::create([
+            'provider' => 'google_search_console',
+            'refresh_token' => 'gsc-token',
+            'metadata' => ['sync' => [
+                'status' => 'ok',
+                'inserted' => 3,
+                'updated' => 0,
+                'error' => null,
+                'finished_at' => now()->subHour()->toIso8601String(),
+            ]],
+        ]);
+
+        $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data');
+
+        $this->assertSame($token->metadata['sync']['finished_at'], $data['gsc']['last_synced_at']);
+        $this->assertSame('ok', $data['gsc']['last_sync_status']);
+        $this->assertNull($data['gsc']['last_sync_error']);
+        $this->assertFalse($data['gsc']['sync_stale']);
+    }
+
+    public function test_gsc_status_reports_an_old_run_as_stale(): void
+    {
+        OAuthToken::create([
+            'provider' => 'google_search_console',
+            'refresh_token' => 'gsc-token',
+            'metadata' => ['sync' => [
+                'status' => 'error',
+                'error' => 'Search Console query failed: {"status":500}',
+                'finished_at' => now()->subHours(48)->toIso8601String(),
+            ]],
+        ]);
+
+        $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data');
+
+        $this->assertSame('error', $data['gsc']['last_sync_status']);
+        $this->assertStringContainsString('500', $data['gsc']['last_sync_error']);
+        $this->assertTrue($data['gsc']['sync_stale']);
     }
 
     public function test_status_reports_yelp_session_state_from_local_cache_only(): void

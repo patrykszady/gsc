@@ -3,7 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\ClarityDailyMetric;
+use App\Models\ClientError;
 use App\Services\MicrosoftClarityService;
+use App\Support\Seo\ClaritySettings;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,10 +16,13 @@ class SeoClarityHealth extends Command
 
     protected $description = 'Health check for Microsoft Clarity integration and latest metric freshness';
 
-    public function handle(MicrosoftClarityService $svc): int
+    public function handle(MicrosoftClarityService $svc, ClaritySettings $settings): int
     {
         $isConfigured = $svc->isConfigured();
-        $projectId = (string) config('services.microsoft.clarity.project_id');
+        // Through the same Settings class the service itself reads, so a
+        // project id stored via /admin (not env) is not read as "(empty)"
+        // here while the service above just fetched real data with it.
+        $projectId = (string) ($settings->projectId() ?? '');
 
         $apiReachable = false;
         $apiError = null;
@@ -44,15 +49,15 @@ class SeoClarityHealth extends Command
 
         $this->newLine();
         $this->info('=== Clarity Health ===');
-        $this->line('Configured: ' . ($isConfigured ? 'yes' : 'no'));
-        $this->line('API reachable: ' . ($apiReachable ? 'yes' : 'no'));
-        $this->line('Project ID: ' . ($projectId !== '' ? $projectId : '(empty)'));
-        $this->line('Stored rows: ' . $rowsCount);
-        $this->line('Latest date: ' . ($latestDate ?? '(none)'));
-        $this->line('Latest age: ' . ($latestAge ?? '(none)'));
+        $this->line('Configured: '.($isConfigured ? 'yes' : 'no'));
+        $this->line('API reachable: '.($apiReachable ? 'yes' : 'no'));
+        $this->line('Project ID: '.($projectId !== '' ? $projectId : '(empty)'));
+        $this->line('Stored rows: '.$rowsCount);
+        $this->line('Latest date: '.($latestDate ?? '(none)'));
+        $this->line('Latest age: '.($latestAge ?? '(none)'));
 
         if ($latest) {
-            $this->line('Latest metrics: ' . json_encode([
+            $this->line('Latest metrics: '.json_encode([
                 'sessions' => $latest->sessions,
                 'users' => $latest->users,
                 'pageviews' => $latest->pageviews,
@@ -74,11 +79,11 @@ class SeoClarityHealth extends Command
         $spike = $this->detectScriptErrorSpike($projectId, $latest);
         if ($spike !== null) {
             $this->newLine();
-            $this->error('⚠ JS error spike: ' . $spike['summary']);
+            $this->error('⚠ JS error spike: '.$spike['summary']);
         }
 
         if (! $apiReachable && $apiError) {
-            $this->warn('API error: ' . $apiError);
+            $this->warn('API error: '.$apiError);
         }
 
         if ((bool) $this->option('markdown')) {
@@ -114,7 +119,7 @@ class SeoClarityHealth extends Command
             || $latest->date->lt(now()->subDays($staleThresholdDays)->startOfDay());
 
         if ($isStale) {
-            $this->error('Clarity data is stale (latest: ' . ($latestDate ?? 'none') . ') — sync pipeline may be broken.');
+            $this->error('Clarity data is stale (latest: '.($latestDate ?? 'none').') — sync pipeline may be broken.');
 
             return self::FAILURE;
         }
@@ -132,7 +137,7 @@ class SeoClarityHealth extends Command
         // a broken deploy (confirmed 2026-07-14: 48% spike, all CF challenge
         // noise, site JS clean under a rendered-browser audit).
         if ($spike !== null) {
-            $beaconErrors = \App\Models\ClientError::where('last_seen_at', '>=', now()->subHours(36))->count();
+            $beaconErrors = ClientError::where('last_seen_at', '>=', now()->subHours(36))->count();
 
             if ($beaconErrors > 0) {
                 $this->error("Beacon corroborates the spike ({$beaconErrors} client errors in 36h) — treating as a real regression.");
@@ -225,16 +230,16 @@ class SeoClarityHealth extends Command
         $lines = [];
         $lines[] = '# Clarity health';
         $lines[] = '';
-        $lines[] = 'Generated: ' . now()->toIso8601String();
+        $lines[] = 'Generated: '.now()->toIso8601String();
         $lines[] = '';
         $lines[] = '## Status';
         $lines[] = '';
-        $lines[] = '- Configured: ' . ($isConfigured ? 'yes' : 'no');
-        $lines[] = '- API reachable: ' . ($apiReachable ? 'yes' : 'no');
-        $lines[] = '- Project ID: ' . ($projectId !== '' ? $projectId : '(empty)');
-        $lines[] = '- Stored rows: ' . $rowsCount;
-        $lines[] = '- Latest row date: ' . ($latest?->date?->toDateString() ?? '(none)');
-        $lines[] = '- Latest row age: ' . ($latest?->date?->diffForHumans() ?? '(none)');
+        $lines[] = '- Configured: '.($isConfigured ? 'yes' : 'no');
+        $lines[] = '- API reachable: '.($apiReachable ? 'yes' : 'no');
+        $lines[] = '- Project ID: '.($projectId !== '' ? $projectId : '(empty)');
+        $lines[] = '- Stored rows: '.$rowsCount;
+        $lines[] = '- Latest row date: '.($latest?->date?->toDateString() ?? '(none)');
+        $lines[] = '- Latest row age: '.($latest?->date?->diffForHumans() ?? '(none)');
 
         if ($latest) {
             $lines[] = '';
@@ -242,38 +247,38 @@ class SeoClarityHealth extends Command
             $lines[] = '';
             $lines[] = '| Metric | Value |';
             $lines[] = '|---|---:|';
-            $lines[] = '| sessions | ' . (int) $latest->sessions . ' |';
-            $lines[] = '| users | ' . (int) $latest->users . ' |';
-            $lines[] = '| pageviews | ' . (int) $latest->pageviews . ' |';
-            $lines[] = '| scroll depth | ' . (float) $latest->scroll_depth . ' |';
-            $lines[] = '| active time seconds | ' . (int) $latest->active_time_seconds . ' |';
-            $lines[] = '| bounce rate | ' . (float) $latest->bounce_rate . ' |';
-            $lines[] = '| dead clicks | ' . (int) $latest->dead_clicks . ' |';
-            $lines[] = '| rage clicks | ' . (int) $latest->rage_clicks . ' |';
-            $lines[] = '| quickbacks | ' . (int) $latest->quickbacks . ' |';
-            $lines[] = '| script errors | ' . (int) $latest->script_errors . ' |';
-            $lines[] = '| error clicks | ' . (int) $latest->error_clicks . ' |';
+            $lines[] = '| sessions | '.(int) $latest->sessions.' |';
+            $lines[] = '| users | '.(int) $latest->users.' |';
+            $lines[] = '| pageviews | '.(int) $latest->pageviews.' |';
+            $lines[] = '| scroll depth | '.(float) $latest->scroll_depth.' |';
+            $lines[] = '| active time seconds | '.(int) $latest->active_time_seconds.' |';
+            $lines[] = '| bounce rate | '.(float) $latest->bounce_rate.' |';
+            $lines[] = '| dead clicks | '.(int) $latest->dead_clicks.' |';
+            $lines[] = '| rage clicks | '.(int) $latest->rage_clicks.' |';
+            $lines[] = '| quickbacks | '.(int) $latest->quickbacks.' |';
+            $lines[] = '| script errors | '.(int) $latest->script_errors.' |';
+            $lines[] = '| error clicks | '.(int) $latest->error_clicks.' |';
         }
 
         if ($spike !== null) {
             $lines[] = '';
             $lines[] = '## ⚠ JavaScript error spike';
             $lines[] = '';
-            $lines[] = '- ' . $spike['summary'];
-            $lines[] = '- Latest rate: ' . ($spike['latest_rate'] * 100) . '% of sessions';
-            $lines[] = '- Baseline rate: ' . ($spike['baseline_rate'] * 100) . '% of sessions';
+            $lines[] = '- '.$spike['summary'];
+            $lines[] = '- Latest rate: '.($spike['latest_rate'] * 100).'% of sessions';
+            $lines[] = '- Baseline rate: '.($spike['baseline_rate'] * 100).'% of sessions';
             $lines[] = '';
             $lines[] = 'Clarity reports counts only. See `storage/logs/client-errors-*.log`'
-                . ' (via /log-viewer) for the actual messages and stack traces.';
+                .' (via /log-viewer) for the actual messages and stack traces.';
         }
 
         if (! $apiReachable && $apiError) {
             $lines[] = '';
             $lines[] = '## API error';
             $lines[] = '';
-            $lines[] = '- ' . $apiError;
+            $lines[] = '- '.$apiError;
         }
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
     }
 }

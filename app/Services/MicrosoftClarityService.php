@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Site;
+use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\FrustratedPages;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,10 +17,11 @@ class MicrosoftClarityService
      */
     public const MAX_DAYS = 3;
 
+    public function __construct(protected ClaritySettings $settings) {}
+
     public function isConfigured(): bool
     {
-        return filled(config('services.microsoft.clarity.project_id'))
-            && filled(config('services.microsoft.clarity.api_token'));
+        return $this->settings->isConfigured();
     }
 
     public function getLastError(): ?string
@@ -35,8 +37,8 @@ class MicrosoftClarityService
      */
     public function fetchDailyMetrics(int $days = 28): ?array
     {
-        $token = (string) config('services.microsoft.clarity.api_token');
-        $baseUrl = rtrim((string) config('services.microsoft.clarity.base_url', 'https://www.clarity.ms/export-data/api/v1'), '/');
+        $token = (string) $this->settings->apiToken();
+        $baseUrl = rtrim($this->settings->baseUrl(), '/');
 
         if ($token === '') {
             $this->lastError = 'Clarity API token missing';
@@ -337,8 +339,8 @@ class MicrosoftClarityService
      */
     protected function requestInsights(array $query): ?array
     {
-        $token = (string) config('services.microsoft.clarity.api_token');
-        $baseUrl = rtrim((string) config('services.microsoft.clarity.base_url', 'https://www.clarity.ms/export-data/api/v1'), '/');
+        $token = (string) $this->settings->apiToken();
+        $baseUrl = rtrim($this->settings->baseUrl(), '/');
 
         if ($token === '') {
             $this->lastError = 'Clarity API token missing';

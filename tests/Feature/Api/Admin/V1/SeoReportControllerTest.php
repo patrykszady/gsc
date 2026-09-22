@@ -12,6 +12,7 @@ use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -98,14 +99,84 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame('health', $data['key']);
         // The command itself may succeed or fail depending on how much GSC
         // data this environment has (e.g. seo:health can divide by data this
-        // empty sqlite test db doesn't have) — either way the controller's
-        // try/catch (ported verbatim from the Livewire original) must turn
-        // that into a friendly message, never an unhandled 500.
-        $this->assertMatchesRegularExpression('/regenerated\.$|^Failed to regenerate: /', $data['message']);
+        // empty sqlite test db doesn't have) — either way SeoReportRun must
+        // turn that into a friendly message and an honest status, never an
+        // unhandled 500.
+        $this->assertMatchesRegularExpression('/^SEO health regenerated in [\d.]+ s(\.|, but the command reported problems \(exit \d+\)\. See what it printed\.)$|^SEO health failed: /', $data['message']);
+        $this->assertContains($data['status'], ['ok', 'warning', 'failed']);
+        $this->assertSame(in_array($data['status'], ['ok', 'warning'], true), $data['ok']);
+        $this->assertSame($data['ok'], $data['run']['ok']);
+        $this->assertSame($data['status'], $data['run']['status']);
+        $this->assertSame('seo-reports', $data['run']['log_channel']);
+        $this->assertArrayHasKey('duration_ms', $data['run']);
+        $this->assertArrayHasKey('exit_code', $data['run']);
         // regenerate() busts the health-snapshot cache same as the Livewire
         // original — the stale, manually-seeded score of 999 must be gone
         // either way, since the cache is forgotten before the command runs.
         $this->assertNotSame(999, $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->json('data.health.score'));
+    }
+
+    public function test_regenerate_reports_a_missing_command_without_a_500(): void
+    {
+        Http::fake();
+        Storage::fake('local');
+        config(['seo-reports.reports.fake-missing' => [
+            'label' => 'Fake missing report',
+            'command' => 'seo:this-command-does-not-exist',
+            'description' => 'A registry entry whose command was never wired up on this site.',
+        ]]);
+
+        $logPath = storage_path('logs/seo-reports-'.now()->format('Y-m-d').'.log');
+        $before = file_exists($logPath) ? filesize($logPath) : 0;
+
+        $data = $this->postJson('/api/admin/v1/seo/reports/fake-missing/regenerate', [], $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertFalse($data['ok']);
+        $this->assertSame('missing-command', $data['status']);
+        $this->assertStringContainsString('seo:this-command-does-not-exist', $data['message']);
+        $this->assertStringContainsString('not installed on this site', $data['message']);
+        $this->assertSame('missing-command', $data['run']['status']);
+        $this->assertFalse($data['run']['ok']);
+
+        $this->assertFileExists($logPath);
+        $newLines = substr(file_get_contents($logPath), $before);
+        $this->assertStringContainsString('The command seo:this-command-does-not-exist is not installed on this site', $newLines);
+        $this->assertStringContainsString('report run started', $newLines);
+    }
+
+    public function test_regenerate_runs_a_registered_command_and_logs_start_and_finish(): void
+    {
+        Http::fake();
+        Storage::fake('local');
+        Artisan::command('seo:fake-ok', function () {
+            $this->info('done');
+        });
+        config(['seo-reports.reports.fake-ok' => [
+            'label' => 'Fake ok report',
+            'command' => 'seo:fake-ok',
+            'description' => 'A registry entry backed by a fake, always-succeeding command.',
+        ]]);
+
+        $logPath = storage_path('logs/seo-reports-'.now()->format('Y-m-d').'.log');
+        $before = file_exists($logPath) ? filesize($logPath) : 0;
+
+        $data = $this->postJson('/api/admin/v1/seo/reports/fake-ok/regenerate', [], $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertTrue($data['ok']);
+        $this->assertSame('ok', $data['status']);
+        $this->assertSame(0, $data['run']['exit_code']);
+        $this->assertStringContainsString('done', $data['run']['output_tail']);
+        $this->assertMatchesRegularExpression('/^Fake ok report regenerated in [\d.]+ s\.$/', $data['message']);
+
+        $this->assertFileExists($logPath);
+        $newLines = substr(file_get_contents($logPath), $before);
+        $this->assertStringContainsString('report run started', $newLines);
+        $this->assertStringContainsString('report run finished', $newLines);
+        $this->assertStringContainsString('seo:fake-ok', $newLines);
     }
 
     public function test_snapshot_returns_the_full_payload_shape_with_no_data_seeded(): void
@@ -232,13 +303,26 @@ class SeoReportControllerTest extends TestCase
     {
         Cache::put(Tenancy::cacheKey('admin.seo-reports.health-snapshot'), ['score' => 999, 'pillars' => []], 60);
 
+        $logPath = storage_path('logs/seo-reports-'.now()->format('Y-m-d').'.log');
+        $before = file_exists($logPath) ? filesize($logPath) : 0;
+
         $data = $this->postJson('/api/admin/v1/seo/snapshot/refresh', [], $this->adminApiHeaders())
             ->assertOk()
             ->json('data');
 
-        $this->assertSame('Dashboard metrics refreshed.', $data['message']);
+        $this->assertTrue($data['ok']);
+        $this->assertMatchesRegularExpression('/^Dashboard metrics refreshed in [\d.]+ s\.$/', $data['message']);
         // The stale, manually-seeded score of 999 must be gone.
         $this->assertNotSame(999, $data['health']['score']);
+
+        $this->assertSame('seo-reports', $data['run']['log_channel']);
+        $this->assertArrayHasKey('duration_ms', $data['run']);
+        $this->assertNotEmpty($data['run']['caches_cleared']);
+
+        $this->assertFileExists($logPath);
+        $newLines = substr(file_get_contents($logPath), $before);
+        $this->assertStringContainsString('snapshot refresh started', $newLines);
+        $this->assertStringContainsString('snapshot refresh finished', $newLines);
     }
 
     public function test_unauthenticated_request_is_rejected(): void
@@ -613,5 +697,28 @@ class SeoReportControllerTest extends TestCase
         // Today alone is no comparison at all.
         $this->assertNull($this->priorHealth(['2026-09-20' => 62]));
         $this->assertNull($this->priorHealth([]));
+    }
+
+    public function test_a_report_written_by_a_command_that_exits_non_zero_is_a_warning_not_a_failure(): void
+    {
+        // A faked disk: the file this fake command writes must not outlive the
+        // test, or the "every report is missing" case sees it.
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Artisan::command('seo:fake-warn', function () {
+            \Illuminate\Support\Facades\Storage::disk('local')->put(\App\Support\SeoStorage::path('reports/content-decay.md'), "# Content decay\n");
+            $this->warn('two pages look stale');
+
+            return 1;
+        });
+        config(['seo-reports.reports.content-decay' => ['label' => 'Content decay', 'command' => 'seo:fake-warn', 'description' => '']]);
+
+        $data = $this->postJson('/api/admin/v1/seo/reports/content-decay/regenerate', ['trend_days' => 14], $this->adminApiHeaders())
+            ->assertOk()->json('data');
+
+        $this->assertTrue($data['ok']);
+        $this->assertSame('warning', $data['status']);
+        $this->assertSame(1, $data['run']['exit_code']);
+        $this->assertStringContainsString('reported problems (exit 1)', $data['message']);
+        $this->assertStringContainsString('two pages look stale', $data['run']['output_tail']);
     }
 }

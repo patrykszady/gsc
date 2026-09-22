@@ -9,6 +9,8 @@ use App\Services\Citations\VerificationInbox;
 use App\Services\TestimonialProjectTypeClassifier;
 use App\Services\YelpBusinessService;
 use App\Support\Reviews\ReviewImport;
+use App\Support\Seo\BingSettings;
+use App\Support\Seo\SearchConsoleSyncOwnership;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -376,13 +379,6 @@ Schedule::command('seo:content-strategy --days=28 --limit=30 --markdown')
     ->appendOutputTo(storage_path('logs/seo-content-strategy.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:content-strategy failed'));
 
-// SEO: daily competitor SERP gap report (signals only, no copied content).
-Schedule::command('seo:competitor-gap --top=5 --markdown')
-    ->dailyAt('08:25')
-    ->timezone('America/Chicago')
-    ->appendOutputTo(storage_path('logs/seo-competitor-gap.log'))
-    ->onFailure(fn () => logger()->error('Scheduled seo:competitor-gap failed'));
-
 // SEO: daily competitor-brand & comparison-intent query tracker (GSC-based).
 Schedule::command('seo:competitor-brand-track --days=28 --markdown')
     ->dailyAt('08:28')
@@ -410,13 +406,6 @@ Schedule::command('seo:clarity-health --markdown')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-clarity-health.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:clarity-health failed'));
-
-// SEO: weekly competitor rank-gap (where configured competitors outrank us).
-Schedule::command('seo:competitor-rank-gap --max-queries=16 --markdown')
-    ->weeklyOn(3, '08:30')
-    ->timezone('America/Chicago')
-    ->appendOutputTo(storage_path('logs/seo-competitor-rank-gap.log'))
-    ->onFailure(fn () => logger()->error('Scheduled seo:competitor-rank-gap failed'));
 
 // SEO: weekly competitor schema-coverage diff (rich-result type comparison).
 Schedule::command('seo:competitor-schema-gap --markdown')
@@ -474,15 +463,6 @@ Schedule::command('seo:gbp-parity --markdown')
     ->withoutOverlapping(30)
     ->appendOutputTo(storage_path('logs/seo-gbp-parity.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gbp-parity failed'));
-
-// SEO: weekly backlink / mention monitor (referring-host snapshot via Brave Search).
-Schedule::command('seo:backlinks-monitor --markdown')
-    ->dailyAt('09:40')
-    ->timezone('America/Chicago')
-    ->onOneServer()
-    ->withoutOverlapping(30)
-    ->appendOutputTo(storage_path('logs/seo-backlinks-monitor.log'))
-    ->onFailure(fn () => logger()->error('Scheduled seo:backlinks-monitor failed'));
 
 // SEO: weekly composite Local SEO health-check (0–100 per URL).
 // --min-score=0 keeps the scheduled run report-only (never fails the task).
@@ -671,13 +651,22 @@ Schedule::command($perTenant('seo:gsc-crawl-budget --markdown'))
 // hours so a newly-published day (and late-arriving revisions to recent days)
 // lands on /admin within hours instead of waiting for a once-daily run. The
 // upsert is keyed on dim_hash, so re-running is idempotent.
-Schedule::command($perTenant('seo:gsc-sync --days=7'))
+//
+// --days is the shared kit's own default (SearchConsoleSyncRule::DEFAULT_DAYS)
+// rather than a literal 7 repeated here, so the window can only ever be
+// changed in the one place every tenant reads it from.
+Schedule::command($perTenant('seo:gsc-sync --days='.SearchConsoleSyncRule::DEFAULT_DAYS))
     ->everyThreeHours()
     ->timezone('America/Chicago')
     ->withoutOverlapping(60) // a full paginated pull can take a couple minutes
     ->appendOutputTo(storage_path('logs/seo-gsc-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-sync failed'))
-    ->when(fn () => config('services.google.search_console.enabled'));
+    // AND-ed with SearchConsoleSyncOwnership::ownedHere(): if the central
+    // admin ever takes over running this sync (GSC_SYNC_OWNED_BY=ss-systems),
+    // this site's own schedule must stop firing it too, or every tenant
+    // syncs twice. The command and the admin's on-demand "sync now" are not
+    // gated by this — only the scheduled tick.
+    ->when(fn () => config('services.google.search_console.enabled') && SearchConsoleSyncOwnership::ownedHere());
 
 // GBP: daily Performance API sync (impressions/calls/website clicks/direction requests).
 Schedule::command('gbp:metrics-sync --days=14')
@@ -702,12 +691,15 @@ Schedule::command('seo:psi-sync')
     ->onFailure(fn () => logger()->error('Scheduled seo:psi-sync failed'));
 
 // SEO: daily Bing Webmaster Tools sync (query stats).
+// Gated on BingSettings, not raw config(), so an admin-stored key (with the
+// env var since removed) still fires the schedule instead of silently going
+// quiet — see App\Support\Seo\BingSettings.
 Schedule::command('seo:bing-sync')
     ->dailyAt('05:45')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-bing-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
-    ->when(fn () => ! empty(config('services.bing.webmaster_api_key')));
+    ->when(fn () => app(BingSettings::class)->isConfigured());
 
 // Social automation: Instagram/Facebook/Google Business posts and the GBP
 // catch-up safety net used to be hard-coded, single-tenant Schedule blocks

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Seo\DataForSeoSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -22,10 +23,13 @@ class DataForSeoService
 
     protected ?string $lastError = null;
 
+    public function __construct(protected DataForSeoSettings $settings)
+    {
+    }
+
     public function isConfigured(): bool
     {
-        return (string) config('services.dataforseo.login') !== ''
-            && (string) config('services.dataforseo.password') !== '';
+        return $this->settings->isConfigured();
     }
 
     public function getLastError(): ?string
@@ -377,7 +381,7 @@ class DataForSeoService
     {
         $this->lastError = null;
         try {
-            $req = Http::withBasicAuth((string) config('services.dataforseo.login'), (string) config('services.dataforseo.password'))
+            $req = Http::withBasicAuth((string) $this->settings->login(), (string) $this->settings->password())
                 ->timeout(120)->retry(2, 1500, throw: false);
             $resp = $method === 'GET' ? $req->get(self::BASE.$path) : $req->post(self::BASE.$path, $body);
         } catch (\Throwable $e) {
@@ -429,8 +433,8 @@ class DataForSeoService
         $this->lastError = null;
         try {
             $resp = Http::withBasicAuth(
-                (string) config('services.dataforseo.login'),
-                (string) config('services.dataforseo.password'),
+                (string) $this->settings->login(),
+                (string) $this->settings->password(),
             )->timeout(90)->retry(2, 1500, throw: false)
                 ->post(self::BASE.'/serp/google/organic/live/advanced', [[
                     'keyword' => $query,
@@ -465,8 +469,8 @@ class DataForSeoService
         if (($task['status_code'] ?? 0) === 40101) {
             sleep(2);
             $retry = Http::withBasicAuth(
-                (string) config('services.dataforseo.login'),
-                (string) config('services.dataforseo.password'),
+                (string) $this->settings->login(),
+                (string) $this->settings->password(),
             )->timeout(90)->retry(2, 1500, throw: false)
                 ->post(self::BASE.'/serp/google/organic/live/advanced', [[
                     'keyword' => $query,
