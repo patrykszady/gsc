@@ -77,8 +77,23 @@ class SocialAutomationTickTest extends TestCase
         });
     }
 
-    /** A published google_business ImageSocialPost dated $daysAgo days back, for the catch-up staleness check. */
-    protected function publishedPostFor(Site $site, int $daysAgo): void
+    /**
+     * A published google_business ImageSocialPost dated $daysAgo days back
+     * from $reference (the tick's frozen "now"), for the catch-up staleness
+     * check.
+     *
+     * Freezes time to that historical instant while building the fixture
+     * (restoring the real clock before returning) so `published_at` AND the
+     * row's auto `created_at` both land in the past relative to $reference
+     * — matching what a real stale post looks like. Using the real
+     * wall-clock now() here (as this used to) would date the fixture
+     * relative to whatever day the test suite happens to run on rather than
+     * the frozen '2026-09-16' the catch-up tests reason about, and would
+     * also leave created_at exactly at the tick's instant once the caller
+     * later freezes to $reference for the tick — tripping maybeCatchUp's
+     * "already posted today" guard.
+     */
+    protected function publishedPostFor(Site $site, int $daysAgo, Carbon $reference): void
     {
         // Fake the queue while building this fixture: creating a published
         // Project/ProjectImage fires the real observers, which (this being a
@@ -87,28 +102,36 @@ class SocialAutomationTickTest extends TestCase
         // caution. Nothing here is what this test is exercising.
         Queue::fake();
 
-        Tenancy::for($site, function () use ($daysAgo) {
-            $project = Project::create([
-                'title' => 'Catch-up Fixture',
-                'slug' => 'catch-up-fixture-'.uniqid(),
-                'project_type' => 'kitchen',
-                'is_published' => true,
-                'location' => 'Elsewhere, IL',
-            ]);
-            $image = ProjectImage::create([
-                'project_id' => $project->id,
-                'filename' => 'photo-'.uniqid().'.jpg',
-                'original_filename' => 'photo.jpg',
-                'path' => 'projects/1/photo.jpg',
-                'alt_text' => 'A lovely kitchen',
-            ]);
-            ImageSocialPost::create([
-                'project_image_id' => $image->id,
-                'platform' => 'google_business',
-                'status' => 'published',
-                'published_at' => now()->subDays($daysAgo),
-            ]);
-        });
+        $publishedAt = $reference->copy()->subDays($daysAgo);
+
+        Carbon::setTestNow($publishedAt);
+
+        try {
+            Tenancy::for($site, function () use ($publishedAt) {
+                $project = Project::create([
+                    'title' => 'Catch-up Fixture',
+                    'slug' => 'catch-up-fixture-'.uniqid(),
+                    'project_type' => 'kitchen',
+                    'is_published' => true,
+                    'location' => 'Elsewhere, IL',
+                ]);
+                $image = ProjectImage::create([
+                    'project_id' => $project->id,
+                    'filename' => 'photo-'.uniqid().'.jpg',
+                    'original_filename' => 'photo.jpg',
+                    'path' => 'projects/1/photo.jpg',
+                    'alt_text' => 'A lovely kitchen',
+                ]);
+                ImageSocialPost::create([
+                    'project_image_id' => $image->id,
+                    'platform' => 'google_business',
+                    'status' => 'published',
+                    'published_at' => $publishedAt,
+                ]);
+            });
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_a_due_slot_dispatches_exactly_once_across_surrounding_ticks(): void
@@ -240,14 +263,15 @@ class SocialAutomationTickTest extends TestCase
             'catch_up_after_days' => 6,
         ]);
 
-        $this->publishedPostFor($site, daysAgo: 10);
+        $tick = Carbon::parse('2026-09-16 10:20:00', 'America/Chicago');
+        $this->publishedPostFor($site, daysAgo: 10, reference: $tick);
 
         Artisan::shouldReceive('call')
             ->once()
             ->with('social:post', ['--platform' => 'google_business', '--queue' => true])
             ->andReturn(0);
 
-        Carbon::setTestNow(Carbon::parse('2026-09-16 10:20:00', 'America/Chicago'));
+        Carbon::setTestNow($tick);
         $this->runTick();
 
         // A second tick the same day must not re-fire.
@@ -269,11 +293,12 @@ class SocialAutomationTickTest extends TestCase
             'catch_up_after_days' => 6,
         ]);
 
-        $this->publishedPostFor($site, daysAgo: 2);
+        $tick = Carbon::parse('2026-09-16 10:20:00', 'America/Chicago');
+        $this->publishedPostFor($site, daysAgo: 2, reference: $tick);
 
         Artisan::shouldReceive('call')->never();
 
-        Carbon::setTestNow(Carbon::parse('2026-09-16 10:20:00', 'America/Chicago'));
+        Carbon::setTestNow($tick);
         $this->runTick();
         Carbon::setTestNow();
 
