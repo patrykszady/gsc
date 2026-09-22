@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Console\Commands\SeoHealth;
 use App\Http\Controllers\Api\Admin\V1\SeoReportController;
 use App\Models\Site;
 use App\Support\Tenancy;
@@ -10,16 +9,22 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use ReflectionMethod;
+use SsSystems\Platform\Reports\HealthReport;
 use Tests\Feature\Api\Admin\V1\Concerns\WithAdminApiAuth;
 use Tests\TestCase;
 
 /**
  * seo:health keeps a rolling daily score ledger (reports/health-history.json,
- * tenant-scoped via App\Support\SeoStorage — see
- * SeoHealth::appendHealthLedger()) so the admin snapshot can show a
- * week-over-week trend chevron next to the health score.
+ * tenant-scoped via App\Support\SeoStorage) so the admin snapshot can show a
+ * week-over-week trend chevron next to the health score. The merge/sort/
+ * prune-to-120 algorithm now lives in the shared kit's
+ * SsSystems\Platform\Reports\HealthReport::appendHealthLedger() (ported
+ * verbatim from this command's own former appendHealthLedger() — see
+ * vendor/ss-systems/platform-kit's docs/REPORTS-PORTING.md); storage itself
+ * is App\Support\Seo\Reports\EloquentHealthDataReader::healthLedger()/
+ * putHealthLedger().
  *
- * The ledger-write tests call the command's protected writer directly via
+ * The ledger-write tests call the kit report's private writer directly via
  * reflection rather than running `seo:health` end to end: this repo's test
  * sqlite database has no images, areas, GBP activity, rank snapshots or
  * sync logs seeded for the 'gsc' tenant, so every pillar (and therefore the
@@ -45,12 +50,23 @@ class SeoHealthPriorScoreTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * HealthReport::appendHealthLedger() takes a non-nullable int — the
+     * null-guard now lives in HealthReport::generate() itself ("if ($total
+     * !== null) { $this->appendHealthLedger($total); }"), so a null score
+     * here reproduces that same guard instead of reflecting into a method
+     * that can no longer accept one.
+     */
     protected function appendLedger(?int $score): void
     {
-        $command = app(SeoHealth::class);
-        $method = new ReflectionMethod($command, 'appendHealthLedger');
+        if ($score === null) {
+            return;
+        }
+
+        $report = app(HealthReport::class);
+        $method = new ReflectionMethod($report, 'appendHealthLedger');
         $method->setAccessible(true);
-        $method->invoke($command, $score);
+        $method->invoke($report, $score);
     }
 
     protected function ledger(string $path = self::LEDGER_PATH): array

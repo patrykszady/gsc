@@ -16,6 +16,7 @@ use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Seo\CompetitorFilter;
 use App\Support\Seo\FrustratedPages;
+use App\Support\Seo\Reports\ReportCapabilities;
 use App\Support\Seo\SearchAppearance;
 use App\Support\Seo\SearchConsoleProperty;
 use App\Support\Seo\SitemapStatus;
@@ -88,6 +89,24 @@ class SeoReportController extends Controller
         $reports = $this->reports();
         if (! isset($reports[$report])) {
             abort(404, "Unknown report \"{$report}\".");
+        }
+
+        $availability = ReportCapabilities::availability($report);
+        if (! $availability['available']) {
+            Log::channel('seo-reports')->info('report run refused', [
+                'key' => $report,
+                'missing' => $availability['missing'],
+                'requested_by' => $request->header('X-Admin-User'),
+                'screen' => $request->header('X-Admin-Screen'),
+            ]);
+
+            $payload = $this->reportPayload($report, $reports[$report]);
+            $payload['ok'] = false;
+            $payload['status'] = 'unavailable';
+            $payload['message'] = $availability['reason'];
+            $payload['run'] = null;
+
+            return $this->itemResponse($payload);
         }
 
         $trendDays = (int) $request->integer('trend_days', 14);
@@ -254,7 +273,11 @@ class SeoReportController extends Controller
         $mtime = $mtimeTs ? Carbon::createFromTimestamp($mtimeTs) : null;
         $ageHours = $mtime ? (int) abs(now()->diffInHours($mtime)) : null;
         $freshnessPct = $ageHours === null ? 0 : max(0, 100 - (int) round(min($ageHours, 72) / 72 * 100));
-        $status = $ageHours === null ? 'missing' : ($ageHours <= 24 ? 'fresh' : 'stale');
+
+        $availability = ReportCapabilities::availability($key);
+        $status = ! $availability['available']
+            ? 'unavailable'
+            : ($ageHours === null ? 'missing' : ($ageHours <= 24 ? 'fresh' : 'stale'));
 
         return [
             'key' => $key,
@@ -268,20 +291,25 @@ class SeoReportController extends Controller
             'age_hours' => $ageHours,
             'freshness_pct' => $freshnessPct,
             'status' => $status,
+            'available' => $availability['available'],
+            'missing' => $availability['missing'],
+            'unavailable_reason' => $availability['reason'],
         ];
     }
 
     protected function reportStats(array $files): array
     {
         $files = collect($files);
-        $generated = $files->where('exists', true);
+        $available = $files->where('available', true);
+        $generated = $available->where('exists', true);
 
         return [
-            'total' => $files->count(),
+            'total' => $available->count(),
             'generated' => $generated->count(),
-            'fresh' => $files->where('status', 'fresh')->count(),
-            'stale' => $files->where('status', 'stale')->count(),
-            'missing' => $files->where('status', 'missing')->count(),
+            'fresh' => $available->where('status', 'fresh')->count(),
+            'stale' => $available->where('status', 'stale')->count(),
+            'missing' => $available->where('status', 'missing')->count(),
+            'unavailable' => $files->where('available', false)->count(),
             'updated_today' => $generated->filter(fn (array $f) => ($f['age_hours'] ?? 9999) < 24)->count(),
             'last_update' => $generated
                 ->sortByDesc(fn (array $f) => $f['mtime'] ? Carbon::parse($f['mtime'])->timestamp : 0)
@@ -796,7 +824,7 @@ class SeoReportController extends Controller
                     'prior_as_of' => $prior['date'] ?? null,
                     'pillars' => $pillars,
                 ];
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 return ['score' => null, 'prior_score' => null, 'prior_as_of' => null, 'pillars' => []];
             }
         });
@@ -836,7 +864,7 @@ class SeoReportController extends Controller
 
         try {
             $ledger = json_decode((string) $disk->get($path), true, flags: JSON_THROW_ON_ERROR);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
 
@@ -856,7 +884,7 @@ class SeoReportController extends Controller
 
             try {
                 $age = (int) Carbon::createFromFormat('Y-m-d', $date)->startOfDay()->diffInDays($today);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 continue;
             }
 
@@ -1517,7 +1545,7 @@ class SeoReportController extends Controller
                 $last = $runs->first();
                 try {
                     $report = $last ? $source->report() : ['tiles' => [], 'tables' => [], 'note' => 'Not collected yet.'];
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     report($e);
                     $report = ['tiles' => [], 'tables' => [], 'note' => 'Report unavailable: '.mb_substr($e->getMessage(), 0, 120)];
                 }

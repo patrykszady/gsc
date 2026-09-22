@@ -26,3 +26,18 @@
 - Tailwind entrypoint: resources/css/app.css
 - Main JS: resources/js/app.js
 - Vite config: vite.config.js
+
+## SEO report generators live in the kit (2026-09-22)
+
+The ten `seo:*` report commands (content-decay, content-gap, cwv-template,
+gbp-parity, internal-link-suggest, schema-audit, area-pages-audit,
+health-check, health, clarity-health) are thin wrappers over
+`SsSystems\Platform\Reports\*` in `vendor/ss-systems/platform-kit` (shared
+with jpeterson-design and any future tenant). Their logic, thresholds and
+markdown live in the kit; this app only provides the data through the
+adapters in `app/Support/Seo/Reports/` (one per kit interface, bound in
+`AppServiceProvider`) and `config/seo-reports.php` is built from the kit's
+`ReportRegistry`. Change a report in the kit (`~/web/ss-platform-kit`, new
+version, new zip in `packages/`), never by growing logic back into a command.
+`ReportCapabilities` and `SeoReportController::regenerate()` refuse a report
+this site cannot run before anything executes. `KitReportsTest` pins it.

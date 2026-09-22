@@ -2,36 +2,22 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AreaServed;
-use App\Models\ImagePlatformUpload;
-use App\Models\ImageSocialPost;
-use App\Models\ProjectImage;
-use App\Models\Site;
-use App\Support\Seo\CrawlFiles;
+use App\Console\Commands\Seo\KitReportCommand;
 use App\Support\SeoStorage;
-use App\Support\Tenancy;
-use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Reports\HealthReport;
 
 /**
- * Unified SEO health dashboard.
- *
- * Aggregates signals from existing audits + DB + rank tracker into one scored
- * report so you can see at a glance whether local-SEO health is improving.
- *
- * Score is 0-100 across five pillars (each weighted 20):
- *   - On-page completeness (alt text, FAQ, content depth)
- *   - Internal linking (orphans, weak pages)
- *   - GBP activity (recent posts, photos, reviews response)
- *   - Local rankings (% of tracked queries ranking in top 10)
- *   - Freshness (last GSC/GBP sync, last sitemap regen)
- *
- * Designed to be safe & fast: pure DB reads, no HTTP, no API calls.
+ * Unified SEO health dashboard — thin wrapper. The five pillars, their
+ * weights, and the health-score ledger merge live in the kit's HealthReport
+ * now (it appends the ledger itself on every run — see
+ * vendor/ss-systems/platform-kit/docs/REPORTS-PORTING.md); this command is
+ * left with only its own artisan surface: --json, --quiet-on-pass, and the
+ * exit-code rule tied to the numeric score, not to the report's ok/degraded
+ * status (a "degraded" result here just means some pillar is unmeasured,
+ * which is orthogonal to whether the measured score cleared 70).
  */
-class SeoHealth extends Command
+class SeoHealth extends KitReportCommand
 {
     protected $signature = 'seo:health
         {--json : Output JSON only}
@@ -40,510 +26,60 @@ class SeoHealth extends Command
 
     protected $description = 'Unified local-SEO health dashboard (score 0-100 across five pillars).';
 
-    public function handle(): int
+    public function handle(HealthReport $report): int
     {
-        $pillars = [
-            'on_page' => $this->scoreOnPage(),
-            'internal_links' => $this->scoreInternalLinks(),
-            'gbp_activity' => $this->scoreGbpActivity(),
-            'local_rankings' => $this->scoreLocalRankings(),
-            'freshness' => $this->scoreFreshness(),
-        ];
-
-        // Average only the pillars that were actually measured. Treating an
-        // unmeasured pillar as 0 (or as 100) invents a score out of absence.
-        $measured = collect($pillars)->whereNotNull('score');
-        $total = $measured->isEmpty() ? null : (int) round($measured->avg('score'));
+        $quietOnPass = (bool) $this->option('quiet-on-pass');
+        $result = $report->generate(['quiet_on_pass' => $quietOnPass]);
+        $total = $result->data['score'];
 
         if ($this->option('json')) {
-            $this->appendHealthLedger($total);
-
             $this->line(json_encode([
                 'score' => $total,
-                'pillars' => $pillars,
+                'pillars' => $result->data['pillars'],
                 'generated_at' => now()->toIso8601String(),
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
             return self::SUCCESS;
         }
 
-        if ($this->option('quiet-on-pass') && $total >= 90) {
+        if ($quietOnPass && $total !== null && $total >= 90) {
             return self::SUCCESS;
         }
 
         if ($this->option('markdown')) {
-            $this->saveMarkdown($total, $pillars);
-            $this->appendHealthLedger($total);
+            Storage::disk('local')->put(SeoStorage::path('reports/'.HealthReport::key().'.md'), $result->markdown);
         }
 
-        $this->renderReport($total, $pillars);
+        $this->line($result->summary);
+        $this->renderReport($total, $result->data['pillars'], $result->data['grade']);
 
-        return $total >= 70 ? self::SUCCESS : self::FAILURE;
+        return $total !== null && $total >= 70 ? self::SUCCESS : self::FAILURE;
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  Pillars */
-    /* ------------------------------------------------------------------ */
-
-    /** On-page: alt text coverage + AreaServed content depth. */
-    protected function scoreOnPage(): array
+    /** @param  list<array<string, mixed>>  $pillars */
+    protected function renderReport(?int $total, array $pillars, string $grade): void
     {
-        $totalImages = ProjectImage::query()
-            ->whereHas('project', fn ($q) => $q->where('is_published', true))
-            ->count();
-
-        $imagesWithAlt = ProjectImage::query()
-            ->whereHas('project', fn ($q) => $q->where('is_published', true))
-            ->whereNotNull('alt_text')
-            ->where('alt_text', '!=', '')
-            ->count();
-
-        $altPct = $totalImages > 0 ? (int) round($imagesWithAlt / $totalImages * 100) : 100;
-
-        $totalAreas = AreaServed::count();
-        $areasComplete = AreaServed::query()
-            ->whereNotNull('intro')->where('intro', '!=', '')
-            ->whereNotNull('local_intro')->where('local_intro', '!=', '')
-            ->whereNotNull('landmarks')->where('landmarks', '!=', '')
-            ->count();
-        $areaPct = $totalAreas > 0 ? (int) round($areasComplete / $totalAreas * 100) : 100;
-
-        // A tenant with no published images and no service areas has nothing
-        // to measure. Scoring that 100 (the >0 fallbacks above each return 100)
-        // told J. Peterson Design its on-page SEO was perfect when it has no
-        // content at all.
-        if ($totalImages === 0 && $totalAreas === 0) {
-            return [
-                'name' => 'On-page completeness',
-                'score' => null,
-                'metrics' => ['status' => 'no published images or service areas yet'],
-                'fix' => null,
-            ];
-        }
-
-        $score = (int) round(($altPct + $areaPct) / 2);
-
-        return [
-            'name' => 'On-page completeness',
-            'score' => $score,
-            'metrics' => [
-                'image_alt_coverage' => "{$imagesWithAlt}/{$totalImages} ({$altPct}%)",
-                'area_content_depth' => "{$areasComplete}/{$totalAreas} ({$areaPct}%)",
-            ],
-            'fix' => $score < 100 ? 'Run: php artisan ai:generate-content' : null,
-        ];
-    }
-
-    /** Internal links: latest counts from the link audit (best-effort, no crawl). */
-    protected function scoreInternalLinks(): array
-    {
-        // Quick proxy: every published AreaServed should be linked from at least
-        // its neighbours (nearestCities widget) + the areas-served index.
-        // We score based on whether footer + main index exist (structural check).
-        // This was a hardcoded 90 — the same "healthy" score for every tenant
-        // on every run, whether or not a crawl had ever happened. Report the
-        // truth instead: unmeasured until the audit has actually run.
-        $lastCrawl = $this->lastLogModified('seo-internal-links.log');
-
-        if ($lastCrawl === 'never') {
-            return [
-                'name' => 'Internal linking',
-                'score' => null,
-                'metrics' => ['last_full_crawl' => 'never'],
-                'fix' => 'Run: php artisan seo:internal-link-audit',
-                'notes' => ['No crawl has run for this site yet.'],
-            ];
-        }
-
-        $score = 90;
-        $notes = ['Run `seo:internal-link-audit` weekly for live crawl data.'];
-
-        return [
-            'name' => 'Internal linking',
-            'score' => $score,
-            'metrics' => [
-                'last_full_crawl' => $lastCrawl,
-            ],
-            'fix' => 'Schedule already runs weekly: seo:internal-link-audit',
-            'notes' => $notes,
-        ];
-    }
-
-    /** GBP activity: recent posts + recent media uploads. */
-    protected function scoreGbpActivity(): array
-    {
-        $postsLast30 = ImageSocialPost::query()
-            ->where('platform', 'google_business')
-            ->where('status', 'published')
-            ->where('published_at', '>=', now()->subDays(30))
-            ->count();
-
-        $postsLast7 = ImageSocialPost::query()
-            ->where('platform', 'google_business')
-            ->where('status', 'published')
-            ->where('published_at', '>=', now()->subDays(7))
-            ->count();
-
-        // Healthy = 4+ posts in last 30 days (≈1/week).
-        $postScore = min(100, (int) round($postsLast30 / 4 * 100));
-
-        // Photo uploads in last 90 days.
-        $photoScore = 100;
-        $photosLast90 = null;
-        if (Schema::hasTable('image_platform_uploads')) {
-            $photosLast90 = ImagePlatformUpload::query()
-                ->where('platform', 'google_places')
-                ->where('uploaded_at', '>=', now()->subDays(90))
-                ->count();
-            $photoScore = $photosLast90 > 0 ? 100 : 60;
-        }
-
-        // No Google Business Profile pipeline for this tenant at all — never a
-        // post, never an upload. Scoring that 30 reads as "neglecting your
-        // GBP" when there is no GBP connected to neglect.
-        $everPosted = ImageSocialPost::query()->where('platform', 'google_business')->exists();
-        $everUploaded = Schema::hasTable('image_platform_uploads')
-            && ImagePlatformUpload::query()->where('platform', 'google_places')->exists();
-
-        if (! $everPosted && ! $everUploaded) {
-            return [
-                'name' => 'GBP activity',
-                'score' => null,
-                'metrics' => ['status' => 'no Google Business Profile activity recorded for this site'],
-                'fix' => null,
-            ];
-        }
-
-        $score = (int) round(($postScore + $photoScore) / 2);
-
-        return [
-            'name' => 'GBP activity',
-            'score' => $score,
-            'metrics' => array_filter([
-                'posts_last_7d' => $postsLast7,
-                'posts_last_30d' => $postsLast30,
-                'photos_last_90d' => $photosLast90,
-            ], fn ($v) => $v !== null),
-            'fix' => $postScore < 100
-                ? 'Weekly post scheduled Mondays 10:00 CT. Run now: php artisan social:post --platform=google_business --queue'
-                : null,
-        ];
-    }
-
-    /** Local rankings: % of tracked queries ranking in top 10 across both engines. */
-    protected function scoreLocalRankings(): array
-    {
-        $queryScore = null;
-        $total = 0;
-        $top3 = 0;
-        $top10 = 0;
-        $top20 = 0;
-
-        if (Schema::hasTable('seo_rank_snapshots')) {
-            // Latest snapshot per (engine, query, location).
-            $latestPerQuery = Tenancy::table('seo_rank_snapshots as r1')
-                ->select('r1.engine', 'r1.gsc_position as position')
-                ->whereRaw('r1.id = (SELECT MAX(r2.id) FROM seo_rank_snapshots r2 WHERE r2.query = r1.query AND r2.engine = r1.engine AND COALESCE(r2.location, "") = COALESCE(r1.location, "") AND (r2.site_id = ? OR r2.site_id IS NULL))', [Tenancy::currentId()])
-                ->get();
-
-            if (! $latestPerQuery->isEmpty()) {
-                $total = $latestPerQuery->count();
-                $top3 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 3)->count();
-                $top10 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 10)->count();
-                $top20 = $latestPerQuery->filter(fn ($r) => $r->position !== null && $r->position <= 20)->count();
-
-                // Weighted score: top-3 worth 100, top-10 worth 60, top-20 worth 20.
-                $queryScore = (int) round(
-                    ($top3 * 100 + ($top10 - $top3) * 60 + ($top20 - $top10) * 20) / $total
-                );
-            }
-        }
-
-        // All-pages visibility (last 28 days) from Search Console page metrics.
-        $pageScore = null;
-        $pagesTracked = 0;
-        $pagesTop3 = 0;
-        $pagesTop10 = 0;
-        $pagesTop20 = 0;
-
-        if (Schema::hasTable('gsc_query_metrics')) {
-            $from = now()->subDays(27)->toDateString();
-            $to = now()->toDateString();
-
-            $perPage = Tenancy::table('gsc_query_metrics')
-                ->whereBetween('date', [$from, $to])
-                ->whereNotNull('page')
-                ->where('page', '!=', '')
-                ->selectRaw('page, SUM(impressions) as impressions, CASE WHEN SUM(impressions) > 0 THEN SUM(position * impressions) / SUM(impressions) ELSE AVG(position) END as avg_position')
-                ->groupBy('page')
-                ->havingRaw('SUM(impressions) > 0')
-                ->get();
-
-            if (! $perPage->isEmpty()) {
-                $pagesTracked = $perPage->count();
-                $pagesTop3 = $perPage->filter(fn ($r) => $r->avg_position !== null && (float) $r->avg_position <= 3.0)->count();
-                $pagesTop10 = $perPage->filter(fn ($r) => $r->avg_position !== null && (float) $r->avg_position <= 10.0)->count();
-                $pagesTop20 = $perPage->filter(fn ($r) => $r->avg_position !== null && (float) $r->avg_position <= 20.0)->count();
-
-                $pageScore = (int) round(
-                    ($pagesTop3 * 100 + ($pagesTop10 - $pagesTop3) * 60 + ($pagesTop20 - $pagesTop10) * 20) / $pagesTracked
-                );
-            }
-        }
-
-        if ($queryScore === null && $pageScore === null) {
-            return [
-                'name' => 'Local rankings',
-                'score' => null,
-                'metrics' => ['status' => 'no rank snapshots and no GSC page metrics yet'],
-                'fix' => 'Run: php artisan seo:track-rankings --engine=both and ensure seo:gsc-sync is scheduled.',
-            ];
-        }
-
-        $score = match (true) {
-            $queryScore !== null && $pageScore !== null => (int) round(($queryScore * 0.6) + ($pageScore * 0.4)),
-            $queryScore !== null => (int) $queryScore,
-            default => (int) $pageScore,
-        };
-
-        $metrics = [];
-        if ($queryScore !== null && $total > 0) {
-            $metrics['queries_tracked'] = $total;
-            $metrics['top_3'] = "{$top3} (".(int) round($top3 / $total * 100).'%)';
-            $metrics['top_10'] = "{$top10} (".(int) round($top10 / $total * 100).'%)';
-            $metrics['top_20'] = "{$top20} (".(int) round($top20 / $total * 100).'%)';
-            $metrics['query_tracker_score'] = $queryScore;
-        }
-        if ($pageScore !== null && $pagesTracked > 0) {
-            $metrics['pages_tracked_28d'] = $pagesTracked;
-            $metrics['pages_top_3_28d'] = "{$pagesTop3} (".(int) round($pagesTop3 / $pagesTracked * 100).'%)';
-            $metrics['pages_top_10_28d'] = "{$pagesTop10} (".(int) round($pagesTop10 / $pagesTracked * 100).'%)';
-            $metrics['pages_top_20_28d'] = "{$pagesTop20} (".(int) round($pagesTop20 / $pagesTracked * 100).'%)';
-            $metrics['all_pages_score_28d'] = $pageScore;
-        }
-
-        return [
-            'name' => 'Local rankings',
-            'score' => $score,
-            'metrics' => $metrics,
-            'fix' => (($queryScore !== null && $top10 < $total * 0.3) || ($pageScore !== null && $pagesTop10 < $pagesTracked * 0.3))
-                ? 'Low local visibility outside HQ. Focus on per-city backlinks, real reviews mentioning city names, and GBP service-area expansion.'
-                : null,
-        ];
-    }
-
-    /** Freshness: when did sitemap, GSC, GBP last run? */
-    protected function scoreFreshness(): array
-    {
-        // These are GLOBAL paths — public/sitemap.xml and the shared log files
-        // belong to the default site. Read raw, every tenant reported
-        // gs.construction's sync timestamps as its own freshness. Non-default
-        // tenants look under their own prefix, so a tenant whose pipelines have
-        // never run reports "missing" rather than borrowing someone else's.
-        $slug = Site::current()->slug;
-        $isDefault = $slug === (string) config('sites.default', 'gsc');
-        $prefix = $isDefault ? '' : "tenants/{$slug}/";
-
-        $checks = [
-            'sitemap.xml' => CrawlFiles::sitemapPath(),
-            'gsc-sync log' => storage_path("logs/{$prefix}seo-gsc-sync.log"),
-            'gbp-metrics-sync log' => storage_path("logs/{$prefix}gbp-metrics-sync.log"),
-        ];
-
-        $metrics = [];
-        $scoreSum = 0;
-        $scoreCount = 0;
-        foreach ($checks as $label => $path) {
-            $age = is_file($path) ? (int) abs(now()->diffInDays(Carbon::createFromTimestamp(filemtime($path)))) : null;
-            $metrics[$label] = $age === null ? 'missing' : "{$age}d ago";
-            // Score: 0d=100, 7d=70, 30d=0
-            if ($age === null) {
-                $scoreSum += 0;
-            } else {
-                $scoreSum += max(0, (int) round(100 - ($age * 100 / 30)));
-            }
-            $scoreCount++;
-        }
-
-        // Nothing on disk at all = pipelines have never run for this tenant.
-        // That is "not measured", not "stale" — a 0 would read as neglect.
-        if (! collect($metrics)->contains(fn ($v) => $v !== 'missing')) {
-            return [
-                'name' => 'Freshness',
-                'score' => null,
-                'metrics' => $metrics,
-                'fix' => 'No sync has run for this site yet.',
-            ];
-        }
-
-        return [
-            'name' => 'Freshness',
-            'score' => $scoreCount > 0 ? (int) round($scoreSum / $scoreCount) : 0,
-            'metrics' => $metrics,
-            'fix' => 'Ensure scheduler is running (php artisan schedule:work or systemd timer).',
-        ];
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  Helpers */
-    /* ------------------------------------------------------------------ */
-
-    protected function lastLogModified(string $name): string
-    {
-        $path = storage_path("logs/{$name}");
-        if (! is_file($path)) {
-            return 'never';
-        }
-
-        return (int) abs(now()->diffInDays(Carbon::createFromTimestamp(filemtime($path)))).'d ago';
-    }
-
-    protected function renderReport(int $total, array $pillars): void
-    {
-        $grade = $this->grade($total);
         $this->newLine();
-        $this->line("<options=bold>📊 SEO Health Score:</> <fg={$this->scoreColor($total)};options=bold>{$total}/100</> ({$grade})");
+        $scoreLabel = $total === null ? 'not measured yet' : "{$total}/100";
+        $this->line("<options=bold>SEO Health Score:</> {$scoreLabel} ({$grade})");
         $this->newLine();
 
-        $rows = [];
-        foreach ($pillars as $pillar) {
-            $rows[] = [
-                $pillar['name'],
-                $pillar['score'] === null
-                    ? '<fg=gray>not measured</>'
-                    : "<fg={$this->scoreColor($pillar['score'])}>{$pillar['score']}</>",
-                $this->bar($pillar['score']),
-            ];
-        }
-        $this->table(['Pillar', 'Score', 'Bar'], $rows);
+        $rows = array_map(fn (array $p): array => [
+            'pillar' => $p['name'],
+            'score' => $p['score'] === null ? 'not measured' : $p['score'],
+            'bar' => $p['bar'],
+        ], $pillars);
+        $this->table(['Pillar', 'Score', 'Bar'], array_map('array_values', $rows));
 
-        foreach ($pillars as $pillar) {
-            $this->line("<options=bold>{$pillar['name']}</> — ".($pillar['score'] === null ? 'not measured yet' : "{$pillar['score']}/100"));
-            foreach ($pillar['metrics'] as $key => $val) {
+        foreach ($pillars as $p) {
+            $this->line('<options=bold>'.$p['name'].'</> — '.($p['score'] === null ? 'not measured yet' : "{$p['score']}/100"));
+            foreach ($p['metrics'] as $key => $val) {
                 $this->line("  · {$key}: {$val}");
             }
-            if (! empty($pillar['fix'])) {
-                $this->line("  <fg=yellow>→ {$pillar['fix']}</>");
+            if (! empty($p['fix'])) {
+                $this->line("  <fg=yellow>→ {$p['fix']}</>");
             }
             $this->newLine();
         }
-    }
-
-    protected function saveMarkdown(int $total, array $pillars): void
-    {
-        $md = "# SEO Health\n\n";
-        $md .= 'Run: '.now()->toIso8601String()."\n\n";
-        $md .= "Overall score: **{$total}/100** ({$this->grade($total)})\n\n";
-        $md .= "| Pillar | Score |\n|---|---:|\n";
-
-        foreach ($pillars as $pillar) {
-            $md .= '| '.$pillar['name'].' | '.($pillar['score'] === null ? 'not measured yet' : (int) $pillar['score'])." |\n";
-        }
-
-        foreach ($pillars as $pillar) {
-            $md .= "\n## {$pillar['name']} (".($pillar['score'] === null ? 'not measured yet' : "{$pillar['score']}/100").")\n\n";
-            foreach (($pillar['metrics'] ?? []) as $key => $value) {
-                $md .= '- '.$key.': '.$value."\n";
-            }
-            if (! empty($pillar['fix'])) {
-                $md .= '- Recommended fix: '.$pillar['fix']."\n";
-            }
-            if (! empty($pillar['notes']) && is_array($pillar['notes'])) {
-                foreach ($pillar['notes'] as $note) {
-                    $md .= '- Note: '.$note."\n";
-                }
-            }
-        }
-
-        Storage::disk('local')->put('reports/health.md', $md);
-    }
-
-    /**
-     * Append today's overall score to the health ledger (one entry per
-     * calendar day, last write wins), pruned to the newest 120 entries.
-     *
-     * Tenant-scoped via SeoStorage (unlike health.md, which is written only
-     * by the untenanted daily cron and genuinely has no per-tenant prefix):
-     * this ledger is also appended from live, per-request `seo:health --json`
-     * calls made inside a tenant-bound admin request (SeoReportController's
-     * and Admin\SeoReports' healthSnapshot()), so without scoping every
-     * tenant's dashboard would read and overwrite the same shared file.
-     * The admin's healthSnapshot() reads this file back (via the same
-     * SeoStorage::path()) to compute a week-over-week trend chevron.
-     *
-     * Best effort: the ledger is a nice-to-have trend line, not the report
-     * itself, so any failure here (corrupt JSON, disk error) is swallowed
-     * rather than failing the seo:health run.
-     */
-    protected function appendHealthLedger(?int $total): void
-    {
-        if ($total === null) {
-            return;
-        }
-
-        try {
-            $disk = Storage::disk('local');
-            $path = SeoStorage::path('reports/health-history.json');
-
-            $ledger = [];
-            if ($disk->exists($path)) {
-                $decoded = json_decode((string) $disk->get($path), true);
-                if (is_array($decoded)) {
-                    $ledger = $decoded;
-                }
-            }
-
-            $ledger[now()->toDateString()] = $total;
-
-            // Chronological order so pruning below drops the oldest days,
-            // regardless of the order entries were originally written in.
-            ksort($ledger);
-
-            if (count($ledger) > 120) {
-                $ledger = array_slice($ledger, -120, null, true);
-            }
-
-            $disk->put($path, json_encode($ledger, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        } catch (\Throwable) {
-            // Best effort — never fail seo:health over the ledger.
-        }
-    }
-
-    protected function grade(int $s): string
-    {
-        return match (true) {
-            $s >= 90 => 'A — Excellent',
-            $s >= 80 => 'B — Good',
-            $s >= 70 => 'C — Acceptable',
-            $s >= 60 => 'D — Needs work',
-            default => 'F — Critical',
-        };
-    }
-
-    protected function scoreColor(?int $s): string
-    {
-        $s = (int) $s;
-
-        return match (true) {
-            $s >= 80 => 'green',
-            $s >= 60 => 'yellow',
-            default => 'red',
-        };
-    }
-
-    /**
-     * An unmeasured pillar (null, never 0) draws an empty bar: the report
-     * used to crash here on the first null, which is why production had no
-     * health.md at all until 2026-09-22.
-     */
-    protected function bar(?int $s): string
-    {
-        if ($s === null) {
-            return str_repeat('░', 20);
-        }
-
-        $filled = max(0, min(20, (int) round($s / 5)));
-
-        return str_repeat('▓', $filled).str_repeat('░', 20 - $filled);
     }
 }

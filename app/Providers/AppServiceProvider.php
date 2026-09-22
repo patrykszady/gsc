@@ -24,6 +24,15 @@ use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\SEO\RecrawlNudger;
+use App\Support\Seo\Reports\ConfigSiteIdentity;
+use App\Support\Seo\Reports\EloquentAreaCatalog;
+use App\Support\Seo\Reports\EloquentClarityMetricsReader;
+use App\Support\Seo\Reports\EloquentHealthDataReader;
+use App\Support\Seo\Reports\EloquentPsiSnapshotReader;
+use App\Support\Seo\Reports\EloquentQueryMetricsReader;
+use App\Support\Seo\Reports\HttpPageFetcher;
+use App\Support\Seo\Reports\HttpSiteCatalog;
+use App\Support\Seo\Reports\LaravelSimpleCache;
 use App\Support\Seo\SearchConsoleWriter as SiteSearchConsoleWriter;
 use App\Support\SEO\SEOBuilder;
 use App\Support\Tenancy;
@@ -42,6 +51,15 @@ use Illuminate\Support\ServiceProvider;
 use Livewire\Blaze\Blaze;
 use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
+use Psr\SimpleCache\CacheInterface;
+use SsSystems\Platform\Reports\Contracts\AreaCatalog;
+use SsSystems\Platform\Reports\Contracts\ClarityMetricsReader;
+use SsSystems\Platform\Reports\Contracts\HealthDataReader;
+use SsSystems\Platform\Reports\Contracts\PageFetcher;
+use SsSystems\Platform\Reports\Contracts\PsiSnapshotReader;
+use SsSystems\Platform\Reports\Contracts\QueryMetricsReader;
+use SsSystems\Platform\Reports\Contracts\SiteCatalog;
+use SsSystems\Platform\Reports\Contracts\SiteIdentity;
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
@@ -68,6 +86,26 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SearchConsoleClient::class, GoogleSearchConsoleService::class);
         $this->app->bind(SearchConsoleSyncClient::class, GoogleSearchConsoleService::class);
         $this->app->bind(SearchConsoleWriterContract::class, SiteSearchConsoleWriter::class);
+
+        // The shared kit's ten SEO report generators (SsSystems\Platform\
+        // Reports\*, ported verbatim from this app's own app/Console/
+        // Commands/Seo*.php — see vendor/ss-systems/platform-kit/docs/
+        // REPORTS-PORTING.md) read only these nine small interfaces, never
+        // Eloquent/Http/Storage/config() directly. This site binds every
+        // one of them (App\Support\Seo\Reports\ReportCapabilities::
+        // provided() names the same nine keys), so all ten reports are
+        // available here; a site that cannot provide one (e.g.
+        // jpeterson-design's AreaCatalog) simply never binds it and that
+        // report reads as "not available" instead of throwing.
+        $this->app->bind(QueryMetricsReader::class, EloquentQueryMetricsReader::class);
+        $this->app->bind(PsiSnapshotReader::class, EloquentPsiSnapshotReader::class);
+        $this->app->bind(PageFetcher::class, HttpPageFetcher::class);
+        $this->app->bind(SiteCatalog::class, HttpSiteCatalog::class);
+        $this->app->bind(SiteIdentity::class, ConfigSiteIdentity::class);
+        $this->app->bind(AreaCatalog::class, EloquentAreaCatalog::class);
+        $this->app->bind(HealthDataReader::class, EloquentHealthDataReader::class);
+        $this->app->bind(ClarityMetricsReader::class, EloquentClarityMetricsReader::class);
+        $this->app->bind(CacheInterface::class, LaravelSimpleCache::class);
     }
 
     /**
