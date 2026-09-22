@@ -23,6 +23,10 @@ use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
+use App\Support\Seo\Inspection\EloquentCoverageStore;
+use App\Support\Seo\Inspection\FileSitemapSource;
+use App\Support\Seo\Inspection\SearchConsoleUrlInspector;
+use App\Support\Seo\Inspection\TrackedPathsFromModel;
 use App\Support\SEO\RecrawlNudger;
 use App\Support\Seo\Reports\ConfigSiteIdentity;
 use App\Support\Seo\Reports\EloquentAreaCatalog;
@@ -60,6 +64,11 @@ use SsSystems\Platform\Reports\Contracts\PsiSnapshotReader;
 use SsSystems\Platform\Reports\Contracts\QueryMetricsReader;
 use SsSystems\Platform\Reports\Contracts\SiteCatalog;
 use SsSystems\Platform\Reports\Contracts\SiteIdentity;
+use SsSystems\Platform\Seo\Inspection\Contracts\CoverageStore as CoverageStoreContract;
+use SsSystems\Platform\Seo\Inspection\Contracts\SitemapSource as SitemapSourceContract;
+use SsSystems\Platform\Seo\Inspection\Contracts\TrackedPaths as TrackedPathsContract;
+use SsSystems\Platform\Seo\Inspection\Contracts\UrlInspector as UrlInspectorContract;
+use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuota;
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
@@ -106,6 +115,33 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(HealthDataReader::class, EloquentHealthDataReader::class);
         $this->app->bind(ClarityMetricsReader::class, EloquentClarityMetricsReader::class);
         $this->app->bind(CacheInterface::class, LaravelSimpleCache::class);
+
+        // The kit's URL-Inspection sweep (SsSystems\Platform\Seo\Inspection\
+        // UrlInspectionSweep — see seo:gsc-inspect-bulk, now a thin wrapper
+        // over it, and docs/INSPECTION-SWEEP.md in the kit's source repo)
+        // reads only these four small interfaces, never Eloquent/the
+        // filesystem/config() directly.
+        $this->app->bind(UrlInspectorContract::class, SearchConsoleUrlInspector::class);
+        $this->app->bind(SitemapSourceContract::class, FileSitemapSource::class);
+        $this->app->bind(CoverageStoreContract::class, EloquentCoverageStore::class);
+        $this->app->bind(TrackedPathsContract::class, TrackedPathsFromModel::class);
+
+        // A factory, not a singleton: the key prefix is baked in at
+        // resolution time from the CURRENT tenant (Tenancy::cacheKey()), and
+        // a queue worker or the parallel test suite can resolve this for more
+        // than one site inside one process — a singleton would freeze the
+        // first tenant's prefix for every one after it. Same daily/per-minute
+        // limits and the same per-tenant key shape
+        // (Tenancy::cacheKey('gsc.url-inspection'), bare for the default
+        // site) as the retired App\Support\Seo\UrlInspectionQuota static
+        // class this replaces — GscErrorController now reads this instance
+        // instead of that class's static methods.
+        $this->app->bind(KitUrlInspectionQuota::class, fn ($app) => new KitUrlInspectionQuota(
+            cache: $app->make(CacheInterface::class),
+            keyPrefix: Tenancy::cacheKey('gsc.url-inspection'),
+            dailyLimitValue: (int) config('services.google.search_console.inspection_daily_quota', 2000),
+            perMinuteLimitValue: (int) config('services.google.search_console.inspection_per_minute_quota', 600),
+        ));
     }
 
     /**

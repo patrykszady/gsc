@@ -132,7 +132,8 @@ return [
                 env('GSC_SEARCH_CONSOLE_SITE_URL', 'sc-domain:gs.construction')),
             // URL Inspection's published ceilings, per property per day and
             // per minute. Everything that inspects shares one allowance —
-            // see App\Support\Seo\UrlInspectionQuota.
+            // see SsSystems\Platform\Seo\Inspection\UrlInspectionQuota,
+            // bound per-tenant in AppServiceProvider.
             'inspection_daily_quota' => (int) env('GSC_INSPECTION_DAILY_QUOTA', 2000),
             'inspection_per_minute_quota' => (int) env('GSC_INSPECTION_PER_MINUTE_QUOTA', 600),
             // Who runs this site's Search Console sync (2026-09-22): 'site'

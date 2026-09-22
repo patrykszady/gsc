@@ -6,9 +6,9 @@ use App\Jobs\RunGscInspectUrlsJob;
 use App\Models\GscCoverageState;
 use App\Models\OAuthToken;
 use App\Models\Tracked404;
-use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota;
 use Tests\TestCase;
 
 /**
@@ -114,7 +114,7 @@ class GscIndexingControllerTest extends TestCase
     public function test_the_breakdown_reports_what_is_left_of_todays_inspection_allowance(): void
     {
         config(['services.google.search_console.inspection_daily_quota' => 2000]);
-        UrlInspectionQuota::consume(828);
+        app(UrlInspectionQuota::class)->consume(828);
 
         $quota = $this->getJson('/api/admin/v1/seo/gsc-errors/indexing', $this->bearer())
             ->assertOk()->json('data.quota');
@@ -128,7 +128,7 @@ class GscIndexingControllerTest extends TestCase
     {
         Bus::fake();
         config(['services.google.search_console.inspection_daily_quota' => 10]);
-        UrlInspectionQuota::consume(8);
+        app(UrlInspectionQuota::class)->consume(8);
 
         $csv = "URL\n".collect(range(1, 5))->map(fn ($i) => "https://gs.construction/p{$i}")->implode("\n");
 
@@ -144,7 +144,7 @@ class GscIndexingControllerTest extends TestCase
     {
         Bus::fake();
         config(['services.google.search_console.inspection_daily_quota' => 5]);
-        UrlInspectionQuota::markExhausted();
+        app(UrlInspectionQuota::class)->markExhausted();
 
         $data = $this->postJson('/api/admin/v1/seo/gsc-errors/import', ['csv' => "URL\nhttps://gs.construction/p1"], $this->bearer())
             ->assertOk()->json('data');
@@ -166,7 +166,7 @@ class GscIndexingControllerTest extends TestCase
 
         $this->postJson('/api/admin/v1/seo/gsc-errors/inspect', ['url' => 'https://gs.construction/a'], $this->bearer())
             ->assertOk()->assertJsonPath('data.ok', true);
-        $this->assertSame(0, UrlInspectionQuota::remaining());
+        $this->assertSame(0, app(UrlInspectionQuota::class)->remaining());
 
         // The second call would be refused by Google; refuse it here instead,
         // with a message that says when it can be retried.

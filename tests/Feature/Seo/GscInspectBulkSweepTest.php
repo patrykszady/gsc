@@ -5,12 +5,19 @@ namespace Tests\Feature\Seo;
 use App\Models\GscCoverageState;
 use App\Models\OAuthToken;
 use App\Models\Tracked404;
-use App\Support\Seo\UrlInspectionQuota;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota;
+use SsSystems\Platform\Seo\Inspection\UrlInspectionSweep;
 use Tests\TestCase;
 
 /**
- * The nightly URL Inspection sweep.
+ * The nightly URL Inspection sweep — now the kit's
+ * SsSystems\Platform\Seo\Inspection\UrlInspectionSweep, wired to this site's
+ * own adapters (App\Support\Seo\Inspection\*) and bound in
+ * AppServiceProvider. seo:gsc-inspect-bulk is a thin wrapper over it (see
+ * that class), so these tests exercise the whole thing through the artisan
+ * command exactly as before.
  *
  * Search Console's own "why pages aren't indexed" report counts URLs our
  * sitemap never carried, and the API offers no way to read that report, so
@@ -24,6 +31,14 @@ class GscInspectBulkSweepTest extends TestCase
 
     /** What the faked inspection endpoint answers; a test may set it to 429. */
     protected int $inspectionStatus = 200;
+
+    /**
+     * Per-URL indexStatusResult override for the faked inspection endpoint;
+     * a URL not listed here answers PASS/"Submitted and indexed" as before.
+     *
+     * @var array<string, array{verdict: string, coverageState: string}>
+     */
+    protected array $verdictByUrl = [];
 
     protected function setUp(): void
     {
@@ -60,12 +75,15 @@ class GscInspectBulkSweepTest extends TestCase
                     return Http::response(['error' => ['code' => $this->inspectionStatus]], $this->inspectionStatus);
                 }
 
-                $this->inspected[] = $request->data()['inspectionUrl'];
+                $url = $request->data()['inspectionUrl'];
+                $this->inspected[] = $url;
 
-                return Http::response(['inspectionResult' => ['indexStatusResult' => [
+                $result = $this->verdictByUrl[$url] ?? [
                     'verdict' => 'PASS',
                     'coverageState' => 'Submitted and indexed',
-                ]]]);
+                ];
+
+                return Http::response(['inspectionResult' => ['indexStatusResult' => $result]]);
             },
         ]);
     }
@@ -100,7 +118,7 @@ class GscInspectBulkSweepTest extends TestCase
             'https://gs.construction/old-page',
             'https://gs.construction/areas-served/orland-park',
         ], $this->inspected);
-        $this->assertSame(4, UrlInspectionQuota::used());
+        $this->assertSame(4, app(UrlInspectionQuota::class)->used());
     }
 
     public function test_only_the_sitemap_is_swept_when_the_other_pools_are_turned_off(): void
@@ -117,7 +135,7 @@ class GscInspectBulkSweepTest extends TestCase
     {
         config(['services.google.search_console.inspection_daily_quota' => 3]);
         // An import earlier today already spent one.
-        UrlInspectionQuota::consume();
+        app(UrlInspectionQuota::class)->consume();
         $sitemap = $this->sitemap('https://gs.construction/a', 'https://gs.construction/b', 'https://gs.construction/c', 'https://gs.construction/d');
 
         $this->artisan('seo:gsc-inspect-bulk', ['--sitemap' => $sitemap, '--limit' => 0])
@@ -125,13 +143,13 @@ class GscInspectBulkSweepTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertCount(2, $this->inspected);
-        $this->assertSame(0, UrlInspectionQuota::remaining());
+        $this->assertSame(0, app(UrlInspectionQuota::class)->remaining());
     }
 
     public function test_it_does_not_call_google_at_all_once_the_allowance_is_spent(): void
     {
         config(['services.google.search_console.inspection_daily_quota' => 5]);
-        UrlInspectionQuota::markExhausted();
+        app(UrlInspectionQuota::class)->markExhausted();
         $sitemap = $this->sitemap('https://gs.construction/a');
 
         $this->artisan('seo:gsc-inspect-bulk', ['--sitemap' => $sitemap, '--limit' => 0])
@@ -150,12 +168,91 @@ class GscInspectBulkSweepTest extends TestCase
             ->expectsOutputToContain('Google refused on quota')
             ->assertExitCode(0);
 
-        $this->assertSame(0, UrlInspectionQuota::remaining(), 'the day is spent, whatever our own count said');
+        $this->assertSame(0, app(UrlInspectionQuota::class)->remaining(), 'the day is spent, whatever our own count said');
+    }
+
+    public function test_each_urls_own_verdict_and_coverage_state_are_persisted(): void
+    {
+        $this->verdictByUrl = [
+            'https://gs.construction/b' => ['verdict' => 'NEUTRAL', 'coverageState' => 'Crawled - currently not indexed'],
+        ];
+        $sitemap = $this->sitemap('https://gs.construction/a', 'https://gs.construction/b');
+
+        $this->artisan('seo:gsc-inspect-bulk', ['--sitemap' => $sitemap, '--limit' => 0])->assertExitCode(0);
+
+        $a = GscCoverageState::query()->where('url', 'https://gs.construction/a')->first();
+        $b = GscCoverageState::query()->where('url', 'https://gs.construction/b')->first();
+
+        $this->assertSame('PASS', $a->verdict);
+        $this->assertSame('Submitted and indexed', $a->coverage_state);
+        $this->assertSame('NEUTRAL', $b->verdict);
+        $this->assertSame('Crawled - currently not indexed', $b->coverage_state);
+    }
+
+    public function test_a_changed_verdict_on_a_second_run_updates_last_changed_at_and_consecutive_failures(): void
+    {
+        $sitemap = $this->sitemap('https://gs.construction/a');
+
+        $this->artisan('seo:gsc-inspect-bulk', ['--sitemap' => $sitemap, '--limit' => 0])->assertExitCode(0);
+        $first = GscCoverageState::query()->where('url', 'https://gs.construction/a')->first();
+        $this->assertSame('PASS', $first->verdict);
+        $this->assertSame(0, $first->consecutive_failures);
+        $firstChangedAt = $first->last_changed_at;
+
+        Carbon::setTestNow(now()->addHour());
+        $this->verdictByUrl = [
+            'https://gs.construction/a' => ['verdict' => 'FAIL', 'coverageState' => 'Crawled - currently not indexed'],
+        ];
+
+        $this->artisan('seo:gsc-inspect-bulk', ['--sitemap' => $sitemap, '--limit' => 0])->assertExitCode(0);
+        $second = GscCoverageState::query()->where('url', 'https://gs.construction/a')->first();
+
+        $this->assertSame('FAIL', $second->verdict);
+        $this->assertSame(1, $second->consecutive_failures, 'the first non-PASS verdict starts the streak at 1');
+        $this->assertTrue($second->last_changed_at->gt($firstChangedAt), 'a changed verdict bumps last_changed_at');
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * --dry-run is not on this command's own signature (it never had it) —
+     * the kit's UrlInspectionSweep added the option for every caller, so this
+     * exercises the sweep this app's AppServiceProvider wires up directly,
+     * the same instance the command resolves.
+     */
+    public function test_dry_run_touches_nothing_and_calls_nothing(): void
+    {
+        $sitemap = $this->sitemap('https://gs.construction/a', 'https://gs.construction/b');
+
+        $result = app(UrlInspectionSweep::class)->run([
+            'sitemap' => $sitemap,
+            'limit' => 0,
+            'dry_run' => true,
+        ]);
+
+        $this->assertSame([], $this->inspected, 'no inspection call was made');
+        Http::assertNotSent(fn ($r) => str_contains($r->url(), 'urlInspection'));
+        $this->assertSame(0, GscCoverageState::query()->count(), 'nothing was written');
+        $this->assertSame(0, app(UrlInspectionQuota::class)->used(), 'no quota was spent');
+        $this->assertStringContainsString('Dry run: would inspect 2 URL(s)', $result->lines[count($result->lines) - 1]);
     }
 
     protected function tearDown(): void
     {
         @unlink(storage_path('app/test-sitemap.xml'));
         parent::tearDown();
+    }
+
+    public function test_a_site_without_a_search_console_grant_is_refused_before_any_quota_is_spent(): void
+    {
+        \App\Models\OAuthToken::query()->delete();
+        \Illuminate\Support\Facades\Http::fake();
+
+        $this->artisan('seo:gsc-inspect-bulk', ['--urls' => ['https://example.com/a']])
+            ->expectsOutputToContain('Search Console is not connected')
+            ->assertExitCode(1);
+
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+        $this->assertSame(0, app(\SsSystems\Platform\Seo\Inspection\UrlInspectionQuota::class)->used());
     }
 }

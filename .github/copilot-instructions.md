@@ -41,3 +41,16 @@ adapters in `app/Support/Seo/Reports/` (one per kit interface, bound in
 version, new zip in `packages/`), never by growing logic back into a command.
 `ReportCapabilities` and `SeoReportController::regenerate()` refuse a report
 this site cannot run before anything executes. `KitReportsTest` pins it.
+
+## The Search Console URL-inspection sweep lives in the kit (2026-09-22)
+
+`seo:gsc-inspect-bulk` is a thin wrapper over
+`SsSystems\Platform\Seo\Inspection\UrlInspectionSweep` (platform-kit 0.7.1),
+shared with jpeterson-design: pools, quota (the kit's `UrlInspectionQuota`,
+bound per tenant), verdict mapping and the markdown report are the kit's.
+This app provides `app/Support/Seo/Inspection/` adapters (inspector over
+`GoogleSearchConsoleService::inspectUrl()`, sitemap source, coverage store,
+tracked 404s). Two rules the adapters carry: sitemap URLs are mapped onto the
+Search Console property's host (a dev sitemap lists dev hosts and Google 403s
+anything outside the property), and the sweep is refused before any quota is
+spent when no grant is stored.

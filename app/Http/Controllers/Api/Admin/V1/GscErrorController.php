@@ -12,13 +12,13 @@ use App\Models\Tracked404;
 use App\Services\GoogleSearchConsoleService;
 use App\Support\Seo\CrawlFiles;
 use App\Support\Seo\SearchConsoleProperty;
-use App\Support\Seo\UrlInspectionQuota;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -27,10 +27,18 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * against the live app; verify with Queue::fake instead. prune-retired
  * deletes DB rows (of URLs that left the sitemap) — never exercised against
  * live data either, per the porting task's hard safety rules.
+ *
+ * The quota instance is the kit's SsSystems\Platform\Seo\Inspection\
+ * UrlInspectionQuota (AppServiceProvider binds it per-tenant), the same one
+ * seo:gsc-inspect-bulk's sweep draws on — this app's own now-retired
+ * App\Support\Seo\UrlInspectionQuota static class used to be shared between
+ * them instead.
  */
 class GscErrorController extends Controller
 {
     use BuildsApiResponses;
+
+    public function __construct(private readonly UrlInspectionQuota $quota) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -227,7 +235,7 @@ class GscErrorController extends Controller
             // What the per-URL state costs: Search Console publishes no
             // coverage report over its API, so every row here was bought with
             // one URL Inspection call out of the property's daily allowance.
-            'quota' => UrlInspectionQuota::status(),
+            'quota' => $this->quota->status(),
         ]);
     }
 
@@ -276,7 +284,7 @@ class GscErrorController extends Controller
         // Every inspection spends from the property's daily allowance, which
         // the nightly sweep also draws on. Queue only what today can actually
         // answer, and say so rather than letting Google refuse the remainder.
-        $allowance = UrlInspectionQuota::reserve(count($urls));
+        $allowance = $this->quota->reserve(count($urls));
         $queued = array_slice($urls, 0, max(0, min(1500, $allowance)));
 
         if ($queued === []) {
@@ -284,8 +292,8 @@ class GscErrorController extends Controller
                 'queued' => 0,
                 'skipped' => $skipped,
                 'deferred' => count($urls),
-                'quota' => UrlInspectionQuota::status(),
-                'message' => 'Today\'s URL Inspection allowance is spent ('.UrlInspectionQuota::used().' of '.UrlInspectionQuota::dailyLimit().'). It resets '.UrlInspectionQuota::resetsAt()->diffForHumans().' — import this file again then.',
+                'quota' => $this->quota->status(),
+                'message' => 'Today\'s URL Inspection allowance is spent ('.$this->quota->used().' of '.$this->quota->dailyLimit().'). It resets '.$this->quota->resetsAt()->diffForHumans().' — import this file again then.',
             ]);
         }
 
@@ -297,7 +305,7 @@ class GscErrorController extends Controller
             'queued' => count($queued),
             'skipped' => $skipped,
             'deferred' => $deferred,
-            'quota' => UrlInspectionQuota::status(),
+            'quota' => $this->quota->status(),
             'message' => count($queued).' URL(s) queued for URL Inspection — about '.max(1, (int) ceil(count($queued) * 2 / 60)).' minute(s); they will appear here with their reason.'
                 .($deferred > 0 ? ' '.$deferred.' more than today\'s allowance covers — import the file again tomorrow for the rest.' : ''),
         ]);
@@ -308,18 +316,18 @@ class GscErrorController extends Controller
     {
         $data = $request->validate(['url' => ['required', 'url', 'max:2000']]);
 
-        if (UrlInspectionQuota::remaining() < 1) {
+        if ($this->quota->remaining() < 1) {
             return $this->itemResponse([
                 'ok' => false,
-                'quota' => UrlInspectionQuota::status(),
-                'message' => 'Today\'s URL Inspection allowance is spent ('.UrlInspectionQuota::used().' of '.UrlInspectionQuota::dailyLimit().'). It resets '.UrlInspectionQuota::resetsAt()->diffForHumans().'.',
+                'quota' => $this->quota->status(),
+                'message' => 'Today\'s URL Inspection allowance is spent ('.$this->quota->used().' of '.$this->quota->dailyLimit().'). It resets '.$this->quota->resetsAt()->diffForHumans().'.',
             ], 429);
         }
 
         $service = app(GoogleSearchConsoleService::class);
         $site = (string) SearchConsoleProperty::url();
 
-        UrlInspectionQuota::consume();
+        $this->quota->consume();
         $result = $service->inspectUrl($site, $data['url']);
         if ($result === null) {
             return $this->itemResponse(['ok' => false, 'message' => $service->getLastError()['message'] ?? 'Search Console did not answer.'], 502);
