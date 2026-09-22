@@ -492,6 +492,10 @@ class ProjectImage extends Model
             // The photo's own page on the site (live once the project is published).
             'public_url' => $this->url(),
             'alt_text' => $this->alt_text,
+            // The SEO alt text as stored (the accessor derives one when empty),
+            // so the central admin's shared Google-photo caption rule can
+            // prefer it the way this site's own uploader does (2026-09-22).
+            'seo_alt_text' => $this->getRawOriginal('seo_alt_text'),
             'caption' => $this->caption,
             'is_cover' => (bool) $this->is_cover,
             'sort_order' => (int) $this->sort_order,
@@ -522,6 +526,10 @@ class ProjectImage extends Model
             'url' => $this->url,
             'thumbnail_url' => $this->getThumbnailUrl('thumb'),
             'alt_text' => $this->alt_text,
+            // The SEO alt text as stored (the accessor derives one when empty),
+            // so the central admin's shared Google-photo caption rule can
+            // prefer it the way this site's own uploader does (2026-09-22).
+            'seo_alt_text' => $this->getRawOriginal('seo_alt_text'),
             'caption' => $this->caption,
             'is_cover' => (bool) $this->is_cover,
             'google_places_uploaded_at' => optional($this->google_places_uploaded_at)->toIso8601String(),
