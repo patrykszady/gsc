@@ -42,7 +42,8 @@ class PlatformsGbpListingsTest extends TestCase
             $mock->shouldReceive('getStoredToken')->andReturn(null);
             $mock->shouldReceive('isConfigured')->andReturn(true);
             $mock->shouldReceive('listLocations')->with('900')->andReturn([
-                ['name' => self::GS, 'title' => 'GS Construction & Remodeling', 'websiteUri' => 'https://gs.construction/'],
+                ['name' => self::GS, 'title' => 'GS Construction & Remodeling', 'websiteUri' => 'https://gs.construction/',
+                    'metadata' => ['mapsUri' => 'https://maps.google.com/?cid=111', 'placeId' => 'ChIJgsconstruction']],
                 ['name' => self::JPD, 'title' => 'J. Peterson Design, LLC', 'websiteUri' => 'https://www.jpeterson-design.com'],
                 ['name' => 'locations/333', 'title' => 'A business with no website'],
             ]);
@@ -63,6 +64,10 @@ class PlatformsGbpListingsTest extends TestCase
         $titles = collect($data['accounts'])->flatMap(fn (array $a) => array_column($a['locations'], 'title'))->all();
 
         $this->assertSame(['GS Construction & Remodeling'], $titles);
+        // Each listing carries its public Maps link and place id (2026-09-22),
+        // which the central admin fills the market's Google URL from.
+        $this->assertSame('https://maps.google.com/?cid=111', $data['accounts'][0]['locations'][0]['maps_url']);
+        $this->assertSame('ChIJgsconstruction', $data['accounts'][0]['locations'][0]['place_id']);
         $this->assertTrue($data['filtered']);
         $this->assertSame(2, $data['hidden_count'], 'the client and the website-less listing are not this site\'s');
         $this->assertContains('gs.construction', $data['site_hosts']);

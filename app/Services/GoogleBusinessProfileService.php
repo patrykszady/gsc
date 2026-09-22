@@ -523,6 +523,53 @@ class GoogleBusinessProfileService
     }
 
     /**
+     * One listing's reviews, a page at a time (2026-09-22), for the central
+     * admin's per-market review import: unlike fetchReviews(), which reads
+     * the site's own single listing, the account and location are passed
+     * in, so the same grant can read any listing it manages. The import
+     * itself lives in ss.systems — this is a pass-through with this site's
+     * grant.
+     *
+     * @return array{reviews: array, totalReviewCount: int, averageRating: float, nextPageToken: ?string}|null
+     */
+    public function fetchReviewsFor(string $accountId, string $locationId, ?string $pageToken = null, int $pageSize = 50): ?array
+    {
+        $accessToken = $this->getAccessToken();
+
+        if (! $accessToken) {
+            $this->lastError ??= ['message' => 'No Google authorization on file'];
+
+            return null;
+        }
+
+        $params = ['pageSize' => $pageSize];
+        if ($pageToken) {
+            $params['pageToken'] = $pageToken;
+        }
+
+        $response = Http::withToken($accessToken)
+            ->timeout(30)
+            ->get(self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}/reviews", $params);
+
+        if (! $response->successful()) {
+            $this->lastError = ['message' => 'Fetch reviews failed', 'status' => $response->status(), 'body' => $response->body()];
+            Log::channel('gbp')->warning('GBP: Failed to fetch reviews for listing', ['status' => $response->status(), 'location_id' => $locationId]);
+
+            return null;
+        }
+
+        $this->lastError = null;
+        $data = $response->json();
+
+        return [
+            'reviews' => $data['reviews'] ?? [],
+            'totalReviewCount' => (int) ($data['totalReviewCount'] ?? 0),
+            'averageRating' => (float) ($data['averageRating'] ?? 0),
+            'nextPageToken' => $data['nextPageToken'] ?? null,
+        ];
+    }
+
+    /**
      * List available Google Business Profile accounts.
      */
     public function listAccounts(): array
@@ -586,7 +633,10 @@ class GoogleBusinessProfileService
         $response = Http::withToken($accessToken)
             ->timeout(20)
             ->get(self::INFO_API_BASE."/accounts/{$accountId}/locations", [
-                'readMask' => 'name,title,storeCode,websiteUri',
+                // storefrontAddress: the listings endpoint prints the address
+                // (it never arrived before). metadata: the public Maps link and
+                // place id the central admin fills each market's Google URL from.
+                'readMask' => 'name,title,storeCode,websiteUri,storefrontAddress,metadata',
             ]);
 
         if (! $response->successful()) {

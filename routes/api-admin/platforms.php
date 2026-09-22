@@ -41,6 +41,8 @@ Route::prefix('platforms')->group(function () {
     // exist after the OAuth grant, so they are discovered here and stored in
     // platform_settings rather than asked for as env values nobody can edit.
     Route::get('gbp/listings', [PlatformsController::class, 'gbpListings']);
+    // One listing's Google reviews, for the central admin's per-market import.
+    Route::get('gbp/reviews', [PlatformsController::class, 'gbpReviews']);
     Route::post('gbp/listing', [PlatformsController::class, 'saveGbpListing']);
     Route::post('gbp/publishing', [PlatformsController::class, 'saveGbpPublishing']);
     Route::post('yelp/credentials', [PlatformsController::class, 'saveYelpCredentials']);

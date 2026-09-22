@@ -9,6 +9,7 @@ use App\Models\OAuthToken;
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
 use App\Models\Site;
+use App\Models\ReviewUrl;
 use App\Models\Testimonial;
 use App\Services\AiContentService;
 use App\Services\GoogleBusinessProfileService;
@@ -867,6 +868,11 @@ class PlatformsController extends Controller
                     'location_id' => $locationId,
                     'title' => $location['title'] ?? null,
                     'website' => $location['websiteUri'] ?? null,
+                    // The listing's public address on Google, straight from
+                    // Google (2026-09-22): the central admin keeps one listing
+                    // per market and fills that market's Google URL from this.
+                    'maps_url' => $location['metadata']['mapsUri'] ?? null,
+                    'place_id' => $location['metadata']['placeId'] ?? null,
                     'address' => implode(', ', array_filter([
                         implode(' ', (array) ($location['storefrontAddress']['addressLines'] ?? [])),
                         $location['storefrontAddress']['locality'] ?? null,
@@ -943,6 +949,75 @@ class PlatformsController extends Controller
         return response()->json(['data' => $this->gbpStatus()]);
     }
 
+    /** Google's review star enum, as the central admin stores a rating. */
+    protected const GBP_STAR_RATINGS = ['ONE' => 1, 'TWO' => 2, 'THREE' => 3, 'FOUR' => 4, 'FIVE' => 5];
+
+    /**
+     * GET platforms/gbp/reviews?account_id=&location_id=[&page_token=]
+     *
+     * One listing's Google reviews for the central admin (2026-09-22), which
+     * imports them as testimonials per market. Each review says whether this
+     * site already holds it (a review_urls row for platform google carrying
+     * its id — the same key SyncGoogleReviews writes), so the admin creates
+     * only the new ones. A pass-through with this site's grant.
+     */
+    public function gbpReviews(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'account_id' => ['required', 'string', 'max:191'],
+            'location_id' => ['required', 'string', 'max:191'],
+            'page_token' => ['sometimes', 'nullable', 'string', 'max:2048'],
+        ]);
+
+        $service = app(GoogleBusinessProfileService::class);
+
+        if (! $service->hasRefreshToken()) {
+            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
+        }
+
+        $page = $service->fetchReviewsFor(
+            GoogleBusinessListing::bareId($data['account_id']),
+            GoogleBusinessListing::bareId($data['location_id']),
+            $data['page_token'] ?? null,
+        );
+
+        if ($page === null) {
+            $message = 'Google refused the review lookup: '.($service->getLastError()['message'] ?? 'unknown error');
+
+            // Under `errors` too: the central admin reads a 422's errors, and
+            // this is what it should tell the operator.
+            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
+        }
+
+        $reviews = collect($page['reviews'])
+            ->map(fn (array $r) => ['id' => GoogleBusinessListing::bareId((string) ($r['name'] ?? '')), 'raw' => $r])
+            ->filter(fn (array $r) => $r['id'] !== '')
+            ->values();
+
+        // whereHas('testimonial') keeps this to THIS site's testimonials.
+        $held = ReviewUrl::query()
+            ->where('platform', 'google')
+            ->whereIn('external_id', $reviews->pluck('id')->all())
+            ->whereHas('testimonial')
+            ->pluck('external_id')
+            ->all();
+
+        return response()->json(['data' => [
+            'reviews' => $reviews->map(fn (array $r) => [
+                'id' => $r['id'],
+                'reviewer' => $r['raw']['reviewer']['displayName'] ?? 'Google Reviewer',
+                'rating' => self::GBP_STAR_RATINGS[$r['raw']['starRating'] ?? ''] ?? null,
+                'comment' => (string) ($r['raw']['comment'] ?? ''),
+                'created_at' => $r['raw']['createTime'] ?? null,
+                'url' => 'https://www.google.com/maps/reviews?reviewid='.$r['id'],
+                'imported' => in_array($r['id'], $held, true),
+            ])->all(),
+            'next_page_token' => $page['nextPageToken'],
+            'total_review_count' => $page['totalReviewCount'],
+            'average_rating' => $page['averageRating'],
+        ]]);
+    }
+
     protected function gbpStatus(): array
     {
         $service = app(GoogleBusinessProfileService::class);
@@ -970,6 +1045,11 @@ class PlatformsController extends Controller
             // Social Media page's Google field. Null until this site links a
             // listing of its own — never another tenant's.
             'maps_url' => GoogleBusinessListing::mapsUrl(),
+            // Google reviews held as testimonials (a review_urls row for
+            // platform google), the same two numbers the Houzz and Angi
+            // cards report — the central admin imports them per market.
+            'reviews_count' => ($googleReviews = Testimonial::query()->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google')))->count(),
+            'latest_review_date' => ($latestGoogle = (clone $googleReviews)->max('review_date')) ? Carbon::parse($latestGoogle)->toDateString() : null,
             'client_id_configured' => ! empty($config['client_id']),
             'client_secret_configured' => ! empty($config['client_secret']),
             'account_id_configured' => ! empty($config['account_id']),

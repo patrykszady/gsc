@@ -165,7 +165,13 @@ class TestimonialController extends Controller
                     continue;
                 }
 
-                $testimonial->reviewUrls()->create(['platform' => $platform, 'url' => $url]);
+                $testimonial->reviewUrls()->create([
+                    'platform' => $platform,
+                    'url' => $url,
+                    // The platform's own id for the review (a Google review id),
+                    // so an import can tell what is already here — 2026-09-22.
+                    'external_id' => trim((string) ($entry['external_id'] ?? '')) ?: null,
+                ]);
             }
         }
 
@@ -194,6 +200,7 @@ class TestimonialController extends Controller
             'review_urls' => ['sometimes', 'nullable', 'array'],
             'review_urls.*.platform' => ['sometimes', 'nullable', 'string', 'max:50'],
             'review_urls.*.url' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'review_urls.*.external_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'project_ids' => ['sometimes', 'nullable', 'array'],
             'project_ids.*' => ['integer', 'exists:projects,id'],
         ];
