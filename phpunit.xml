@@ -23,6 +23,10 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <!-- Copied from production for dev parity; the suite must not see them. -->
+        <env name="CITATIONS_M365_CLIENT_ID" value=""/>
+        <env name="CITATIONS_M365_CLIENT_SECRET" value=""/>
+        <env name="CITATIONS_M365_TENANT_ID" value=""/>
         <!-- The GBP description proposal reads Google and Gemini for real; the local .env would make it live under test. -->
         <env name="SEO_AUTOPILOT_GBP_DESCRIPTION_ENABLED" value="false"/>
         <env name="DB_CONNECTION" value="sqlite"/>

@@ -2,15 +2,20 @@
 
 namespace Tests\Feature\Citations;
 
+use App\Jobs\RunCitationsBatch;
 use App\Models\Citation;
+use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\Citations\CitationSessionService;
 use App\Services\Citations\VerificationInbox;
+use App\Support\Citations\KnownListings;
 use App\Support\Citations\LinkCheck;
 use App\Support\Citations\ListingPayload;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\Feature\Api\Admin\V1\Concerns\WithAdminApiAuth;
 use Tests\TestCase;
@@ -29,12 +34,12 @@ class CitationsTest extends TestCase
     {
         parent::setUp();
         $this->setUpAdminApiAuth();
-        config(['app.url' => 'https://gs.construction', 'citations.storage_dir' => sys_get_temp_dir() . '/citations-test-' . getmypid()]);
+        config(['app.url' => 'https://gs.construction', 'citations.storage_dir' => sys_get_temp_dir().'/citations-test-'.getmypid()]);
     }
 
     protected function tearDown(): void
     {
-        \Illuminate\Support\Facades\File::deleteDirectory((string) config('citations.storage_dir'));
+        File::deleteDirectory((string) config('citations.storage_dir'));
         parent::tearDown();
     }
 
@@ -228,7 +233,48 @@ class CitationsTest extends TestCase
         $this->assertSame('live', Citation::where('slug', 'bbb')->value('status'), 'an existing profile that links to us is a live citation');
         $this->assertSame('needs_human', Citation::where('slug', 'nextdoor')->value('status'), 'exists but no link: a person adds the website');
         $this->assertStringContainsString('add https://gs.construction', Citation::where('slug', 'nextdoor')->value('human_reason'));
-        $this->assertSame('planned', Citation::where('slug', 'houzz')->value('status'), 'blocked by a bot wall: nothing concluded');
+        // Houzz is a profile Platforms already imports reviews from, so it is
+        // live from the sync itself; the bot wall on the link check changes nothing.
+        $this->assertSame('live', Citation::where('slug', 'houzz')->value('status'), 'matched from Platforms, whatever the bot wall says');
+    }
+
+    public function test_listings_platforms_already_knows_read_as_live_with_their_urls(): void
+    {
+        // The board planned, failed or handed to a person listings the site
+        // demonstrably has: the Houzz and Angi profiles whose reviews we
+        // import, the Yelp business profile, the Facebook page.
+        PlatformSetting::put('socials.url.houzz', 'https://www.houzz.com/professionals/gs-construction-test');
+        PlatformSetting::put('socials.url.yelp', 'https://www.yelp.com/biz/gs-construction-test');
+        PlatformSetting::put('socials.url.facebook', 'https://www.facebook.com/gs.construction.chi');
+        $this->artisan('citations:sync')->assertExitCode(0);
+        Citation::where('slug', 'yelp')->update(['status' => 'failed', 'human_reason' => 'The bot could not log in.', 'listing_url' => null]);
+        Citation::where('slug', 'angi')->update(['status' => 'declined']);
+        Citation::where('slug', 'houzz')->update(['status' => 'running']);
+
+        // The sync already matched facebook; only yelp moves now — houzz is
+        // mid-run and angi was declined, and neither is ever touched.
+        $this->assertSame(1, KnownListings::reconcile());
+
+        $yelp = Citation::where('slug', 'yelp')->first();
+        $this->assertSame('live', $yelp->status);
+        $this->assertSame('https://www.yelp.com/biz/gs-construction-test', $yelp->listing_url);
+        $this->assertNull($yelp->human_reason);
+        $this->assertStringContainsString('Listed already', $yelp->note);
+        $this->assertNotNull($yelp->live_at);
+        $this->assertStringContainsString('Matched from what Platforms already knows', json_encode($yelp->log));
+
+        // The page link Social Media holds counts too.
+        $this->assertSame('live', Citation::where('slug', 'facebook')->value('status'));
+        $this->assertSame('https://www.facebook.com/gs.construction.chi', Citation::where('slug', 'facebook')->value('listing_url'));
+
+        // Never a run in progress, never a deliberate decline.
+        $this->assertSame('running', Citation::where('slug', 'houzz')->value('status'));
+        $this->assertSame('declined', Citation::where('slug', 'angi')->value('status'));
+
+        // Opening the board applies the same match, so the screen never lags a sync.
+        Citation::where('slug', 'yelp')->update(['status' => 'planned']);
+        $rows = collect($this->getJson('/api/admin/v1/citations', $this->adminApiHeaders())->assertOk()->json('data.citations'));
+        $this->assertSame('live', $rows->firstWhere('slug', 'yelp')['status']);
     }
 
     public function test_batch_runs_every_open_directory_automatically_and_parks_what_needs_a_person(): void
@@ -256,8 +302,8 @@ class CitationsTest extends TestCase
                 $dir = $this->dirFor($citation);
                 $state = $citation->slug === 'remodelersup'
                     ? ['phase' => 'done', 'done' => true, 'outcome' => 'done', 'listing_url' => 'https://remodelersup.com/pros/gs', 'note' => 'Submitted — the site said "verify your email".', 'photos_uploaded' => 6, 'log' => [], 'shots' => [], 'account' => ['email' => 'crew@gs.construction', 'password' => 'Pw1!']]
-                    : ['phase' => 'needs_human', 'needs_human' => true, 'done' => true, 'outcome' => 'needs_human', 'reason' => 'A CAPTCHA (recaptcha) guards this form.', 'log' => [], 'shots' => [['file' => $dir . '/shots/01-landing.png', 'label' => 'landing']]];
-                file_put_contents($dir . '/state.json', json_encode($state));
+                    : ['phase' => 'needs_human', 'needs_human' => true, 'done' => true, 'outcome' => 'needs_human', 'reason' => 'A CAPTCHA (recaptcha) guards this form.', 'log' => [], 'shots' => [['file' => $dir.'/shots/01-landing.png', 'label' => 'landing']]];
+                file_put_contents($dir.'/state.json', json_encode($state));
 
                 return ['ok' => true, 'slug' => $citation->slug, 'url' => null, 'started_at' => time(), 'expires_at' => time() + 240];
             }
@@ -292,11 +338,11 @@ class CitationsTest extends TestCase
 
         // The API queues the same list and reports progress on the board.
         $this->app->instance(CitationSessionService::class, $fake);
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $queued = $this->postJson('/api/admin/v1/citations/batch', ['tiers' => [3]], $this->adminApiHeaders())->assertOk()->json('data');
         $this->assertTrue($queued['ok']);
         $this->assertContains('zermit', $queued['slugs']);
-        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\RunCitationsBatch::class, fn ($job) => $job->slugs === $queued['slugs']);
+        Queue::assertPushed(RunCitationsBatch::class, fn ($job) => $job->slugs === $queued['slugs']);
         $this->assertTrue($this->getJson('/api/admin/v1/citations', $this->adminApiHeaders())->json('data.batch.active'));
         // A second "run all" while one is going is refused rather than interleaved.
         $again = $this->postJson('/api/admin/v1/citations/batch', [], $this->adminApiHeaders())->assertOk()->json('data');
@@ -305,10 +351,12 @@ class CitationsTest extends TestCase
 
         // Rows that failed only because the slot was busy, and bot walls, are sorted out by sync.
         Citation::where('slug', 'manta')->update(['status' => 'failed', 'note' => 'Another citation session is running (facebook). Stop it first.']);
-        Citation::where('slug', 'angi')->update(['status' => 'unreachable', 'note' => 'https://www.angi.com/x returned HTTP 403.']);
+        // nextdoor, not angi: Angi is a profile Platforms imports reviews from,
+        // so the sync reads it as live whatever a bot wall said.
+        Citation::where('slug', 'nextdoor')->update(['status' => 'unreachable', 'note' => 'https://nextdoor.com/x returned HTTP 403.']);
         $this->artisan('citations:sync')->assertExitCode(0);
         $this->assertSame('planned', Citation::where('slug', 'manta')->value('status'));
-        $this->assertSame('needs_human', Citation::where('slug', 'angi')->value('status'));
-        $this->assertStringContainsString('HTTP 403', Citation::where('slug', 'angi')->value('human_reason'));
+        $this->assertSame('needs_human', Citation::where('slug', 'nextdoor')->value('status'));
+        $this->assertStringContainsString('HTTP 403', Citation::where('slug', 'nextdoor')->value('human_reason'));
     }
 }

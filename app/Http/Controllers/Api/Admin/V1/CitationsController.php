@@ -4,13 +4,17 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
+use App\Jobs\RunCitationsBatch;
 use App\Models\Citation;
 use App\Models\Site;
+use App\Services\Citations\CitationBatchRunner;
 use App\Services\Citations\CitationSessionService;
 use App\Services\Citations\VerificationInbox;
+use App\Support\Citations\KnownListings;
 use App\Support\Citations\ListingPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -31,6 +35,7 @@ class CitationsController extends Controller
     public function index(CitationSessionService $sessions, VerificationInbox $inbox): JsonResponse
     {
         $this->ensureSynced();
+        KnownListings::reconcile();
         $status = $sessions->status();
         $rows = Citation::query()->where('site_id', Site::current()?->id)->orderBy('tier')->orderBy('name')->get();
         if ($status['slug'] ?? null) {
@@ -45,17 +50,17 @@ class CitationsController extends Controller
             'counts' => $rows->countBy('status')->all(),
             'session' => $this->sessionPayload($status),
             'inbox_configured' => $inbox->isConfigured(),
-            'batch' => \App\Services\Citations\CitationBatchRunner::progressState(),
+            'batch' => CitationBatchRunner::progressState(),
             'requirements' => $sessions->checkRequirements(),
         ]);
     }
 
     /** Queue the automatic run over every open directory (optionally some tiers only). */
-    public function batch(Request $request, \App\Services\Citations\CitationBatchRunner $runner, CitationSessionService $sessions): JsonResponse
+    public function batch(Request $request, CitationBatchRunner $runner, CitationSessionService $sessions): JsonResponse
     {
         $this->ensureSynced();
         $data = $request->validate(['tiers' => ['nullable', 'array'], 'tiers.*' => ['integer', 'between:0,3'], 'only' => ['nullable', 'array'], 'only.*' => ['string', 'max:60']]);
-        if (\App\Services\Citations\CitationBatchRunner::isActive()) {
+        if (CitationBatchRunner::isActive()) {
             return $this->itemResponse(['ok' => false, 'error' => 'An automatic run is already going. Let it finish; the board shows its progress.']);
         }
         if ($sessions->status()['running'] ?? false) {
@@ -65,8 +70,8 @@ class CitationsController extends Controller
         if ($slugs === []) {
             return $this->itemResponse(['ok' => false, 'error' => 'Nothing to run: every directory is live, declined, parked for you, or waiting for verification.']);
         }
-        \App\Services\Citations\CitationBatchRunner::progress($slugs, 0);
-        \App\Jobs\RunCitationsBatch::dispatch($slugs);
+        CitationBatchRunner::progress($slugs, 0);
+        RunCitationsBatch::dispatch($slugs);
 
         return $this->itemResponse(['ok' => true, 'queued' => count($slugs), 'slugs' => $slugs]);
     }
@@ -141,7 +146,7 @@ class CitationsController extends Controller
     {
         $citation = $this->find($slug);
         $data = $request->validate([
-            'status' => ['nullable', 'in:' . implode(',', Citation::STATUSES)],
+            'status' => ['nullable', 'in:'.implode(',', Citation::STATUSES)],
             'listing_url' => ['nullable', 'url', 'max:500'],
             'note' => ['nullable', 'string', 'max:2000'],
             'account_email' => ['nullable', 'email', 'max:191'],
@@ -157,7 +162,7 @@ class CitationsController extends Controller
                 $citation->live_at = $citation->live_at ?: now();
                 $citation->human_reason = null;
             }
-            $citation->addLog('Status set to ' . $data['status'] . ' by the admin', 'manual');
+            $citation->addLog('Status set to '.$data['status'].' by the admin', 'manual');
         }
         $citation->save();
 
@@ -168,7 +173,7 @@ class CitationsController extends Controller
     {
         $citation = $this->find($slug);
         abort_unless(preg_match('/^[a-z0-9._-]+\.(png|jpg)$/i', $file), 404);
-        $path = $sessions->dirFor($citation) . '/shots/' . $file;
+        $path = $sessions->dirFor($citation).'/shots/'.$file;
         abort_unless(is_file($path), 404);
 
         return response()->file($path);
@@ -228,7 +233,7 @@ class CitationsController extends Controller
     {
         $expected = count((array) config('citations.directories', []));
         if (Citation::query()->where('site_id', Site::current()?->id)->count() < $expected) {
-            \Illuminate\Support\Facades\Artisan::call('citations:sync');
+            Artisan::call('citations:sync');
         }
     }
 }

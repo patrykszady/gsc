@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Citation;
 use App\Models\Site;
+use App\Services\Citations\CitationSessionService;
+use App\Support\Citations\KnownListings;
 use Illuminate\Console\Command;
 
 /**
@@ -50,7 +52,7 @@ class CitationsSync extends Command
         // A row still "running" with no live session for it is a session that
         // ended without anyone polling (browser closed, viewer expired): fold in
         // whatever the runner left behind, and otherwise put it back on the board.
-        $sessions = app(\App\Services\Citations\CitationSessionService::class);
+        $sessions = app(CitationSessionService::class);
         $live = $sessions->status();
         foreach (Citation::query()->where('site_id', $siteId)->where('status', Citation::STATUS_RUNNING)->get() as $stale) {
             if (($live['running'] ?? false) && ($live['slug'] ?? null) === $stale->slug) {
@@ -74,12 +76,16 @@ class CitationsSync extends Command
                 $row->save();
             } elseif ($row->status === Citation::STATUS_UNREACHABLE && preg_match('/HTTP (401|403|429|503)\b/', $note)) {
                 $row->status = Citation::STATUS_NEEDS_HUMAN;
-                $row->human_reason = 'The site blocked the automated browser (' . (preg_match('/HTTP \d+/', $note, $m) ? $m[0] : 'bot wall') . '). Open the session and do this one by hand.';
+                $row->human_reason = 'The site blocked the automated browser ('.(preg_match('/HTTP \d+/', $note, $m) ? $m[0] : 'bot wall').'). Open the session and do this one by hand.';
                 $row->note = null;
                 $row->save();
             }
         }
-        $this->info("Citations registry synced ({$created} new).");
+        // Listings Platforms already knows (Houzz/Angi profiles, Yelp, the
+        // Facebook page) read as live here rather than as work to do.
+        $matched = KnownListings::reconcile();
+
+        $this->info("Citations registry synced ({$created} new, {$matched} matched from Platforms).");
 
         if ($this->option('list')) {
             $rows = Citation::query()->where('site_id', $siteId)->orderBy('tier')->orderBy('name')->get();

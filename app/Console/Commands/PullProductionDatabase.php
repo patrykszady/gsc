@@ -142,6 +142,7 @@ class PullProductionDatabase extends Command
         }
 
         $rewritten = 0;
+        $unreadable = [];
 
         foreach ($tables as $table => $columns) {
             foreach (DB::table($table)->get() as $row) {
@@ -165,9 +166,12 @@ class PullProductionDatabase extends Command
 
                     try {
                         $updates[$column] = Crypt::encryptString($production->decryptString($value));
-                    } catch (DecryptException) {
-                        // Neither key opens it: genuinely corrupt. The report
-                        // that follows names it rather than guessing.
+                    } catch (\Throwable $e) {
+                        // Neither key opens it. Say which row, and why: a row
+                        // left like this is purged by the first read on this
+                        // machine (PlatformSetting::get), and that used to
+                        // happen silently.
+                        $unreadable[] = sprintf('%s#%s %s (%s): %s', $table, $row->id, $column, $row->key ?? '', $e->getMessage());
                     }
                 }
 
@@ -178,6 +182,9 @@ class PullProductionDatabase extends Command
             }
         }
 
+        foreach ($unreadable as $line) {
+            $this->warn('Could not re-encrypt '.$line);
+        }
         if ($rewritten > 0) {
             $this->info("Re-encrypted {$rewritten} secret(s) with this machine's key — connected platforms work here too.");
         }
