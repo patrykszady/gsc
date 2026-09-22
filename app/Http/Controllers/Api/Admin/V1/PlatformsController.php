@@ -1055,6 +1055,13 @@ class PlatformsController extends Controller
             }],
             'category' => ['sometimes', 'nullable', 'string', Rule::in(self::GBP_MEDIA_CATEGORIES)],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            // Override the copy's "Image capture" date and GPS — default is
+            // the project's completed_at and resolveImageCoordinates() (the
+            // same the site's own upload path uses). Latitude/longitude come
+            // as a pair or not at all.
+            'captured_at' => ['sometimes', 'nullable', 'date'],
+            'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
         ]);
 
         $service = app(GoogleBusinessProfileService::class);
@@ -1068,10 +1075,14 @@ class PlatformsController extends Controller
         $accountId = GoogleBusinessListing::bareId($data['account_id']);
         $locationId = GoogleBusinessListing::bareId($data['location_id']);
 
+        $latitude = isset($data['latitude']) ? (float) $data['latitude'] : null;
+        $longitude = isset($data['longitude']) ? (float) $data['longitude'] : null;
+        $capturedAt = ! empty($data['captured_at']) ? Carbon::parse($data['captured_at']) : null;
+
         $result = $service->uploadMediaFor(
             $accountId,
             $locationId,
-            (string) $service->getPublicImageUrl($image),
+            (string) $service->getPublicImageUrl($image, $latitude, $longitude, $capturedAt),
             $data['category'] ?? $service->mapCategory($image),
             $data['description'] ?? $service->buildDescription($image),
         );

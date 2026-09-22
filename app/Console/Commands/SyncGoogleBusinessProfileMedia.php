@@ -37,6 +37,13 @@ class SyncGoogleBusinessProfileMedia extends Command
             return $this->showStatus($service);
         }
 
+        if (! \App\Support\GbpPhotoOwnership::ownedHere()) {
+            $this->error('This site\'s Google photos are uploaded by the central admin (GBP_PHOTOS_OWNED_BY=ss-systems).');
+            $this->line('Nothing was sent. Use the Platforms screen on ss.systems, or `gbp:reupload-photos --site=gsc` there.');
+
+            return self::FAILURE;
+        }
+
         if ($this->option('list')) {
             return $this->listMedia($service);
         }

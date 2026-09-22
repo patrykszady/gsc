@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Reviews;
 
-use Hive\Platform\Reviews\ReviewText;
+use SsSystems\Platform\Reviews\ReviewText;
 use PHPUnit\Framework\TestCase;
 
 /** The shared text rules every site's review importers agree on. */

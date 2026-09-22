@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "77a4e9fc563a5d66cb780a1610b8e0dd",
+    "content-hash": "cfdc23dee2a64ad7eec52fb1b8622b1c",
     "packages": [
         {
             "name": "brick/math",
@@ -1128,36 +1128,6 @@
                 }
             ],
             "time": "2026-08-24T09:15:32+00:00"
-        },
-        {
-            "name": "hive/platform-kit",
-            "version": "0.2.1",
-            "dist": {
-                "type": "zip",
-                "url": "packages/hive-platform-kit-0.2.1.zip",
-                "shasum": "850a51f6f3fc7ef7a38d3ec37aee1085750721ea"
-            },
-            "require": {
-                "illuminate/database": "^12.0|^13.0",
-                "illuminate/http": "^12.0|^13.0",
-                "illuminate/support": "^12.0|^13.0",
-                "php": "^8.3"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Hive\\Platform\\": "src/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "node --test tests/js/*.test.mjs"
-                ]
-            },
-            "license": [
-                "proprietary"
-            ],
-            "description": "Backend shared by the sites the ss.systems admin drives — one copy, run inside each site."
         },
         {
             "name": "hszope/laravel-aigeo",
@@ -5542,6 +5512,38 @@
                 }
             ],
             "time": "2026-06-22T07:55:44+00:00"
+        },
+        {
+            "name": "ss-systems/platform-kit",
+            "version": "0.3.2",
+            "dist": {
+                "type": "zip",
+                "url": "packages/ss-systems-platform-kit-0.3.2.zip",
+                "shasum": "5cc25ef9ccc02f4ac9abe7fd5b5bf17663ca1dc5"
+            },
+            "require": {
+                "illuminate/database": "^12.0|^13.0",
+                "illuminate/http": "^12.0|^13.0",
+                "illuminate/support": "^12.0|^13.0",
+                "intervention/image": "^3.0|^4.0",
+                "lsolesen/pel": "^0.9.12",
+                "php": "^8.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "SsSystems\\Platform\\": "src/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "node --test tests/js/*.test.mjs"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Backend shared by the sites the ss.systems admin drives — one copy, run inside each site."
         },
         {
             "name": "symfony/clock",

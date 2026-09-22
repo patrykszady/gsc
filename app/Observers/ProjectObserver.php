@@ -59,6 +59,7 @@ class ProjectObserver
             $project->wasChanged('is_published')
             && $project->is_published
             && config('services.google.business_profile.enabled')
+            && \App\Support\GbpPhotoOwnership::ownedHere()
         ) {
             $project->images()
                 ->notUploadedTo('google_places')

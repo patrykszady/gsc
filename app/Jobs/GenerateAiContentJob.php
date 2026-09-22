@@ -82,7 +82,8 @@ class GenerateAiContentJob implements ShouldQueue
 
         // Check if image file exists before trying to process
         $disk = 'public';
-        if (! Storage::disk($disk)->exists($image->path)) {
+        $fileExists = Storage::disk($disk)->exists($image->path);
+        if (! $fileExists) {
             Log::channel('ai_content')->warning('GenerateAiContentJob: Image file not found, skipping', [
                 'image_id' => $image->id,
                 'path' => $image->path,
@@ -176,6 +177,13 @@ class GenerateAiContentJob implements ShouldQueue
             }
         }
 
+        // The GBP caption is a separate generation from alt_text/caption/
+        // seo_alt_text above — independent skip gate (blank or --overwrite),
+        // independent of whether those three needed regenerating.
+        if ($fileExists) {
+            $this->maybeGenerateGbpCaption($service, $image);
+        }
+
         if (empty($image->slug)) {
             $image->slug = $image->generateSlug();
             $image->saveQuietly();
@@ -188,6 +196,46 @@ class GenerateAiContentJob implements ShouldQueue
 
         // Check if all project images now have AI content; if so, generate project description
         $this->maybeGenerateProjectDescription($image);
+    }
+
+    /**
+     * Fill ProjectImage::gbp_caption via AiContentService::generateGbpCaption()
+     * (2026-09-22) — only when blank or --overwrite was requested. A failure
+     * here is logged and swallowed rather than releasing the whole job for
+     * retry: it must not hold alt_text/caption/seo_alt_text (and their own
+     * retry path above) hostage to this one field.
+     */
+    protected function maybeGenerateGbpCaption(AiContentService $service, ProjectImage $image): void
+    {
+        if (! $this->overwrite && ! empty($image->gbp_caption)) {
+            return;
+        }
+
+        $caption = $service->generateGbpCaption($image);
+
+        if ($caption === null) {
+            Log::channel('ai_content')->warning('GenerateAiContentJob: Failed to generate gbp_caption', [
+                'image_id' => $image->id,
+                'error' => $service->getLastError(),
+            ]);
+
+            return;
+        }
+
+        $image->updateQuietly(['gbp_caption' => $caption]);
+
+        // updateQuietly bypasses observers, so explicitly refresh GBP media —
+        // buildDescription() prefers gbp_caption once set.
+        if (
+            config('services.google.business_profile.enabled')
+            && $image->project
+            && $image->project->is_published
+            && $image->google_places_uploaded_at
+        ) {
+            UploadProjectImageToGooglePlaces::dispatch($image->id, true)
+                ->onQueue('media-sync')
+                ->delay(now()->addSeconds(10));
+        }
     }
 
     /**

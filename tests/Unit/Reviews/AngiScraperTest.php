@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Reviews;
 
-use Hive\Platform\Reviews\AngiScraper;
+use SsSystems\Platform\Reviews\AngiScraper;
 use PHPUnit\Framework\TestCase;
 
 /**

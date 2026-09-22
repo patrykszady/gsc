@@ -2,10 +2,17 @@
 
 namespace Tests\Feature\Api\Admin\V1;
 
+use App\Models\AreaServed;
 use App\Models\ImagePlatformUpload;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\GoogleBusinessProfileService;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -14,11 +21,21 @@ use Tests\TestCase;
  * POST/DELETE platforms/gbp/media — the central admin's project-photo
  * pass-through (2026-09-21): it uploads one of THIS site's project photos to
  * a Business Profile listing that need not be this site's own, using this
- * site's Google grant. Google itself is never called — the service is
- * mocked, as in PlatformsGbpReviewsTest.
+ * site's Google grant. Google itself is never called for most of these —
+ * the service is mocked, as in PlatformsGbpReviewsTest. The
+ * GooglePhotoCopy-backed `-gbp-` derivative tests below use the REAL
+ * service (only the outbound Google HTTP calls are faked) so the stored
+ * file and its EXIF stamp can be inspected directly — see
+ * SsSystems\Platform\Media\GooglePhotoCopy/JpegExifTagger.
  */
 class PlatformsGbpMediaTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
@@ -30,6 +47,68 @@ class PlatformsGbpMediaTest extends TestCase
         config(['services.admin_api.token' => 'test-admin-api-token']);
 
         return ['Authorization' => 'Bearer test-admin-api-token', 'Accept' => 'application/json'];
+    }
+
+    /** A tiny real JPEG (Intervention/GD) — GooglePhotoCopy re-encodes real bytes, not a stub. */
+    private function realJpeg(): string
+    {
+        return (string) (new ImageManager(new Driver()))
+            ->create(40, 30)
+            ->fill('#3366ff')
+            ->toJpeg()
+            ->toString();
+    }
+
+    /** EXIF of JPEG bytes, sections nested (`$data['EXIF']['DateTimeOriginal']`, `$data['GPS']['GPSLatitude']`). */
+    private function readExif(string $jpegBytes): array
+    {
+        return (array) (exif_read_data('data://image/jpeg;base64,'.base64_encode($jpegBytes), null, true, false) ?: []);
+    }
+
+    /** A published project + image with a real JPEG on the fake public disk. */
+    private function projectImageWithRealFile(array $projectAttrs = [], array $imageAttrs = []): ProjectImage
+    {
+        // ProjectObserver auto-creates (and geocodes, over real HTTP) an
+        // AreaServed row for a project's location on save — off here so
+        // these tests control their own AreaServed rows and never touch
+        // the network. gemini_api_key is real in this env (no .env.testing,
+        // so .env's own key loads) — blanked here too, or
+        // ProjectImageObserver::created() would fire a real
+        // GenerateAiContentJob (QUEUE_CONNECTION=sync runs it inline) on
+        // every fixture image.
+        config([
+            'services.google.business_profile.auto_geocode_on_project_save' => false,
+            'services.google.gemini_api_key' => '',
+        ]);
+
+        $project = Project::create(array_merge([
+            'title' => 'Kitchen Remodel',
+            'slug' => 'kitchen-remodel-'.uniqid(),
+            'project_type' => 'kitchen',
+            'location' => 'Palatine, IL',
+            'completed_at' => '2020-06-15',
+            'is_published' => true,
+        ], $projectAttrs));
+
+        $path = 'projects/kitchen-'.uniqid().'.jpg';
+        Storage::disk('public')->put($path, $this->realJpeg());
+
+        return ProjectImage::create(array_merge([
+            'project_id' => $project->id,
+            'filename' => basename($path),
+            'original_filename' => basename($path),
+            'path' => $path,
+            'alt_text' => 'Renovated kitchen with white cabinets',
+            'caption' => 'A finished kitchen remodel.',
+        ], $imageAttrs));
+    }
+
+    /** Every `-gbp-*.jpg` currently on the fake public disk under projects/. */
+    private function gbpCopies(): \Illuminate\Support\Collection
+    {
+        return collect(Storage::disk('public')->files('projects'))
+            ->filter(fn (string $f) => str_contains($f, '-gbp-'))
+            ->values();
     }
 
     private function publishedImage(): ProjectImage
@@ -77,7 +156,7 @@ class PlatformsGbpMediaTest extends TestCase
         $mock->shouldReceive('hasRefreshToken')->once()->andReturn(true);
         $mock->shouldReceive('getPublicImageUrl')
             ->once()
-            ->with(Mockery::on(fn (ProjectImage $img) => $img->is($image)))
+            ->with(Mockery::on(fn (ProjectImage $img) => $img->is($image)), null, null, null)
             ->andReturn('https://gs.construction/storage/projects/kitchen_gbp.jpg');
         $mock->shouldReceive('mapCategory')
             ->once()
@@ -289,5 +368,111 @@ class PlatformsGbpMediaTest extends TestCase
         ], $this->headers())
             ->assertStatus(422)
             ->assertJsonPath('message', 'Connect Google Business Profile first.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    |  GooglePhotoCopy-backed `-gbp-` derivative (0.3.1 kit, 2026-09-22)
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_captured_at_and_coordinates_override_stamp_the_copys_exif(): void
+    {
+        $image = $this->projectImageWithRealFile(['completed_at' => '2020-06-15']);
+        // A different market than the override, so the assertion below can
+        // only pass if the request's lat/lng won and not this default.
+        AreaServed::create(['city' => 'Palatine', 'slug' => 'palatine', 'latitude' => 42.11, 'longitude' => -88.03]);
+
+        config(['services.google.business_profile.refresh_token' => 'test-refresh-token']);
+        Cache::flush();
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'test-access-token', 'expires_in' => 3600], 200),
+            'mybusiness.googleapis.com/*' => Http::response(['name' => 'accounts/900/locations/111/media/abc', 'googleUrl' => 'https://lh3.googleusercontent.com/abc'], 200),
+        ]);
+
+        $this->postJson('/api/admin/v1/platforms/gbp/media', [
+            'account_id' => '900',
+            'location_id' => '111',
+            'image_id' => $image->id,
+            'captured_at' => '2021-01-01',
+            'latitude' => 40.0,
+            'longitude' => -90.0,
+        ], $this->headers())->assertOk();
+
+        $copies = $this->gbpCopies();
+        $this->assertCount(1, $copies);
+
+        $exif = $this->readExif(Storage::disk('public')->get($copies->first()));
+        $this->assertSame('2021:01:01 00:00:00', $exif['EXIF']['DateTimeOriginal'] ?? null);
+        $this->assertSame('N', $exif['GPS']['GPSLatitudeRef'] ?? null);
+        $this->assertSame('40/1', $exif['GPS']['GPSLatitude'][0] ?? null);
+    }
+
+    public function test_defaults_come_from_the_projects_completion_date_and_area_served(): void
+    {
+        $image = $this->projectImageWithRealFile(['completed_at' => '2019-03-10']);
+        AreaServed::create(['city' => 'Palatine', 'slug' => 'palatine', 'latitude' => 42.11, 'longitude' => -88.03]);
+
+        $url = app(GoogleBusinessProfileService::class)->getPublicImageUrl($image);
+
+        $this->assertNotNull($url);
+        $this->assertStringContainsString('-gbp-', $url);
+
+        $copies = $this->gbpCopies();
+        $this->assertCount(1, $copies);
+
+        $exif = $this->readExif(Storage::disk('public')->get($copies->first()));
+        $this->assertSame('2019:03:10 00:00:00', $exif['EXIF']['DateTimeOriginal'] ?? null);
+        $this->assertSame('N', $exif['GPS']['GPSLatitudeRef'] ?? null);
+    }
+
+    public function test_the_copy_is_reused_for_the_same_params_and_replaced_when_the_date_changes(): void
+    {
+        $image = $this->projectImageWithRealFile();
+        $service = app(GoogleBusinessProfileService::class);
+
+        $first = $service->getPublicImageUrl($image, 41.0, -87.5, Carbon::parse('2020-06-15'));
+        $again = $service->getPublicImageUrl($image, 41.0, -87.5, Carbon::parse('2020-06-15'));
+
+        $this->assertSame($first, $again);
+        $this->assertCount(1, $this->gbpCopies());
+
+        $changed = $service->getPublicImageUrl($image, 41.0, -87.5, Carbon::parse('2022-09-01'));
+
+        $this->assertNotSame($first, $changed);
+        $copiesAfterChange = $this->gbpCopies();
+        $this->assertCount(1, $copiesAfterChange, 'the superseded -gbp- copy is removed when the date changes');
+    }
+
+    public function test_upload_project_image_the_site_side_path_produces_the_same_stamped_copy(): void
+    {
+        $image = $this->projectImageWithRealFile(['completed_at' => '2018-11-20']);
+        AreaServed::create(['city' => 'Palatine', 'slug' => 'palatine', 'latitude' => 42.11, 'longitude' => -88.03]);
+
+        config(['services.google.business_profile' => [
+            'enabled' => true,
+            'client_id' => 'test-client-id',
+            'client_secret' => 'test-client-secret',
+            'refresh_token' => 'test-refresh-token',
+            'account_id' => '900',
+            'location_id' => '111',
+            'geotag_photos' => true,
+        ]]);
+        Cache::flush();
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'test-access-token', 'expires_in' => 3600], 200),
+            'mybusiness.googleapis.com/*' => Http::response(['name' => 'accounts/900/locations/111/media/xyz', 'googleUrl' => 'https://lh3.googleusercontent.com/xyz'], 200),
+        ]);
+
+        $result = app(GoogleBusinessProfileService::class)->uploadProjectImage($image);
+
+        $this->assertNotNull($result);
+
+        $copies = $this->gbpCopies();
+        $this->assertCount(1, $copies);
+
+        $exif = $this->readExif(Storage::disk('public')->get($copies->first()));
+        $this->assertSame('2018:11:20 00:00:00', $exif['EXIF']['DateTimeOriginal'] ?? null);
+        $this->assertSame('N', $exif['GPS']['GPSLatitudeRef'] ?? null);
     }
 }

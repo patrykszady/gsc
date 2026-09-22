@@ -6,8 +6,8 @@ use App\Models\ReviewUrl;
 use App\Models\Site;
 use App\Models\Testimonial;
 use App\Support\Reviews\AngiReviews;
-use Hive\Platform\Reviews\AngiScraper;
-use Hive\Platform\Reviews\ReviewText;
+use SsSystems\Platform\Reviews\AngiScraper;
+use SsSystems\Platform\Reviews\ReviewText;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 
@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
  * Import the reviews on this site's Angi profile.
  *
  * Angi has no API and no per-review permalink, so the scraper that ships
- * with hive/platform-kit reads the profile page in a real browser on a
+ * with ss-systems/platform-kit reads the profile page in a real browser on a
  * virtual display, and each imported review links back to the profile. The
  * browser, the page's markup and the words for each failure live in the
  * package (`AngiScraper`), the text rules in `ReviewText`; what stays here

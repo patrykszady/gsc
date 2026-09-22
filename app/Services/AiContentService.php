@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Media\GooglePhotoCaptionPrompt;
 
 class AiContentService
 {
@@ -91,6 +92,61 @@ PROMPT;
         }
 
         return $this->parseJsonResponse($response);
+    }
+
+    /**
+     * The Google Business Profile photo caption (0.3.0 kit, 2026-09-22):
+     * SsSystems\Platform\Media\GooglePhotoCaptionPrompt is the one prompt
+     * shared with every tenant, so this site's and jpeterson-design's GBP
+     * photo captions read the same way — the site only supplies its own
+     * brand, business kind and the project facts the prompt asks for, with
+     * the photo attached the same way generateImageContent() attaches it.
+     * Returns null (never throws) on a Gemini failure, same contract as the
+     * rest of this class's generators.
+     */
+    public function generateGbpCaption(ProjectImage $image): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $project = $image->project;
+        if (! $project) {
+            $this->lastError = 'Image has no associated project';
+
+            return null;
+        }
+
+        $imageData = $this->getImageData($image);
+        if (! $imageData) {
+            return null;
+        }
+
+        $projectType = match ($project->project_type) {
+            'kitchen' => 'kitchen remodeling',
+            'bathroom' => 'bathroom remodeling',
+            'basement' => 'basement remodeling',
+            'home-remodel' => 'whole home remodeling',
+            'mudroom' => 'mudroom and laundry room',
+            default => 'home remodeling',
+        };
+
+        $prompt = GooglePhotoCaptionPrompt::build('GS Construction', 'home remodeling contractor', [
+            'title' => $project->title,
+            'project_type' => $projectType,
+            'location' => $project->location,
+            'alt_text' => $image->getRawOriginal('seo_alt_text') ?: $image->alt_text,
+            'caption' => $image->caption,
+        ]);
+
+        $raw = $this->callGeminiMultiImage($prompt, [$imageData], maxOutputTokens: 300, temperature: 0.6);
+        if ($raw === null) {
+            return null;
+        }
+
+        return GooglePhotoCaptionPrompt::clean($raw);
     }
 
     /**

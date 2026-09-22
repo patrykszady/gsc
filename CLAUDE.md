@@ -179,3 +179,20 @@ review's one real address. Search Console shows a URL's state as of its LAST cra
 noindexed/dead URLs slowly, so its "Excluded by noindex" list lags these fixes by weeks
 to months; nothing in the API purges it, and "Validate fix" on that bucket cannot pass
 while deliberately noindexed area sub-pages (AreaSeoPolicy) remain — that is expected.
+
+## Google Business Profile photos are uploaded by the central admin (2026-09-22)
+
+- `GBP_PHOTOS_OWNED_BY=ss-systems` (production) makes every site-side path
+  inert — `ProjectImageObserver`, `ProjectObserver`, the two queued jobs and
+  `google-business-profile:sync` — so ss.systems' `gbp_image_uploads` ledger
+  is the one record and no photo goes up twice. `App\Support\GbpPhotoOwnership`
+  is the single read of that switch; `GbpPhotosOwnedByCentralAdminTest` pins it.
+  The `POST/DELETE platforms/gbp/media` pass-through is never gated: it is how
+  the central admin's uploads arrive.
+- The copy Google fetches is the shared kit's (`ss-systems/platform-kit`,
+  `SsSystems\Platform\Media\GooglePhotoCopy`): 2400px JPEG stamped with the
+  project's `completed_at` (Google shows it as "Image capture") and the
+  matching AreaServed coordinates, named `{basename}-gbp-{fingerprint}.jpg`
+  and replaced when either changes. The description is `gbp_caption`
+  (Gemini, ≤250 chars, `images:gbp-captions` to backfill), falling back to
+  the alt text. The site's own `JpegGeoTagger` is gone.

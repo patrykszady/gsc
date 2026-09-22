@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\GoogleBusinessProfileService;
+use App\Support\GbpPhotoOwnership;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,7 +25,7 @@ class DeleteGooglePlacesMedia implements ShouldQueue
 
     public function handle(GoogleBusinessProfileService $service): void
     {
-        if (! $service->isConfigured()) {
+        if (! $service->isConfigured() || ! GbpPhotoOwnership::ownedHere()) {
             return;
         }
 

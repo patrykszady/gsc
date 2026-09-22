@@ -6,12 +6,13 @@ use App\Models\AreaServed;
 use App\Models\OAuthToken;
 use App\Models\ProjectImage;
 use App\Support\GoogleBusinessListing;
+use DateTimeInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Laravel\Facades\Image;
+use SsSystems\Platform\Media\GooglePhotoCopy;
 
 class GoogleBusinessProfileService
 {
@@ -1046,15 +1047,21 @@ class GoogleBusinessProfileService
      * Public (2026-09-21) so the admin API's media pass-through can resolve
      * the same source URL uploadProjectImage() sends Google, for a listing
      * that need not be this site's own — see uploadMediaFor().
+     *
+     * $latitude/$longitude/$takenAt override the image's own defaults (the
+     * market's coordinates from resolveImageCoordinates(), the project's
+     * completed_at) — the pass-through's optional captured_at/latitude/
+     * longitude params (2026-09-22). Pass all three null (the default) to
+     * use the image's own defaults, exactly as uploadProjectImage() does.
      */
-    public function getPublicImageUrl(ProjectImage $image): ?string
+    public function getPublicImageUrl(ProjectImage $image, ?float $latitude = null, ?float $longitude = null, ?DateTimeInterface $takenAt = null): ?string
     {
         // Build URL using the production domain
         $productionUrl = config('services.google.business_profile.production_url')
             ?: config('app.url');
 
         // GBP expects JPG; generate a full-size JPG copy for uploads.
-        $relativeUrl = $this->getGbpJpegUrl($image)
+        $relativeUrl = $this->getGbpJpegUrl($image, $latitude, $longitude, $takenAt)
             ?? $image->url;
         if (! $relativeUrl) {
             return null;
@@ -1072,9 +1079,19 @@ class GoogleBusinessProfileService
     }
 
     /**
-     * Create or reuse a full-size JPG for GBP uploads.
+     * Create or reuse the dated, geotagged copy of a project photo for
+     * Google (0.3.1, 2026-09-22): scaled + JPEG-encoded + EXIF-stamped by
+     * the shared SsSystems\Platform\Media\GooglePhotoCopy kit, named
+     * `{name}-gbp-{fingerprint}.jpg` so the same source, date and place
+     * always resolve to the same file — reused when it already exists,
+     * regenerated (and its older `-gbp-*.jpg`/legacy `_gbp.jpg` siblings
+     * removed) when one of those inputs changes.
+     *
+     * $latitude/$longitude override resolveImageCoordinates() (given as a
+     * pair — a caller supplying one must supply both); $takenAt overrides
+     * the project's completed_at. All null uses the image's own defaults.
      */
-    protected function getGbpJpegUrl(ProjectImage $image): ?string
+    protected function getGbpJpegUrl(ProjectImage $image, ?float $latitude = null, ?float $longitude = null, ?DateTimeInterface $takenAt = null): ?string
     {
         $disk = 'public';
         $path = $image->path;
@@ -1083,37 +1100,28 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $dir = pathinfo($path, PATHINFO_DIRNAME);
-        $nameWithoutExt = pathinfo($path, PATHINFO_FILENAME);
-        $jpgPath = trim($dir, '/').'/'.$nameWithoutExt.'_gbp.jpg';
-        $geotagEnabled = (bool) config('services.google.business_profile.geotag_photos', true);
-        [$lat, $lng] = $geotagEnabled
-            ? $this->resolveImageCoordinates($image)
-            : [null, null];
-        $hasCoords = $lat !== null && $lng !== null;
-
-        $needsRegen = ! Storage::disk($disk)->exists($jpgPath);
-
-        // Regenerate legacy derivatives that pre-date EXIF GPS injection,
-        // but only if we actually have coordinates to write (otherwise the
-        // file would be regenerated forever to no effect).
-        if (! $needsRegen && $hasCoords) {
-            $existing = Storage::disk($disk)->get($jpgPath);
-            if (! app(JpegGeoTagger::class)->hasGps($existing)) {
-                $needsRegen = true;
-            }
+        if ($latitude === null && $longitude === null) {
+            $geotagEnabled = (bool) config('services.google.business_profile.geotag_photos', true);
+            [$latitude, $longitude] = $geotagEnabled
+                ? $this->resolveImageCoordinates($image)
+                : [null, null];
         }
 
-        if ($needsRegen) {
+        $takenAt ??= $this->resolveImageTakenAt($image);
+
+        $dir = trim(pathinfo($path, PATHINFO_DIRNAME), '/');
+        $name = pathinfo($path, PATHINFO_FILENAME);
+        $sourceKey = $path.'|'.Storage::disk($disk)->size($path);
+        $fingerprint = GooglePhotoCopy::fingerprint($sourceKey, $latitude, $longitude, $takenAt);
+        $jpgPath = ($dir !== '' ? $dir.'/' : '').$name.'-gbp-'.$fingerprint.'.jpg';
+
+        if (! Storage::disk($disk)->exists($jpgPath)) {
             try {
-                $contents = Storage::disk($disk)->get($path);
-                $jpg = Image::read($contents)->toJpeg(90)->toString();
+                $sourceBytes = Storage::disk($disk)->get($path);
+                $jpeg = GooglePhotoCopy::make($sourceBytes, $latitude, $longitude, $takenAt);
 
-                if ($hasCoords) {
-                    $jpg = app(JpegGeoTagger::class)->withGps($jpg, $lat, $lng);
-                }
-
-                Storage::disk($disk)->put($jpgPath, $jpg);
+                Storage::disk($disk)->put($jpgPath, $jpeg);
+                $this->removeStaleGbpCopies($disk, $dir, $name, $jpgPath);
             } catch (\Exception $e) {
                 Log::channel('gbp')->warning('GBP: Failed to generate JPG for image', [
                     'image_id' => $image->id,
@@ -1126,6 +1134,39 @@ class GoogleBusinessProfileService
         }
 
         return Storage::disk($disk)->url($jpgPath);
+    }
+
+    /**
+     * Delete this image's other GBP copies once a new one is made — the old
+     * fingerprinted name (`{name}-gbp-{fingerprint}.jpg`) and any legacy
+     * `{name}_gbp.jpg` from before fingerprinting existed — so a project
+     * photo doesn't accumulate a derivative per date/coordinate change.
+     */
+    protected function removeStaleGbpCopies(string $disk, string $dir, string $name, string $keepPath): void
+    {
+        $pattern = '/^'.preg_quote($name, '/').'(-gbp-[0-9a-f]+|_gbp)\.jpg$/i';
+
+        foreach (Storage::disk($disk)->files($dir) as $file) {
+            if ($file === $keepPath) {
+                continue;
+            }
+
+            if (preg_match($pattern, pathinfo($file, PATHINFO_BASENAME))) {
+                Storage::disk($disk)->delete($file);
+            }
+        }
+    }
+
+    /**
+     * The date Google should show as "Image capture" — the project's
+     * completion date, not the day the photo was pushed (confirmed
+     * 2026-09-22: Google reads the JPEG's EXIF DateTimeOriginal for this).
+     * Null when the project has no completed_at, so the copy carries no
+     * capture date rather than a fabricated one.
+     */
+    protected function resolveImageTakenAt(ProjectImage $image): ?DateTimeInterface
+    {
+        return $image->project?->completed_at;
     }
 
     /**
@@ -1201,7 +1242,8 @@ class GoogleBusinessProfileService
      */
     public function buildDescription(ProjectImage $image): string
     {
-        $text = $image->caption
+        $text = $image->gbp_caption
+            ?: $image->caption
             ?: $image->getRawOriginal('seo_alt_text')
             ?: $image->alt_text
             ?: 'GS Construction remodeling project photo.';

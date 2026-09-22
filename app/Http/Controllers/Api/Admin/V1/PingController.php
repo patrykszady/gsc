@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Controller;
-use Hive\Platform\Kit;
+use SsSystems\Platform\Kit;
 use Illuminate\Http\JsonResponse;
 
 /**

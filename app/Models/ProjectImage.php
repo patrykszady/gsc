@@ -37,6 +37,7 @@ class ProjectImage extends Model
         'height',
         'alt_text',
         'caption',
+        'gbp_caption',
         'slug',
         'seo_alt_text',
         'is_cover',
@@ -497,6 +498,7 @@ class ProjectImage extends Model
             // prefer it the way this site's own uploader does (2026-09-22).
             'seo_alt_text' => $this->getRawOriginal('seo_alt_text'),
             'caption' => $this->caption,
+            'gbp_caption' => $this->gbp_caption,
             'is_cover' => (bool) $this->is_cover,
             'sort_order' => (int) $this->sort_order,
             'width' => $this->width,
@@ -531,6 +533,7 @@ class ProjectImage extends Model
             // prefer it the way this site's own uploader does (2026-09-22).
             'seo_alt_text' => $this->getRawOriginal('seo_alt_text'),
             'caption' => $this->caption,
+            'gbp_caption' => $this->gbp_caption,
             'is_cover' => (bool) $this->is_cover,
             'google_places_uploaded_at' => optional($this->google_places_uploaded_at)->toIso8601String(),
             'google_places_media_name' => $this->google_places_media_name,

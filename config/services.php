@@ -105,6 +105,13 @@ return [
             // the project's matching AreaServed row; photos without a matching
             // area are uploaded without GPS rather than using a global fallback.
             'geotag_photos' => env('GBP_GEOTAG_PHOTOS', true),
+            // Who uploads this site's photos to its Google Business Profile
+            // (2026-09-22): 'site' — this app's own observer + jobs — or
+            // 'ss-systems', where the central admin uploads them through the
+            // /api/admin/v1/platforms/gbp/media pass-through and keeps its own
+            // ledger. With 'ss-systems' the site-side jobs are inert, so a
+            // photo is never sent twice; the pass-through is unaffected.
+            'photos_owned_by' => env('GBP_PHOTOS_OWNED_BY', 'site'),
             // Automatically geocode project cities via OpenStreetMap Nominatim
             // when projects are created or their location is changed.
             'auto_geocode_on_project_save' => env('GBP_AUTO_GEOCODE_ON_PROJECT_SAVE', true),
