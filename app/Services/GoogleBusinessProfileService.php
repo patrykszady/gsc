@@ -37,17 +37,24 @@ class GoogleBusinessProfileService
 
     protected ?array $lastError = null;
 
-    /** Can post right now: connected AND publishing switched on. */
+    /**
+     * Ready to post: connected is enough. There used to be a separate
+     * "Turn publishing on" switch on the Platforms card as well, and a
+     * listing could be connected with it off — the Social Media screen then
+     * said "turn publishing on" beside a Platforms card that said Connected.
+     * It was a third lock on something already locked twice by the owner:
+     * nothing posts unless someone clicks Post Now or turns on that
+     * platform's "Post automatically" (off by default). Retired 2026-09-23;
+     * the stored gbp.enabled flag is no longer read.
+     */
     public function isConfigured(): bool
     {
-        return $this->isPublishingEnabled() && $this->isConnected();
+        return $this->isConnected();
     }
 
     /**
-     * Signed in with a listing chosen — everything but the publishing
-     * switch. "Connected, publishing off" is not "not connected", and the
-     * social-media screen said the second when it meant the first
-     * (2026-09-23).
+     * Signed in with a listing chosen — which is also what isConfigured()
+     * means now that the separate publishing switch is gone.
      */
     public function isConnected(): bool
     {
@@ -60,11 +67,6 @@ class GoogleBusinessProfileService
             && ! empty($config['location_id']);
     }
 
-    /** The Platforms card's "Turn publishing on" switch (POST platforms/gbp/publishing). */
-    public function isPublishingEnabled(): bool
-    {
-        return (bool) (config('services.google.business_profile.enabled') ?? false);
-    }
 
     public function hasOAuthCredentials(): bool
     {

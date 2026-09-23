@@ -41,7 +41,7 @@ class ProjectImageObserver
         // Upload new images to Google Business Profile if configured — and
         // only while this app still owns those uploads (see photosOwnedHere()).
         if (
-            config('services.google.business_profile.enabled')
+            app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
             && \App\Support\GbpPhotoOwnership::ownedHere()
             && $image->project
             && $image->project->is_published
@@ -117,7 +117,7 @@ class ProjectImageObserver
 
         // Keep GBP media description in sync when image text metadata changes.
         if (
-            config('services.google.business_profile.enabled')
+            app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
             && \App\Support\GbpPhotoOwnership::ownedHere()
             && $image->project
             && $image->project->is_published
@@ -151,7 +151,7 @@ class ProjectImageObserver
         // Delete from Google Business Profile if it was uploaded there
         if (
             $image->google_places_media_name
-            && config('services.google.business_profile.enabled')
+            && app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
             && \App\Support\GbpPhotoOwnership::ownedHere()
         ) {
             DeleteGooglePlacesMedia::dispatch($image->google_places_media_name)

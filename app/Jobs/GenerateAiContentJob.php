@@ -159,7 +159,7 @@ class GenerateAiContentJob implements ShouldQueue
                     // updateQuietly bypasses observers, so explicitly refresh GBP media
                     // when text fields that feed GBP descriptions are changed.
                     if (
-                        config('services.google.business_profile.enabled')
+                        app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
                         && $image->project
                         && $image->project->is_published
                         && $image->google_places_uploaded_at
@@ -227,7 +227,7 @@ class GenerateAiContentJob implements ShouldQueue
         // updateQuietly bypasses observers, so explicitly refresh GBP media —
         // buildDescription() prefers gbp_caption once set.
         if (
-            config('services.google.business_profile.enabled')
+            app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
             && $image->project
             && $image->project->is_published
             && $image->google_places_uploaded_at

@@ -31,6 +31,22 @@ class ProjectPhotoUploadObserversTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Google Business connected (a grant and a listing) or not. There is no
+     * separate publishing switch any more (2026-09-23): the uploads follow
+     * the connection itself.
+     */
+    protected function connectGbp(bool $connected): void
+    {
+        config($connected ? [
+            'services.google.business_profile.client_id' => 'client-id',
+            'services.google.business_profile.client_secret' => 'client-secret',
+            'services.google.business_profile.refresh_token' => 'refresh-token',
+            'services.google.business_profile.account_id' => 'accounts/1',
+            'services.google.business_profile.location_id' => 'locations/2',
+        ] : ['services.google.business_profile.location_id' => null, 'services.google.business_profile.refresh_token' => null]);
+    }
+
     protected function fakeYelpConfigured(bool $configured): void
     {
         $service = Mockery::mock(YelpBusinessService::class);
@@ -62,7 +78,7 @@ class ProjectPhotoUploadObserversTest extends TestCase
 
     public function test_image_created_on_a_published_project_dispatches_both_platforms(): void
     {
-        config(['services.google.business_profile.enabled' => true]);
+        $this->connectGbp(true);
         $this->fakeYelpConfigured(true);
 
         $project = $this->project(published: true);
@@ -77,7 +93,7 @@ class ProjectPhotoUploadObserversTest extends TestCase
 
     public function test_image_created_on_an_unpublished_project_dispatches_neither(): void
     {
-        config(['services.google.business_profile.enabled' => true]);
+        $this->connectGbp(true);
         $this->fakeYelpConfigured(true);
 
         $project = $this->project(published: false);
@@ -92,7 +108,7 @@ class ProjectPhotoUploadObserversTest extends TestCase
 
     public function test_project_publish_dispatches_pending_images_on_both_platforms(): void
     {
-        config(['services.google.business_profile.enabled' => true]);
+        $this->connectGbp(true);
         $this->fakeYelpConfigured(true);
 
         $project = $this->project(published: false);
@@ -113,7 +129,7 @@ class ProjectPhotoUploadObserversTest extends TestCase
 
     public function test_unconfigured_platform_never_receives_a_dispatch(): void
     {
-        config(['services.google.business_profile.enabled' => false]);
+        $this->connectGbp(false);
         $this->fakeYelpConfigured(false);
 
         $project = $this->project(published: false);

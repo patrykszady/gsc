@@ -98,12 +98,11 @@ class AutomationSettingsService
     public function publishingOff(string $platform): bool
     {
         $meta = app(MetaSocialService::class);
-        $gbp = app(GoogleBusinessProfileService::class);
 
+        // Google Business has no such switch any more: connected is ready.
         return match ($platform) {
             'instagram' => ! $meta->isPublishingEnabled() && $meta->isInstagramConnected(),
             'facebook' => ! $meta->isPublishingEnabled() && $meta->isFacebookConnected(),
-            'google_business' => ! $gbp->isPublishingEnabled() && $gbp->isConnected(),
             default => false,
         };
     }

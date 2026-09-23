@@ -58,7 +58,7 @@ class ProjectObserver
         if (
             $project->wasChanged('is_published')
             && $project->is_published
-            && config('services.google.business_profile.enabled')
+            && app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
             && \App\Support\GbpPhotoOwnership::ownedHere()
         ) {
             $project->images()

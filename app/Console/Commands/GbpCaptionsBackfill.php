@@ -86,7 +86,7 @@ class GbpCaptionsBackfill extends Command
             $updated++;
 
             if (
-                config('services.google.business_profile.enabled')
+                app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
                 && \App\Support\GbpPhotoOwnership::ownedHere()
                 && $image->project
                 && $image->project->is_published

@@ -51,31 +51,39 @@ class SocialAutomationApiTest extends TestCase
 
         $gbp = Mockery::mock(GoogleBusinessProfileService::class);
         $gbp->shouldReceive('isConfigured')->andReturn($configured);
-        $gbp->shouldReceive('isPublishingEnabled')->andReturn($configured);
         $gbp->shouldReceive('isConnected')->andReturn($configured);
         $this->app->instance(GoogleBusinessProfileService::class, $gbp);
     }
 
     /**
      * Connected, publishing switched off on the Platforms page: reported as
-     * exactly that, not as "not connected" (2026-09-23).
+     * exactly that, not as "not connected" (2026-09-23). Only Meta has such a
+     * switch; Google Business, connected, is simply ready.
      */
     public function test_a_connected_platform_with_publishing_switched_off_is_reported_as_such(): void
     {
         $this->fakeAllConfigured(false);
+        $meta = Mockery::mock(MetaSocialService::class);
+        $meta->shouldReceive('isInstagramConfigured')->andReturn(false);
+        $meta->shouldReceive('isFacebookConfigured')->andReturn(false);
+        $meta->shouldReceive('isPublishingEnabled')->andReturn(false);
+        $meta->shouldReceive('isInstagramConnected')->andReturn(true);
+        $meta->shouldReceive('isFacebookConnected')->andReturn(false);
+        $this->app->instance(MetaSocialService::class, $meta);
         $gbp = Mockery::mock(GoogleBusinessProfileService::class);
-        $gbp->shouldReceive('isConfigured')->andReturn(false);
-        $gbp->shouldReceive('isPublishingEnabled')->andReturn(false);
+        $gbp->shouldReceive('isConfigured')->andReturn(true);
         $gbp->shouldReceive('isConnected')->andReturn(true);
         $this->app->instance(GoogleBusinessProfileService::class, $gbp);
 
         $data = $this->getJson('/api/admin/v1/social-media', $this->adminApiHeaders())->assertOk()->json('data');
 
-        $this->assertFalse($data['configured']['google_business']);
-        $this->assertTrue($data['publishing_off']['google_business']);
-        $this->assertFalse($data['publishing_off']['instagram']);
+        $this->assertTrue($data['publishing_off']['instagram']);
+        $this->assertFalse($data['publishing_off']['facebook'], 'not connected at all');
+        $this->assertFalse($data['publishing_off']['google_business'], 'connected Google Business is ready — no switch');
+        $this->assertTrue($data['configured']['google_business']);
         $item = collect($data['automation']['items'])->firstWhere('platform', 'google_business');
-        $this->assertTrue($item['publishing_off']);
+        $this->assertTrue($item['configured']);
+        $this->assertFalse($item['publishing_off']);
     }
 
     public function test_get_reports_the_seeded_default_site_in_fixed_order(): void

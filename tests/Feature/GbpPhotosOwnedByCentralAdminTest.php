@@ -35,7 +35,12 @@ class GbpPhotosOwnedByCentralAdminTest extends TestCase
         parent::setUp();
 
         config([
-            'services.google.business_profile.enabled' => true,
+            // Connected, so nothing but the ownership rule stops an upload here.
+            'services.google.business_profile.client_id' => 'client-id',
+            'services.google.business_profile.client_secret' => 'client-secret',
+            'services.google.business_profile.refresh_token' => 'refresh-token',
+            'services.google.business_profile.account_id' => 'accounts/1',
+            'services.google.business_profile.location_id' => 'locations/2',
             'services.google.business_profile.photos_owned_by' => 'ss-systems',
             'services.google.business_profile.auto_geocode_on_project_save' => false,
             'services.google.gemini_api_key' => '',

@@ -248,7 +248,7 @@ class BackfillAiContent extends Command
                 // updateQuietly bypasses observers, so explicitly refresh GBP media
                 // when image text fields that build GBP descriptions are changed.
                 if (
-                    config('services.google.business_profile.enabled')
+                    app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
                     && $image->project
                     && $image->project->is_published
                     && $image->google_places_uploaded_at

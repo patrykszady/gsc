@@ -324,7 +324,8 @@ class ContentOpsControllerTest extends TestCase
     {
         config([
             'services.meta.enabled' => false,
-            'services.google.business_profile.enabled' => false,
+            'services.google.business_profile.location_id' => null,
+            'services.google.business_profile.refresh_token' => null,
         ]);
 
         Queue::fake();

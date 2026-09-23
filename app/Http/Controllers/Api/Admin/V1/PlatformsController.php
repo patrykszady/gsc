@@ -1116,7 +1116,13 @@ class PlatformsController extends Controller
         return response()->json(['data' => $this->gbpStatus()]);
     }
 
-    /** Turn publishing to the listing on or off. */
+    /**
+     * POST platforms/gbp/publishing — RETIRED 2026-09-23. It toggled the
+     * separate "publishing" switch that connected-but-switched-off listings
+     * tripped over; connected now means ready to post and nothing reads the
+     * stored flag. Kept only so an admin build from before that change does
+     * not get a 404 while the two deploy.
+     */
     public function saveGbpPublishing(Request $request): JsonResponse
     {
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
