@@ -123,6 +123,13 @@ class SocialMediaController extends Controller
                     'google_business' => $gbpConfigured,
                     'any' => $igConfigured || $fbConfigured || $gbpConfigured,
                 ],
+                // Connected but switched off on the Platforms page — so the screen
+                // can say that rather than "not connected" (2026-09-23).
+                'publishing_off' => [
+                    'instagram' => app(AutomationSettingsService::class)->publishingOff('instagram'),
+                    'facebook' => app(AutomationSettingsService::class)->publishingOff('facebook'),
+                    'google_business' => app(AutomationSettingsService::class)->publishingOff('google_business'),
+                ],
                 'platforms' => $this->platformsPayload(),
                 'automation' => [
                     'timezone' => $automationService->timezone(),

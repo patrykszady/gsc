@@ -37,16 +37,33 @@ class GoogleBusinessProfileService
 
     protected ?array $lastError = null;
 
+    /** Can post right now: connected AND publishing switched on. */
     public function isConfigured(): bool
+    {
+        return $this->isPublishingEnabled() && $this->isConnected();
+    }
+
+    /**
+     * Signed in with a listing chosen — everything but the publishing
+     * switch. "Connected, publishing off" is not "not connected", and the
+     * social-media screen said the second when it meant the first
+     * (2026-09-23).
+     */
+    public function isConnected(): bool
     {
         $config = config('services.google.business_profile');
 
-        return (bool) ($config['enabled'] ?? false)
-            && ! empty($config['client_id'])
+        return ! empty($config['client_id'])
             && ! empty($config['client_secret'])
             && $this->hasRefreshToken()
             && ! empty($config['account_id'])
             && ! empty($config['location_id']);
+    }
+
+    /** The Platforms card's "Turn publishing on" switch (POST platforms/gbp/publishing). */
+    public function isPublishingEnabled(): bool
+    {
+        return (bool) (config('services.google.business_profile.enabled') ?? false);
     }
 
     public function hasOAuthCredentials(): bool

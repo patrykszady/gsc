@@ -45,6 +45,7 @@ class AutomationSettingsService
             'platform' => $platform,
             'label' => SocialAutomationSetting::LABELS[$platform] ?? ucfirst($platform),
             'configured' => $this->isConfigured($platform),
+            'publishing_off' => $this->publishingOff($platform),
             'enabled' => (bool) ($setting->enabled ?? false),
             'cadence' => $cadence,
             'options' => $options,
@@ -86,6 +87,25 @@ class AutomationSettingsService
         );
 
         return $this->item($platform);
+    }
+
+    /**
+     * Connected, but that platform's publishing switch on the Platforms page
+     * is off. The admin says exactly that — "connected, publishing is
+     * switched off" — instead of "not connected", which sent people to a
+     * Platforms page that said Connected (2026-09-23).
+     */
+    public function publishingOff(string $platform): bool
+    {
+        $meta = app(MetaSocialService::class);
+        $gbp = app(GoogleBusinessProfileService::class);
+
+        return match ($platform) {
+            'instagram' => ! $meta->isPublishingEnabled() && $meta->isInstagramConnected(),
+            'facebook' => ! $meta->isPublishingEnabled() && $meta->isFacebookConnected(),
+            'google_business' => ! $gbp->isPublishingEnabled() && $gbp->isConnected(),
+            default => false,
+        };
     }
 
     protected function isConfigured(string $platform): bool

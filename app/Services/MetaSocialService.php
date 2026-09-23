@@ -91,21 +91,35 @@ class MetaSocialService
     /*  Configuration helpers                                              */
     /* ------------------------------------------------------------------ */
 
+    /** The Platforms card's Meta posting switch (services.meta.enabled). */
+    public function isPublishingEnabled(): bool
+    {
+        return (bool) (config('services.meta.enabled') ?? false);
+    }
+
     public function isInstagramConfigured(): bool
     {
-        if (! (bool) (config('services.meta.enabled') ?? false)) {
-            return false;
-        }
+        return $this->isPublishingEnabled() && $this->isInstagramConnected();
+    }
+
+    /** Credentials for Instagram present — whether or not publishing is switched on. */
+    public function isInstagramConnected(): bool
+    {
         $c = $this->getCredentials();
+
         return $c['token'] !== null && ! empty($c['ig_id']);
     }
 
     public function isFacebookConfigured(): bool
     {
-        if (! (bool) (config('services.meta.enabled') ?? false)) {
-            return false;
-        }
+        return $this->isPublishingEnabled() && $this->isFacebookConnected();
+    }
+
+    /** Credentials for Facebook present — whether or not publishing is switched on. */
+    public function isFacebookConnected(): bool
+    {
         $c = $this->getCredentials();
+
         return $c['token'] !== null && ! empty($c['page_id']);
     }
 
