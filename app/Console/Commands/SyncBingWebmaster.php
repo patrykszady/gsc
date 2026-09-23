@@ -2,99 +2,58 @@
 
 namespace App\Console\Commands;
 
-use App\Models\BingDailyTotal;
-use App\Models\BingTrafficStat;
-use App\Services\BingWebmasterService;
 use Illuminate\Console\Command;
+use SsSystems\Platform\Seo\Bing\BingSync;
+use SsSystems\Platform\Seo\Bing\BingSyncSkipped;
+use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
+use SsSystems\Platform\Seo\Bing\BingWriter;
 
+/**
+ * Sync Bing Webmaster Tools query stats and daily totals — the kit's
+ * BingSync over this site's client and writer (0.8.0, 2026-09-23; the
+ * loop that used to be inline here is the kit's now, shared with
+ * jpeterson-design). Output lines kept as they were, for whoever reads
+ * storage/logs/seo-bing-sync.log.
+ */
 class SyncBingWebmaster extends Command
 {
     protected $signature = 'seo:bing-sync {--dry-run}';
 
     protected $description = 'Sync Bing Webmaster Tools query stats (free, API-key auth)';
 
-    public function handle(BingWebmasterService $svc): int
+    public function handle(BingWebmasterClient $client, BingWriter $writer): int
     {
-        if (! $svc->isConfigured()) {
-            $this->error('Bing not configured. Set BING_WEBMASTER_API_KEY in .env.');
+        try {
+            $summary = BingSync::run($client, $writer, ['dry_run' => (bool) $this->option('dry-run')]);
+        } catch (BingSyncSkipped) {
+            $this->error('Bing not configured. Save an API key under SEO → Connect Services.');
+
             return self::FAILURE;
         }
 
-        $rows = $svc->fetchQueryStats();
-        if ($rows === null) {
-            $this->error('Fetch failed.');
+        if ($summary['status'] === 'failed') {
+            $this->error('Fetch failed. '.$summary['error']);
+
             return self::FAILURE;
         }
 
-        $count = count($rows);
-        $this->info("Fetched {$count} rows from Bing WMT");
+        $this->info("Fetched {$summary['fetched']} rows from Bing WMT");
 
-        if ((bool) $this->option('dry-run')) {
-            foreach (array_slice($rows, 0, 10) as $r) {
-                $this->line(json_encode($r));
+        if ($summary['status'] === 'dry-run') {
+            foreach ($summary['sample'] as $row) {
+                $this->line(json_encode($row));
             }
+
             return self::SUCCESS;
         }
 
-        $upserts = 0;
-        foreach ($rows as $r) {
-            if (! $r['query']) {
-                continue;
-            }
-            $date = $r['date'];
-            $siteUrl = mb_substr((string) $r['site_url'], 0, 191);
-            $query = mb_substr((string) $r['query'], 0, 500);
-            $dimHash = sha1("{$date}|{$siteUrl}|{$query}");
-
-            BingTrafficStat::updateOrCreate(
-                ['dim_hash' => $dimHash],
-                [
-                    'date' => $date,
-                    'site_url' => $siteUrl,
-                    'query' => $query,
-                    'impressions' => $r['impressions'],
-                    'clicks' => $r['clicks'],
-                    'position' => $r['position'],
-                    'dim_hash' => $dimHash,
-                ],
-            );
-            $upserts++;
+        $this->info('Upserted '.($summary['inserted'] + $summary['updated']).' rows.');
+        if ($summary['daily_totals_error'] !== null) {
+            $this->warn('Daily-totals fetch failed (GetRankAndTrafficStats). '.$summary['daily_totals_error']);
+        } else {
+            $this->info("Daily totals upserted: {$summary['daily_totals']} day(s).");
         }
-        $this->info("Upserted {$upserts} rows.");
-
-        // Also capture true site-wide daily totals. GetQueryStats omits
-        // anonymized/aggregated query traffic, so its per-day sums under-report
-        // vs the Bing dashboard. GetRankAndTrafficStats returns real daily
-        // figures, which /admin/seo-reports uses for headline + trend.
-        $this->syncDailyTotals($svc);
 
         return self::SUCCESS;
-    }
-
-    protected function syncDailyTotals(BingWebmasterService $svc): void
-    {
-        $rows = $svc->fetchRankAndTrafficStats();
-        if ($rows === null) {
-            $this->warn('Daily-totals fetch failed (GetRankAndTrafficStats).');
-            return;
-        }
-
-        $written = 0;
-        foreach ($rows as $r) {
-            $impressions = (int) $r['impressions'];
-            $clicks = (int) $r['clicks'];
-
-            BingDailyTotal::updateOrCreate(
-                ['date' => $r['date'], 'site_url' => mb_substr((string) $r['site_url'], 0, 191)],
-                [
-                    'clicks' => $clicks,
-                    'impressions' => $impressions,
-                    'ctr' => $impressions > 0 ? round($clicks / $impressions, 5) : 0,
-                ],
-            );
-            $written++;
-        }
-
-        $this->info("Daily totals upserted: {$written} day(s).");
     }
 }

@@ -3,125 +3,60 @@
 namespace App\Services;
 
 use App\Support\Seo\BingSettings;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Factory;
+use SsSystems\Platform\Seo\Bing\BingWebmasterApi;
+use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
 
 /**
- * Bing Webmaster Tools API (free, simple API key auth).
- *
- * https://learn.microsoft.com/en-us/bingwebmaster/getting-access
- * https://learn.microsoft.com/en-us/dotnet/api/microsoft.bing.webmaster.api.interfaces.iwebmasterapi.getrankandtrafficstats
+ * This site's Bing Webmaster Tools client: the kit's BingWebmasterApi built
+ * from this site's key (admin-saved, through BingSettings) and property.
+ * The two calls and Bing's date format used to live here; they are the
+ * kit's now (0.8.0, 2026-09-23), shared with jpeterson-design. The old
+ * method names stay as aliases.
  */
-class BingWebmasterService
+class BingWebmasterService implements BingWebmasterClient
 {
-    protected const API_BASE = 'https://ssl.bing.com/webmaster/api.svc/json';
+    private BingWebmasterApi $api;
 
-    public function __construct(protected BingSettings $settings)
+    public function __construct(BingSettings $settings, Factory $http)
     {
+        $this->api = new BingWebmasterApi($settings->apiKey(), $settings->siteUrl(), $http);
     }
 
     public function isConfigured(): bool
     {
-        return $this->settings->isConfigured();
+        return $this->api->isConfigured();
     }
 
-    /**
-     * Returns array of rows: [['date'=>'YYYY-MM-DD','query'=>...,'impressions','clicks','position'], ...]
-     */
-    public function fetchQueryStats(?string $siteUrl = null): ?array
+    public function siteUrl(): string
     {
-        $siteUrl ??= $this->settings->siteUrl();
-        $apiKey = $this->settings->apiKey();
-
-        $resp = Http::timeout(45)->get(self::API_BASE . '/GetQueryStats', [
-            'siteUrl' => $siteUrl,
-            'apikey' => $apiKey,
-        ]);
-
-        if (! $resp->successful()) {
-            Log::warning('Bing WMT: GetQueryStats failed', [
-                'status' => $resp->status(),
-                'body' => mb_substr($resp->body(), 0, 500),
-            ]);
-            return null;
-        }
-
-        $data = $resp->json('d', []);
-        $out = [];
-        foreach ($data as $row) {
-            $date = $this->parseMsDate($row['Date'] ?? null);
-            if (! $date) {
-                continue;
-            }
-            $out[] = [
-                'date' => $date,
-                'site_url' => $siteUrl,
-                'query' => (string) ($row['Query'] ?? ''),
-                'impressions' => (int) ($row['Impressions'] ?? 0),
-                'clicks' => (int) ($row['Clicks'] ?? 0),
-                'position' => (float) ($row['AvgImpressionPosition']
-                    ?? $row['AvgClickPosition']
-                    ?? 0),
-            ];
-        }
-
-        return $out;
+        return $this->api->siteUrl();
     }
 
-    /**
-     * True site-wide daily traffic totals (impressions/clicks), not bucketed by
-     * query. GetQueryStats omits clicks/impressions from anonymized/aggregated
-     * queries, so its per-day sums under-report; this endpoint returns the real
-     * daily figures shown in the Bing Webmaster dashboard.
-     *
-     * Returns: [['date'=>'YYYY-MM-DD','site_url'=>...,'impressions'=>int,'clicks'=>int], ...]
-     *
-     * @return array<int,array{date:string,site_url:string,impressions:int,clicks:int}>|null
-     */
-    public function fetchRankAndTrafficStats(?string $siteUrl = null): ?array
+    public function queryStats(): ?array
     {
-        $siteUrl ??= $this->settings->siteUrl();
-        $apiKey = $this->settings->apiKey();
-
-        $resp = Http::timeout(45)->get(self::API_BASE . '/GetRankAndTrafficStats', [
-            'siteUrl' => $siteUrl,
-            'apikey' => $apiKey,
-        ]);
-
-        if (! $resp->successful()) {
-            Log::warning('Bing WMT: GetRankAndTrafficStats failed', [
-                'status' => $resp->status(),
-                'body' => mb_substr($resp->body(), 0, 500),
-            ]);
-            return null;
-        }
-
-        $data = $resp->json('d', []);
-        $out = [];
-        foreach ($data as $row) {
-            $date = $this->parseMsDate($row['Date'] ?? null);
-            if (! $date) {
-                continue;
-            }
-            $out[] = [
-                'date' => $date,
-                'site_url' => $siteUrl,
-                'impressions' => (int) ($row['Impressions'] ?? 0),
-                'clicks' => (int) ($row['Clicks'] ?? 0),
-            ];
-        }
-
-        return $out;
+        return $this->api->queryStats();
     }
 
-    /**
-     * Bing returns dates like "/Date(1747353600000)/".
-     */
-    protected function parseMsDate(?string $raw): ?string
+    public function rankAndTrafficStats(): ?array
     {
-        if (! $raw || ! preg_match('/Date\((\d+)/', $raw, $m)) {
-            return null;
-        }
-        return date('Y-m-d', (int) ($m[1] / 1000));
+        return $this->api->rankAndTrafficStats();
+    }
+
+    public function lastError(): ?string
+    {
+        return $this->api->lastError();
+    }
+
+    /** @deprecated the kit's name is queryStats() */
+    public function fetchQueryStats(): ?array
+    {
+        return $this->queryStats();
+    }
+
+    /** @deprecated the kit's name is rankAndTrafficStats() */
+    public function fetchRankAndTrafficStats(): ?array
+    {
+        return $this->rankAndTrafficStats();
     }
 }

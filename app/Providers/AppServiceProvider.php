@@ -72,6 +72,8 @@ use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuot
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
+use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
+use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -95,6 +97,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SearchConsoleClient::class, GoogleSearchConsoleService::class);
         $this->app->bind(SearchConsoleSyncClient::class, GoogleSearchConsoleService::class);
         $this->app->bind(SearchConsoleWriterContract::class, SiteSearchConsoleWriter::class);
+        // Bing Webmaster Tools, the same way (kit 0.8.0): the kit's sync, this
+        // site's writer, the client built from this site's key.
+        $this->app->bind(KitBingWriter::class, \App\Support\Seo\BingWriter::class);
+        $this->app->bind(BingWebmasterClient::class, \App\Services\BingWebmasterService::class);
 
         // The shared kit's ten SEO report generators (SsSystems\Platform\
         // Reports\*, ported verbatim from this app's own app/Console/
