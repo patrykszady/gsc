@@ -74,11 +74,24 @@ class SocialAutomationTick extends Command
 
             $slot = $planner->due($site->slug, $platform, $cadence, $now, $this->metaSiblingCadence($platform, $settingsByPlatform));
             if ($slot !== null && $setting->last_dispatched_slot !== $slot) {
-                $this->dispatchSlot($site, $setting, $platform, $options, $slot);
+                // Never back-to-back: a slot the day after a post is held when
+                // the plan itself moved under it (a cadence edit mid-week, or
+                // the planner's 2026-09-23 spacing rules replacing the old
+                // shuffle). A planned slot is never that close, so this only
+                // ever stops a stray — see AutomationPlanner::tooSoonAfter().
+                if ($planner->tooSoonAfter($cadence, $setting->last_dispatched_at, $now)) {
+                    $this->line("{$platform}: slot {$slot} held — the last post went out ".$setting->last_dispatched_at?->diffForHumans($now).'.');
+                } else {
+                    $this->dispatchSlot($site, $setting, $platform, $options, $slot);
+                }
             }
 
-            if ($platform === 'google_business' && ! empty($options['catch_up_after_days'])) {
-                $this->maybeCatchUp($site, $setting, (int) $options['catch_up_after_days'], $now);
+            // Google Business: post anyway once nothing has gone out for longer
+            // than the plan ever leaves between posts — worked out from the
+            // rhythm, no setting (2026-09-23; the old catch_up_after_days
+            // option is ignored).
+            if ($platform === 'google_business') {
+                $this->maybeCatchUp($site, $setting, $planner->catchUpAfterDays($cadence), $now);
             }
         }
     }
@@ -174,8 +187,10 @@ class SocialAutomationTick extends Command
             ->where('status', 'published')
             ->max('published_at');
 
-        $isStale = $lastPublishedAt === null
-            || Carbon::parse($lastPublishedAt)->lessThan($now->copy()->subDays($afterDays));
+        // Nothing published yet means automation was only just switched on:
+        // the plan's first slot is coming, and a catch-up now would jump it.
+        $isStale = $lastPublishedAt !== null
+            && Carbon::parse($lastPublishedAt)->lessThan($now->copy()->subDays($afterDays));
 
         if (! $isStale) {
             return;

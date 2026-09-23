@@ -55,6 +55,9 @@ class SocialAutomationTickTest extends TestCase
 
         $gbp = Mockery::mock(GoogleBusinessProfileService::class);
         $gbp->shouldReceive('isConfigured')->andReturn($googleBusiness);
+        // The photo observers ask this since the publishing switch was retired
+        // (2026-09-23): connected is ready.
+        $gbp->shouldReceive('isConnected')->andReturn($googleBusiness);
         $this->app->instance(GoogleBusinessProfileService::class, $gbp);
     }
 
