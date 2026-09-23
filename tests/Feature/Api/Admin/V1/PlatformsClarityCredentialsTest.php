@@ -49,7 +49,7 @@ class PlatformsClarityCredentialsTest extends TestCase
     {
         $this->postJson('/api/admin/v1/platforms/clarity/credentials', [
             'project_id' => str_repeat('x', 256),
-            'api_token' => str_repeat('y', 256),
+            'api_token' => str_repeat('y', 5000),
         ], $this->bearer())
             ->assertStatus(422)
             ->assertJsonValidationErrors(['project_id', 'api_token']);
@@ -113,5 +113,22 @@ class PlatformsClarityCredentialsTest extends TestCase
 
         $data = $this->getJson('/api/admin/v1/platforms/status', $this->bearer())->assertOk()->json('data.clarity');
         $this->assertSame('admin', $data['source']);
+    }
+
+    /**
+     * Clarity's API token is a JWT of ~700 characters; a 255 cap refused
+     * every real one (2026-09-23).
+     */
+    public function test_a_real_length_clarity_token_is_accepted_and_stored(): void
+    {
+        $token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.'.str_repeat('a', 640).'.'.str_repeat('b', 340);
+        $this->assertGreaterThan(900, strlen($token));
+
+        $this->postJson('/api/admin/v1/platforms/clarity/credentials', [
+            'project_id' => 'abcdefghij',
+            'api_token' => $token,
+        ], $this->bearer())->assertOk();
+
+        $this->assertSame($token, app(\App\Support\Seo\ClaritySettings::class)->apiToken());
     }
 }

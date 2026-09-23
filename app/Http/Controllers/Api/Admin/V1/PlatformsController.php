@@ -320,7 +320,7 @@ class PlatformsController extends Controller
     {
         $data = $request->validate([
             'project_id' => ['nullable', 'string', 'max:255'],
-            'api_token' => ['nullable', 'string', 'max:255'],
+            'api_token' => ['nullable', 'string', 'max:4096'], // a JWT, ~700 chars (2026-09-23)
         ]);
 
         if (! empty($data['project_id'])) {
