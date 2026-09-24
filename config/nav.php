@@ -12,8 +12,14 @@ return [
     'links' => [
         ['label' => 'Kitchens', 'href' => '/services/kitchen-remodeling', 'bold' => false],
         ['label' => 'Bathrooms', 'href' => '/services/bathroom-remodeling', 'bold' => false],
+        // Every service page is in the header's markup (2026-09-24): search
+        // engines choose a result's sitelinks from the pages a site links most
+        // prominently, and Bing filled them with town pages. The desktop bar has
+        // no room for more links, so these three live in the mobile menu, which
+        // every page carries; Whole-Home was missing from the header entirely.
         ['label' => 'Basements', 'href' => '/services/basement-remodeling', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Additions', 'href' => '/services/home-additions', 'bold' => false, 'moreOnly' => true],
+        ['label' => 'Whole-Home', 'href' => '/services/home-remodeling', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Mudrooms', 'href' => '/services/mudroom-remodeling', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Projects', 'href' => '/projects', 'bold' => false],
         ['label' => 'Services', 'href' => '/services', 'bold' => false],

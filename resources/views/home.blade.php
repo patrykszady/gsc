@@ -115,7 +115,7 @@
              cannot inherit GS Construction's name here. --}}
         <livewire:main-project-hero-slider
             :slides="$homeSlides"
-            :heading="config('brand.name') . ' — Kitchen, Bathroom & Whole-Home Remodeling in the Chicago Suburbs'"
+            :heading="config('brand.display_name', config('brand.name')) . ' — Kitchen, Bathroom & Whole-Home Remodeling in the Chicago Suburbs'"
         />
     </div>
 
