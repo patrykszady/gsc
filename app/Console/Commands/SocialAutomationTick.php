@@ -80,6 +80,15 @@ class SocialAutomationTick extends Command
                 // shuffle). A planned slot is never that close, so this only
                 // ever stops a stray — see AutomationPlanner::tooSoonAfter().
                 if ($planner->tooSoonAfter($cadence, $setting->last_dispatched_at, $now)) {
+                    // Held, not moved: this week has one post fewer. Only a plan
+                    // that changed under the week can do this, and moving the
+                    // slot could land Instagram and Facebook on the same day —
+                    // one missing post is the smaller harm. Logged, so it shows.
+                    Log::channel('social')->info('Social automation: slot held — the last post was the same or previous day', [
+                        'platform' => $platform,
+                        'slot' => $slot,
+                        'last_dispatched_at' => $setting->last_dispatched_at?->toIso8601String(),
+                    ]);
                     $this->line("{$platform}: slot {$slot} held — the last post went out ".$setting->last_dispatched_at?->diffForHumans($now).'.');
                 } else {
                     $this->dispatchSlot($site, $setting, $platform, $options, $slot);
