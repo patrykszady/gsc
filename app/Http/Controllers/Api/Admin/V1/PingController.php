@@ -26,7 +26,7 @@ class PingController extends Controller
                 // reporting", never as drift.
                 'platform_kit' => class_exists(Kit::class) ? Kit::VERSION : null,
                 'domains' => [
-                    'dashboard-stats', 'projects', 'tags', 'testimonials', 'areas', 'leads',
+                    'dashboard-stats', 'projects', 'tags', 'testimonials', 'blog', 'areas', 'leads',
                     // Ops domains — the central admin shows these screens
                     // only for sites that declare them (jpeterson doesn't).
                     'landing-pages', 'social-media', 'analytics', 'js-errors', 'seo', 'platforms',
