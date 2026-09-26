@@ -61,6 +61,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // this app's session/CSRF middleware — routes/web.php).
             'admin',
             'admin/*',
+            // Site Pulse beacon (SsSystems\Platform\Pulse): sent via
+            // navigator.sendBeacon(), which cannot set an X-CSRF-TOKEN
+            // header — unlike /track's fetch() beacon, which does.
+            't',
         ]);
 
         // Bot blocking now handled by Cloudflare WAF + Bot Fight Mode

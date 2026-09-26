@@ -111,8 +111,14 @@ class AnalyticsController extends Controller
         return $query->when($type && $type !== 'all', fn ($q) => $q->where('type', $type));
     }
 
-    /** @return array<string,int> */
-    protected function countsByType(Builder $query): array
+    /**
+     * Public + static so DashboardStatsController's "contacts" tile can
+     * reuse this exact per-type breakdown rather than recounting
+     * TrackedEvent independently.
+     *
+     * @return array<string,int>
+     */
+    public static function countsByType(Builder $query): array
     {
         $byType = $query->selectRaw('type, COUNT(*) as count')->groupBy('type')->pluck('count', 'type');
 

@@ -390,6 +390,7 @@
                             this.$refs.container.setPointerCapture(e.pointerId);
                             this.updatePosition(e.clientX);
                             e.preventDefault();
+                            window.ssPulse && window.ssPulse('before_after');
                         },
 
                         onPointerMove(e) {

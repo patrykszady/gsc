@@ -8,6 +8,7 @@ use App\Models\BingDailyTotal;
 use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscDailyTotal;
+use App\Models\Site;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Carbon\Carbon;
@@ -185,7 +186,7 @@ class SeoReportControllerTest extends TestCase
             ->assertOk()
             ->json('data');
 
-        foreach (['health', 'report_stats', 'diagnostic', 'search', 'trend', 'top_queries', 'top_pages', 'clarity', 'geo', 'ai_traffic', 'gsc_errors'] as $key) {
+        foreach (['health', 'report_stats', 'diagnostic', 'search', 'trend', 'top_queries', 'top_pages', 'clarity', 'geo', 'ai_traffic', 'gsc_errors', 'pulse'] as $key) {
             $this->assertArrayHasKey($key, $data, "snapshot payload missing \"{$key}\"");
         }
 
@@ -197,6 +198,61 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame([], $data['clarity']['pages']);
         $this->assertArrayHasKey('channels', $data['search']);
         $this->assertArrayHasKey('gsc', $data['search']['channels']);
+
+        // Neither gsc nor jpeterson has a search feature: the builder gets
+        // no `search_event`, so these must be genuinely ABSENT, not zeroed.
+        $this->assertArrayNotHasKey('searches', $data['pulse']['totals']);
+        $this->assertArrayNotHasKey('searched_cities', $data['pulse']);
+        $this->assertArrayNotHasKey('filters', $data['pulse']);
+        $this->assertSame(['visitors' => 0, 'page_views' => 0], $data['pulse']['totals']);
+    }
+
+    /**
+     * Site Pulse (SsSystems\Platform\Pulse\SnapshotBuilder, kit 0.10.0):
+     * the 'pulse' block reads THIS tenant's site_events rows only, cached 5
+     * minutes, and busted by snapshot/refresh alongside health/search.
+     */
+    public function test_pulse_reflects_seeded_site_events_for_the_current_tenant_only(): void
+    {
+        $gsc = Site::where('slug', 'gsc')->firstOrFail();
+        $jpeterson = Site::where('slug', 'jpeterson')->firstOrFail();
+
+        DB::table('site_events')->insert([
+            'site_id' => $gsc->id, 'event' => 'page', 'path' => '/projects/deck', 'meta' => null,
+            'vhash' => 'v1', 'city' => null, 'mobile' => false, 'created_at' => now(),
+        ]);
+        DB::table('site_events')->insert([
+            'site_id' => $gsc->id, 'event' => 'gallery', 'path' => '/projects/deck', 'meta' => null,
+            'vhash' => 'v1', 'city' => null, 'mobile' => false, 'created_at' => now(),
+        ]);
+        // A different tenant's row must never surface in gsc's pulse block.
+        DB::table('site_events')->insert([
+            'site_id' => $jpeterson->id, 'event' => 'gallery', 'path' => '/other', 'meta' => null,
+            'vhash' => 'v2', 'city' => null, 'mobile' => false, 'created_at' => now(),
+        ]);
+
+        $pulse = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data.pulse');
+
+        $this->assertSame(1, $pulse['totals']['visitors']);
+        $this->assertSame(1, $pulse['totals']['page_views']);
+        $gallery = collect($pulse['features'])->firstWhere('key', 'gallery');
+        $this->assertNotNull($gallery);
+        $this->assertSame(1, $gallery['uses'], 'the other tenants gallery event must not be counted');
+        $this->assertSame('Galleries opened', $gallery['label']);
+    }
+
+    public function test_snapshot_refresh_also_busts_the_cached_pulse_snapshot(): void
+    {
+        Cache::put(Tenancy::cacheKey('admin.seo-reports.pulse'), ['stale' => true], 60);
+
+        $data = $this->postJson('/api/admin/v1/seo/snapshot/refresh', [], $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertArrayNotHasKey('stale', $data['pulse']);
+        $this->assertContains(Tenancy::cacheKey('admin.seo-reports.pulse'), $data['run']['caches_cleared']);
     }
 
     /**
@@ -703,9 +759,9 @@ class SeoReportControllerTest extends TestCase
     {
         // A faked disk: the file this fake command writes must not outlive the
         // test, or the "every report is missing" case sees it.
-        \Illuminate\Support\Facades\Storage::fake('local');
-        \Illuminate\Support\Facades\Artisan::command('seo:fake-warn', function () {
-            \Illuminate\Support\Facades\Storage::disk('local')->put(\App\Support\SeoStorage::path('reports/content-decay.md'), "# Content decay\n");
+        Storage::fake('local');
+        Artisan::command('seo:fake-warn', function () {
+            Storage::disk('local')->put(SeoStorage::path('reports/content-decay.md'), "# Content decay\n");
             $this->warn('two pages look stale');
 
             return 1;

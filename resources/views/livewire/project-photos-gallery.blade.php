@@ -22,6 +22,7 @@
             this.currentIndex = index;
             this.lightbox = true;
             document.body.style.overflow = 'hidden';
+            window.ssPulse && window.ssPulse('gallery');
         },
         close() {
             this.lightbox = false;

@@ -508,5 +508,13 @@
             });
         });
     </script>
+
+    {{-- Site Pulse (SsSystems\Platform\Pulse, kit 0.10.0): a SEPARATE,
+         additional first-party telemetry beacon feeding ss-systems' Site
+         Pulse card — not a replacement for the /track wiring above. Gives an
+         automatic `page` event per view, call/email from every tel:/mailto:
+         link, and capped JS-error capture, for free. Never in an admin
+         layout — /admin/* never renders Blade on this side. --}}
+    {!! \SsSystems\Platform\Pulse\BeaconScript::render('/t', ['fn' => 'ssPulse']) !!}
 </body>
 </html>

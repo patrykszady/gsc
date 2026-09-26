@@ -81,6 +81,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use SsSystems\Platform\Pulse\BeaconController;
 
 // The crawl files, per tenant. They were static files under public/, which
 // nginx serves for EVERY host of this deployment — another site's domain
@@ -156,6 +157,14 @@ Route::get('/geo/answers.json', GeoAnswersController::class)->name('geo.answers'
 
 // First-party analytics ingest (phone/email/form/CTA events). Public, rate-limited.
 Route::post('/track', TrackEventController::class)->name('track-event');
+
+// Site Pulse beacon (SsSystems\Platform\Pulse, kit 0.10.0) — a SEPARATE,
+// additional first-party telemetry beacon feeding ss-systems' Site Pulse
+// card; NOT a replacement for /track above (that stays untouched). CSRF-exempt
+// in bootstrap/app.php (navigator.sendBeacon cannot set a CSRF header).
+Route::post('/t', fn (Request $request) => app(BeaconController::class)($request))
+    ->middleware('throttle:120,1')
+    ->name('pulse.beacon');
 
 // Front-end JavaScript error beacon (window.onerror / unhandledrejection).
 // Throttled to absorb error storms without flooding the log channel.

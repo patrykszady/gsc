@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
+use SsSystems\Platform\Pulse\SnapshotBuilder;
 use Throwable;
 
 /**
@@ -172,6 +173,11 @@ class SeoReportController extends Controller
                 fn () => Tenancy::table(SearchAppearance::TABLE),
                 $this->normalizeTopDays((int) $request->integer('appearance_days', 28)),
             ),
+            // Site Pulse (SsSystems\Platform\Pulse, kit 0.10.0) — first-party
+            // usage telemetry read by ss-systems' Site Pulse card. Cached 5
+            // minutes like Dawn's own (shorter than most sections here,
+            // which run 15/30 min, per the shared kit's spec).
+            'pulse' => $this->pulseSnapshot(),
         ]);
     }
 
@@ -194,10 +200,12 @@ class SeoReportController extends Controller
         try {
             $healthKey = Tenancy::cacheKey('admin.seo-reports.health-snapshot');
             $searchKey = $this->searchSnapshotCacheKey($trendDays);
+            $pulseKey = Tenancy::cacheKey('admin.seo-reports.pulse');
             Cache::forget($healthKey);
             Cache::forget($searchKey);
+            Cache::forget($pulseKey);
             SitemapStatus::forget(SearchConsoleProperty::url());
-            $cachesCleared = [$healthKey, $searchKey, 'sitemap-status'];
+            $cachesCleared = [$healthKey, $searchKey, $pulseKey, 'sitemap-status'];
 
             $response = $this->snapshot($request);
             $data = $response->getData(true)['data'];
@@ -792,6 +800,22 @@ class SeoReportController extends Controller
         return [$dimension => (string) $r->dim] + $shape($r) + [
             'prior' => ($p = $prior->get((string) $r->dim)) ? $shape($p) : null,
         ];
+    }
+
+    /**
+     * Site Pulse's `pulse` shape (SsSystems\Platform\Pulse\SnapshotBuilder,
+     * bound as a singleton in AppServiceProvider) — cached 5 minutes per
+     * tenant, same convention as every other snapshot section here
+     * (Tenancy::cacheKey), but a shorter window per the kit's own spec
+     * (docs/PULSE.md), matching dawnsellshomes.com's original.
+     */
+    protected function pulseSnapshot(): array
+    {
+        return Cache::remember(
+            Tenancy::cacheKey('admin.seo-reports.pulse'),
+            now()->addMinutes(5),
+            fn () => app(SnapshotBuilder::class)->build(),
+        );
     }
 
     protected function healthSnapshot(): array

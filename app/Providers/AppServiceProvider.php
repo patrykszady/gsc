@@ -18,11 +18,13 @@ use App\Observers\BlogPostObserver;
 use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
+use App\Services\BingWebmasterService;
 use App\Services\GoogleSearchConsoleService;
 use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
+use App\Support\Seo\BingWriter;
 use App\Support\Seo\Inspection\EloquentCoverageStore;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\SearchConsoleUrlInspector;
@@ -45,6 +47,7 @@ use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -56,6 +59,10 @@ use Livewire\Blaze\Blaze;
 use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Psr\SimpleCache\CacheInterface;
+use SsSystems\Platform\Pulse\BeaconController;
+use SsSystems\Platform\Pulse\Recorder;
+use SsSystems\Platform\Pulse\SnapshotBuilder;
+use SsSystems\Platform\Pulse\Storage\DatabaseTableStorage;
 use SsSystems\Platform\Reports\Contracts\AreaCatalog;
 use SsSystems\Platform\Reports\Contracts\ClarityMetricsReader;
 use SsSystems\Platform\Reports\Contracts\HealthDataReader;
@@ -64,6 +71,8 @@ use SsSystems\Platform\Reports\Contracts\PsiSnapshotReader;
 use SsSystems\Platform\Reports\Contracts\QueryMetricsReader;
 use SsSystems\Platform\Reports\Contracts\SiteCatalog;
 use SsSystems\Platform\Reports\Contracts\SiteIdentity;
+use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
+use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
 use SsSystems\Platform\Seo\Inspection\Contracts\CoverageStore as CoverageStoreContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\SitemapSource as SitemapSourceContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\TrackedPaths as TrackedPathsContract;
@@ -72,8 +81,6 @@ use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuot
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
-use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
-use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -99,8 +106,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SearchConsoleWriterContract::class, SiteSearchConsoleWriter::class);
         // Bing Webmaster Tools, the same way (kit 0.8.0): the kit's sync, this
         // site's writer, the client built from this site's key.
-        $this->app->bind(KitBingWriter::class, \App\Support\Seo\BingWriter::class);
-        $this->app->bind(BingWebmasterClient::class, \App\Services\BingWebmasterService::class);
+        $this->app->bind(KitBingWriter::class, BingWriter::class);
+        $this->app->bind(BingWebmasterClient::class, BingWebmasterService::class);
 
         // The shared kit's ten SEO report generators (SsSystems\Platform\
         // Reports\*, ported verbatim from this app's own app/Console/
@@ -147,6 +154,52 @@ class AppServiceProvider extends ServiceProvider
             keyPrefix: Tenancy::cacheKey('gsc.url-inspection'),
             dailyLimitValue: (int) config('services.google.search_console.inspection_daily_quota', 2000),
             perMinuteLimitValue: (int) config('services.google.search_console.inspection_per_minute_quota', 600),
+        ));
+
+        // Site Pulse (SsSystems\Platform\Pulse, kit 0.10.0) — first-party
+        // usage telemetry feeding ss-systems' seo/snapshot 'pulse' card
+        // (App\Http\Controllers\Api\Admin\V1\SeoReportController::
+        // pulseSnapshot()). Both the Recorder (writes, from the /t beacon)
+        // and the SnapshotBuilder (reads, per admin request) get their OWN
+        // DatabaseTableStorage over the same 'site_events' table, scoped by
+        // a CLOSURE reading Tenancy::currentId() at call time — not a
+        // captured value — since these are singletons a queue worker or the
+        // parallel test suite can resolve once and then use across more
+        // than one tenant via Tenancy::for()/::each().
+        $this->app->singleton(Recorder::class, function () {
+            return new Recorder(
+                storage: new DatabaseTableStorage(
+                    DB::connection(), tenantColumn: 'site_id', tenantId: fn () => Tenancy::currentId(),
+                ),
+                events: ['page', 'gallery', 'before_after', 'call', 'email', 'jserr'],
+            );
+        });
+
+        $this->app->singleton(SnapshotBuilder::class, function () {
+            return new SnapshotBuilder(
+                storage: new DatabaseTableStorage(
+                    DB::connection(), tenantColumn: 'site_id', tenantId: fn () => Tenancy::currentId(),
+                ),
+                events: ['page', 'gallery', 'before_after', 'call', 'email', 'jserr'],
+                options: [
+                    'timezone' => 'America/Chicago',
+                    // No 'search_event': neither gsc nor jpeterson has a
+                    // search feature, so searches/searched_cities/filters
+                    // are correctly OMITTED from the snapshot, not zeroed.
+                    'feature_labels' => [
+                        'gallery' => 'Galleries opened',
+                        'before_after' => 'Before/after used',
+                    ],
+                ],
+            );
+        });
+
+        // BeaconController itself needs the app key at construction time —
+        // built here rather than left to autowiring, which has no way to
+        // supply the plain string $appKey constructor argument.
+        $this->app->bind(BeaconController::class, fn ($app) => new BeaconController(
+            $app->make(Recorder::class),
+            (string) config('app.key'),
         ));
     }
 
