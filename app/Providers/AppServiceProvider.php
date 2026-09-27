@@ -20,6 +20,9 @@ use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
 use App\Services\BingWebmasterService;
 use App\Services\GoogleSearchConsoleService;
+use App\Services\Social\ImageSocialPostStats;
+use App\Services\Social\SocialAutomationSettingsStore;
+use App\Services\Social\SocialPlatformAvailability;
 use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
@@ -87,7 +90,10 @@ use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuot
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
+use SsSystems\Platform\Social\Contracts\PlatformAvailability as SocialPlatformAvailabilityContract;
+use SsSystems\Platform\Social\Contracts\PublishedPostStats as SocialPublishedPostStats;
 use SsSystems\Platform\Social\Contracts\RankedTowns;
+use SsSystems\Platform\Social\Contracts\SettingsStore as SocialSettingsStore;
 use SsSystems\Platform\Social\Contracts\TrendsIntel;
 
 class AppServiceProvider extends ServiceProvider
@@ -122,6 +128,17 @@ class AppServiceProvider extends ServiceProvider
         // Citations\RemoteBrowserSession docblock). gsc has the real Xvfb/
         // Chromium/x11vnc pipeline, unlike hive2025's UnavailableSession.
         $this->app->bind(CitationSession::class, RemoteBrowserSession::class);
+
+        // The shared kit's AutomationSettingsService (kit 0.13.0, ported
+        // verbatim from this file's own former App\Services\Social\
+        // AutomationSettingsService — see App\Services\Social\
+        // AutomationSettingsService's own docblock for the thin subclass
+        // that re-derives Site::current()->slug on every resolution).
+        // Plain binds, not singletons: each adapter reads the current
+        // tenant's rows/services fresh, same as the class they replace.
+        $this->app->bind(SocialSettingsStore::class, SocialAutomationSettingsStore::class);
+        $this->app->bind(SocialPlatformAvailabilityContract::class, SocialPlatformAvailability::class);
+        $this->app->bind(SocialPublishedPostStats::class, ImageSocialPostStats::class);
 
         // The shared kit's ten SEO report generators (SsSystems\Platform\
         // Reports\*, ported verbatim from this app's own app/Console/

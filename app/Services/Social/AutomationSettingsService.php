@@ -2,135 +2,35 @@
 
 namespace App\Services\Social;
 
-use App\Models\ImageSocialPost;
 use App\Models\Site;
-use App\Models\SocialAutomationSetting;
-use App\Services\GoogleBusinessProfileService;
-use App\Services\MetaSocialService;
-use Illuminate\Support\Carbon;
+use SsSystems\Platform\Social\AutomationSettingsService as KitAutomationSettingsService;
+use SsSystems\Platform\Social\Contracts\PlatformAvailability;
+use SsSystems\Platform\Social\Contracts\PublishedPostStats;
+use SsSystems\Platform\Social\Contracts\SettingsStore;
 
 /**
- * Builds the GET/PUT /api/admin/v1/social-media automation contract for the
- * current tenant (Site::current()) — one <item> per
- * App\Models\SocialAutomationSetting::PLATFORMS, in that fixed order.
+ * The shared automation-settings builder (ss-systems/platform-kit, since
+ * 0.13.0 on 2026-09-27) for the GET/PUT /api/admin/v1/social-media
+ * automation contract. gs.construction and jpeterson-design used to carry
+ * near-identical copies of this class — the kit now holds the one
+ * implementation, same "extend it, add the tenant" shape already proven by
+ * this app's own Social\AutomationPlanner wrapper.
+ *
+ * `Site::current()->slug` is resolved HERE, in the constructor, not cached
+ * anywhere above it: this class is never bound as a singleton (Laravel's
+ * default, unchanged), so every `app(AutomationSettingsService::class)`
+ * call constructs a fresh instance and re-reads the CURRENT tenant at that
+ * moment — exactly what a multi-tenant site needs, since a stale seed would
+ * reshuffle another site's live posting days onto this one's.
  */
-class AutomationSettingsService
+class AutomationSettingsService extends KitAutomationSettingsService
 {
-    public function __construct(protected AutomationPlanner $planner) {}
-
-    public function timezone(): string
-    {
-        return $this->planner->timezone();
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    public function items(): array
-    {
-        return collect(SocialAutomationSetting::PLATFORMS)
-            ->map(fn (string $platform) => $this->item($platform))
-            ->values()
-            ->all();
-    }
-
-    /** @return array<string, mixed> */
-    public function item(string $platform): array
-    {
-        $setting = SocialAutomationSetting::where('platform', $platform)->first();
-        $defaults = SocialAutomationSetting::defaultsFor($platform);
-
-        $cadence = $setting->cadence ?? $defaults['cadence'];
-        $options = $setting->options ?? $defaults['options'];
-
-        return [
-            'platform' => $platform,
-            'label' => SocialAutomationSetting::LABELS[$platform] ?? ucfirst($platform),
-            'configured' => $this->isConfigured($platform),
-            'publishing_off' => $this->publishingOff($platform),
-            'enabled' => (bool) ($setting->enabled ?? false),
-            'cadence' => $cadence,
-            'options' => $options,
-            'plan' => $this->planner->plan(Site::current()->slug, $platform, $cadence, null, $this->metaSiblingCadence($platform)),
-            'last' => $this->lastStats($platform),
-            'updated_at' => optional($setting?->updated_at)->toIso8601String(),
-        ];
-    }
-
-    /**
-     * Instagram and Facebook must never land on the same day (see
-     * AutomationPlanner's class docblock) — this hands the planner the
-     * OTHER meta platform's cadence so it can offset its day draw from
-     * their shared weekly shuffle. Null for any other platform.
-     */
-    protected function metaSiblingCadence(string $platform): ?array
-    {
-        $sibling = match ($platform) {
-            'instagram' => 'facebook',
-            'facebook' => 'instagram',
-            default => null,
-        };
-
-        if ($sibling === null) {
-            return null;
-        }
-
-        $setting = SocialAutomationSetting::where('platform', $sibling)->first();
-
-        return $setting->cadence ?? SocialAutomationSetting::defaultsFor($sibling)['cadence'];
-    }
-
-    /** Persist a validated {enabled, cadence, options} payload and return the refreshed item. */
-    public function save(string $platform, bool $enabled, array $cadence, array $options): array
-    {
-        SocialAutomationSetting::updateOrCreate(
-            ['platform' => $platform],
-            ['enabled' => $enabled, 'cadence' => $cadence, 'options' => $options],
-        );
-
-        return $this->item($platform);
-    }
-
-    /**
-     * Connected, but that platform's publishing switch on the Platforms page
-     * is off. The admin says exactly that — "connected, publishing is
-     * switched off" — instead of "not connected", which sent people to a
-     * Platforms page that said Connected (2026-09-23).
-     */
-    public function publishingOff(string $platform): bool
-    {
-        $meta = app(MetaSocialService::class);
-
-        // Google Business has no such switch any more: connected is ready.
-        return match ($platform) {
-            'instagram' => ! $meta->isPublishingEnabled() && $meta->isInstagramConnected(),
-            'facebook' => ! $meta->isPublishingEnabled() && $meta->isFacebookConnected(),
-            default => false,
-        };
-    }
-
-    protected function isConfigured(string $platform): bool
-    {
-        return match ($platform) {
-            'instagram' => app(MetaSocialService::class)->isInstagramConfigured(),
-            'facebook' => app(MetaSocialService::class)->isFacebookConfigured(),
-            'google_business' => app(GoogleBusinessProfileService::class)->isConfigured(),
-            default => false,
-        };
-    }
-
-    /** @return array{at: ?string, status: ?string, count_30d: int} */
-    protected function lastStats(string $platform): array
-    {
-        $latest = ImageSocialPost::where('platform', $platform)->latest('id')->first();
-
-        $count30d = ImageSocialPost::where('platform', $platform)
-            ->where('status', 'published')
-            ->where('published_at', '>=', Carbon::now()->subDays(30))
-            ->count();
-
-        return [
-            'at' => optional($latest?->published_at ?? $latest?->created_at)->toIso8601String(),
-            'status' => $latest?->status,
-            'count_30d' => $count30d,
-        ];
+    public function __construct(
+        AutomationPlanner $planner,
+        SettingsStore $store,
+        PlatformAvailability $availability,
+        PublishedPostStats $stats,
+    ) {
+        parent::__construct($planner, Site::current()->slug, $store, $availability, $stats);
     }
 }
