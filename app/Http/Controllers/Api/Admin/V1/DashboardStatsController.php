@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use SsSystems\Platform\Dashboard\Delta;
+use SsSystems\Platform\Http\Admin\TrackedEventReader;
 
 class DashboardStatsController extends Controller
 {
@@ -149,17 +150,20 @@ class DashboardStatsController extends Controller
     /**
      * Phone clicks + email clicks + form submits, from the exact same
      * TrackedEvent counts AnalyticsController::summary() reports — reused
-     * via its countsByType(), not recounted here.
+     * via its countsByType(), not recounted here. Reads through the kit's
+     * TrackedEventReader (0.13.0) rather than a bare Eloquent Builder so
+     * this stays the exact same tenant-scoped seam AnalyticsController
+     * itself now uses — see AnalyticsTenantIsolationTest.
      */
     protected function contactsTile(): array
     {
         $start = now()->subDays(7);
         $priorStart = now()->subDays(14);
 
-        $current = AnalyticsController::countsByType(TrackedEvent::query()->where('created_at', '>=', $start));
-        $prior = AnalyticsController::countsByType(
-            TrackedEvent::query()->where('created_at', '>=', $priorStart)->where('created_at', '<', $start)
-        );
+        $rows = (new TrackedEventReader(TrackedEvent::class))->rowsSince($priorStart);
+
+        $current = AnalyticsController::countsByType($rows->filter(fn (array $row) => $row['created_at']->gte($start))->values());
+        $prior = AnalyticsController::countsByType($rows->filter(fn (array $row) => $row['created_at']->lt($start))->values());
 
         $value = $current['phone'] + $current['email'] + $current['form'];
         $priorValue = $prior['phone'] + $prior['email'] + $prior['form'];
