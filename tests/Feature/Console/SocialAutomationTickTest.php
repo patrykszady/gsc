@@ -308,4 +308,108 @@ class SocialAutomationTickTest extends TestCase
         $fresh = Tenancy::for($site, fn () => SocialAutomationSetting::where('platform', 'google_business')->first());
         $this->assertNull($fresh->last_dispatched_slot);
     }
+
+    /**
+     * Kit port note (2026-09-27, kit/social-tick): the kit's
+     * AutomationTickRunner replaces this command's own removed
+     * "already posted today" ImageSocialPost::whereDate('created_at', ...)
+     * query with a narrower guard built only from the settings row's own
+     * last_dispatched_at (same calendar day as the tick) — see the kit
+     * class's docblock for the full reasoning. This test pins the half of
+     * the old guard that DOES still hold: a regular slot that fired earlier
+     * the same day suppresses catch-up even while the publish record still
+     * looks stale (queued, not yet published).
+     */
+    public function test_gbp_catch_up_is_still_suppressed_by_a_regular_slot_dispatched_earlier_the_same_day(): void
+    {
+        $this->fakeConfigured();
+
+        $site = Site::where('slug', config('sites.default', 'gsc'))->firstOrFail();
+        $this->settingWithFixedSlot($site, 'google_business', 1, '03:00', [
+            'themed' => false,
+            'catch_up_after_days' => 6,
+        ]);
+
+        $tick = Carbon::parse('2026-09-16 10:20:00', 'America/Chicago');
+        // Stale by the publish record alone...
+        $this->publishedPostFor($site, daysAgo: 10, reference: $tick);
+        // ...but a regular slot already dispatched THIS morning (still queued).
+        Tenancy::for($site, function () use ($tick) {
+            SocialAutomationSetting::where('platform', 'google_business')->first()->forceFill([
+                'last_dispatched_slot' => '2026-09-16 09:05',
+                'last_dispatched_at' => $tick->copy()->setTime(9, 5),
+            ])->save();
+        });
+
+        Artisan::shouldReceive('call')->never();
+
+        Carbon::setTestNow($tick);
+        $this->runTick();
+        Carbon::setTestNow();
+
+        $fresh = Tenancy::for($site, fn () => SocialAutomationSetting::where('platform', 'google_business')->first());
+        $this->assertSame('2026-09-16 09:05', $fresh->last_dispatched_slot, 'catch-up must not overwrite the morning dispatch');
+    }
+
+    /**
+     * Kit port note (2026-09-27, kit/social-tick): the NARROWER half of the
+     * same change — a manual "Post Now" made earlier today (an
+     * ImageSocialPost row that never touched the settings table) no longer
+     * suppresses a stale catch-up, because the new guard only looks at the
+     * settings row's own last_dispatched_at. Flagged to Patryk in this
+     * unit's report; this test documents the new behaviour explicitly
+     * rather than leaving it to be discovered in production.
+     */
+    public function test_gbp_catch_up_now_fires_even_after_a_manual_post_earlier_today(): void
+    {
+        $this->fakeConfigured();
+
+        $site = Site::where('slug', config('sites.default', 'gsc'))->firstOrFail();
+        $this->settingWithFixedSlot($site, 'google_business', 1, '03:00', [
+            'themed' => false,
+            'catch_up_after_days' => 6,
+        ]);
+
+        $tick = Carbon::parse('2026-09-16 10:20:00', 'America/Chicago');
+        // Stale by the publish record (nothing published in 10 days)...
+        $this->publishedPostFor($site, daysAgo: 10, reference: $tick);
+        // ...but someone used "Post Now" an hour ago — a pending row exists
+        // today, yet the settings table (last_dispatched_at) never heard
+        // about it, since a manual post does not go through the tick.
+        Queue::fake();
+        Tenancy::for($site, function () use ($tick) {
+            $project = Project::create([
+                'title' => 'Manual Post Fixture',
+                'slug' => 'manual-post-fixture-'.uniqid(),
+                'project_type' => 'kitchen',
+                'is_published' => true,
+                'location' => 'Elsewhere, IL',
+            ]);
+            $image = ProjectImage::create([
+                'project_id' => $project->id,
+                'filename' => 'manual-'.uniqid().'.jpg',
+                'original_filename' => 'photo.jpg',
+                'path' => 'projects/1/photo.jpg',
+                'alt_text' => 'A lovely kitchen',
+            ]);
+            ImageSocialPost::create([
+                'project_image_id' => $image->id,
+                'platform' => 'google_business',
+                'status' => 'pending',
+                'created_at' => $tick->copy()->subHour(),
+            ]);
+        });
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('social:post', ['--platform' => 'google_business', '--queue' => true])
+            ->andReturn(0);
+
+        Carbon::setTestNow($tick);
+        $this->runTick();
+        Carbon::setTestNow();
+
+        $fresh = Tenancy::for($site, fn () => SocialAutomationSetting::where('platform', 'google_business')->first());
+        $this->assertSame('2026-09-16 catch-up', $fresh->last_dispatched_slot);
+    }
 }
