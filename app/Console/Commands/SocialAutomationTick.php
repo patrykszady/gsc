@@ -6,8 +6,8 @@ use App\Models\Site;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\MetaSocialService;
 use App\Services\Social\AutomationPlanner;
+use App\Services\Social\SocialPlatformAvailability;
 use App\Support\Social\KitAutomationSettingsRepository;
-use App\Support\Social\KitPlatformAvailability;
 use App\Support\Social\KitSocialPublisher;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
@@ -38,7 +38,7 @@ class SocialAutomationTick extends Command
 
     public function handle(MetaSocialService $meta, GoogleBusinessProfileService $gbp): int
     {
-        Tenancy::each(function (Site $site) use ($meta, $gbp) {
+        Tenancy::each(function (Site $site) {
             // Resolved INSIDE the tenant bind, so a site's own timezone
             // (config/sites/{slug}/social-automation.php via SiteConfig)
             // governs its clock. Resolving one planner up front would judge
@@ -49,7 +49,7 @@ class SocialAutomationTick extends Command
             $runner = new AutomationTickRunner(
                 $planner,
                 new KitAutomationSettingsRepository,
-                new KitPlatformAvailability($meta, $gbp),
+                new SocialPlatformAvailability,
                 new KitSocialPublisher,
             );
 
