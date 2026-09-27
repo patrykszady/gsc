@@ -9,10 +9,10 @@ use App\Models\Town;
 use App\Models\TownImport;
 use App\Services\OpenStreetMapGeocoder;
 use App\Support\Areas\MajorCityMarkets;
-use App\Support\Areas\StateLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Areas\StateLocator;
 
 /**
  * gsc-only coverage-map endpoints for the central admin's AreaList/AreaForm

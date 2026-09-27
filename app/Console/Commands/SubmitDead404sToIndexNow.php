@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Tracked404;
-use App\Services\IndexNowService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Submit persistent 404 URLs to IndexNow so search engines re-crawl and
@@ -32,7 +32,7 @@ class SubmitDead404sToIndexNow extends Command
             ->where('hit_count', '>=', $minHits)
             ->where(function ($q) use ($resubmitDays) {
                 $q->whereNull('indexnow_submitted_at')
-                  ->orWhere('indexnow_submitted_at', '<', now()->subDays($resubmitDays));
+                    ->orWhere('indexnow_submitted_at', '<', now()->subDays($resubmitDays));
             })
             ->orderByDesc('hit_count')
             ->limit($limit);
@@ -40,6 +40,7 @@ class SubmitDead404sToIndexNow extends Command
         $rows = $query->get();
         if ($rows->isEmpty()) {
             $this->info('No qualifying 404s to submit.');
+
             return self::SUCCESS;
         }
 
@@ -62,16 +63,18 @@ class SubmitDead404sToIndexNow extends Command
 
         if (empty($stillDead)) {
             $this->info('No URLs still 404 after live recheck.');
+
             return self::SUCCESS;
         }
 
         $urls = array_map(fn ($r) => url($r->path), $stillDead);
-        $this->info('Submitting ' . count($urls) . ' dead URLs to IndexNow' . ($dry ? ' (dry-run)' : '') . '...');
+        $this->info('Submitting '.count($urls).' dead URLs to IndexNow'.($dry ? ' (dry-run)' : '').'...');
 
         if ($dry) {
             foreach ($urls as $u) {
-                $this->line(' - ' . $u);
+                $this->line(' - '.$u);
             }
+
             return self::SUCCESS;
         }
 
@@ -80,11 +83,13 @@ class SubmitDead404sToIndexNow extends Command
             foreach ($stillDead as $row) {
                 $row->forceFill(['indexnow_submitted_at' => now()])->save();
             }
-            $this->info('Submitted ' . count($urls) . ' URLs.');
+            $this->info('Submitted '.count($urls).' URLs.');
+
             return self::SUCCESS;
         }
 
         $this->error('IndexNow submission failed.');
+
         return self::FAILURE;
     }
 }

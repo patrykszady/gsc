@@ -4,13 +4,17 @@ namespace App\Observers;
 
 use App\Jobs\DeleteGooglePlacesMedia;
 use App\Jobs\GenerateAiContentJob;
+use App\Jobs\SubmitUrlsToIndexNow;
 use App\Jobs\UploadProjectImageToGooglePlaces;
 use App\Jobs\UploadProjectImageToYelp;
 use App\Jobs\UploadProjectImageToYelpBusinessPhotos;
 use App\Models\ProjectImage;
-use App\Services\IndexNowService;
+use App\Services\GoogleBusinessProfileService;
+use App\Services\YelpBusinessService;
+use App\Support\GbpPhotoOwnership;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 class ProjectImageObserver
 {
@@ -41,8 +45,8 @@ class ProjectImageObserver
         // Upload new images to Google Business Profile if configured — and
         // only while this app still owns those uploads (see photosOwnedHere()).
         if (
-            app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
-            && \App\Support\GbpPhotoOwnership::ownedHere()
+            app(GoogleBusinessProfileService::class)->isConnected()
+            && GbpPhotoOwnership::ownedHere()
             && $image->project
             && $image->project->is_published
         ) {
@@ -53,7 +57,7 @@ class ProjectImageObserver
 
         // Upload new images to Yelp Portfolio Project if configured.
         if (
-            app(\App\Services\YelpBusinessService::class)->isConfigured()
+            app(YelpBusinessService::class)->isConfigured()
             && $image->project
             && $image->project->is_published
             && ! empty($image->project->yelp_portfolio_url)
@@ -71,7 +75,7 @@ class ProjectImageObserver
         // (balance=simple, maxProcesses=1) so uploads are processed FIFO
         // one-at-a-time.
         if (
-            app(\App\Services\YelpBusinessService::class)->isConfigured()
+            app(YelpBusinessService::class)->isConfigured()
             && $image->project
             && $image->project->is_published
         ) {
@@ -117,8 +121,8 @@ class ProjectImageObserver
 
         // Keep GBP media description in sync when image text metadata changes.
         if (
-            app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
-            && \App\Support\GbpPhotoOwnership::ownedHere()
+            app(GoogleBusinessProfileService::class)->isConnected()
+            && GbpPhotoOwnership::ownedHere()
             && $image->project
             && $image->project->is_published
             && $image->wasChanged(['caption', 'seo_alt_text', 'alt_text'])
@@ -151,8 +155,8 @@ class ProjectImageObserver
         // Delete from Google Business Profile if it was uploaded there
         if (
             $image->google_places_media_name
-            && app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
-            && \App\Support\GbpPhotoOwnership::ownedHere()
+            && app(GoogleBusinessProfileService::class)->isConnected()
+            && GbpPhotoOwnership::ownedHere()
         ) {
             DeleteGooglePlacesMedia::dispatch($image->google_places_media_name)
                 ->onQueue('media-sync')
@@ -168,7 +172,7 @@ class ProjectImageObserver
     {
         $project = $image->project;
 
-        if (!$project) {
+        if (! $project) {
             return;
         }
 
@@ -182,14 +186,14 @@ class ProjectImageObserver
             $updateData['caption'] = $this->generateBasicCaption($project, $image);
         }
 
-        if (!empty($updateData)) {
+        if (! empty($updateData)) {
             $image->updateQuietly($updateData);
         }
     }
 
     protected function generateBasicAltText($project, $image): string
     {
-        $projectType = match($project->project_type) {
+        $projectType = match ($project->project_type) {
             'kitchen' => 'kitchen remodel',
             'bathroom' => 'bathroom remodel',
             'basement' => 'basement remodel',
@@ -210,7 +214,7 @@ class ProjectImageObserver
 
     protected function generateBasicCaption($project, $image): string
     {
-        $projectType = match($project->project_type) {
+        $projectType = match ($project->project_type) {
             'kitchen' => 'kitchen remodel',
             'bathroom' => 'bathroom remodel',
             'basement' => 'basement remodel',
@@ -237,7 +241,7 @@ class ProjectImageObserver
     protected function queueProjectDescriptionRegeneration(ProjectImage $image): void
     {
         $project = $image->project;
-        if (!$project) {
+        if (! $project) {
             return;
         }
 
@@ -275,7 +279,7 @@ class ProjectImageObserver
                 route('projects.index'),
             ];
 
-            \App\Jobs\SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
+            SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
             Log::channel('indexnow')->warning('IndexNow: Failed to submit project image URL', [
                 'image_id' => $image->id,

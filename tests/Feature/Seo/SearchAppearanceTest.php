@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Seo;
 
-use App\Support\Seo\SearchAppearance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use SsSystems\Platform\Seo\SearchAppearance;
 use Tests\TestCase;
 
 /**

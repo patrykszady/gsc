@@ -2,9 +2,10 @@
 
 namespace App\Observers;
 
+use App\Jobs\SubmitUrlsToIndexNow;
 use App\Models\AreaServed;
-use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Log;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 class AreaServedObserver
 {
@@ -55,7 +56,7 @@ class AreaServedObserver
                 $urls[] = route('areas.page', ['area' => $area, 'page' => $page]);
             }
 
-            \App\Jobs\SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
+            SubmitUrlsToIndexNow::dispatch($urls)->onQueue('default')->delay(now()->addSeconds(15));
         } catch (\Exception $e) {
             Log::channel('indexnow')->warning('IndexNow: Failed to submit area URL', [
                 'area_id' => $area->id,

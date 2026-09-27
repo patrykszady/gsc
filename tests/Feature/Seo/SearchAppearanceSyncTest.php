@@ -4,10 +4,10 @@ namespace Tests\Feature\Seo;
 
 use App\Models\OAuthToken;
 use App\Services\GoogleSearchConsoleService;
-use App\Support\Seo\SearchAppearance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Seo\SearchAppearance;
 use Tests\TestCase;
 
 /**

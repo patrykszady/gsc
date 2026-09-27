@@ -3,8 +3,8 @@
 namespace Tests\Feature\Seo;
 
 use App\Services\GoogleSearchConsoleService;
-use App\Support\Seo\SitemapStatus;
 use Illuminate\Support\Facades\Cache;
+use SsSystems\Platform\Seo\SitemapStatus;
 use Tests\TestCase;
 
 /**
@@ -117,6 +117,31 @@ class SitemapStatusTest extends TestCase
         $this->assertSame('error', $snapshot['state']);
         $this->assertTrue($snapshot['connected']);
         $this->assertSame('Insufficient permission', $snapshot['error']);
+    }
+
+    /**
+     * The kit's fix (2026-09-21): when the site's service records a failure
+     * as a raw 'body' rather than a 'message' — an empty-message shape gsc's
+     * own GoogleSearchConsoleService can produce — the card must show that
+     * reason instead of the generic fallback. gsc's local copy of this class
+     * (deleted by the kit-0.11 swap) only ever read 'message', so this pins
+     * the behavior the swap re-adopts.
+     */
+    public function test_a_body_only_failure_still_reports_the_real_reason(): void
+    {
+        $service = $this->mock(GoogleSearchConsoleService::class);
+        $service->shouldReceive('isConfigured')->andReturnTrue();
+        $service->shouldReceive('listSitemaps')->andReturnNull();
+        $service->shouldReceive('getLastError')->andReturn([
+            'status' => 500,
+            'message' => '',
+            'body' => "  Internal error:   quota exceeded   \n for this project.  ",
+        ]);
+
+        $snapshot = SitemapStatus::snapshot('sc-domain:example.test');
+
+        $this->assertSame('error', $snapshot['state']);
+        $this->assertSame('Internal error: quota exceeded for this project.', $snapshot['error']);
     }
 
     /** The lookup is a remote call, so it must not repeat on every page load. */

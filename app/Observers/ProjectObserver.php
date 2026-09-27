@@ -9,12 +9,14 @@ use App\Jobs\UploadProjectImageToGooglePlaces;
 use App\Jobs\UploadProjectImageToYelpBusinessPhotos;
 use App\Models\AreaServed;
 use App\Models\Project;
-use App\Services\IndexNowService;
+use App\Services\GoogleBusinessProfileService;
 use App\Services\OpenStreetMapGeocoder;
 use App\Services\YelpBusinessService;
+use App\Support\GbpPhotoOwnership;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 class ProjectObserver
 {
@@ -58,8 +60,8 @@ class ProjectObserver
         if (
             $project->wasChanged('is_published')
             && $project->is_published
-            && app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
-            && \App\Support\GbpPhotoOwnership::ownedHere()
+            && app(GoogleBusinessProfileService::class)->isConnected()
+            && GbpPhotoOwnership::ownedHere()
         ) {
             $project->images()
                 ->notUploadedTo('google_places')

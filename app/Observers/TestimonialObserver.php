@@ -4,9 +4,9 @@ namespace App\Observers;
 
 use App\Jobs\SubmitUrlsToIndexNow;
 use App\Models\Testimonial;
-use App\Services\IndexNowService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 class TestimonialObserver
 {

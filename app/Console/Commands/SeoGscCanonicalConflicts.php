@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\GscCoverageState;
-use App\Services\IndexNowService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Surface URLs where Google picked a different canonical than what we declared via `<link rel="canonical">`
@@ -56,7 +56,7 @@ class SeoGscCanonicalConflicts extends Command
 
         if ($this->option('warm') && $conflicts && $indexNow->isEnabled()) {
             $urls = array_unique(array_column($conflicts, 'user_canonical'));
-            $this->info('Warming + IndexNow on ' . count($urls) . ' declared canonicals.');
+            $this->info('Warming + IndexNow on '.count($urls).' declared canonicals.');
             foreach ($urls as $u) {
                 Http::timeout(15)->withHeaders([
                     'User-Agent' => 'GSConstruction-SEO-Warmer/1.0',
@@ -79,29 +79,36 @@ class SeoGscCanonicalConflicts extends Command
      */
     protected function normalize(?string $url): string
     {
-        if (! $url) return '';
+        if (! $url) {
+            return '';
+        }
         $p = @parse_url($url);
-        if (! $p || ! isset($p['host'])) return strtolower(trim($url));
+        if (! $p || ! isset($p['host'])) {
+            return strtolower(trim($url));
+        }
         $scheme = 'https'; // canonical comparison ignores protocol delta
         $host = strtolower($p['host']);
         $path = $p['path'] ?? '/';
-        if ($path !== '/' && str_ends_with($path, '/')) $path = rtrim($path, '/');
-        return $scheme . '://' . $host . $path;
+        if ($path !== '/' && str_ends_with($path, '/')) {
+            $path = rtrim($path, '/');
+        }
+
+        return $scheme.'://'.$host.$path;
     }
 
     /**
-     * @param array<int,array<string,mixed>> $conflicts
+     * @param  array<int,array<string,mixed>>  $conflicts
      */
     protected function writeReport(array $conflicts): void
     {
         $lines = [];
         $lines[] = '# GSC canonical conflicts';
         $lines[] = '';
-        $lines[] = '_Generated: ' . now()->toIso8601String() . '_';
+        $lines[] = '_Generated: '.now()->toIso8601String().'_';
         $lines[] = '';
         $lines[] = 'Pages where Google chose a different canonical than we declared. These often vanish from search results — Google attributes ranking signals to the canonical it chose, not ours.';
         $lines[] = '';
-        $lines[] = '- Conflicts: **' . count($conflicts) . '**';
+        $lines[] = '- Conflicts: **'.count($conflicts).'**';
         $lines[] = '';
         if (empty($conflicts)) {
             $lines[] = '_No conflicts found. Run `seo:gsc-inspect-bulk` to populate state if this looks suspicious._';

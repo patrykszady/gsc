@@ -22,7 +22,6 @@ use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
 use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
-use App\Support\OAuthState;
 use App\Support\Reviews\ReviewImport;
 use App\Support\Seo\BingSettings;
 use App\Support\Seo\ClaritySettings;
@@ -42,6 +41,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use SsSystems\Platform\Auth\OAuthState;
 use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 
 /**

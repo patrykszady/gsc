@@ -5,10 +5,10 @@ namespace Tests\Feature\Console;
 use App\Models\GscDailyTotal;
 use App\Models\GscQueryMetric;
 use App\Models\OAuthToken;
-use App\Support\Seo\SearchAppearance;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Seo\SearchAppearance;
 use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 use Tests\TestCase;
 

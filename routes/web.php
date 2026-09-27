@@ -65,7 +65,6 @@ use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\DevSites;
 use App\Support\GoogleBusinessListing;
 use App\Support\LeadLineInfo;
-use App\Support\OAuthState;
 use App\Support\PermitGuideInfo;
 use App\Support\Seo\CrawlFiles;
 use App\Support\SEO\SEOBuilder;
@@ -81,6 +80,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use SsSystems\Platform\Auth\OAuthState;
 use SsSystems\Platform\Pulse\BeaconController;
 
 // The crawl files, per tenant. They were static files under public/, which

@@ -5,10 +5,10 @@ namespace App\Console\Commands;
 use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
-use App\Services\IndexNowService;
 use App\Support\Seo\CrawlFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 class IndexNowSubmit extends Command
 {

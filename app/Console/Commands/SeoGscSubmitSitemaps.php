@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Services\GoogleSearchConsoleService;
-use App\Support\Seo\SitemapStatus;
 use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
+use SsSystems\Platform\Seo\SitemapStatus;
 
 /**
  * Submit the sitemaps to Google via the Search Console API.

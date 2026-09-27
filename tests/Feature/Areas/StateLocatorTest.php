@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Areas;
 
-use App\Support\Areas\StateLocator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
+use SsSystems\Platform\Areas\StateLocator;
 use Tests\TestCase;
 
 /**

@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\BlogPost;
-use App\Services\IndexNowService;
 use App\Support\SEO\RecrawlNudger;
+use App\Support\Tenancy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,6 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Tell the crawlers about a post the moment it is published — the same
@@ -71,6 +72,6 @@ class AnnounceBlogPostJob implements ShouldQueue
         };
 
         $site = $this->post->site;
-        $site ? \App\Support\Tenancy::for($site, $run) : $run();
+        $site ? Tenancy::for($site, $run) : $run();
     }
 }

@@ -2,12 +2,12 @@
 
 namespace App\Jobs;
 
-use App\Services\IndexNowService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Submits URLs to IndexNow asynchronously so model saves stay fast.
@@ -18,6 +18,7 @@ class SubmitUrlsToIndexNow implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
+
     public int $timeout = 35;
 
     /**
@@ -36,6 +37,7 @@ class SubmitUrlsToIndexNow implements ShouldQueue
     public function uniqueId(): string
     {
         sort($this->urls);
-        return 'indexnow:' . md5(implode('|', $this->urls));
+
+        return 'indexnow:'.md5(implode('|', $this->urls));
     }
 }

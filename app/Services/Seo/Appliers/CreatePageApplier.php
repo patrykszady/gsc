@@ -5,7 +5,10 @@ namespace App\Services\Seo\Appliers;
 use App\Models\LandingPage;
 use App\Models\SeoAction;
 use App\Services\Seo\ActionApplier;
+use App\Support\SEO\RecrawlNudger;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Materializes an Autopilot-proposed landing page as a DRAFT.
@@ -51,11 +54,11 @@ class CreatePageApplier implements ActionApplier
         // the same hour it goes live.
         if ($autoPublish) {
             try {
-                app(\App\Services\IndexNowService::class)->submit(url('/remodeling/' . $page->slug));
+                app(IndexNowService::class)->submit(url('/remodeling/'.$page->slug));
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('create_page: IndexNow submit failed', ['error' => $e->getMessage()]);
+                Log::warning('create_page: IndexNow submit failed', ['error' => $e->getMessage()]);
             }
-            \App\Support\SEO\RecrawlNudger::nudge();
+            RecrawlNudger::nudge();
         }
 
         $payload = $action->payload;

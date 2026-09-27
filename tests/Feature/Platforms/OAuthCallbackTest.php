@@ -3,15 +3,15 @@
 namespace Tests\Feature\Platforms;
 
 use App\Models\OAuthToken;
-use App\Support\OAuthState;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Auth\OAuthState;
 use Tests\TestCase;
 
 /**
  * routes/web.php's /admin-oauth/{provider}/callback — the session-less
  * callback shared with jpeterson-design, alongside the older
  * 'auth'-protected /admin/{site}/platforms/{provider}/callback routes.
- * See that route block's docblock and App\Support\OAuthState.
+ * See that route block's docblock and SsSystems\Platform\Auth\OAuthState.
  *
  * NEVER calls a real Google/Meta token endpoint — every test that reaches
  * exchangeCodeAndStore() goes through Http::fake().

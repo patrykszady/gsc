@@ -17,9 +17,7 @@ use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Seo\CompetitorFilter;
 use App\Support\Seo\FrustratedPages;
 use App\Support\Seo\Reports\ReportCapabilities;
-use App\Support\Seo\SearchAppearance;
 use App\Support\Seo\SearchConsoleProperty;
-use App\Support\Seo\SitemapStatus;
 use App\Support\SeoReportRun;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
@@ -38,6 +36,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
+use SsSystems\Platform\Seo\SearchAppearance;
+use SsSystems\Platform\Seo\SitemapStatus;
 use Throwable;
 
 /**
