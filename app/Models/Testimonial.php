@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
 use RalphJSmit\Laravel\SEO\Support\SEOData;
+use SsSystems\Platform\Reviews\DisplayName;
 
 class Testimonial extends Model
 {
@@ -142,24 +143,7 @@ class Testimonial extends Model
      */
     public function getDisplayNameAttribute(): string
     {
-        $name = $this->reviewer_name;
-        $parts = preg_split('/\s+/', trim($name));
-
-        if (count($parts) < 2) {
-            return $name;
-        }
-
-        $lastPart = end($parts);
-
-        // Already a single letter (already formatted)
-        if (mb_strlen($lastPart) === 1) {
-            return $name;
-        }
-
-        $initial = mb_strtoupper(mb_substr($lastPart, 0, 1));
-        array_pop($parts);
-
-        return implode(' ', $parts).' '.$initial;
+        return DisplayName::from($this->reviewer_name);
     }
 
     /**
