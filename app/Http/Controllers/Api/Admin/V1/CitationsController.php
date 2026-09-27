@@ -7,7 +7,6 @@ use App\Jobs\RunCitationsBatch;
 use App\Models\Citation;
 use App\Models\Site;
 use App\Services\Citations\CitationBatchRunner;
-use App\Services\Citations\CitationSessionService;
 use App\Services\Citations\VerificationInbox;
 use App\Support\Citations\KnownListings;
 use App\Support\Citations\ListingPayload;
@@ -16,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -32,7 +32,7 @@ class CitationsController extends Controller
 
     protected const VIEWER_SIGNATURE_TTL_MINUTES = 30;
 
-    public function index(CitationSessionService $sessions, VerificationInbox $inbox): JsonResponse
+    public function index(CitationSession $sessions, VerificationInbox $inbox): JsonResponse
     {
         $this->ensureSynced();
         KnownListings::reconcile();
@@ -56,7 +56,7 @@ class CitationsController extends Controller
     }
 
     /** Queue the automatic run over every open directory (optionally some tiers only). */
-    public function batch(Request $request, CitationBatchRunner $runner, CitationSessionService $sessions): JsonResponse
+    public function batch(Request $request, CitationBatchRunner $runner, CitationSession $sessions): JsonResponse
     {
         $this->ensureSynced();
         $data = $request->validate(['tiers' => ['nullable', 'array'], 'tiers.*' => ['integer', 'between:0,3'], 'only' => ['nullable', 'array'], 'only.*' => ['string', 'max:60']]);
@@ -81,7 +81,7 @@ class CitationsController extends Controller
         return $this->itemResponse(ListingPayload::make());
     }
 
-    public function start(Request $request, string $slug, CitationSessionService $sessions): JsonResponse
+    public function start(Request $request, string $slug, CitationSession $sessions): JsonResponse
     {
         $citation = $this->find($slug);
         $result = $sessions->start($citation, $request->boolean('headless'));
@@ -97,7 +97,7 @@ class CitationsController extends Controller
         return $this->itemResponse(['ok' => true, 'citation' => $this->row($citation)] + $this->viewer($result));
     }
 
-    public function poll(CitationSessionService $sessions): JsonResponse
+    public function poll(CitationSession $sessions): JsonResponse
     {
         $status = $sessions->status();
         $citation = ($status['slug'] ?? null) ? Citation::query()->where('site_id', Site::current()?->id)->where('slug', $status['slug'])->first() : null;
@@ -112,7 +112,7 @@ class CitationsController extends Controller
         ]);
     }
 
-    public function resume(string $slug, CitationSessionService $sessions): JsonResponse
+    public function resume(string $slug, CitationSession $sessions): JsonResponse
     {
         $citation = $this->find($slug);
         $sessions->resume($citation);
@@ -124,7 +124,7 @@ class CitationsController extends Controller
         return $this->itemResponse(['ok' => true, 'citation' => $this->row($citation)]);
     }
 
-    public function stop(CitationSessionService $sessions): JsonResponse
+    public function stop(CitationSession $sessions): JsonResponse
     {
         $status = $sessions->status();
         $sessions->stop();
@@ -169,7 +169,7 @@ class CitationsController extends Controller
         return $this->itemResponse(['ok' => true, 'citation' => $this->row($citation)]);
     }
 
-    public function screenshot(string $slug, string $file, CitationSessionService $sessions): BinaryFileResponse
+    public function screenshot(string $slug, string $file, CitationSession $sessions): BinaryFileResponse
     {
         $citation = $this->find($slug);
         abort_unless(preg_match('/^[a-z0-9._-]+\.(png|jpg)$/i', $file), 404);

@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Citation;
 use App\Models\Site;
-use App\Services\Citations\CitationSessionService;
 use Illuminate\Console\Command;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
 
 /**
  * Start the citation builder for one directory in the remote browser.
@@ -21,11 +21,11 @@ class CitationsRun extends Command
 
     protected $description = 'Open a directory in the remote browser, prefill our listing, upload photos, and hand the human steps to the admin';
 
-    public function handle(CitationSessionService $sessions): int
+    public function handle(CitationSession $sessions): int
     {
         $slug = (string) $this->argument('slug');
         if (! config("citations.directories.{$slug}")) {
-            $this->error("Unknown directory '{$slug}'. Registered: " . implode(', ', array_keys((array) config('citations.directories', []))));
+            $this->error("Unknown directory '{$slug}'. Registered: ".implode(', ', array_keys((array) config('citations.directories', []))));
 
             return self::FAILURE;
         }
@@ -41,11 +41,11 @@ class CitationsRun extends Command
         $citation->status = Citation::STATUS_RUNNING;
         $citation->human_reason = null;
         $citation->last_run_at = now();
-        $citation->addLog('Session started' . ($this->option('headless') ? ' (headless)' : ''), 'start');
+        $citation->addLog('Session started'.($this->option('headless') ? ' (headless)' : ''), 'start');
         $citation->save();
         $this->info("Session started for {$citation->name}.");
         if (! empty($result['url'])) {
-            $this->line('Viewer: ' . $result['url']);
+            $this->line('Viewer: '.$result['url']);
         }
 
         if ($this->option('wait')) {
@@ -54,15 +54,15 @@ class CitationsRun extends Command
                 sleep(3);
                 $status = $sessions->status();
                 $runner = $status['runner'] ?? [];
-                $step = ($runner['phase'] ?? '') . ' ' . ($runner['step'] ?? '');
+                $step = ($runner['phase'] ?? '').' '.($runner['step'] ?? '');
                 if ($step !== $lastStep) {
-                    $this->line('  ' . trim($step));
+                    $this->line('  '.trim($step));
                     $lastStep = $step;
                 }
                 $sessions->syncCitation($citation->refresh());
                 if (! empty($runner['needs_human'])) {
-                    $this->warn('Needs a human: ' . ($runner['reason'] ?? ''));
-                    $this->line('Finish it in the admin viewer, then run: php artisan citations:control resume ' . $slug);
+                    $this->warn('Needs a human: '.($runner['reason'] ?? ''));
+                    $this->line('Finish it in the admin viewer, then run: php artisan citations:control resume '.$slug);
 
                     return self::SUCCESS;
                 }
@@ -71,7 +71,7 @@ class CitationsRun extends Command
                 }
             }
             $sessions->syncCitation($citation->refresh());
-            $this->info("Finished: status {$citation->status}" . ($citation->listing_url ? ' — ' . $citation->listing_url : '') . ($citation->note ? ' — ' . $citation->note : ''));
+            $this->info("Finished: status {$citation->status}".($citation->listing_url ? ' — '.$citation->listing_url : '').($citation->note ? ' — '.$citation->note : ''));
         }
 
         return self::SUCCESS;

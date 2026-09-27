@@ -4,8 +4,10 @@ namespace App\Services\Citations;
 
 use App\Models\Citation;
 use App\Models\Site;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
 
 /**
  * Runs directories one after another in automatic (headless) mode: the
@@ -19,7 +21,7 @@ class CitationBatchRunner
 
     public const ELIGIBLE = [Citation::STATUS_PLANNED, Citation::STATUS_FAILED, Citation::STATUS_UNREACHABLE];
 
-    public function __construct(protected CitationSessionService $sessions) {}
+    public function __construct(protected CitationSession $sessions) {}
 
     /** Directories a batch would touch, in tier order. */
     public function eligible(array $tiers = [], array $only = [], int $limit = 100): Collection
@@ -56,7 +58,7 @@ class CitationBatchRunner
         if (! ($result['ok'] ?? false)) {
             $citation->status = Citation::STATUS_FAILED;
             $citation->note = (string) ($result['error'] ?? 'Could not start the session.');
-            $citation->addLog('Automatic run could not start: ' . $citation->note, 'batch');
+            $citation->addLog('Automatic run could not start: '.$citation->note, 'batch');
             $citation->save();
 
             return ['slug' => $citation->slug, 'status' => $citation->status, 'note' => $citation->note, 'reason' => null, 'seconds' => 0];
@@ -107,7 +109,7 @@ class CitationBatchRunner
     {
         $p = self::progressState();
 
-        return ! empty($p['active']) && ! empty($p['updated_at']) && now()->diffInMinutes(\Illuminate\Support\Carbon::parse($p['updated_at'])) < 10;
+        return ! empty($p['active']) && ! empty($p['updated_at']) && now()->diffInMinutes(Carbon::parse($p['updated_at'])) < 10;
     }
 
     public static function progressState(): array
@@ -115,7 +117,7 @@ class CitationBatchRunner
         $file = self::progressFile();
         $p = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
         // A batch that has not moved for six hours is over, whatever the file says.
-        if (is_array($p) && ! empty($p['active']) && ! empty($p['updated_at']) && now()->diffInHours(\Illuminate\Support\Carbon::parse($p['updated_at'])) >= 6) {
+        if (is_array($p) && ! empty($p['active']) && ! empty($p['updated_at']) && now()->diffInHours(Carbon::parse($p['updated_at'])) >= 6) {
             $p['active'] = false;
         }
 
@@ -124,7 +126,7 @@ class CitationBatchRunner
 
     protected static function progressFile(): string
     {
-        return rtrim((string) (config('citations.storage_dir') ?: storage_path('app/citations')), '/') . '/batch.json';
+        return rtrim((string) (config('citations.storage_dir') ?: storage_path('app/citations')), '/').'/batch.json';
     }
 
     protected function sleep(int $seconds): void

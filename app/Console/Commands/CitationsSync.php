@@ -4,9 +4,9 @@ namespace App\Console\Commands;
 
 use App\Models\Citation;
 use App\Models\Site;
-use App\Services\Citations\CitationSessionService;
 use App\Support\Citations\KnownListings;
 use Illuminate\Console\Command;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
 
 /**
  * Bring the citations table in line with config/citations.php: one row per
@@ -52,7 +52,7 @@ class CitationsSync extends Command
         // A row still "running" with no live session for it is a session that
         // ended without anyone polling (browser closed, viewer expired): fold in
         // whatever the runner left behind, and otherwise put it back on the board.
-        $sessions = app(CitationSessionService::class);
+        $sessions = app(CitationSession::class);
         $live = $sessions->status();
         foreach (Citation::query()->where('site_id', $siteId)->where('status', Citation::STATUS_RUNNING)->get() as $stale) {
             if (($live['running'] ?? false) && ($live['slug'] ?? null) === $stale->slug) {

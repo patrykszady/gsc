@@ -3,10 +3,10 @@
 namespace App\Services\Seo\Intel\Sources;
 
 use App\Services\DataForSeoService;
-use Illuminate\Support\Facades\Http;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
+use SsSystems\Platform\Citations\LinkCheck;
 
 /**
  * Backlinks family: our link profile and its movement, plus how fast the
@@ -139,7 +139,7 @@ class BacklinksSource extends IntelSource
         }
 
         if ($snapshots === [] && $this->dfs->getLastError()) {
-            throw new \RuntimeException('backlinks: ' . $this->dfs->getLastError());
+            throw new \RuntimeException('backlinks: '.$this->dfs->getLastError());
         }
 
         return $snapshots;
@@ -255,7 +255,7 @@ class BacklinksSource extends IntelSource
             } elseif ($status === 200 && $linked === 0) {
                 $findings[] = $this->finding('citation_missing', Finding::WARN, "{$name} profile does not link to us", "The profile page loads and shows the business, but carries no link to {$this->ourDomain()}. Add the website URL to the listing.", $url);
             } elseif ($linked === null) {
-                $findings[] = $this->finding('citation_unverified', Finding::INFO, "{$name} profile could not be verified automatically", trim(($c['payload']['note'] ?? 'The page did not load as a normal visitor would see it.') . ' Check the listing by hand now and then.'), $url);
+                $findings[] = $this->finding('citation_unverified', Finding::INFO, "{$name} profile could not be verified automatically", trim(($c['payload']['note'] ?? 'The page did not load as a normal visitor would see it.').' Check the listing by hand now and then.'), $url);
             }
         }
 
@@ -290,7 +290,7 @@ class BacklinksSource extends IntelSource
                 $tile('Broken targets', $broken->count()),
                 $tile('New referring domains', $newCount),
                 $tile('Lost referring domains', $lostSet->count()),
-                $tile('Profiles linking to us', $citations->where('metrics.links_to_us', 1)->count(), null, 'of ' . $citations->count()),
+                $tile('Profiles linking to us', $citations->where('metrics.links_to_us', 1)->count(), null, 'of '.$citations->count()),
             ],
             'tables' => [
                 [
@@ -302,7 +302,7 @@ class BacklinksSource extends IntelSource
 
                         return [
                             (string) ($c['payload']['name'] ?? parse_url($url, PHP_URL_HOST)),
-                            $status === 200 ? 'live' : ($status === 0 ? 'unreachable' : 'HTTP ' . $status),
+                            $status === 200 ? 'live' : ($status === 0 ? 'unreachable' : 'HTTP '.$status),
                             $linked === null ? '?' : ($linked ? 'yes' : 'no'),
                             $linked ? (($c['metrics']['nofollow'] ?? 0) ? 'nofollow' : 'dofollow') : '—',
                         ];
@@ -492,7 +492,7 @@ class BacklinksSource extends IntelSource
         $names = array_filter([(string) config('brand.display_name'), (string) config('brand.name')]);
         $snapshots = [];
         foreach ($this->citations() as $url => $name) {
-            $r = \App\Support\Citations\LinkCheck::run($url, $our, $names);
+            $r = LinkCheck::run($url, $our, $names);
             $snapshots[] = new Snapshot('citation', $url, ['status' => $r['status'], 'links_to_us' => $r['links_to_us'], 'nofollow' => $r['nofollow']], [
                 'name' => $name, 'host' => parse_url($url, PHP_URL_HOST), 'note' => $r['note'], 'checked_at' => now()->toDateTimeString(),
             ]);
