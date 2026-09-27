@@ -7,7 +7,6 @@ use App\Jobs\RunCitationsBatch;
 use App\Models\Citation;
 use App\Models\Site;
 use App\Services\Citations\CitationBatchRunner;
-use App\Services\Citations\VerificationInbox;
 use App\Support\Citations\KnownListings;
 use App\Support\Citations\ListingPayload;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +15,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
+use SsSystems\Platform\Citations\VerificationInbox;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 

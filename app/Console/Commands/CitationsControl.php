@@ -4,10 +4,12 @@ namespace App\Console\Commands;
 
 use App\Models\Citation;
 use App\Models\Site;
-use App\Services\Citations\VerificationInbox;
+use App\Support\Citations\SiteCitationLinkStore;
+use App\Support\Citations\SiteLinkTarget;
 use Illuminate\Console\Command;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
-use SsSystems\Platform\Citations\LinkCheck;
+use SsSystems\Platform\Citations\LinkCheckRunner;
+use SsSystems\Platform\Citations\VerificationInbox;
 
 /**
  * The rest of the citation builder's operations:
@@ -64,32 +66,16 @@ class CitationsControl extends Command
                 return self::SUCCESS;
 
             case 'check':
-                $our = preg_replace('#^https?://(www\.)?#', '', rtrim((string) config('app.url'), '/')) ?: 'gs.construction';
-                $names = array_filter([(string) config('brand.display_name'), (string) config('brand.name')]);
-                $rows = Citation::query()->where('site_id', $siteId)->whereNotNull('listing_url')->get();
-                foreach ($rows as $citation) {
-                    $r = LinkCheck::run((string) $citation->listing_url, $our, $names);
-                    $citation->links_to_us = $r['links_to_us'] === null ? null : (bool) $r['links_to_us'];
-                    $citation->nofollow = $r['nofollow'] === null ? null : (bool) $r['nofollow'];
-                    $citation->last_checked_at = now();
-                    if ($r['links_to_us'] === 1 && ! in_array($citation->status, [Citation::STATUS_DECLINED, Citation::STATUS_LIVE], true)) {
-                        $citation->status = Citation::STATUS_LIVE;
-                        $citation->live_at = $citation->live_at ?: now();
-                        $citation->human_reason = null;
-                    } elseif ($r['links_to_us'] === 0 && in_array($citation->status, [Citation::STATUS_PLANNED, Citation::STATUS_LIVE, Citation::STATUS_SUBMITTED, Citation::STATUS_PENDING_VERIFICATION], true)) {
-                        // The profile is there but carries no website link — the one thing worth a person's minute.
-                        $citation->status = Citation::STATUS_NEEDS_HUMAN;
-                        $citation->human_reason = 'The profile exists but has no link to the website. Open it and add '.rtrim((string) config('app.url'), '/').'.';
-                    }
-                    if (in_array($r['status'], [404, 410], true) && $citation->status === Citation::STATUS_LIVE) {
-                        $citation->status = Citation::STATUS_FAILED;
-                        $citation->note = 'The listing URL returns HTTP '.$r['status'].'.';
-                    }
-                    $citation->addLog(sprintf('Link check: HTTP %d, links to us: %s%s', $r['status'], $r['links_to_us'] === null ? '?' : ($r['links_to_us'] ? 'yes' : 'no'), $r['note'] ? ' — '.$r['note'] : ''), 'check');
-                    $citation->save();
-                    $this->line(sprintf('  %-28s HTTP %d  links=%s', $citation->name, $r['status'], $r['links_to_us'] === null ? '?' : ($r['links_to_us'] ? 'yes' : 'no')));
+                // Kit 0.13.0's LinkCheckRunner (transitionsStatus defaults to
+                // true, matching this action's status/human_reason/note
+                // writes, unchanged since before the port).
+                $runner = new LinkCheckRunner(new SiteCitationLinkStore, new SiteLinkTarget);
+                $checked = $runner->run();
+                foreach ($checked as $row) {
+                    $r = $row['result'];
+                    $this->line(sprintf('  %-28s HTTP %d  links=%s', $row['name'], $r['status'], $r['links_to_us'] === null ? '?' : ($r['links_to_us'] ? 'yes' : 'no')));
                 }
-                $this->info('Checked '.$rows->count().' listing(s).');
+                $this->info('Checked '.count($checked).' listing(s).');
 
                 return self::SUCCESS;
 
