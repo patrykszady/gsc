@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\ClientError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 /**
  * Management API for gsc's Livewire\Admin\ClientErrors screen (aggregated,

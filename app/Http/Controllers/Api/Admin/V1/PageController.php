@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\SeoPathOverride;
 use App\Services\SeoService;
@@ -11,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 /**
  * ss-systems' "Pages" screen (the 'pages' ping domain) for gs.construction.

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunSeoChannelSyncJob;
 use App\Jobs\YelpAutoLogin;
@@ -42,6 +41,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use SsSystems\Platform\Auth\OAuthState;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 
 /**

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\AuthenticateAdminApi;
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
 use App\Http\Middleware\DevSiteBar;
@@ -24,6 +23,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
+use SsSystems\Platform\Http\Admin\AuthenticateAdminApi;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 

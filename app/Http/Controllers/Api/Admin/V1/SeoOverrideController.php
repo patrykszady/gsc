@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\AreaServed;
 use App\Models\Project;
@@ -11,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 /**
  * Ported from the Livewire admin's SeoOverridesPanel — a generic per-morph

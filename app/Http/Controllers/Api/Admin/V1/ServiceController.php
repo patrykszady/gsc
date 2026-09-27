@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateServiceContentJob;
 use App\Models\Project;
@@ -11,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 /**
  * The company's services — the list behind the project form's "Project

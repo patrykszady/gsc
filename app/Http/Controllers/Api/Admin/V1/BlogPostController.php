@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateProjectBlogPostJob;
 use App\Models\BlogPost;
 use App\Models\Project;
 use App\Services\Blog\ProjectBlogWriter;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 /** Blog posts for the central admin: list, edit, publish/unpublish, regenerate. */
 class BlogPostController extends Controller
@@ -77,7 +78,7 @@ class BlogPostController extends Controller
         abort_unless($model->project, 422, 'Post has no project to regenerate from.');
 
         $fresh = $writer->write($model->project);
-        abort_if($fresh === null, 502, 'AI writer failed: ' . ($writer->getLastError() ?? 'unknown'));
+        abort_if($fresh === null, 502, 'AI writer failed: '.($writer->getLastError() ?? 'unknown'));
 
         return $this->itemResponse($fresh->fresh('project.images')->toApiArray());
     }
@@ -124,12 +125,12 @@ class BlogPostController extends Controller
         ];
     }
 
-    public function destroy(int $post, \Illuminate\Http\Request $request): Response
+    public function destroy(int $post, Request $request): Response
     {
         $model = BlogPost::findOrFail($post);
         // The only code path that removes a post. Logged so a vanished draft
         // can be traced to the click that removed it.
-        \Illuminate\Support\Facades\Log::channel('ai_content')->info('Blog post deleted via admin API', [
+        Log::channel('ai_content')->info('Blog post deleted via admin API', [
             'post_id' => $model->id, 'project_id' => $model->project_id, 'title' => $model->title, 'status' => $model->status,
             'ip' => $request->ip(), 'user_agent' => (string) $request->userAgent(),
         ]);

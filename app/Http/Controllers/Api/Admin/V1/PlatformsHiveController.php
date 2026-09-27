@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformSetting;
 use App\Services\EmailLeadReader;
 use App\Services\HiveProjectsClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 /**
  * The hive.contractors connection as a platform: where the site sends its
