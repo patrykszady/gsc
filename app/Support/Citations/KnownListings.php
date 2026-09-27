@@ -10,6 +10,7 @@ use App\Services\YelpBusinessService;
 use App\Support\Reviews\AngiReviews;
 use App\Support\Reviews\HouzzReviews;
 use App\Support\SiteConfig;
+use SsSystems\Platform\Citations\KnownListingsReconciler;
 
 /**
  * Listings the site already has, from what Platforms and Social Media know:
@@ -18,15 +19,19 @@ use App\Support\SiteConfig;
  * board used to plan, fail or hand these to a person as if the listings
  * did not exist; they are matched here and read as live with the
  * listing's own URL, every time the board is synced or opened.
+ *
+ * `reconcile()`'s loop moved to the kit's `Citations\
+ * KnownListingsReconciler` (citations-admin-actions, 2026-09-27 —
+ * verbatim; see that class's own docblock and citations.md #5). This
+ * static method is now a one-line wrapper so `citations:sync`'s existing
+ * `KnownListings::reconcile()` call keeps working unchanged;
+ * `CitationsAdminActions` (the API's own path) constructs its own
+ * `KnownListingsReconciler` instance the same way. `forCurrentSite()` —
+ * genuinely per-site content — is unchanged below; `SiteKnownListingsSource`
+ * is the thin adapter that hands it to the kit.
  */
 class KnownListings
 {
-    /** Statuses a match may move to live — never a run in progress, a submission awaiting verification, or a deliberate decline. */
-    protected const MOVABLE = [
-        Citation::STATUS_PLANNED, Citation::STATUS_FAILED, Citation::STATUS_NEEDS_HUMAN,
-        Citation::STATUS_UNREACHABLE, Citation::STATUS_NO_MECHANISM,
-    ];
-
     /**
      * @return array<string, array{url: string, source: string}> keyed by citation slug
      */
@@ -65,34 +70,9 @@ class KnownListings
      */
     public static function reconcile(): int
     {
-        $changed = 0;
+        $siteId = Site::current()?->id;
 
-        foreach (self::forCurrentSite() as $slug => $known) {
-            $row = Citation::query()->where('site_id', Site::current()?->id)->where('slug', $slug)->first();
-            if (! $row) {
-                continue;
-            }
-
-            $dirty = false;
-            if (blank($row->listing_url)) {
-                $row->listing_url = $known['url'];
-                $dirty = true;
-            }
-            if (in_array($row->status, self::MOVABLE, true)) {
-                $row->status = Citation::STATUS_LIVE;
-                $row->live_at ??= now();
-                $row->human_reason = null;
-                $row->note = 'Listed already — '.$known['source'].'.';
-                $dirty = true;
-            }
-            if ($dirty) {
-                $row->addLog('Matched from what Platforms already knows: '.$known['source'], 'sync');
-                $row->save();
-                $changed++;
-            }
-        }
-
-        return $changed;
+        return (new KnownListingsReconciler(new SiteKnownListingsSource, fn () => Citation::query()->where('site_id', $siteId), 'Platforms'))->reconcile();
     }
 
     /** The profile link Social Media holds for a platform, or the site's own configured one. */

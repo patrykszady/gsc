@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Http\Middleware\ResolveAdminSite;
 use App\Http\Middleware\ResolveSite;
+use App\Jobs\RunCitationsBatch;
 use App\Models\AreaServed;
 use App\Models\BlogPost;
+use App\Models\Citation;
 use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscRichResultIssue;
@@ -23,11 +25,13 @@ use App\Observers\ProjectImageObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
 use App\Services\BingWebmasterService;
+use App\Services\Citations\CitationBatchRunner;
 use App\Services\GoogleSearchConsoleService;
 use App\Services\Social\ImageSocialPostStats;
 use App\Services\Social\SocialAutomationSettingsStore;
 use App\Services\Social\SocialPlatformAvailability;
 use App\Support\Areas\RetiredAreaRedirect;
+use App\Support\Citations\SiteKnownListingsSource;
 use App\Support\Citations\SiteMailboxFactory;
 use App\Support\Citations\SitePendingCitationRepository;
 use App\Support\GoogleBusinessListing;
@@ -70,10 +74,13 @@ use Livewire\Blaze\Blaze;
 use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Psr\SimpleCache\CacheInterface;
+use SsSystems\Platform\Citations\CitationsAdminActions;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
 use SsSystems\Platform\Citations\Contracts\Mailbox as CitationMailbox;
 use SsSystems\Platform\Citations\Contracts\PendingCitationRepository;
+use SsSystems\Platform\Citations\KnownListingsReconciler;
 use SsSystems\Platform\Citations\RemoteBrowserSession;
+use SsSystems\Platform\Citations\VerificationInbox;
 use SsSystems\Platform\Pulse\BeaconController;
 use SsSystems\Platform\Pulse\Recorder;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
@@ -150,6 +157,30 @@ class AppServiceProvider extends ServiceProvider
         // every other citations query already carries now lives.
         $this->app->bind(CitationMailbox::class, fn () => SiteMailboxFactory::current());
         $this->app->bind(PendingCitationRepository::class, SitePendingCitationRepository::class);
+        // The Citations admin API's own service (kit 0.13.0, ported from
+        // this file's own former Api/Admin/V1/CitationsController — see
+        // vendor/ss-systems/platform-kit's Citations\CitationsAdminActions
+        // docblock). Six seams: the same $baseQuery scoping as
+        // CitationBatchRunner's own binding, the signed-viewer-route's
+        // extra 'site' param (gsc's route has a {site} segment; see
+        // routes/platforms-viewer.php), and this app's own
+        // RunCitationsBatch job for the one thing the service cannot do
+        // itself (queueing a site-owned Job class). NOT a singleton, on
+        // purpose: freezing this would freeze the CitationSession/
+        // CitationBatchRunner/VerificationInbox instances it resolves
+        // ONCE too, and a queue worker or the parallel test suite (see
+        // CitationsBatchSyncIsolationTest's own note) can resolve this for
+        // more than one tenant inside one process — every other citations
+        // binding above is `bind`, not `singleton`, for the same reason.
+        $this->app->bind(CitationsAdminActions::class, fn ($app) => new CitationsAdminActions(
+            $app->make(CitationSession::class),
+            $app->make(CitationBatchRunner::class),
+            $app->make(VerificationInbox::class),
+            new KnownListingsReconciler(new SiteKnownListingsSource, fn () => Citation::query()->where('site_id', Site::current()?->id), 'Platforms'),
+            fn () => Citation::query()->where('site_id', Site::current()?->id),
+            fn () => ['site' => Site::current()->primary_host, 'provider' => 'citations'],
+            fn (array $slugs) => RunCitationsBatch::dispatch($slugs),
+        ));
 
         // The shared kit's AutomationSettingsService (kit 0.13.0, ported
         // verbatim from this file's own former App\Services\Social\
