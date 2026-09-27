@@ -11,6 +11,9 @@
 
 use App\Http\Controllers\Api\Admin\V1\AreaMapController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
+
+CapabilityRegistry::declare('areas-map');
 
 Route::prefix('areas-map')->group(function () {
     Route::get('/', [AreaMapController::class, 'map']);

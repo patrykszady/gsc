@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\Admin\V1\BeforeAfterController;
 use App\Http\Controllers\Api\Admin\V1\ProjectImageController;
 use App\Http\Controllers\Api\Admin\V1\TimelapseController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
+
+CapabilityRegistry::declare('image-tags', 'timelapses', 'before-afters');
 
 // Bulk image tag assignment (ProjectForm's "Assign Tag" card / Image Tags
 // card) — full replace, see ProjectImageController::syncTags docblock.

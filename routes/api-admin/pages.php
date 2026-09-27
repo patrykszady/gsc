@@ -12,6 +12,9 @@
 
 use App\Http\Controllers\Api\Admin\V1\PageController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
+
+CapabilityRegistry::declare('pages');
 
 Route::get('pages/types', [PageController::class, 'types']);
 Route::get('pages', [PageController::class, 'index']);

@@ -6,6 +6,9 @@
 
 use App\Http\Controllers\Api\Admin\V1\CitationsController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
+
+CapabilityRegistry::declare('citations');
 
 Route::prefix('citations')->group(function () {
     Route::get('/', [CitationsController::class, 'index']);
