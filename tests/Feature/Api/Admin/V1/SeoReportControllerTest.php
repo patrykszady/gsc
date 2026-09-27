@@ -100,7 +100,7 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame('health', $data['key']);
         // The command itself may succeed or fail depending on how much GSC
         // data this environment has (e.g. seo:health can divide by data this
-        // empty sqlite test db doesn't have) — either way SeoReportRun must
+        // empty sqlite test db doesn't have) — either way ReportRun must
         // turn that into a friendly message and an honest status, never an
         // unhandled 500.
         $this->assertMatchesRegularExpression('/^SEO health regenerated in [\d.]+ s(\.|, but the command reported problems \(exit \d+\)\. See what it printed\.)$|^SEO health failed: /', $data['message']);

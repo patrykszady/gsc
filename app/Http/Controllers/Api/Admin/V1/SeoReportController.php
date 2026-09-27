@@ -17,7 +17,6 @@ use App\Support\Seo\CompetitorFilter;
 use App\Support\Seo\FrustratedPages;
 use App\Support\Seo\Reports\ReportCapabilities;
 use App\Support\Seo\SearchConsoleProperty;
-use App\Support\SeoReportRun;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
 use Illuminate\Database\Query\Builder;
@@ -36,6 +35,7 @@ use Illuminate\Support\Facades\Storage;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
+use SsSystems\Platform\Reports\Console\ReportRun;
 use SsSystems\Platform\Seo\SearchAppearance;
 use SsSystems\Platform\Seo\SitemapStatus;
 use Throwable;
@@ -112,7 +112,15 @@ class SeoReportController extends Controller
 
         $trendDays = (int) $request->integer('trend_days', 14);
 
-        $run = SeoReportRun::run($report, $reports[$report], $request, $trendDays);
+        // Kit 0.12.0: SsSystems\Platform\Reports\Console\ReportRun replaces
+        // this app's own SeoReportRun. The kit class never hears about
+        // tenancy — the 'site' context here is folded into every log line
+        // exactly as SeoReportRun's own $context did, and the report file's
+        // path is scoped by the ReportStorage this app bound in
+        // AppServiceProvider (TenantScopedReportStorage), never by the kit.
+        $run = ReportRun::run($report, $reports[$report], $request, $trendDays, [
+            'site' => Site::current()?->slug,
+        ]);
 
         // Same cache-busting as the Livewire original's regenerate(): health
         // snapshot plus the search snapshot for whichever trend window the
