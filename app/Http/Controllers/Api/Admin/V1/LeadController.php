@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Models\ContactSubmission;
 use App\Services\EmailLeadReader;
@@ -12,6 +11,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 class LeadController extends Controller
 {
@@ -196,16 +196,6 @@ class LeadController extends Controller
     }
 
     /** 'all' (default, no-op) | 'today' | 'week' | 'month'. */
-    protected function applyDateRange($query, string $range): void
-    {
-        match ($range) {
-            'today' => $query->whereDate('created_at', today()),
-            'week' => $query->where('created_at', '>=', now()->subWeek()),
-            'month' => $query->where('created_at', '>=', now()->subMonth()),
-            default => null,
-        };
-    }
-
     public function updateStatus(Request $request, int $lead): JsonResponse
     {
         $model = ContactSubmission::findOrFail($lead);

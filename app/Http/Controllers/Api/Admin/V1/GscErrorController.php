@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunGscInspectBulkJob;
 use App\Jobs\RunGscInspectUrlsJob;
@@ -18,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 

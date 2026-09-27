@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin\V1;
 
-use App\Http\Controllers\Api\Admin\V1\Concerns\BuildsApiResponses;
 use App\Http\Controllers\Controller;
 use App\Jobs\FetchCollaboratorSiteJob;
 use App\Models\Project;
@@ -12,7 +11,9 @@ use App\Models\Testimonial;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 
 class ProjectController extends Controller
 {
@@ -152,7 +153,7 @@ class ProjectController extends Controller
      */
     protected function partnerDirectory(): array
     {
-        $key = fn (string $name, ?string $url) => mb_strtolower(trim($name)) . '|' . mb_strtolower(trim((string) $url));
+        $key = fn (string $name, ?string $url) => mb_strtolower(trim($name)).'|'.mb_strtolower(trim((string) $url));
 
         $used = ProjectCollaborator::query()
             ->whereIn('project_id', Project::query()->select('id'))
@@ -210,7 +211,7 @@ class ProjectController extends Controller
         foreach (array_values($rows) as $i => $row) {
             $url = isset($row['url']) && trim((string) $row['url']) !== '' ? trim((string) $row['url']) : null;
             if ($url && ! preg_match('#^https?://#i', $url)) {
-                $url = 'https://' . $url;
+                $url = 'https://'.$url;
             }
             $attrs = [
                 'role' => $row['role'] ?? 'other',
@@ -276,7 +277,7 @@ class ProjectController extends Controller
                     'project_location' => $t->project_location,
                     'project_type' => $t->project_type,
                     // Opening words, so the picker's search also matches what the review says.
-                    'excerpt' => \Illuminate\Support\Str::limit(trim(preg_replace('/\s+/', ' ', (string) $t->review_description)), 70),
+                    'excerpt' => Str::limit(trim(preg_replace('/\s+/', ' ', (string) $t->review_description)), 70),
                 ])->all(),
         ]);
     }
