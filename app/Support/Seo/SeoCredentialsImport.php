@@ -3,6 +3,8 @@
 namespace App\Support\Seo;
 
 use App\Models\PlatformSetting;
+use SsSystems\Platform\Seo\Credentials\Contracts\CredentialStore;
+use SsSystems\Platform\Seo\Credentials\CredentialEnvImport;
 
 /**
  * Copies whichever of the four SEO credential sources (Bing/Clarity/
@@ -21,6 +23,13 @@ use App\Models\PlatformSetting;
  * judged blank, and a credential VALUE is never logged, printed or
  * returned — only which labels were imported, already stored, or absent
  * from both places.
+ *
+ * That loop now lives once in the kit
+ * (SsSystems\Platform\Seo\Credentials\CredentialEnvImport) — every site
+ * ran the identical logic, only the table of fields below ever differed.
+ * This class stays local because the config KEY NAMES genuinely differ
+ * per site (see BingSettings/etc.'s own docblocks), and so does the
+ * onImported callback (only gsc/jpeterson-design bust Clarity's cache).
  */
 class SeoCredentialsImport
 {
@@ -28,87 +37,78 @@ class SeoCredentialsImport
     public const SOURCES = ['bing', 'clarity', 'pagespeed', 'dataforseo'];
 
     /**
-     * source key => [label => [storage key, the config()/env() value that
-     * would seed it]], in the same order the original command reported
-     * them.
-     *
-     * @return array<string, array<string, array{0: string, 1: mixed}>>
-     */
-    protected function fieldsBySource(): array
-    {
-        return [
-            'bing' => [
-                'Bing API key' => [BingSettings::SETTING_API_KEY, config('services.bing.webmaster_api_key')],
-            ],
-            'clarity' => [
-                'Clarity project ID' => [ClaritySettings::SETTING_PROJECT_ID, config('services.microsoft.clarity.project_id')],
-                'Clarity API token' => [ClaritySettings::SETTING_API_TOKEN, config('services.microsoft.clarity.api_token')],
-            ],
-            'pagespeed' => [
-                'PageSpeed API key' => [PsiSettings::SETTING_API_KEY, config('services.google.pagespeed.api_key')],
-            ],
-            'dataforseo' => [
-                'DataForSEO login' => [DataForSeoSettings::SETTING_LOGIN, config('services.dataforseo.login')],
-                'DataForSEO password' => [DataForSeoSettings::SETTING_PASSWORD, config('services.dataforseo.password')],
-            ],
-        ];
-    }
-
-    /**
      * @param  list<string>  $sources  Among self::SOURCES; empty (the default) means all four.
      * @return array{imported: list<string>, already_stored: list<string>, absent: list<string>}
      */
     public function run(array $sources = [], bool $dryRun = false): array
     {
-        $bySource = $this->fieldsBySource();
-        $wanted = $sources === [] ? self::SOURCES : $sources;
+        $sources = $sources === [] ? self::SOURCES : $sources;
 
-        $imported = [];
-        $alreadyStored = [];
-        $absent = [];
-        $importedClarity = false;
+        $import = new CredentialEnvImport($this->store());
 
-        foreach ($wanted as $source) {
-            foreach ($bySource[$source] ?? [] as $label => [$key, $envValue]) {
-                // Already stored wins even when env also has a value — this
-                // never overwrites a value an admin (or a prior import)
-                // already put in platform_settings.
-                if (filled(PlatformSetting::get($key))) {
-                    $alreadyStored[] = $label;
+        return $import->run(
+            $this->fields($sources),
+            $dryRun,
+            fn (string $source) => $source === 'clarity' ? ClaritySettings::forgetProjectIdCache() : null,
+        );
+    }
 
-                    continue;
-                }
+    /** This site's PlatformSetting table as the kit's CredentialStore seam — never falls back to config()/env(). */
+    protected function store(): CredentialStore
+    {
+        return new class implements CredentialStore
+        {
+            public function get(string $key): ?string
+            {
+                return PlatformSetting::get($key);
+            }
 
-                $envValue = is_string($envValue) ? trim($envValue) : $envValue;
-                if (! filled($envValue)) {
-                    $absent[] = $label;
+            public function put(string $key, string $value): void
+            {
+                PlatformSetting::put($key, $value);
+            }
+        };
+    }
 
-                    continue;
-                }
+    /**
+     * @param  list<string>  $sources
+     * @return list<array{label: string, key: string, env: mixed, source: string}>
+     */
+    protected function fields(array $sources): array
+    {
+        $bySource = [
+            'bing' => [
+                ['label' => 'Bing API key', 'key' => BingSettings::SETTING_API_KEY, 'env' => config('services.bing.webmaster_api_key')],
+            ],
+            'clarity' => [
+                ['label' => 'Clarity project ID', 'key' => ClaritySettings::SETTING_PROJECT_ID, 'env' => config('services.microsoft.clarity.project_id')],
+                ['label' => 'Clarity API token', 'key' => ClaritySettings::SETTING_API_TOKEN, 'env' => config('services.microsoft.clarity.api_token')],
+            ],
+            'pagespeed' => [
+                ['label' => 'PageSpeed API key', 'key' => PsiSettings::SETTING_API_KEY, 'env' => config('services.google.pagespeed.api_key')],
+            ],
+            'dataforseo' => [
+                ['label' => 'DataForSEO login', 'key' => DataForSeoSettings::SETTING_LOGIN, 'env' => config('services.dataforseo.login')],
+                ['label' => 'DataForSEO password', 'key' => DataForSeoSettings::SETTING_PASSWORD, 'env' => config('services.dataforseo.password')],
+            ],
+        ];
 
-                if (! $dryRun) {
-                    PlatformSetting::put($key, (string) $envValue);
-                }
-                $imported[] = $label;
+        $rows = [];
 
-                if ($source === 'clarity') {
-                    $importedClarity = true;
-                }
+        // Iterate SOURCES' own fixed order rather than $sources' order, so
+        // the report is always bing/clarity/pagespeed/dataforseo no matter
+        // what order the caller listed them in.
+        foreach (self::SOURCES as $source) {
+            if (! in_array($source, $sources, true)) {
+                continue;
+            }
+
+            foreach ($bySource[$source] as $row) {
+                $row['source'] = $source;
+                $rows[] = $row;
             }
         }
 
-        // The public layout caches projectId() for a few minutes (it reads
-        // on every page); without this a freshly-imported id would not show
-        // up there, or in the sync, until that TTL expired. Only on a real
-        // write, and only when Clarity was actually touched.
-        if (! $dryRun && $importedClarity) {
-            ClaritySettings::forgetProjectIdCache();
-        }
-
-        return [
-            'imported' => $imported,
-            'already_stored' => $alreadyStored,
-            'absent' => $absent,
-        ];
+        return $rows;
     }
 }
