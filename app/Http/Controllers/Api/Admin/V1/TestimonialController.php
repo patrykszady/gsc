@@ -5,22 +5,50 @@ namespace App\Http\Controllers\Api\Admin\V1;
 use App\Http\Controllers\Controller;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
+use SsSystems\Platform\Reviews\Http\Concerns\ServesTestimonials;
 
+/**
+ * index()/filters()/show()/destroy() now come from the kit's
+ * ServesTestimonials (2026-09-27, see docs/audit-2026-09-27/
+ * admin-api-skeleton.md §10) — this class keeps only what's real,
+ * gsc-specific business logic: store()/update()'s review_urls/project_ids
+ * sync onto real pivots, and this app's own rules()/query hooks.
+ */
 class TestimonialController extends Controller
 {
     use BuildsApiResponses;
+    use ServesTestimonials;
 
     /** Known review-platform icons this app ships under public/images/socials/. */
     protected const KNOWN_PLATFORMS = ['google', 'yelp', 'facebook', 'angi', 'houzz'];
 
-    public function index(Request $request): JsonResponse
+    protected function testimonialModel(): string
     {
-        $query = Testimonial::query()->with(['reviewUrls', 'projects']);
+        return Testimonial::class;
+    }
 
+    /** Never had a whitelist — any `sort` column is taken as-is, same as BuildsApiResponses::applySort(). */
+    protected function sortable(): ?array
+    {
+        return null;
+    }
+
+    protected function defaultSort(): string
+    {
+        return '-created_at';
+    }
+
+    protected function eagerLoads(): array
+    {
+        return ['reviewUrls', 'projects'];
+    }
+
+    protected function applyIndexFilters(Builder $query, Request $request): void
+    {
         if ($search = $request->string('search')->toString()) {
             $query->where('reviewer_name', 'like', "%{$search}%");
         }
@@ -40,70 +68,22 @@ class TestimonialController extends Controller
         if ($platform = $request->string('platform')->toString()) {
             $query->whereHas('reviewUrls', fn ($q) => $q->where('platform', $platform));
         }
-
-        $query = $this->applySort($query, $request->string('sort')->toString() ?: null, '-created_at');
-
-        $paginator = $query->paginate($this->perPage($request));
-
-        return $this->paginatedResponse($paginator, fn (Testimonial $testimonial) => $testimonial->toApiArray());
     }
 
-    public function store(Request $request): JsonResponse
+    protected function projectTypeOptions(): array
     {
-        $data = $request->validate($this->rules());
-        [$reviewUrls, $projectIds] = $this->pullExtras($data);
-
-        $testimonial = Testimonial::create($data);
-        $this->syncExtras($testimonial, $reviewUrls, $projectIds);
-
-        return $this->itemResponse($testimonial->fresh(['reviewUrls', 'projects'])->toApiArray(), 201);
-    }
-
-    public function show(int $testimonial): JsonResponse
-    {
-        $model = Testimonial::with(['reviewUrls', 'projects'])->findOrFail($testimonial);
-
-        return $this->itemResponse($model->toApiArray());
-    }
-
-    public function update(Request $request, int $testimonial): JsonResponse
-    {
-        $model = Testimonial::findOrFail($testimonial);
-
-        $data = $request->validate($this->rules($model->id));
-        [$reviewUrls, $projectIds] = $this->pullExtras($data);
-
-        $model->update($data);
-        $this->syncExtras($model, $reviewUrls, $projectIds);
-
-        return $this->itemResponse($model->fresh(['reviewUrls', 'projects'])->toApiArray());
-    }
-
-    public function destroy(int $testimonial): Response
-    {
-        Testimonial::findOrFail($testimonial)->delete();
-
-        return response()->noContent();
-    }
-
-    /**
-     * Restored from the legacy TestimonialList's filter dropdowns: distinct
-     * project types (both apps), and the review-platform roster with
-     * absolute icon URLs (gsc-only — jpeterson has no review_urls pivot, so
-     * its own filters() returns an empty platforms list and the central
-     * admin hides that dropdown on the 'review-platforms' capability).
-     */
-    public function filters(): JsonResponse
-    {
-        $projectTypes = Testimonial::query()
+        return Testimonial::query()
             ->whereNotNull('project_type')
             ->where('project_type', '!=', '')
             ->distinct()
             ->orderBy('project_type')
             ->pluck('project_type')
             ->all();
+    }
 
-        $platforms = ReviewUrl::query()
+    protected function platformOptions(): array
+    {
+        return ReviewUrl::query()
             ->whereNotNull('platform')
             ->where('platform', '!=', '')
             ->distinct()
@@ -118,11 +98,30 @@ class TestimonialController extends Controller
             ])
             ->values()
             ->all();
+    }
 
-        return $this->itemResponse([
-            'project_types' => $projectTypes,
-            'platforms' => $platforms,
-        ]);
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate($this->rules());
+        [$reviewUrls, $projectIds] = $this->pullExtras($data);
+
+        $testimonial = Testimonial::create($data);
+        $this->syncExtras($testimonial, $reviewUrls, $projectIds);
+
+        return $this->itemResponse($testimonial->fresh(['reviewUrls', 'projects'])->toApiArray(), 201);
+    }
+
+    public function update(Request $request, int $testimonial): JsonResponse
+    {
+        $model = Testimonial::findOrFail($testimonial);
+
+        $data = $request->validate($this->rules($model->id));
+        [$reviewUrls, $projectIds] = $this->pullExtras($data);
+
+        $model->update($data);
+        $this->syncExtras($model, $reviewUrls, $projectIds);
+
+        return $this->itemResponse($model->fresh(['reviewUrls', 'projects'])->toApiArray());
     }
 
     /**
