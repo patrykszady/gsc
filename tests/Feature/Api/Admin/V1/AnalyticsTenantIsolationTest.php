@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Admin\V1;
 
+use App\Http\Controllers\Api\Admin\V1\AnalyticsController;
 use App\Models\Site;
 use App\Models\TrackedEvent;
 use App\Support\Tenancy;
@@ -85,5 +86,19 @@ class AnalyticsTenantIsolationTest extends TestCase
 
         $this->assertCount(1, $data);
         $this->assertSame('gsc-row', $data[0]['label']);
+    }
+
+    public function test_the_summary_cache_key_carries_the_tenant(): void
+    {
+        // The admin API is pinned to the gsc tenant (PinAdminApiTenant), so
+        // a second tenant cannot be exercised over HTTP here; the seam that
+        // keeps one tenant's cached summary out of another's admin is the
+        // key itself (gsc review, 2026-09-27) — pin it directly.
+        $other = $this->otherSite();
+        $key = fn () => (new \ReflectionMethod(AnalyticsController::class, 'analyticsCacheKey'))
+            ->invoke(app(AnalyticsController::class), 'analytics-summary:28::1');
+
+        $this->assertSame('analytics-summary:28::1', $key(), 'the default tenant keeps the bare key');
+        $this->assertSame('jpeterson:analytics-summary:28::1', Tenancy::for($other, $key));
     }
 }

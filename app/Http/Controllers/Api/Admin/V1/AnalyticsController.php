@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\TrackedEvent;
+use App\Support\Tenancy;
 use Illuminate\Support\Collection;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsAnalyticsScreen;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
@@ -34,6 +35,16 @@ class AnalyticsController extends Controller
     }
 
     /** This site's own effective zone — never a kit constant. */
+    /**
+     * One cache store serves every tenant here: the summary key carries
+     * the current Site (Tenancy::cacheKey), or J. Peterson Design would
+     * read gs.construction's numbers for five minutes and vice versa.
+     */
+    protected function analyticsCacheKey(string $key): string
+    {
+        return Tenancy::cacheKey($key);
+    }
+
     protected function analyticsTimezone(): string
     {
         return config('services.analytics.timezone', 'America/Chicago');

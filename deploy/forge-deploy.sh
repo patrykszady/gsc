@@ -125,7 +125,13 @@ npx puppeteer browsers install chrome
 
 log "Caches for the new release"
 $PHP artisan storage:link --force
-$PHP artisan optimize
+# No route cache here (2026-09-27, owner decision): the admin API declares its
+# capabilities from routes/api-admin/*.php at request time
+# (SsSystems\Platform\Http\Admin\CapabilityRegistry). A cached route table
+# skips those files and /api/admin/v1/ping would report an empty list.
+$PHP artisan config:cache
+$PHP artisan event:cache
+$PHP artisan view:cache
 
 log "Migrate"
 # Runs against the database the live release is still serving. Migrations
