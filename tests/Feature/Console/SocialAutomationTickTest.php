@@ -360,7 +360,7 @@ class SocialAutomationTickTest extends TestCase
      * unit's report; this test documents the new behaviour explicitly
      * rather than leaving it to be discovered in production.
      */
-    public function test_gbp_catch_up_now_fires_even_after_a_manual_post_earlier_today(): void
+    public function test_gbp_catch_up_stays_quiet_after_a_manual_post_earlier_today(): void
     {
         $this->fakeConfigured();
 
@@ -392,7 +392,8 @@ class SocialAutomationTickTest extends TestCase
                 'path' => 'projects/1/photo.jpg',
                 'alt_text' => 'A lovely kitchen',
             ]);
-            ImageSocialPost::create([
+            // forceCreate: created_at is not fillable, and the guard reads it.
+            ImageSocialPost::forceCreate([
                 'project_image_id' => $image->id,
                 'platform' => 'google_business',
                 'status' => 'pending',
@@ -400,16 +401,15 @@ class SocialAutomationTickTest extends TestCase
             ]);
         });
 
-        Artisan::shouldReceive('call')
-            ->once()
-            ->with('social:post', ['--platform' => 'google_business', '--queue' => true])
-            ->andReturn(0);
+        // The original guard, kept through SocialPublisher::attemptedToday():
+        // a post already exists for today, so no catch-up on top of it.
+        Artisan::shouldReceive('call')->never();
 
         Carbon::setTestNow($tick);
         $this->runTick();
         Carbon::setTestNow();
 
         $fresh = Tenancy::for($site, fn () => SocialAutomationSetting::where('platform', 'google_business')->first());
-        $this->assertSame('2026-09-16 catch-up', $fresh->last_dispatched_slot);
+        $this->assertNotSame('2026-09-16 catch-up', $fresh->last_dispatched_slot, 'the catch-up did not fire on top of the manual post');
     }
 }

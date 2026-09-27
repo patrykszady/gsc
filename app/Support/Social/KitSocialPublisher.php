@@ -69,4 +69,17 @@ class KitSocialPublisher implements SocialPublisher
 
         return $max !== null ? Carbon::parse($max) : null;
     }
+
+    /**
+     * Any row created today, whatever its status — the guard the original
+     * catch-up net had against a second post on a day someone already
+     * posted (a queued slot, a failed attempt, a manual "Post Now").
+     */
+    public function attemptedToday(string $platform, Carbon $now): bool
+    {
+        return ImageSocialPost::query()
+            ->where('platform', $platform)
+            ->whereDate('created_at', $now->toDateString())
+            ->exists();
+    }
 }
