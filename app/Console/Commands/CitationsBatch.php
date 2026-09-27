@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\RunCitationsBatch;
 use App\Services\Citations\CitationBatchRunner;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 /**
  * Run every open directory automatically, one after another.
@@ -35,7 +36,7 @@ class CitationsBatch extends Command
             return self::SUCCESS;
         }
         if ($this->option('queue')) {
-            if (CitationBatchRunner::isActive()) {
+            if ($runner->isActive()) {
                 $this->error('An automatic run is already going (see citations:sync --list). Let it finish first.');
 
                 return self::FAILURE;
@@ -52,10 +53,10 @@ class CitationsBatch extends Command
             CitationBatchRunner::progress($rows->slice($i + 1)->pluck('slug')->values()->all(), $i, $citation->slug);
             $r = $runner->runOne($citation);
             $counts[$r['status']] = ($counts[$r['status']] ?? 0) + 1;
-            $this->line(sprintf('  %-26s %-20s %3ds  %s', $citation->name, $r['status'], $r['seconds'], \Illuminate\Support\Str::limit((string) ($r['reason'] ?: $r['note']), 110)));
+            $this->line(sprintf('  %-26s %-20s %3ds  %s', $citation->name, $r['status'], $r['seconds'], Str::limit((string) ($r['reason'] ?: $r['note']), 110)));
         }
         CitationBatchRunner::progress([], $rows->count(), null, false);
-        $this->info('Done: ' . collect($counts)->map(fn ($n, $s) => "{$n} {$s}")->implode(', ') . '.');
+        $this->info('Done: '.collect($counts)->map(fn ($n, $s) => "{$n} {$s}")->implode(', ').'.');
 
         return self::SUCCESS;
     }

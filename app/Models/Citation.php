@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use SsSystems\Platform\Citations\Contracts\CitationRecord;
 
 /**
  * One directory / business profile the citation builder maintains.
@@ -11,8 +12,13 @@ use Illuminate\Database\Eloquent\Model;
  *   planned → running → needs_human → submitted → pending_verification → live
  *   any → failed (run error) | declined (we chose not to) | no_mechanism
  *   (the site turned out to have no way to list a business) | unreachable
+ *
+ * `implements CitationRecord` (citations-batch-sync, 2026-09-27): the kit's
+ * Citations\BatchRunner/Sync/CitationSession need this shape without ever
+ * naming this class — see that interface's own docblock. One line; every
+ * method/property it requires was already here.
  */
-class Citation extends Model
+class Citation extends Model implements CitationRecord
 {
     public const STATUS_PLANNED = 'planned';
 
