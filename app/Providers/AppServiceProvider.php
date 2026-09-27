@@ -35,7 +35,6 @@ use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\Seo\BingWriter;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
-use App\Support\Seo\Inspection\EloquentCoverageStore;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\TrackedPathsFromModel;
 use App\Support\SEO\RecrawlNudger;
