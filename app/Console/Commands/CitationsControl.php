@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use App\Models\Citation;
 use App\Models\Site;
-use App\Services\Citations\CitationSessionService;
 use App\Services\Citations\VerificationInbox;
-use App\Support\Citations\LinkCheck;
 use Illuminate\Console\Command;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
+use SsSystems\Platform\Citations\LinkCheck;
 
 /**
  * The rest of the citation builder's operations:
@@ -24,7 +24,7 @@ class CitationsControl extends Command
 
     protected $description = 'Resume, stop, verify listings, read the verification inbox, or show the session status';
 
-    public function handle(CitationSessionService $sessions, VerificationInbox $inbox): int
+    public function handle(CitationSession $sessions, VerificationInbox $inbox): int
     {
         $siteId = Site::current()?->id;
 
@@ -79,17 +79,17 @@ class CitationsControl extends Command
                     } elseif ($r['links_to_us'] === 0 && in_array($citation->status, [Citation::STATUS_PLANNED, Citation::STATUS_LIVE, Citation::STATUS_SUBMITTED, Citation::STATUS_PENDING_VERIFICATION], true)) {
                         // The profile is there but carries no website link — the one thing worth a person's minute.
                         $citation->status = Citation::STATUS_NEEDS_HUMAN;
-                        $citation->human_reason = 'The profile exists but has no link to the website. Open it and add ' . rtrim((string) config('app.url'), '/') . '.';
+                        $citation->human_reason = 'The profile exists but has no link to the website. Open it and add '.rtrim((string) config('app.url'), '/').'.';
                     }
                     if (in_array($r['status'], [404, 410], true) && $citation->status === Citation::STATUS_LIVE) {
                         $citation->status = Citation::STATUS_FAILED;
-                        $citation->note = 'The listing URL returns HTTP ' . $r['status'] . '.';
+                        $citation->note = 'The listing URL returns HTTP '.$r['status'].'.';
                     }
-                    $citation->addLog(sprintf('Link check: HTTP %d, links to us: %s%s', $r['status'], $r['links_to_us'] === null ? '?' : ($r['links_to_us'] ? 'yes' : 'no'), $r['note'] ? ' — ' . $r['note'] : ''), 'check');
+                    $citation->addLog(sprintf('Link check: HTTP %d, links to us: %s%s', $r['status'], $r['links_to_us'] === null ? '?' : ($r['links_to_us'] ? 'yes' : 'no'), $r['note'] ? ' — '.$r['note'] : ''), 'check');
                     $citation->save();
                     $this->line(sprintf('  %-28s HTTP %d  links=%s', $citation->name, $r['status'], $r['links_to_us'] === null ? '?' : ($r['links_to_us'] ? 'yes' : 'no')));
                 }
-                $this->info('Checked ' . $rows->count() . ' listing(s).');
+                $this->info('Checked '.$rows->count().' listing(s).');
 
                 return self::SUCCESS;
 

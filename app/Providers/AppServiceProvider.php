@@ -59,6 +59,8 @@ use Livewire\Blaze\Blaze;
 use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Psr\SimpleCache\CacheInterface;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
+use SsSystems\Platform\Citations\RemoteBrowserSession;
 use SsSystems\Platform\Pulse\BeaconController;
 use SsSystems\Platform\Pulse\Recorder;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
@@ -108,6 +110,12 @@ class AppServiceProvider extends ServiceProvider
         // site's writer, the client built from this site's key.
         $this->app->bind(KitBingWriter::class, BingWriter::class);
         $this->app->bind(BingWebmasterClient::class, BingWebmasterService::class);
+        // The citation builder's remote-browser session (kit 0.11.0, ported
+        // verbatim from this file's own former App\Services\Citations\
+        // CitationSessionService — see vendor/ss-systems/platform-kit's
+        // Citations\RemoteBrowserSession docblock). gsc has the real Xvfb/
+        // Chromium/x11vnc pipeline, unlike hive2025's UnavailableSession.
+        $this->app->bind(CitationSession::class, RemoteBrowserSession::class);
 
         // The shared kit's ten SEO report generators (SsSystems\Platform\
         // Reports\*, ported verbatim from this app's own app/Console/

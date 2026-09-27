@@ -7,16 +7,17 @@ use App\Models\Citation;
 use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\ProjectImage;
-use App\Services\Citations\CitationSessionService;
 use App\Services\Citations\VerificationInbox;
 use App\Support\Citations\KnownListings;
-use App\Support\Citations\LinkCheck;
 use App\Support\Citations\ListingPayload;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Citations\Contracts\CitationSession;
+use SsSystems\Platform\Citations\LinkCheck;
+use SsSystems\Platform\Citations\RemoteBrowserSession;
 use Tests\Feature\Api\Admin\V1\Concerns\WithAdminApiAuth;
 use Tests\TestCase;
 
@@ -97,7 +98,7 @@ class CitationsTest extends TestCase
 
     public function test_api_lists_the_board_starts_a_session_through_a_signed_viewer_and_takes_manual_updates(): void
     {
-        $fake = new class extends CitationSessionService
+        $fake = new class extends RemoteBrowserSession
         {
             public array $started = [];
 
@@ -118,7 +119,7 @@ class CitationsTest extends TestCase
                 return ['running' => $this->started !== [], 'slug' => $this->started[0] ?? null, 'viewer' => $this->started ? 'http://127.0.0.1:6080/vnc.html?password=x' : null, 'expires_at' => time() + 600, 'runner' => $this->started ? ['phase' => 'waiting_human', 'needs_human' => true, 'reason' => 'Solve the CAPTCHA and submit.', 'log' => [['at' => '2026-09-05 10:00:00', 'msg' => 'prefilled 7 field(s)']], 'shots' => [['file' => '/tmp/01-landing.png', 'label' => 'landing']], 'photos_uploaded' => 0, 'account' => ['email' => 'crew@gs.construction', 'password' => 'Secret123!']] : null];
             }
         };
-        $this->app->instance(CitationSessionService::class, $fake);
+        $this->app->instance(CitationSession::class, $fake);
 
         $index = $this->getJson('/api/admin/v1/citations', $this->adminApiHeaders())->assertOk()->json('data');
         $this->assertSame(count(config('citations.directories')), count($index['citations']));
@@ -283,7 +284,7 @@ class CitationsTest extends TestCase
         Citation::where('slug', 'handyhubb')->update(['status' => 'live', 'listing_url' => 'https://handyhubb.com/biz/gs']);
         Citation::where('slug', 'prosgrade')->update(['status' => 'declined']);
 
-        $fake = new class extends CitationSessionService
+        $fake = new class extends RemoteBrowserSession
         {
             public array $started = [];
 
@@ -313,7 +314,7 @@ class CitationsTest extends TestCase
                 return ['running' => false, 'slug' => $this->current, 'runner' => null];
             }
         };
-        $this->app->instance(CitationSessionService::class, $fake);
+        $this->app->instance(CitationSession::class, $fake);
 
         $this->artisan('citations:batch', ['--tier' => [2]])->expectsOutputToContain('Done:')->assertExitCode(0);
 
@@ -337,7 +338,7 @@ class CitationsTest extends TestCase
         $this->assertSame('01-landing.png', $e->screenshots[0]['file']);
 
         // The API queues the same list and reports progress on the board.
-        $this->app->instance(CitationSessionService::class, $fake);
+        $this->app->instance(CitationSession::class, $fake);
         Queue::fake();
         $queued = $this->postJson('/api/admin/v1/citations/batch', ['tiers' => [3]], $this->adminApiHeaders())->assertOk()->json('data');
         $this->assertTrue($queued['ok']);
