@@ -25,6 +25,7 @@ use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\Seo\BingWriter;
+use App\Support\Seo\Faq\ConfigFaqCatalog;
 use App\Support\Seo\Inspection\EloquentCoverageStore;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\SearchConsoleUrlInspector;
@@ -75,6 +76,7 @@ use SsSystems\Platform\Reports\Contracts\SiteCatalog;
 use SsSystems\Platform\Reports\Contracts\SiteIdentity;
 use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
 use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
+use SsSystems\Platform\Seo\Faq\Contracts\FaqCatalog;
 use SsSystems\Platform\Seo\Inspection\Contracts\CoverageStore as CoverageStoreContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\SitemapSource as SitemapSourceContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\TrackedPaths as TrackedPathsContract;
@@ -136,6 +138,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(HealthDataReader::class, EloquentHealthDataReader::class);
         $this->app->bind(ClarityMetricsReader::class, EloquentClarityMetricsReader::class);
         $this->app->bind(CacheInterface::class, LaravelSimpleCache::class);
+        // /geo/answers.json's Q&A list (kit 0.13.0) — the fixed
+        // config/geo-answers.php list alone, no Service/Area FAQ merge.
+        $this->app->bind(FaqCatalog::class, ConfigFaqCatalog::class);
 
         // The kit's URL-Inspection sweep (SsSystems\Platform\Seo\Inspection\
         // UrlInspectionSweep — see seo:gsc-inspect-bulk, now a thin wrapper
