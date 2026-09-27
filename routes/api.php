@@ -91,7 +91,10 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     // and on-demand content generation for one area.
     Route::get('areas/candidates', [AreaController::class, 'candidates']);
     Route::post('areas/{area}/generate', [AreaController::class, 'generate'])->whereNumber('area');
-    Route::apiResource('areas', AreaController::class);
+    // Without this, a non-numeric {area} (nothing left to swallow it before the
+    // resource, unlike "candidates"/"generate" above) reaches show()/update()/
+    // destroy()'s `int $area` and PHP throws a TypeError — a 500, not a 404.
+    Route::apiResource('areas', AreaController::class)->whereNumber('area');
 
     Route::get('leads/stats', [LeadController::class, 'stats']);
     // hive pushes every lead it captures itself (crew inbox, Angi, Houzz, its

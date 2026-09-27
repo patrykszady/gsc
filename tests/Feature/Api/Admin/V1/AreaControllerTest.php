@@ -114,4 +114,23 @@ class AreaControllerTest extends TestCase
         $this->assertTrue($area->showsSection('landmarks'), 'has content, no switch stored: defaults on');
         $this->assertFalse($area->showsSection('intro'), 'no content: defaults off regardless of switch');
     }
+
+    /**
+     * show()/update()/destroy() type-hint `int $area`; a non-numeric segment
+     * used to reach the controller anyway (nothing but candidates/generate
+     * was registered ahead of the resource's wildcard) and PHP threw a
+     * TypeError trying to coerce it — a 500, not a 404. The route now carries
+     * ->whereNumber('area'), so the router itself refuses the match.
+     */
+    public function test_a_non_numeric_area_segment_404s_instead_of_500ing(): void
+    {
+        $this->getJson('/api/admin/v1/areas/not-a-number', $this->adminApiHeaders())
+            ->assertNotFound();
+
+        $this->putJson('/api/admin/v1/areas/not-a-number', ['name' => 'x'], $this->adminApiHeaders())
+            ->assertNotFound();
+
+        $this->deleteJson('/api/admin/v1/areas/not-a-number', [], $this->adminApiHeaders())
+            ->assertNotFound();
+    }
 }
