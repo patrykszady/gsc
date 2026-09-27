@@ -2,17 +2,22 @@
 
 namespace App\Livewire\Admin;
 
+use App\Jobs\YelpAutoLogin;
 use App\Models\PlatformSetting;
 use App\Models\ProjectImage;
-use App\Services\GoogleBusinessProfileService;
 use App\Services\AiContentService;
+use App\Services\GoogleBusinessProfileService;
+use App\Services\GoogleSearchConsoleService;
 use App\Services\InstagramRemoteLoginService;
 use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
+use App\Support\YelpCookieJar;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -24,37 +29,63 @@ class PlatformsSettings extends Component
 {
     // ---- GBP state ----
     public bool $gbpConnected = false;
+
     public bool $gbpNeedsReauth = false;
+
     public ?string $gbpEmail = null;
+
     public ?string $gbpConnectedAt = null;
+
     public ?string $gbpHealthStatus = null;
+
     public ?string $gbpHealthError = null;
 
     // ---- Meta (Instagram/Facebook) state ----
     public bool $metaEnabled = false;
+
     public bool $metaConnected = false;
+
     public ?string $metaCredentialSource = null; // 'oauth' | 'env' | null
+
     public bool $metaInstagramConfigured = false;
+
     public bool $metaFacebookConfigured = false;
+
     public ?string $metaHealthStatus = null;
+
     public ?string $metaHealthError = null;
+
     public ?string $metaHealthWarning = null;
+
     public ?string $metaPageId = null;
+
     public ?string $metaPageName = null;
+
     public ?string $metaInstagramId = null;
+
     public ?string $metaInstagramUsername = null;
+
     public array $metaMissingImageWarnings = [];
 
     // ---- Instagram (Puppeteer profile) state ----
     public ?bool $igProfileExists = null;
+
     public ?bool $igSessionAuthenticated = null; // null = unknown, true/false = checked
+
     public ?string $igSessionCheckedAt = null;
+
     public ?string $igSessionUsername = null;
+
     public bool $igRemoteOpen = false;
+
     public ?string $igRemoteUrl = null;
+
     public ?string $igRemoteError = null;
+
     public ?int $igRemoteExpiresAt = null;
+
     public ?string $igRemoteLogTail = null;
+
     public bool $igRemoteFinished = false;
 
     // ---- Yelp state ----
@@ -65,20 +96,32 @@ class PlatformsSettings extends Component
     public string $yelpPassword = '';
 
     public bool $yelpHasPassword = false;
+
     public ?int $yelpPasswordLen = null;
+
     public ?string $yelpPasswordFingerprint = null;
+
     public ?bool $yelpAuthenticated = null; // null = unknown, true/false = checked
+
     public ?string $yelpStatusNote = null;
+
     public bool $yelpSessionDead = false;
+
     public ?string $yelpSessionDeadAt = null;
+
     public ?string $yelpSessionDeadNote = null;
 
     // ---- Yelp remote-login viewer state ----
     public bool $yelpRemoteOpen = false;
+
     public ?string $yelpRemoteUrl = null;
+
     public ?string $yelpRemoteError = null;
+
     public ?int $yelpRemoteExpiresAt = null;
+
     public ?string $yelpRemoteLogTail = null;
+
     // True once the login script has exited. The noVNC iframe is gone but
     // the log-tail panel stays visible so the operator can review the
     // final captured stderr (auth outcome, cookie summary, errors).
@@ -86,10 +129,15 @@ class PlatformsSettings extends Component
 
     // ---- Yelp cookie-injection state ----
     public string $yelpCookiePaste = '';
+
     public bool $yelpCookieReplace = false;
+
     public ?int $yelpCookieFileCount = null;
+
     public ?string $yelpCookieFileUpdatedAt = null;
+
     public ?string $yelpCookieDataDomeExpiresAt = null;
+
     public ?string $yelpCookieBseExpiresAt = null;
 
     // Browser-extension bridge. $yelpExtensionToken holds the PLAINTEXT token
@@ -97,10 +145,15 @@ class PlatformsSettings extends Component
     // refreshYelpExtensionStatus() so it does not sit in the Livewire payload
     // of every subsequent request.
     public ?string $yelpExtensionToken = null;
+
     public bool $yelpExtensionConfigured = false;
+
     public ?string $yelpExtensionLastPushAt = null;
+
     public ?string $yelpExtensionVerified = null;
+
     public ?string $yelpExtensionPairedAt = null;
+
     public int $yelpCookieExpiredCount = 0;
 
     // ---- Backend (credentials-only) login ----
@@ -111,9 +164,13 @@ class PlatformsSettings extends Component
     public string $yelpProxy = '';
 
     public bool $yelpCanAutoLogin = false;
+
     public bool $yelpHasCaptchaKey = false;
+
     public bool $yelpHasProxy = false;
+
     public ?string $yelpAutoLoginAt = null;
+
     public ?array $yelpAutoLoginResult = null;
 
     public function mount(): void
@@ -212,12 +269,14 @@ class PlatformsSettings extends Component
 
         if (! $this->metaEnabled) {
             $this->metaHealthStatus = 'disabled';
+
             return;
         }
 
         if ($creds['token'] === null) {
             $this->metaHealthStatus = 'not_configured';
             $this->metaHealthError = 'Click “Connect Facebook” to authorise the app.';
+
             return;
         }
 
@@ -225,6 +284,7 @@ class PlatformsSettings extends Component
         if (! $pageId) {
             $this->metaHealthStatus = 'partial';
             $this->metaHealthError = 'Connected, but no Facebook Page ID was discovered. Reconnect and pick a page.';
+
             return;
         }
 
@@ -239,6 +299,7 @@ class PlatformsSettings extends Component
             $body = $response->json();
             $this->metaHealthStatus = 'error';
             $this->metaHealthError = (string) ($body['error']['message'] ?? 'Meta Graph request failed.');
+
             return;
         }
 
@@ -250,6 +311,7 @@ class PlatformsSettings extends Component
         if (! is_array($ig)) {
             $this->metaHealthStatus = 'partial';
             $this->metaHealthError = 'Page token is valid, but no linked Instagram business account is visible to this app.';
+
             return;
         }
 
@@ -284,7 +346,7 @@ class PlatformsSettings extends Component
     {
         $remote = app(InstagramRemoteLoginService::class);
         $dir = $remote->userDataDir();
-        $cookieDb = $dir . '/Default/Cookies';
+        $cookieDb = $dir.'/Default/Cookies';
         $this->igProfileExists = is_dir($dir) && is_file($cookieDb) && (int) @filesize($cookieDb) > 1024;
 
         // Lightweight cached status — the actual headless probe is expensive
@@ -303,12 +365,14 @@ class PlatformsSettings extends Component
         if (! $this->igProfileExists) {
             $this->igSessionAuthenticated = false;
             session()->flash('platforms-error', 'No Instagram puppeteer profile found. Click “Open Login Window” to create one.');
+
             return;
         }
         $authed = $remote->checkSession();
         if ($authed === null) {
             $this->igSessionAuthenticated = null;
             session()->flash('platforms-error', 'Could not verify Instagram session (script error / timeout).');
+
             return;
         }
         // Try to capture the username from the check log too.
@@ -333,7 +397,7 @@ class PlatformsSettings extends Component
         ], now()->addHours(6));
 
         if ($authed) {
-            session()->flash('platforms-success', 'Instagram session is active' . ($username ? " ({$username})." : '.'));
+            session()->flash('platforms-success', 'Instagram session is active'.($username ? " ({$username})." : '.'));
         } else {
             session()->flash('platforms-error', 'Instagram session is NOT logged in. Click “Open Login Window” to refresh it.');
         }
@@ -355,6 +419,7 @@ class PlatformsSettings extends Component
                 $this->igRemoteFinished = false;
                 session()->flash('platforms-success', 'Instagram session is already valid — no re-login needed.');
                 $this->refreshInstagramPuppeteerStatus();
+
                 return;
             }
         }
@@ -364,6 +429,7 @@ class PlatformsSettings extends Component
             $this->igRemoteOpen = false;
             $this->igRemoteUrl = null;
             $this->igRemoteError = $result['error'] ?? 'Failed to start remote login session.';
+
             return;
         }
         $this->igRemoteOpen = true;
@@ -402,7 +468,9 @@ class PlatformsSettings extends Component
 
     public function pollInstagramRemoteLogin(): void
     {
-        if (! $this->igRemoteOpen) return;
+        if (! $this->igRemoteOpen) {
+            return;
+        }
         $remote = app(InstagramRemoteLoginService::class);
         $status = $remote->status();
         $this->igRemoteLogTail = $remote->tailChromeLog(6000);
@@ -423,7 +491,7 @@ class PlatformsSettings extends Component
                     'at' => $this->igSessionCheckedAt,
                 ], now()->addHours(6));
                 session()->flash('platforms-success', 'Instagram login completed — session is active'
-                    . ($this->igSessionUsername ? " ({$this->igSessionUsername})." : '.'));
+                    .($this->igSessionUsername ? " ({$this->igSessionUsername})." : '.'));
             } else {
                 // Script timed out / closed without success — verify headlessly.
                 $authed = $remote->checkSession();
@@ -449,14 +517,15 @@ class PlatformsSettings extends Component
         $this->igRemoteOpen = false;
         $this->igRemoteUrl = null;
         $this->igRemoteExpiresAt = null;
-        $this->igRemoteError = 'Remote viewer failed to connect (' . $reason . '). The VNC stack has been reset — click Open Login Window to try again.';
+        $this->igRemoteError = 'Remote viewer failed to connect ('.$reason.'). The VNC stack has been reset — click Open Login Window to try again.';
     }
 
     // ---- Meta actions ----
     public function connectMeta(): mixed
     {
         $meta = app(MetaSocialService::class);
-        return $this->redirect($meta->getOAuthUrl(route('admin.platforms.meta-callback')), navigate: false);
+
+        return $this->redirect($meta->getOAuthUrl(route('admin.platforms.meta-callback'), MetaSocialService::OAUTH_SCOPES), navigate: false);
     }
 
     public function disconnectMeta(): void
@@ -479,14 +548,14 @@ class PlatformsSettings extends Component
 
     public function connectSearchConsole(): mixed
     {
-        $gsc = app(\App\Services\GoogleSearchConsoleService::class);
+        $gsc = app(GoogleSearchConsoleService::class);
 
         return $this->redirect($gsc->getOAuthUrl(route('admin.platforms.gsc-callback')), navigate: false);
     }
 
     public function disconnectSearchConsole(): void
     {
-        app(\App\Services\GoogleSearchConsoleService::class)->disconnect();
+        app(GoogleSearchConsoleService::class)->disconnect();
         session()->flash('platforms-success', 'Search Console disconnected.');
         $this->refreshGscStatus();
     }
@@ -494,14 +563,14 @@ class PlatformsSettings extends Component
     /** Submit both sitemaps right now — instant proof the connection works. */
     public function submitSitemapsNow(): void
     {
-        \Illuminate\Support\Facades\Artisan::call('seo:gsc-submit-sitemaps');
-        $out = trim(\Illuminate\Support\Facades\Artisan::output());
+        Artisan::call('seo:gsc-submit-sitemaps');
+        $out = trim(Artisan::output());
         $this->gscSubmitResult = mb_substr($out, 0, 400);
     }
 
     public function refreshGscStatus(): void
     {
-        $gsc = app(\App\Services\GoogleSearchConsoleService::class);
+        $gsc = app(GoogleSearchConsoleService::class);
         $token = $gsc->getStoredToken();
         $this->gscConnected = (bool) $token?->refresh_token;
         $this->gscWriteScope = $gsc->hasWriteScope();
@@ -511,6 +580,7 @@ class PlatformsSettings extends Component
     public function connectGbp(): mixed
     {
         $gbp = app(GoogleBusinessProfileService::class);
+
         return $this->redirect($gbp->getOAuthUrl(route('admin.platforms.gbp-callback')), navigate: false);
     }
 
@@ -580,6 +650,7 @@ class PlatformsSettings extends Component
         $svc = app(YelpBusinessService::class);
         if (! $svc->isConfigured()) {
             session()->flash('platforms-error', 'Set Yelp email and password first.');
+
             return;
         }
         $remote = app(YelpRemoteLoginService::class);
@@ -588,6 +659,7 @@ class PlatformsSettings extends Component
             $this->yelpRemoteOpen = false;
             $this->yelpRemoteUrl = null;
             $this->yelpRemoteError = $result['error'] ?? 'Failed to start remote login session.';
+
             return;
         }
         $this->yelpRemoteOpen = true;
@@ -644,7 +716,9 @@ class PlatformsSettings extends Component
      */
     public function pollYelpRemoteLogin(): void
     {
-        if (! $this->yelpRemoteOpen) return;
+        if (! $this->yelpRemoteOpen) {
+            return;
+        }
         $remote = app(YelpRemoteLoginService::class);
         $status = $remote->status();
         // Live tail of the headed Chromium's stderr so the operator can see
@@ -688,7 +762,7 @@ class PlatformsSettings extends Component
 
             if ($this->yelpAuthenticated === true) {
                 session()->flash('platforms-success', $requeued > 0
-                    ? "Yelp login completed — session is active. {$requeued} pending " . str('photo')->plural($requeued) . ' re-queued for upload.'
+                    ? "Yelp login completed — session is active. {$requeued} pending ".str('photo')->plural($requeued).' re-queued for upload.'
                     : 'Yelp login completed — session is active.');
             } else {
                 session()->flash('platforms-error', 'Login window closed before a Yelp session could be verified. Click “Verify Login” to try again.');
@@ -712,7 +786,7 @@ class PlatformsSettings extends Component
         $this->yelpRemoteOpen = false;
         $this->yelpRemoteUrl = null;
         $this->yelpRemoteExpiresAt = null;
-        $this->yelpRemoteError = 'Remote viewer failed to connect (' . $reason . '). The VNC stack has been reset — click Verify Login to try again.';
+        $this->yelpRemoteError = 'Remote viewer failed to connect ('.$reason.'). The VNC stack has been reset — click Verify Login to try again.';
     }
 
     public function checkYelpSession(): void
@@ -765,6 +839,7 @@ class PlatformsSettings extends Component
 
         if (! $image) {
             session()->flash('platforms-error', 'No eligible project image with a local source file was found for the Meta test.');
+
             return;
         }
 
@@ -772,7 +847,8 @@ class PlatformsSettings extends Component
         $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl);
 
         if (! $content) {
-            session()->flash('platforms-error', 'Meta test failed during caption generation: ' . $aiService->getLastError());
+            session()->flash('platforms-error', 'Meta test failed during caption generation: '.$aiService->getLastError());
+
             return;
         }
 
@@ -781,7 +857,7 @@ class PlatformsSettings extends Component
             $fullCaption .= "\n\n🔗 {$shortLinkUrl}";
         }
         if (! empty($content['hashtags'])) {
-            $fullCaption .= "\n\n" . trim((string) $content['hashtags']);
+            $fullCaption .= "\n\n".trim((string) $content['hashtags']);
         }
 
         $container = $service->createInstagramContainer(
@@ -791,7 +867,8 @@ class PlatformsSettings extends Component
 
         if (! $container) {
             $error = $service->getLastError();
-            session()->flash('platforms-error', 'Meta test failed: ' . ($error['message'] ?? 'Unknown error'));
+            session()->flash('platforms-error', 'Meta test failed: '.($error['message'] ?? 'Unknown error'));
+
             return;
         }
 
@@ -812,9 +889,9 @@ class PlatformsSettings extends Component
      */
     public function generateYelpExtensionToken(): void
     {
-        $token = \Illuminate\Support\Str::random(48);
+        $token = Str::random(48);
 
-        \App\Models\PlatformSetting::put(YelpBusinessService::SETTING_INGEST_TOKEN, $token);
+        PlatformSetting::put(YelpBusinessService::SETTING_INGEST_TOKEN, $token);
 
         // Local var → public property assignment happens here and ONLY here.
         $this->yelpExtensionToken = $token;
@@ -834,11 +911,12 @@ class PlatformsSettings extends Component
      */
     public function revealYelpExtensionToken(): void
     {
-        $token = \App\Models\PlatformSetting::get(YelpBusinessService::SETTING_INGEST_TOKEN);
+        $token = PlatformSetting::get(YelpBusinessService::SETTING_INGEST_TOKEN);
 
         if (! $token) {
             // No token exists yet; minting one is what the user meant.
             $this->generateYelpExtensionToken();
+
             return;
         }
 
@@ -849,7 +927,7 @@ class PlatformsSettings extends Component
 
     public function revokeYelpExtensionToken(): void
     {
-        \App\Models\PlatformSetting::put(YelpBusinessService::SETTING_INGEST_TOKEN, null);
+        PlatformSetting::put(YelpBusinessService::SETTING_INGEST_TOKEN, null);
         $this->yelpExtensionToken = null;
         $this->yelpExtensionConfigured = false;
 
@@ -871,11 +949,11 @@ class PlatformsSettings extends Component
         $this->validateOnly('yelpProxy');
 
         if ($this->yelpCaptchaKey !== '') {
-            \App\Models\PlatformSetting::put('yelp_twocaptcha_key', $this->yelpCaptchaKey);
+            PlatformSetting::put('yelp_twocaptcha_key', $this->yelpCaptchaKey);
             $this->yelpCaptchaKey = '';
         }
         if ($this->yelpProxy !== '') {
-            \App\Models\PlatformSetting::put('yelp_proxy', $this->yelpProxy);
+            PlatformSetting::put('yelp_proxy', $this->yelpProxy);
             $this->yelpProxy = '';
         }
 
@@ -898,7 +976,7 @@ class PlatformsSettings extends Component
             return;
         }
 
-        \App\Jobs\YelpAutoLogin::dispatch()->onQueue('media-sync');
+        YelpAutoLogin::dispatch()->onQueue('media-sync');
 
         Log::channel('yelp')->info('Yelp: login requested from admin', ['user_id' => auth()->id()]);
 
@@ -925,7 +1003,7 @@ class PlatformsSettings extends Component
         $this->yelpExtensionToken = null;
 
         $this->yelpExtensionConfigured = (bool) (
-            \App\Models\PlatformSetting::get(YelpBusinessService::SETTING_INGEST_TOKEN)
+            PlatformSetting::get(YelpBusinessService::SETTING_INGEST_TOKEN)
                 ?: config('services.yelp.business.cookie_ingest_token')
         );
         $this->yelpExtensionLastPushAt = Cache::get('yelp.cookies_ingested_at');
@@ -937,12 +1015,13 @@ class PlatformsSettings extends Component
     {
         $this->refreshYelpExtensionStatus();
 
-        $path = \App\Support\YelpCookieJar::path();
+        $path = YelpCookieJar::path();
         if (! is_file($path)) {
             $this->yelpCookieFileCount = null;
             $this->yelpCookieFileUpdatedAt = null;
             $this->yelpCookieDataDomeExpiresAt = null;
             $this->yelpCookieBseExpiresAt = null;
+
             return;
         }
         $raw = (string) @file_get_contents($path);
@@ -950,6 +1029,7 @@ class PlatformsSettings extends Component
         if (! is_array($data)) {
             $this->yelpCookieFileCount = 0;
             $this->yelpCookieFileUpdatedAt = date('c', (int) filemtime($path));
+
             return;
         }
         $this->yelpCookieFileCount = count($data);
@@ -960,15 +1040,23 @@ class PlatformsSettings extends Component
         // because biz_session expired 2026-07-25 in a file captured 2026-06-01,
         // and every run afterwards faithfully injected a dead cookie. Surface
         // the count so it is visible before the next upload fails.
-        $this->yelpCookieExpiredCount = count(\App\Support\YelpCookieJar::expiredNames($data));
+        $this->yelpCookieExpiredCount = count(YelpCookieJar::expiredNames($data));
         foreach ($data as $c) {
             $name = strtolower((string) ($c['name'] ?? ''));
-            if (! isset($c['expires']) && ! isset($c['expirationDate'])) continue;
+            if (! isset($c['expires']) && ! isset($c['expirationDate'])) {
+                continue;
+            }
             $exp = (int) ($c['expires'] ?? $c['expirationDate'] ?? 0);
-            if ($exp <= 0) continue;
+            if ($exp <= 0) {
+                continue;
+            }
             $iso = date('c', $exp);
-            if ($name === 'datadome') $this->yelpCookieDataDomeExpiresAt = $iso;
-            if ($name === 'bse') $this->yelpCookieBseExpiresAt = $iso;
+            if ($name === 'datadome') {
+                $this->yelpCookieDataDomeExpiresAt = $iso;
+            }
+            if ($name === 'bse') {
+                $this->yelpCookieBseExpiresAt = $iso;
+            }
         }
     }
 
@@ -983,11 +1071,13 @@ class PlatformsSettings extends Component
         $raw = trim($this->yelpCookiePaste);
         if ($raw === '') {
             session()->flash('platforms-error', 'Paste a Cookie-Editor JSON export first.');
+
             return;
         }
         $data = json_decode($raw, true);
         if (! is_array($data)) {
             session()->flash('platforms-error', 'That does not look like valid JSON.');
+
             return;
         }
         if (isset($data['cookies']) && is_array($data['cookies'])) {
@@ -995,18 +1085,21 @@ class PlatformsSettings extends Component
         }
         if (count($data) === 0 || ! isset($data[0]['name'])) {
             session()->flash('platforms-error', 'Expected an array of cookie objects ({name, value, domain, ...}).');
+
             return;
         }
         $yelpCookies = array_values(array_filter($data, function ($c) {
             $d = strtolower((string) ($c['domain'] ?? ''));
+
             return str_contains($d, 'yelp.com');
         }));
         if (count($yelpCookies) === 0) {
             session()->flash('platforms-error', 'No yelp.com cookies found in the pasted JSON.');
+
             return;
         }
 
-        $dest = \App\Support\YelpCookieJar::path();
+        $dest = YelpCookieJar::path();
         @mkdir(dirname($dest), 0755, true);
 
         $merged = $yelpCookies;
@@ -1014,7 +1107,9 @@ class PlatformsSettings extends Component
             $existing = json_decode((string) file_get_contents($dest), true) ?: [];
             $byKey = [];
             foreach (array_merge($existing, $yelpCookies) as $c) {
-                if (! isset($c['name'], $c['domain'])) continue;
+                if (! isset($c['name'], $c['domain'])) {
+                    continue;
+                }
                 $k = strtolower(($c['domain'] ?? '').'|'.($c['path'] ?? '/').'|'.$c['name']);
                 $byKey[$k] = $c;
             }
@@ -1050,7 +1145,7 @@ class PlatformsSettings extends Component
 
     public function clearYelpCookieFile(): void
     {
-        $path = \App\Support\YelpCookieJar::path();
+        $path = YelpCookieJar::path();
         if (is_file($path)) {
             @unlink($path);
             Log::channel('yelp')->info('Yelp cookies file deleted', [
