@@ -6,6 +6,9 @@ use App\Http\Middleware\ResolveAdminSite;
 use App\Http\Middleware\ResolveSite;
 use App\Models\AreaServed;
 use App\Models\BlogPost;
+use App\Models\GscCoverageState;
+use App\Models\GscCoverageStateHistory;
+use App\Models\GscRichResultIssue;
 use App\Models\LandingPage;
 use App\Models\PlatformSetting;
 use App\Models\Project;
@@ -25,9 +28,7 @@ use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\Seo\BingWriter;
-use App\Support\Seo\Inspection\EloquentCoverageStore;
 use App\Support\Seo\Inspection\FileSitemapSource;
-use App\Support\Seo\Inspection\SearchConsoleUrlInspector;
 use App\Support\Seo\Inspection\TrackedPathsFromModel;
 use App\Support\SEO\RecrawlNudger;
 use App\Support\Seo\Reports\ConfigSiteIdentity;
@@ -79,6 +80,8 @@ use SsSystems\Platform\Seo\Inspection\Contracts\CoverageStore as CoverageStoreCo
 use SsSystems\Platform\Seo\Inspection\Contracts\SitemapSource as SitemapSourceContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\TrackedPaths as TrackedPathsContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\UrlInspector as UrlInspectorContract;
+use SsSystems\Platform\Seo\Inspection\EloquentCoverageStore;
+use SsSystems\Platform\Seo\Inspection\SearchConsoleUrlInspector;
 use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuota;
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
@@ -144,7 +147,16 @@ class AppServiceProvider extends ServiceProvider
         // filesystem/config() directly.
         $this->app->bind(UrlInspectorContract::class, SearchConsoleUrlInspector::class);
         $this->app->bind(SitemapSourceContract::class, FileSitemapSource::class);
-        $this->app->bind(CoverageStoreContract::class, EloquentCoverageStore::class);
+        // This site is the one adopter with a real gsc_coverage_state_history
+        // table, so it is the only one to pass a $historyModel — every write
+        // through it stays wrapped in a try/catch inside the kit class itself
+        // (bookkeeping must never fail the sweep), same as this file's own
+        // former local adapter.
+        $this->app->bind(CoverageStoreContract::class, fn () => new EloquentCoverageStore(
+            GscCoverageState::class,
+            GscRichResultIssue::class,
+            GscCoverageStateHistory::class,
+        ));
         $this->app->bind(TrackedPathsContract::class, TrackedPathsFromModel::class);
 
         // A factory, not a singleton: the key prefix is baked in at
