@@ -45,6 +45,7 @@ use App\Support\Seo\Reports\HttpSiteCatalog;
 use App\Support\Seo\Reports\LaravelSimpleCache;
 use App\Support\Seo\SearchConsoleWriter as SiteSearchConsoleWriter;
 use App\Support\SEO\SEOBuilder;
+use App\Support\Seo\TenantScopedReportStorage;
 use App\Support\Social\EloquentRankedTowns;
 use App\Support\Social\SeoIntelTrendsIntel;
 use App\Support\Tenancy;
@@ -77,6 +78,7 @@ use SsSystems\Platform\Reports\Contracts\HealthDataReader;
 use SsSystems\Platform\Reports\Contracts\PageFetcher;
 use SsSystems\Platform\Reports\Contracts\PsiSnapshotReader;
 use SsSystems\Platform\Reports\Contracts\QueryMetricsReader;
+use SsSystems\Platform\Reports\Contracts\ReportStorage;
 use SsSystems\Platform\Reports\Contracts\SiteCatalog;
 use SsSystems\Platform\Reports\Contracts\SiteIdentity;
 use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
@@ -170,6 +172,12 @@ class AppServiceProvider extends ServiceProvider
         // and purpose — see RankedTowns' own docblock).
         $this->app->bind(RankedTowns::class, EloquentRankedTowns::class);
         $this->app->bind(TrendsIntel::class, SeoIntelTrendsIntel::class);
+
+        // SsSystems\Platform\Reports\Console\ReportRun (kit 0.12.0) — the
+        // only site of the four with tenants to keep apart, so the only one
+        // that MUST bind this itself rather than fall back to the kit's
+        // IdentityReportStorage default (see that class's own docblock).
+        $this->app->bind(ReportStorage::class, TenantScopedReportStorage::class);
 
         // The kit's URL-Inspection sweep (SsSystems\Platform\Seo\Inspection\
         // UrlInspectionSweep — see seo:gsc-inspect-bulk, now a thin wrapper

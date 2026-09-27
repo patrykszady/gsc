@@ -21,9 +21,9 @@ abstract class KitReportCommand extends Command
 {
     /**
      * Write a markdown result to the SAME tenant-scoped path the admin's
-     * SeoReportController and SeoReportRun read back
-     * (App\Support\SeoStorage::path("reports/{key}.md")), and print the
-     * "Saved: ..." line the old command printed.
+     * SeoReportController and the kit's SsSystems\Platform\Reports\Console\
+     * ReportRun read back (App\Support\SeoStorage::path("reports/{key}.md")),
+     * and print the "Saved: ..." line the old command printed.
      */
     protected function saveMarkdown(string $key, string $markdown, string $savedLine): void
     {
