@@ -32,7 +32,7 @@ class CitationsController extends Controller
 
     protected const VIEWER_SIGNATURE_TTL_MINUTES = 30;
 
-    public function index(CitationSession $sessions, VerificationInbox $inbox): JsonResponse
+    public function index(CitationSession $sessions, VerificationInbox $inbox, CitationBatchRunner $runner): JsonResponse
     {
         $this->ensureSynced();
         KnownListings::reconcile();
@@ -50,7 +50,7 @@ class CitationsController extends Controller
             'counts' => $rows->countBy('status')->all(),
             'session' => $this->sessionPayload($status),
             'inbox_configured' => $inbox->isConfigured(),
-            'batch' => CitationBatchRunner::progressState(),
+            'batch' => $runner->progressState(),
             'requirements' => $sessions->checkRequirements(),
         ]);
     }
@@ -60,7 +60,7 @@ class CitationsController extends Controller
     {
         $this->ensureSynced();
         $data = $request->validate(['tiers' => ['nullable', 'array'], 'tiers.*' => ['integer', 'between:0,3'], 'only' => ['nullable', 'array'], 'only.*' => ['string', 'max:60']]);
-        if (CitationBatchRunner::isActive()) {
+        if ($runner->isActive()) {
             return $this->itemResponse(['ok' => false, 'error' => 'An automatic run is already going. Let it finish; the board shows its progress.']);
         }
         if ($sessions->status()['running'] ?? false) {

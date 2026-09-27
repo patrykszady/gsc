@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Support\Citations\KnownListings;
 use Illuminate\Console\Command;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
+use SsSystems\Platform\Citations\Sync;
 
 /**
  * Bring the citations table in line with config/citations.php: one row per
@@ -14,6 +15,14 @@ use SsSystems\Platform\Citations\Contracts\CitationSession;
  *
  *   php artisan citations:sync
  *   php artisan citations:sync --list
+ *
+ * The register/cleanup body moved to the kit's Citations\Sync
+ * (citations-batch-sync, 2026-09-27 — ported verbatim, see that class's
+ * own docblock); this command is now a thin wrapper supplying gsc's own
+ * scoping (`$baseQuery`/`$create`, both closed over `Site::current()`),
+ * default tier and known-profiles source, then printing the same table
+ * it always did. `KnownListings::reconcile()` is unchanged — a separate,
+ * later kit unit, not part of this one.
  */
 class CitationsSync extends Command
 {
@@ -21,66 +30,22 @@ class CitationsSync extends Command
 
     protected $description = 'Register the configured directories in the citations table and list their status';
 
-    public function handle(): int
+    public function handle(CitationSession $sessions): int
     {
         $siteId = Site::current()?->id;
-        $created = 0;
-        // Profiles we already have (config/brand.php 'profiles') seed the listing URL
-        // of the matching directory, so the link check can verify them right away.
-        $norm = fn ($v) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $v));
-        $known = [];
-        foreach ((array) config('brand.profiles', []) as $label => $url) {
-            $known[$norm($label)] = (string) $url;
-        }
-        foreach ((array) config('citations.directories', []) as $slug => $def) {
-            $row = Citation::query()->where('site_id', $siteId)->where('slug', $slug)->first();
-            $attrs = [
-                'name' => $def['name'] ?? $slug, 'tier' => (int) ($def['tier'] ?? 2), 'mechanism' => (string) ($def['mechanism'] ?? 'form'),
-                'homepage' => $def['homepage'] ?? null, 'start_url' => $def['start_url'] ?? ($def['homepage'] ?? null),
-            ];
-            $existingUrl = $known[$norm($slug)] ?? $known[$norm($def['name'] ?? '')] ?? null;
-            if ($existingUrl && empty($row?->listing_url)) {
-                $attrs['listing_url'] = $existingUrl;
-            }
-            if ($row) {
-                $row->fill($attrs)->save();
-            } else {
-                Citation::create($attrs + ['site_id' => $siteId, 'slug' => $slug, 'status' => Citation::STATUS_PLANNED, 'note' => $def['note'] ?? null]);
-                $created++;
-            }
-        }
-        // A row still "running" with no live session for it is a session that
-        // ended without anyone polling (browser closed, viewer expired): fold in
-        // whatever the runner left behind, and otherwise put it back on the board.
-        $sessions = app(CitationSession::class);
-        $live = $sessions->status();
-        foreach (Citation::query()->where('site_id', $siteId)->where('status', Citation::STATUS_RUNNING)->get() as $stale) {
-            if (($live['running'] ?? false) && ($live['slug'] ?? null) === $stale->slug) {
-                continue;
-            }
-            $sessions->syncCitation($stale);
-            if ($stale->fresh()->status === Citation::STATUS_RUNNING) {
-                $stale->status = Citation::STATUS_PLANNED;
-                $stale->addLog('Session ended without a result; back on the board', 'sync');
-                $stale->save();
-            }
-        }
-        // Rows that failed only because the browser slot was busy go back on the
-        // board; sites that answered a bot-wall status are a person's job, not dead.
-        foreach (Citation::query()->where('site_id', $siteId)->whereIn('status', [Citation::STATUS_FAILED, Citation::STATUS_UNREACHABLE])->get() as $row) {
-            $note = (string) $row->note;
-            if ($row->status === Citation::STATUS_FAILED && str_starts_with($note, 'Another citation session is running')) {
-                $row->status = Citation::STATUS_PLANNED;
-                $row->note = null;
-                $row->addLog('Back on the board: the browser slot was busy at the time', 'sync');
-                $row->save();
-            } elseif ($row->status === Citation::STATUS_UNREACHABLE && preg_match('/HTTP (401|403|429|503)\b/', $note)) {
-                $row->status = Citation::STATUS_NEEDS_HUMAN;
-                $row->human_reason = 'The site blocked the automated browser ('.(preg_match('/HTTP \d+/', $note, $m) ? $m[0] : 'bot wall').'). Open the session and do this one by hand.';
-                $row->note = null;
-                $row->save();
-            }
-        }
+
+        $sync = new Sync(
+            $sessions,
+            fn () => Citation::query()->where('site_id', $siteId),
+            fn (array $attrs) => Citation::create($attrs + ['site_id' => $siteId]),
+            defaultTier: 2,
+            // Profiles we already have (config/brand.php 'profiles') seed the listing
+            // URL of the matching directory, so the link check can verify them right away.
+            knownProfiles: (array) config('brand.profiles', []),
+        );
+
+        ['created' => $created] = $sync->register();
+        $sync->cleanupStale();
         // Listings Platforms already knows (Houzz/Angi profiles, Yelp, the
         // Facebook page) read as live here rather than as work to do.
         $matched = KnownListings::reconcile();

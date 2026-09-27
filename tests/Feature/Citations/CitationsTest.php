@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Citations\Contracts\CitationRecord;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
 use SsSystems\Platform\Citations\LinkCheck;
 use SsSystems\Platform\Citations\RemoteBrowserSession;
@@ -107,7 +108,7 @@ class CitationsTest extends TestCase
                 return ['ok' => true, 'missing' => []];
             }
 
-            public function start(Citation $citation, bool $headless = false, bool $auto = false): array
+            public function start(CitationRecord $citation, bool $headless = false, bool $auto = false): array
             {
                 $this->started[] = $citation->slug;
 
@@ -295,7 +296,7 @@ class CitationsTest extends TestCase
                 return ['ok' => true, 'missing' => []];
             }
 
-            public function start(Citation $citation, bool $headless = false, bool $auto = false): array
+            public function start(CitationRecord $citation, bool $headless = false, bool $auto = false): array
             {
                 $this->started[] = [$citation->slug, $headless, $auto];
                 $this->current = $citation->slug;
