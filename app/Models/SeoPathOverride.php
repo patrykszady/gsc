@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
+use App\Support\Tenancy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
@@ -10,6 +11,11 @@ use Illuminate\Support\Facades\Cache;
  * A top-precedence <title>/meta-description override for a single URL path.
  * Read on every request via SEOBuilder::build(), so the full set is cached and
  * busted on write.
+ *
+ * Cache key is per-tenant (Tenancy::cacheKey) — the bare key would let
+ * whichever tenant populates it first serve its own path overrides to every
+ * other tenant for up to 6 hours, the exact class of bug Tenancy::cacheKey()
+ * exists to prevent (see its own docblock).
  */
 class SeoPathOverride extends Model
 {
@@ -21,7 +27,7 @@ class SeoPathOverride extends Model
 
     protected static function booted(): void
     {
-        $bust = fn () => Cache::forget(self::CACHE_KEY);
+        $bust = fn () => Cache::forget(Tenancy::cacheKey(self::CACHE_KEY));
         static::saved($bust);
         static::deleted($bust);
     }
@@ -42,7 +48,7 @@ class SeoPathOverride extends Model
      */
     public static function map(): array
     {
-        return Cache::remember(self::CACHE_KEY, now()->addHours(6), function (): array {
+        return Cache::remember(Tenancy::cacheKey(self::CACHE_KEY), now()->addHours(6), function (): array {
             return static::query()
                 ->get(['path', 'title', 'description'])
                 ->keyBy('path')

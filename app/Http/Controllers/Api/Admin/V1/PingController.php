@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Controller;
-use SsSystems\Platform\Kit;
 use Illuminate\Http\JsonResponse;
+use SsSystems\Platform\Kit;
 
 /**
  * Capability probe. ss-systems' HttpSiteApiClient::capabilities() reads
@@ -53,6 +53,10 @@ class PingController extends Controller
                     // see Service::SECTIONS. Same backbone as area-content,
                     // ported from jpeterson-design (2026-09-11).
                     'service-content',
+                    // gsc's own built-in public pages (home, about, contact,
+                    // services + each service page, areas-served index) —
+                    // ss-systems' Pages screen. See PageController.
+                    'pages',
                 ],
                 // This site's identity inside the central admin: GS blue is
                 // Tailwind's stock sky ramp (accent null = leave it alone,
