@@ -3,7 +3,6 @@
 use App\Http\Middleware\AuthenticateAdminApi;
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
-use App\Http\Middleware\DetectCountry;
 use App\Http\Middleware\DevSiteBar;
 use App\Http\Middleware\NoIndexHeader;
 use App\Http\Middleware\NoIndexNonProduction;
@@ -25,6 +24,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
+use SsSystems\Platform\Http\Middleware\DetectCountry;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))

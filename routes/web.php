@@ -8,7 +8,6 @@ use App\Http\Controllers\TrackEventController;
 use App\Http\Controllers\YelpCookieIngestController;
 use App\Http\Middleware\CacheStaticAssets;
 use App\Http\Middleware\CaptureUtmParameters;
-use App\Http\Middleware\DetectCountry;
 use App\Http\Middleware\NoIndexNonProduction;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\ResolveAdminSite;
@@ -81,6 +80,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use SsSystems\Platform\Auth\OAuthState;
+use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Pulse\BeaconController;
 
 // The crawl files, per tenant. They were static files under public/, which
