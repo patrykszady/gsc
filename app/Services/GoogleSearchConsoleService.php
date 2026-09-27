@@ -196,7 +196,13 @@ class GoogleSearchConsoleService implements SearchConsoleSyncClient
         }
         $resp = Http::withToken($token)->timeout(20)->get(self::API_BASE.'/sites');
 
-        return $resp->successful() ? $resp->json('siteEntry', []) : null;
+        if (! $resp->successful()) {
+            $this->lastError = $this->describeFailure($resp->status(), (string) $resp->body());
+
+            return null;
+        }
+
+        return $resp->json('siteEntry', []);
     }
 
     /**
@@ -235,12 +241,7 @@ class GoogleSearchConsoleService implements SearchConsoleSyncClient
             return true;
         }
 
-        $this->lastError = [
-            'status' => $resp->status(),
-            'message' => $resp->status() === 403
-                ? 'Insufficient scope: token was granted webmasters.readonly. Re-run `php artisan search-console:auth` once to grant the webmasters scope.'
-                : mb_substr($resp->body(), 0, 300),
-        ];
+        $this->lastError = $this->describeFailure($resp->status(), (string) $resp->body(), $siteUrl);
 
         return false;
     }
@@ -397,5 +398,52 @@ class GoogleSearchConsoleService implements SearchConsoleSyncClient
         }
 
         return $token;
+    }
+
+    /**
+     * Turn a Google error into something an operator can act on.
+     *
+     * The case worth the code: when the Search Console API is switched off in
+     * the Google Cloud project behind the OAuth client, Google answers 403 —
+     * the same status as "you do not own this property". Reading it as a
+     * permissions problem sends someone to Search Console to check ownership,
+     * when the fix is one click in Google Cloud. The two are only
+     * distinguishable from the body. Ported from jpeterson-design's identical
+     * method (2026-09-27) — gsc's submitSitemap()/listSites() used to inline a
+     * cruder status-code-only message and never made this distinction.
+     *
+     * @return array<string, mixed>
+     */
+    protected function describeFailure(int $status, string $body, ?string $siteUrl = null): array
+    {
+        if ($status === 403 && str_contains($body, 'has not been used in project')) {
+            preg_match('/project (\d+)/', $body, $m);
+            $project = $m[1] ?? null;
+
+            return [
+                'status' => $status,
+                'reason' => 'api_disabled',
+                'message' => 'The Search Console API is switched off in Google Cloud project '
+                    .($project ?? 'behind this OAuth client')
+                    .'. Enable it'
+                    .($project ? ' at https://console.developers.google.com/apis/api/searchconsole.googleapis.com/overview?project='.$project : '')
+                    .', then retry.',
+            ];
+        }
+
+        return [
+            'status' => $status,
+            'reason' => match ($status) {
+                401, 403 => 'not_authorized',
+                404 => 'no_such_property',
+                default => 'error',
+            },
+            'message' => match ($status) {
+                401, 403 => 'Not authorized'.($siteUrl ? ' for '.$siteUrl : '')
+                    .' — the connected Google account must own that property, and the grant must carry the write scope (not webmasters.readonly).',
+                404 => ($siteUrl ?? 'That property').' is not a property on the connected Google account. Add and verify it in Search Console first.',
+                default => mb_substr($body, 0, 300),
+            },
+        ];
     }
 }

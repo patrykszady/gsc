@@ -2,7 +2,11 @@
 
 namespace App\Support;
 
+use App\Models\OAuthToken;
 use App\Models\PlatformSetting;
+use App\Services\GoogleBusinessProfileService;
+use App\Services\GoogleSearchConsoleService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -57,11 +61,49 @@ class GoogleOAuthApp
     /** Store the client and make it live for the rest of this request. */
     public static function save(string $clientId, string $clientSecret, ?string $projectId = null): void
     {
+        $previous = PlatformSetting::get(self::SETTING_CLIENT_ID);
+
         PlatformSetting::put(self::SETTING_CLIENT_ID, trim($clientId));
         PlatformSetting::put(self::SETTING_CLIENT_SECRET, trim($clientSecret));
         PlatformSetting::put(self::SETTING_PROJECT_ID, $projectId ? trim($projectId) : null);
 
         static::apply();
+
+        if ($previous && trim($clientId) !== $previous) {
+            static::forgetGrantsFromThePreviousClient();
+        }
+    }
+
+    /**
+     * Drop the Google grants when the client underneath them changes.
+     *
+     * A refresh token belongs to the OAuth client that issued it: point this
+     * site at a different client and every stored grant is already dead, and
+     * refreshing one returns invalid_client. Nothing used to clear them, so
+     * the platforms screen kept reporting Business Profile and Search Console
+     * as connected — that flag only asks whether a token row exists — while
+     * every call failed. Deleting them is not a loss of anything usable; it
+     * makes the screen tell the truth and ask for the reconnect that is
+     * required anyway. Ported from jpeterson-design's identical fix
+     * (2026-09-27) — gsc never got it, so a client rotation there left dead
+     * tokens the Platforms screen still reported as "Connected".
+     *
+     * gsc is multi-tenant: OAuthToken uses BelongsToSite, which adds a global
+     * scope filtering every query (and the delete() below) to Site::current()
+     * — so this only ever removes the CURRENT site's own grants, never
+     * another tenant's, without needing an explicit site_id clause here.
+     */
+    protected static function forgetGrantsFromThePreviousClient(): void
+    {
+        OAuthToken::query()
+            ->whereIn('provider', [
+                GoogleSearchConsoleService::PROVIDER,
+                GoogleBusinessProfileService::PROVIDER,
+            ])
+            ->delete();
+
+        Cache::forget('gsc_access_token');
+        Cache::forget('google_business_profile_access_token');
     }
 
     /** Forget the stored client; config falls back to whatever env provides. */
