@@ -93,6 +93,30 @@ class GscErrorControllerTest extends TestCase
         $this->assertSame(0, GscCoverageState::query()->count());
     }
 
+    /**
+     * The kit's ServesGscErrors trait makes gsc's own long-standing
+     * `source='sitemap'` scoping mandatory for every adopter — this pins it
+     * still holds here specifically: a console-import or Googlebot-tracked
+     * row was never in the sitemap to begin with, so its absence from the
+     * current sitemap must never be read as "retired".
+     */
+    public function test_prune_retired_never_deletes_console_or_tracked_sourced_rows(): void
+    {
+        $path = CrawlFiles::sitemapPath();
+        @mkdir(dirname($path), 0775, true);
+        file_put_contents($path, '<?xml version="1.0"?><urlset><url><loc>https://gs.construction/</loc></url></urlset>');
+
+        GscCoverageState::create(['url' => 'https://gs.construction/from-console-export', 'source' => 'console', 'verdict' => 'FAIL', 'inspected_at' => now()]);
+        GscCoverageState::create(['url' => 'https://gs.construction/googlebot-404', 'source' => 'tracked', 'verdict' => 'FAIL', 'inspected_at' => now()]);
+
+        $data = $this->postJson('/api/admin/v1/seo/gsc-errors/prune-retired', [], $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame(0, $data['deleted']);
+        $this->assertSame(2, GscCoverageState::query()->count());
+    }
+
     public function test_refresh_queues_the_bulk_inspection_job_without_running_it(): void
     {
         Queue::fake();
