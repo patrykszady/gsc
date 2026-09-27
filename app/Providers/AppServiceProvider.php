@@ -8,6 +8,7 @@ use App\Jobs\RunCitationsBatch;
 use App\Models\AreaServed;
 use App\Models\BlogPost;
 use App\Models\Citation;
+use App\Models\ClientError;
 use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscRichResultIssue;
@@ -19,6 +20,7 @@ use App\Models\ProjectImage;
 use App\Models\Service;
 use App\Models\Site;
 use App\Models\Testimonial;
+use App\Models\TrackedEvent;
 use App\Observers\AreaServedObserver;
 use App\Observers\BlogPostObserver;
 use App\Observers\ProjectImageObserver;
@@ -114,6 +116,10 @@ use SsSystems\Platform\Social\Contracts\PublishedPostStats as SocialPublishedPos
 use SsSystems\Platform\Social\Contracts\RankedTowns;
 use SsSystems\Platform\Social\Contracts\SettingsStore as SocialSettingsStore;
 use SsSystems\Platform\Social\Contracts\TrendsIntel;
+use SsSystems\Platform\Telemetry\Adapters\EloquentClientErrorWriter;
+use SsSystems\Platform\Telemetry\Adapters\EloquentTrackedEventWriter;
+use SsSystems\Platform\Telemetry\Contracts\ClientErrorWriter;
+use SsSystems\Platform\Telemetry\Contracts\TrackedEventWriter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -266,6 +272,14 @@ class AppServiceProvider extends ServiceProvider
             GscCoverageStateHistory::class,
         ));
         $this->app->bind(TrackedPathsContract::class, TrackedPathsFromModel::class);
+
+        // Kit 0.14.0 Telemetry: TrackEventController/ClientErrorController
+        // now delegate to the kit's TrackEventIngest/ClientErrorIngest,
+        // which only ever call these two contracts — this app's own
+        // TrackedEvent/ClientError models (and their `use BelongsToSite;`
+        // tenant scope) stay exactly as they were, just wrapped.
+        $this->app->bind(TrackedEventWriter::class, fn () => new EloquentTrackedEventWriter(TrackedEvent::class));
+        $this->app->bind(ClientErrorWriter::class, fn () => new EloquentClientErrorWriter(ClientError::class));
 
         // A factory, not a singleton: the key prefix is baked in at
         // resolution time from the CURRENT tenant (Tenancy::cacheKey()), and
