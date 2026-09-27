@@ -697,7 +697,7 @@ Route::get('/admin-oauth/{provider}/callback', function (Request $request, strin
     $result = match ($provider) {
         'gbp' => app(GoogleBusinessProfileService::class)->exchangeCodeAndStore($code, $redirectUri),
         'gsc' => app(GoogleSearchConsoleService::class)->exchangeCodeAndStore($code, $redirectUri),
-        'meta' => app(MetaSocialService::class)->exchangeCodeAndStore($code, $redirectUri),
+        'meta' => app(MetaSocialService::class)->exchangeCodeAndStore($code, $redirectUri, MetaSocialService::OAUTH_SCOPES),
     };
 
     if ($result['success'] ?? false) {
@@ -774,7 +774,7 @@ Route::middleware(['auth', 'noindex', ResolveAdminSite::class])
             }
 
             $result = app(MetaSocialService::class)
-                ->exchangeCodeAndStore($code, route('admin.platforms.meta-callback'));
+                ->exchangeCodeAndStore($code, route('admin.platforms.meta-callback'), MetaSocialService::OAUTH_SCOPES);
 
             if ($result['success']) {
                 return redirect('/admin/gsc/platforms?connected=meta');

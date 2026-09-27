@@ -10,6 +10,7 @@ use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\GscRichResultIssue;
 use App\Models\LandingPage;
+use App\Models\OAuthToken;
 use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\ProjectImage;
@@ -100,6 +101,8 @@ use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuot
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
+use SsSystems\Platform\Social\Adapters\OAuthTokenCredentialStore;
+use SsSystems\Platform\Social\Contracts\MetaCredentialStore;
 use SsSystems\Platform\Social\Contracts\PlatformAvailability as SocialPlatformAvailabilityContract;
 use SsSystems\Platform\Social\Contracts\PublishedPostStats as SocialPublishedPostStats;
 use SsSystems\Platform\Social\Contracts\RankedTowns;
@@ -159,6 +162,24 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SocialSettingsStore::class, SocialAutomationSettingsStore::class);
         $this->app->bind(SocialPlatformAvailabilityContract::class, SocialPlatformAvailability::class);
         $this->app->bind(SocialPublishedPostStats::class, ImageSocialPostStats::class);
+
+        // Meta (Facebook Page + Instagram Business) credential storage (kit
+        // 0.13.0): gsc's own oauth_tokens table, wrapped by class-string so
+        // OAuthToken's own `use BelongsToSite;` tenant scope keeps applying
+        // to every read/write MetaGraphClient makes through it. Not a
+        // singleton: each resolution re-reads services.meta.* fresh, same
+        // as the pre-port class did on every call.
+        $this->app->bind(MetaCredentialStore::class, fn () => new OAuthTokenCredentialStore(
+            tokenModel: OAuthToken::class,
+            provider: 'meta',
+            envFallback: [
+                'token' => trim((string) config('services.meta.page_access_token', '')) ?: null,
+                'page_id' => trim((string) config('services.meta.facebook_page_id', '')) ?: null,
+                'ig_id' => trim((string) config('services.meta.instagram_account_id', '')) ?: null,
+                'page_name' => null,
+                'ig_username' => null,
+            ],
+        ));
 
         // The shared kit's ten SEO report generators (SsSystems\Platform\
         // Reports\*, ported verbatim from this app's own app/Console/

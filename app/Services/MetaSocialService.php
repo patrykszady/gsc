@@ -2,198 +2,87 @@
 
 namespace App\Services;
 
-use App\Models\OAuthToken;
+use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\ShortLink;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use SsSystems\Platform\Social\Contracts\MetaCredentialStore;
+use SsSystems\Platform\Social\MetaGraphClient;
 
 /**
- * Meta Graph API service for publishing to Instagram and Facebook.
+ * gsc's Meta Graph API surface — a thin subclass of the kit's
+ * `SsSystems\Platform\Social\MetaGraphClient` (2026-09-27; see
+ * ss-platform-kit/docs/audit-2026-09-27/social-posting-and-automation.md
+ * unit 9, and CONSOLIDATION-PLAN.md's Kit 0.13.0 entry). The OAuth
+ * connect/disconnect dance and the single-image Instagram/Facebook publish
+ * path now live in the kit; this class carries only what is genuinely
+ * gsc's own:
+ *   - the OAUTH_SCOPES list (one of THREE distinct production sets — see
+ *     MetaGraphClient::getOAuthUrl()'s docblock; jpeterson shares this
+ *     one, hive's own is different, dawnsellshomes' will be a 6-scope
+ *     superset),
+ *   - Instagram carousels, Instagram location tagging / Facebook
+ *     check-ins (both AreaServed-backed), the hourly stale-location-id
+ *     metric, and the debug/health endpoint — confirmed gsc-only; NOT
+ *     ported anywhere else (jpeterson's own trimmed copy says explicitly
+ *     which of these it chose not to carry),
+ *   - the multi-crop `getInstagramImageUrls()` picker and the
+ *     `publishToInstagramForImage()`/`getPublicImageUrl()`/
+ *     `getProjectPageUrl()`/`getShortLinkUrl()` domain wrappers, which
+ *     need gsc's own `ProjectImage`/`ShortLink` models — a kit class
+ *     never references `App\Models\*`.
  *
- * Instagram Container Flow:
- *   1. Create a media container (POST /{ig-user-id}/media) with image_url + caption
- *   2. Publish the container  (POST /{ig-user-id}/media_publish)
- *
- * Facebook Page Photo:
- *   1. POST /{page-id}/photos with url + message
- *
- * Both use the same Page Access Token from a Meta Business App.
+ * Credential storage: `MetaCredentialStore` is bound to
+ * `SsSystems\Platform\Social\Adapters\OAuthTokenCredentialStore` wrapping
+ * gsc's own `App\Models\OAuthToken` (see AppServiceProvider) — its
+ * `use BelongsToSite;` tenant scope keeps applying exactly as before,
+ * since the adapter only ever calls that class's own static methods.
  */
-class MetaSocialService
+class MetaSocialService extends MetaGraphClient
 {
-    protected const GRAPH_BASE = 'https://graph.facebook.com/v25.0';
-    protected const OAUTH_PROVIDER = 'meta';
-
     /**
      * Scopes required for publishing to the linked Instagram Business
      * account. We intentionally do NOT request Facebook Page posting
      * scopes (pages_manage_posts, pages_read_engagement) — those require
      * App Review and we only publish to Instagram.
+     *
+     * Public (not protected): `MetaGraphClient::getOAuthUrl()`/
+     * `exchangeCodeAndStore()` take `$scopes` as a call-time argument and
+     * are NOT re-declared here at a narrower arity — PHP's method-override
+     * compatibility rules refuse a child signature with fewer parameters
+     * than the parent's, defaults notwithstanding (see MetaGraphClient::
+     * getOAuthUrl()'s docblock). Every call site below passes this
+     * constant explicitly instead.
      */
-    protected const OAUTH_SCOPES = [
+    public const OAUTH_SCOPES = [
         'pages_show_list',
         'business_management',
         'instagram_basic',
         'instagram_content_publish',
     ];
 
-    protected ?array $lastError = null;
-
-    /* ------------------------------------------------------------------ */
-    /*  Credential resolution (DB first, env fallback)                     */
-    /* ------------------------------------------------------------------ */
-
-    /**
-     * Resolved Meta credentials for posting.
-     *
-     * @return array{token: ?string, page_id: ?string, ig_id: ?string, page_name: ?string, ig_username: ?string, source: 'oauth'|'env'|null}
-     */
-    public function getCredentials(): array
+    public function __construct(MetaCredentialStore $credentials)
     {
-        $token = OAuthToken::forProvider(self::OAUTH_PROVIDER);
-        if ($token && $token->access_token) {
-            $meta = $token->metadata ?? [];
-            return [
-                'token' => $token->access_token,
-                'page_id' => $meta['page_id'] ?? null,
-                'ig_id' => $meta['ig_id'] ?? null,
-                'page_name' => $meta['page_name'] ?? null,
-                'ig_username' => $meta['ig_username'] ?? null,
-                'source' => 'oauth',
-            ];
-        }
-
-        $cfg = config('services.meta');
-        $envToken = trim((string) ($cfg['page_access_token'] ?? ''));
-        if ($envToken === '') {
-            return ['token' => null, 'page_id' => null, 'ig_id' => null, 'page_name' => null, 'ig_username' => null, 'source' => null];
-        }
-
-        return [
-            'token' => $envToken,
-            'page_id' => trim((string) ($cfg['facebook_page_id'] ?? '')) ?: null,
-            'ig_id' => trim((string) ($cfg['instagram_account_id'] ?? '')) ?: null,
-            'page_name' => null,
-            'ig_username' => null,
-            'source' => 'env',
-        ];
-    }
-
-    public function isConnected(): bool
-    {
-        return $this->getCredentials()['token'] !== null;
+        parent::__construct(
+            $credentials,
+            appId: config('services.meta.app_id'),
+            appSecret: config('services.meta.app_secret'),
+            publishingEnabled: (bool) (config('services.meta.enabled') ?? false),
+        );
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Configuration helpers                                              */
-    /* ------------------------------------------------------------------ */
-
-    /** The Platforms card's Meta posting switch (services.meta.enabled). */
-    public function isPublishingEnabled(): bool
-    {
-        return (bool) (config('services.meta.enabled') ?? false);
-    }
-
-    public function isInstagramConfigured(): bool
-    {
-        return $this->isPublishingEnabled() && $this->isInstagramConnected();
-    }
-
-    /** Credentials for Instagram present — whether or not publishing is switched on. */
-    public function isInstagramConnected(): bool
-    {
-        $c = $this->getCredentials();
-
-        return $c['token'] !== null && ! empty($c['ig_id']);
-    }
-
-    public function isFacebookConfigured(): bool
-    {
-        return $this->isPublishingEnabled() && $this->isFacebookConnected();
-    }
-
-    /** Credentials for Facebook present — whether or not publishing is switched on. */
-    public function isFacebookConnected(): bool
-    {
-        $c = $this->getCredentials();
-
-        return $c['token'] !== null && ! empty($c['page_id']);
-    }
-
-    public function getLastError(): ?array
-    {
-        return $this->lastError;
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  Instagram Publishing                                               */
+    /*  Instagram Publishing (gsc-only extras) */
     /* ------------------------------------------------------------------ */
 
     /**
-     * Publish a photo to Instagram.
-     *
-     * @return array{id: string, permalink: string|null}|null
-     */
-    public function publishToInstagram(string $imageUrl, string $caption, ?string $locationId = null): ?array
-    {
-        if (! $this->isInstagramConfigured()) {
-            $this->lastError = ['message' => 'Instagram not configured'];
-            return null;
-        }
-
-        $container = $this->createInstagramContainer($imageUrl, $caption, $locationId);
-        if (! $container) {
-            return null;
-        }
-
-        $containerId = $container['id'];
-        $creds = $this->getCredentials();
-        $token = $creds['token'];
-        $igUserId = $creds['ig_id'];
-
-        // Wait for container to be ready (Instagram processes asynchronously)
-        if (! $this->waitForContainer($containerId, $token)) {
-            return null;
-        }
-
-        // Step 2: Publish the container
-        $publishResponse = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media_publish", [
-            'creation_id' => $containerId,
-            'access_token' => $token,
-        ]);
-
-        if (! $publishResponse->successful()) {
-            $this->lastError = [
-                'message' => 'Instagram publish failed',
-                'status' => $publishResponse->status(),
-                'body' => $publishResponse->json(),
-            ];
-            Log::channel('social')->error('Meta Social: IG publish failed', $this->lastError);
-            return null;
-        }
-
-        $mediaId = $publishResponse->json('id');
-
-        // Fetch permalink
-        $permalink = $this->getInstagramPermalink($mediaId, $token);
-
-        Log::channel('social')->info('Meta Social: Published to Instagram', [
-            'media_id' => $mediaId,
-            'permalink' => $permalink,
-        ]);
-
-        return [
-            'id' => $mediaId,
-            'permalink' => $permalink,
-        ];
-    }
-
-    /**
-     * Publish a project image to Instagram, choosing between a single square
-     * post or a 2-image left/right carousel based on the source aspect ratio.
+     * Publish a project image to Instagram, choosing between a single
+     * square post or a 2-image left/right carousel based on the source aspect ratio.
      *
      * @return array{id: string, permalink: string|null}|null
      */
@@ -202,7 +91,8 @@ class MetaSocialService
         $urls = $this->getInstagramImageUrls($image);
 
         if (empty($urls)) {
-            $this->lastError = ['message' => 'No public image URL for image ' . $image->id];
+            $this->lastError = ['message' => 'No public image URL for image '.$image->id];
+
             return null;
         }
 
@@ -218,13 +108,14 @@ class MetaSocialService
     /**
      * Publish a multi-image Instagram carousel.
      *
-     * @param string[] $imageUrls
+     * @param  string[]  $imageUrls
      * @return array{id: string, permalink: string|null}|null
      */
     public function publishInstagramCarousel(array $imageUrls, string $caption, ?string $locationId = null): ?array
     {
         if (! $this->isInstagramConfigured()) {
             $this->lastError = ['message' => 'Instagram not configured'];
+
             return null;
         }
 
@@ -235,7 +126,7 @@ class MetaSocialService
         // 1. Create each child container
         $childIds = [];
         foreach ($imageUrls as $url) {
-            $resp = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", [
+            $resp = Http::timeout(60)->post(self::GRAPH_BASE."/{$igUserId}/media", [
                 'image_url' => $url,
                 'is_carousel_item' => true,
                 'access_token' => $token,
@@ -249,6 +140,7 @@ class MetaSocialService
                     'url' => $url,
                 ];
                 Log::channel('social')->error('Meta Social: IG carousel child failed', $this->lastError);
+
                 return null;
             }
 
@@ -288,6 +180,7 @@ class MetaSocialService
                 'body' => $parentResp->json(),
             ];
             Log::channel('social')->error('Meta Social: IG carousel parent failed', $this->lastError);
+
             return null;
         }
 
@@ -298,7 +191,7 @@ class MetaSocialService
         }
 
         // 3. Publish
-        $publishResp = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media_publish", [
+        $publishResp = Http::timeout(60)->post(self::GRAPH_BASE."/{$igUserId}/media_publish", [
             'creation_id' => $parentId,
             'access_token' => $token,
         ]);
@@ -310,6 +203,7 @@ class MetaSocialService
                 'body' => $publishResp->json(),
             ];
             Log::channel('social')->error('Meta Social: IG carousel publish failed', $this->lastError);
+
             return null;
         }
 
@@ -326,10 +220,10 @@ class MetaSocialService
     }
 
     /**
-     * Create an Instagram media container without publishing it.
-     *
-     * This lets us validate credentials/image URL/caption end-to-end while
-     * avoiding a public post. Container expires automatically if not published.
+     * Create an Instagram media container without publishing it — gsc's
+     * own override adds the stale-cached-location-id retry
+     * (createInstagramMediaWithLocationFallback) that jpeterson/hive never
+     * carried.
      *
      * @return array{id: string}|null
      */
@@ -337,6 +231,7 @@ class MetaSocialService
     {
         if (! $this->isInstagramConfigured()) {
             $this->lastError = ['message' => 'Instagram not configured'];
+
             return null;
         }
 
@@ -368,12 +263,14 @@ class MetaSocialService
                 'body' => $containerResponse->json(),
             ];
             Log::channel('social')->error('Meta Social: IG container failed', $this->lastError);
+
             return null;
         }
 
         $containerId = $containerResponse->json('id');
         if (! $containerId) {
             $this->lastError = ['message' => 'No container ID returned'];
+
             return null;
         }
 
@@ -381,98 +278,7 @@ class MetaSocialService
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Facebook Publishing                                                */
-    /* ------------------------------------------------------------------ */
-
-    /**
-     * Publish a photo to a Facebook Page.
-     *
-     * @return array{id: string, permalink: string|null}|null
-     */
-    public function publishToFacebook(string $imageUrl, string $message, ?string $facebookPlaceId = null): ?array
-    {
-        if (! $this->isFacebookConfigured()) {
-            $this->lastError = ['message' => 'Facebook not configured'];
-            return null;
-        }
-
-        $creds = $this->getCredentials();
-        $pageId = $creds['page_id'];
-        $token = $creds['token'];
-
-        $payload = [
-            'url' => $imageUrl,
-            'message' => $message,
-            'access_token' => $token,
-        ];
-
-        if (is_string($facebookPlaceId) && trim($facebookPlaceId) !== '') {
-            $payload['place'] = trim($facebookPlaceId);
-        }
-
-        $response = Http::timeout(60)->asForm()->post(self::GRAPH_BASE . "/{$pageId}/photos", $payload);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Facebook photo upload failed',
-                'status' => $response->status(),
-                'body' => $response->json(),
-            ];
-            Log::channel('social')->error('Meta Social: FB upload failed', $this->lastError);
-            return null;
-        }
-
-        $postId = $response->json('post_id') ?? $response->json('id');
-
-        // Fetch canonical permalink when available.
-        $permalink = $this->getFacebookPermalink((string) $postId, $token)
-            ?? "https://www.facebook.com/{$postId}";
-
-        Log::channel('social')->info('Meta Social: Published to Facebook', [
-            'post_id' => $postId,
-            'permalink' => $permalink,
-        ]);
-
-        return [
-            'id' => $postId,
-            'permalink' => $permalink,
-        ];
-    }
-
-    protected function getFacebookPermalink(string $postId, string $token): ?string
-    {
-        if ($postId === '') {
-            return null;
-        }
-
-        $resp = Http::timeout(20)->get(self::GRAPH_BASE . "/{$postId}", [
-            'fields' => 'permalink_url',
-            'access_token' => $token,
-        ]);
-
-        if (! $resp->successful()) {
-            return null;
-        }
-
-        $url = (string) ($resp->json('permalink_url') ?? '');
-        return $url !== '' ? $url : null;
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  Token Management                                                   */
-    /* ------------------------------------------------------------------ */
-
-    /**
-     * Get the access token. Prefers the OAuth-stored credential, falls
-     * back to env (legacy).
-     */
-    protected function getAccessToken(): string
-    {
-        return (string) ($this->getCredentials()['token'] ?? '');
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  Public URL builder for project images                              */
+    /*  Public URL builder for project images */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -489,7 +295,8 @@ class MetaSocialService
         $path = $image->path
             ?: ($image->thumbnails['large'] ?? null)
             ?: ($image->thumbnails['hero'] ?? null);
-        return $path ? $productionUrl . '/storage/' . ltrim($path, '/') : null;
+
+        return $path ? $productionUrl.'/storage/'.ltrim($path, '/') : null;
     }
 
     /**
@@ -505,7 +312,7 @@ class MetaSocialService
     public function getInstagramImageUrls(ProjectImage $image): array
     {
         $productionUrl = (string) config('app.url');
-        $imageService = app(\App\Services\ImageService::class);
+        $imageService = app(ImageService::class);
 
         $width = (int) ($image->width ?? 0);
         $height = (int) ($image->height ?? 0);
@@ -515,7 +322,7 @@ class MetaSocialService
 
         // Always use a single 1440² center crop (no carousels for now).
         $square = $thumbnails['instagram'] ?? null;
-        if (! $square || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($square)) {
+        if (! $square || ! Storage::disk('public')->exists($square)) {
             try {
                 $imageService->regenerateThumbnails($image, 'instagram', true);
                 $image->refresh();
@@ -527,7 +334,7 @@ class MetaSocialService
         $paths = [$square ?? $thumbnails['large'] ?? $thumbnails['hero'] ?? $image->path];
 
         return array_map(
-            fn ($p) => rtrim($productionUrl, '/') . '/storage/' . ltrim($p, '/'),
+            fn ($p) => rtrim($productionUrl, '/').'/storage/'.ltrim($p, '/'),
             $paths,
         );
     }
@@ -564,7 +371,7 @@ class MetaSocialService
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Instagram helpers                                                  */
+    /*  Instagram helpers (gsc-only: AreaServed-backed) */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -586,9 +393,9 @@ class MetaSocialService
             return null;
         }
 
-        $slug = \Illuminate\Support\Str::slug($city);
+        $slug = Str::slug($city);
 
-        $area = \App\Models\AreaServed::query()
+        $area = AreaServed::query()
             ->whereNotNull('ig_location_id')
             ->where(function ($q) use ($city, $slug) {
                 $q->where('slug', $slug)
@@ -617,9 +424,9 @@ class MetaSocialService
             return null;
         }
 
-        $slug = \Illuminate\Support\Str::slug($city);
+        $slug = Str::slug($city);
 
-        $area = \App\Models\AreaServed::query()
+        $area = AreaServed::query()
             ->whereNotNull('fb_place_id')
             ->where(function ($q) use ($city, $slug) {
                 $q->where('slug', $slug)
@@ -631,50 +438,14 @@ class MetaSocialService
     }
 
     /**
-     * Wait for an Instagram media container to finish processing.
-     */
-    protected function waitForContainer(string $containerId, string $token, int $maxAttempts = 10): bool
-    {
-        for ($i = 0; $i < $maxAttempts; $i++) {
-            sleep(3);
-
-            $status = Http::get(self::GRAPH_BASE . "/{$containerId}", [
-                'fields' => 'status_code',
-                'access_token' => $token,
-            ]);
-
-            $statusCode = $status->json('status_code');
-
-            if ($statusCode === 'FINISHED') {
-                return true;
-            }
-
-            if ($statusCode === 'ERROR') {
-                $this->lastError = [
-                    'message' => 'Container processing failed',
-                    'body' => $status->json(),
-                ];
-                Log::channel('social')->error('Meta Social: Container error', $this->lastError);
-                return false;
-            }
-
-            // IN_PROGRESS — keep waiting
-        }
-
-        $this->lastError = ['message' => 'Container processing timed out'];
-        Log::channel('social')->warning('Meta Social: Container timed out', ['container_id' => $containerId]);
-        return false;
-    }
-
-    /**
      * Create an Instagram media resource with safe fallback when a cached
      * location ID is no longer valid.
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
-    protected function createInstagramMediaWithLocationFallback(string $igUserId, string $token, array $payload, ?string $locationId): \Illuminate\Http\Client\Response
+    protected function createInstagramMediaWithLocationFallback(string $igUserId, string $token, array $payload, ?string $locationId): Response
     {
-        $response = Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $payload);
+        $response = Http::timeout(60)->post(self::GRAPH_BASE."/{$igUserId}/media", $payload);
 
         if ($response->successful() || ! $locationId) {
             return $response;
@@ -693,15 +464,15 @@ class MetaSocialService
             'metric_count_hour' => $metricCount,
         ]);
 
-        \App\Models\AreaServed::where('ig_location_id', $locationId)
+        AreaServed::where('ig_location_id', $locationId)
             ->update(['ig_location_id' => null]);
 
         unset($payload['location_id']);
 
-        return Http::timeout(60)->post(self::GRAPH_BASE . "/{$igUserId}/media", $payload);
+        return Http::timeout(60)->post(self::GRAPH_BASE."/{$igUserId}/media", $payload);
     }
 
-    protected function isInvalidInstagramLocationIdError(\Illuminate\Http\Client\Response $response): bool
+    protected function isInvalidInstagramLocationIdError(Response $response): bool
     {
         $errorCode = (int) ($response->json('error.code') ?? 0);
         $errorMessage = (string) ($response->json('error.message') ?? '');
@@ -735,7 +506,7 @@ class MetaSocialService
             return false;
         }
 
-        $resp = Http::timeout(20)->get(self::GRAPH_BASE . "/{$locationId}", [
+        $resp = Http::timeout(20)->get(self::GRAPH_BASE."/{$locationId}", [
             'fields' => 'id,name,location,category',
             'access_token' => $token,
         ]);
@@ -764,18 +535,8 @@ class MetaSocialService
         return (int) Cache::get($key, 0);
     }
 
-    protected function getInstagramPermalink(string $mediaId, string $token): ?string
-    {
-        $response = Http::get(self::GRAPH_BASE . "/{$mediaId}", [
-            'fields' => 'permalink',
-            'access_token' => $token,
-        ]);
-
-        return $response->json('permalink');
-    }
-
     /* ------------------------------------------------------------------ */
-    /*  Debug / Health                                                     */
+    /*  Debug / Health */
     /* ------------------------------------------------------------------ */
 
     /**
@@ -785,12 +546,12 @@ class MetaSocialService
     {
         $token = $this->getAccessToken();
 
-        $debug = Http::get(self::GRAPH_BASE . '/debug_token', [
+        $debug = Http::get(self::GRAPH_BASE.'/debug_token', [
             'input_token' => $token,
             'access_token' => $token,
         ]);
 
-        $pages = Http::get(self::GRAPH_BASE . '/me/accounts', [
+        $pages = Http::get(self::GRAPH_BASE.'/me/accounts', [
             'access_token' => $token,
         ]);
 
@@ -798,128 +559,5 @@ class MetaSocialService
             'token_debug' => $debug->json(),
             'pages' => $pages->json('data', []),
         ];
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  Admin OAuth (Facebook Login flow)                                  */
-    /* ------------------------------------------------------------------ */
-
-    /**
-     * Build the Facebook Login dialog URL for the admin to authorise the
-     * app against their Facebook user / page / linked Instagram account.
-     */
-    public function getOAuthUrl(string $redirectUri, ?string $state = null): string
-    {
-        $params = http_build_query([
-            'client_id' => config('services.meta.app_id'),
-            'redirect_uri' => $redirectUri,
-            'response_type' => 'code',
-            'scope' => implode(',', self::OAUTH_SCOPES),
-            'state' => $state ?: bin2hex(random_bytes(8)),
-            'auth_type' => 'rerequest',
-        ]);
-
-        return 'https://www.facebook.com/v25.0/dialog/oauth?' . $params;
-    }
-
-    /**
-     * Exchange the OAuth code for a long-lived Page Access Token,
-     * auto-discover the FB Page + linked Instagram Business account,
-     * and persist everything into oauth_tokens.
-     *
-     * @return array{success: bool, error?: string, page_name?: string, ig_username?: ?string}
-     */
-    public function exchangeCodeAndStore(string $code, string $redirectUri): array
-    {
-        $appId = config('services.meta.app_id');
-        $appSecret = config('services.meta.app_secret');
-        if (! $appId || ! $appSecret) {
-            return ['success' => false, 'error' => 'META_APP_ID / META_APP_SECRET not configured in .env'];
-        }
-
-        // 1. Code -> short-lived user access token
-        $tokenResp = Http::timeout(20)->get(self::GRAPH_BASE . '/oauth/access_token', [
-            'client_id' => $appId,
-            'client_secret' => $appSecret,
-            'redirect_uri' => $redirectUri,
-            'code' => $code,
-        ]);
-        if (! $tokenResp->successful()) {
-            return ['success' => false, 'error' => 'Code exchange failed: ' . ($tokenResp->json('error.message') ?? $tokenResp->body())];
-        }
-        $shortLivedUserToken = $tokenResp->json('access_token');
-
-        // 2. Short-lived -> long-lived user token (~60d)
-        $longResp = Http::timeout(20)->get(self::GRAPH_BASE . '/oauth/access_token', [
-            'grant_type' => 'fb_exchange_token',
-            'client_id' => $appId,
-            'client_secret' => $appSecret,
-            'fb_exchange_token' => $shortLivedUserToken,
-        ]);
-        if (! $longResp->successful()) {
-            return ['success' => false, 'error' => 'Long-lived token exchange failed: ' . ($longResp->json('error.message') ?? $longResp->body())];
-        }
-        $longLivedUserToken = $longResp->json('access_token');
-
-        // 3. Fetch user's pages -> page access tokens (these don't expire
-        //    while the user keeps the app authorised).
-        $pagesResp = Http::timeout(20)->get(self::GRAPH_BASE . '/me/accounts', [
-            'fields' => 'id,name,access_token,instagram_business_account{id,username}',
-            'access_token' => $longLivedUserToken,
-        ]);
-        if (! $pagesResp->successful()) {
-            return ['success' => false, 'error' => 'Failed to list pages: ' . ($pagesResp->json('error.message') ?? $pagesResp->body())];
-        }
-
-        $pages = $pagesResp->json('data', []);
-        if (empty($pages)) {
-            return ['success' => false, 'error' => 'This account does not manage any Facebook Pages. Make sure the page admin authorises the app.'];
-        }
-
-        // Prefer the page with a linked Instagram Business account; fall back to the first.
-        $page = null;
-        foreach ($pages as $p) {
-            if (! empty($p['instagram_business_account']['id'] ?? null)) { $page = $p; break; }
-        }
-        $page = $page ?? $pages[0];
-
-        // 4. Identify the authorising user (for the granted_by_email column)
-        $meResp = Http::timeout(10)->get(self::GRAPH_BASE . '/me', [
-            'fields' => 'id,name,email',
-            'access_token' => $longLivedUserToken,
-        ]);
-        $email = $meResp->successful() ? ($meResp->json('email') ?? $meResp->json('name')) : null;
-
-        // 5. Persist
-        OAuthToken::updateOrCreate(
-            ['provider' => self::OAUTH_PROVIDER],
-            [
-                'access_token' => $page['access_token'],
-                'refresh_token' => $longLivedUserToken, // kept for re-issuing page tokens later
-                'access_token_expires_at' => null, // page tokens issued from long-lived user tokens don't expire
-                'scopes' => self::OAUTH_SCOPES,
-                'granted_by_email' => $email,
-                'metadata' => [
-                    'page_id' => $page['id'],
-                    'page_name' => $page['name'] ?? null,
-                    'ig_id' => $page['instagram_business_account']['id'] ?? null,
-                    'ig_username' => $page['instagram_business_account']['username'] ?? null,
-                ],
-            ],
-        );
-
-        return [
-            'success' => true,
-            'page_name' => $page['name'] ?? '',
-            'ig_username' => $page['instagram_business_account']['username'] ?? null,
-        ];
-    }
-
-    /**
-     * Forget the stored Meta credentials.
-     */
-    public function disconnect(): void
-    {
-        OAuthToken::where('provider', self::OAUTH_PROVIDER)->delete();
     }
 }
