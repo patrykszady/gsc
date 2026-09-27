@@ -4,111 +4,46 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\LandingPage;
-use App\Services\Seo\LandingPageContentGenerator;
-use App\Services\Seo\TitleMetaGenerator;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use App\Services\Seo\GscLandingPageContentBuilder;
 use Illuminate\Support\Facades\Artisan;
-use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
+use SsSystems\Platform\Pages\Landing\Contracts\LandingPageContentBuilder;
+use SsSystems\Platform\Pages\Landing\Http\Concerns\ServesLandingPages;
 
 /**
  * Management API for gsc's Livewire\Admin\LandingPages screen — demand-driven
  * /remodeling/ pages. Generation and publish stay proof-gated exactly as the
  * original component enforced; only the transport changed.
+ *
+ * Ported onto the kit's shared ServesLandingPages trait (kit 0.13.0,
+ * docs/CONSOLIDATION-PLAN.md — see docs/audit-2026-09-27/admin-api-verify.md
+ * for why the naive "6-method contract" framing needed the extra hooks
+ * below). This site is the 'refuse' + 'requires proof' reference every
+ * other tenant's controller is diffed against.
  */
 class LandingPageController extends Controller
 {
-    use BuildsApiResponses;
+    use ServesLandingPages;
 
-    public function index(Request $request): JsonResponse
+    public function __construct(private readonly LandingPageContentBuilder $contentBuilder = new GscLandingPageContentBuilder) {}
+
+    protected function landingPageModel(): string
     {
-        $query = LandingPage::query()->orderByDesc('created_at');
-
-        $paginator = $query->paginate($this->perPage($request));
-
-        return $this->paginatedResponse($paginator, fn (LandingPage $page) => $page->toApiArray());
+        return LandingPage::class;
     }
 
-    /** The fixed service catalogue the generate form offers — see TitleMetaGenerator::SERVICES. */
-    public function services(): JsonResponse
+    protected function contentBuilder(): LandingPageContentBuilder
     {
-        return response()->json(['data' => TitleMetaGenerator::SERVICES]);
+        return $this->contentBuilder;
     }
 
-    public function store(Request $request): JsonResponse
+    /** gsc 422s a duplicate deterministic slug rather than auto-suffixing — see ContentOpsControllerTest::test_generate_rejects_a_duplicate_slug_with_a_field_error. */
+    protected function onSlugCollision(): string
     {
-        $data = $request->validate([
-            'service' => ['required', 'string', 'max:100'],
-            'city' => ['required', 'string', 'max:255'],
-            'modifier' => ['nullable', 'string', 'max:100'],
-        ]);
-
-        $content = (new LandingPageContentGenerator)->build(
-            $data['service'],
-            trim($data['city']),
-            $data['modifier'] ?? null,
-        );
-
-        if ($content === null) {
-            return response()->json([
-                'errors' => [
-                    'service' => ["No matching project proof for {$data['service']} — can't build a non-thin page. Add a relevant project first."],
-                ],
-            ], 422);
-        }
-
-        if (LandingPage::where('slug', $content['slug'])->exists()) {
-            return response()->json([
-                'errors' => [
-                    'city' => ["A page already exists at /remodeling/{$content['slug']}."],
-                ],
-            ], 422);
-        }
-
-        $page = LandingPage::create(array_merge($content, [
-            'source' => 'manual',
-            'status' => LandingPage::STATUS_DRAFT,
-        ]));
-
-        return $this->itemResponse($page->toApiArray(), 201);
+        return 'refuse';
     }
 
-    public function publish(int $landingPage): JsonResponse
-    {
-        $page = LandingPage::findOrFail($landingPage);
-
-        if (! $page->hasProof()) {
-            return response()->json([
-                'errors' => ['page' => ['Cannot publish a page with no project proof.']],
-            ], 422);
-        }
-
-        $page->update(['status' => LandingPage::STATUS_PUBLISHED, 'published_at' => now()]);
-        $this->regenerateSitemapQuietly();
-
-        return $this->itemResponse($page->fresh()->toApiArray());
-    }
-
-    public function unpublish(int $landingPage): JsonResponse
-    {
-        $page = LandingPage::findOrFail($landingPage);
-
-        $page->update(['status' => LandingPage::STATUS_DRAFT, 'published_at' => null]);
-        $this->regenerateSitemapQuietly();
-
-        return $this->itemResponse($page->fresh()->toApiArray());
-    }
-
-    public function destroy(int $landingPage): Response
-    {
-        LandingPage::findOrFail($landingPage)->delete();
-
-        return response()->noContent();
-    }
-
-    /** Sitemap can be regenerated manually; don't block the response on it. */
-    private function regenerateSitemapQuietly(): void
+    /** Sitemap can be regenerated manually; don't block the response on it — same as the original controller/Livewire component. */
+    protected function afterPublishToggle(): void
     {
         try {
             Artisan::call('sitemap:generate');
