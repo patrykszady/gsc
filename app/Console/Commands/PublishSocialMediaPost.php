@@ -3,10 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Jobs\PublishToSocialMediaJob;
-use App\Models\ProjectImage;
 use App\Models\ImageSocialPost;
+use App\Models\ProjectImage;
+use App\Services\AiContentService;
+use App\Services\GoogleBusinessProfileService;
 use App\Services\MetaSocialService;
+use App\Support\SeoStorage;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Storage;
+use SsSystems\Platform\Social\GbpPostTheme;
+use Symfony\Component\Process\Process;
 
 class PublishSocialMediaPost extends Command
 {
@@ -21,7 +27,7 @@ class PublishSocialMediaPost extends Command
         {--via= : Publishing transport for Instagram (graph|puppeteer). Default: graph}
         {--themed : Follow this week\'s theme (season, rising service, core town) when picking the photo and writing the caption}';
 
-    /** This week's theme when --themed (App\Services\Social\GbpPostTheme). */
+    /** This week's theme when --themed (SsSystems\Platform\Social\GbpPostTheme, kit 0.13.0). */
     protected ?array $theme = null;
 
     protected $description = 'Publish a random unposted project image to Instagram, Facebook, and/or Google Business Profile with AI-generated content';
@@ -33,6 +39,7 @@ class PublishSocialMediaPost extends Command
 
         if (empty($platforms) && ! $isDryRun) {
             $this->warn('No platforms configured. Check your .env for META_* variables.');
+
             return 1;
         }
 
@@ -41,9 +48,9 @@ class PublishSocialMediaPost extends Command
             $platforms = ['instagram', 'facebook', 'google_business'];
         }
 
-        $this->theme = $this->option('themed') ? app(\App\Services\Social\GbpPostTheme::class)->forWeek() : null;
+        $this->theme = $this->option('themed') ? app(GbpPostTheme::class)->forWeek() : null;
         if ($this->theme) {
-            $this->line(sprintf('🗓  Theme: %s · %s · %s%s', $this->theme['season'], $this->theme['service_type'] ?? 'any service', $this->theme['town'] ?? 'any town', $this->theme['rising_phrase'] ? ' · rising: "' . $this->theme['rising_phrase'] . '"' : ''));
+            $this->line(sprintf('🗓  Theme: %s · %s · %s%s', $this->theme['season'], $this->theme['service_type'] ?? 'any service', $this->theme['town'] ?? 'any town', $this->theme['rising_phrase'] ? ' · rising: "'.$this->theme['rising_phrase'].'"' : ''));
         }
 
         // Pick or find the image (with recycling fallback)
@@ -52,6 +59,7 @@ class PublishSocialMediaPost extends Command
 
         if (! $image) {
             $this->warn('No images available for posting (none published or none with alt_text).');
+
             return 1;
         }
 
@@ -70,22 +78,24 @@ class PublishSocialMediaPost extends Command
         $this->line("  Link: {$linkUrl}");
         $this->line("  Short link: {$shortLinkUrl}");
         $this->line("  Image URL: {$imageUrl}");
-        $this->line("  Platforms: " . implode(', ', $platforms));
+        $this->line('  Platforms: '.implode(', ', $platforms));
 
         if ($this->option('instagram-container-only')) {
             if (! in_array('instagram', $platforms, true)) {
                 $this->error('Instagram is not configured. Connect Meta via /admin/platforms first.');
+
                 return 1;
             }
 
             $this->newLine();
             $this->warn('Instagram container-only mode — media will be sent to Meta but NOT published publicly.');
 
-            $aiService = app(\App\Services\AiContentService::class);
+            $aiService = app(AiContentService::class);
             $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl);
 
             if (! $content) {
-                $this->error('AI content generation failed: ' . $aiService->getLastError());
+                $this->error('AI content generation failed: '.$aiService->getLastError());
+
                 return 1;
             }
 
@@ -94,16 +104,18 @@ class PublishSocialMediaPost extends Command
 
             if (! $container) {
                 $error = $service->getLastError();
-                $this->error('Container creation failed: ' . ($error['message'] ?? 'Unknown error'));
+                $this->error('Container creation failed: '.($error['message'] ?? 'Unknown error'));
                 if (is_array($error)) {
                     $this->line(json_encode($error, JSON_PRETTY_PRINT));
                 }
+
                 return 1;
             }
 
             $this->info('✅ Instagram container created (not published).');
-            $this->line('Container ID: ' . $container['id']);
+            $this->line('Container ID: '.$container['id']);
             $this->line('Note: Unpublished containers expire automatically on Meta side.');
+
             return 0;
         }
 
@@ -111,7 +123,7 @@ class PublishSocialMediaPost extends Command
             $this->newLine();
             $this->warn('Dry-run mode — generating AI content preview...');
 
-            $aiService = app(\App\Services\AiContentService::class);
+            $aiService = app(AiContentService::class);
             $content = $aiService->generateSocialMediaContent($image, $linkUrl);
 
             if ($content) {
@@ -122,7 +134,7 @@ class PublishSocialMediaPost extends Command
                 $this->info('#️⃣  Hashtags:');
                 $this->line($content['hashtags']);
             } else {
-                $this->error('AI content generation failed: ' . $aiService->getLastError());
+                $this->error('AI content generation failed: '.$aiService->getLastError());
             }
 
             return 0;
@@ -134,7 +146,7 @@ class PublishSocialMediaPost extends Command
 
             if ($delay > 0) {
                 $job->delay(now()->addMinutes($delay));
-                $this->info("📤 Job dispatched to queue with {$delay}-minute delay (posts ~" . now()->addMinutes($delay)->format('g:i A') . ').');
+                $this->info("📤 Job dispatched to queue with {$delay}-minute delay (posts ~".now()->addMinutes($delay)->format('g:i A').').');
             } else {
                 $this->info('📤 Job dispatched to queue.');
             }
@@ -145,6 +157,7 @@ class PublishSocialMediaPost extends Command
         // Run synchronously
         if (! $this->confirmPreview($image, $platforms, $service, $linkUrl, $shortLinkUrl, $imageUrl)) {
             $this->warn('Aborted by user.');
+
             return 1;
         }
 
@@ -160,6 +173,7 @@ class PublishSocialMediaPost extends Command
         if ($this->option('via') === 'puppeteer') {
             if ($platforms !== ['instagram']) {
                 $this->error('--via=puppeteer is only supported with --platform=instagram.');
+
                 return 1;
             }
 
@@ -170,7 +184,7 @@ class PublishSocialMediaPost extends Command
         $job = new PublishToSocialMediaJob($image, $platforms, $this->theme);
         $job->handle(
             app(MetaSocialService::class),
-            app(\App\Services\AiContentService::class),
+            app(AiContentService::class),
         );
 
         // Show results
@@ -197,7 +211,7 @@ class PublishSocialMediaPost extends Command
     protected function resolvePlatforms(): array
     {
         $metaService = app(MetaSocialService::class);
-        $gbpService = app(\App\Services\GoogleBusinessProfileService::class);
+        $gbpService = app(GoogleBusinessProfileService::class);
         $requested = $this->option('platform');
 
         $platforms = [];
@@ -263,7 +277,7 @@ class PublishSocialMediaPost extends Command
                         $q->where('project_type', $type);
                     }
                     if ($city) {
-                        $q->where('location', 'like', $city . '%');
+                        $q->where('location', 'like', $city.'%');
                     }
                 });
                 if ($image = $themed->inRandomOrder()->first()) {
@@ -280,7 +294,7 @@ class PublishSocialMediaPost extends Command
             $focusQuery = (clone $query)->whereHas('project', function ($q) use ($focusTowns) {
                 $q->where(function ($qq) use ($focusTowns) {
                     foreach ($focusTowns as $town) {
-                        $qq->orWhere('location', 'like', $town . '%');
+                        $qq->orWhere('location', 'like', $town.'%');
                     }
                 });
             });
@@ -313,9 +327,9 @@ class PublishSocialMediaPost extends Command
 
         // Order by the max published_at across requested platforms (oldest first).
         // NULL (never posted on this platform) sorts oldest, which is what we want.
-        $platformList = collect($platforms)->map(fn ($p) => "'" . addslashes($p) . "'")->implode(',');
+        $platformList = collect($platforms)->map(fn ($p) => "'".addslashes($p)."'")->implode(',');
         $recycleQuery->leftJoinSub(
-            \App\Models\ImageSocialPost::query()
+            ImageSocialPost::query()
                 ->selectRaw('project_image_id, MAX(published_at) as last_published_at')
                 ->whereIn('platform', $platforms)
                 ->where('status', 'published')
@@ -352,10 +366,10 @@ class PublishSocialMediaPost extends Command
     protected function gbpFocusTowns(): array
     {
         try {
-            if (! \Illuminate\Support\Facades\Storage::disk('local')->exists(\App\Support\SeoStorage::path('seo/priority-pages.json'))) {
+            if (! Storage::disk('local')->exists(SeoStorage::path('seo/priority-pages.json'))) {
                 return [];
             }
-            $decoded = json_decode((string) \Illuminate\Support\Facades\Storage::disk('local')->get(\App\Support\SeoStorage::path('seo/priority-pages.json')), true);
+            $decoded = json_decode((string) Storage::disk('local')->get(SeoStorage::path('seo/priority-pages.json')), true);
             $towns = $decoded['gbp_focus_towns'] ?? [];
 
             return is_array($towns) ? array_values(array_filter($towns, 'is_string')) : [];
@@ -395,11 +409,12 @@ class PublishSocialMediaPost extends Command
         string $shortLinkUrl,
         ?string $imageUrl,
     ): bool {
-        $aiService = app(\App\Services\AiContentService::class);
+        $aiService = app(AiContentService::class);
         $content = $aiService->generateSocialMediaContent($image, $shortLinkUrl);
 
         if (! $content) {
-            $this->error('AI content generation failed: ' . $aiService->getLastError());
+            $this->error('AI content generation failed: '.$aiService->getLastError());
+
             return false;
         }
 
@@ -408,10 +423,10 @@ class PublishSocialMediaPost extends Command
         foreach ($platforms as $platform) {
             $this->newLine();
             $this->line('────────────────────────────────────────');
-            $this->info(strtoupper($platform) . ' PREVIEW');
+            $this->info(strtoupper($platform).' PREVIEW');
             $this->line('────────────────────────────────────────');
 
-            $this->line('<options=bold>Image:</> ' . ($imageUrl ?? 'n/a'));
+            $this->line('<options=bold>Image:</> '.($imageUrl ?? 'n/a'));
 
             if ($platform === 'instagram') {
                 if ($locationId) {
@@ -438,6 +453,7 @@ class PublishSocialMediaPost extends Command
 
         if ($this->option('yes')) {
             $this->info('--yes flag set, skipping confirmation.');
+
             return true;
         }
 
@@ -458,7 +474,7 @@ class PublishSocialMediaPost extends Command
         $job = new PublishToSocialMediaJob($image, ['instagram']);
         $job->handle(
             app(MetaSocialService::class),
-            app(\App\Services\AiContentService::class),
+            app(AiContentService::class),
         );
 
         $post = ImageSocialPost::where('project_image_id', $image->id)
@@ -468,17 +484,19 @@ class PublishSocialMediaPost extends Command
 
         if (! $post || $post->status !== 'published' || ! $post->platform_permalink) {
             $err = $post?->error_message ?: 'unknown error';
-            $this->error('❌ Graph API publish failed: ' . $err);
+            $this->error('❌ Graph API publish failed: '.$err);
+
             return 1;
         }
 
         $this->info('✅ Published to Instagram (no location yet).');
-        $this->line('   → ' . $post->platform_permalink);
+        $this->line('   → '.$post->platform_permalink);
 
         // 2. Resolve the location query for this image.
         $locationQuery = $image->project?->location ?: null;
         if (! $locationQuery) {
             $this->warn('No project location — skipping location tag.');
+
             return 0;
         }
 
@@ -486,6 +504,7 @@ class PublishSocialMediaPost extends Command
         if (! is_dir($userDataDir)) {
             $this->warn("Instagram session not found at {$userDataDir} — skipping location tag.");
             $this->line("Log in: node scripts/instagram-login.mjs --user-data-dir={$userDataDir}");
+
             return 0;
         }
 
@@ -493,11 +512,11 @@ class PublishSocialMediaPost extends Command
         $this->info("Adding location \"{$locationQuery}\" via Puppeteer...");
 
         $screenshotDir = storage_path('app/instagram-puppeteer/screenshots');
-        $process = new \Symfony\Component\Process\Process([
+        $process = new Process([
             'node',
             base_path('scripts/instagram-add-location.mjs'),
-            '--user-data-dir=' . $userDataDir,
-            '--screenshot-dir=' . $screenshotDir,
+            '--user-data-dir='.$userDataDir,
+            '--screenshot-dir='.$screenshotDir,
             '--debug',
         ]);
         $process->setTimeout(300);
@@ -508,7 +527,7 @@ class PublishSocialMediaPost extends Command
 
         $stdout = '';
         $process->run(function ($type, $buffer) use (&$stdout) {
-            if ($type === \Symfony\Component\Process\Process::OUT) {
+            if ($type === Process::OUT) {
                 $stdout .= $buffer;
             } else {
                 $this->getOutput()->write("<comment>{$buffer}</comment>");
@@ -519,16 +538,17 @@ class PublishSocialMediaPost extends Command
         $result = $lastLine ? json_decode($lastLine, true) : null;
 
         if (! is_array($result) || empty($result['ok'])) {
-            $err = $result['error'] ?? ('puppeteer script failed: ' . $stdout);
-            $this->warn('⚠️  Location tag failed (post is still published): ' . $err);
+            $err = $result['error'] ?? ('puppeteer script failed: '.$stdout);
+            $this->warn('⚠️  Location tag failed (post is still published): '.$err);
             if (! empty($result['screenshot'])) {
-                $this->line('   Screenshot: ' . $result['screenshot']);
+                $this->line('   Screenshot: '.$result['screenshot']);
             }
+
             return 0;
         }
 
         if (! empty($result['locationSelected'])) {
-            $this->info('✅ Location tagged: ' . ($result['matchedLabel'] ?? $locationQuery));
+            $this->info('✅ Location tagged: '.($result['matchedLabel'] ?? $locationQuery));
         } else {
             $this->warn('⚠️  Location query had no matching suggestion — post saved without tag.');
         }

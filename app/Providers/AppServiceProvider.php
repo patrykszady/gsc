@@ -41,6 +41,8 @@ use App\Support\Seo\Reports\HttpSiteCatalog;
 use App\Support\Seo\Reports\LaravelSimpleCache;
 use App\Support\Seo\SearchConsoleWriter as SiteSearchConsoleWriter;
 use App\Support\SEO\SEOBuilder;
+use App\Support\Social\EloquentRankedTowns;
+use App\Support\Social\SeoIntelTrendsIntel;
 use App\Support\Tenancy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
@@ -83,6 +85,8 @@ use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuot
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
+use SsSystems\Platform\Social\Contracts\RankedTowns;
+use SsSystems\Platform\Social\Contracts\TrendsIntel;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -136,6 +140,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(HealthDataReader::class, EloquentHealthDataReader::class);
         $this->app->bind(ClarityMetricsReader::class, EloquentClarityMetricsReader::class);
         $this->app->bind(CacheInterface::class, LaravelSimpleCache::class);
+
+        // GbpPostTheme (kit 0.13.0, moved verbatim from this file's own former
+        // App\Services\Social\GbpPostTheme — jpeterson's byte-identical copy
+        // was dead code and was deleted rather than ported): a NEW pair of
+        // contracts, deliberately not the AreaCatalog above (different shape
+        // and purpose — see RankedTowns' own docblock).
+        $this->app->bind(RankedTowns::class, EloquentRankedTowns::class);
+        $this->app->bind(TrendsIntel::class, SeoIntelTrendsIntel::class);
 
         // The kit's URL-Inspection sweep (SsSystems\Platform\Seo\Inspection\
         // UrlInspectionSweep — see seo:gsc-inspect-bulk, now a thin wrapper

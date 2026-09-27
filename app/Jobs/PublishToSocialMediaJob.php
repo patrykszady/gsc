@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Models\ProjectImage;
 use App\Models\ImageSocialPost;
+use App\Models\ProjectImage;
 use App\Services\AiContentService;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\MetaSocialService;
@@ -20,7 +20,9 @@ class PublishToSocialMediaJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public array $backoff = [60, 300, 900]; // 1, 5, 15 min
+
     /** @var array<string, mixed> */
     protected array $platformErrors = [];
 
@@ -28,7 +30,7 @@ class PublishToSocialMediaJob implements ShouldQueue
         public ProjectImage $image,
         /** @var string[] */
         public array $platforms = ['instagram', 'facebook', 'google_business'],
-        /** Week theme from App\Services\Social\GbpPostTheme (season, town, rising phrase), or null. */
+        /** Week theme from SsSystems\Platform\Social\GbpPostTheme (season, town, rising phrase), or null. */
         public ?array $theme = null,
     ) {}
 
@@ -39,6 +41,7 @@ class PublishToSocialMediaJob implements ShouldQueue
 
         if (! $project || ! $project->is_published) {
             Log::channel('social')->warning('Social Media: Skipping unpublished project image', ['image_id' => $image->id]);
+
             return;
         }
 
@@ -48,6 +51,7 @@ class PublishToSocialMediaJob implements ShouldQueue
 
         if (! $imageUrl) {
             Log::channel('social')->error('Social Media: No public URL for image', ['image_id' => $image->id]);
+
             return;
         }
 
@@ -59,6 +63,7 @@ class PublishToSocialMediaJob implements ShouldQueue
                 'image_id' => $image->id,
                 'error' => $aiService->getLastError(),
             ]);
+
             return;
         }
 
@@ -80,9 +85,9 @@ class PublishToSocialMediaJob implements ShouldQueue
         // image fills edge-to-edge instead of being letterboxed. Fall back to
         // the 16:9 'large' (or original) for images not yet backfilled.
         $path = $thumbnails['gbp'] ?? $thumbnails['large'] ?? $thumbnails['hero'] ?? $image->path;
-        $relativePath = 'storage/' . ltrim($path, '/');
+        $relativePath = 'storage/'.ltrim($path, '/');
 
-        return rtrim($productionUrl, '/') . '/' . $relativePath;
+        return rtrim($productionUrl, '/').'/'.$relativePath;
     }
 
     protected function publishToPlatform(
@@ -111,6 +116,7 @@ class PublishToSocialMediaJob implements ShouldQueue
 
         if ($exists) {
             Log::channel('social')->info("Social Media: Skipping {$platform} (recent or pending post exists)", ['image_id' => $image->id]);
+
             return;
         }
 
@@ -192,6 +198,7 @@ class PublishToSocialMediaJob implements ShouldQueue
 
         if (! $result) {
             $this->platformErrors['google_business'] = $gbpService->getLastError();
+
             return null;
         }
 
@@ -231,7 +238,7 @@ class PublishToSocialMediaJob implements ShouldQueue
      * Apply platform-specific text shaping before persistence/publish.
      * Facebook performs better with fewer hashtags and concise copy.
      *
-     * @param array{caption:string,hashtags:string} $content
+     * @param  array{caption:string,hashtags:string}  $content
      * @return array{0:string,1:string}
      */
     protected function formatContentForPlatform(string $platform, array $content): array
