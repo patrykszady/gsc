@@ -62,6 +62,21 @@ class GoogleSearchConsoleService implements SearchConsoleSyncClient
             && SearchConsoleProperty::url() !== '';
     }
 
+    /**
+     * SearchConsoleClient's DISTINCT isReady() — whether a call could reach
+     * Google right now, narrower than isConfigured() above (which also
+     * weighs the enabled flag and every config key being filled). A stored
+     * grant with a refresh token is the same "connected" signal the
+     * Platforms card reports — ported verbatim from this site's own former
+     * App\Support\Seo\Inspection\SearchConsoleUrlInspector adapter, which
+     * UrlInspectionSweep asked BEFORE spending any of the daily URL
+     * Inspection allowance.
+     */
+    public function isReady(): bool
+    {
+        return filled($this->getStoredToken()?->refresh_token);
+    }
+
     public function getRefreshToken(): ?string
     {
         // oauth_tokens rows are site-scoped, so this is the current site's grant.
@@ -244,6 +259,25 @@ class GoogleSearchConsoleService implements SearchConsoleSyncClient
         $this->lastError = $this->describeFailure($resp->status(), (string) $resp->body(), $siteUrl);
 
         return false;
+    }
+
+    /**
+     * SearchConsoleClient's isAuthStandingCondition() hook — the exact rule
+     * this site's own seo:gsc-submit-sitemaps command used to inline before
+     * SsSystems\Platform\Seo\SitemapSubmitter took over its loop: 401 and 403
+     * are the standing "the write-scope grant needs (re-)authorizing"
+     * condition, and so — since it carries no HTTP status at all — is the
+     * bare "no access token" message submitSitemap() sets above when
+     * getAccessToken() itself failed. Ported verbatim, not simplified: the
+     * kit's SitemapSubmitter never inspects an error's shape itself, so this
+     * judgment call has to live here.
+     */
+    public function isAuthStandingCondition(?array $error): bool
+    {
+        $status = $error['status'] ?? null;
+
+        return in_array($status, [401, 403], true)
+            || str_contains((string) ($error['message'] ?? ''), 'search-console:auth');
     }
 
     /**

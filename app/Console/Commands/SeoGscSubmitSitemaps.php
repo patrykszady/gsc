@@ -6,6 +6,7 @@ use App\Services\GoogleSearchConsoleService;
 use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 use SsSystems\Platform\Seo\SitemapStatus;
+use SsSystems\Platform\Seo\SitemapSubmitter;
 
 /**
  * Submit the sitemaps to Google via the Search Console API.
@@ -15,6 +16,11 @@ use SsSystems\Platform\Seo\SitemapStatus;
  * come back for it and the Sitemaps report routinely showed reads 3–6 days
  * stale. sitemaps.submit is the supported nudge; submitting an
  * already-registered sitemap simply schedules a re-fetch.
+ *
+ * A thin wrapper over the kit's SsSystems\Platform\Seo\SitemapSubmitter —
+ * the submit-in-order-stop-on-a-standing-condition loop moved there, this
+ * command keeps only what is genuinely this site's own: which property/base
+ * URL to use, and printing the result the same way it always has.
  */
 class SeoGscSubmitSitemaps extends Command
 {
@@ -34,35 +40,26 @@ class SeoGscSubmitSitemaps extends Command
         $site = (string) ($this->option('site') ?: SearchConsoleProperty::url());
         $base = SearchConsoleProperty::baseUrl();
 
-        $failures = 0;
-        foreach (["{$base}/sitemap.xml", "{$base}/image-sitemap.xml"] as $sitemap) {
-            if ($gsc->submitSitemap($site, $sitemap)) {
-                $this->info("  submitted {$sitemap}");
+        $result = (new SitemapSubmitter($gsc))->submit($site, ["{$base}/sitemap.xml", "{$base}/image-sitemap.xml"]);
 
-                continue;
-            }
+        foreach ($result->submitted as $sitemap) {
+            $this->info("  submitted {$sitemap}");
+        }
 
-            $err = $gsc->getLastError();
+        // No token, 401, and 403 are all the same standing condition — the
+        // one-time interactive `search-console:auth` hasn't been run (or
+        // needs re-running) to grant the write scope. Exiting FAILURE here
+        // made the nightly scheduler log an exception every day until that
+        // happens; a standing condition is a warn-and-skip, not an incident.
+        if ($result->authStandingSkip) {
+            $this->warn("  {$result->authStandingSitemap}: {$result->authStandingMessage}");
+            $this->warn('  Skipping until `php artisan search-console:auth` grants the write scope.');
 
-            // No token, 401, and 403 are all the same standing condition —
-            // the one-time interactive `search-console:auth` hasn't been run
-            // (or needs re-running) to grant the write scope. Exiting FAILURE
-            // here made the nightly scheduler log an exception every day
-            // until that happens; a standing condition is a warn-and-skip,
-            // not an incident. The second submit would fail identically.
-            $status = $err['status'] ?? null;
-            $needsAuth = in_array($status, [401, 403], true)
-                || str_contains((string) ($err['message'] ?? ''), 'search-console:auth');
+            return self::SUCCESS;
+        }
 
-            if ($needsAuth) {
-                $this->warn("  {$sitemap}: ".($err['message'] ?? 'not authorized'));
-                $this->warn('  Skipping until `php artisan search-console:auth` grants the write scope.');
-
-                return self::SUCCESS;
-            }
-
-            $failures++;
-            $this->error("  {$sitemap}: ".($err['message'] ?? 'unknown error'));
+        foreach ($result->failures as $sitemap => $message) {
+            $this->error("  {$sitemap}: {$message}");
         }
 
         // Warm the admin's Sitemaps card while we are already talking to
@@ -72,6 +69,6 @@ class SeoGscSubmitSitemaps extends Command
         // central admin sees as the whole site API timing out.
         SitemapStatus::snapshot($site, fresh: true);
 
-        return $failures === 0 ? self::SUCCESS : self::FAILURE;
+        return $result->ok() ? self::SUCCESS : self::FAILURE;
     }
 }
