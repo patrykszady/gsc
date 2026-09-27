@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\Admin\V1\SeoAutopilotController;
 use App\Http\Controllers\Api\Admin\V1\SeoOverrideController;
 use App\Http\Controllers\Api\Admin\V1\SeoReportController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
+
+CapabilityRegistry::declare('seo');
 
 Route::prefix('seo')->group(function () {
     // SeoReports: generated markdown reports (list, single report + body,

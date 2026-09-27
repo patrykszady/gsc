@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Admin\V1\TestimonialController;
 use App\Http\Controllers\Api\LeadFilterSyncController;
 use App\Http\Middleware\AuthenticateLeadFilterSync;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
 
 // Cross-site spam-filter sync (gsc <-> jpeterson): a dedicated, narrow
 // endpoint — NOT part of the ss-systems management API above, and not
@@ -55,6 +56,8 @@ Route::post('lead-filters/sync', LeadFilterSyncController::class)
 // route('testimonials.index') silently resolved to whichever registered last.
 Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1', 'admin.api.auth', 'admin.api.tenant'])->group(function () {
     Route::get('ping', PingController::class);
+
+    CapabilityRegistry::declare('dashboard-stats');
     Route::get('dashboard-stats', DashboardStatsController::class);
 
     // {project} stays a plain int, resolved via Project::findOrFail() in the
@@ -64,6 +67,10 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     // Reviews linkable from the project form — the other end of the
     // testimonial<->project pivot the review form writes. gsc-only
     // ('testimonial-projects' capability); jpeterson has no pivot.
+    // 'collaborators' (project_collaborators — designer/architect/trade
+    // credits, ProjectController) rides the same resource, no route of its
+    // own.
+    CapabilityRegistry::declare('projects', 'testimonial-projects', 'collaborators');
     Route::get('projects/linkable-testimonials', [ProjectController::class, 'linkableTestimonials']);
     Route::get('projects/types', [ProjectController::class, 'types']);
     Route::apiResource('projects', ProjectController::class);
@@ -72,23 +79,31 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     Route::post('projects/{project}/images', [ProjectImageController::class, 'store']);
     Route::post('projects/{project}/images/reorder', [ProjectImageController::class, 'reorder']);
     // Move photos to another project, or into a new draft ('image-move').
+    CapabilityRegistry::declare('image-move');
     Route::post('projects/{project}/images/move', [ProjectImageController::class, 'move']);
     Route::put('projects/{project}/images/{image}', [ProjectImageController::class, 'update']);
     Route::delete('projects/{project}/images/{image}', [ProjectImageController::class, 'destroy']);
 
+    CapabilityRegistry::declare('tags');
     Route::apiResource('tags', TagController::class)->except(['show']);
 
+    CapabilityRegistry::declare('blog');
     Route::post('blog-posts/{post}/regenerate', [BlogPostController::class, 'regenerate']);
     Route::post('projects/{project}/blog-post', [BlogPostController::class, 'generateForProject']);
     Route::get('projects/{project}/blog-post', [BlogPostController::class, 'statusForProject']);
     Route::apiResource('blog-posts', BlogPostController::class)->except(['store']);
 
+    // 'review-platforms' (review_urls pivot, multi-platform review links)
+    // rides the same TestimonialController, no route of its own.
+    CapabilityRegistry::declare('testimonials', 'review-platforms');
     Route::get('testimonials/filters', [TestimonialController::class, 'filters']);
     Route::apiResource('testimonials', TestimonialController::class);
 
     // gsc-only: jpeterson's ping omits the "areas" capability.
     // Candidate towns (before the resource so "candidates" is never read as an id)
-    // and on-demand content generation for one area.
+    // and on-demand content generation for one area. 'area-content'
+    // (Area::SECTIONS page copy) rides the same resource, no route of its own.
+    CapabilityRegistry::declare('areas', 'area-content');
     Route::get('areas/candidates', [AreaController::class, 'candidates']);
     Route::post('areas/{area}/generate', [AreaController::class, 'generate'])->whereNumber('area');
     // Without this, a non-numeric {area} (nothing left to swallow it before the
@@ -96,6 +111,7 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     // destroy()'s `int $area` and PHP throws a TypeError — a 500, not a 404.
     Route::apiResource('areas', AreaController::class)->whereNumber('area');
 
+    CapabilityRegistry::declare('leads');
     Route::get('leads/stats', [LeadController::class, 'stats']);
     // hive pushes every lead it captures itself (crew inbox, Angi, Houzz, its
     // own form) here the moment it exists, so ss.systems shows it first.
@@ -106,7 +122,9 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     Route::delete('leads/{lead}', [LeadController::class, 'destroy']);
 
     // Ops domains (SEO, social, platforms, analytics, errors), one file per
-    // area — see the matching screens in ss-systems' routes/admin-ops/.
+    // area — see the matching screens in ss-systems' routes/admin-ops/. Each
+    // file declares its own domain(s) via CapabilityRegistry, right next to
+    // its routes — see docs/ADMIN-API.md in ss-platform-kit.
     require __DIR__.'/api-admin/content.php';
     require __DIR__.'/api-admin/seo.php';
     require __DIR__.'/api-admin/platforms.php';

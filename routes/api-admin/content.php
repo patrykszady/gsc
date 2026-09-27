@@ -5,12 +5,15 @@ use App\Http\Controllers\Api\Admin\V1\ClientErrorAdminController;
 use App\Http\Controllers\Api\Admin\V1\LandingPageController;
 use App\Http\Controllers\Api\Admin\V1\SocialMediaController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
 
 // Management-API surface for the 'content' ops domain. Inherits the
 // /api/admin/v1 prefix + auth/tenant middleware from the enclosing group in
 // routes/api.php. Matches the screens under ss-systems' routes/admin-ops/content.php:
 // landing-pages -> LandingPages, social-media -> SocialMediaPosts,
 // analytics -> SiteAnalytics, js-errors -> ClientErrors.
+
+CapabilityRegistry::declare('landing-pages', 'social-media', 'analytics', 'js-errors');
 
 // Landing pages (demand-driven /remodeling/ pages).
 Route::get('landing-pages', [LandingPageController::class, 'index']);

@@ -7,6 +7,9 @@
 use App\Http\Controllers\Api\Admin\V1\PlatformsController;
 use App\Http\Controllers\Api\Admin\V1\PlatformsHiveController;
 use Illuminate\Support\Facades\Route;
+use SsSystems\Platform\Http\Admin\CapabilityRegistry;
+
+CapabilityRegistry::declare('platforms');
 
 Route::prefix('platforms')->group(function () {
     Route::get('status', [PlatformsController::class, 'status']);
