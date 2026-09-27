@@ -7,7 +7,6 @@ use App\Models\Citation;
 use App\Models\PlatformSetting;
 use App\Models\Project;
 use App\Models\ProjectImage;
-use App\Services\Citations\VerificationInbox;
 use App\Support\Citations\KnownListings;
 use App\Support\Citations\ListingPayload;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -19,6 +18,7 @@ use SsSystems\Platform\Citations\Contracts\CitationRecord;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
 use SsSystems\Platform\Citations\LinkCheck;
 use SsSystems\Platform\Citations\RemoteBrowserSession;
+use SsSystems\Platform\Citations\VerificationInbox;
 use Tests\Feature\Api\Admin\V1\Concerns\WithAdminApiAuth;
 use Tests\TestCase;
 

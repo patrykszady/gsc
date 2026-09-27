@@ -27,6 +27,8 @@ use App\Services\Social\ImageSocialPostStats;
 use App\Services\Social\SocialAutomationSettingsStore;
 use App\Services\Social\SocialPlatformAvailability;
 use App\Support\Areas\RetiredAreaRedirect;
+use App\Support\Citations\SiteMailboxFactory;
+use App\Support\Citations\SitePendingCitationRepository;
 use App\Support\GoogleBusinessListing;
 use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
@@ -69,6 +71,8 @@ use Livewire\Livewire;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Psr\SimpleCache\CacheInterface;
 use SsSystems\Platform\Citations\Contracts\CitationSession;
+use SsSystems\Platform\Citations\Contracts\Mailbox as CitationMailbox;
+use SsSystems\Platform\Citations\Contracts\PendingCitationRepository;
 use SsSystems\Platform\Citations\RemoteBrowserSession;
 use SsSystems\Platform\Pulse\BeaconController;
 use SsSystems\Platform\Pulse\Recorder;
@@ -134,6 +138,16 @@ class AppServiceProvider extends ServiceProvider
         // Citations\RemoteBrowserSession docblock). gsc has the real Xvfb/
         // Chromium/x11vnc pipeline, unlike hive2025's UnavailableSession.
         $this->app->bind(CitationSession::class, RemoteBrowserSession::class);
+        // The citations verification inbox and link-check sweep (kit 0.13.0,
+        // ported from this file's own former App\Services\Citations\
+        // VerificationInbox and CitationsControl's `check` sub-action — see
+        // vendor/ss-systems/platform-kit's Citations\VerificationInbox
+        // docblock). SiteMailboxFactory reads the CITATIONS_M365_*/IMAP
+        // config the site's own class used to read directly; the pending-
+        // citation and link-check repositories are where the site_id scope
+        // every other citations query already carries now lives.
+        $this->app->bind(CitationMailbox::class, fn () => SiteMailboxFactory::current());
+        $this->app->bind(PendingCitationRepository::class, SitePendingCitationRepository::class);
 
         // The shared kit's AutomationSettingsService (kit 0.13.0, ported
         // verbatim from this file's own former App\Services\Social\
