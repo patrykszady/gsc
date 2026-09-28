@@ -196,3 +196,46 @@ while deliberately noindexed area sub-pages (AreaSeoPolicy) remain — that is e
   and replaced when either changes. The description is `gbp_caption`
   (Gemini, ≤250 chars, `images:gbp-captions` to backfill), falling back to
   the alt text. The site's own `JpegGeoTagger` is gone.
+
+## One Google: the kit's shared sign-in client and Business Profile client (kit 0.14.0, 2026-09-28)
+
+- **The OAuth client is THE shared one** — `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`
+  (gs.construction's Cloud project 31627704418, the same values on every
+  tenant of the estate), server configuration only. `App\Support\GoogleOAuthApp`
+  (a per-site client overlaid from `platform_settings` at boot) is gone, and
+  POST/DELETE `platforms/google/credentials` are the kit's refusals. Until
+  `GOOGLE_OAUTH_*` is set the kit reads the old `GOOGLE_BUSINESS_PROFILE_CLIENT_*`
+  pair (the status block says `legacy_config: true`; kit 0.15.0 drops that).
+  Search Console is still OAuth here and signs in through the same pair
+  (`config/services.php` points `search_console.client_*` at it, whole pair or
+  not at all); it moves to the service account separately.
+- **`GoogleBusinessProfileService extends SsSystems\Platform\Google\BusinessProfile\Client`**
+  and keeps only gs business: the project-photo copy/caption/category, the
+  service-area geocoding and the service items/categories/description payloads
+  it hands the kit's `updateLocation()`, the Places API reviews, and the
+  self-scoped wrappers the commands/jobs call (`createLocalPost()`,
+  `fetchAllReviews()`, `uploadProjectImage()`, …), which delegate to the kit's
+  `…For()` methods with the chosen listing and keep the `getLastError()`
+  messages callers store. `getListingLocation()` reads this site's own listing
+  (the kit's `getLocation($id, $mask)` reads any). Token handling (persisted,
+  rotated, scope repair, invalid_grant cooldown, a grant from another client
+  forgotten — `metadata.oauth_client_id`) is the kit's.
+- **Tenancy** (`AppServiceProvider::registerGoogle()`): every Google binding is
+  `bind`, never a singleton. The env refresh token and listing/place ids are
+  the default site's only; the access-token cache key is per refresh token.
+  The listing is the kit's `ListingStore` over the same `gbp.*` keys — read it
+  with `app(ListingStore::class)` (`selected()`, `placeId()`), never config.
+  What is left of `GoogleBusinessListing`: `siteHosts()`, `adoptAsSocialUrl()`
+  and the retired `gbp.enabled` switch. `GbpTenancyTest` pins it.
+- **Admin API**: `PlatformsController` uses the kit's `ServesGbpPlatform`
+  (listings, listing, reviews, media, the google/gbp status blocks); gsc's
+  hooks filter listings by host, adopt the social URL, flag imported reviews,
+  and build/record the photo pass-through. `gbp/media/ledger` is not routed.
+- **Callback**: `/admin-oauth/{gbp,gsc,meta}/callback` is the kit's
+  `OAuthCallback`, returning to `/admin/{services.ss.site_key}/platforms`.
+  The older `/admin/{site}/platforms/{gbp,gsc}/callback` routes serve only the
+  `/admin-legacy` Livewire Platforms screen's Connect buttons.
+- **`GbpGoogleCallsPinnedTest`** pins what Google receives (autopilot profile
+  writes, posting, reviews, photos) at the wire; keep it green. phpunit.xml
+  blanks the dev `.env`'s Google credentials — a test that needs Google sets
+  `config()` and fakes Http.
