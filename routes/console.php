@@ -5,7 +5,6 @@ use App\Models\ContactSubmission;
 use App\Models\Project;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
-use App\Services\Citations\VerificationInbox;
 use App\Services\TestimonialProjectTypeClassifier;
 use App\Services\YelpBusinessService;
 use App\Support\Reviews\ReviewImport;
@@ -18,6 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Citations\VerificationInbox;
 use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 
 Artisan::command('inspire', function () {
