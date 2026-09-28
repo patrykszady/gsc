@@ -7,12 +7,12 @@ use App\Services\DataForSeoService;
 use App\Services\Seo\Intel\Finding;
 use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\Intel\Snapshot;
-use App\Support\GoogleBusinessListing;
 use App\Support\Tenancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
 
 /**
  * Our Google Business Profile versus the local competitors' profiles —
@@ -296,7 +296,7 @@ class BusinessDataSource extends IntelSource
     {
         [$lat, $lng] = $this->center();
         $depth = (int) $this->config('review_depth', 100);
-        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+        $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
         $task = [
             'language_code' => 'en',
             'location_coordinate' => sprintf('%.6f,%.6f,%d', $lat, $lng, $this->pointRadius()),
@@ -877,13 +877,13 @@ class BusinessDataSource extends IntelSource
     /** The configured GBP place id, raw — '' when none is set (see profileSubject() for the identity that falls back to our domain). */
     protected function rawPlaceId(): string
     {
-        return (string) (GoogleBusinessListing::placeId() ?? '');
+        return (string) (app(ListingStore::class)->placeId() ?? '');
     }
 
     /** Stable identity for our own profile/reviews snapshots: the configured GBP place id, else our domain. */
     protected function profileSubject(): string
     {
-        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+        $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
 
         return $placeId !== '' ? $placeId : $this->ourDomain();
     }

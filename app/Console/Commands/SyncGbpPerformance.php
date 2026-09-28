@@ -7,6 +7,7 @@ use App\Models\GbpSearchKeyword;
 use App\Services\GoogleBusinessProfilePerformanceService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
 
 /**
  * Sync Google Business Profile Performance API metrics.
@@ -42,7 +43,9 @@ class SyncGbpPerformance extends Command
             return self::FAILURE;
         }
 
-        $locationId = (string) ($this->option('location') ?: config('services.google.business_profile.location_id'));
+        // The listing this site chose (the stored one, else the default
+        // site's env value) — what the config overlay used to resolve to.
+        $locationId = (string) ($this->option('location') ?: app(ListingStore::class)->selected()['location_id']);
         $days = max(1, (int) $this->option('days'));
         $dry = (bool) $this->option('dry-run');
 

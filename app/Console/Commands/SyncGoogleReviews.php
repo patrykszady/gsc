@@ -5,9 +5,9 @@ namespace App\Console\Commands;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
-use App\Support\GoogleBusinessListing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
 
 class SyncGoogleReviews extends Command
 {
@@ -203,7 +203,7 @@ class SyncGoogleReviews extends Command
 
     protected function buildFallbackGoogleUrl(string $reviewId): string
     {
-        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+        $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
 
         if ($placeId !== '') {
             return 'https://search.google.com/local/reviews?placeid='.$placeId;

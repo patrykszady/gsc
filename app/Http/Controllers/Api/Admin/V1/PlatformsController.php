@@ -20,7 +20,6 @@ use App\Services\MetaSocialService;
 use App\Services\YelpBusinessService;
 use App\Services\YelpRemoteLoginService;
 use App\Support\GoogleBusinessListing;
-use App\Support\GoogleOAuthApp;
 use App\Support\Reviews\ReviewImport;
 use App\Support\Seo\BingSettings;
 use App\Support\Seo\ClaritySettings;
@@ -39,15 +38,20 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use SsSystems\Platform\Auth\OAuthState;
+use SsSystems\Platform\Google\BusinessProfile\Client as GbpClient;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
+use SsSystems\Platform\Google\BusinessProfile\Http\Concerns\ServesGbpPlatform;
+use SsSystems\Platform\Google\OAuthClient;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 
 /**
  * Ops-domain API for the central admin's Platforms screen: connection
  * status for Google Business Profile, Google Search Console and Meta (all
- * three OAuth, via oauth_tokens), plus the FULL Yelp session-automation
+ * three OAuth, via oauth_tokens — Business Profile and the Google sign-in
+ * client through the kit's ServesGbpPlatform since 0.14.0, gs.construction's
+ * own hooks near the end of this class), plus the FULL Yelp session-automation
  * surface (credentials, cookie injection, the remote-login noVNC viewer,
  * captcha/proxy auto-login) and the Instagram Puppeteer session used for
  * post location-tagging.
@@ -69,6 +73,7 @@ use SsSystems\Platform\Seo\SearchConsoleSyncRule;
 class PlatformsController extends Controller
 {
     use BuildsApiResponses;
+    use ServesGbpPlatform;
 
     /** Providers this controller drives an OAuth dance for. Yelp/Instagram are session/cookie-based, not OAuth. */
     protected const OAUTH_PROVIDERS = ['gbp', 'gsc', 'meta'];
@@ -82,7 +87,7 @@ class PlatformsController extends Controller
             // The CRM connection, from what is on file — no call to hive
             // here; GET platforms/hive checks it for real.
             'hive' => app(PlatformsHiveController::class)->payload(live: false),
-            'google' => GoogleOAuthApp::status(),
+            'google' => $this->googleStatus(),
             'gbp' => $this->gbpStatus(),
             'gsc' => $this->gscStatus(),
             'meta' => $this->metaStatus(),
@@ -100,27 +105,25 @@ class PlatformsController extends Controller
     /**
      * GET platforms/{provider}/oauth-url
      *
-     * Built EXACTLY as the legacy component's connect*() actions do:
-     * $service->getOAuthUrl(route('admin.platforms.{provider}-callback')).
-     * That route() call is what makes the returned authorize URL's
-     * redirect_uri match the callback already allowlisted in the Google /
-     * Meta consoles — generation happens here, on gsc, with the {site}
-     * segment supplied explicitly (URL::defaults() isn't populated on this
-     * stateless API, unlike the legacy web request that filled it via
-     * ResolveAdminSite).
+     * The consent URL for the shared /admin-oauth/{provider}/callback
+     * (routes/web.php) on this tenant's host, carrying a signed state the
+     * callback verifies — no admin session needed. Business Profile is the
+     * kit's (ServesGbpPlatform::gbpOauthUrl(), the ONE shared client; with
+     * no client on the server it answers url null and a sentence); Search
+     * Console and Meta are built here, as before.
      */
     public function oauthUrl(string $provider): JsonResponse
     {
         abort_unless(in_array($provider, self::OAUTH_PROVIDERS, true), 404);
 
-        // The shared /admin-oauth/{provider}/callback (routes/web.php), with
-        // a signed state the callback verifies — the same flow as
-        // jpeterson-design's; no admin session needed.
-        $redirectUri = route('admin-oauth.callback', ['provider' => $provider]);
+        if ($provider === 'gbp') {
+            return $this->gbpOauthUrl();
+        }
+
+        $redirectUri = route(OAuthClient::CALLBACK_ROUTE, ['provider' => $provider]);
         $state = OAuthState::make($provider);
 
         $url = match ($provider) {
-            'gbp' => app(GoogleBusinessProfileService::class)->getOAuthUrl($redirectUri, $state),
             'gsc' => app(GoogleSearchConsoleService::class)->getOAuthUrl($redirectUri, $state),
             'meta' => app(MetaSocialService::class)->getOAuthUrl($redirectUri, MetaSocialService::OAUTH_SCOPES, $state),
         };
@@ -129,17 +132,20 @@ class PlatformsController extends Controller
     }
 
     /**
-     * DELETE platforms/{provider} — deletes the stored oauth_tokens row via
-     * the same service methods the legacy disconnect*() actions call.
-     * Yelp/Instagram have no OAuth token to remove, so neither is a valid
-     * provider here.
+     * DELETE platforms/{provider} — forgets the stored oauth_tokens row
+     * (Business Profile through the kit's client, which also clears what it
+     * cached for the grant). Yelp/Instagram have no OAuth token to remove,
+     * so neither is a valid provider here.
      */
     public function disconnect(string $provider): Response
     {
         abort_unless(in_array($provider, self::OAUTH_PROVIDERS, true), 404);
 
+        if ($provider === 'gbp') {
+            return $this->disconnectGbp();
+        }
+
         match ($provider) {
-            'gbp' => app(GoogleBusinessProfileService::class)->disconnect(),
             'gsc' => app(GoogleSearchConsoleService::class)->disconnect(),
             'meta' => app(MetaSocialService::class)->disconnect(),
         };
@@ -241,51 +247,10 @@ class PlatformsController extends Controller
      * a new one was actually typed — blank means "keep the existing one",
      * same as the legacy form.
      */
-    /**
-     * POST platforms/google/credentials — this site's own Google OAuth
-     * client. Either the JSON file Google Cloud Console downloads for the
-     * OAuth 2.0 Client ID (`client_json`) or the two values themselves
-     * (`client_id` + `client_secret`). Stored encrypted; the secret is never
-     * returned. Both Google cards read it from then on.
-     */
-    public function saveGoogleCredentials(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'client_json' => ['nullable', 'string', 'max:20000'],
-            'client_id' => ['nullable', 'string', 'max:255'],
-            'client_secret' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        if (filled($data['client_json'] ?? null)) {
-            $client = GoogleOAuthApp::parseClientJson($data['client_json']);
-        } elseif (filled($data['client_id'] ?? null) && filled($data['client_secret'] ?? null)) {
-            $client = ['client_id' => $data['client_id'], 'client_secret' => $data['client_secret'], 'project_id' => null];
-        } else {
-            throw ValidationException::withMessages([
-                'client_id' => 'Upload the OAuth client JSON from Google Cloud Console, or enter both the client ID and the client secret.',
-            ]);
-        }
-
-        GoogleOAuthApp::save($client['client_id'], $client['client_secret'], $client['project_id'] ?? null);
-
-        return $this->itemResponse([
-            'google' => GoogleOAuthApp::status(),
-            'gbp' => $this->gbpStatus(),
-            'gsc' => $this->gscStatus(),
-        ]);
-    }
-
-    /** DELETE platforms/google/credentials — back to whatever the server's env provides (usually nothing). */
-    public function clearGoogleCredentials(): JsonResponse
-    {
-        GoogleOAuthApp::clear();
-
-        return $this->itemResponse([
-            'google' => GoogleOAuthApp::status(),
-            'gbp' => $this->gbpStatus(),
-            'gsc' => $this->gscStatus(),
-        ]);
-    }
+    // POST/DELETE platforms/google/credentials are ServesGbpPlatform's
+    // refusals since kit 0.14.0: the Google sign-in client is the ONE shared
+    // client in server configuration, never a per-site value typed into an
+    // admin (the old App\Support\GoogleOAuthApp overlay is gone).
 
     // ---- SEO sources: Bing, Clarity, PageSpeed, DataForSEO -------------
 
@@ -991,129 +956,159 @@ class PlatformsController extends Controller
         ]);
     }
 
-    // ---- internals -------------------------------------------------------
+    // ---- Google Business Profile: the kit's ServesGbpPlatform hooks -----
+    //
+    // Every platforms/gbp/* endpoint (listings, listing, reviews, media) and
+    // the google/gbp status blocks are the kit's since 0.14.0 — one
+    // implementation for every tenant, the exact shapes ss.systems'
+    // PlatformsSettings and photo pipeline read. What gs.construction differs
+    // on is the hooks below.
 
-    /**
-     * The Business Profile accounts and listings this authorisation can see,
-     * so the admin can offer them instead of asking for ids nobody has.
-     */
-    public function gbpListings(Request $request): JsonResponse
+    protected function gbpClient(): GbpClient
     {
-        $service = app(GoogleBusinessProfileService::class);
-
-        if (! $service->hasRefreshToken()) {
-            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
-        }
-
-        if (! $service->hasBusinessScope()) {
-            return response()->json([
-                'message' => 'This authorisation only covers signing in. Reconnect and allow Business Profile access.',
-                'data' => ['business_scope_granted' => false, 'accounts' => []],
-            ], 422);
-        }
-
-        // One Google account can manage several businesses, and the API hands
-        // every one of them to whichever site holds the grant — so this page
-        // listed another client's business by name. Show the listings that
-        // belong to THIS site (matched on the listing's own website), plus the
-        // one already linked, and let the operator ask for the rest.
-        $showAll = $request->boolean('all');
-        $linkedId = (string) config(GoogleBusinessListing::CONFIG_PATH.'.location_id');
-
-        $accounts = [];
-        $hidden = 0;
-
-        foreach ($service->listAccounts() as $account) {
-            $accountId = GoogleBusinessListing::bareId((string) ($account['name'] ?? ''));
-
-            if ($accountId === '') {
-                continue;
-            }
-
-            $locations = [];
-
-            foreach ($service->listLocations($accountId) as $location) {
-                $locationId = GoogleBusinessListing::bareId((string) ($location['name'] ?? ''));
-                $isLinked = $locationId !== '' && $locationId === $linkedId;
-
-                if (! $showAll && ! $isLinked && ! GoogleBusinessListing::belongsToSite($location)) {
-                    $hidden++;
-
-                    continue;
-                }
-
-                $locations[] = [
-                    'location_id' => $locationId,
-                    'title' => $location['title'] ?? null,
-                    'website' => $location['websiteUri'] ?? null,
-                    // The listing's public address on Google, straight from
-                    // Google (2026-09-22): the central admin keeps one listing
-                    // per market and fills that market's Google URL from this.
-                    'maps_url' => $location['metadata']['mapsUri'] ?? null,
-                    'place_id' => $location['metadata']['placeId'] ?? null,
-                    'address' => implode(', ', array_filter([
-                        implode(' ', (array) ($location['storefrontAddress']['addressLines'] ?? [])),
-                        $location['storefrontAddress']['locality'] ?? null,
-                        $location['storefrontAddress']['administrativeArea'] ?? null,
-                    ])) ?: null,
-                ];
-            }
-
-            // An account with nothing of ours left in it is noise on the card.
-            if ($locations === [] && ! $showAll) {
-                continue;
-            }
-
-            $accounts[] = [
-                'account_id' => $accountId,
-                'name' => $account['accountName'] ?? $account['name'] ?? $accountId,
-                'type' => $account['type'] ?? null,
-                'locations' => $locations,
-            ];
-        }
-
-        if ($accounts === [] && $service->getLastError()) {
-            return response()->json([
-                'message' => 'Google refused the listing lookup: '.($service->getLastError()['message'] ?? 'unknown error'),
-            ], 422);
-        }
-
-        return response()->json(['data' => [
-            'business_scope_granted' => true,
-            'accounts' => $accounts,
-            // What this site is not being shown, so the admin can offer it
-            // rather than leaving someone hunting for a missing listing.
-            'filtered' => ! $showAll,
-            'hidden_count' => $hidden,
-            'site_hosts' => GoogleBusinessListing::siteHosts(),
-            'selected' => [
-                'account_id' => config(GoogleBusinessListing::CONFIG_PATH.'.account_id'),
-                'location_id' => config(GoogleBusinessListing::CONFIG_PATH.'.location_id'),
-            ],
-        ]]);
+        return app(GbpClient::class);
     }
 
-    /** Choose which listing this site publishes to. */
-    public function saveGbpListing(Request $request): JsonResponse
+    protected function gbpListingStore(): ListingStore
     {
-        $data = $request->validate([
-            'account_id' => ['required', 'string', 'max:191'],
-            'location_id' => ['required', 'string', 'max:191'],
+        return app(ListingStore::class);
+    }
+
+    /** Search Console still signs in with OAuth here, so its callback URI goes on the shared client too. */
+    protected function googleRedirectProviders(): array
+    {
+        return ['gbp', 'gsc'];
+    }
+
+    /**
+     * One Google account can manage several businesses, and the API hands
+     * every one of them to whichever site holds the grant — so this page
+     * listed another client's business by name. Only listings whose website
+     * is one of THIS site's hosts are offered (plus the one already linked);
+     * the rest are counted and shown on request.
+     */
+    protected function gbpSiteHosts(): ?array
+    {
+        return GoogleBusinessListing::siteHosts();
+    }
+
+    /** Put the public Maps address on the Social Media page, unless the site already has a Google link of its own. */
+    protected function gbpListingSaved(string $accountId, string $locationId, ?array $location): void
+    {
+        GoogleBusinessListing::adoptAsSocialUrl();
+    }
+
+    /**
+     * Which of these Google review ids this site already holds: a
+     * review_urls row for platform google carrying the id (the key
+     * SyncGoogleReviews and the central admin's import write);
+     * whereHas('testimonial') keeps it to THIS site's testimonials.
+     */
+    protected function gbpImportedReviewIds(array $reviewIds): array
+    {
+        return ReviewUrl::query()
+            ->where('platform', 'google')
+            ->whereIn('external_id', $reviewIds)
+            ->whereHas('testimonial')
+            ->pluck('external_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+    }
+
+    /** Google reviews held as testimonials — the same two numbers the Houzz and Angi cards report. */
+    protected function gbpReviewStats(): array
+    {
+        $googleReviews = Testimonial::query()->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google'));
+        $latest = (clone $googleReviews)->max('review_date');
+
+        return [
+            'count' => $googleReviews->count(),
+            'latest' => $latest ? Carbon::parse($latest)->toDateString() : null,
+        ];
+    }
+
+    /** The retired publishing switch, still reported under the key this site has always sent. */
+    protected function gbpStatusExtras(): array
+    {
+        return ['enabled' => GoogleBusinessListing::publishingEnabled()];
+    }
+
+    /**
+     * The central admin's project photos arrive through the POST/DELETE
+     * platforms/gbp/media pass-through — never gated by
+     * GBP_PHOTOS_OWNED_BY: it is how ss.systems' uploads reach Google.
+     */
+    protected function gbpAcceptsMediaWrites(): bool
+    {
+        return true;
+    }
+
+    /**
+     * One of THIS site's project photos (its project must be published),
+     * as the Google copy: the dated, geotagged JPEG (captured_at/latitude/
+     * longitude override the project's own date and place), ADDITIONAL, and
+     * the caption — each overridable by the request, as before.
+     */
+    protected function gbpMediaPhoto(Request $request, array $input): array|JsonResponse
+    {
+        $request->validate([
+            'image_id' => ['required', 'integer', function ($attribute, $value, $fail) {
+                $image = ProjectImage::query()->with('project')->find($value);
+
+                if (! $image || ! $image->project?->is_published) {
+                    $fail('That image is not available — its project must be published.');
+                }
+            }],
         ]);
 
-        GoogleBusinessListing::link($data['account_id'], $data['location_id']);
-        GoogleBusinessListing::apply();
+        $service = app(GoogleBusinessProfileService::class);
+        $image = ProjectImage::query()->with('project')->findOrFail($request->integer('image_id'));
 
-        // Ask Google for the listing's place id once, here, rather than on
-        // every admin page load: it is what the public Maps link is built
-        // from, and it only changes when the listing does.
-        GoogleBusinessListing::rememberPlaceId(app(GoogleBusinessProfileService::class)->fetchPlaceId());
+        $latitude = isset($input['latitude']) ? (float) $input['latitude'] : null;
+        $longitude = isset($input['longitude']) ? (float) $input['longitude'] : null;
+        $capturedAt = ! empty($input['captured_at']) ? Carbon::parse($input['captured_at']) : null;
 
-        // And put the public Maps address on the Social Media page for this
-        // site, unless it already has a Google link of its own.
-        GoogleBusinessListing::adoptAsSocialUrl();
+        return [
+            'source_url' => (string) $service->getPublicImageUrl($image, $latitude, $longitude, $capturedAt),
+            'category' => $input['category'] ?? $service->mapCategory($image),
+            'description' => $input['description'] ?? $service->buildDescription($image),
+            'image_id' => $image->id,
+        ];
+    }
 
-        return response()->json(['data' => $this->gbpStatus()]);
+    /**
+     * Recorded exactly as UploadProjectImageToGooglePlaces records a
+     * self-upload, so the Social Media counters and DeleteGooglePlacesMedia
+     * keep working for an image uploaded this way.
+     */
+    protected function gbpMediaUploaded(array $photo, array $media, string $accountId, string $locationId): void
+    {
+        ImagePlatformUpload::record((int) $photo['image_id'], ImagePlatformUpload::PLATFORM_GOOGLE_PLACES, [
+            'remote_id' => $media['name'],
+            'remote_url' => $media['url'],
+            'metadata' => ['account_id' => $accountId, 'location_id' => $locationId],
+        ]);
+    }
+
+    /**
+     * remote_id is the primary match; the given image's own row is an
+     * alternate locator so a caller that only knows the image still clears
+     * the right row even if the stored remote_id has drifted.
+     * (google_places_media_name / google_places_uploaded_at are accessors
+     * over this row — ProjectImage::platformUpload() — nothing else to clear.)
+     */
+    protected function gbpMediaDeleted(string $mediaName, ?int $imageId): void
+    {
+        ImagePlatformUpload::query()
+            ->where('platform', ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)
+            ->where(function ($query) use ($mediaName, $imageId) {
+                $query->where('remote_id', $mediaName);
+
+                if (! empty($imageId)) {
+                    $query->orWhere('project_image_id', $imageId);
+                }
+            })
+            ->delete();
     }
 
     /**
@@ -1128,295 +1123,11 @@ class PlatformsController extends Controller
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
 
         GoogleBusinessListing::setEnabled((bool) $data['enabled']);
-        GoogleBusinessListing::apply();
 
         return response()->json(['data' => $this->gbpStatus()]);
     }
 
-    /** Google's review star enum, as the central admin stores a rating. */
-    protected const GBP_STAR_RATINGS = ['ONE' => 1, 'TWO' => 2, 'THREE' => 3, 'FOUR' => 4, 'FIVE' => 5];
-
-    /**
-     * GET platforms/gbp/reviews?account_id=&location_id=[&page_token=]
-     *
-     * One listing's Google reviews for the central admin (2026-09-22), which
-     * imports them as testimonials per market. Each review says whether this
-     * site already holds it (a review_urls row for platform google carrying
-     * its id — the same key SyncGoogleReviews writes), so the admin creates
-     * only the new ones. A pass-through with this site's grant.
-     */
-    public function gbpReviews(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'account_id' => ['required', 'string', 'max:191'],
-            'location_id' => ['required', 'string', 'max:191'],
-            'page_token' => ['sometimes', 'nullable', 'string', 'max:2048'],
-        ]);
-
-        $service = app(GoogleBusinessProfileService::class);
-
-        if (! $service->hasRefreshToken()) {
-            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
-        }
-
-        $page = $service->fetchReviewsFor(
-            GoogleBusinessListing::bareId($data['account_id']),
-            GoogleBusinessListing::bareId($data['location_id']),
-            $data['page_token'] ?? null,
-        );
-
-        if ($page === null) {
-            $message = 'Google refused the review lookup: '.($service->getLastError()['message'] ?? 'unknown error');
-
-            // Under `errors` too: the central admin reads a 422's errors, and
-            // this is what it should tell the operator.
-            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
-        }
-
-        $reviews = collect($page['reviews'])
-            ->map(fn (array $r) => ['id' => GoogleBusinessListing::bareId((string) ($r['name'] ?? '')), 'raw' => $r])
-            ->filter(fn (array $r) => $r['id'] !== '')
-            ->values();
-
-        // whereHas('testimonial') keeps this to THIS site's testimonials.
-        $held = ReviewUrl::query()
-            ->where('platform', 'google')
-            ->whereIn('external_id', $reviews->pluck('id')->all())
-            ->whereHas('testimonial')
-            ->pluck('external_id')
-            ->all();
-
-        return response()->json(['data' => [
-            'reviews' => $reviews->map(fn (array $r) => [
-                'id' => $r['id'],
-                'reviewer' => $r['raw']['reviewer']['displayName'] ?? 'Google Reviewer',
-                'rating' => self::GBP_STAR_RATINGS[$r['raw']['starRating'] ?? ''] ?? null,
-                'comment' => (string) ($r['raw']['comment'] ?? ''),
-                'created_at' => $r['raw']['createTime'] ?? null,
-                'url' => 'https://www.google.com/maps/reviews?reviewid='.$r['id'],
-                'imported' => in_array($r['id'], $held, true),
-            ])->all(),
-            'next_page_token' => $page['nextPageToken'],
-            'total_review_count' => $page['totalReviewCount'],
-            'average_rating' => $page['averageRating'],
-        ]]);
-    }
-
-    /** Google's media category enum, for validating the optional override. */
-    protected const GBP_MEDIA_CATEGORIES = [
-        'COVER', 'PROFILE', 'LOGO', 'EXTERIOR', 'INTERIOR', 'PRODUCT',
-        'AT_WORK', 'FOOD_AND_DRINK', 'MENU', 'COMMON_AREA', 'ROOMS', 'TEAMS', 'ADDITIONAL',
-    ];
-
-    /**
-     * GET platforms/gbp/media?account_id=&location_id= — every media item on
-     * one listing (2026-09-22), for the central admin's per-market photo
-     * pass-through to check what Google already has before it uploads more.
-     * Same account/location shape as gbp/reviews and gbp/media's own
-     * POST/DELETE — this grant can read any listing it manages, not only
-     * this site's own.
-     */
-    public function gbpListMedia(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'account_id' => ['required', 'string', 'max:191'],
-            'location_id' => ['required', 'string', 'max:191'],
-        ]);
-
-        $service = app(GoogleBusinessProfileService::class);
-
-        if (! $service->hasRefreshToken()) {
-            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
-        }
-
-        $items = $service->listMediaFor(
-            GoogleBusinessListing::bareId($data['account_id']),
-            GoogleBusinessListing::bareId($data['location_id']),
-        );
-
-        if ($items === null) {
-            $message = 'Google refused the media lookup: '.($service->getLastError()['message'] ?? 'unknown error');
-
-            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
-        }
-
-        return $this->itemResponse(['items' => $items, 'count' => count($items)]);
-    }
-
-    /**
-     * POST platforms/gbp/media — upload one of THIS site's project photos to
-     * a Business Profile listing (2026-09-21), for the central admin's
-     * per-market photo pass-through: the account and location are passed in,
-     * exactly as gbpReviews's are, so the same grant can publish to a
-     * listing that need not be this site's own. The Google call itself is
-     * GoogleBusinessProfileService::uploadProjectImage()'s, generalized to a
-     * given account/location by uploadMediaFor() — same source-URL choice
-     * (the geotagged JPEG when there's one, else the public image URL) and
-     * the same category/description defaults when the caller omits them.
-     *
-     * Recorded on success exactly as UploadProjectImageToGooglePlaces
-     * records a self-upload, so the Social Media counters and
-     * DeleteGooglePlacesMedia keep working for an image uploaded this way.
-     */
-    public function uploadGbpMedia(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'account_id' => ['required', 'string', 'max:191'],
-            'location_id' => ['required', 'string', 'max:191'],
-            'image_id' => ['required', 'integer', function ($attribute, $value, $fail) {
-                $image = ProjectImage::query()->with('project')->find($value);
-
-                if (! $image || ! $image->project?->is_published) {
-                    $fail('That image is not available — its project must be published.');
-                }
-            }],
-            'category' => ['sometimes', 'nullable', 'string', Rule::in(self::GBP_MEDIA_CATEGORIES)],
-            'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            // Override the copy's "Image capture" date and GPS — default is
-            // the project's completed_at and resolveImageCoordinates() (the
-            // same the site's own upload path uses). Latitude/longitude come
-            // as a pair or not at all.
-            'captured_at' => ['sometimes', 'nullable', 'date'],
-            'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
-        ]);
-
-        $service = app(GoogleBusinessProfileService::class);
-
-        if (! $service->hasRefreshToken()) {
-            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
-        }
-
-        $image = ProjectImage::query()->with('project')->findOrFail($data['image_id']);
-
-        $accountId = GoogleBusinessListing::bareId($data['account_id']);
-        $locationId = GoogleBusinessListing::bareId($data['location_id']);
-
-        $latitude = isset($data['latitude']) ? (float) $data['latitude'] : null;
-        $longitude = isset($data['longitude']) ? (float) $data['longitude'] : null;
-        $capturedAt = ! empty($data['captured_at']) ? Carbon::parse($data['captured_at']) : null;
-
-        $result = $service->uploadMediaFor(
-            $accountId,
-            $locationId,
-            (string) $service->getPublicImageUrl($image, $latitude, $longitude, $capturedAt),
-            $data['category'] ?? $service->mapCategory($image),
-            $data['description'] ?? $service->buildDescription($image),
-        );
-
-        if ($result === null) {
-            $message = 'Google refused the photo: '.($service->getLastError()['message'] ?? 'unknown error');
-
-            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
-        }
-
-        ImagePlatformUpload::record($image->id, ImagePlatformUpload::PLATFORM_GOOGLE_PLACES, [
-            'remote_id' => $result['name'],
-            'remote_url' => $result['url'],
-            'metadata' => ['account_id' => $accountId, 'location_id' => $locationId],
-        ]);
-
-        return $this->itemResponse([
-            'ok' => true,
-            'image_id' => $image->id,
-            'media_name' => $result['name'],
-            'media_url' => $result['url'],
-        ]);
-    }
-
-    /**
-     * DELETE platforms/gbp/media — undo an upload the pass-through made (or
-     * any google_places upload), for the central admin. A 404 from Google
-     * means the media is already gone, which counts as success here so a
-     * retry after a partial failure doesn't get stuck.
-     */
-    public function deleteGbpMedia(Request $request): JsonResponse|Response
-    {
-        $data = $request->validate([
-            'media_name' => ['required', 'string', 'max:255'],
-            'image_id' => ['sometimes', 'nullable', 'integer'],
-        ]);
-
-        $service = app(GoogleBusinessProfileService::class);
-
-        if (! $service->hasRefreshToken()) {
-            return response()->json(['message' => 'Connect Google Business Profile first.'], 422);
-        }
-
-        $deleted = $service->deleteMedia($data['media_name']);
-
-        if (! $deleted && (int) ($service->getLastError()['status'] ?? 0) !== 404) {
-            $message = 'Google refused the delete: '.($service->getLastError()['message'] ?? 'unknown error');
-
-            return response()->json(['message' => $message, 'errors' => ['google' => [$message]]], 422);
-        }
-
-        // remote_id is the primary match; the given image's own row is an
-        // alternate locator so a caller that only knows the image still
-        // clears the right row even if the stored remote_id has drifted.
-        ImagePlatformUpload::query()
-            ->where('platform', ImagePlatformUpload::PLATFORM_GOOGLE_PLACES)
-            ->where(function ($query) use ($data) {
-                $query->where('remote_id', $data['media_name']);
-
-                if (! empty($data['image_id'])) {
-                    $query->orWhere('project_image_id', $data['image_id']);
-                }
-            })
-            ->delete();
-
-        // google_places_media_name / google_places_uploaded_at are accessors
-        // over the row just deleted (ProjectImage::platformUpload()) — no
-        // column to clear separately.
-
-        return response()->noContent();
-    }
-
-    protected function gbpStatus(): array
-    {
-        $service = app(GoogleBusinessProfileService::class);
-        $token = $service->getStoredToken();
-        $config = config('services.google.business_profile');
-
-        return [
-            'connected' => $service->hasRefreshToken(),
-            'source' => $token?->refresh_token ? 'oauth' : ($service->hasRefreshToken() ? 'env' : null),
-            'email' => $token?->granted_by_email,
-            'granted_at' => $token?->created_at?->toIso8601String(),
-            'updated_at' => $token?->updated_at?->toIso8601String(),
-            'access_token_expires_at' => $token?->access_token_expires_at?->toIso8601String(),
-            'scopes' => $token?->scopes,
-            // The OAuth client is what "configured" means here; the refresh
-            // token is what connecting produces, and is reported separately.
-            'app_credentials_configured' => ! empty($config['client_id']) && ! empty($config['client_secret']),
-            'fully_configured' => $service->isConfigured(),
-            // Presence booleans only, for the "Configuration Status" dot-row
-            // checklist (legacy view's inline $gbpChecks,
-            // platforms-settings.blade.php ~136-144). NEVER the client
-            // secret / IDs themselves — just whether each is set.
-            'enabled' => (bool) ($config['enabled'] ?? false),
-            // The listing's public address, for the admin to show and for the
-            // Social Media page's Google field. Null until this site links a
-            // listing of its own — never another tenant's.
-            'maps_url' => GoogleBusinessListing::mapsUrl(),
-            // Google reviews held as testimonials (a review_urls row for
-            // platform google), the same two numbers the Houzz and Angi
-            // cards report — the central admin imports them per market.
-            'reviews_count' => ($googleReviews = Testimonial::query()->whereHas('reviewUrls', fn ($q) => $q->where('platform', 'google')))->count(),
-            'latest_review_date' => ($latestGoogle = (clone $googleReviews)->max('review_date')) ? Carbon::parse($latestGoogle)->toDateString() : null,
-            'client_id_configured' => ! empty($config['client_id']),
-            'client_secret_configured' => ! empty($config['client_secret']),
-            'account_id_configured' => ! empty($config['account_id']),
-            'location_id_configured' => ! empty($config['location_id']),
-            'refresh_token_present' => $service->hasRefreshToken(),
-            // A connection can exist and still be useless: Google's consent
-            // screen lets the user approve sign-in while declining Business
-            // Profile, which yields a token that can name the user and do
-            // nothing else. Report that plainly instead of a green tick.
-            'business_scope_granted' => $service->hasBusinessScope(),
-            'listing_source' => PlatformSetting::get(GoogleBusinessListing::SETTING_LOCATION_ID) ? 'admin' : (! empty($config['location_id']) ? 'env' : null),
-        ];
-    }
+    // ---- internals -------------------------------------------------------
 
     protected function gscStatus(): array
     {

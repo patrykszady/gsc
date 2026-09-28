@@ -62,7 +62,6 @@ use App\Services\MetaSocialService;
 use App\Services\SeoService;
 use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\DevSites;
-use App\Support\GoogleBusinessListing;
 use App\Support\LeadLineInfo;
 use App\Support\PermitGuideInfo;
 use App\Support\Seo\CrawlFiles;
@@ -75,11 +74,14 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use SsSystems\Platform\Auth\OAuthState;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
+use SsSystems\Platform\Google\Http\OAuthCallback;
+use SsSystems\Platform\Google\OAuthClient;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Pulse\BeaconController;
 
@@ -203,7 +205,7 @@ Route::get('/review', function () {
     // This site's own place id, never the deployment's: the env value is
     // gs.construction's, and sending another business's customers to GS's
     // review form is the one mistake this link must not make.
-    $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+    $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
     $target = $placeId !== ''
         ? 'https://search.google.com/local/writereview?placeid='.urlencode($placeId)
         : 'https://www.google.com/maps/search/?api=1&query='.urlencode((string) config('brand.display_name', config('brand.name')));
@@ -664,48 +666,32 @@ Route::get('/remodeling/{slug}', LandingPageShow::class)
     ->name('landing.show');
 
 /*
-| The OAuth callback every site shares — the same /admin-oauth/{provider}/
-| callback jpeterson-design has, with the same session-less protection: the
-| 'state' value PlatformsController::oauthUrl() mints via App\Support\
-| OAuthState is verified before any code is exchanged, so the callback needs
-| no admin session (the /admin surface is the central admin's proxy now, and
-| the legacy session behind the older /admin/{site}/platforms/… callbacks
-| below is rarely there). Register this exact URL per provider on the
-| site's own Google Cloud OAuth client / Meta app — the admin's "Google
-| sign-in" card lists them. The older routes stay for clients that still
-| carry the old URLs.
+| The OAuth callback every site shares — the kit's hardened Google\Http\
+| OAuthCallback (0.14.0): the signed 'state' PlatformsController::oauthUrl()
+| minted (Auth\OAuthState) is verified before any code is exchanged, so the
+| callback needs no admin session (the /admin surface is the central admin's
+| proxy now). Query values are strings only, Google's own reason is capped,
+| and an exchange that throws is a calm "try again" line. The outcome goes
+| back to THIS tenant's proxied Platforms screen — /admin/{its ss.systems
+| key}/platforms, the same key AdminProxyController forwards with — never a
+| hard-coded /admin/gsc. Every tenant's URIs are registered on the ONE
+| shared Google client (docs/GOOGLE.md); the admin's "Google sign-in" card
+| lists them. Business Profile exchanges through the kit's client; Search
+| Console (still OAuth here) through GoogleSearchConsoleService, on the same
+| shared client; Meta as before. The older /admin/{site}/platforms/…
+| callbacks below stay for the legacy Livewire admin's Connect buttons.
 */
 Route::get('/admin-oauth/{provider}/callback', function (Request $request, string $provider) {
-    abort_unless(in_array($provider, ['gbp', 'gsc', 'meta'], true), 404);
+    $siteKey = trim((string) config('services.ss.site_key')) ?: Site::current()->slug;
 
-    if (! OAuthState::verify($request->query('state'), $provider)) {
-        return redirect('/admin/gsc/platforms?error='.urlencode(
-            'Sign-in link expired or was invalid. Try connecting again.'
-        ));
-    }
-
-    $code = $request->query('code');
-    if (! $code) {
-        $err = $request->query('error_description') ?? $request->query('error')
-            ?? 'Authorization cancelled or failed — no code returned.';
-
-        return redirect('/admin/gsc/platforms?error='.urlencode((string) $err));
-    }
-
-    $redirectUri = route('admin-oauth.callback', ['provider' => $provider]);
-
-    $result = match ($provider) {
-        'gbp' => app(GoogleBusinessProfileService::class)->exchangeCodeAndStore($code, $redirectUri),
-        'gsc' => app(GoogleSearchConsoleService::class)->exchangeCodeAndStore($code, $redirectUri),
-        'meta' => app(MetaSocialService::class)->exchangeCodeAndStore($code, $redirectUri, MetaSocialService::OAUTH_SCOPES),
-    };
-
-    if ($result['success'] ?? false) {
-        return redirect("/admin/gsc/platforms?connected={$provider}");
-    }
-
-    return redirect('/admin/gsc/platforms?error='.urlencode('OAuth failed: '.($result['error'] ?? 'Unknown error')));
-})->where('provider', 'gbp|gsc|meta')->name('admin-oauth.callback');
+    return (new OAuthCallback('/admin/'.$siteKey.'/platforms', Log::channel('gbp')))
+        ->handle($request, $provider, route(OAuthClient::CALLBACK_ROUTE, ['provider' => $provider]), [
+            'gbp' => fn (string $code, string $redirectUri) => app(GoogleBusinessProfileService::class)->exchangeCodeAndStore($code, $redirectUri),
+            'gsc' => fn (string $code, string $redirectUri) => app(GoogleSearchConsoleService::class)->exchangeCodeAndStore($code, $redirectUri),
+            'meta' => fn (string $code, string $redirectUri) => app(MetaSocialService::class)
+                ->exchangeCodeAndStore($code, $redirectUri, MetaSocialService::OAUTH_SCOPES),
+        ]);
+})->whereIn('provider', ['gbp', 'gsc', 'meta'])->name(OAuthClient::CALLBACK_ROUTE);
 
 /*
 | OAuth callbacks — deliberately at the ORIGINAL /admin/{site}/… paths, not

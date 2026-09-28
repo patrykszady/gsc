@@ -110,10 +110,12 @@ class PlatformsGbpMediaListTest extends TestCase
             'mybusiness.googleapis.com/*' => Http::response('{"error":{"message":"internal error"}}', 500),
         ]);
 
+        // The kit's owner-safe sentence for a 5xx (Failure::UNAVAILABLE), not
+        // the technical "List media failed" the old service printed.
         $this->getJson('/api/admin/v1/platforms/gbp/media?account_id=900&location_id=111', $this->headers())
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Google refused the media lookup: List media failed')
-            ->assertJsonPath('errors.google.0', 'Google refused the media lookup: List media failed');
+            ->assertJsonPath('message', 'Google refused the media lookup: Google had a problem answering. Try again shortly.')
+            ->assertJsonPath('errors.google.0', 'Google refused the media lookup: Google had a problem answering. Try again shortly.');
     }
 
     public function test_account_and_location_are_required(): void

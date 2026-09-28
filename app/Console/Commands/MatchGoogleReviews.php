@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PlatformSetting;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
-use App\Support\GoogleBusinessListing;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use SsSystems\Platform\Google\BusinessProfile\Adapters\PlatformSettingListingStore;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
 
 class MatchGoogleReviews extends Command
 {
@@ -128,7 +130,7 @@ class MatchGoogleReviews extends Command
             $this->newLine();
             $this->info('Normalizing non-data Google review URLs...');
 
-            $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+            $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
             if ($placeId === '') {
                 $this->warn('Skipping URL normalization: GOOGLE_BUSINESS_PROFILE_PLACE_ID is not configured.');
             } else {
@@ -161,15 +163,16 @@ class MatchGoogleReviews extends Command
         $urlsLinked = 0;
 
         // Auto-detect Place ID if not configured
-        if (! (GoogleBusinessListing::placeId() ?? '')) {
+        if (! (app(ListingStore::class)->placeId() ?? '')) {
             $this->line('Place ID not set in .env, fetching from GBP API...');
             $detectedPlaceId = $service->fetchPlaceId();
             if ($detectedPlaceId) {
                 $this->info("Detected Place ID: {$detectedPlaceId}");
                 config(['services.google.business_profile.place_id' => $detectedPlaceId]);
                 // Per site, not in a shared .env: one env value cannot be two
-                // businesses' place ids.
-                GoogleBusinessListing::rememberPlaceId($detectedPlaceId);
+                // businesses' place ids. The ListingStore's own key, written
+                // alone — the listing's other links stay as they are.
+                PlatformSetting::put(PlatformSettingListingStore::PLACE_ID, $detectedPlaceId);
                 $this->line('Saved for this site.');
             } else {
                 $error = $service->getLastError();
@@ -376,7 +379,7 @@ class MatchGoogleReviews extends Command
 
     protected function buildFallbackGoogleUrl(string $reviewId): string
     {
-        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+        $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
 
         if ($placeId !== '') {
             return 'https://search.google.com/local/reviews?placeid='.$placeId;

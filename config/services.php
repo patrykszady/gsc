@@ -17,6 +17,15 @@ $compose2captchaProxy = static function (): ?string {
     return sprintf('http://%s:%s@%s', $user, $pass, $host);
 };
 
+// THE Google sign-in client (kit 0.14.0, docs/GOOGLE.md): gs.construction's
+// Cloud project 31627704418, the same values on every tenant. Taken whole or
+// not at all — a new id is never paired with an old secret. Search Console
+// (still OAuth here until it moves to the service account) signs in through
+// the same pair; until GOOGLE_OAUTH_* is set it keeps its old keys, which on
+// this deployment already name that same client.
+$googleOAuthPair = trim((string) env('GOOGLE_OAUTH_CLIENT_ID', '')) !== ''
+    && trim((string) env('GOOGLE_OAUTH_CLIENT_SECRET', '')) !== '';
+
 return [
 
     /*
@@ -99,10 +108,21 @@ return [
         'maps_browser_key' => env('GOOGLE_MAPS_BROWSER_KEY', env('GOOGLE_PLACES_API_KEY')),
         'gemini_api_key' => env('GOOGLE_GEMINI_API_KEY'),
         'gemini_model' => env('GOOGLE_GEMINI_MODEL', 'gemini-2.5-flash'),
+        // The ONE sign-in client every tenant uses for Business Profile (and,
+        // here, Search Console) — read by the kit's OAuthClient::fromConfig().
+        'oauth' => [
+            'client_id' => env('GOOGLE_OAUTH_CLIENT_ID'),
+            'client_secret' => env('GOOGLE_OAUTH_CLIENT_SECRET'),
+            'project_id' => env('GOOGLE_OAUTH_PROJECT_ID'), // optional, shown to platform admins
+        ],
         'business_profile' => [
             'enabled' => env('GOOGLE_BUSINESS_PROFILE_ENABLED', false),
+            // The pre-0.14 pair: the kit's read-only fallback while
+            // GOOGLE_OAUTH_* is unset. Remove once it is (kit 0.15.0 drops it).
             'client_id' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID'),
             'client_secret' => env('GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET'),
+            // gs.construction's own server-held grant and listing: the default
+            // site's only (AppServiceProvider::registerGoogle()).
             'refresh_token' => env('GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN'),
             'account_id' => env('GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID'),
             'location_id' => env('GOOGLE_BUSINESS_PROFILE_LOCATION_ID'),
@@ -125,13 +145,18 @@ return [
             'geocode_state' => env('GBP_GEOCODE_STATE', 'IL'),
             'geocode_country' => env('GBP_GEOCODE_COUNTRY', 'USA'),
         ],
-        // Google Search Console API (free, official). Separate OAuth client
-        // because the scope differs (webmasters.readonly). Reuses the same
-        // Google Cloud project credentials if you wish (set the same client_id/secret).
+        // Google Search Console API (free, official), still OAuth on this
+        // site until it moves to the shared service account. It signs in
+        // through the one shared client (services.google.oauth) once that is
+        // set; the older keys below remain only as its fallback.
         'search_console' => [
             'enabled' => env('GOOGLE_SEARCH_CONSOLE_ENABLED', false),
-            'client_id' => env('GOOGLE_SEARCH_CONSOLE_CLIENT_ID', env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID')),
-            'client_secret' => env('GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET', env('GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET')),
+            'client_id' => $googleOAuthPair
+                ? env('GOOGLE_OAUTH_CLIENT_ID')
+                : env('GOOGLE_SEARCH_CONSOLE_CLIENT_ID', env('GOOGLE_BUSINESS_PROFILE_CLIENT_ID')),
+            'client_secret' => $googleOAuthPair
+                ? env('GOOGLE_OAUTH_CLIENT_SECRET')
+                : env('GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET', env('GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET')),
             'refresh_token' => env('GOOGLE_SEARCH_CONSOLE_REFRESH_TOKEN'),
             // Defaults to the existing seo.search_console.site_url (likely
             // `sc-domain:gs.construction`) to avoid configuring the same value twice.

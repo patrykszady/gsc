@@ -100,4 +100,91 @@ class OAuthCallbackTest extends TestCase
         $this->assertStringContainsString('/admin/gsc/platforms?error=', $response->headers->get('Location'));
         $this->assertNull(OAuthToken::forProvider('google_business_profile'));
     }
+
+    /*
+    | Kit 0.14.0: the callback is the kit's hardened Google\Http\OAuthCallback.
+    */
+
+    public function test_the_outcome_goes_to_this_tenants_own_platforms_screen(): void
+    {
+        // The key AdminProxyController forwards with — never a hard-coded /admin/gsc.
+        config(['services.ss.site_key' => 'jpeterson']);
+        $this->assertStringStartsWith('/admin/jpeterson/platforms?error=', $this->get('/admin-oauth/gbp/callback?code=abc123')->headers->get('Location'));
+
+        // No key configured: the tenant's own slug.
+        config(['services.ss.site_key' => null]);
+        $this->assertStringStartsWith('/admin/gsc/platforms?error=', $this->get('/admin-oauth/gbp/callback?code=abc123')->headers->get('Location'));
+    }
+
+    public function test_a_business_profile_grant_records_the_shared_client_that_issued_it(): void
+    {
+        config([
+            'services.google.oauth.client_id' => '31627704418-shared.apps.googleusercontent.com',
+            'services.google.oauth.client_secret' => 'GOCSPX-shared',
+        ]);
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response([
+                'refresh_token' => 'new-refresh-token',
+                'access_token' => 'new-access-token',
+                'expires_in' => 3600,
+                'scope' => 'https://www.googleapis.com/auth/business.manage openid email',
+            ]),
+            'www.googleapis.com/oauth2/v3/userinfo*' => Http::response(['email' => 'owner@example.com']),
+        ]);
+        Http::preventStrayRequests();
+
+        $this->get('/admin-oauth/gbp/callback?code=abc123&state='.urlencode(OAuthState::make('gbp')))
+            ->assertRedirect('/admin/gsc/platforms?connected=gbp');
+
+        $row = OAuthToken::forProvider('google_business_profile');
+        $this->assertSame('31627704418-shared.apps.googleusercontent.com', $row->metadata['oauth_client_id']);
+        $this->assertSame(['https://www.googleapis.com/auth/business.manage', 'openid', 'email'], $row->scopes);
+        $this->assertSame('owner@example.com', $row->granted_by_email);
+        Http::assertSent(fn ($request) => $request->url() === 'https://oauth2.googleapis.com/token'
+            && $request['client_id'] === '31627704418-shared.apps.googleusercontent.com');
+    }
+
+    public function test_search_console_still_connects_through_its_own_service_on_the_same_client(): void
+    {
+        config([
+            'services.google.search_console.client_id' => '31627704418-shared.apps.googleusercontent.com',
+            'services.google.search_console.client_secret' => 'GOCSPX-shared',
+        ]);
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response([
+                'refresh_token' => 'gsc-refresh-token',
+                'access_token' => 'gsc-access-token',
+                'expires_in' => 3600,
+                'scope' => 'https://www.googleapis.com/auth/webmasters',
+            ]),
+            'www.googleapis.com/oauth2/v3/userinfo*' => Http::response(['email' => 'owner@example.com']),
+        ]);
+        Http::preventStrayRequests();
+
+        $this->get('/admin-oauth/gsc/callback?code=abc123&state='.urlencode(OAuthState::make('gsc')))
+            ->assertRedirect('/admin/gsc/platforms?connected=gsc');
+
+        $this->assertSame('gsc-refresh-token', OAuthToken::forProvider('google_search_console')->refresh_token);
+        $this->assertNull(OAuthToken::forProvider('google_business_profile'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://oauth2.googleapis.com/token'
+            && $request['client_id'] === '31627704418-shared.apps.googleusercontent.com'
+            && $request['redirect_uri'] === route('admin-oauth.callback', ['provider' => 'gsc']));
+    }
+
+    public function test_a_provider_that_does_not_answer_is_a_calm_try_again(): void
+    {
+        config([
+            'services.google.oauth.client_id' => '31627704418-shared.apps.googleusercontent.com',
+            'services.google.oauth.client_secret' => 'GOCSPX-shared',
+        ]);
+        Http::fake(['oauth2.googleapis.com/*' => Http::failedConnection('timed out')]);
+        Http::preventStrayRequests();
+
+        $location = $this->get('/admin-oauth/gbp/callback?code=abc123&state='.urlencode(OAuthState::make('gbp')))
+            ->assertRedirect()
+            ->headers->get('Location');
+
+        $this->assertStringStartsWith('/admin/gsc/platforms?error=', $location);
+        $this->assertNull(OAuthToken::forProvider('google_business_profile'));
+    }
 }
