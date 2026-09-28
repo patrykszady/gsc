@@ -29,6 +29,21 @@
         <env name="CITATIONS_M365_TENANT_ID" value=""/>
         <!-- The GBP description proposal reads Google and Gemini for real; the local .env would make it live under test. -->
         <env name="SEO_AUTOPILOT_GBP_DESCRIPTION_ENABLED" value="false"/>
+        <!-- gs.construction's real Google grant (the shared sign-in client, its refresh token and listing) is in the
+             local .env for dev parity. With it the suite called Google's token endpoint for real — an image saved in a
+             test queued the site's own GBP upload. A test that needs Google sets config() and fakes Http itself. -->
+        <env name="GOOGLE_OAUTH_CLIENT_ID" value=""/>
+        <env name="GOOGLE_OAUTH_CLIENT_SECRET" value=""/>
+        <env name="GOOGLE_OAUTH_PROJECT_ID" value=""/>
+        <env name="GOOGLE_BUSINESS_PROFILE_CLIENT_ID" value=""/>
+        <env name="GOOGLE_BUSINESS_PROFILE_CLIENT_SECRET" value=""/>
+        <env name="GOOGLE_BUSINESS_PROFILE_REFRESH_TOKEN" value=""/>
+        <env name="GOOGLE_BUSINESS_PROFILE_ACCOUNT_ID" value=""/>
+        <env name="GOOGLE_BUSINESS_PROFILE_LOCATION_ID" value=""/>
+        <env name="GOOGLE_BUSINESS_PROFILE_PLACE_ID" value=""/>
+        <env name="GOOGLE_SEARCH_CONSOLE_CLIENT_ID" value=""/>
+        <env name="GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET" value=""/>
+        <env name="GOOGLE_SEARCH_CONSOLE_REFRESH_TOKEN" value=""/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
