@@ -88,7 +88,9 @@ use SsSystems\Platform\Pulse\BeaconController;
 // The crawl files, per tenant. They were static files under public/, which
 // nginx serves for EVERY host of this deployment — another site's domain
 // handed out gs.construction's robots rules and sitemap. See CrawlFiles.
-Route::get('/robots.txt', fn () => response(CrawlFiles::robots(), 200, [
+// A dev/staging mirror or preview host turns every crawler away instead
+// (CrawlFiles::blocksCrawlers).
+Route::get('/robots.txt', fn (Request $request) => response(CrawlFiles::blocksCrawlers($request->getHost()) ? CrawlFiles::BLOCK_ALL : CrawlFiles::robots(), 200, [
     'Content-Type' => 'text/plain; charset=UTF-8',
     'Cache-Control' => 'public, max-age=3600',
 ]))->name('robots');
