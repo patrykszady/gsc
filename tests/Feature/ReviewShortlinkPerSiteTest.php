@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\PlatformSetting;
 use App\Models\Site;
-use App\Support\GoogleBusinessListing;
 use App\Support\Tenancy;
+use SsSystems\Platform\Google\BusinessProfile\Adapters\PlatformSettingListingStore;
 use Tests\TestCase;
 
 /**
@@ -46,7 +46,7 @@ class ReviewShortlinkPerSiteTest extends TestCase
         $site->forceFill(['is_active' => true])->save();
         Site::forgetActive();
 
-        Tenancy::for($site, fn () => PlatformSetting::put(GoogleBusinessListing::SETTING_PLACE_ID, 'ChIJherplace'));
+        Tenancy::for($site, fn () => PlatformSetting::put(PlatformSettingListingStore::PLACE_ID, 'ChIJherplace'));
 
         $this->get('https://jpeterson-design.com/review')
             ->assertRedirect('https://search.google.com/local/writereview?placeid=ChIJherplace');

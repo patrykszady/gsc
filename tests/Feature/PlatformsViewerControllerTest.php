@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
@@ -87,8 +88,21 @@ class PlatformsViewerControllerTest extends TestCase
             ->assertRedirect('http://example.test/ig-vnc.html');
     }
 
+    /**
+     * An unknown provider never reaches the viewer: the route does not match,
+     * so the request falls through to the /admin/{path?} proxy, which relays
+     * it to ss.systems — faked here (it used to reach whatever answered on
+     * the dev machine's 127.0.0.1:8001, so the result depended on whether
+     * the central admin happened to be running).
+     */
     public function test_it_rejects_an_unknown_provider(): void
     {
+        config([
+            'services.ss.url' => 'https://ss.test',
+            'services.ss.service_secret' => 'test-proxy-secret',
+        ]);
+        Http::fake(['https://ss.test/*' => Http::response('Not Found', 404)]);
+
         $url = URL::temporarySignedRoute(
             'admin.platforms.viewer',
             now()->addMinutes(15),
@@ -96,5 +110,8 @@ class PlatformsViewerControllerTest extends TestCase
         );
 
         $this->get($url)->assertStatus(404);
+
+        Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://ss.test/')
+            && str_contains($request->url(), '/platforms/bogus/viewer'));
     }
 }

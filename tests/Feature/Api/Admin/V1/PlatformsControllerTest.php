@@ -257,6 +257,14 @@ class PlatformsControllerTest extends TestCase
 
     public function test_oauth_url_builds_the_admin_site_callback_redirect_uri(): void
     {
+        // The shared Google sign-in client (kit 0.14.0): without one, the
+        // gbp button answers a sentence instead of a URL
+        // (PlatformsGoogleCredentialsTest pins that).
+        config([
+            'services.google.oauth.client_id' => '31627704418-test.apps.googleusercontent.com',
+            'services.google.oauth.client_secret' => 'GOCSPX-test',
+        ]);
+
         foreach (['gbp' => 'gbp', 'gsc' => 'gsc', 'meta' => 'meta'] as $provider => $segment) {
             $url = $this->getJson("/api/admin/v1/platforms/{$provider}/oauth-url", $this->bearer())
                 ->assertOk()

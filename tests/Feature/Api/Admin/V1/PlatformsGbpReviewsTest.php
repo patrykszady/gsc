@@ -25,7 +25,9 @@ class PlatformsGbpReviewsTest extends TestCase
         $this->mock(GoogleBusinessProfileService::class, function (MockInterface $mock) {
             $mock->shouldReceive('hasRefreshToken')->andReturn(true);
             $mock->shouldReceive('getLastError')->andReturn(null);
-            $mock->shouldReceive('fetchReviewsFor')->with('900', '111', null)->andReturn([
+            // The ids as the admin sent them: the kit's client bares
+            // "locations/111" itself (GbpGoogleCallsPinnedTest pins the URL).
+            $mock->shouldReceive('fetchReviewsFor')->with('900', 'locations/111', null)->andReturn([
                 'reviews' => [
                     ['name' => 'accounts/900/locations/111/reviews/r1', 'reviewer' => ['displayName' => 'Dana K.'], 'starRating' => 'FIVE',
                         'comment' => 'Great crew.', 'createTime' => '2026-08-01T15:00:00Z'],

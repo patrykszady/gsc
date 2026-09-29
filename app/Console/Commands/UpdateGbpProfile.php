@@ -89,7 +89,7 @@ class UpdateGbpProfile extends Command
     {
         $this->info('Fetching current location details...');
 
-        $location = $service->getLocation('name,title,categories,serviceArea,storefrontAddress,websiteUri');
+        $location = $service->getListingLocation('name,title,categories,serviceArea,storefrontAddress,websiteUri');
 
         if (! $location) {
             $error = $service->getLastError();

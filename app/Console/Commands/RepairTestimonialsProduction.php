@@ -3,11 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Models\ReviewUrl;
-use App\Support\GoogleBusinessListing;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
 
 class RepairTestimonialsProduction extends Command
 {
@@ -191,7 +191,7 @@ class RepairTestimonialsProduction extends Command
 
     private function buildFallbackGoogleUrl(): string
     {
-        $placeId = (string) (GoogleBusinessListing::placeId() ?? '');
+        $placeId = (string) (app(ListingStore::class)->placeId() ?? '');
 
         if ($placeId !== '') {
             return 'https://search.google.com/local/reviews?placeid='.$placeId;

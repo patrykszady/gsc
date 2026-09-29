@@ -92,6 +92,33 @@ class PlatformsGbpMediaListTest extends TestCase
         Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'pageToken=page-2'));
     }
 
+    /**
+     * All pages or nothing, as before kit 0.14: ss.systems' upload job reads
+     * this list to decide whether a photo is already on Google, so the
+     * first page alone must never be answered as the whole listing.
+     */
+    public function test_a_later_page_google_refuses_fails_the_whole_list_instead_of_answering_part_of_it(): void
+    {
+        $this->connect();
+
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'test-access-token', 'expires_in' => 3600], 200),
+            'mybusiness.googleapis.com/v4/accounts/900/locations/111/media*' => Http::sequence()
+                ->push([
+                    'mediaItems' => [['name' => 'accounts/900/locations/111/media/one', 'sourceUrl' => 'https://example.test/one-gbp-abc.jpg']],
+                    'nextPageToken' => 'page-2',
+                ])
+                ->push('{"error":{"code":503,"message":"backend error","status":"UNAVAILABLE"}}', 503),
+        ]);
+
+        $this->getJson('/api/admin/v1/platforms/gbp/media?account_id=900&location_id=111', $this->headers())
+            ->assertStatus(422)
+            ->assertJsonPath('errors.google.0', 'Google refused the media lookup: Google had a problem answering. Try again shortly.')
+            ->assertJsonMissingPath('data');
+
+        Http::assertSent(fn ($request) => str_contains((string) $request->url(), 'pageToken=page-2'));
+    }
+
     public function test_media_list_is_refused_when_google_business_profile_is_not_connected(): void
     {
         config(['services.google.business_profile.refresh_token' => null]);
@@ -110,10 +137,12 @@ class PlatformsGbpMediaListTest extends TestCase
             'mybusiness.googleapis.com/*' => Http::response('{"error":{"message":"internal error"}}', 500),
         ]);
 
+        // The kit's owner-safe sentence for a 5xx (Failure::UNAVAILABLE), not
+        // the technical "List media failed" the old service printed.
         $this->getJson('/api/admin/v1/platforms/gbp/media?account_id=900&location_id=111', $this->headers())
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Google refused the media lookup: List media failed')
-            ->assertJsonPath('errors.google.0', 'Google refused the media lookup: List media failed');
+            ->assertJsonPath('message', 'Google refused the media lookup: Google had a problem answering. Try again shortly.')
+            ->assertJsonPath('errors.google.0', 'Google refused the media lookup: Google had a problem answering. Try again shortly.');
     }
 
     public function test_account_and_location_are_required(): void

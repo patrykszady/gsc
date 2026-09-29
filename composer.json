@@ -27,7 +27,7 @@
         "railsware/mailtrap-php": "^3.9",
         "ralphjsmit/laravel-seo": "^1.8",
         "spatie/laravel-sitemap": "^7.3",
-        "ss-systems/platform-kit": "^0.13.0",
+        "ss-systems/platform-kit": "^0.14.0",
         "symfony/http-client": "^7.4"
     },
     "require-dev": {

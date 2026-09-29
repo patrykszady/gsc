@@ -56,7 +56,7 @@ class GoogleBusinessProfilePerformanceService
      */
     protected function forceTokenRefresh(): void
     {
-        \Illuminate\Support\Facades\Cache::forget('google_business_profile_access_token');
+        $this->gbp->forgetCachedAccessToken();
     }
 
     /**

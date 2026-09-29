@@ -235,8 +235,10 @@ class PlatformsGbpMediaTest extends TestCase
     {
         $image = $this->unpublishedImage();
 
+        // The kit checks the grant (a database read) before asking this site
+        // which photo it is; Google is still never called.
         $mock = Mockery::mock(GoogleBusinessProfileService::class);
-        $mock->shouldNotReceive('hasRefreshToken');
+        $mock->shouldReceive('hasRefreshToken')->andReturn(true);
         $mock->shouldNotReceive('uploadMediaFor');
         $this->app->instance(GoogleBusinessProfileService::class, $mock);
 
@@ -254,7 +256,7 @@ class PlatformsGbpMediaTest extends TestCase
     public function test_a_missing_image_id_is_also_rejected_with_errors_image_id(): void
     {
         $mock = Mockery::mock(GoogleBusinessProfileService::class);
-        $mock->shouldNotReceive('hasRefreshToken');
+        $mock->shouldReceive('hasRefreshToken')->andReturn(true);
         $mock->shouldNotReceive('uploadMediaFor');
         $this->app->instance(GoogleBusinessProfileService::class, $mock);
 
@@ -277,7 +279,8 @@ class PlatformsGbpMediaTest extends TestCase
         $mock->shouldReceive('mapCategory')->once()->andReturn('ADDITIONAL');
         $mock->shouldReceive('buildDescription')->once()->andReturn('A finished kitchen remodel.');
         $mock->shouldReceive('uploadMediaFor')->once()->andReturn(null);
-        $mock->shouldReceive('getLastError')->andReturn(['message' => 'INVALID_ARGUMENT: bad sourceUrl']);
+        // The kit's owner-safe sentence for the failure (Failure::forApi()).
+        $mock->shouldReceive('lastErrorDescription')->andReturn('Google refused the request: Invalid sourceUrl.');
         $this->app->instance(GoogleBusinessProfileService::class, $mock);
 
         $this->postJson('/api/admin/v1/platforms/gbp/media', [
@@ -286,8 +289,8 @@ class PlatformsGbpMediaTest extends TestCase
             'image_id' => $image->id,
         ], $this->headers())
             ->assertStatus(422)
-            ->assertJsonPath('message', 'Google refused the photo: INVALID_ARGUMENT: bad sourceUrl')
-            ->assertJsonPath('errors.google.0', 'Google refused the photo: INVALID_ARGUMENT: bad sourceUrl');
+            ->assertJsonPath('message', 'Google refused the photo: Google refused the request: Invalid sourceUrl.')
+            ->assertJsonPath('errors.google.0', 'Google refused the photo: Google refused the request: Invalid sourceUrl.');
 
         $this->assertSame(0, ImagePlatformUpload::where('project_image_id', $image->id)->count());
     }
@@ -322,7 +325,7 @@ class PlatformsGbpMediaTest extends TestCase
 
         $mock = Mockery::mock(GoogleBusinessProfileService::class);
         $mock->shouldReceive('hasRefreshToken')->once()->andReturn(true);
-        $mock->shouldReceive('deleteMedia')->once()->with('accounts/900/locations/111/media/abc123')->andReturn(true);
+        $mock->shouldReceive('deleteMediaFor')->once()->with('accounts/900/locations/111/media/abc123')->andReturn(true);
         $this->app->instance(GoogleBusinessProfileService::class, $mock);
 
         $this->deleteJson('/api/admin/v1/platforms/gbp/media', [
@@ -343,24 +346,33 @@ class PlatformsGbpMediaTest extends TestCase
             'remote_url' => null,
         ]);
 
-        $mock = Mockery::mock(GoogleBusinessProfileService::class);
-        $mock->shouldReceive('hasRefreshToken')->once()->andReturn(true);
-        $mock->shouldReceive('deleteMedia')->once()->andReturn(false);
-        $mock->shouldReceive('getLastError')->andReturn(['message' => 'Delete failed', 'status' => 404]);
-        $this->app->instance(GoogleBusinessProfileService::class, $mock);
+        // The real client: Google's 404 for a media item already gone is a
+        // successful delete inside it (kit 0.14.0), so a retry never sticks.
+        config([
+            'services.google.oauth.client_id' => '31627704418-test.apps.googleusercontent.com',
+            'services.google.oauth.client_secret' => 'GOCSPX-test',
+            'services.google.business_profile.refresh_token' => 'test-refresh-token',
+        ]);
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'test-access-token', 'expires_in' => 3600], 200),
+            'mybusiness.googleapis.com/*' => Http::response(['error' => ['code' => 404, 'status' => 'NOT_FOUND']], 404),
+        ]);
+        Http::preventStrayRequests();
 
         $this->deleteJson('/api/admin/v1/platforms/gbp/media', [
             'media_name' => 'accounts/900/locations/111/media/gone',
         ], $this->headers())->assertNoContent();
 
         $this->assertSame(0, ImagePlatformUpload::where('project_image_id', $image->id)->count());
+        Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+            && $request->url() === 'https://mybusiness.googleapis.com/v4/accounts/900/locations/111/media/gone');
     }
 
     public function test_delete_is_refused_when_google_business_profile_is_not_connected(): void
     {
         $mock = Mockery::mock(GoogleBusinessProfileService::class);
         $mock->shouldReceive('hasRefreshToken')->once()->andReturn(false);
-        $mock->shouldNotReceive('deleteMedia');
+        $mock->shouldNotReceive('deleteMediaFor');
         $this->app->instance(GoogleBusinessProfileService::class, $mock);
 
         $this->deleteJson('/api/admin/v1/platforms/gbp/media', [
@@ -383,7 +395,11 @@ class PlatformsGbpMediaTest extends TestCase
         // only pass if the request's lat/lng won and not this default.
         AreaServed::create(['city' => 'Palatine', 'slug' => 'palatine', 'latitude' => 42.11, 'longitude' => -88.03]);
 
-        config(['services.google.business_profile.refresh_token' => 'test-refresh-token']);
+        config([
+            'services.google.oauth.client_id' => '31627704418-test.apps.googleusercontent.com',
+            'services.google.oauth.client_secret' => 'GOCSPX-test',
+            'services.google.business_profile.refresh_token' => 'test-refresh-token',
+        ]);
         Cache::flush();
         Http::fake([
             'oauth2.googleapis.com/*' => Http::response(['access_token' => 'test-access-token', 'expires_in' => 3600], 200),

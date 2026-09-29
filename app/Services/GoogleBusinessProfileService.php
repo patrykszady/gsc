@@ -5,37 +5,89 @@ namespace App\Services;
 use App\Models\AreaServed;
 use App\Models\OAuthToken;
 use App\Models\ProjectImage;
-use App\Support\GoogleBusinessListing;
 use DateTimeInterface;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
+use Psr\SimpleCache\CacheInterface;
+use SsSystems\Platform\Google\BusinessProfile\Client;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
+use SsSystems\Platform\Google\Contracts\TokenStore;
+use SsSystems\Platform\Google\OAuthClient;
 use SsSystems\Platform\Media\GooglePhotoCopy;
 
-class GoogleBusinessProfileService
+/**
+ * gs.construction's Google Business Profile service — since kit 0.14.0 a
+ * subclass of the ONE Business Profile implementation every tenant runs
+ * (`SsSystems\Platform\Google\BusinessProfile\Client`, see the kit's
+ * docs/GOOGLE.md). The grant, the access token (persisted, rotated, scope-
+ * repaired, the invalid_grant cooldown, a grant from another OAuth client
+ * forgotten), and every Google call — accounts, locations, reviews, media,
+ * local posts, location patches — are the kit's. What stays here is only
+ * gs.construction's own business:
+ *
+ * - the project-photo copy Google fetches (`getPublicImageUrl()`, the kit's
+ *   `Media\GooglePhotoCopy`), its category and caption;
+ * - the service-area geocoding and the service items, built into
+ *   `updateLocation()` payloads (as are the categories and the description
+ *   the SEO autopilot writes);
+ * - the Places API review read (`fetchPlaceReviews()`);
+ * - the self-scoped wrappers its ~25 commands, jobs and observers call —
+ *   `createLocalPost()`, `fetchAllReviews()`, `uploadProjectImage()`,
+ *   `listMedia()`, … — each delegating to the kit's `…For()` method with the
+ *   listing this site chose (`ListingStore`), gated on `isConfigured()`
+ *   exactly as before, and failing with the same `getLastError()['message']`
+ *   the callers already store or print.
+ *
+ * Tenancy: bound per resolution in AppServiceProvider, never a singleton —
+ * the grant is read through `OAuthToken` (BelongsToSite) on every call, the
+ * listing through `PlatformSetting` (BelongsToSite), and the env refresh
+ * token and listing ids are passed in for the default site only. The kit
+ * derives every cache key from the grant's own refresh token, which retired
+ * the single `google_business_profile_access_token` key every tenant shared.
+ */
+class GoogleBusinessProfileService extends Client
 {
-    protected const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+    public function __construct(
+        OAuthClient $oauth,
+        TokenStore $tokens,
+        CacheInterface $cache,
+        Factory $http,
+        ?LoggerInterface $log,
+        ?string $fallbackRefreshToken,
+        protected readonly ListingStore $listing,
+    ) {
+        parent::__construct($oauth, $tokens, $cache, $http, $log, $fallbackRefreshToken);
+    }
 
-    protected const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+    /* ------------------------------------------------------------------ */
+    /*  The listing this site chose */
+    /* ------------------------------------------------------------------ */
 
-    protected const USERINFO_ENDPOINT = 'https://www.googleapis.com/oauth2/v3/userinfo';
+    public function listing(): ListingStore
+    {
+        return $this->listing;
+    }
 
-    protected const MEDIA_API_BASE = 'https://mybusiness.googleapis.com/v4';
+    /** The chosen listing's account id (stored, else the default site's env value). */
+    public function accountId(): ?string
+    {
+        return $this->listing->selected()['account_id'];
+    }
 
-    protected const ACCOUNT_API_BASE = 'https://mybusinessaccountmanagement.googleapis.com/v1';
+    /** The chosen listing's location id (stored, else the default site's env value). */
+    public function locationId(): ?string
+    {
+        return $this->listing->selected()['location_id'];
+    }
 
-    protected const INFO_API_BASE = 'https://mybusinessbusinessinformation.googleapis.com/v1';
-
-    protected const SCOPES = 'https://www.googleapis.com/auth/business.manage openid email';
-
-    /** The scope every Business Profile call needs; identity scopes alone are not enough. */
-    public const BUSINESS_SCOPE = 'https://www.googleapis.com/auth/business.manage';
-
-    public const PROVIDER = 'google_business_profile';
-
-    protected ?array $lastError = null;
+    /* ------------------------------------------------------------------ */
+    /*  Readiness */
+    /* ------------------------------------------------------------------ */
 
     /**
      * Ready to post: connected is enough. There used to be a separate
@@ -53,184 +105,64 @@ class GoogleBusinessProfileService
     }
 
     /**
-     * Signed in with a listing chosen — which is also what isConfigured()
-     * means now that the separate publishing switch is gone.
+     * Signed in with a listing chosen: the shared OAuth client, a grant, and
+     * an account and location. Deliberately stricter than the kit's own
+     * isConnected() (a grant alone) — every self-scoped call below needs the
+     * listing too, and the schedules in routes/console.php gate on this.
      */
     public function isConnected(): bool
     {
-        $config = config('services.google.business_profile');
-
-        return ! empty($config['client_id'])
-            && ! empty($config['client_secret'])
-            && $this->hasRefreshToken()
-            && ! empty($config['account_id'])
-            && ! empty($config['location_id']);
-    }
-
-
-    public function hasOAuthCredentials(): bool
-    {
-        $config = config('services.google.business_profile');
-
-        return ! empty($config['client_id'])
-            && ! empty($config['client_secret'])
-            && $this->hasRefreshToken();
-    }
-
-    /**
-     * Check if a refresh token exists in DB or .env.
-     */
-    public function hasRefreshToken(): bool
-    {
-        return (bool) $this->getRefreshToken();
-    }
-
-    /**
-     * Get the refresh token from DB first, then .env fallback.
-     */
-    public function getRefreshToken(): ?string
-    {
-        $dbToken = OAuthToken::forProvider(self::PROVIDER);
-        if ($dbToken?->refresh_token) {
-            return $dbToken->refresh_token;
+        if (! $this->oauth->isConfigured() || ! $this->hasRefreshToken()) {
+            return false;
         }
 
-        $envToken = config('services.google.business_profile.refresh_token');
+        $listing = $this->listing->selected();
 
-        return $envToken ?: null;
+        return ! empty($listing['account_id']) && ! empty($listing['location_id']);
     }
 
-    /**
-     * Get the DB token record (if any).
-     */
+    /** The shared OAuth client plus a grant (no listing needed yet). */
+    public function hasOAuthCredentials(): bool
+    {
+        return $this->oauth->isConfigured() && $this->hasRefreshToken();
+    }
+
+    /** The refresh token in use: the stored grant's, else (default site only) the env one. */
+    public function getRefreshToken(): ?string
+    {
+        return $this->refreshToken();
+    }
+
+    /** The DB token row (if any), for the screens that print who granted it and when. */
     public function getStoredToken(): ?OAuthToken
     {
         return OAuthToken::forProvider(self::PROVIDER);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    |  Web-based OAuth flow
-    |--------------------------------------------------------------------------
-    */
-
     /**
-     * Generate the Google OAuth consent URL for the admin to authorise.
+     * Evict the cached access token (the kit's key for this grant), so the
+     * next getAuthorizedToken() does not serve it from cache — what the
+     * Performance service does after a 401 from its own endpoints.
      */
-    public function getOAuthUrl(string $redirectUri, ?string $state = null): string
+    public function forgetCachedAccessToken(): void
     {
-        $params = http_build_query(array_filter([
-            'client_id' => config('services.google.business_profile.client_id'),
-            'redirect_uri' => $redirectUri,
-            'response_type' => 'code',
-            'scope' => self::SCOPES,
-            'access_type' => 'offline',
-            'prompt' => 'consent', // force new refresh token every time
-            'state' => $state,
-        ]));
+        $refreshToken = $this->refreshToken();
 
-        return self::AUTH_ENDPOINT.'?'.$params;
+        if ($refreshToken !== null) {
+            $this->cache->delete($this->key('access_token', $refreshToken));
+        }
     }
 
+    /* ------------------------------------------------------------------ */
+    /*  Project photos */
+    /* ------------------------------------------------------------------ */
+
     /**
-     * Exchange an OAuth authorisation code for tokens and persist them.
+     * Upload a project image to this site's own listing. Returns the created
+     * media item's `name` (resource name) and `url` (the full-size
+     * googleusercontent rendition) so callers can persist both.
      *
-     * @return array{success: bool, error?: string}
-     */
-    public function exchangeCodeAndStore(string $code, string $redirectUri): array
-    {
-        $response = Http::asForm()->timeout(20)->post(self::TOKEN_ENDPOINT, [
-            'client_id' => config('services.google.business_profile.client_id'),
-            'client_secret' => config('services.google.business_profile.client_secret'),
-            'code' => $code,
-            'grant_type' => 'authorization_code',
-            'redirect_uri' => $redirectUri,
-        ]);
-
-        if (! $response->successful()) {
-            $error = $response->json();
-            $msg = $error['error_description'] ?? $response->body();
-            Log::channel('gbp')->error('GBP: OAuth code exchange failed', ['body' => $response->body()]);
-
-            return ['success' => false, 'error' => $msg];
-        }
-
-        $data = $response->json();
-        $refreshToken = $data['refresh_token'] ?? null;
-        $accessToken = $data['access_token'] ?? null;
-        $expiresIn = (int) ($data['expires_in'] ?? 3600);
-
-        if (! $refreshToken) {
-            return ['success' => false, 'error' => 'No refresh token returned. Try again with prompt=consent.'];
-        }
-
-        // Fetch the email of the authorising user
-        $email = null;
-        if ($accessToken) {
-            try {
-                $userInfo = Http::withToken($accessToken)->get(self::USERINFO_ENDPOINT)->json();
-                $email = $userInfo['email'] ?? null;
-            } catch (\Exception) {
-                // non-critical
-            }
-        }
-
-        OAuthToken::storeTokens(
-            provider: self::PROVIDER,
-            refreshToken: $refreshToken,
-            accessToken: $accessToken,
-            expiresIn: $expiresIn,
-            email: $email,
-            // What Google GRANTED, not what we asked for. The consent screen
-            // lets a user untick Business Profile and approve only the identity
-            // scopes; storing self::SCOPES recorded a business.manage grant that
-            // did not exist, so the admin showed a healthy "Authorisation on
-            // file" while every Business Profile call came back 403.
-            scopes: array_values(array_filter(explode(' ', (string) ($data['scope'] ?? self::SCOPES)))),
-        );
-
-        // Clear any cooldown from previous invalid_grant errors
-        $this->clearInvalidGrantCooldown();
-
-        Log::channel('gbp')->info('GBP: OAuth tokens stored via web flow', ['email' => $email]);
-
-        return ['success' => true];
-    }
-
-    /**
-     * Disconnect: remove stored tokens.
-     */
-    public function disconnect(): void
-    {
-        OAuthToken::where('provider', self::PROVIDER)->delete();
-        Cache::forget('google_business_profile_access_token');
-        $this->clearInvalidGrantCooldown();
-        Log::channel('gbp')->info('GBP: Disconnected (tokens removed)');
-    }
-
-    /**
-     * Clear invalid_grant cooldown caches.
-     */
-    protected function clearInvalidGrantCooldown(): void
-    {
-        $refreshToken = $this->getRefreshToken();
-        if ($refreshToken) {
-            $hash = sha1($refreshToken);
-            Cache::forget("google_business_profile_invalid_grant:{$hash}");
-            Cache::forget("google_business_profile_invalid_grant_logged:{$hash}");
-        }
-        Cache::forget('google_business_profile_access_token');
-    }
-
-    /**
-     * Upload a project image to Google Business Profile.
-     */
-    /**
-     * Upload an image to GBP. Returns the created MediaItem's
-     * `['name' => ..., 'url' => ...]` so callers can persist both the
-     * resource name and the public lh3.googleusercontent.com URL.
-     *
-     * @return array{name: string, url: ?string}|null
+     * @return array{name: string, url: ?string, google_url: ?string, raw: array<string, mixed>}|null
      */
     public function uploadProjectImage(ProjectImage $image): ?array
     {
@@ -245,10 +177,7 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $accountId = (string) config('services.google.business_profile.account_id');
-        $locationId = (string) config('services.google.business_profile.location_id');
-
-        $result = $this->uploadMediaFor($accountId, $locationId, $imageUrl, $this->mapCategory($image), $this->buildDescription($image));
+        $result = $this->uploadMediaFor((string) $this->accountId(), (string) $this->locationId(), $imageUrl, $this->mapCategory($image), $this->buildDescription($image));
 
         if ($result) {
             Log::channel('gbp')->info('GBP: Uploaded image', [
@@ -256,165 +185,37 @@ class GoogleBusinessProfileService
                 'media_name' => $result['name'],
                 'has_url' => $result['url'] !== null,
             ]);
+        } else {
+            $this->relabel('Upload media failed', 'Upload failed');
         }
 
         return $result;
     }
 
-    /**
-     * The same Google call uploadProjectImage() makes, generalized to any
-     * account/location this grant can reach instead of the site's own
-     * locationBaseUrl() — the central admin's project-photo pass-through
-     * (2026-09-21): one Google grant, many listings, account and location
-     * passed in exactly as fetchReviewsFor()'s are.
-     *
-     * @return array{name: string, url: ?string}|null
-     */
-    public function uploadMediaFor(string $accountId, string $locationId, string $sourceUrl, string $category, ?string $description): ?array
-    {
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $payload = array_filter([
-            'mediaFormat' => 'PHOTO',
-            'locationAssociation' => [
-                'category' => $category,
-            ],
-            'sourceUrl' => $sourceUrl,
-            'description' => $description,
-        ], fn ($value) => $value !== null);
-
-        $url = self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}/media";
-
-        $response = Http::withToken($accessToken)
-            ->timeout(60)
-            ->post($url, $payload);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Upload failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to upload media', [
-                'account_id' => $accountId,
-                'location_id' => $locationId,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $data = $response->json();
-        $this->lastError = null;
-
-        $mediaName = $data['name'] ?? null;
-        if (! $mediaName) {
-            return null;
-        }
-
-        // Sized here so every caller that persists this URL stores the
-        // full-resolution form. Google hands back a bare URL, which renders as
-        // a 512px thumbnail — see sizedMediaUrl().
-        $googleUrl = self::sizedMediaUrl($data['googleUrl'] ?? $data['thumbnailUrl'] ?? null);
-
-        Log::channel('gbp')->info('GBP: Uploaded media', [
-            'account_id' => $accountId,
-            'location_id' => $locationId,
-            'media_name' => $mediaName,
-            'has_url' => $googleUrl !== null,
-            'category' => $category,
-        ]);
-
-        return [
-            'name' => $mediaName,
-            'url' => $googleUrl,
-        ];
-    }
-
-    /**
-     * Delete a media item from Google Business Profile.
-     */
+    /** Delete a media item from Google (a 404 — already gone — counts as deleted). */
     public function deleteMedia(string $mediaName): bool
     {
         if (! $this->isConfigured()) {
             return false;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return false;
+        $deleted = $this->deleteMediaFor($mediaName);
+
+        if (! $deleted) {
+            $this->relabel('Delete media failed', 'Delete failed');
         }
 
-        $url = self::MEDIA_API_BASE."/{$mediaName}";
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->delete($url);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Delete failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to delete media', [
-                'media_name' => $mediaName,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return false;
-        }
-
-        $this->lastError = null;
-
-        Log::channel('gbp')->info('GBP: Deleted media', ['media_name' => $mediaName]);
-
-        return true;
+        return $deleted;
     }
 
-    /**
-     * Fetch a media item from GBP.
-     */
+    /** Fetch a media item from Google. */
     public function getMediaItem(string $mediaName): ?array
     {
         if (! $this->isConfigured()) {
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $url = self::MEDIA_API_BASE."/{$mediaName}";
-
-        $response = Http::withToken($accessToken)
-            ->timeout(20)
-            ->get($url);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Get media failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to fetch media item', [
-                'media_name' => $mediaName,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $this->lastError = null;
-
-        return $response->json();
+        return parent::getMediaItem($mediaName);
     }
 
     /**
@@ -439,42 +240,6 @@ class GoogleBusinessProfileService
      * so a brief upstream blip doesn't hide the "View on Google" link on
      * every project image page for a week.
      */
-    /**
-     * Append a size token to a googleusercontent.com URL.
-     *
-     * A bare googleusercontent URL serves a SMALL default rendition — 512px on
-     * the long edge, ~53KB — which made our uploads look like low-quality
-     * images even though the originals we sent Google are intact. `=s0` asks
-     * for that original back (3200x2134, ~1.8MB for a typical project photo).
-     *
-     * Read-time only: the bare URL stays in the column as the canonical
-     * identity Google gave us, and the size stays a presentation concern.
-     *
-     * @param  string  $size  Google size token — s0 = original, w2400 = 2400px wide.
-     */
-    public static function sizedMediaUrl(?string $url, string $size = 's0'): ?string
-    {
-        $url = trim((string) $url);
-
-        if ($url === '') {
-            return null;
-        }
-
-        // Only googleusercontent understands the =size suffix. Other hosts
-        // (Yelp, Instagram) share the ImagePlatformUpload table, and appending
-        // to their URLs would break them.
-        if (! str_contains($url, 'googleusercontent.com')) {
-            return $url;
-        }
-
-        // Already sized (ours or Google's own) — leave it alone.
-        if (preg_match('/=[a-z0-9-]+$/i', $url)) {
-            return $url;
-        }
-
-        return $url.'='.$size;
-    }
-
     public function getMediaUrlCached(string $mediaName, int $ttlSeconds = 604800): ?string
     {
         if (! $mediaName) {
@@ -507,7 +272,28 @@ class GoogleBusinessProfileService
     }
 
     /**
-     * List all media items on the Google Business Profile location.
+     * Every media item on one listing, flattened for ss.systems — all pages
+     * or nothing, as before 0.14. The kit keeps the pages it read before a
+     * later page fails and returns them as a success, but GET
+     * platforms/gbp/media is how ss.systems' UploadImageToGbpListing decides
+     * whether a photo already reached Google: a partial list answered 200
+     * would send a duplicate upload where the old all-or-nothing 422 marked
+     * the row failed. A failed page is a failure here (null, getLastError()
+     * set), so the pass-through answers 422 as it always did.
+     *
+     * @return list<array{name: string, source_url: ?string, google_url: ?string, category: ?string, create_time: ?string}>|null
+     */
+    public function listMediaFor(string $accountId, string $locationId): ?array
+    {
+        $items = parent::listMediaFor($accountId, $locationId);
+
+        return $this->lastError === null ? $items : null;
+    }
+
+    /**
+     * One page of the media on this site's own listing, as Google returns it
+     * (`mediaItems`, `nextPageToken`). listMediaFor() is the any-listing,
+     * all-pages, flattened sibling the central admin's pass-through reads.
      */
     public function listMedia(?string $pageToken = null, int $pageSize = 100): ?array
     {
@@ -515,42 +301,20 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
+        $response = $this->send('GET', $this->locationBaseUrl().'/media', array_filter([
+            'pageSize' => $pageSize,
+            'pageToken' => $pageToken,
+        ]), 30);
+
+        if (! $this->ok($response, 'List media failed')) {
             return null;
         }
 
-        $url = $this->mediaBaseUrl().'/media';
-        $params = ['pageSize' => $pageSize];
-        if ($pageToken) {
-            $params['pageToken'] = $pageToken;
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->get($url, $params);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'List media failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to list media', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $this->lastError = null;
-
-        return $response->json();
+        return (array) $response->json();
     }
 
     /**
-     * List ALL media items (auto-paginating).
+     * List ALL media items on this site's own listing (auto-paginating).
      */
     public function listAllMedia(): array
     {
@@ -571,227 +335,16 @@ class GoogleBusinessProfileService
         return $all;
     }
 
-    /**
-     * EVERY media item of a given listing (2026-09-22), for the central
-     * admin's per-market photo pass-through: unlike listMedia()/listAllMedia()
-     * above, which read THIS site's own configured location, the account and
-     * location are passed in — same shape as fetchReviewsFor() and
-     * uploadMediaFor() — so the same grant can read any listing it manages.
-     * Auto-paginates (Google returns up to 100 items per page) and flattens
-     * the result to just what the admin needs to show and match against its
-     * own upload ledger. Null + getLastError() on failure, same as every
-     * other pass-through here.
-     *
-     * @return list<array{name: string, source_url: ?string, google_url: ?string, category: ?string, create_time: ?string}>|null
-     */
-    public function listMediaFor(string $accountId, string $locationId): ?array
-    {
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            $this->lastError ??= ['message' => 'No Google authorization on file'];
-
-            return null;
-        }
-
-        $url = self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}/media";
-        $items = [];
-        $pageToken = null;
-
-        do {
-            $params = ['pageSize' => 100];
-            if ($pageToken) {
-                $params['pageToken'] = $pageToken;
-            }
-
-            $response = Http::withToken($accessToken)->timeout(30)->get($url, $params);
-
-            if (! $response->successful()) {
-                $this->lastError = [
-                    'message' => 'List media failed',
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ];
-                Log::channel('gbp')->warning('GBP: Failed to list media for listing', [
-                    'account_id' => $accountId,
-                    'location_id' => $locationId,
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return null;
-            }
-
-            $data = $response->json();
-
-            foreach ($data['mediaItems'] ?? [] as $item) {
-                $items[] = [
-                    'name' => $item['name'] ?? '',
-                    'source_url' => $item['sourceUrl'] ?? null,
-                    'google_url' => $item['googleUrl'] ?? null,
-                    'category' => $item['locationAssociation']['category'] ?? null,
-                    'create_time' => $item['createTime'] ?? null,
-                ];
-            }
-
-            $pageToken = $data['nextPageToken'] ?? null;
-        } while ($pageToken);
-
-        $this->lastError = null;
-
-        return $items;
-    }
-
-    /**
-     * One listing's reviews, a page at a time (2026-09-22), for the central
-     * admin's per-market review import: unlike fetchReviews(), which reads
-     * the site's own single listing, the account and location are passed
-     * in, so the same grant can read any listing it manages. The import
-     * itself lives in ss.systems — this is a pass-through with this site's
-     * grant.
-     *
-     * @return array{reviews: array, totalReviewCount: int, averageRating: float, nextPageToken: ?string}|null
-     */
-    public function fetchReviewsFor(string $accountId, string $locationId, ?string $pageToken = null, int $pageSize = 50): ?array
-    {
-        $accessToken = $this->getAccessToken();
-
-        if (! $accessToken) {
-            $this->lastError ??= ['message' => 'No Google authorization on file'];
-
-            return null;
-        }
-
-        $params = ['pageSize' => $pageSize];
-        if ($pageToken) {
-            $params['pageToken'] = $pageToken;
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->get(self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}/reviews", $params);
-
-        if (! $response->successful()) {
-            $this->lastError = ['message' => 'Fetch reviews failed', 'status' => $response->status(), 'body' => $response->body()];
-            Log::channel('gbp')->warning('GBP: Failed to fetch reviews for listing', ['status' => $response->status(), 'location_id' => $locationId]);
-
-            return null;
-        }
-
-        $this->lastError = null;
-        $data = $response->json();
-
-        return [
-            'reviews' => $data['reviews'] ?? [],
-            'totalReviewCount' => (int) ($data['totalReviewCount'] ?? 0),
-            'averageRating' => (float) ($data['averageRating'] ?? 0),
-            'nextPageToken' => $data['nextPageToken'] ?? null,
-        ];
-    }
-
-    /**
-     * List available Google Business Profile accounts.
-     */
-    public function listAccounts(): array
-    {
-        if (! $this->hasOAuthCredentials()) {
-            $this->lastError ??= ['message' => 'Missing OAuth credentials'];
-
-            return [];
-        }
-
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            $this->lastError ??= ['message' => 'Failed to obtain access token'];
-
-            return [];
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(20)
-            ->get(self::ACCOUNT_API_BASE.'/accounts');
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'List accounts failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to list accounts', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return [];
-        }
-
-        $data = $response->json();
-
-        $this->lastError = null;
-
-        return $data['accounts'] ?? [];
-    }
-
-    /**
-     * List locations for a given account ID.
-     */
-    public function listLocations(string $accountId): array
-    {
-        if (! $this->hasOAuthCredentials()) {
-            $this->lastError ??= ['message' => 'Missing OAuth credentials'];
-
-            return [];
-        }
-
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            $this->lastError ??= ['message' => 'Failed to obtain access token'];
-
-            return [];
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(20)
-            ->get(self::INFO_API_BASE."/accounts/{$accountId}/locations", [
-                // storefrontAddress: the listings endpoint prints the address
-                // (it never arrived before). metadata: the public Maps link and
-                // place id the central admin fills each market's Google URL from.
-                'readMask' => 'name,title,storeCode,websiteUri,storefrontAddress,metadata',
-            ]);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'List locations failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'account_id' => $accountId,
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to list locations', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'account_id' => $accountId,
-            ]);
-
-            return [];
-        }
-
-        $data = $response->json();
-
-        $this->lastError = null;
-
-        return $data['locations'] ?? [];
-    }
-
     /* ------------------------------------------------------------------ */
-    /*  Local Posts ("Updates" on the GBP listing) */
+    /*  Local posts ("Updates" on the listing) */
     /* ------------------------------------------------------------------ */
 
     /**
-     * Create a Local Post on the Google Business Profile listing.
+     * Create a Local Post on this site's own listing — the kit's
+     * createLocalPostFor() with the chosen listing: a photo Google fetches,
+     * the summary cut to 1,500 characters, a CTA button, STANDARD topic.
      *
-     * These appear as "Updates" on the listing and in Google Maps.
-     * Includes a photo, summary text, and a CTA button linking to the site.
-     *
-     * @return array{name: string, searchUrl: string|null}|null
+     * @return array{name: string, searchUrl: ?string, state: ?string}|null
      */
     public function createLocalPost(string $imageUrl, string $summary, string $ctaUrl, string $ctaType = 'LEARN_MORE'): ?array
     {
@@ -801,139 +354,18 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
+        $result = $this->createLocalPostFor((string) $this->accountId(), (string) $this->locationId(), $imageUrl, $summary, $ctaUrl, $ctaType);
+
+        if ($result === null) {
+            $this->relabel('Create post failed', 'GBP local post failed');
         }
 
-        $payload = [
-            'languageCode' => 'en',
-            'summary' => mb_substr($summary, 0, 1500), // GBP limit
-            'callToAction' => [
-                'actionType' => $ctaType, // BOOK, ORDER, SHOP, LEARN_MORE, SIGN_UP, CALL
-                'url' => $ctaUrl,
-            ],
-            'media' => [
-                [
-                    'mediaFormat' => 'PHOTO',
-                    'sourceUrl' => $imageUrl,
-                ],
-            ],
-            'topicType' => 'STANDARD',
-        ];
-
-        $url = $this->locationBaseUrl().'/localPosts';
-
-        $response = Http::withToken($accessToken)
-            ->timeout(60)
-            ->post($url, $payload);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'GBP local post failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to create local post', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $data = $response->json();
-        $this->lastError = null;
-
-        Log::channel('gbp')->info('GBP: Created local post', [
-            'name' => $data['name'] ?? null,
-            'search_url' => $data['searchUrl'] ?? null,
-        ]);
-
-        return [
-            'name' => $data['name'] ?? '',
-            'searchUrl' => $data['searchUrl'] ?? null,
-        ];
+        return $result;
     }
 
     /**
-     * List local posts on the GBP listing.
-     */
-    public function listLocalPosts(int $pageSize = 10): ?array
-    {
-        if (! $this->isConfigured()) {
-            return null;
-        }
-
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $url = $this->locationBaseUrl().'/localPosts';
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->get($url, ['pageSize' => $pageSize]);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'List local posts failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-
-            return null;
-        }
-
-        return $response->json('localPosts', []);
-    }
-
-    /**
-     * List ALL local posts on the GBP listing (auto-paginating).
-     *
-     * @return array<int,array<string,mixed>>
-     */
-    public function listAllLocalPosts(int $pageSize = 100): array
-    {
-        if (! $this->isConfigured()) {
-            return [];
-        }
-
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return [];
-        }
-
-        $url = $this->locationBaseUrl().'/localPosts';
-        $all = [];
-        $pageToken = null;
-
-        do {
-            $params = ['pageSize' => $pageSize];
-            if ($pageToken) {
-                $params['pageToken'] = $pageToken;
-            }
-
-            $response = Http::withToken($accessToken)->timeout(30)->get($url, $params);
-            if (! $response->successful()) {
-                $this->lastError = [
-                    'message' => 'List local posts failed',
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ];
-                break;
-            }
-
-            $all = array_merge($all, $response->json('localPosts', []));
-            $pageToken = $response->json('nextPageToken');
-        } while ($pageToken);
-
-        return $all;
-    }
-
-    /**
-     * Delete a single local post ("update") from the GBP listing.
+     * Delete a single local post ("update") from the listing. A post Google
+     * no longer has (404) counts as deleted.
      *
      * @param  string  $postName  Full resource name: accounts/{a}/locations/{l}/localPosts/{p}
      */
@@ -943,34 +375,7 @@ class GoogleBusinessProfileService
             return false;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return false;
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->delete(self::MEDIA_API_BASE."/{$postName}");
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Delete local post failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to delete local post', [
-                'post_name' => $postName,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return false;
-        }
-
-        $this->lastError = null;
-        Log::channel('gbp')->info('GBP: Deleted local post', ['post_name' => $postName]);
-
-        return true;
+        return parent::deleteLocalPost($postName);
     }
 
     /* ------------------------------------------------------------------ */
@@ -978,11 +383,9 @@ class GoogleBusinessProfileService
     /* ------------------------------------------------------------------ */
 
     /**
-     * Fetch reviews for the configured GBP location.
+     * One page of this site's own listing's reviews.
      *
-     * Uses the My Business Account Management API v4 endpoint.
-     *
-     * @return array{reviews: array, totalReviewCount: int, averageRating: float, nextPageToken: string|null}|null
+     * @return array{reviews: array, totalReviewCount: int, averageRating: float, nextPageToken: ?string}|null
      */
     public function fetchReviews(?string $pageToken = null, int $pageSize = 50): ?array
     {
@@ -992,48 +395,12 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $url = $this->locationBaseUrl().'/reviews';
-        $params = ['pageSize' => $pageSize];
-        if ($pageToken) {
-            $params['pageToken'] = $pageToken;
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->get($url, $params);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Fetch reviews failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to fetch reviews', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $this->lastError = null;
-        $data = $response->json();
-
-        return [
-            'reviews' => $data['reviews'] ?? [],
-            'totalReviewCount' => (int) ($data['totalReviewCount'] ?? 0),
-            'averageRating' => (float) ($data['averageRating'] ?? 0),
-            'nextPageToken' => $data['nextPageToken'] ?? null,
-        ];
+        return $this->fetchReviewsFor((string) $this->accountId(), (string) $this->locationId(), $pageToken, $pageSize);
     }
 
     /**
-     * Fetch ALL reviews (auto-paginating).
+     * Fetch ALL reviews of this site's own listing (auto-paginating). What
+     * was read before a failing page is kept, as before.
      */
     public function fetchAllReviews(): array
     {
@@ -1051,6 +418,22 @@ class GoogleBusinessProfileService
         } while ($pageToken);
 
         return $all;
+    }
+
+    /** Reply to (or update the owner reply on) one review. */
+    public function replyToReview(string $reviewName, string $comment): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        $result = parent::replyToReview($reviewName, $comment);
+
+        if ($result !== null) {
+            Log::channel('gbp')->info('GBP: Replied to review', ['review' => $reviewName]);
+        }
+
+        return $result;
     }
 
     /**
@@ -1077,7 +460,7 @@ class GoogleBusinessProfileService
      */
     public function fetchPlaceReviews(): ?array
     {
-        $placeId = GoogleBusinessListing::placeId();
+        $placeId = $this->listing->placeId();
         $apiKey = config('services.google.places_api_key');
 
         if (! $placeId || ! $apiKey) {
@@ -1124,10 +507,9 @@ class GoogleBusinessProfileService
         return $reviews;
     }
 
-    public function getLastError(): ?array
-    {
-        return $this->lastError;
-    }
+    /* ------------------------------------------------------------------ */
+    /*  The Google copy of a project photo */
+    /* ------------------------------------------------------------------ */
 
     /**
      * Get a publicly accessible URL for the image.
@@ -1306,22 +688,14 @@ class GoogleBusinessProfileService
     /**
      * Map project type to a GBP media category.
      *
-     * Categories: COVER, PROFILE, LOGO, EXTERIOR, INTERIOR, PRODUCT,
-     *             AT_WORK, FOOD_AND_DRINK, MENU, COMMON_AREA, ROOMS, TEAMS, ADDITIONAL
-     *
      * Public (2026-09-21): the admin API's media pass-through defaults its
      * optional `category` param to this, same as uploadProjectImage() does.
      */
     public function mapCategory(ProjectImage $image): string
     {
-        $project = $image->project;
-
-        if (! $project) {
-            return 'ADDITIONAL';
-        }
-
-        // Some locations do not allow certain categories. Default to ADDITIONAL
-        // to avoid INVALID_ARGUMENT errors like "Photo tag 'interior' does not apply".
+        // Some locations do not allow certain categories (INTERIOR/EXTERIOR
+        // are storefront tags a service-area listing refuses with "Photo tag
+        // 'interior' does not apply"), so every project photo is ADDITIONAL.
         return 'ADDITIONAL';
     }
 
@@ -1340,76 +714,22 @@ class GoogleBusinessProfileService
         return Str::limit(trim($text), 250, '');
     }
 
-    /**
-     * Build the media API base URL for the configured location.
-     */
-    protected function mediaBaseUrl(): string
-    {
-        return $this->locationBaseUrl();
-    }
-
-    /**
-     * Build the base URL for the configured location (used by media + local posts).
-     */
-    protected function locationBaseUrl(): string
-    {
-        $accountId = config('services.google.business_profile.account_id');
-        $locationId = config('services.google.business_profile.location_id');
-
-        return self::MEDIA_API_BASE."/accounts/{$accountId}/locations/{$locationId}";
-    }
-
-    /**
-     * Build the Info API URL for the configured location.
-     */
-    protected function infoLocationUrl(): string
-    {
-        $locationId = config('services.google.business_profile.location_id');
-
-        return self::INFO_API_BASE."/locations/{$locationId}";
-    }
-
     /* ------------------------------------------------------------------ */
-    /*  Location / Profile */
+    /*  The listing's profile: read, and the payloads gs.construction */
+    /*  builds for the kit's updateLocation() */
     /* ------------------------------------------------------------------ */
 
     /**
-     * Fetch the current location details from the Business Information API.
+     * This site's own listing as the Business Information API returns it.
+     * (The kit's getLocation($locationId, $readMask) reads any listing.)
      */
-    public function getLocation(string $readMask = 'name,title,categories,serviceArea,websiteUri'): ?array
+    public function getListingLocation(string $readMask = 'name,title,categories,serviceArea,websiteUri'): ?array
     {
         if (! $this->isConfigured()) {
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->get($this->infoLocationUrl(), [
-                'readMask' => $readMask,
-            ]);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Get location failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to get location', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $this->lastError = null;
-
-        return $response->json();
+        return $this->getLocation((string) $this->locationId(), $readMask);
     }
 
     /**
@@ -1418,7 +738,7 @@ class GoogleBusinessProfileService
      */
     public function fetchPlaceId(): ?string
     {
-        $data = $this->getLocation('metadata');
+        $data = $this->getListingLocation('metadata');
 
         return $data['metadata']['placeId'] ?? null;
     }
@@ -1438,15 +758,25 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
+        // Nothing is geocoded for a grant that cannot act (as before).
+        if ($this->accessToken() === null) {
             return null;
         }
 
         // Fetch current profile for auto-detection of business type
-        $current = $this->getLocation('serviceArea');
+        $current = $this->getListingLocation('serviceArea');
 
         if (! $businessType) {
+            // "Keep the current type" needs the current type. A read that
+            // failed must not fall back to CUSTOMER_LOCATION_ONLY and rewrite
+            // it on the live listing — until kit 0.14 a Google that did not
+            // answer threw here; the kit's client returns null instead. (A
+            // listing with no service area reads back empty with no error,
+            // and still takes the default, as before.)
+            if ($current === null && $this->lastError !== null) {
+                return null;
+            }
+
             $businessType = $current['serviceArea']['businessType'] ?? 'CUSTOMER_LOCATION_ONLY';
         }
 
@@ -1493,36 +823,20 @@ class GoogleBusinessProfileService
             ],
         ];
 
-        $url = $this->infoLocationUrl().'?updateMask=serviceArea';
-
         Log::channel('gbp')->debug('GBP: Service area update request', [
-            'url' => $url,
+            'url' => $this->infoLocationUrl().'?updateMask=serviceArea',
             'business_type' => $businessType,
             'cities_count' => count($placeInfos),
             'sample_place' => $placeInfos[0] ?? null,
         ]);
 
-        $response = Http::withToken($accessToken)
-            ->timeout(60)
-            ->patch($url, $payload);
+        $data = $this->updateLocation((string) $this->locationId(), 'serviceArea', $payload);
 
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Update service area failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to update service area', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'cities_count' => count($placeInfos),
-            ]);
+        if ($data === null) {
+            $this->relabel('Update location failed', 'Update service area failed');
 
             return null;
         }
-
-        $this->lastError = null;
-        $data = $response->json();
 
         Log::channel('gbp')->info('GBP: Updated service area', [
             'cities_count' => count($placeInfos),
@@ -1533,12 +847,6 @@ class GoogleBusinessProfileService
     }
 
     /**
-     * Resolve a city/place name to a Google Place ID using the Geocoding API.
-     *
-     * Returns a place ID of type "locality" or "administrative_area_level_3"
-     * (i.e. a region/city), or null if not found.
-     */
-    /**
      * Public wrapper so commands can preview place-ID resolution for a service
      * area (town or county) before writing to the live profile.
      */
@@ -1547,6 +855,10 @@ class GoogleBusinessProfileService
         return $this->resolveGeocodePlaceId($name);
     }
 
+    /**
+     * Resolve a city/place name to a Google Place ID — a city- or county-
+     * level region, or null if not found.
+     */
     protected function resolveGeocodePlaceId(string $address): ?string
     {
         $apiKey = config('services.google.places_api_key');
@@ -1628,11 +940,6 @@ class GoogleBusinessProfileService
             return null;
         }
 
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
         $payload = [
             'categories' => [
                 'primaryCategory' => [
@@ -1644,28 +951,13 @@ class GoogleBusinessProfileService
             ],
         ];
 
-        $url = $this->infoLocationUrl().'?updateMask=categories';
+        $data = $this->updateLocation((string) $this->locationId(), 'categories', $payload);
 
-        $response = Http::withToken($accessToken)
-            ->timeout(60)
-            ->patch($url, $payload);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Update categories failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to update categories', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+        if ($data === null) {
+            $this->relabel('Update location failed', 'Update categories failed');
 
             return null;
         }
-
-        $this->lastError = null;
-        $data = $response->json();
 
         Log::channel('gbp')->info('GBP: Updated categories', [
             'primary' => $primaryCategoryId,
@@ -1678,7 +970,7 @@ class GoogleBusinessProfileService
     /** The "From the business" description on the listing, or null when unreadable. */
     public function getDescription(): ?string
     {
-        $location = $this->getLocation('profile');
+        $location = $this->getListingLocation('profile');
         $text = is_array($location) ? ($location['profile']['description'] ?? null) : null;
 
         return is_string($text) ? $text : null;
@@ -1693,104 +985,20 @@ class GoogleBusinessProfileService
         if (! $this->isConfigured()) {
             return null;
         }
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
+
         $description = mb_substr(trim($description), 0, 750);
-        $response = Http::withToken($accessToken)
-            ->timeout(60)
-            ->patch($this->infoLocationUrl().'?updateMask=profile.description', ['profile' => ['description' => $description]]);
 
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Update description failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to update description', ['status' => $response->status(), 'body' => $response->body()]);
+        $data = $this->updateLocation((string) $this->locationId(), 'profile.description', ['profile' => ['description' => $description]]);
+
+        if ($data === null) {
+            $this->relabel('Update location failed', 'Update description failed');
 
             return null;
         }
-        $this->lastError = null;
+
         Log::channel('gbp')->info('GBP: Updated description', ['length' => mb_strlen($description)]);
 
-        return $response->json();
-    }
-
-    /**
-     * Search available GBP categories by keyword.
-     */
-    public function searchCategories(string $query, string $regionCode = 'US', string $languageCode = 'en'): ?array
-    {
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->get(self::INFO_API_BASE.'/categories', [
-                'regionCode' => $regionCode,
-                'languageCode' => $languageCode,
-                'filter' => "categoryName=\"{$query}\"",
-                'pageSize' => 20,
-            ]);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Search categories failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-
-            return null;
-        }
-
-        return $response->json('categories', []);
-    }
-
-    /**
-     * Reply to (or update the owner reply on) a single Google review.
-     *
-     * @param  string  $reviewName  Full resource name e.g. accounts/{a}/locations/{l}/reviews/{id}
-     */
-    public function replyToReview(string $reviewName, string $comment): ?array
-    {
-        if (! $this->isConfigured()) {
-            return null;
-        }
-
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
-            return null;
-        }
-
-        $url = self::MEDIA_API_BASE."/{$reviewName}/reply";
-
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->put($url, ['comment' => $comment]);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Review reply failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to reply to review', [
-                'review' => $reviewName,
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            return null;
-        }
-
-        $this->lastError = null;
-        Log::channel('gbp')->info('GBP: Replied to review', ['review' => $reviewName]);
-
-        return $response->json();
+        return $data;
     }
 
     /**
@@ -1803,11 +1011,6 @@ class GoogleBusinessProfileService
     public function updateServiceItems(array $items): ?array
     {
         if (! $this->isConfigured()) {
-            return null;
-        }
-
-        $accessToken = $this->getAccessToken();
-        if (! $accessToken) {
             return null;
         }
 
@@ -1835,188 +1038,46 @@ class GoogleBusinessProfileService
             $serviceItems[] = $node;
         }
 
-        $url = $this->infoLocationUrl().'?updateMask=serviceItems';
+        $data = $this->updateLocation((string) $this->locationId(), 'serviceItems', ['serviceItems' => $serviceItems]);
 
-        $response = Http::withToken($accessToken)
-            ->timeout(30)
-            ->patch($url, ['serviceItems' => $serviceItems]);
-
-        if (! $response->successful()) {
-            $this->lastError = [
-                'message' => 'Update service items failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ];
-            Log::channel('gbp')->warning('GBP: Failed to update service items', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
+        if ($data === null) {
+            $this->relabel('Update location failed', 'Update service items failed');
 
             return null;
         }
 
-        $this->lastError = null;
         Log::channel('gbp')->info('GBP: Updated service items', ['count' => count($serviceItems)]);
 
-        return $response->json();
+        return $data;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Internals */
+    /* ------------------------------------------------------------------ */
+
+    /** The v4 base for this site's own listing (media, local posts, reviews). */
+    protected function locationBaseUrl(): string
+    {
+        return self::MEDIA_API_BASE.'/accounts/'.self::bareId((string) $this->accountId()).'/locations/'.self::bareId((string) $this->locationId());
+    }
+
+    /** The Business Information URL of this site's own listing. */
+    protected function infoLocationUrl(): string
+    {
+        return self::INFO_API_BASE.'/locations/'.self::bareId((string) $this->locationId());
     }
 
     /**
-     * Public accessor for the cached/refreshed GBP access token. Used by
-     * sibling services (e.g. GoogleBusinessProfilePerformanceService) so
-     * they can call other endpoints under the same business.manage scope
-     * without duplicating OAuth logic.
+     * Keep the `message` this site's callers have always stored and printed
+     * ("GBP local post failed (status 403)" on a failed social post, the
+     * autopilot's "Google rejected the description: {…}") when the kit's
+     * generic one names the same Google failure. Only an API failure is
+     * renamed; a token failure keeps its own message, as before.
      */
-    public function getAuthorizedToken(): ?string
+    protected function relabel(string $kitMessage, string $message): void
     {
-        return $this->getAccessToken();
-    }
-
-    protected function getAccessToken(): ?string
-    {
-        $cacheKey = 'google_business_profile_access_token';
-        $cached = Cache::get($cacheKey);
-        if ($cached) {
-            return $cached;
+        if (($this->lastError['message'] ?? null) === $kitMessage) {
+            $this->lastError['message'] = $message;
         }
-        // Check DB for a still-valid access token
-        $dbToken = OAuthToken::forProvider(self::PROVIDER);
-        if ($dbToken?->hasValidAccessToken()) {
-            Cache::put($cacheKey, $dbToken->access_token, $dbToken->access_token_expires_at);
-
-            return $dbToken->access_token;
-        }
-
-        $refreshToken = $this->getRefreshToken();
-        if (! $refreshToken) {
-            $this->lastError = [
-                'message' => 'No refresh token available (DB or .env)',
-                'reauthorization_required' => true,
-            ];
-
-            return null;
-        }
-
-        $refreshTokenHash = sha1($refreshToken);
-        $invalidGrantCooldownKey = "google_business_profile_invalid_grant:{$refreshTokenHash}";
-
-        if (Cache::get($invalidGrantCooldownKey)) {
-            $this->lastError = [
-                'message' => 'Token refresh blocked: re-authorization required',
-                'status' => 400,
-                'error' => 'invalid_grant',
-                'error_description' => 'Refresh token has expired or been revoked.',
-                'reauthorization_required' => true,
-            ];
-
-            return null;
-        }
-
-        $response = Http::asForm()->timeout(20)->post(self::TOKEN_ENDPOINT, [
-            'client_id' => config('services.google.business_profile.client_id'),
-            'client_secret' => config('services.google.business_profile.client_secret'),
-            'refresh_token' => $refreshToken,
-            'grant_type' => 'refresh_token',
-        ]);
-
-        if (! $response->successful()) {
-            $errorPayload = $response->json() ?: [];
-            $errorCode = $errorPayload['error'] ?? null;
-            $errorDescription = $errorPayload['error_description'] ?? null;
-            $isInvalidGrant = $response->status() === 400 && $errorCode === 'invalid_grant';
-
-            $this->lastError = [
-                'message' => 'Token refresh failed',
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'error' => $errorCode,
-                'error_description' => $errorDescription,
-                'reauthorization_required' => $isInvalidGrant,
-            ];
-
-            if ($isInvalidGrant) {
-                Cache::forget($cacheKey);
-                Cache::put($invalidGrantCooldownKey, true, now()->addHours(6));
-
-                $invalidGrantLoggedKey = "google_business_profile_invalid_grant_logged:{$refreshTokenHash}";
-                if (Cache::add($invalidGrantLoggedKey, true, now()->addHours(6))) {
-                    Log::channel('gbp')->error('GBP: Refresh token invalid_grant (expired/revoked). Re-authenticate via Admin > GBP Settings.', [
-                        'status' => $response->status(),
-                        'error' => $errorCode,
-                        'error_description' => $errorDescription,
-                    ]);
-                }
-            } else {
-                Log::channel('gbp')->warning('GBP: Failed to refresh access token', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-            }
-
-            return null;
-        }
-
-        $data = $response->json();
-        $token = $data['access_token'] ?? null;
-        $expiresIn = (int) ($data['expires_in'] ?? 3000);
-
-        if ($token) {
-            Cache::forget($invalidGrantCooldownKey);
-            Cache::forget("google_business_profile_invalid_grant_logged:{$refreshTokenHash}");
-            Cache::put($cacheKey, $token, now()->addSeconds(max($expiresIn - 120, 300)));
-
-            // Persist the new access token to DB so it survives cache clears
-            if ($dbToken) {
-                $dbToken->update([
-                    'access_token' => $token,
-                    'access_token_expires_at' => now()->addSeconds($expiresIn - 120),
-                ]);
-            }
-
-            // Every refresh response states the scopes the grant actually
-            // carries. Recording them here repairs a row written before we
-            // stored the granted set (older code stored the REQUESTED scopes),
-            // so a connection that only ever covered sign-in stops claiming
-            // otherwise without anyone having to reconnect to find out.
-            if (! empty($data['scope']) && $dbToken) {
-                $granted = array_values(array_filter(explode(' ', (string) $data['scope'])));
-
-                if ($granted !== [] && $granted !== (array) $dbToken->scopes) {
-                    $dbToken->forceFill(['scopes' => $granted])->save();
-                }
-            }
-
-            // If Google returned a rotated refresh token, persist it
-            if (! empty($data['refresh_token']) && $data['refresh_token'] !== $refreshToken) {
-                $stored = $dbToken ?? OAuthToken::storeTokens(
-                    provider: self::PROVIDER,
-                    refreshToken: $data['refresh_token'],
-                    accessToken: $token,
-                    expiresIn: $expiresIn,
-                );
-                if ($dbToken) {
-                    $dbToken->update(['refresh_token' => $data['refresh_token']]);
-                }
-                Log::channel('gbp')->info('GBP: Refresh token rotated and persisted to DB.');
-            }
-        }
-
-        return $token;
-    }
-
-    /** The scopes recorded against the stored authorisation. */
-    public function grantedScopes(): array
-    {
-        return (array) (OAuthToken::forProvider(self::PROVIDER)?->scopes ?? []);
-    }
-
-    /**
-     * Whether the stored authorisation actually carries business.manage.
-     * Without it the connection signs the user in and nothing else: every
-     * listing, photo and post call returns 403.
-     */
-    public function hasBusinessScope(): bool
-    {
-        return in_array(self::BUSINESS_SCOPE, $this->grantedScopes(), true);
     }
 }

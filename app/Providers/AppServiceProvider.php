@@ -28,6 +28,7 @@ use App\Observers\ProjectObserver;
 use App\Observers\TestimonialObserver;
 use App\Services\BingWebmasterService;
 use App\Services\Citations\CitationBatchRunner;
+use App\Services\GoogleBusinessProfileService;
 use App\Services\GoogleSearchConsoleService;
 use App\Services\Social\ImageSocialPostStats;
 use App\Services\Social\SocialAutomationSettingsStore;
@@ -36,8 +37,6 @@ use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\Citations\SiteKnownListingsSource;
 use App\Support\Citations\SiteMailboxFactory;
 use App\Support\Citations\SitePendingCitationRepository;
-use App\Support\GoogleBusinessListing;
-use App\Support\GoogleOAuthApp;
 use App\Support\PublicFeeds;
 use App\Support\Seo\BingWriter;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
@@ -62,11 +61,13 @@ use App\Support\Tenancy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -83,6 +84,12 @@ use SsSystems\Platform\Citations\Contracts\PendingCitationRepository;
 use SsSystems\Platform\Citations\KnownListingsReconciler;
 use SsSystems\Platform\Citations\RemoteBrowserSession;
 use SsSystems\Platform\Citations\VerificationInbox;
+use SsSystems\Platform\Google\Adapters\EloquentTokenStore;
+use SsSystems\Platform\Google\BusinessProfile\Adapters\PlatformSettingListingStore;
+use SsSystems\Platform\Google\BusinessProfile\Client as GbpClient;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
+use SsSystems\Platform\Google\Contracts\TokenStore;
+use SsSystems\Platform\Google\OAuthClient;
 use SsSystems\Platform\Pulse\BeaconController;
 use SsSystems\Platform\Pulse\Recorder;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
@@ -343,6 +350,72 @@ class AppServiceProvider extends ServiceProvider
             $app->make(Recorder::class),
             (string) config('app.key'),
         ));
+
+        $this->registerGoogle();
+    }
+
+    /**
+     * One Google (kit 0.14.0, owner's call 2026-09-28; the kit's
+     * docs/GOOGLE.md): every tenant signs in through the ONE shared OAuth
+     * client and runs the kit's one Business Profile client. All binds, never
+     * singletons — a queue worker or Tenancy::for() resolves these for more
+     * than one tenant in one process, and each resolution reads config and
+     * the current tenant fresh:
+     *
+     * - OAuthClient: THE shared client, from services.google.oauth
+     *   (GOOGLE_OAUTH_CLIENT_ID/_SECRET), with the kit's read-only 0.14.x
+     *   fallback to the old business_profile pair. No platform_settings
+     *   overlay: App\Support\GoogleOAuthApp is gone.
+     * - TokenStore: oauth_tokens through OAuthToken, whose BelongsToSite
+     *   scope keeps every read and write to Site::current(); each grant now
+     *   records the client that issued it in metadata.oauth_client_id.
+     * - ListingStore: the gbp.* platform_settings keys (PlatformSetting is
+     *   BelongsToSite too), so the listing already chosen reads back as is.
+     * - GoogleBusinessProfileService (and the kit's Client, which resolves to
+     *   it): gs.construction's business on top of the kit's client.
+     *
+     * The env refresh token and listing/place ids are gs.construction's own
+     * and are passed for the default site only — another tenant must never
+     * post to GS's listing with GS's grant (the old service fell back to both
+     * for every tenant).
+     */
+    protected function registerGoogle(): void
+    {
+        $this->app->bind(OAuthClient::class, fn ($app) => OAuthClient::fromConfig(
+            (array) config('services.google'),
+            $app->make(HttpFactory::class),
+        ));
+
+        $this->app->bind(TokenStore::class, fn () => new EloquentTokenStore(OAuthToken::class));
+
+        $this->app->bind(ListingStore::class, function () {
+            $own = self::isDefaultSite();
+
+            return new PlatformSettingListingStore(
+                PlatformSetting::class,
+                $own ? config('services.google.business_profile.account_id') : null,
+                $own ? config('services.google.business_profile.location_id') : null,
+                $own ? config('services.google.business_profile.place_id') : null,
+            );
+        });
+
+        $this->app->bind(GoogleBusinessProfileService::class, fn ($app) => new GoogleBusinessProfileService(
+            $app->make(OAuthClient::class),
+            $app->make(TokenStore::class),
+            $app->make(CacheInterface::class),
+            $app->make(HttpFactory::class),
+            Log::channel('gbp'),
+            self::isDefaultSite() ? config('services.google.business_profile.refresh_token') : null,
+            $app->make(ListingStore::class),
+        ));
+
+        $this->app->bind(GbpClient::class, fn ($app) => $app->make(GoogleBusinessProfileService::class));
+    }
+
+    /** Whether the current tenant is the deployment's own (gs.construction) — the owner of every GOOGLE_BUSINESS_PROFILE_* env value. */
+    protected static function isDefaultSite(): bool
+    {
+        return Site::current()->slug === (string) config('sites.default', 'gsc');
     }
 
     /**
@@ -376,11 +449,6 @@ class AppServiceProvider extends ServiceProvider
             }
             abort(404);
         });
-
-        // This site's own Google OAuth client, entered from the admin,
-        // overlays the env fallback for Business Profile and Search Console.
-        GoogleOAuthApp::apply();
-        GoogleBusinessListing::apply();
 
         // Dev guardrail (same as hive2025): surface N+1 lazy loads in the log
         // during development without ever breaking a page — and never in

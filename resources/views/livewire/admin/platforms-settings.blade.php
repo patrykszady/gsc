@@ -133,13 +133,15 @@
                 <h4 class="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Configuration Status</h4>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-sm">
                     @php
-                        $gbpCfg = config('services.google.business_profile');
+                        // The shared sign-in client and the chosen listing, as the kit reads them (0.14.0).
+                        $gbpClientSet = app(\SsSystems\Platform\Google\OAuthClient::class)->isConfigured();
+                        $gbpListing = app(\SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore::class)->selected();
                         $gbpChecks = [
-                            'GOOGLE_BUSINESS_PROFILE_ENABLED' => !empty($gbpCfg['enabled']),
-                            'CLIENT_ID' => !empty($gbpCfg['client_id']),
-                            'CLIENT_SECRET' => !empty($gbpCfg['client_secret']),
-                            'ACCOUNT_ID' => !empty($gbpCfg['account_id']),
-                            'LOCATION_ID' => !empty($gbpCfg['location_id']),
+                            'GOOGLE_BUSINESS_PROFILE_ENABLED' => \App\Support\GoogleBusinessListing::publishingEnabled(),
+                            'CLIENT_ID' => $gbpClientSet,
+                            'CLIENT_SECRET' => $gbpClientSet,
+                            'ACCOUNT_ID' => !empty($gbpListing['account_id']),
+                            'LOCATION_ID' => !empty($gbpListing['location_id']),
                             'Refresh Token (DB or .env)' => app(\App\Services\GoogleBusinessProfileService::class)->hasRefreshToken(),
                         ];
                     @endphp

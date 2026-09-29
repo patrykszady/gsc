@@ -8,6 +8,8 @@ use App\Services\GoogleBusinessProfileService;
 use App\Support\GoogleBusinessListing;
 use App\Support\Tenancy;
 use Mockery\MockInterface;
+use SsSystems\Platform\Google\BusinessProfile\Adapters\PlatformSettingListingStore;
+use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
 use Tests\TestCase;
 
 /**
@@ -18,12 +20,17 @@ use Tests\TestCase;
  * whichever site holds the grant — so gs.construction's Platforms page listed
  * a client's business by name, under a heading inviting anyone to publish to
  * it. A listing belongs to the site whose host its own website points at.
+ * (Since kit 0.14.0 the endpoint is the kit's ServesGbpPlatform; the host
+ * filter is gs.construction's gbpSiteHosts() hook.)
  */
 class PlatformsGbpListingsTest extends TestCase
 {
     private const GS = 'locations/111';
 
     private const JPD = 'locations/222';
+
+    /** What Google answers for the linked listing, when the test says so. */
+    private array $location = ['name' => 'locations/111', 'metadata' => ['placeId' => 'ChIJtestplaceid']];
 
     protected function setUp(): void
     {
@@ -32,15 +39,15 @@ class PlatformsGbpListingsTest extends TestCase
         config(['services.admin_api.token' => 'test-admin-api-token']);
 
         $this->mock(GoogleBusinessProfileService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('grant')->andReturn(null);
             $mock->shouldReceive('hasRefreshToken')->andReturn(true);
             $mock->shouldReceive('hasBusinessScope')->andReturn(true);
             $mock->shouldReceive('getLastError')->andReturn(null);
+            $mock->shouldReceive('grantStatus')->andReturn(['connected' => true, 'app_credentials_configured' => true]);
             $mock->shouldReceive('listAccounts')->andReturn([
                 ['name' => 'accounts/900', 'accountName' => 'Patryk Szady'],
             ]);
-            $mock->shouldReceive('fetchPlaceId')->andReturn('ChIJtestplaceid');
-            $mock->shouldReceive('getStoredToken')->andReturn(null);
-            $mock->shouldReceive('isConfigured')->andReturn(true);
+            $mock->shouldReceive('getLocation')->with('111')->andReturnUsing(fn () => $this->location);
             $mock->shouldReceive('listLocations')->with('900')->andReturn([
                 ['name' => self::GS, 'title' => 'GS Construction & Remodeling', 'websiteUri' => 'https://gs.construction/',
                     'metadata' => ['mapsUri' => 'https://maps.google.com/?cid=111', 'placeId' => 'ChIJgsconstruction']],
@@ -88,8 +95,7 @@ class PlatformsGbpListingsTest extends TestCase
     public function test_the_listing_already_linked_is_always_shown_even_if_it_does_not_match(): void
     {
         // A misconfiguration must stay visible, or nobody can undo it.
-        PlatformSetting::put(GoogleBusinessListing::SETTING_LOCATION_ID, '222');
-        GoogleBusinessListing::apply();
+        PlatformSetting::put(PlatformSettingListingStore::LOCATION_ID, '222');
 
         $titles = collect($this->getJson('/api/admin/v1/platforms/gbp/listings', $this->headers())
             ->assertOk()
@@ -112,12 +118,32 @@ class PlatformsGbpListingsTest extends TestCase
             'location_id' => '111',
         ], $this->headers())->assertOk();
 
-        $this->assertSame('ChIJtestplaceid', PlatformSetting::get(GoogleBusinessListing::SETTING_PLACE_ID));
+        $this->assertSame('900', PlatformSetting::get(PlatformSettingListingStore::ACCOUNT_ID));
+        $this->assertSame('111', PlatformSetting::get(PlatformSettingListingStore::LOCATION_ID));
+        $this->assertSame('ChIJtestplaceid', PlatformSetting::get(PlatformSettingListingStore::PLACE_ID));
         $this->assertSame(
             'https://www.google.com/maps/place/?q=place_id:ChIJtestplaceid',
             PlatformSetting::get(GoogleBusinessListing::SOCIAL_URL_SETTING),
             'the Social Media page gets the listing address without anyone pasting it',
         );
+    }
+
+    public function test_googles_own_maps_link_for_the_listing_is_kept_and_preferred(): void
+    {
+        // The kit asks Google once for the listing's public links (0.14.0):
+        // its own Maps page wins over one built from the place id.
+        config(['socials.google.url' => '']);
+        $this->location = ['name' => 'locations/111', 'metadata' => [
+            'placeId' => 'ChIJtestplaceid',
+            'mapsUri' => 'https://maps.google.com/maps?cid=12345',
+            'newReviewUri' => 'https://search.google.com/local/writereview?placeid=ChIJtestplaceid',
+        ]];
+
+        $this->postJson('/api/admin/v1/platforms/gbp/listing', ['account_id' => '900', 'location_id' => '111'], $this->headers())
+            ->assertOk()
+            ->assertJsonPath('data.maps_url', 'https://maps.google.com/maps?cid=12345');
+
+        $this->assertSame('https://maps.google.com/maps?cid=12345', PlatformSetting::get(GoogleBusinessListing::SOCIAL_URL_SETTING));
     }
 
     public function test_a_google_link_already_on_file_is_left_alone(): void
@@ -139,12 +165,12 @@ class PlatformsGbpListingsTest extends TestCase
 
         $this->assertSame(
             'https://www.google.com/maps/place/?q=place_id:ChIJgsconstruction',
-            GoogleBusinessListing::mapsUrl(Site::query()->where('slug', 'gsc')->firstOrFail()),
+            Tenancy::for(Site::query()->where('slug', 'gsc')->firstOrFail(), fn () => app(ListingStore::class)->mapsUrl()),
         );
 
         Tenancy::for(Site::query()->where('slug', 'jpeterson')->firstOrFail(), function (): void {
             $this->assertNull(
-                GoogleBusinessListing::mapsUrl(),
+                app(ListingStore::class)->mapsUrl(),
                 'the env place id is gs.construction\'s — hers is empty until she links her own listing',
             );
         });
