@@ -16,6 +16,7 @@ use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Seo\CompetitorFilter;
 use App\Support\Seo\FrustratedPages;
 use App\Support\Seo\Reports\ReportCapabilities;
+use App\Support\Seo\Reports\ReportRefresh;
 use App\Support\Seo\SearchConsoleProperty;
 use App\Support\SeoStorage;
 use App\Support\Tenancy;
@@ -36,6 +37,7 @@ use League\CommonMark\GithubFlavoredMarkdownConverter;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
 use SsSystems\Platform\Reports\Console\ReportRun;
+use SsSystems\Platform\Reports\Jobs\RunArtisanCommandDetached;
 use SsSystems\Platform\Seo\SearchAppearance;
 use SsSystems\Platform\Seo\SitemapStatus;
 use Throwable;
@@ -72,7 +74,46 @@ class SeoReportController extends Controller
         return $this->itemResponse([
             'reports' => $files,
             'stats' => $this->reportStats($files),
+            'batch' => ReportRefresh::progress(),
         ]);
+    }
+
+    /**
+     * POST seo/reports/refresh — refresh every report that needs it (or all
+     * of them with only_stale=false) in the background and answer at once:
+     * the slow reports take longer than a web request may run. Progress
+     * comes back as `batch` on GET seo/reports.
+     *
+     * gsc is multi-tenant, but this API is pinned to the 'gsc' tenant
+     * (PinAdminApiTenant) — the detached command is handed `--site` explicitly
+     * so it refreshes the SAME tenant whether or not console/queue code's own
+     * default-site fallback still happens to agree with that pin.
+     */
+    public function refresh(Request $request): JsonResponse
+    {
+        if (ReportRefresh::running()) {
+            return $this->itemResponse(['ok' => true, 'queued' => false, 'running' => true, 'keys' => [], 'batch' => ReportRefresh::progress()]);
+        }
+
+        $onlyStale = $request->boolean('only_stale', true);
+        $keys = ReportRefresh::keysToRun($onlyStale);
+
+        if ($keys === []) {
+            return $this->itemResponse(['ok' => true, 'queued' => false, 'running' => false, 'keys' => [], 'message' => 'Every report is up to date.', 'batch' => ReportRefresh::progress()]);
+        }
+
+        Log::channel('seo-reports')->info('report library refresh requested', [
+            'reports' => $keys,
+            'requested_by' => $request->header('X-Admin-User'),
+        ]);
+
+        $batch = ReportRefresh::markQueued($keys);
+        RunArtisanCommandDetached::dispatch('seo:reports-refresh', [
+            '--keys' => implode(',', $keys),
+            '--site' => Site::current()->slug,
+        ]);
+
+        return $this->itemResponse(['ok' => true, 'queued' => true, 'running' => true, 'keys' => $keys, 'batch' => $batch]);
     }
 
     public function show(Request $request, string $report): JsonResponse
@@ -269,9 +310,14 @@ class SeoReportController extends Controller
     }
 
     /**
+     * Public: App\Support\Seo\Reports\ReportRefresh reuses this (via
+     * app(SeoReportController::class)->files()) to compute the set of
+     * reports a refresh pass would run, rather than duplicating the
+     * availability/freshness bookkeeping.
+     *
      * @return array<int, array<string, mixed>>
      */
-    protected function files(): array
+    public function files(): array
     {
         return collect($this->reports())
             ->map(fn (array $meta, string $key) => $this->fileEntry($key, $meta))
@@ -1928,7 +1974,8 @@ class SeoReportController extends Controller
         });
     }
 
-    protected function searchSnapshotCacheKey(int $trendDays): string
+    /** Public: ReportRefresh reuses this to bust the same cache regenerate() does. */
+    public function searchSnapshotCacheKey(int $trendDays): string
     {
         return Tenancy::cacheKey('admin.seo-reports.search-snapshot.v2.'.$trendDays);
     }

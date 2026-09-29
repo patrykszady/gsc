@@ -23,6 +23,7 @@ Route::prefix('seo')->group(function () {
     // performance, health, clarity, GEO, AI traffic, the embedded GSC-errors
     // summary, and the impressions diagnostic).
     Route::get('reports', [SeoReportController::class, 'index']);
+    Route::post('reports/refresh', [SeoReportController::class, 'refresh']);
     Route::get('reports/{report}', [SeoReportController::class, 'show']);
     Route::post('reports/{report}/regenerate', [SeoReportController::class, 'regenerate']);
     Route::get('snapshot', [SeoReportController::class, 'snapshot']);

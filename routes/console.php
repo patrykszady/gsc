@@ -504,6 +504,26 @@ Schedule::command('seo:recommendations-refresh')
     ->appendOutputTo(storage_path('logs/seo-recommendations-refresh.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:recommendations-refresh failed'));
 
+// SEO: the report library counts a report as up to date for 24 hours; the
+// per-report schedules above and RecommendationEngine::healStaleReports()
+// only catch it after 30 hours, one report at a time. This runs the whole
+// library, only the stale ones, one after another (a report it could not
+// refresh waits six hours before the next try) — see App\Support\Seo\
+// Reports\ReportRefresh. Same pass the admin's "Refresh all" starts, so each
+// report is rewritten about once a day either way.
+//
+// Explicitly pinned to gsc, NOT wrapped in the $perTenant helper above: the
+// admin API this feeds is itself pinned to the 'gsc' tenant only
+// (App\Http\Middleware\PinAdminApiTenant) — running this for every active
+// site would refresh report files for jpeterson's tenant row, which that
+// admin never reads (its real app is standalone) and would be pure waste.
+Schedule::command('seo:reports-refresh --stale --automatic --site=gsc')
+    ->hourlyAt(23)
+    ->name('seo-reports-refresh')
+    ->withoutOverlapping(60)
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/seo-reports-refresh.log'));
+
 // SEO: weekly internal-link audit — orphans + weakly linked pages.
 Schedule::command('seo:internal-link-audit --min=3')
     ->weeklyOn(1, '08:30')
