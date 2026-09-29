@@ -35,7 +35,16 @@ class GbpDescriptionApplier implements ActionApplier
         if ($new === '') {
             throw new RuntimeException("gbp_description action #{$action->id} has no new_description.");
         }
-        $payload['prev_description'] = $gbp->getDescription();
+        $prev = $gbp->getDescription();
+        // A read that FAILED is not "the listing has no description": keeping
+        // null here would make a later revert blank the live listing. Until
+        // kit 0.14 a Google that did not answer threw at this point; the
+        // kit's client returns null instead, so the failure is told apart by
+        // getLastError() (an empty description reads back null with none).
+        if ($prev === null && $gbp->getLastError() !== null) {
+            throw new RuntimeException('Could not read the current description to keep for revert: '.json_encode($gbp->getLastError()));
+        }
+        $payload['prev_description'] = $prev;
         if ($gbp->updateDescription($new) === null) {
             throw new RuntimeException('Google rejected the description: ' . json_encode($gbp->getLastError()));
         }
@@ -49,6 +58,11 @@ class GbpDescriptionApplier implements ActionApplier
         if (! array_key_exists('prev_description', $payload)) {
             return;
         }
-        app(GoogleBusinessProfileService::class)->updateDescription((string) ($payload['prev_description'] ?? ''));
+        // A revert Google did not take must not be recorded as reverted
+        // (SeoAutopilotService::revert() marks the action once this returns).
+        $gbp = app(GoogleBusinessProfileService::class);
+        if ($gbp->updateDescription((string) ($payload['prev_description'] ?? '')) === null) {
+            throw new RuntimeException('Google did not take the previous description back: '.json_encode($gbp->getLastError() ?? ['message' => 'Google Business Profile is not configured.']));
+        }
     }
 }

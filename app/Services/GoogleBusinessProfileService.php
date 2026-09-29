@@ -767,6 +767,16 @@ class GoogleBusinessProfileService extends Client
         $current = $this->getListingLocation('serviceArea');
 
         if (! $businessType) {
+            // "Keep the current type" needs the current type. A read that
+            // failed must not fall back to CUSTOMER_LOCATION_ONLY and rewrite
+            // it on the live listing — until kit 0.14 a Google that did not
+            // answer threw here; the kit's client returns null instead. (A
+            // listing with no service area reads back empty with no error,
+            // and still takes the default, as before.)
+            if ($current === null && $this->lastError !== null) {
+                return null;
+            }
+
             $businessType = $current['serviceArea']['businessType'] ?? 'CUSTOMER_LOCATION_ONLY';
         }
 

@@ -181,6 +181,63 @@ class GbpGoogleCallsPinnedTest extends TestCase
         }
     }
 
+    /**
+     * Before kit 0.14 a Google that did not answer threw out of the read; the
+     * kit's client returns null instead. A description that could not be read
+     * is not "no description": applying anyway would store null for revert,
+     * and the revert would then blank the live listing.
+     */
+    public function test_a_description_that_cannot_be_read_is_never_overwritten(): void
+    {
+        $this->fakeGoogle([
+            self::INFO.'/locations/222?readMask=profile' => Http::failedConnection('timed out'),
+        ]);
+
+        $action = SeoAction::create(['fingerprint' => 'g3', 'source' => 'gbp', 'category' => 'gbp_description', 'risk' => 'review', 'status' => 'proposed', 'target_url' => 'https://gs.construction/', 'title' => 't', 'hypothesis' => 'h', 'metric' => 'impressions', 'payload' => ['new_description' => 'New keyword-led description.']]);
+
+        try {
+            (new GbpDescriptionApplier)->apply($action);
+            $this->fail('An unreadable description must fail the action.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringStartsWith('Could not read the current description to keep for revert: {"message":"Google did not answer"', $e->getMessage());
+        }
+
+        $this->assertArrayNotHasKey('prev_description', $action->payload);
+        Http::assertNotSent(fn (Request $request) => $request->method() === 'PATCH');
+    }
+
+    public function test_an_empty_description_is_still_kept_for_revert_as_empty(): void
+    {
+        $this->fakeGoogle([
+            self::INFO.'/locations/222?readMask=profile' => Http::response([]),
+            self::INFO.'/locations/222?updateMask=profile.description' => Http::response(['name' => 'locations/222']),
+        ]);
+
+        $action = SeoAction::create(['fingerprint' => 'g4', 'source' => 'gbp', 'category' => 'gbp_description', 'risk' => 'review', 'status' => 'proposed', 'target_url' => 'https://gs.construction/', 'title' => 't', 'hypothesis' => 'h', 'metric' => 'impressions', 'payload' => ['new_description' => 'New keyword-led description.']]);
+
+        (new GbpDescriptionApplier)->apply($action);
+
+        $this->assertArrayHasKey('prev_description', $action->payload);
+        $this->assertNull($action->payload['prev_description']);
+    }
+
+    /** A revert Google did not take is never recorded as reverted. */
+    public function test_a_revert_google_refuses_fails_loudly(): void
+    {
+        $this->fakeGoogle([
+            self::INFO.'/locations/222?updateMask=profile.description' => Http::response(['error' => ['code' => 503, 'message' => 'Backend error', 'status' => 'UNAVAILABLE']], 503),
+        ]);
+
+        $action = SeoAction::create(['fingerprint' => 'g5', 'source' => 'gbp', 'category' => 'gbp_description', 'risk' => 'review', 'status' => 'applied', 'target_url' => 'https://gs.construction/', 'title' => 't', 'hypothesis' => 'h', 'metric' => 'impressions', 'payload' => ['new_description' => 'New.', 'prev_description' => 'Old description.']]);
+
+        try {
+            (new GbpDescriptionApplier)->revert($action);
+            $this->fail('A refused revert must fail.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringStartsWith('Google did not take the previous description back: {"message":"Update description failed"', $e->getMessage());
+        }
+    }
+
     public function test_the_category_sync_patches_the_same_categories_payload(): void
     {
         $this->fakeGoogle([self::INFO.'/locations/222?updateMask=categories' => Http::response(['name' => 'locations/222'])]);
@@ -230,6 +287,20 @@ class GbpGoogleCallsPinnedTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->url() === self::PLACES
             && $request->header('X-Goog-Api-Key') === ['places-key']
             && $request->header('X-Goog-FieldMask') === ['places.id,places.formattedAddress']);
+    }
+
+    /** "Keep the current business type" never rewrites a type it could not read. */
+    public function test_the_service_area_sync_never_rewrites_a_business_type_it_could_not_read(): void
+    {
+        $this->fakeGoogle([
+            self::INFO.'/locations/222?readMask=serviceArea' => Http::failedConnection('timed out'),
+        ]);
+
+        $gbp = app(GoogleBusinessProfileService::class);
+
+        $this->assertNull($gbp->updateServiceArea(['Palatine, IL, USA']));
+        $this->assertSame('Google did not answer', $gbp->getLastError()['message']);
+        Http::assertNotSent(fn (Request $request) => $request->method() === 'PATCH' || $request->url() === self::PLACES);
     }
 
     public function test_the_service_items_sync_patches_the_same_items_payload(): void
