@@ -235,7 +235,26 @@ while deliberately noindexed area sub-pages (AreaSeoPolicy) remain — that is e
   `OAuthCallback`, returning to `/admin/{services.ss.site_key}/platforms`.
   The older `/admin/{site}/platforms/{gbp,gsc}/callback` routes serve only the
   `/admin-legacy` Livewire Platforms screen's Connect buttons.
+- **The kit's client never throws** (a Google that did not answer is `null` +
+  `getLastError()`, where the old service let Http's ConnectionException fly),
+  so the gs paths that relied on that exception to stop check `getLastError()`
+  instead: `GbpDescriptionApplier` fails the action when the current
+  description could not be read (storing null would make a revert blank the
+  listing) and throws when Google does not take a revert (never recorded as
+  reverted); `updateServiceArea()` never "keeps the current" business type it
+  could not read. `listMediaFor()` is all pages or nothing (the kit keeps
+  partial pages) — ss.systems' upload job reads it to avoid duplicates.
+- **The live grant and the client id** (deploy rule): the default site's
+  `google_business_profile` row carries no `metadata.oauth_client_id` until
+  its first refresh on 0.14, which stamps it with the client in use (the
+  legacy `GOOGLE_BUSINESS_PROFILE_CLIENT_ID`). From then on ANY other
+  `GOOGLE_OAUTH_CLIENT_ID` deletes the grant on sight, before Google is asked.
+  Set `GOOGLE_OAUTH_*` only by copying that pair byte for byte (check
+  `GOOGLE_SEARCH_CONSOLE_CLIENT_*` is unset or equal too), and keep the old
+  pair until kit 0.15 — a rollback to a pre-0.14 release reads it.
 - **`GbpGoogleCallsPinnedTest`** pins what Google receives (autopilot profile
   writes, posting, reviews, photos) at the wire; keep it green. phpunit.xml
-  blanks the dev `.env`'s Google credentials — a test that needs Google sets
-  `config()` and fakes Http.
+  blanks every real credential the dev `.env` carries (Google, Gemini,
+  OpenAI, Places, PageSpeed, Bing, Clarity, DataForSEO, IndexNow, Cloudflare,
+  Forge, Meta, hive, GA4) and `tests/TestCase.php` refuses every unfaked Http
+  request — a test that needs a remote answer sets `config()` and fakes Http.
