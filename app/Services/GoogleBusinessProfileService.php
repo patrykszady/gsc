@@ -272,6 +272,25 @@ class GoogleBusinessProfileService extends Client
     }
 
     /**
+     * Every media item on one listing, flattened for ss.systems — all pages
+     * or nothing, as before 0.14. The kit keeps the pages it read before a
+     * later page fails and returns them as a success, but GET
+     * platforms/gbp/media is how ss.systems' UploadImageToGbpListing decides
+     * whether a photo already reached Google: a partial list answered 200
+     * would send a duplicate upload where the old all-or-nothing 422 marked
+     * the row failed. A failed page is a failure here (null, getLastError()
+     * set), so the pass-through answers 422 as it always did.
+     *
+     * @return list<array{name: string, source_url: ?string, google_url: ?string, category: ?string, create_time: ?string}>|null
+     */
+    public function listMediaFor(string $accountId, string $locationId): ?array
+    {
+        $items = parent::listMediaFor($accountId, $locationId);
+
+        return $this->lastError === null ? $items : null;
+    }
+
+    /**
      * One page of the media on this site's own listing, as Google returns it
      * (`mediaItems`, `nextPageToken`). listMediaFor() is the any-listing,
      * all-pages, flattened sibling the central admin's pass-through reads.
