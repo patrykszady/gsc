@@ -51,6 +51,33 @@ final class CrawlFiles
         return self::dir($site).'/image-sitemap.xml';
     }
 
+    /** robots.txt for a host that must stay out of search entirely. */
+    public const BLOCK_ALL = "# A development or preview copy: no crawling.\nUser-agent: *\nDisallow: /\n";
+
+    /**
+     * Whether this host is a dev/staging mirror or a preview host (every
+     * *.ss.systems dev tunnel, dev.gs.construction…), which must turn every
+     * crawler away in robots.txt, not only send the noindex header
+     * NoIndexNonProduction adds (owner's call, 2026-09-29: "all our sites on
+     * ss.systems block automated access"). Decided by host, not environment,
+     * so local 127.0.0.1 and the test suite still see the tenant's own file.
+     */
+    public static function blocksCrawlers(string $host): bool
+    {
+        if (app()->bound('site.preview_host')) {
+            return true;
+        }
+
+        $host = strtolower($host);
+        foreach (['dev.', 'dev-', 'staging.', 'stage.', 'test.', 'preview.'] as $prefix) {
+            if (str_starts_with($host, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** The robots.txt this site publishes, rendered for its own host. */
     public static function robots(?Site $site = null): string
     {
