@@ -44,6 +44,34 @@
         <env name="GOOGLE_SEARCH_CONSOLE_CLIENT_ID" value=""/>
         <env name="GOOGLE_SEARCH_CONSOLE_CLIENT_SECRET" value=""/>
         <env name="GOOGLE_SEARCH_CONSOLE_REFRESH_TOKEN" value=""/>
+        <!-- Every other real third-party credential the local .env carries (it is a copy of production's). With them
+             the suite called Gemini for real from ~30 tests (image alt text, captions, review triage) and could reach
+             OpenAI, Places, PageSpeed, Bing, Clarity, DataForSEO, IndexNow, Cloudflare, Forge, Meta, hive and the GA4
+             measurement endpoint — slow, flaky under parallel runs, and live side effects. A test that needs one of
+             these sets config() itself and fakes Http. -->
+        <env name="GOOGLE_GEMINI_API_KEY" value=""/>
+        <env name="GOOGLE_PLACES_API_KEY" value=""/>
+        <env name="GOOGLE_MAPS_BROWSER_KEY" value=""/>
+        <env name="GOOGLE_PAGESPEED_API_KEY" value=""/>
+        <env name="GOOGLE_MEASUREMENT_API_SECRET" value=""/>
+        <env name="OPENAI_API_KEY" value=""/>
+        <env name="ASSEMBLYAI_API_KEY" value=""/>
+        <env name="SERPAPI_KEY" value=""/>
+        <env name="BING_WEBMASTER_API_KEY" value=""/>
+        <env name="MICROSOFT_CLARITY_API_TOKEN" value=""/>
+        <env name="DATAFORSEO_LOGIN" value=""/>
+        <env name="DATAFORSEO_PASSWORD" value=""/>
+        <env name="INDEXNOW_ENABLED" value="false"/>
+        <env name="INDEXNOW_KEY" value=""/>
+        <env name="CLOUDFLARE_API_TOKEN" value=""/>
+        <env name="FORGE_API_TOKEN" value=""/>
+        <env name="META_APP_ID" value=""/>
+        <env name="META_APP_SECRET" value=""/>
+        <env name="NYLAS_API_KEY" value=""/>
+        <env name="HIVE_API_TOKEN" value=""/>
+        <env name="ANTICAPTCHA_API_KEY" value=""/>
+        <env name="TWOCAPTCHA_API_KEY" value=""/>
+        <env name="EMAIL_LEADS_ENABLED" value="false"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>

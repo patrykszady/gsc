@@ -6,6 +6,7 @@ use App\Models\Site;
 use App\Support\Seo\ClaritySettings;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\ParallelTesting;
 
 abstract class TestCase extends BaseTestCase
@@ -56,6 +57,15 @@ abstract class TestCase extends BaseTestCase
         $token = (string) (ParallelTesting::token() ?: '');
 
         config(['seo.crawl_files_root' => storage_path('framework/testing/tenants'.($token !== '' ? '_test_'.$token : ''))]);
+
+        // No test reaches the network through the Http facade: an unfaked
+        // request throws instead of calling Google, Gemini, OpenAI or the
+        // central admin for real. phpunit.xml blanks the real credentials
+        // the local .env carries; this is the backstop behind that — the
+        // suite used to call Gemini from ~30 tests and 127.0.0.1:8001 from
+        // one, which made parallel runs slow and flaky. A test that needs a
+        // remote answer fakes it with Http::fake().
+        Http::preventStrayRequests();
     }
 
     protected function tearDown(): void
