@@ -1068,9 +1068,12 @@ class PlatformsController extends Controller
         $longitude = isset($input['longitude']) ? (float) $input['longitude'] : null;
         $capturedAt = ! empty($input['captured_at']) ? Carbon::parse($input['captured_at']) : null;
 
+        $category = $input['category'] ?? $service->mapCategory($image);
+
         return [
-            'source_url' => (string) $service->getPublicImageUrl($image, $latitude, $longitude, $capturedAt),
-            'category' => $input['category'] ?? $service->mapCategory($image),
+            // A COVER gets its own 16:9 copy: Google refuses a cover over 2120×1192.
+            'source_url' => (string) $service->getPublicImageUrl($image, $latitude, $longitude, $capturedAt, cover: $category === 'COVER'),
+            'category' => $category,
             'description' => $input['description'] ?? $service->buildDescription($image),
             'image_id' => $image->id,
         ];

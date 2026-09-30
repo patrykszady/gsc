@@ -525,14 +525,14 @@ class GoogleBusinessProfileService extends Client
      * longitude params (2026-09-22). Pass all three null (the default) to
      * use the image's own defaults, exactly as uploadProjectImage() does.
      */
-    public function getPublicImageUrl(ProjectImage $image, ?float $latitude = null, ?float $longitude = null, ?DateTimeInterface $takenAt = null): ?string
+    public function getPublicImageUrl(ProjectImage $image, ?float $latitude = null, ?float $longitude = null, ?DateTimeInterface $takenAt = null, bool $cover = false): ?string
     {
         // Build URL using the production domain
         $productionUrl = config('services.google.business_profile.production_url')
             ?: config('app.url');
 
         // GBP expects JPG; generate a full-size JPG copy for uploads.
-        $relativeUrl = $this->getGbpJpegUrl($image, $latitude, $longitude, $takenAt)
+        $relativeUrl = $this->getGbpJpegUrl($image, $latitude, $longitude, $takenAt, $cover)
             ?? $image->url;
         if (! $relativeUrl) {
             return null;
@@ -561,8 +561,12 @@ class GoogleBusinessProfileService extends Client
      * $latitude/$longitude override resolveImageCoordinates() (given as a
      * pair — a caller supplying one must supply both); $takenAt overrides
      * the project's completed_at. All null uses the image's own defaults.
+     *
+     * $cover makes the listing's COVER copy instead (kit 0.14.1,
+     * 2026-09-29): cropped to 16:9 within Google's 2120×1192 cover limit,
+     * named `{name}-gbp-cover-{fingerprint}.jpg` beside the photo copy.
      */
-    protected function getGbpJpegUrl(ProjectImage $image, ?float $latitude = null, ?float $longitude = null, ?DateTimeInterface $takenAt = null): ?string
+    protected function getGbpJpegUrl(ProjectImage $image, ?float $latitude = null, ?float $longitude = null, ?DateTimeInterface $takenAt = null, bool $cover = false): ?string
     {
         $disk = 'public';
         $path = $image->path;
@@ -583,16 +587,18 @@ class GoogleBusinessProfileService extends Client
         $dir = trim(pathinfo($path, PATHINFO_DIRNAME), '/');
         $name = pathinfo($path, PATHINFO_FILENAME);
         $sourceKey = $path.'|'.Storage::disk($disk)->size($path);
-        $fingerprint = GooglePhotoCopy::fingerprint($sourceKey, $latitude, $longitude, $takenAt);
-        $jpgPath = ($dir !== '' ? $dir.'/' : '').$name.'-gbp-'.$fingerprint.'.jpg';
+        $fingerprint = GooglePhotoCopy::fingerprint($sourceKey, $latitude, $longitude, $takenAt, $cover);
+        $jpgPath = ($dir !== '' ? $dir.'/' : '').$name.($cover ? '-gbp-cover-' : '-gbp-').$fingerprint.'.jpg';
 
         if (! Storage::disk($disk)->exists($jpgPath)) {
             try {
                 $sourceBytes = Storage::disk($disk)->get($path);
-                $jpeg = GooglePhotoCopy::make($sourceBytes, $latitude, $longitude, $takenAt);
+                $jpeg = $cover
+                    ? GooglePhotoCopy::makeCover($sourceBytes, $latitude, $longitude, $takenAt)
+                    : GooglePhotoCopy::make($sourceBytes, $latitude, $longitude, $takenAt);
 
                 Storage::disk($disk)->put($jpgPath, $jpeg);
-                $this->removeStaleGbpCopies($disk, $dir, $name, $jpgPath);
+                $this->removeStaleGbpCopies($disk, $dir, $name, $jpgPath, $cover);
             } catch (\Exception $e) {
                 Log::channel('gbp')->warning('GBP: Failed to generate JPG for image', [
                     'image_id' => $image->id,
@@ -613,9 +619,11 @@ class GoogleBusinessProfileService extends Client
      * `{name}_gbp.jpg` from before fingerprinting existed — so a project
      * photo doesn't accumulate a derivative per date/coordinate change.
      */
-    protected function removeStaleGbpCopies(string $disk, string $dir, string $name, string $keepPath): void
+    protected function removeStaleGbpCopies(string $disk, string $dir, string $name, string $keepPath, bool $cover = false): void
     {
-        $pattern = '/^'.preg_quote($name, '/').'(-gbp-[0-9a-f]+|_gbp)\.jpg$/i';
+        $pattern = $cover
+            ? '/^'.preg_quote($name, '/').'-gbp-cover-[0-9a-f]+\.jpg$/i'
+            : '/^'.preg_quote($name, '/').'(-gbp-[0-9a-f]+|_gbp)\.jpg$/i';
 
         foreach (Storage::disk($disk)->files($dir) as $file) {
             if ($file === $keepPath) {

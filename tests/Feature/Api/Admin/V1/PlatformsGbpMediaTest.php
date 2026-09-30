@@ -8,13 +8,13 @@ use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\GoogleBusinessProfileService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 use Mockery;
-use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -52,7 +52,7 @@ class PlatformsGbpMediaTest extends TestCase
     /** A tiny real JPEG (Intervention/GD) — GooglePhotoCopy re-encodes real bytes, not a stub. */
     private function realJpeg(): string
     {
-        return (string) (new ImageManager(new Driver()))
+        return (string) (new ImageManager(new Driver))
             ->create(40, 30)
             ->fill('#3366ff')
             ->toJpeg()
@@ -104,7 +104,7 @@ class PlatformsGbpMediaTest extends TestCase
     }
 
     /** Every `-gbp-*.jpg` currently on the fake public disk under projects/. */
-    private function gbpCopies(): \Illuminate\Support\Collection
+    private function gbpCopies(): Collection
     {
         return collect(Storage::disk('public')->files('projects'))
             ->filter(fn (string $f) => str_contains($f, '-gbp-'))
@@ -156,7 +156,7 @@ class PlatformsGbpMediaTest extends TestCase
         $mock->shouldReceive('hasRefreshToken')->once()->andReturn(true);
         $mock->shouldReceive('getPublicImageUrl')
             ->once()
-            ->with(Mockery::on(fn (ProjectImage $img) => $img->is($image)), null, null, null)
+            ->with(Mockery::on(fn (ProjectImage $img) => $img->is($image)), null, null, null, false)
             ->andReturn('https://gs.construction/storage/projects/kitchen_gbp.jpg');
         $mock->shouldReceive('mapCategory')
             ->once()
@@ -422,6 +422,32 @@ class PlatformsGbpMediaTest extends TestCase
         $this->assertSame('2021:01:01 00:00:00', $exif['EXIF']['DateTimeOriginal'] ?? null);
         $this->assertSame('N', $exif['GPS']['GPSLatitudeRef'] ?? null);
         $this->assertSame('40/1', $exif['GPS']['GPSLatitude'][0] ?? null);
+    }
+
+    /**
+     * Google refuses a listing cover over 2120×1192 ("Image too large",
+     * jpeterson-design.com's 1825×2400 portrait, 2026-09-29). A COVER gets
+     * its own 16:9 copy within that limit; the photo's own copy is untouched.
+     */
+    public function test_a_cover_gets_its_own_sixteen_by_nine_copy_within_googles_cover_limit(): void
+    {
+        $image = $this->projectImageWithRealFile();
+        Storage::disk('public')->put($image->path, (string) (new ImageManager(new Driver))->create(1825, 2400)->fill('#3366ff')->toJpeg()->toString());
+
+        $service = app(GoogleBusinessProfileService::class);
+        $photoUrl = $service->getPublicImageUrl($image, 40.0, -90.0);
+        $coverUrl = $service->getPublicImageUrl($image, 40.0, -90.0, cover: true);
+
+        $this->assertStringContainsString('-gbp-cover-', $coverUrl);
+        $this->assertStringNotContainsString('-gbp-cover-', $photoUrl);
+
+        $copies = $this->gbpCopies();
+        $this->assertCount(2, $copies);
+        $cover = $copies->first(fn (string $f) => str_contains($f, '-gbp-cover-'));
+        $photo = $copies->first(fn (string $f) => ! str_contains($f, '-gbp-cover-'));
+
+        $this->assertSame([1825, 1026], array_slice(getimagesizefromstring(Storage::disk('public')->get($cover)), 0, 2));
+        $this->assertSame([1825, 2400], array_slice(getimagesizefromstring(Storage::disk('public')->get($photo)), 0, 2));
     }
 
     public function test_defaults_come_from_the_projects_completion_date_and_area_served(): void
