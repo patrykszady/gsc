@@ -42,6 +42,9 @@ Route::prefix('platforms')->group(function () {
     // Console sign in with. Per site: never shared between sites.
     Route::post('google/credentials', [PlatformsController::class, 'saveGoogleCredentials']);
     Route::delete('google/credentials', [PlatformsController::class, 'clearGoogleCredentials']);
+    // ss.systems provisions the one Google client here (kit 0.15.0; google:provision-shared-client).
+    Route::put('google/shared-client', [PlatformsController::class, 'saveSharedGoogleClient']);
+    Route::delete('google/shared-client', [PlatformsController::class, 'forgetSharedGoogleClient']);
 
     // ---- SEO sources: Bing, Clarity, PageSpeed, DataForSEO ----
     // Same shape as google/credentials above: validate, write only the

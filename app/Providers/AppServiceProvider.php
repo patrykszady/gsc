@@ -85,6 +85,7 @@ use SsSystems\Platform\Citations\KnownListingsReconciler;
 use SsSystems\Platform\Citations\RemoteBrowserSession;
 use SsSystems\Platform\Citations\VerificationInbox;
 use SsSystems\Platform\Google\Adapters\EloquentTokenStore;
+use SsSystems\Platform\Google\Adapters\PlatformSettingSharedClient;
 use SsSystems\Platform\Google\BusinessProfile\Adapters\PlatformSettingListingStore;
 use SsSystems\Platform\Google\BusinessProfile\Client as GbpClient;
 use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
@@ -381,9 +382,13 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function registerGoogle(): void
     {
+        // The one Google client as ss.systems provisions it (kit 0.15.0):
+        // stored in platform_settings and preferred over any .env value.
+        $this->app->bind(PlatformSettingSharedClient::class, fn () => new PlatformSettingSharedClient(PlatformSetting::class));
         $this->app->bind(OAuthClient::class, fn ($app) => OAuthClient::fromConfig(
             (array) config('services.google'),
             $app->make(HttpFactory::class),
+            $app->make(PlatformSettingSharedClient::class)->get(),
         ));
 
         $this->app->bind(TokenStore::class, fn () => new EloquentTokenStore(OAuthToken::class));
