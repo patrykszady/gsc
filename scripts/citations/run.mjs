@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeContext } from './lib/ctx.mjs';
+import { guardBrowser } from '../lib/browser-guard.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -53,7 +54,8 @@ async function main() {
   const started = Date.now();
   const deadline = started + args.timeoutMs;
 
-  const browser = await puppeteer.launch({
+  const browser = guardBrowser(await puppeteer.launch({
+    pipe: true, // Chrome exits with this script, however it dies (lib/browser-guard.mjs)
     headless: args.headless ? true : false,
     defaultViewport: null,
     userDataDir: args.userDataDir || undefined,
@@ -62,7 +64,7 @@ async function main() {
       '--window-size=1366,900', '--window-position=0,0', '--disable-blink-features=AutomationControlled',
       '--lang=en-US,en',
     ],
-  });
+  }));
   const page = (await browser.pages())[0] || (await browser.newPage());
   await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
   page.setDefaultNavigationTimeout(45000);

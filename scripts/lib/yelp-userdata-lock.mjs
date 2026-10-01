@@ -6,7 +6,7 @@
 //     Process SIGKILL after a timeout) the browser child can survive and
 //     hold the lock, or Node dies before Chromium and leaves the symlink
 //     pointing at a PID that no longer exists. Either way the next
-//     puppeteer.launch() throws "The browser is already running for ...".
+//     launch throws "The browser is already running for ...".
 //
 //  2. Orphan Chromium processes that outlive their parent Node and keep
 //     using the same userDataDir. We can identify them via /proc cmdline
@@ -14,12 +14,15 @@
 //
 // Usage:
 //   import { purgeStaleChromiumLocks, installShutdownHandlers } from './lib/yelp-userdata-lock.mjs';
-//   purgeStaleChromiumLocks(args.userDataDir);
-//   const browser = await puppeteer.launch({ userDataDir: args.userDataDir, ... });
+//   const browser = await launchPuppeteerWithLockRecovery({ puppeteer, launchOptions, userDataDir: args.userDataDir });
 //   installShutdownHandlers(browser);
+//
+// launchPuppeteerWithLockRecovery() launches in pipe mode under
+// browser-guard.mjs, so Chrome now dies with the script (2026-10-01).
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { guardBrowser } from './browser-guard.mjs';
 
 const LOCK_FILES = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
 
@@ -308,13 +311,15 @@ export async function launchPuppeteerWithLockRecovery({
   await sleep(1200);
 
   try {
-    return await puppeteer.launch(launchOptions);
+    // pipe: Chrome exits with this script, however it dies (browser-guard.mjs).
+    return guardBrowser(await puppeteer.launch({ ...launchOptions, pipe: true }));
   } catch (e) {
     if (!isLaunchRaceError(e)) throw e;
     log(`[yelp-lock] launch failed (${e.message}); retrying after second lock purge`);
 
     purgeStaleChromiumLocks(userDataDir, log);
     await sleep(1800);
-    return await puppeteer.launch(launchOptions);
+    // pipe: Chrome exits with this script, however it dies (browser-guard.mjs).
+    return guardBrowser(await puppeteer.launch({ ...launchOptions, pipe: true }));
   }
 }

@@ -39,6 +39,7 @@ const emit = (obj) => { process.stdout.write(JSON.stringify(obj) + '\n'); };
   let browser;
   try {
     browser = guardBrowser(await puppeteer.launch({
+      pipe: true, // Chrome exits with this script, however it dies (lib/browser-guard.mjs)
       headless: 'new',
       userDataDir: args.userDataDir,
       defaultViewport: { width: 1280, height: 800 },

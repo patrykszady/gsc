@@ -864,8 +864,9 @@ Schedule::call(function () {
         ->each(fn (int $id) => SendLeadToHive::dispatch($id));
 })->name('hive:resend-leads-safety-net')->everyMinute()->withoutOverlapping();
 
-// Headless Chrome orphaned by a Puppeteer script that died (one Instagram
-// browser ran 22 days on hive-prod, 2026-10-01) — see ReapOrphanedChrome.
-// Server-wide, not per tenant: it only touches orphaned headless browsers.
-Schedule::command('chrome:reap-orphans')->hourly()->withoutOverlapping()
+// Puppeteer Chrome that outlived its script or ran away (2026-10-01: one ran
+// 22 days; another grew to ~8 GB in half an hour and took hive-prod down) —
+// see ReapOrphanedChrome. Server-wide, not per tenant, every minute: it only
+// touches browsers Puppeteer launched, never the Menards one.
+Schedule::command('chrome:reap-orphans')->everyMinute()->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/chrome-reaper.log'));

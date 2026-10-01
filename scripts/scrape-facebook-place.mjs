@@ -21,6 +21,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'node:fs';
 import readline from 'node:readline';
+import { guardBrowser } from './lib/browser-guard.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -448,7 +449,8 @@ async function scrapeOne(page, query, isFirst) {
     }
   } catch (_) {}
 
-  const browser = await puppeteer.launch({
+  const browser = guardBrowser(await puppeteer.launch({
+    pipe: true, // Chrome exits with this script, however it dies (lib/browser-guard.mjs)
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir,
     defaultViewport: { width: 1366, height: 900 },
@@ -461,7 +463,7 @@ async function scrapeOne(page, query, isFirst) {
       '--no-first-run',
       '--hide-crash-restore-bubble',
     ],
-  });
+  }));
 
   let exitCode = 0;
   try {

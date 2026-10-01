@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { guardBrowser } from './lib/browser-guard.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -356,10 +357,11 @@ async function main() {
       }
     }
 
-    const browser = await puppeteer.launch({
+    const browser = guardBrowser(await puppeteer.launch({
+      pipe: true, // Chrome exits with this script, however it dies (lib/browser-guard.mjs)
       headless: args.headless ? 'new' : false,
       args: launchArgs,
-    });
+    }));
 
     try {
       const page = await browser.newPage();

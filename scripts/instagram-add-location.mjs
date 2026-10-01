@@ -254,6 +254,7 @@ async function addLocation(page, input, opts) {
   }
 
   const browser = guardBrowser(await puppeteer.launch({
+    pipe: true, // Chrome exits with this script, however it dies (lib/browser-guard.mjs)
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir,
     defaultViewport: { width: 1366, height: 900 },
