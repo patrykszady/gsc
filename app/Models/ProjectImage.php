@@ -164,11 +164,11 @@ class ProjectImage extends Model
      * to also belong to one of the project's areas, since the match reason
      * there is the project's own type, not an area's.
      *
-     * Falls back to cover photos of any published project/area (optionally
-     * of the same $type) only when no featured cover exists, so sliders
-     * never render empty or stock imagery when real project work is
-     * available. Mark more projects as "featured" in the admin to fully
-     * curate what sliders show.
+     * Featured covers come first; when there are fewer than $limit, the rest
+     * are filled from the covers of any published project/area (optionally
+     * of the same $type), so sliders never render empty or stock imagery
+     * when real project work is available. Mark more projects as "featured"
+     * in the admin to choose which photos lead.
      *
      * No SQL limit()/inRandomOrder(): an area's cover isn't a column (it can
      * fall back to "first", not just is_cover), so area candidates are
@@ -220,10 +220,23 @@ class ProjectImage extends Model
             return $projectCovers->concat($areaCovers);
         };
 
-        $featured = $build(true);
-        $pool = $featured->isNotEmpty() ? $featured : $build(false);
+        // Featured first, then topped up from every published cover of the
+        // type: one featured match must not leave the other slides to stock
+        // photos (2026-10-01: a featured project's one Bathroom area left
+        // /services/bathroom-remodeling with 2 Unsplash slides of 3 while 6
+        // real bathroom covers went unused).
+        $featured = $build(true)->shuffle();
+        if ($featured->count() >= $limit) {
+            return $featured->take($limit)->values();
+        }
 
-        return $pool->shuffle()->take($limit)->values();
+        $featuredIds = $featured->pluck('id')->all();
+        $others = $build(false)
+            ->reject(fn (self $image) => in_array($image->id, $featuredIds, true))
+            ->unique('id')
+            ->shuffle();
+
+        return $featured->concat($others)->take($limit)->values();
     }
 
     /**

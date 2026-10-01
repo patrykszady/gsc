@@ -9,6 +9,7 @@ use App\Models\ProjectCollaborator;
 use App\Models\ProjectImage;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use SsSystems\Platform\Projects\CollaboratorLinks;
 use Tests\TestCase;
@@ -147,6 +148,40 @@ class ProjectAreasPublicTest extends TestCase
         $this->assertCount(1, $bathroomCovers);
         $this->assertSame($bathroomPhoto->id, $bathroomCovers->first()->id);
         $this->assertFalse($bathroomCovers->contains('id', $kitchenPhoto->id), "never a sibling area's photo");
+    }
+
+    /**
+     * One featured match must not leave the rest of a slider to stock
+     * photos: featured covers lead, then the other real covers of the type
+     * fill the remaining slots (2026-10-01: /services/bathroom-remodeling
+     * showed 1 real slide and 2 Unsplash ones while 6 bathroom covers sat
+     * unused, because a featured project's Bathroom area made the featured
+     * pool non-empty).
+     */
+    public function test_curated_covers_tops_up_featured_covers_with_other_real_covers(): void
+    {
+        $merged = Project::create(['title' => 'Arlington Heights Bathroom and Laundry Remodel', 'slug' => 'arlington-heights-bathroom-and-laundry-remodel', 'project_type' => 'home-remodel', 'is_published' => true, 'is_featured' => true]);
+        $bath = ProjectArea::create(['project_id' => $merged->id, 'project_type' => 'bathroom', 'sort_order' => 0]);
+        $featuredBath = $this->image($merged, 'merged-bath', ['project_area_id' => $bath->id]);
+
+        $others = collect(['Palatine Bath', 'Inverness Bath', 'Glenview Bath'])->map(function (string $title) {
+            $project = Project::create(['title' => $title, 'slug' => Str::slug($title), 'project_type' => 'bathroom', 'is_published' => true]);
+
+            return $this->image($project, Str::slug($title), ['is_cover' => true]);
+        });
+        $unpublished = Project::create(['title' => 'Draft Bath', 'slug' => 'draft-bath', 'project_type' => 'bathroom', 'is_published' => false]);
+        $this->image($unpublished, 'draft-bath', ['is_cover' => true]);
+
+        $three = ProjectImage::curatedCovers('bathroom', 3);
+        $this->assertCount(3, $three);
+        $this->assertSame($featuredBath->id, $three->first()->id, 'the featured cover leads');
+
+        $all = ProjectImage::curatedCovers('bathroom', 12);
+        $this->assertCount(4, $all, 'every published bathroom cover, no unpublished ones');
+        $this->assertEqualsCanonicalizing(
+            [$featuredBath->id, ...$others->pluck('id')->all()],
+            $all->pluck('id')->all(),
+        );
     }
 
     public function test_the_project_page_renders_one_section_per_area_in_order_with_a_stable_anchor(): void
