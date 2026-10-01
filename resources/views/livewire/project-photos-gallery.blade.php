@@ -39,12 +39,21 @@
     @keydown.arrow-left.window="if(lightbox) prev()"
 >
     @if($allImages->isNotEmpty())
-        {{-- Gallery header with link to full photos --}}
-        <div id="gallery-photos-top" class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-                Project Photos
-                <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $allImages->count() }})</span>
-            </h2>
+        {{-- Gallery header with link to full photos. data-gallery-top, not
+             an id: the project page now renders several of these (area-less,
+             then one per area) — an id would duplicate across instances,
+             and the scroll-to-top script below scopes its lookup to THIS
+             component's own root element precisely so it never jumps to a
+             different gallery's header. --}}
+        <div data-gallery-top class="flex items-center justify-between mb-4">
+            @if($heading)
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    {{ $heading }}
+                    <span class="text-base font-normal text-gray-500 dark:text-gray-400">({{ $allImages->count() }})</span>
+                </h2>
+            @else
+                <span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{ $allImages->count() }} photo{{ $allImages->count() === 1 ? '' : 's' }}</span>
+            @endif
             @php
                 $firstImage = $allImages->first();
                 $firstImageKey = $firstImage?->slug ?: $firstImage?->id;
@@ -170,7 +179,11 @@
         if (component.name !== 'project-photos-gallery') return;
         succeed(() => {
             if (window.innerWidth >= 640) return;
-            const target = document.getElementById('gallery-photos-top');
+            // Scoped to THIS component's own root element — several of
+            // these can be on one page (area-less, then one per area), and
+            // a global lookup would always jump to the first one regardless
+            // of which gallery's page link was actually clicked.
+            const target = component.el?.querySelector('[data-gallery-top]');
             if (!target) return;
             const start = window.scrollY;
             const end = target.getBoundingClientRect().top + start - 16;

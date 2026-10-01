@@ -130,6 +130,7 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     require __DIR__.'/api-admin/platforms.php';
     require __DIR__.'/api-admin/citations.php';
     require __DIR__.'/api-admin/projects-ext.php';
+    require __DIR__.'/api-admin/project-areas.php';
     require __DIR__.'/api-admin/areas-ext.php';
     require __DIR__.'/api-admin/services.php';
     require __DIR__.'/api-admin/pages.php';

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
+use App\Support\Projects\GscSlugRedirectRecorder;
 use Hszope\LaravelAigeo\Traits\HasGeoProfile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,11 +13,20 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RalphJSmit\Laravel\SEO\Support\HasSEO;
 use RalphJSmit\Laravel\SEO\Support\SEOData;
+use SsSystems\Platform\Projects\Concerns\HasProjectAreas;
+use SsSystems\Platform\Projects\Contracts\RecordsProjectSlugRedirect;
 
 class Project extends Model
 {
     use BelongsToSite;
     use HasGeoProfile;
+
+    // One real job split into areas (Kitchen, Mudroom, Basement…) — see
+    // ss-platform-kit's docs/PROJECT-AREAS.md. areas()/scopeOfType()/
+    // types()/belongsToType()/presentFor() and the slug-rename-keeps-working
+    // hook all live in the kit (0.16.0); see projectAreaModel()/
+    // projectSlugRedirects() below.
+    use HasProjectAreas;
     use HasSEO;
 
     protected $fillable = [
@@ -46,29 +56,14 @@ class Project extends Model
             }
         });
 
-        // Remember every slug this project has answered on. Photo pages nest
+        // Remember every slug this project has answered on: photo pages nest
         // under the project slug, so a rename silently moves that project's
         // whole photo set too; without this the old URLs 404 and the rename
-        // costs exactly the ranking it was meant to gain.
-        static::updating(function (Project $project) {
-            if (! $project->isDirty('slug')) {
-                return;
-            }
-
-            $old = $project->getOriginal('slug');
-            if (! $old || $old === $project->slug) {
-                return;
-            }
-
-            ProjectSlugHistory::updateOrCreate(
-                ['slug' => $old],
-                ['project_id' => $project->id],
-            );
-
-            // A slug being reclaimed by the project that now owns it is no
-            // longer historical — drop the redirect so it does not loop.
-            ProjectSlugHistory::where('slug', $project->slug)->delete();
-        });
+        // costs exactly the ranking it was meant to gain. This now runs via
+        // HasProjectAreas::bootHasProjectAreas() (ss-platform-kit 0.16.0),
+        // through projectSlugRedirects() below — NOT a second hook here, so
+        // a plain rename and a merge's own authoritative write (with a real
+        // area anchor) can never race each other onto the same row.
     }
 
     public function slugHistory()
@@ -212,10 +207,11 @@ class Project extends Model
         return $query->where('is_featured', true);
     }
 
-    public function scopeOfType($query, string $type)
-    {
-        return $query->where('project_type', $type);
-    }
+    // scopeOfType() now lives in HasProjectAreas (ss-platform-kit 0.16.0):
+    // a project belongs to a category through its own project_type OR any
+    // of its areas' — removing this class's own plain where() lets the
+    // trait's version take over (a class's own method would otherwise win
+    // over a same-named trait method).
 
     /**
      * slug => label for the project form's "Project Type". The services
@@ -245,12 +241,18 @@ class Project extends Model
         ];
     }
 
+    /** This project's own category label — Project::projectTypes()[project_type], falling back to a title-cased slug. */
+    public function typeLabel(): string
+    {
+        return self::projectTypes()[$this->project_type] ?? ucwords(str_replace('-', ' ', (string) $this->project_type));
+    }
+
     /**
      * GEO profile for the laravel-aigeo package.
      */
     public function geoProfile(): array
     {
-        $type = self::projectTypes()[$this->project_type] ?? ucwords(str_replace('-', ' ', $this->project_type ?? 'Remodel'));
+        $type = $this->project_type ? $this->typeLabel() : 'Remodel';
         $loc = $this->location ?: 'Chicago Suburbs';
 
         return [
@@ -347,6 +349,21 @@ class Project extends Model
             'sort_order' => (int) $this->sort_order,
             'cover_url' => $this->cover()?->url,
             'images' => $this->images->map(fn (ProjectImage $image) => $image->toApiArray())->all(),
+            // Callers should eager-load 'areas.images' to avoid an N+1 on
+            // each area's cover()/image_count — see ProjectController.
+            'areas' => $this->areasApiPayload(),
         ];
+    }
+
+    /** @see SsSystems\Platform\Projects\Concerns\HasProjectAreas */
+    protected function projectAreaModel(): string
+    {
+        return ProjectArea::class;
+    }
+
+    /** @see SsSystems\Platform\Projects\Concerns\HasProjectAreas */
+    protected function projectSlugRedirects(): RecordsProjectSlugRedirect
+    {
+        return new GscSlugRedirectRecorder;
     }
 }

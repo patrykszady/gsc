@@ -426,9 +426,12 @@ class AreaServed extends Model
                 ->whereNotNull('location')
                 ->where('location', '!=', '')
                 // A bathroom service page showing kitchen photos undercuts the
-                // one thing the page is meant to prove.
-                ->when($projectType, fn ($q) => $q->where('project_type', $projectType))
-                ->with('images')
+                // one thing the page is meant to prove. A project belongs to a
+                // category through its own project_type OR any of its areas' —
+                // see Project::scopeOfType() (SsSystems\Platform\Projects\
+                // Concerns\HasProjectAreas).
+                ->when($projectType, fn ($q) => $q->ofType($projectType))
+                ->with(['images', 'areas.images'])
                 ->latest('updated_at')
                 ->get()
                 ->filter(function (Project $project) use ($needle): bool {
@@ -590,10 +593,22 @@ class AreaServed extends Model
         // A project with no images maps to null, which turns the Eloquent
         // collection into a plain one and made the town page 500 for any
         // town with such a project (2026-09-17). Filter, then rebuild.
+        //
+        // presentFor($projectType)->cover(): a project visible under
+        // $projectType only through one of its areas shows that area's own
+        // cover, not the whole project's — see Project::presentFor() /
+        // SsSystems\Platform\Projects\ProjectPresentation.
         $images = $this->localProjects(12, $projectType)
-            // setRelation, not a fresh query: the slide overlay links to the
-            // project, and the parent is already loaded here.
-            ->map(fn (Project $project) => ($project->images->firstWhere('is_cover', true) ?? $project->images->first())?->setRelation('project', $project))
+            ->map(function (Project $project) use ($projectType) {
+                $presentation = $project->presentFor($projectType);
+
+                // setRelation, not a fresh query: the slide overlay links to
+                // the project (and, when presenting an area, that area's own
+                // anchor) and both are already loaded here.
+                return $presentation->cover()
+                    ?->setRelation('project', $project)
+                    ->setRelation('area', $presentation->area);
+            })
             ->filter()
             ->take($limit)
             ->values();

@@ -64,6 +64,7 @@ use App\Support\Areas\RetiredAreaRedirect;
 use App\Support\DevSites;
 use App\Support\LeadLineInfo;
 use App\Support\PermitGuideInfo;
+use App\Support\Projects\GscSlugRedirectRecorder;
 use App\Support\Seo\CrawlFiles;
 use App\Support\SEO\SEOBuilder;
 use App\Support\SiteIcons;
@@ -321,8 +322,21 @@ Route::get('/api/project-images', function () {
 // the project is still there under its slug, so say so once.
 Route::get('/projects/{id}', function (int $id) {
     $project = Project::query()->find($id);
+    if ($project) {
+        return redirect(route('projects.show', $project), 301);
+    }
 
-    return $project ? redirect(route('projects.show', $project), 301) : abort(410);
+    // A project `php artisan projects:merge` folded entirely into another:
+    // its content is now a section of the target's page, not gone — send
+    // the visitor straight there instead of a dead end.
+    $merged = (new GscSlugRedirectRecorder)->findBySourceProjectId($id);
+    if ($merged) {
+        $url = route('projects.show', $merged['project']);
+
+        return redirect($merged['anchor'] ? "{$url}#{$merged['anchor']}" : $url, 301);
+    }
+
+    return abort(410);
 })->whereNumber('id');
 
 // Every before/after timelapse on one page. Declared BEFORE /projects/{project}

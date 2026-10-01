@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Project;
 use App\Services\Blog\ProjectBlogWriter;
+use App\Support\Tenancy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -41,16 +42,40 @@ class GenerateProjectBlogPostJob implements ShouldQueue
             if (! $this->force && $this->project->blogPost()->exists()) {
                 return;
             }
+
+            $fresh = $this->project->fresh();
+
+            // The photos-first draft flow creates the project under a
+            // placeholder title (GenerateProjectDetailsJob::
+            // PLACEHOLDER_TITLE) until the admin explicitly drafts the real
+            // one from the uploaded photos — a post about "New project"
+            // would be worse than no post at all. Retry once (the same
+            // window as the description wait below), then give up silently
+            // rather than write one; nothing re-dispatches this once
+            // details land, so publishing from there is the admin's own
+            // "regenerate" action on the blog card.
+            if (! $this->force && $fresh->title === GenerateProjectDetailsJob::PLACEHOLDER_TITLE) {
+                if ($this->attempts() < 2) {
+                    $this->release(600);
+
+                    return;
+                }
+
+                Log::channel('ai_content')->info('Blog draft skipped — project is still a photos-first draft', ['project_id' => $fresh->id]);
+
+                return;
+            }
+
             // Wait for the description the AI-content pipeline writes on
             // create — the post is far better with it. Retry once later.
             // A forced run (the admin's button) writes with whatever exists.
-            if (! $this->force && empty($this->project->fresh()->description) && $this->attempts() < 2) {
+            if (! $this->force && empty($fresh->description) && $this->attempts() < 2) {
                 $this->release(600);
 
                 return;
             }
 
-            $post = $writer->write($this->project->fresh());
+            $post = $writer->write($fresh);
             if ($post === null) {
                 Log::channel('ai_content')->warning('Blog draft failed', [
                     'project_id' => $this->project->id,
@@ -65,7 +90,7 @@ class GenerateProjectBlogPostJob implements ShouldQueue
 
         $site = $this->project->site;
         try {
-            $site ? \App\Support\Tenancy::for($site, $run) : $run();
+            $site ? Tenancy::for($site, $run) : $run();
         } finally {
             Cache::forget(static::generatingKey($this->project));
         }

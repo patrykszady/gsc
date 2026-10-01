@@ -34,7 +34,7 @@ class ProjectObserver
 
         $this->syncAreaCoordinatesFromProjectLocation($project);
 
-        $this->regenerateSitemap();
+        $this->regenerateSitemap($project);
         $this->submitToIndexNow($project);
 
         // Project description is now generated automatically after all image AI content
@@ -47,7 +47,7 @@ class ProjectObserver
             $this->syncAreaCoordinatesFromProjectLocation($project);
         }
 
-        $this->regenerateSitemap();
+        $this->regenerateSitemap($project);
         $this->submitToIndexNow($project);
 
         // Re-queue AI description if it was cleared
@@ -95,12 +95,25 @@ class ProjectObserver
 
     public function deleted(Project $project): void
     {
-        $this->regenerateSitemap();
+        $this->regenerateSitemap($project);
         $this->submitToIndexNow($project);
     }
 
-    protected function regenerateSitemap(): void
+    /**
+     * An unpublished project — a photos-first draft above all, for as long
+     * as its title stays the placeholder — never appears in the sitemap,
+     * so regenerating it for one of its own saves is a full site sitemap
+     * build spent on nothing. The one exception: is_published itself just
+     * changed, which needs a regen either way (to add a newly published
+     * project, or remove one just unpublished) even though the CURRENT
+     * value reads false on the unpublish side of that transition.
+     */
+    protected function regenerateSitemap(Project $project): void
     {
+        if (! $project->is_published && ! $project->wasChanged('is_published')) {
+            return;
+        }
+
         try {
             Artisan::call('sitemap:generate');
         } catch (\Exception $e) {

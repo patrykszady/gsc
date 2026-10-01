@@ -32,7 +32,7 @@ class ProjectImageObserver
         $this->fillBasicContent($image);
 
         // Regenerate sitemap and notify IndexNow
-        $this->regenerateSitemap();
+        $this->regenerateSitemap($image);
         $this->submitToIndexNow($image);
 
         // Queue AI-powered content generation for richer SEO
@@ -96,7 +96,7 @@ class ProjectImageObserver
         $isMetaOnlyUpdate = ! empty($changed) && empty(array_diff($changed, ['updated_at']));
 
         if (! $isMetaOnlyUpdate) {
-            $this->regenerateSitemap();
+            $this->regenerateSitemap($image);
             $this->submitToIndexNow($image);
         }
 
@@ -144,7 +144,7 @@ class ProjectImageObserver
      */
     public function deleted(ProjectImage $image): void
     {
-        $this->regenerateSitemap();
+        $this->regenerateSitemap($image);
         $this->submitToIndexNow($image);
 
         // Regenerate project description since image set changed
@@ -250,8 +250,18 @@ class ProjectImageObserver
             ->delay(now()->addSeconds(30)); // 30s delay to let image batch finish
     }
 
-    protected function regenerateSitemap(): void
+    /**
+     * An unpublished project (a photos-first draft above all) never
+     * appears in the sitemap, so regenerating it for one of its own
+     * photos is a full site sitemap build spent on nothing — exactly the
+     * cost the photos-first flow pays once per uploaded photo otherwise.
+     */
+    protected function regenerateSitemap(ProjectImage $image): void
     {
+        if (! $image->project?->is_published) {
+            return;
+        }
+
         try {
             Artisan::call('sitemap:generate');
         } catch (\Exception $e) {

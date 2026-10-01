@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Jobs\GenerateProjectDetailsJob;
 use App\Models\AreaServed;
+use App\Models\AreaServiceContent;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Service;
 use App\Support\Areas\TownCatalog;
+use App\Support\TownCopy;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -134,7 +137,8 @@ PROMPT;
         };
 
         $prompt = GooglePhotoCaptionPrompt::build('GS Construction', 'home remodeling contractor', [
-            'title' => $project->title,
+            // Same placeholder-title guard as buildProjectContext() above.
+            'title' => $project->title !== GenerateProjectDetailsJob::PLACEHOLDER_TITLE ? $project->title : null,
             'project_type' => $projectType,
             'location' => $project->location,
             'alt_text' => $image->getRawOriginal('seo_alt_text') ?: $image->alt_text,
@@ -247,6 +251,43 @@ PROMPT;
         }
 
         return $this->callGeminiMultiImage($prompt, [], $maxOutputTokens, $temperature);
+    }
+
+    /**
+     * Public prompt+images-in / text-out entry for callers whose images
+     * aren't a whole project's own (GenerateAreaDescriptionJob, one area's
+     * photos). Same transport, rate-limit and error handling as every other
+     * generator here — reads each image via getImageData() (the 'large'
+     * thumbnail, falling back to the original; this app has no `disk`
+     * column on project_images, so it's always the 'public' disk). Images
+     * that fail to read are skipped, not fatal; returns null only when the
+     * API key is missing or NONE of the images could be read.
+     *
+     * @param  iterable<ProjectImage>  $images
+     */
+    public function generateWithImages(string $prompt, iterable $images, int $maxOutputTokens = 500, float $temperature = 0.7): ?string
+    {
+        if (empty($this->apiKey)) {
+            $this->lastError = 'Gemini API key not configured';
+
+            return null;
+        }
+
+        $imagesData = [];
+        foreach ($images as $image) {
+            $data = $this->getImageData($image);
+            if ($data) {
+                $imagesData[] = $data;
+            }
+        }
+
+        if ($imagesData === []) {
+            $this->lastError = 'None of the photos could be read.';
+
+            return null;
+        }
+
+        return $this->callGeminiMultiImage($prompt, $imagesData, $maxOutputTokens, $temperature);
     }
 
     /**
@@ -658,7 +699,16 @@ PROMPT;
     protected function buildProjectContext(Project $project): string
     {
         $parts = [];
-        $parts[] = "Project: {$project->title}";
+        // The photos-first draft flow creates the project under a
+        // placeholder title (App\Jobs\GenerateProjectDetailsJob::
+        // PLACEHOLDER_TITLE) until the admin drafts the real one from the
+        // uploaded photos — feeding that meaningless placeholder to a
+        // per-photo caption prompt only confuses it. Per-photo content
+        // never needs the project's title anyway; the room and its own
+        // facts (type, location) carry the prompt.
+        if ($project->title && $project->title !== GenerateProjectDetailsJob::PLACEHOLDER_TITLE) {
+            $parts[] = "Project: {$project->title}";
+        }
 
         if ($project->project_type) {
             $type = match ($project->project_type) {
@@ -718,8 +768,8 @@ PROMPT;
         $city = $place ? $place['name'] : trim((string) Str::before((string) $area->city, ','));
         $stateName = TownCatalog::stateName($place['state'] ?? TownCatalog::homeState());
         $brand = (string) config('brand.display_name', config('brand.name'));
-        $label = \App\Models\AreaServiceContent::label($service);
-        $siblings = collect(\App\Models\AreaServiceContent::SERVICES)->reject(fn ($s) => $s === $service)->map(fn ($s) => \App\Models\AreaServiceContent::label($s))->implode(', ');
+        $label = AreaServiceContent::label($service);
+        $siblings = collect(AreaServiceContent::SERVICES)->reject(fn ($s) => $s === $service)->map(fn ($s) => AreaServiceContent::label($s))->implode(', ');
 
         $tradeNotes = match ($service) {
             'kitchen-remodeling' => 'electrical and plumbing permits, gas line work, load-bearing walls when a kitchen is opened up, ventilation, and the lead time on cabinets',
@@ -839,7 +889,7 @@ PROMPT;
         }
 
         $text = trim((string) $area->local_intro);
-        if (\App\Support\TownCopy::words($text) < 80) {
+        if (TownCopy::words($text) < 80) {
             $this->lastError = 'Copy too short to split';
 
             return null;
@@ -916,22 +966,22 @@ PROMPT;
         // need a few joining words a single block did not, and on a short
         // intro those weigh more (Barrington Hills 139 → 150 in the folds),
         // so the ceiling is a quarter more OR 45 words more, whichever is larger.
-        if (\App\Support\TownCopy::words($out['lead']) > 70) {
-            $this->lastError = 'Intro split lead too long ('.\App\Support\TownCopy::words($out['lead']).' words)';
+        if (TownCopy::words($out['lead']) > 70) {
+            $this->lastError = 'Intro split lead too long ('.TownCopy::words($out['lead']).' words)';
 
             return null;
         }
-        $before = \App\Support\TownCopy::words($text);
-        $after = \App\Support\TownCopy::words($out['history']) + \App\Support\TownCopy::words($out['potential']);
+        $before = TownCopy::words($text);
+        $after = TownCopy::words($out['history']) + TownCopy::words($out['potential']);
         if ($after < $before * 0.75 || $after > max($before * 1.25, $before + 45)) {
             // The refused parts go into the error so a log shows what the
             // model added or dropped, not just the counts (Gurnee, 2026-09-17).
-            $shape = collect($out)->map(fn ($v, $k) => $k.' '.\App\Support\TownCopy::words($v).'w: '.mb_substr(str_replace(["\n", "\r"], ' ', $v), 0, 160))->implode(' | ');
+            $shape = collect($out)->map(fn ($v, $k) => $k.' '.TownCopy::words($v).'w: '.mb_substr(str_replace(["\n", "\r"], ' ', $v), 0, 160))->implode(' | ');
             $this->lastError = "Intro split changed the length too much ({$before} → {$after} words): {$shape}";
 
             return null;
         }
-        if (\App\Support\TownCopy::words($out['history']) < 30 || \App\Support\TownCopy::words($out['potential']) < 30) {
+        if (TownCopy::words($out['history']) < 30 || TownCopy::words($out['potential']) < 30) {
             $this->lastError = 'Intro split left one fold nearly empty';
 
             return null;
@@ -956,11 +1006,11 @@ PROMPT;
 
         $copy = $area->serviceContent($service);
         $city = trim((string) Str::before((string) $area->city, ','));
-        $label = \App\Models\AreaServiceContent::label($service);
+        $label = AreaServiceContent::label($service);
         $brand = (string) config('brand.display_name', config('brand.name'));
         $folds = $area->introFolds();
         $history = $folds['folds'] !== [] ? implode("\n\n", array_column($folds['folds'], 'body')) : trim((string) $area->local_intro);
-        if (\App\Support\TownCopy::words($history) < 40) {
+        if (TownCopy::words($history) < 40) {
             $this->lastError = 'No town history to read from';
 
             return null;
@@ -1017,7 +1067,7 @@ PROMPT;
 
             return null;
         }
-        if (\App\Support\TownCopy::words($text) < 40) {
+        if (TownCopy::words($text) < 40) {
             $this->lastError = 'what_it_means too short';
 
             return null;
@@ -1571,7 +1621,7 @@ PROMPT;
 
         return Cache::remember($cacheKey, now()->addDay(), function () use ($projectType) {
             $candidates = ProjectImage::query()
-                ->with('project')
+                ->with(['project', 'area'])
                 ->where('is_cover', true)
                 ->whereHas('project', fn ($query) => $query->published())
                 ->inRandomOrder()
@@ -1595,7 +1645,11 @@ PROMPT;
                 return implode(' | ', array_filter([
                     'option '.($index + 1),
                     'image_id='.$image->id,
-                    'type='.($project?->project_type ?? 'unknown'),
+                    // categoryType(): this photo's OWN area, else its
+                    // project's — more accurate context for Gemini than the
+                    // bare project column when this cover also belongs to
+                    // one of the project's areas.
+                    'type='.($image->categoryType() ?? 'unknown'),
                     'title='.($project?->title ?? 'unknown'),
                     'location='.($project?->location ?? 'unknown'),
                     'seo_alt='.trim((string) ($image->seo_alt_text ?? '')),

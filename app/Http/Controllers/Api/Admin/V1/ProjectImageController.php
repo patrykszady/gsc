@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
+use SsSystems\Platform\Projects\ProjectAreaSync;
 
 class ProjectImageController extends Controller
 {
@@ -34,6 +35,9 @@ class ProjectImageController extends Controller
             'caption' => ['nullable', 'string'],
             'is_cover' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer'],
+            // Upload straight into one of this project's areas — null/absent
+            // leaves the photo belonging to the project as a whole.
+            'area_id' => ProjectAreaSync::imageAreaIdRule($project),
         ]);
 
         $file = $request->file('image');
@@ -51,6 +55,7 @@ class ProjectImageController extends Controller
         $isCover = (bool) ($data['is_cover'] ?? false);
 
         $image = $project->images()->create([
+            'project_area_id' => $data['area_id'] ?? null,
             'filename' => basename($path),
             'original_filename' => $file->getClientOriginalName(),
             'path' => $path,
@@ -145,8 +150,8 @@ class ProjectImageController extends Controller
         $target = $result['target'];
 
         return response()->json(['data' => [
-            'project' => $target->fresh(['images.tags', 'testimonials'])->toApiArray(),
-            'source' => $source->fresh(['images.tags', 'testimonials'])->toApiArray(),
+            'project' => $target->fresh(['images.tags', 'areas.images', 'testimonials'])->toApiArray(),
+            'source' => $source->fresh(['images.tags', 'areas.images', 'testimonials'])->toApiArray(),
             'moved' => $result['moved'],
             'created' => $result['created'],
         ]]);

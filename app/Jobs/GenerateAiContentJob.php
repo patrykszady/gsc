@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Services\AiContentService;
+use App\Services\GoogleBusinessProfileService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -159,7 +160,7 @@ class GenerateAiContentJob implements ShouldQueue
                     // updateQuietly bypasses observers, so explicitly refresh GBP media
                     // when text fields that feed GBP descriptions are changed.
                     if (
-                        app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
+                        app(GoogleBusinessProfileService::class)->isConnected()
                         && $image->project
                         && $image->project->is_published
                         && $image->google_places_uploaded_at
@@ -191,7 +192,7 @@ class GenerateAiContentJob implements ShouldQueue
         }
 
         if ($this->regenerateSitemap && $shouldRegenerateSitemap) {
-            $this->regenerateSitemap();
+            $this->regenerateSitemap($image->project);
         }
 
         // Check if all project images now have AI content; if so, generate project description
@@ -227,7 +228,7 @@ class GenerateAiContentJob implements ShouldQueue
         // updateQuietly bypasses observers, so explicitly refresh GBP media —
         // buildDescription() prefers gbp_caption once set.
         if (
-            app(\App\Services\GoogleBusinessProfileService::class)->isConnected()
+            app(GoogleBusinessProfileService::class)->isConnected()
             && $image->project
             && $image->project->is_published
             && $image->google_places_uploaded_at
@@ -293,6 +294,22 @@ class GenerateAiContentJob implements ShouldQueue
     {
         $project = $this->model;
 
+        // The photos-first draft flow (GenerateProjectDetailsJob) writes a
+        // project's title and (first) description itself, once, from an
+        // explicit admin action — this automatic pipeline must stay out of
+        // the way until a real title lands, or the two race (and this pass
+        // would be drafting from photos whose own AI captions are likely
+        // still mid-flight too). Once the title is real, this resumes its
+        // normal job of keeping the description current as photos change —
+        // for every project, draft-born or not.
+        if ($project->title === GenerateProjectDetailsJob::PLACEHOLDER_TITLE) {
+            Log::channel('ai_content')->debug('GenerateAiContentJob: Skipping project description — still a photos-first draft awaiting details', [
+                'project_id' => $project->id,
+            ]);
+
+            return;
+        }
+
         // Skip if already has description and not overwriting
         if (! $this->overwrite && ! empty($project->description)) {
             Log::channel('ai_content')->debug('GenerateAiContentJob: Skipping project, already has description', [
@@ -333,12 +350,24 @@ class GenerateAiContentJob implements ShouldQueue
         $project->updateQuietly(['description' => $description]);
 
         if ($this->regenerateSitemap) {
-            $this->regenerateSitemap();
+            $this->regenerateSitemap($project);
         }
     }
 
-    protected function regenerateSitemap(): void
+    /**
+     * An unpublished project (a photos-first draft above all — it stays
+     * unpublished for as long as its title is a placeholder) never appears
+     * in the sitemap, so regenerating it for one of its photos is a full
+     * site sitemap build spent on nothing. $project is nullable only
+     * because an orphaned image (no project at all) is itself nothing to
+     * regenerate for.
+     */
+    protected function regenerateSitemap(?Project $project = null): void
     {
+        if ($project && ! $project->is_published) {
+            return;
+        }
+
         try {
             Artisan::call('sitemap:generate');
         } catch (\Exception $e) {

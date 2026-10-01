@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
+use App\Support\SeededRandom;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 
@@ -34,7 +36,7 @@ class TestimonialsGrid extends Component
      */
     public int $randomSeed = 0;
 
-    /** @var \Illuminate\Support\Collection<int, ProjectImage>|null In-memory image pool for the render pass. */
+    /** @var Collection<int, ProjectImage>|null In-memory image pool for the render pass. */
     protected $imagePool = null;
 
     /** @var array<string, string>|null lowercase city => area slug. */
@@ -63,7 +65,12 @@ class TestimonialsGrid extends Component
 
         $this->imagePool = ProjectImage::query()
             ->whereHas('project', fn ($q) => $q->published())
-            ->with('project:id,project_type')
+            // 'area:id,project_type' too: formatTestimonial() below matches
+            // on each photo's OWN category (its area's, else its project's —
+            // IsProjectImage::categoryType()), never the bare project
+            // column, so a sibling area's photo is never picked just because
+            // SOME OTHER area of that project matches.
+            ->with(['project:id,project_type', 'area:id,project_type'])
             ->get()
             ->shuffle(mt_rand());
 
@@ -81,7 +88,7 @@ class TestimonialsGrid extends Component
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->with('projects:id')
-            ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed))
+            ->tap(fn ($q) => SeededRandom::order($q, $this->randomSeed))
             ->take(10)
             ->get();
 
@@ -92,12 +99,12 @@ class TestimonialsGrid extends Component
             ->visible()
             ->whereNotIn('id', $recentIds)
             ->with('projects:id')
-            ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed))
+            ->tap(fn ($q) => SeededRandom::order($q, $this->randomSeed))
             ->get();
-        
+
         // Combine: recent first, then older
         $allTestimonials = $recentTestimonials->concat($olderTestimonials);
-        
+
         $usedImageIds = [];
 
         $testimonials = $allTestimonials
@@ -175,7 +182,9 @@ class TestimonialsGrid extends Component
         $image = $this->linkedProjectImage($testimonial, $usedImageIds);
 
         if ($projectType) {
-            $ofType = $this->imagePool->filter(fn ($i) => $i->project?->project_type === $projectType);
+            // categoryType(): this photo's OWN area, else its project's —
+            // never the bare project column (see imagePool's own note).
+            $ofType = $this->imagePool->filter(fn ($i) => $i->categoryType() === $projectType);
             $image ??= $ofType->first(fn ($i) => ! in_array($i->id, $usedImageIds, true))
                 ?? $ofType->first();
         }

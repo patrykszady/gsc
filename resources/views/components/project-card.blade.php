@@ -13,28 +13,44 @@
                               label projects from a NEARBY town, so a Barrington
                               page never implies a Palatine job was in Barrington.
       eager     bool         — skip lazy-loading for above-the-fold cards.
+      type      string|null — the category this card is listed under (a
+                              service slug), or null for an unfiltered
+                              listing. Decides how the project presents — see
+                              Project::presentFor() / SsSystems\Platform\
+                              Projects\ProjectPresentation. A project listed
+                              under a category it reaches only through one of
+                              its areas presents as that area: the area's own
+                              cover, a title naming both the project and the
+                              area, linking to that area's section of the
+                              project's page.
 --}}
 
 @props([
     'project',
     'town' => null,
     'eager' => false,
+    'type' => null,
 ])
 
+@php
+    $presentation = $project->presentFor($type);
+    $cover = $presentation->cover();
+@endphp
+
 <a
-    href="{{ route('projects.show', $project) }}"
+    href="{{ $presentation->url() }}"
     wire:navigate
     {{ $attributes->class('group relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10') }}
 >
     <div class="relative aspect-4/3 overflow-hidden">
-        @if($project->cover())
+        @if($cover)
             <x-lqip-image
-                :image="$project->cover()"
+                :image="$cover"
                 size="medium"
                 width="600"
                 height="450"
                 :eager="$eager"
-                :alt="$project->title . ' — remodeling project' . ($town ? ' in ' . $town . ', IL' : '')"
+                :alt="$presentation->title() . ' — remodeling project' . ($town ? ' in ' . $town . ', IL' : '')"
                 class="h-full w-full transition duration-300 group-hover:scale-105"
             />
         @else
@@ -51,7 +67,7 @@
              The chevron still reads as "this goes somewhere". --}}
         <div class="absolute top-3 left-3 right-3 z-10">
             <span class="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-black/50 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition group-hover:bg-black/70">
-                <span class="truncate">{{ $project->title }}</span>
+                <span class="truncate">{{ $presentation->title() }}</span>
                 <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </span>
         </div>
@@ -71,7 +87,7 @@
              top-14 right-3, so a card could carry a label in three different
              corners at once. Wrapping them together also means they can never
              overlap when both are present. --}}
-        @if($town || $project->project_type)
+        @if($town || $presentation->typeLabel())
             <div class="absolute bottom-3 left-3 flex flex-wrap items-center gap-2">
                 @if($town)
                     <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
@@ -79,11 +95,11 @@
                     </span>
                 @endif
 
-                @if($project->project_type)
-                    {{-- str_replace before ucwords: the slug is 'home-remodel',
-                         and ucfirst alone rendered it as "Home-remodel". --}}
+                @if($presentation->typeLabel())
+                    {{-- The area's own category label when this card presents
+                         as one (Project::presentFor()), else the project's own. --}}
                     <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
-                        {{ ucwords(str_replace('-', ' ', $project->project_type)) }}
+                        {{ $presentation->typeLabel() }}
                     </span>
                 @endif
             </div>

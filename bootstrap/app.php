@@ -13,11 +13,14 @@ use App\Http\Middleware\TenantRouteGuard;
 use App\Http\Middleware\Track404Responses;
 use App\Http\Middleware\TrackAiTraffic;
 use App\Http\Middleware\TrackDomainSource;
+use App\Models\Project;
 use App\Models\Site;
+use App\Support\Projects\GscSlugRedirectRecorder;
 use App\Support\RenamedProjectRedirector;
 use App\Support\SiteConfig;
 use App\Support\Theme;
 use Hszope\LaravelAigeo\Http\Middleware\InjectGeoHeaders;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +28,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use SsSystems\Platform\Http\Admin\AuthenticateAdminApi;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
+use SsSystems\Platform\Projects\MergedProjectRedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -180,6 +184,23 @@ return Application::configure(basePath: dirname(__DIR__))
                 Theme::apply($site);
                 SiteConfig::applyRuntime($site);
                 app()->instance('site.overlay_applied', true);
+            }
+
+            // An admin-API request for a project that `projects:merge` folded
+            // into another: say where it went (409 + moved_to), the way dfm
+            // answers for a merged product, so ss.systems can open the
+            // project it is now part of instead of reporting the site
+            // unreachable. Checked before the GET redirect below — this one
+            // only ever matches api/admin/* (plain-int {project} lookups),
+            // never a public /projects/{slug} request.
+            if ($e instanceof NotFoundHttpException && $request->is('api/admin/*')) {
+                $missing = $e->getPrevious();
+                if ($missing instanceof ModelNotFoundException) {
+                    $redirect = MergedProjectRedirectResponse::forMissingProject($missing, Project::class, new GscSlugRedirectRecorder);
+                    if ($redirect) {
+                        return $redirect;
+                    }
+                }
             }
 
             // A renamed project 301s to its new URL, together with everything

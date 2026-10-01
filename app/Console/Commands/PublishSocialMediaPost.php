@@ -272,14 +272,15 @@ class PublishSocialMediaPost extends Command
                 $town ? [null, $town] : null,
             ]);
             foreach ($attempts as [$type, $city]) {
-                $themed = (clone $query)->whereHas('project', function ($q) use ($type, $city) {
-                    if ($type) {
-                        $q->where('project_type', $type);
-                    }
-                    if ($city) {
-                        $q->where('location', 'like', $city.'%');
-                    }
-                });
+                // $type at photo granularity (ProjectImage::scopeOfType() —
+                // this photo's OWN area, else its project's): a project-level
+                // whereHas('project', where project_type) would happily post
+                // a sibling area's photo just because the project reaches
+                // $type SOMEWHERE. $city stays project-level — it's a fact
+                // about the job, not the photo.
+                $themed = (clone $query)
+                    ->when($type, fn ($q) => $q->ofType($type))
+                    ->when($city, fn ($q) => $q->whereHas('project', fn ($q2) => $q2->where('location', 'like', $city.'%')));
                 if ($image = $themed->inRandomOrder()->first()) {
                     return $image;
                 }

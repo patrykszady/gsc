@@ -35,7 +35,8 @@ class RenamedProjectRedirector
             return null;
         }
 
-        $project = ProjectSlugHistory::with('project')->where('slug', $oldSlug)->first()?->project;
+        $history = ProjectSlugHistory::with('project')->where('slug', $oldSlug)->first();
+        $project = $history?->project;
         if (! $project) {
             return null;
         }
@@ -69,7 +70,18 @@ class RenamedProjectRedirector
         $target = url(implode('/', $segments));
 
         if ($query = $request->getQueryString()) {
-            $target .= '?' . $query;
+            $target .= '?'.$query;
+        }
+
+        // The old slug's history row may carry an area anchor (set only by
+        // `php artisan projects:merge` — a plain rename never has one, see
+        // App\Support\Projects\GscSlugRedirectRecorder). Only for an exact
+        // "/projects/{slug}" hit: a nested path (…/photos/{image}) redirects
+        // to that photo's own address instead, which has no area section to
+        // jump to. Appended last — a URL fragment always follows the query
+        // string, never precedes it.
+        if ($history->anchor && count($segments) === 2) {
+            $target .= '#'.$history->anchor;
         }
 
         return new RedirectResponse($target, 301);

@@ -100,23 +100,29 @@
                 </h2>
                 <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ($projects as $project)
-                        <a href="{{ route('projects.show', $project) }}" wire:navigate
+                        {{-- Listed under this page's own service — a project
+                             that reaches it only through one of its areas
+                             presents as that area (its own cover/title,
+                             linking to that area's section) — see
+                             Project::presentFor(). --}}
+                        @php $presentation = $project->presentFor($projectType); @endphp
+                        <a href="{{ $presentation->url() }}" wire:navigate
                            class="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-zinc-900/5 transition hover:shadow-xl dark:bg-zinc-800/75 dark:ring-white/10">
                             <div class="relative aspect-4/3 overflow-hidden">
-                                @if ($project->cover())
-                                    <x-lqip-image :image="$project->cover()" size="medium" width="600" height="450"
+                                @if ($presentation->cover())
+                                    <x-lqip-image :image="$presentation->cover()" size="medium" width="600" height="450"
                                         class="h-full w-full transition duration-300 group-hover:scale-105" />
                                 @endif
-                                @if ($project->project_type)
+                                @if ($presentation->typeLabel())
                                     <div class="absolute top-3 right-3">
                                         <span class="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-300">
-                                            {{ ucfirst($project->project_type) }}
+                                            {{ $presentation->typeLabel() }}
                                         </span>
                                     </div>
                                 @endif
                             </div>
                             <div class="p-4">
-                                <h3 class="font-semibold text-zinc-900 group-hover:text-sky-600 dark:text-white">{{ $project->title }}</h3>
+                                <h3 class="font-semibold text-zinc-900 group-hover:text-sky-600 dark:text-white">{{ $presentation->title() }}</h3>
                                 @if ($project->location)
                                     <p class="mt-1 text-sm text-zinc-500">{{ $project->location }}</p>
                                 @endif

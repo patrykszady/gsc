@@ -13,12 +13,16 @@
                        NEIGHBOURING towns, so a Barrington page never implies a
                        Palatine job happened in Barrington.
       eagerCount int — how many cards skip lazy-loading (above the fold).
+      type      string|null — the category this grid is listed under (a
+                              service slug), passed straight through to each
+                              card — see x-project-card's own docblock.
 --}}
 
 @props([
     'projects' => [],
     'towns' => false,
     'eagerCount' => 2,
+    'type' => null,
 ])
 
 <div {{ $attributes->class('grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3') }}>
@@ -27,6 +31,7 @@
             :project="$project"
             :town="$towns ? (trim((string) (preg_split('/[,.]/', (string) $project->location)[0] ?? '')) ?: null) : null"
             :eager="$loop->index < $eagerCount"
+            :type="$type"
             wire:key="project-card-{{ $project->id }}" />
     @endforeach
 </div>

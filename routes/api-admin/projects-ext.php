@@ -10,16 +10,23 @@
 // docblocks for how each maps back to that Livewire component's methods.
 
 use App\Http\Controllers\Api\Admin\V1\BeforeAfterController;
+use App\Http\Controllers\Api\Admin\V1\ProjectController;
 use App\Http\Controllers\Api\Admin\V1\ProjectImageController;
 use App\Http\Controllers\Api\Admin\V1\TimelapseController;
 use Illuminate\Support\Facades\Route;
 use SsSystems\Platform\Http\Admin\CapabilityRegistry;
 
-CapabilityRegistry::declare('image-tags', 'timelapses', 'before-afters');
+CapabilityRegistry::declare('image-tags', 'timelapses', 'before-afters', 'ai-project-details');
 
 // Bulk image tag assignment (ProjectForm's "Assign Tag" card / Image Tags
 // card) — full replace, see ProjectImageController::syncTags docblock.
 Route::put('projects/{project}/images/{image}/tags', [ProjectImageController::class, 'syncTags']);
+
+// Photos-first create flow ('ai-project-details', the same as every
+// ss.systems tenant with projects — ss-platform-kit 0.16.0
+// docs/PROJECT-DETAILS.md): draft the title + description from the
+// uploaded photos. See ProjectController's ServesProjectDetails hooks.
+Route::post('projects/{project}/generate-details', [ProjectController::class, 'generateDetails'])->whereNumber('project');
 
 // Timelapses ----------------------------------------------------------------
 Route::get('projects/{project}/timelapses', [TimelapseController::class, 'index']);

@@ -170,6 +170,7 @@
                 <x-project-grid
                     :projects="$projects"
                     :towns="(bool) $area"
+                    :type="$type ?: null"
                     class="mx-auto mt-10 max-w-2xl lg:mx-0 lg:max-w-none transition-opacity duration-150"
                     wire:loading.delay.class="opacity-60"
                     wire:target="previousPage,nextPage,gotoPage,setPage" />

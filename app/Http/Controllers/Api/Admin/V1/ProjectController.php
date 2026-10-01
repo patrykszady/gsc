@@ -4,31 +4,39 @@ namespace App\Http\Controllers\Api\Admin\V1;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\FetchCollaboratorSiteJob;
+use App\Jobs\GenerateProjectDetailsJob;
 use App\Models\Project;
 use App\Models\ProjectCollaborator;
 use App\Models\Tag;
 use App\Models\Testimonial;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
+use SsSystems\Platform\Projects\Http\Concerns\ServesProjectDetails;
+use SsSystems\Platform\Projects\PartialUpdateRules;
+use SsSystems\Platform\Projects\ProjectAreaSync;
 
 class ProjectController extends Controller
 {
-    use BuildsApiResponses;
+    use BuildsApiResponses, ServesProjectDetails;
 
     public function index(Request $request): JsonResponse
     {
-        $query = Project::query()->with(['images.tags', 'testimonials']);
+        $query = Project::query()->with(['images.tags', 'areas.images', 'testimonials']);
 
         if ($search = $request->string('search')->toString()) {
             $query->where('title', 'like', "%{$search}%");
         }
 
         if ($type = $request->string('type')->toString()) {
-            $query->where('project_type', $type);
+            // A project belongs to a category through its own project_type
+            // OR any of its areas' — see Project::scopeOfType()
+            // (SsSystems\Platform\Projects\Concerns\HasProjectAreas).
+            $query->ofType($type);
         }
 
         if ($request->has('published')) {
@@ -51,17 +59,19 @@ class ProjectController extends Controller
         $data = $request->validate($this->rules());
         $testimonialIds = $this->pullTestimonialIds($data);
         $collaborators = $this->pullCollaborators($data);
+        $areas = $this->pullAreas($data);
 
         $project = Project::create($data);
         $this->syncTestimonials($project, $testimonialIds);
         $this->syncCollaborators($project, $collaborators);
+        $this->syncAreas($project, $areas);
 
-        return $this->itemResponse($this->withCrmFields($project->fresh(['images.tags', 'testimonials', 'collaborators'])->toApiArray(), $project), 201);
+        return $this->itemResponse($this->withCrmFields($project->fresh(['images.tags', 'areas.images', 'testimonials', 'collaborators'])->toApiArray(), $project), 201);
     }
 
     public function show(int $project): JsonResponse
     {
-        $model = Project::with(['images.tags', 'testimonials'])->findOrFail($project);
+        $model = Project::with(['images.tags', 'areas.images', 'testimonials'])->findOrFail($project);
 
         return $this->itemResponse($this->withCrmFields($model->toApiArray(), $model));
     }
@@ -70,15 +80,17 @@ class ProjectController extends Controller
     {
         $model = Project::findOrFail($project);
 
-        $data = $request->validate($this->rules($model->id));
+        $data = $request->validate($this->rules($model->id, partial: true));
         $testimonialIds = $this->pullTestimonialIds($data);
         $collaborators = $this->pullCollaborators($data);
+        $areas = $this->pullAreas($data);
 
         $model->update($data);
         $this->syncTestimonials($model, $testimonialIds);
         $this->syncCollaborators($model, $collaborators);
+        $this->syncAreas($model, $areas);
 
-        return $this->itemResponse($this->withCrmFields($model->fresh(['images.tags', 'testimonials', 'collaborators'])->toApiArray(), $model));
+        return $this->itemResponse($this->withCrmFields($model->fresh(['images.tags', 'areas.images', 'testimonials', 'collaborators'])->toApiArray(), $model));
     }
 
     /**
@@ -128,7 +140,35 @@ class ProjectController extends Controller
                 'star_rating' => $t->star_rating,
                 'review_date' => optional($t->review_date)->format('Y-m-d'),
             ])->values()->all(),
+            // The photos-first create flow (ai-project-details capability):
+            // while a title/description draft is being written from the
+            // project's photos, the central admin locks those two fields,
+            // hides Publish and polls this.
+            'details' => GenerateProjectDetailsJob::status($project),
         ];
+    }
+
+    /**
+     * The photos-first create flow's one server-side action
+     * (POST generate-details) — the 422/force/202 flow itself lives in the
+     * kit (SsSystems\Platform\Projects\Http\Concerns\ServesProjectDetails,
+     * ss-platform-kit 0.16.0); these three hooks are the whole of what
+     * this controller still owns.
+     */
+    protected function findProjectForDetails(int $project): Model
+    {
+        return Project::with(['images.tags', 'testimonials', 'collaborators'])->findOrFail($project);
+    }
+
+    protected function projectDetailsPayload(Model $project): array
+    {
+        /** @var Project $project */
+        return $this->withCrmFields($project->toApiArray(), $project);
+    }
+
+    protected function launchProjectDetailsDraft(Model $project, bool $force): void
+    {
+        GenerateProjectDetailsJob::launch($project, $force);
     }
 
     /**
@@ -191,6 +231,23 @@ class ProjectController extends Controller
         unset($data['collaborators']);
 
         return $rows;
+    }
+
+    /**
+     * null when the key was absent — an update must leave existing areas
+     * alone; an explicit [] clears them. Same absent-vs-empty rule as
+     * testimonial_ids/collaborators — see the project-areas contract doc.
+     * The sync itself (SsSystems\Platform\Projects\ProjectAreaSync,
+     * ss-platform-kit 0.16.0) handles create/update/delete in one pass.
+     */
+    protected function pullAreas(array &$data): ?array
+    {
+        return ProjectAreaSync::pull($data);
+    }
+
+    protected function syncAreas(Project $project, ?array $rows): void
+    {
+        ProjectAreaSync::apply($project, $rows);
     }
 
     /**
@@ -302,14 +359,26 @@ class ProjectController extends Controller
      * rather than nulling it out. Without that, an update payload that
      * doesn't resend e.g. "slug" would null a NOT NULL/unique column and
      * fail with a database error instead of just... not changing it.
+     *
+     * @param  bool  $partial  an update: title/project_type are only
+     *                         required WHEN SENT, not on every PUT. The
+     *                         photos-first create flow's facts step PUTs
+     *                         project_type/location/completed_at/
+     *                         testimonial_ids/collaborators with no title
+     *                         at all — GenerateProjectDetailsJob is the one
+     *                         that writes it, from the uploaded photos.
+     *                         store() (always $partial = false) keeps
+     *                         requiring both unconditionally; a normal
+     *                         full-form update still sends both, so
+     *                         'sometimes' changes nothing for it.
      */
-    protected function rules(?int $ignoreId = null): array
+    protected function rules(?int $ignoreId = null, bool $partial = false): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
+            'title' => [...PartialUpdateRules::presence($partial), 'string', 'max:255'],
             'slug' => ['sometimes', 'nullable', 'string', 'max:255', Rule::unique('projects', 'slug')->ignore($ignoreId)],
             'description' => ['sometimes', 'nullable', 'string'],
-            'project_type' => ['required', 'string', 'max:100'],
+            'project_type' => [...PartialUpdateRules::presence($partial), 'string', 'max:100'],
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'completed_at' => ['sometimes', 'nullable', 'date'],
             'is_featured' => ['sometimes', 'boolean'],
@@ -323,6 +392,8 @@ class ProjectController extends Controller
             'collaborators.*.url' => ['nullable', 'string', 'max:500'],
             'collaborators.*.note' => ['nullable', 'string', 'max:500'],
             'yelp_portfolio_url' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ];
+            // The whole area list, in order — see ProjectController::syncAreas()
+            // and the project-areas contract doc.
+        ] + ProjectAreaSync::validationRules(array_keys(Project::projectTypes()));
     }
 }

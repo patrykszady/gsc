@@ -75,6 +75,10 @@ class LandingPage extends Model
 
         return Project::whereIn('id', $ids)
             ->where('is_published', true)
+            // presentFor() (livewire/landing-page-show.blade.php) needs the
+            // area list to decide whether a row is listed via one of its
+            // areas — see Project::presentFor().
+            ->with('areas.images')
             ->orderByRaw('FIELD(id, '.implode(',', array_map('intval', $ids)).')')
             ->get();
     }

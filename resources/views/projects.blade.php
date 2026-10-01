@@ -34,20 +34,29 @@
     @php
         $projectListQuery = \App\Models\Project::query()
             ->where('is_published', true)
-            ->when($activeType, fn ($q) => $q->where('project_type', $activeType))
+            // A project belongs to a category through its own project_type OR
+            // any of its areas' — see Project::scopeOfType()
+            // (SsSystems\Platform\Projects\Concerns\HasProjectAreas).
+            ->when($activeType, fn ($q) => $q->ofType($activeType))
             ->orderByDesc('is_featured')
             ->orderByDesc('completed_at')
             ->limit(30);
-        $projectListRows = $projectListQuery->get(['slug', 'title']);
+        // 'areas' (not ['slug', 'title']): presentFor() below needs the area
+        // list to decide whether this row is listed via one of its areas.
+        $projectListRows = $projectListQuery->with('areas')->get();
 
         if ($projectListRows->isNotEmpty()) {
             $projectListItems = [];
             foreach ($projectListRows as $i => $projectRow) {
+                // Listed under a category it reaches only through an area:
+                // the ListItem points at that area's own section, named for
+                // both the project and the area — same rule every card uses.
+                $presentation = $projectRow->presentFor($activeType);
                 $projectListItems[] = [
                     '@type'    => 'ListItem',
                     'position' => $i + 1,
-                    'url'      => url('/projects/' . $projectRow->slug),
-                    'name'     => $projectRow->title,
+                    'url'      => $presentation->url(),
+                    'name'     => $presentation->title(),
                 ];
             }
             $projectItemList = [

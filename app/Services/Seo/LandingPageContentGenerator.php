@@ -5,6 +5,7 @@ namespace App\Services\Seo;
 use App\Models\AreaServed;
 use App\Models\LandingPage;
 use App\Models\Project;
+use App\Services\AiContentService;
 use Illuminate\Support\Str;
 
 /**
@@ -43,12 +44,10 @@ class LandingPageContentGenerator
         'mudroom-remodeling' => '$8,000–$25,000',
     ];
 
-    public function __construct(private readonly TitleMetaGenerator $titles = new TitleMetaGenerator())
-    {
-    }
+    public function __construct(private readonly TitleMetaGenerator $titles = new TitleMetaGenerator) {}
 
     /**
-     * @return array<string,mixed>|null  LandingPage attributes, or null if no proof.
+     * @return array<string,mixed>|null LandingPage attributes, or null if no proof.
      */
     public function build(string $service, string $city, ?string $modifier = null, ?string $targetQuery = null): ?array
     {
@@ -61,21 +60,21 @@ class LandingPageContentGenerator
         }
 
         $area = AreaServed::whereRaw('LOWER(city) = ?', [Str::lower($city)])->first();
-        $slug = Str::slug(trim(($modifier ? $modifier . ' ' : '') . $service . ' ' . $city));
+        $slug = Str::slug(trim(($modifier ? $modifier.' ' : '').$service.' '.$city));
 
-        $h1 = trim(($modLabel ? "$modLabel " : '') . "$serviceLabel in $city, IL");
-        $titleCore = trim(($modLabel ? "$modLabel " : '') . "$serviceLabel · $city");
+        $h1 = trim(($modLabel ? "$modLabel " : '')."$serviceLabel in $city, IL");
+        $titleCore = trim(($modLabel ? "$modLabel " : '')."$serviceLabel · $city");
         // "| 5★ · Free Estimate" got cut to "| 5★ · Free" by the 60-char fit on
         // every real title. Keep the suffix only when it fits whole; the brand
         // is appended by SEOBuilder anyway.
-        $title = mb_strlen($titleCore . ' | Free Estimate') <= 60 ? $titleCore . ' | Free Estimate' : $this->fit($titleCore, 60);
+        $title = mb_strlen($titleCore.' | Free Estimate') <= 60 ? $titleCore.' | Free Estimate' : $this->fit($titleCore, 60);
 
         $count = $proof->count();
         $pricing = self::PRICING[$service] ?? 'a range we scope on a free in-home visit';
 
         $meta = $this->fit(
             "{$modLabel} {$serviceLabel} in {$city}, IL by GS Construction — {$count} completed local projects, "
-            . "transparent pricing, 5-star rated. Family-owned, licensed & insured. Free estimate.",
+            .'transparent pricing, 5-star rated. Family-owned, licensed & insured. Free estimate.',
             158
         );
 
@@ -84,11 +83,11 @@ class LandingPageContentGenerator
         // Google's whole objection to programmatic pages is sameness. The
         // template path stays as the fallback: an AI outage or a rejected
         // response must never block page creation.
-        $ai = app(\App\Services\AiContentService::class)->generateLandingPageCopy(
+        $ai = app(AiContentService::class)->generateLandingPageCopy(
             $serviceLabel,
             $city,
             $modLabel,
-            (string) ($targetQuery ?: trim(($modLabel ? "$modLabel " : '') . "$serviceLabel $city")),
+            (string) ($targetQuery ?: trim(($modLabel ? "$modLabel " : '')."$serviceLabel $city")),
             $proof->map(fn ($p) => [
                 'title' => (string) $p->title,
                 'location' => $p->location,
@@ -142,7 +141,10 @@ class LandingPageContentGenerator
             return collect();
         }
 
-        $base = Project::where('is_published', true)->where('project_type', $type);
+        // A project belongs to this service's category through its own
+        // project_type OR any of its areas' — see Project::scopeOfType()
+        // (SsSystems\Platform\Projects\Concerns\HasProjectAreas).
+        $base = Project::where('is_published', true)->ofType($type);
 
         $local = (clone $base)->where('location', 'like', "%{$city}%")->get();
         $others = (clone $base)->where('location', 'not like', "%{$city}%")
@@ -158,10 +160,10 @@ class LandingPageContentGenerator
             : "Planning a {$service} project in {$city}? ";
 
         return $lead
-            . "GS Construction is a family-owned, licensed and insured remodeler that has completed {$count}+ "
-            . "{$service} and related projects for {$city}-area homeowners. We handle design, materials, permits and "
-            . "build with one dedicated project lead per job — no rotating crews. Typical {$city} {$service} investment runs "
-            . "{$pricing}, and every project starts with a free, no-pressure in-home estimate.";
+            ."GS Construction is a family-owned, licensed and insured remodeler that has completed {$count}+ "
+            ."{$service} and related projects for {$city}-area homeowners. We handle design, materials, permits and "
+            ."build with one dedicated project lead per job — no rotating crews. Typical {$city} {$service} investment runs "
+            ."{$pricing}, and every project starts with a free, no-pressure in-home estimate.";
     }
 
     /**
@@ -174,10 +176,10 @@ class LandingPageContentGenerator
         $sections[] = [
             'heading' => "What a {$city} {$service} project includes",
             'body' => "Every {$service} we do in {$city} is fixed-scope and transparently priced up front: design and layout, "
-                . "cabinetry or fixtures, countertops and surfaces, flooring, lighting and electrical, plumbing, and finish work. "
-                . "You get a written scope, a realistic timeline, and a single point of contact from demo to final walkthrough.\n\n"
-                . "Because we self-perform the core trades, quality and schedule stay under our control rather than a rotating "
-                . "cast of subs.",
+                .'cabinetry or fixtures, countertops and surfaces, flooring, lighting and electrical, plumbing, and finish work. '
+                ."You get a written scope, a realistic timeline, and a single point of contact from demo to final walkthrough.\n\n"
+                .'Because we self-perform the core trades, quality and schedule stay under our control rather than a rotating '
+                .'cast of subs.',
         ];
 
         if ($mod) {
@@ -185,15 +187,15 @@ class LandingPageContentGenerator
                 'heading' => "Why {$mod} {$service} is different",
                 'body' => match (Str::lower($mod)) {
                     'luxury' => "Luxury {$service} is about material and detail: custom cabinetry, natural stone, integrated lighting, "
-                        . "and precise tile and millwork. We build to a spec-book standard and coordinate designers and suppliers so the "
-                        . "finish matches the vision.",
+                        .'and precise tile and millwork. We build to a spec-book standard and coordinate designers and suppliers so the '
+                        .'finish matches the vision.',
                     'affordable' => "A smart {$service} budget is about where the money goes. We help {$city} homeowners prioritize the "
-                        . "high-impact items, reuse what's sound, and phase work when it makes sense — without cutting corners on the "
-                        . "structure, plumbing or electrical that you can't easily redo later.",
+                        ."high-impact items, reuse what's sound, and phase work when it makes sense — without cutting corners on the "
+                        ."structure, plumbing or electrical that you can't easily redo later.",
                     'small-space' => "Small-space {$service} rewards layout intelligence: smart storage, space-saving fixtures, and finishes "
-                        . "that make a compact {$city} room feel larger. We design around how you actually use the space.",
+                        ."that make a compact {$city} room feel larger. We design around how you actually use the space.",
                     'condo' => "Condo {$service} in {$city} means working within building rules, shared walls, and association approvals. "
-                        . "We handle the paperwork, protect common areas, and schedule around building hours.",
+                        .'We handle the paperwork, protect common areas, and schedule around building hours.',
                     default => "We tailor each {$mod} {$service} to how the space is really used, balancing budget, materials and timeline.",
                 },
             ];
@@ -201,7 +203,7 @@ class LandingPageContentGenerator
 
         $localBody = "GS Construction works throughout {$city} and the surrounding suburbs. ";
         if ($area && filled($area->permit_notes)) {
-            $localBody .= $area->permit_notes . ' ';
+            $localBody .= $area->permit_notes.' ';
         }
         $localBody .= "We pull all required permits and handle inspections so your {$service} is done to code.";
         $sections[] = ['heading' => "{$service} in {$city}: permits & local know-how", 'body' => $localBody];
@@ -209,7 +211,7 @@ class LandingPageContentGenerator
         $sections[] = [
             'heading' => "{$city} {$service} cost",
             'body' => "Typical {$city} {$service} projects run {$pricing}, depending on size, layout changes and material selections. "
-                . "We give you a clear, itemized estimate after a free in-home visit — no surprises mid-project.",
+                .'We give you a clear, itemized estimate after a free in-home visit — no surprises mid-project.',
         ];
 
         return $sections;
@@ -235,7 +237,7 @@ class LandingPageContentGenerator
             if (count($faqs) >= 5) {
                 break;
             }
-            $hay = Str::lower(($qa['q'] ?? '') . ' ' . implode(' ', $qa['topics'] ?? []));
+            $hay = Str::lower(($qa['q'] ?? '').' '.implode(' ', $qa['topics'] ?? []));
             foreach ($keywords as $kw) {
                 if ($kw !== '' && str_contains($hay, $kw)) {
                     $faqs[] = ['q' => $qa['q'], 'a' => $qa['a']];
@@ -256,6 +258,6 @@ class LandingPageContentGenerator
         $cut = mb_substr($text, 0, $max);
         $sp = mb_strrpos($cut, ' ');
 
-        return rtrim($sp ? mb_substr($cut, 0, $sp) : $cut, " ,.·-");
+        return rtrim($sp ? mb_substr($cut, 0, $sp) : $cut, ' ,.·-');
     }
 }

@@ -3,15 +3,21 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToSite;
+use Hszope\LaravelAigeo\Traits\HasGeoProfile;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
+use League\HTMLToMarkdown\HtmlConverter;
 
 class BlogPost extends Model
 {
     use BelongsToSite;
-    use \Hszope\LaravelAigeo\Traits\HasGeoProfile;
+    use HasGeoProfile;
 
     public const STATUS_DRAFT = 'draft';
 
@@ -41,7 +47,7 @@ class BlogPost extends Model
      * on a day picked deterministically from the project id — so every
      * regeneration keeps the same date. Never in the future.
      */
-    public static function dateFor(Project $project): \Illuminate\Support\Carbon
+    public static function dateFor(Project $project): Carbon
     {
         $anchor = $project->completed_at ?? $project->created_at ?? now();
         $month = $anchor->copy()->startOfMonth();
@@ -61,7 +67,7 @@ class BlogPost extends Model
      */
     public function previewUrl(): string
     {
-        return \Illuminate\Support\Facades\URL::temporarySignedRoute('blog.show', now()->addDays(7), ['post' => $this->slug, 'preview' => 1]);
+        return URL::temporarySignedRoute('blog.show', now()->addDays(7), ['post' => $this->slug, 'preview' => 1]);
     }
 
     /**
@@ -82,7 +88,7 @@ class BlogPost extends Model
             'description' => $this->excerpt ?: $this->meta_description,
             'url' => $this->url(),
             'image' => $project?->cover()?->url,
-            'sku' => 'story-' . $this->id,
+            'sku' => 'story-'.$this->id,
             'price' => 'Contact for quote',
             'currency' => 'USD',
             'in_stock' => true,
@@ -100,8 +106,8 @@ class BlogPost extends Model
                 ['name' => $this->title, 'url' => $this->url()],
             ],
             'faqs' => [
-                ['question' => "Where was this {$type} project?", 'answer' => "In {$loc}, by " . config('brand.name') . '.'],
-                ['question' => 'Who did the work?', 'answer' => config('brand.name') . ' handled the consultation, estimate, permits, scheduling and construction' . ($project && $project->collaborators->isNotEmpty() ? ', working with ' . $project->collaborators->map(fn ($c) => $c->name . ' (' . strtolower($c->roleLabel()) . ')')->implode(', ') . '.' : '.')],
+                ['question' => "Where was this {$type} project?", 'answer' => "In {$loc}, by ".config('brand.name').'.'],
+                ['question' => 'Who did the work?', 'answer' => config('brand.name').' handled the consultation, estimate, permits, scheduling and construction'.($project && $project->collaborators->isNotEmpty() ? ', working with '.$project->collaborators->map(fn ($c) => $c->name.' ('.strtolower($c->roleLabel()).')')->implode(', ').'.' : '.')],
             ],
             'attributes' => array_filter([
                 'Project Type' => $type,
@@ -119,7 +125,7 @@ class BlogPost extends Model
      */
     public function bodyHtml(): string
     {
-        $converter = new \League\CommonMark\GithubFlavoredMarkdownConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]);
+        $converter = new GithubFlavoredMarkdownConverter(['html_input' => 'strip', 'allow_unsafe_links' => false]);
 
         return (string) $converter->convert((string) $this->body);
     }
@@ -131,7 +137,7 @@ class BlogPost extends Model
      */
     public static function markdownFromHtml(string $html): string
     {
-        $converter = new \League\HTMLToMarkdown\HtmlConverter([
+        $converter = new HtmlConverter([
             'header_style' => 'atx',
             'strip_tags' => true,
             'hard_break' => false,
@@ -140,11 +146,12 @@ class BlogPost extends Model
         $markdown = $converter->convert($html);
         // The editor may escape the brackets of a shortcode paragraph.
         $markdown = preg_replace('/^[ \t]*\\\\?\[(before|cover|before-after|timelapse|gallery)\\\\?\][ \t]*$/m', '[$1]', $markdown) ?? $markdown;
+
         return trim(preg_replace("/\n{3,}/", "\n\n", $markdown) ?? $markdown);
     }
 
     /** The date shown on the post and the index. */
-    public function displayDate(): ?\Illuminate\Support\Carbon
+    public function displayDate(): ?Carbon
     {
         return $this->dated_at ?? $this->published_at ?? $this->created_at;
     }
@@ -155,7 +162,7 @@ class BlogPost extends Model
         $slug = $base;
         $n = 1;
         while (static::query()->where('slug', $slug)->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists()) {
-            $slug = $base . '-' . ++$n;
+            $slug = $base.'-'.++$n;
         }
 
         return $slug;
@@ -172,19 +179,19 @@ class BlogPost extends Model
      * back to the latest of any trade so a strip is never empty while the
      * blog has posts at all.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, static>
+     * @return Collection<int, static>
      */
-    public static function forStrip(?string $projectType = null, ?string $city = null, int $limit = 3, ?int $exclude = null): \Illuminate\Database\Eloquent\Collection
+    public static function forStrip(?string $projectType = null, ?string $city = null, int $limit = 3, ?int $exclude = null): Collection
     {
         $base = fn () => static::published()->with('project.images')->when($exclude, fn ($q) => $q->whereKeyNot($exclude))->orderByDesc('published_at')->orderByDesc('dated_at');
 
         $posts = $projectType
-            ? (clone $base())->whereHas('project', fn ($q) => $q->where('project_type', $projectType))->limit(12)->get()
+            ? (clone $base())->whereHas('project', fn ($q) => $q->ofType($projectType))->limit(12)->get()
             : (clone $base())->limit($limit)->get();
 
         if ($city) {
             $needle = mb_strtolower(trim($city));
-            [$here, $elsewhere] = $posts->partition(fn (self $post) => mb_strtolower(trim((string) \Illuminate\Support\Str::before((string) $post->project?->location, ','))) === $needle);
+            [$here, $elsewhere] = $posts->partition(fn (self $post) => mb_strtolower(trim((string) Str::before((string) $post->project?->location, ','))) === $needle);
             $posts = $here->concat($elsewhere);
         }
 
@@ -207,7 +214,7 @@ class BlogPost extends Model
 
     public function url(): string
     {
-        return url('/blog/' . $this->slug);
+        return url('/blog/'.$this->slug);
     }
 
     public function getRouteKeyName(): string

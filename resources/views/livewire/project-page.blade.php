@@ -107,7 +107,7 @@
             </h1>
             @if($project->description)
                 <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                    {{ $project->description }}
+                    {{ \SsSystems\Platform\Projects\CollaboratorLinks::linkify($project->description, $project->collaborators) }}
                 </p>
             @endif
 
@@ -477,8 +477,33 @@
             </div>
         @endforeach
 
-        {{-- Image Gallery with Lightbox --}}
+        {{-- Image Gallery with Lightbox — area-less photos only; each area
+             (Kitchen, Mudroom, Basement…) gets its own section below, with
+             its own heading, write-up and gallery. See
+             SsSystems\Platform\Projects\Concerns\HasProjectAreas. --}}
         <livewire:project-photos-gallery :project="$project" :key="'project-photos-'.$project->id" />
+
+        {{-- One section per area, in sort_order: its own heading (an admin
+             title, else the category's label), its own description (with
+             collaborator names linked, same as the project's own above),
+             and its own gallery — same component, scoped to that area. Each
+             carries a stable anchor id a service-page card can link
+             straight to (Project::presentFor() / x-project-card). --}}
+        @foreach($project->areas as $area)
+            <section id="{{ $area->anchor() }}" class="mt-10 scroll-mt-24">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                    {{ $area->heading() }}
+                </h2>
+                @if($area->description)
+                    <p class="mt-3 text-base text-gray-600 dark:text-gray-400">
+                        {{ \SsSystems\Platform\Projects\CollaboratorLinks::linkify($area->description, $project->collaborators) }}
+                    </p>
+                @endif
+                <div class="mt-4">
+                    <livewire:project-photos-gallery :project="$project" :area-id="$area->id" :key="'project-photos-area-'.$area->id" />
+                </div>
+            </section>
+        @endforeach
 
         {{-- Project Timelapses (below Project Photos) --}}
         @if($visibleTimelapses->isNotEmpty())

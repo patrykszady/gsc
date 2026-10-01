@@ -11,10 +11,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Projects\Concerns\IsProjectImage;
 
 class ProjectImage extends Model
 {
     use BelongsToSite;
+
+    // categoryType()/scopeOfType() — the photo-granularity counterpart to
+    // Project::scopeOfType() (an image's OWN area's category, never a
+    // sibling area's) — live in the kit now (ss-platform-kit 0.16.0, see
+    // IsProjectImage). Needs only the area()/project() relations below.
+    use IsProjectImage;
 
     /**
      * In-memory cache for per-platform upload rows.
@@ -28,6 +35,7 @@ class ProjectImage extends Model
 
     protected $fillable = [
         'project_id',
+        'project_area_id',
         'filename',
         'original_filename',
         'path',
@@ -138,21 +146,41 @@ class ProjectImage extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /** The area of the project this photo belongs to, or null when it belongs to the project as a whole. */
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(ProjectArea::class, 'project_area_id');
+    }
+
     /**
      * Curated cover-image pool used by EVERY site slider and for social/share
-     * + schema images: the cover photos of FEATURED, published projects.
+     * + schema images: the cover photos of FEATURED, published projects —
+     * AND, when $type is given, the cover of any of their AREAS reaching
+     * that category (SsSystems\Platform\Projects\Concerns\IsProjectArea::
+     * cover()), never a sibling area's photo. Each area-matched image comes
+     * back with its `area` relation set (and `project`), so a caller can
+     * build a ProjectPresentation for the right title/link — a project-level
+     * match always carries `area` as null, even if that very photo happens
+     * to also belong to one of the project's areas, since the match reason
+     * there is the project's own type, not an area's.
      *
-     * Falls back to cover photos of any published project (optionally of the
-     * same $type) only when no featured cover exists, so sliders never render
-     * empty or stock imagery when real project work is available. Mark more
-     * projects as "featured" in the admin to fully curate what sliders show.
+     * Falls back to cover photos of any published project/area (optionally
+     * of the same $type) only when no featured cover exists, so sliders
+     * never render empty or stock imagery when real project work is
+     * available. Mark more projects as "featured" in the admin to fully
+     * curate what sliders show.
+     *
+     * No SQL limit()/inRandomOrder(): an area's cover isn't a column (it can
+     * fall back to "first", not just is_cover), so area candidates are
+     * resolved in PHP — the whole (bounded, one site's worth of) matching
+     * pool is shuffled and capped here instead.
      *
      * @return Collection<int, self>
      */
     public static function curatedCovers(?string $type = null, int $limit = 12): Collection
     {
-        $build = function (bool $featuredOnly) use ($type, $limit) {
-            return static::query()
+        $build = function (bool $featuredOnly) use ($type) {
+            $projectCovers = static::query()
                 ->where('is_cover', true)
                 ->whereHas('project', function ($q) use ($featuredOnly, $type) {
                     $q->where('is_published', true);
@@ -164,14 +192,38 @@ class ProjectImage extends Model
                     }
                 })
                 ->with('project')
-                ->inRandomOrder()
-                ->limit($limit)
-                ->get();
+                ->get()
+                ->each(fn (self $image) => $image->setRelation('area', null));
+
+            // Area covers are additive, never a replacement for an unfiltered
+            // pool — curatedCovers(null, …) stays whole-project-only, exactly
+            // as it always behaved.
+            $areaCovers = collect();
+            if ($type) {
+                $areaCovers = ProjectArea::query()
+                    ->where('project_type', $type)
+                    ->whereHas('project', function ($q) use ($featuredOnly) {
+                        $q->where('is_published', true);
+                        if ($featuredOnly) {
+                            $q->where('is_featured', true);
+                        }
+                    })
+                    ->with(['images', 'project'])
+                    ->get()
+                    ->map(fn (ProjectArea $area) => $area->cover()
+                        ?->setRelation('project', $area->project)
+                        ->setRelation('area', $area))
+                    ->filter()
+                    ->values();
+            }
+
+            return $projectCovers->concat($areaCovers);
         };
 
         $featured = $build(true);
+        $pool = $featured->isNotEmpty() ? $featured : $build(false);
 
-        return $featured->isNotEmpty() ? $featured : $build(false);
+        return $pool->shuffle()->take($limit)->values();
     }
 
     /**
@@ -486,7 +538,13 @@ class ProjectImage extends Model
         return [
             'id' => $this->id,
             'project_id' => $this->project_id,
+            // null = belongs to the project as a whole, not one of its areas.
+            'area_id' => $this->project_area_id,
             'url' => $this->url,
+            // The admin's image rows (project form, photos-first upload
+            // grid) render this, not the raw original — same rendition
+            // every other admin thumbnail on this site uses.
+            'thumbnail_url' => $this->getThumbnailUrl('medium'),
             'filename' => $this->filename,
             'original_filename' => $this->original_filename,
             'slug' => $this->slug,

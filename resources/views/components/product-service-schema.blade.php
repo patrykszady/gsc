@@ -154,6 +154,16 @@
                 ->with(['images' => fn ($q) => $q->orderBy('sort_order')->limit(1)])
                 ->latest('updated_at')
                 ->first()?->cover()
+                // A project reaches this category through its own
+                // project_type OR any of its areas' — when none uses it
+                // directly, fall back to a matching area's own cover
+                // (ProjectArea::cover(), never a sibling area's photo).
+                ?? \App\Models\ProjectArea::query()
+                    ->where('project_type', $projectType)
+                    ->whereHas('project', fn ($q) => $q->where('is_published', true))
+                    ->with('images')
+                    ->latest('updated_at')
+                    ->first()?->cover()
         )->getWebpThumbnailUrl('medium')
         ?: secure_url(config('seo.image.fallback', 'images/og-default.jpg'));
 

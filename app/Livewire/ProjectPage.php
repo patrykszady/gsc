@@ -16,18 +16,18 @@ class ProjectPage extends Component
     public function mount(Project $project): void
     {
         // Only show published projects
-        if (!$project->is_published) {
+        if (! $project->is_published) {
             abort(404);
         }
 
-        $this->project = $project->load(['images', 'timelapses.frames', 'beforeAfters', 'collaborators', 'blogPost']);
-        
+        $this->project = $project->load(['images', 'areas.images', 'timelapses.frames', 'beforeAfters', 'collaborators', 'blogPost']);
+
         // Sort images: featured (is_cover) first, then randomize the rest
-        $this->project->setRelation('images', 
+        $this->project->setRelation('images',
             $this->project->images
                 ->sortByDesc('is_cover')
                 ->groupBy('is_cover')
-                ->flatMap(fn($group, $key) => $key ? $group : $group->shuffle())
+                ->flatMap(fn ($group, $key) => $key ? $group : $group->shuffle())
         );
 
         SeoService::project($project);
@@ -36,6 +36,7 @@ class ProjectPage extends Component
     protected function getProjectTypeLabel(): string
     {
         $types = Project::projectTypes();
+
         return $types[$this->project->project_type] ?? ucfirst(str_replace('-', ' ', $this->project->project_type));
     }
 
@@ -69,7 +70,7 @@ class ProjectPage extends Component
 
     protected function getLocationArea(): ?AreaServed
     {
-        if (!$this->project->location) {
+        if (! $this->project->location) {
             return null;
         }
 
@@ -82,11 +83,12 @@ class ProjectPage extends Component
 
     protected function getProjectCity(): ?string
     {
-        if (!$this->project->location) {
+        if (! $this->project->location) {
             return null;
         }
 
         $city = preg_replace('/,?\s*(IL|Illinois)$/i', '', $this->project->location);
+
         return trim($city) ?: null;
     }
 

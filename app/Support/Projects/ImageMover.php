@@ -3,9 +3,10 @@
 namespace App\Support\Projects;
 
 use App\Models\Project;
+use App\Models\ProjectArea;
 use App\Models\ProjectImage;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use SsSystems\Platform\Projects\ProjectFileRelocator;
 
 /**
  * Move photos from one project to another — an existing project, or a
@@ -56,10 +57,21 @@ class ImageMover
         $sourceCoverMoved = $images->contains(fn (ProjectImage $image) => $image->is_cover);
         $next = (int) $target->images()->max('sort_order') + 1;
 
+        // A moved photo always leaves area-less on the target (see the
+        // forceFill below); clear it first as the SOURCE area's chosen
+        // cover, if it was one — 2026-10-01 addendum (covers).
+        ProjectArea::clearStaleCovers($source->id, $images->pluck('id')->all());
+
         foreach ($images as $image) {
             static::relocateFiles($image, $target);
             $image->forceFill([
                 'project_id' => $target->id,
+                // The area it belonged to was one of the SOURCE project's —
+                // meaningless (and, once the source is a draft with no
+                // matching area, orphaned) on the target. A photo that moves
+                // to another project always starts area-less there; an admin
+                // re-assigns it with POST …/images/area if needed.
+                'project_area_id' => null,
                 'is_cover' => false,
                 'sort_order' => $next++,
             ])->save();
@@ -76,51 +88,16 @@ class ImageMover
         return ['target' => $target, 'created' => $created, 'moved' => $images->count()];
     }
 
-    /** Carry the original and every rendition into the target's folder, keeping names unless one is taken. */
-    protected static function relocateFiles(ProjectImage $image, Project $target): void
+    /**
+     * Carry the original and every rendition into the target's folder,
+     * keeping names unless one is taken. Public (not just this class' own
+     * move()): SsSystems\Platform\Projects\ProjectMerger (kit, 0.16.0) calls
+     * the kit's own copy of this same logic to relocate a merged-away
+     * project's photos — this method is now a thin delegate so every other
+     * call site here keeps working unchanged.
+     */
+    public static function relocateFiles(ProjectImage $image, Project $target): void
     {
-        $disk = Storage::disk($image->disk ?? 'public');
-        $from = 'projects/'.$image->project_id.'/';
-        $to = 'projects/'.$target->id.'/';
-
-        $suffix = '';
-        $newPath = $to.basename($image->path);
-        if ($disk->exists($newPath)) {
-            $suffix = '-m'.$image->id;
-            $newPath = $to.static::withSuffix(basename($image->path), $suffix);
-        }
-
-        if ($disk->exists($image->path)) {
-            $disk->move($image->path, $newPath);
-        }
-
-        $thumbnails = [];
-        foreach ($image->thumbnails ?? [] as $key => $path) {
-            $relative = str_starts_with($path, $from) ? substr($path, strlen($from)) : basename($path);
-            $dir = dirname($relative) === '.' ? '' : dirname($relative).'/';
-            $newThumb = $to.$dir.static::withSuffix(basename($relative), $suffix);
-            if ($disk->exists($path)) {
-                $disk->move($path, $newThumb);
-            }
-            $thumbnails[$key] = $newThumb;
-        }
-
-        $image->forceFill([
-            'path' => $newPath,
-            'filename' => basename($newPath),
-            'thumbnails' => $thumbnails ?: $image->thumbnails,
-        ]);
-    }
-
-    protected static function withSuffix(string $filename, string $suffix): string
-    {
-        if ($suffix === '') {
-            return $filename;
-        }
-
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
-        $name = pathinfo($filename, PATHINFO_FILENAME);
-
-        return $ext !== '' ? "{$name}{$suffix}.{$ext}" : "{$name}{$suffix}";
+        ProjectFileRelocator::relocate($image, $target);
     }
 }

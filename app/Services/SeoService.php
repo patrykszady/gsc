@@ -3,9 +3,15 @@
 namespace App\Services;
 
 use App\Models\AreaServed;
+use App\Models\BlogPost;
 use App\Models\Project;
+use App\Models\ProjectArea;
+use App\Models\ProjectImage;
 use App\Models\Testimonial;
+use App\Support\CompanyStats;
+use App\Support\OfficeTrip;
 use App\Support\SEO\SEOBuilder;
+use App\Support\ServiceImages;
 use Illuminate\Support\Str;
 
 class SeoService
@@ -25,12 +31,12 @@ class SeoService
         $isAlternateDomain = view()->shared('isAlternateDomain', false);
         $primaryDomain = config('services.domains.primary', 'gs.construction');
 
-        if (!$domainConfig) {
+        if (! $domainConfig) {
             return;
         }
 
         // Add domain-specific keywords
-        if (!empty($domainConfig['keywords'])) {
+        if (! empty($domainConfig['keywords'])) {
             self::seo()->keywords($domainConfig['keywords']);
         }
 
@@ -41,7 +47,7 @@ class SeoService
         // tracking URL canonical on the primary domain. Same allow-list rule
         // as buildCleanCanonical(): a canonical is a URL we would sitemap.
         if ($isAlternateDomain) {
-            $canonicalUrl = 'https://' . $primaryDomain . request()->getPathInfo();
+            $canonicalUrl = 'https://'.$primaryDomain.request()->getPathInfo();
             self::seo()->canonical($canonicalUrl)->url($canonicalUrl);
         }
     }
@@ -53,11 +59,11 @@ class SeoService
     public static function getDomainAwareTitle(string $baseTitle): string
     {
         $domainConfig = view()->shared('domainConfig');
-        
-        if (!$domainConfig || empty($domainConfig['title_prefix'])) {
+
+        if (! $domainConfig || empty($domainConfig['title_prefix'])) {
             return $baseTitle;
         }
-        
+
         // Only enhance home page or main landing pages
         return $baseTitle;
     }
@@ -71,7 +77,7 @@ class SeoService
         $city = $area?->city;
         $domainConfig = view()->shared('domainConfig');
         $isAlternateDomain = view()->shared('isAlternateDomain', false);
-        
+
         // Use domain-specific title/description if on alternate domain
         if ($isAlternateDomain && $domainConfig) {
             $title = $domainConfig['title_prefix'];
@@ -103,7 +109,7 @@ class SeoService
     {
         $city = $area?->city;
         $typeLabel = $type ? ucfirst(str_replace('-', ' ', $type)) : null;
-        
+
         if ($typeLabel && $city) {
             $title = "{$typeLabel} Remodeling in {$city} - Our Work";
             $reviewCount = self::getReviewCountLabel();
@@ -132,12 +138,12 @@ class SeoService
     public static function testimonials(?AreaServed $area = null): void
     {
         $city = $area?->city;
-        
+
         // Keep under 70 chars with suffix
         $title = $city
             ? "Remodeling Reviews in {$city}, IL"
             : 'Kitchen & Bathroom Remodeling Reviews';
-        
+
         $reviewCount = self::getReviewCountLabel();
         $description = $city
             ? "Read {$reviewCount} five-star reviews from {$city} homeowners. Real kitchen & bathroom remodeling experiences. See why we're the top-rated contractors in {$city}, IL."
@@ -157,25 +163,25 @@ class SeoService
         $name = $testimonial->display_name;
         $location = $testimonial->project_location;
         $rawType = $testimonial->project_type ?? 'home';
-        
+
         // Normalize project type for display (remove hyphens, proper capitalization)
-        $projectType = match(strtolower($rawType)) {
+        $projectType = match (strtolower($rawType)) {
             'home-remodel' => 'Home',
             'kitchen' => 'Kitchen',
             'bathroom' => 'Bathroom',
             'basement' => 'Basement',
             default => ucfirst(str_replace('-', ' ', $rawType)),
         };
-        
+
         // Keep under 70 chars total (with " | GS Construction" = 18 chars suffix)
         // So page title should be ~52 chars max
         $shortName = strlen($name) > 15 ? explode(' ', $name)[0] : $name;
         $title = "{$shortName}'s {$projectType} Remodel Review";
-        
+
         $description = Str::limit($testimonial->review_description, 155);
 
         // Use a project cover image matching the review's service type
-        $projectType = match(strtolower($rawType)) {
+        $projectType = match (strtolower($rawType)) {
             'kitchen' => 'kitchen',
             'bathroom' => 'bathroom',
             'home-remodel', 'home' => 'home-remodel',
@@ -193,12 +199,12 @@ class SeoService
     public static function about(?AreaServed $area = null): void
     {
         $city = $area?->city;
-        
+
         // Keep under 70 chars with suffix
         $title = $city
             ? "Remodeling Contractors in {$city}"
             : 'About Us - Family-Owned Contractors';
-        
+
         $reviewCount = self::getReviewCountLabel();
         $description = $city
             ? "Meet GS Construction — family-owned remodeling contractors serving {$city}, IL. {$reviewCount} five-star reviews, 40+ years experience. Licensed & insured."
@@ -213,15 +219,15 @@ class SeoService
     public static function contact(?AreaServed $area = null): void
     {
         $city = $area?->city;
-        
+
         // Keep under 70 chars with suffix
         $title = $city
             ? "Free {$city} Remodeling Estimate"
             : 'Get a Free Chicagoland Remodeling Estimate';
-        
+
         // Per town, with the town's own drive time from the office, so the 66
         // contact pages do not share one description with the city swapped in.
-        $trip = $area ? \App\Support\OfficeTrip::to($area) : null;
+        $trip = $area ? OfficeTrip::to($area) : null;
         $phone = (string) config('brand.phone', '(224) 735-4200');
         $officeCity = (string) config('brand.address.city', 'Prospect Heights');
         // Under 160 characters with the longest town name (normalizeMetaText cuts at a sentence).
@@ -281,7 +287,7 @@ class SeoService
     public static function services(?AreaServed $area = null): void
     {
         $city = $area?->city;
-        
+
         // Keep the rendered <title> within 30–60 chars even for the longest
         // city names ("Arlington Heights" = 17) and the description within
         // 70–160 chars. Use "and" instead of "&" so the HTML-encoded "&amp;"
@@ -289,7 +295,7 @@ class SeoService
         $title = $city
             ? "{$city} Remodeling Services — Kitchen & Bath"
             : 'Kitchen, Bathroom & Home Remodeling Services';
-        
+
         $reviewCount = self::getReviewCountLabel();
         $description = $city
             ? "Kitchen, bath and whole-home remodeling in {$city}, IL. {$reviewCount} 5-star reviews, licensed and insured. Free in-home estimate — call (224) 735-4200."
@@ -318,7 +324,7 @@ class SeoService
     {
         $types = Project::projectTypes();
         $typeLabel = $types[$project->project_type] ?? ucfirst(str_replace('-', ' ', $project->project_type));
-        
+
         // Build title: "Project Title in {City}" — append the city only when
         // the stored title doesn't already name it ("Palatine Kitchen Remodel"
         // must not become "Palatine Kitchen Remodel in Palatine, IL").
@@ -327,11 +333,11 @@ class SeoService
         if ($city !== '' && ! str_contains(mb_strtolower($title), mb_strtolower($city))) {
             $title .= " in {$city}";
         }
-        
+
         // Build description
-        $description = $project->description 
+        $description = $project->description
             ? Str::limit($project->description, 155)
-            : "View our {$typeLabel} project" . ($project->location ? " in {$project->location}" : '') . ". See photos and details of this beautiful renovation by GS Construction.";
+            : "View our {$typeLabel} project".($project->location ? " in {$project->location}" : '').'. See photos and details of this beautiful renovation by GS Construction.';
 
         // Get cover image
         $image = null;
@@ -357,7 +363,7 @@ class SeoService
      * keywords — the same treatment a project page gets, plus the article
      * fields Google and social cards read for freshness and attribution.
      */
-    public static function blogPost(\App\Models\BlogPost $post): void
+    public static function blogPost(BlogPost $post): void
     {
         $project = $post->project;
         $types = Project::projectTypes();
@@ -418,7 +424,7 @@ class SeoService
      */
     public static function service(string $serviceType): void
     {
-        
+
         $reviewNum = self::getReviewCountNumeric();
         // "72★" reads as a 72-star rating in SERPs — spell out "Reviews" instead.
         $reviewBadge = $reviewNum ? "{$reviewNum} Reviews" : 'Top-Rated';
@@ -465,7 +471,7 @@ class SeoService
         ];
 
         $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'title' => 'Remodeling Services', 'description' => 'Expert remodeling services.', 'keywords' => []];
-        
+
         $title = $service['title'];
         $reviewCount = self::getReviewCountLabel();
         $description = sprintf($service['description'], $reviewCount);
@@ -511,12 +517,12 @@ class SeoService
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
 
         self::setTags($title, $description, $image);
-        
+
         // Add area + service specific keywords (helps with semantic relevance)
         $cityLower = strtolower($city);
         $serviceLabel = strtolower($service['label']);
         $shortLabel = strtolower($service['shortLabel']);
-        
+
         $areaKeywords = array_merge(
             $service['keywords'],
             [
@@ -620,12 +626,12 @@ class SeoService
 
         $description = $descriptionVariants[$seed % count($descriptionVariants)];
         if ($geoSnippet !== '') {
-            $description .= ' ' . $geoSnippet;
+            $description .= ' '.$geoSnippet;
         }
 
         return [
             'title' => $title,
-            'description' => \Illuminate\Support\Str::limit($description, 160, ''),
+            'description' => Str::limit($description, 160, ''),
         ];
     }
 
@@ -684,7 +690,7 @@ class SeoService
             'keywords' => [],
         ];
 
-        $seed = abs(crc32($area->slug . '|' . $serviceType));
+        $seed = abs(crc32($area->slug.'|'.$serviceType));
         $reviewNum = self::getReviewCountNumeric();
         $reviewBadge = $reviewNum ? "{$reviewNum}★ Reviews" : 'Top-Rated Local';
         $reviewCount = self::getReviewCountLabel();
@@ -793,29 +799,29 @@ class SeoService
 
         $descriptionOpeners = [
             'kitchen-remodeling' => [
-                "Kitchen remodeling in %s, IL with custom cabinets, quartz counters, islands and full layout redesigns.",
-                "Need a %s, IL kitchen remodeler? We plan cabinets, counters, lighting and workflow for real everyday use.",
-                "%s, IL kitchen renovations from refresh projects to full open-concept rebuilds with design-build coordination.",
+                'Kitchen remodeling in %s, IL with custom cabinets, quartz counters, islands and full layout redesigns.',
+                'Need a %s, IL kitchen remodeler? We plan cabinets, counters, lighting and workflow for real everyday use.',
+                '%s, IL kitchen renovations from refresh projects to full open-concept rebuilds with design-build coordination.',
             ],
             'bathroom-remodeling' => [
-                "Bathroom remodeling in %s, IL with walk-in showers, tile, vanities and full renovation options.",
-                "Planning a %s, IL bathroom renovation? We handle waterproofing, fixtures, layout and finish details end to end.",
-                "%s, IL bathroom remodels from quick refreshes to full gut projects with shower and storage upgrades.",
+                'Bathroom remodeling in %s, IL with walk-in showers, tile, vanities and full renovation options.',
+                'Planning a %s, IL bathroom renovation? We handle waterproofing, fixtures, layout and finish details end to end.',
+                '%s, IL bathroom remodels from quick refreshes to full gut projects with shower and storage upgrades.',
             ],
             'home-remodeling' => [
-                "Whole-home remodeling in %s, IL including layout changes, kitchens, baths, basements and additions.",
-                "Renovating a %s, IL home? We sequence multi-room projects with one dedicated project lead and clear milestones.",
-                "%s, IL full-home renovations planned for budget, timeline and cohesive design across every room.",
+                'Whole-home remodeling in %s, IL including layout changes, kitchens, baths, basements and additions.',
+                'Renovating a %s, IL home? We sequence multi-room projects with one dedicated project lead and clear milestones.',
+                '%s, IL full-home renovations planned for budget, timeline and cohesive design across every room.',
             ],
             'basement-remodeling' => [
-                "Basement remodeling in %s, IL for rec rooms, guest suites, bathrooms, wet bars and egress-ready layouts.",
-                "Finishing a %s, IL basement? We coordinate moisture control, utilities and code-aware layout planning.",
-                "%s, IL basement renovations that convert unused space into durable, comfortable living areas.",
+                'Basement remodeling in %s, IL for rec rooms, guest suites, bathrooms, wet bars and egress-ready layouts.',
+                'Finishing a %s, IL basement? We coordinate moisture control, utilities and code-aware layout planning.',
+                '%s, IL basement renovations that convert unused space into durable, comfortable living areas.',
             ],
             'home-additions' => [
-                "Home additions in %s, IL including room additions, suites, sunrooms and second-story expansions.",
-                "Adding space to your %s, IL home? We handle structural, framing, utility and permit planning from day one.",
-                "%s, IL additions from bump-outs to full expansions, designed and built with a single project team.",
+                'Home additions in %s, IL including room additions, suites, sunrooms and second-story expansions.',
+                'Adding space to your %s, IL home? We handle structural, framing, utility and permit planning from day one.',
+                '%s, IL additions from bump-outs to full expansions, designed and built with a single project team.',
             ],
         ];
         $openerPool = $descriptionOpeners[$serviceType] ?? [$service['descriptionTemplate']];
@@ -830,10 +836,10 @@ class SeoService
         ];
         $costHint = $costHints[$serviceType] ?? '';
         $closer = ($costHint !== '' ? " {$costHint}" : '')
-            . " {$reviewCount} 5-star reviews. Licensed and insured. Free in-home estimate: (224) 735-4200.";
-        $description = $opener . $closer;
+            ." {$reviewCount} 5-star reviews. Licensed and insured. Free in-home estimate: (224) 735-4200.";
+        $description = $opener.$closer;
         if ($geoSnippet !== '') {
-            $description .= ' ' . $geoSnippet;
+            $description .= ' '.$geoSnippet;
         }
         // Trim to the last full sentence within 160 chars — a snippet that ends
         // mid-phrase reads as broken in the SERP.
@@ -855,13 +861,13 @@ class SeoService
         $parts = [];
 
         if (filled($area->landmarks)) {
-            $parts[] = 'Local coverage includes ' . \Illuminate\Support\Str::limit((string) $area->landmarks, 90);
+            $parts[] = 'Local coverage includes '.Str::limit((string) $area->landmarks, 90);
         }
 
         if ($includeZip) {
             $zips = array_slice($area->postalCodes(), 0, 3);
             if (! empty($zips)) {
-                $parts[] = 'Common ZIP coverage: ' . implode(', ', $zips) . '.';
+                $parts[] = 'Common ZIP coverage: '.implode(', ', $zips).'.';
             }
         }
 
@@ -891,14 +897,14 @@ class SeoService
         // rather than clustering on the first short phrase that fits.
         $fitting = array_values(array_filter(
             $modifiers,
-            fn ($m) => mb_strlen($base . ' | ' . $m) <= $maxLen
+            fn ($m) => mb_strlen($base.' | '.$m) <= $maxLen
         ));
 
         if (empty($fitting)) {
             return $base;
         }
 
-        return $base . ' | ' . $fitting[$seed % count($fitting)];
+        return $base.' | '.$fitting[$seed % count($fitting)];
     }
 
     /**
@@ -979,9 +985,10 @@ class SeoService
      */
     protected static function getReviewCountLabel(): string
     {
-        $count = \App\Support\CompanyStats::reviewsTotal();
+        $count = CompanyStats::reviewsTotal();
         $rounded = (int) floor($count / 5) * 5;
-        return $rounded . '+';
+
+        return $rounded.'+';
     }
 
     /**
@@ -989,7 +996,7 @@ class SeoService
      */
     protected static function getReviewCountNumeric(): int
     {
-        return \App\Support\CompanyStats::reviewsTotal();
+        return CompanyStats::reviewsTotal();
     }
 
     /**
@@ -1036,7 +1043,7 @@ class SeoService
     /**
      * Set SEO tags for a single trade-partner page (/trades/{slug}).
      *
-     * @param array<string,mixed> $trade One entry from config('trades.trades')
+     * @param  array<string,mixed>  $trade  One entry from config('trades.trades')
      */
     public static function trade(array $trade): void
     {
@@ -1053,8 +1060,8 @@ class SeoService
         self::setTags($title, $description, asset('images/greg-patryk.jpg'));
 
         self::seo()->keywords(array_filter([
-            strtolower($name) . ' remodeling chicago suburbs',
-            strtolower((string) ($trade['short'] ?? '')) . ' contractor north shore',
+            strtolower($name).' remodeling chicago suburbs',
+            strtolower((string) ($trade['short'] ?? '')).' contractor north shore',
         ]));
     }
 
@@ -1064,7 +1071,7 @@ class SeoService
      * Uses "alternative to" framing in the title to avoid trademark issues and
      * to align with how users search ("alternative to {brand}", "{brand} vs ...").
      *
-     * @param array<string, mixed> $competitor
+     * @param  array<string, mixed>  $competitor
      */
     public static function compareCompetitor(array $competitor): void
     {
@@ -1078,7 +1085,7 @@ class SeoService
         // distinct meta description (avoids templated/duplicate snippets).
         $note = trim((string) ($competitor['comparison_note'] ?? ''));
         if ($note !== '') {
-            $description = \Illuminate\Support\Str::limit($note, 155);
+            $description = Str::limit($note, 155);
         } else {
             $description = "Considering {$name}? See what GS Construction offers on service area, project types, communication and reviews — and request a free alternate estimate.";
         }
@@ -1190,7 +1197,7 @@ class SeoService
 
         $kept = array_intersect_key($query, array_flip($allow));
 
-        return empty($kept) ? $url : $url . '?' . http_build_query($kept);
+        return empty($kept) ? $url : $url.'?'.http_build_query($kept);
     }
 
     /**
@@ -1198,31 +1205,60 @@ class SeoService
      */
     protected static function getCoverImageForType(string $projectType): ?string
     {
-        // Prefer the cover image of a FEATURED project (kept deterministic via
-        // orderBy id so the OG/share image is stable for caching/previews),
-        // then fall back to any published project's cover of this type.
-        $image = \App\Models\ProjectImage::query()
+        // Prefer the cover image of a FEATURED project whose OWN project_type
+        // matches (kept deterministic via orderBy id so the OG/share image is
+        // stable for caching/previews), then any published project's own
+        // cover of this type, then — a project reaches a category through
+        // its own project_type OR any of its areas' — the same two passes
+        // over AREAS reaching this category through their own cover (never a
+        // sibling area's photo; see ProjectArea::cover()).
+        $image = ProjectImage::query()
             ->where('is_cover', true)
             ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('is_featured', true)->where('project_type', $projectType))
             ->orderBy('id')
             ->first()
-            ?? \App\Models\ProjectImage::query()
+            ?? ProjectImage::query()
                 ->where('is_cover', true)
                 ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('project_type', $projectType))
                 ->orderBy('id')
-                ->first();
+                ->first()
+            ?? static::areaCoverImageForType($projectType);
 
         if ($image?->url) {
             return $image->url;
         }
 
         if (in_array($projectType, ['basement', 'addition'], true)) {
-            $curated = \App\Support\ServiceImages::firstUrl($projectType);
+            $curated = ServiceImages::firstUrl($projectType);
             if (is_string($curated) && $curated !== '') {
                 return $curated;
             }
         }
 
         return null;
+    }
+
+    /**
+     * The area-reached half of getCoverImageForType()'s fallback chain: a
+     * published project with no AreaType of its own may still have an area
+     * of this category — its own cover (ProjectArea::cover()), never a
+     * sibling area's photo. Same featured-first, deterministic order.
+     */
+    protected static function areaCoverImageForType(string $projectType): ?ProjectImage
+    {
+        $area = ProjectArea::query()
+            ->where('project_type', $projectType)
+            ->whereHas('project', fn ($q) => $q->where('is_published', true)->where('is_featured', true))
+            ->with('images')
+            ->orderBy('id')
+            ->first()
+            ?? ProjectArea::query()
+                ->where('project_type', $projectType)
+                ->whereHas('project', fn ($q) => $q->where('is_published', true))
+                ->with('images')
+                ->orderBy('id')
+                ->first();
+
+        return $area?->cover();
     }
 }

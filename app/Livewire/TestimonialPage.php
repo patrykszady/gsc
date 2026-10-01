@@ -68,8 +68,12 @@ class TestimonialPage extends Component
 
         $projectType = $this->normalizeProjectType($this->testimonial->project_type);
         if ($projectType) {
+            // ProjectImage::scopeOfType() (photo-granular — this photo's OWN
+            // area, else its project's), not Project::scopeOfType() through
+            // whereHas: the latter would happily hand back a sibling area's
+            // photo just because the project reaches $projectType SOMEWHERE.
             $cached = SeededRandom::order(
-                ProjectImage::query()->whereHas('project', fn ($q) => $q->published()->ofType($projectType)),
+                ProjectImage::query()->whereHas('project', fn ($q) => $q->published())->ofType($projectType),
                 $seed,
             )->first();
         }
@@ -117,9 +121,11 @@ class TestimonialPage extends Component
         // the avatar is stable per review rather than reshuffling each load.
         $projectType = $this->normalizeProjectType($this->testimonial->project_type);
         if ($projectType) {
+            // See heroImage()'s identical note: photo-granular ofType().
             $cached = SeededRandom::order(
                 ProjectImage::query()
-                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                    ->whereHas('project', fn ($q) => $q->published())
+                    ->ofType($projectType)
                     ->when($heroId, fn ($q) => $q->where('id', '!=', $heroId)),
                 (int) $this->testimonial->getKey() + 7919,
             )->first();

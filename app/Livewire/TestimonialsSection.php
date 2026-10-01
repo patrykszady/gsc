@@ -3,10 +3,12 @@
 namespace App\Livewire;
 
 use App\Models\AreaServed;
+use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
+use App\Support\CompanyStats;
+use App\Support\Tenancy;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 use Livewire\Component;
 
 class TestimonialsSection extends Component
@@ -66,7 +68,7 @@ class TestimonialsSection extends Component
     {
         // Project-scoped: only show reviews explicitly linked to this project via pivot
         if ($this->projectId) {
-            $project = \App\Models\Project::find($this->projectId);
+            $project = Project::find($this->projectId);
             $linked = $project ? $project->testimonials()->visible()->latest('review_date')->get() : collect();
 
             foreach ($linked as $testimonial) {
@@ -74,10 +76,11 @@ class TestimonialsSection extends Component
                 $this->shownIds[] = $testimonial->id;
             }
 
-            if (!empty($this->history)) {
+            if (! empty($this->history)) {
                 $this->current = $this->history[0];
                 $this->historyIndex = 0;
             }
+
             return;
         }
 
@@ -115,7 +118,7 @@ class TestimonialsSection extends Component
                     Testimonial::query()
                         ->visible()
                         ->with('projects:id')
-                        ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+                        ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%'.$this->projectType.'%'))
                         ->whereNotIn('id', $ordered->pluck('id')->all() ?: [0])
                         ->inRandomOrder()
                         ->take(10 - $ordered->count())
@@ -144,7 +147,7 @@ class TestimonialsSection extends Component
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->with('projects:id')
-            ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+            ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%'.$this->projectType.'%'))
             ->inRandomOrder()
             ->take(10)
             ->get();
@@ -154,7 +157,7 @@ class TestimonialsSection extends Component
             $initialReviews = Testimonial::query()
                 ->visible()
                 ->with('projects:id')
-                ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+                ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%'.$this->projectType.'%'))
                 ->inRandomOrder()
                 ->take(10)
                 ->get();
@@ -176,7 +179,7 @@ class TestimonialsSection extends Component
                 $this->history[] = $this->formatTestimonial($testimonial);
                 $this->shownIds[] = $testimonial->id;
             }
-            
+
             // Start with the first one
             $this->current = $this->history[0];
             $this->historyIndex = 0;
@@ -187,9 +190,12 @@ class TestimonialsSection extends Component
     {
         // Project-scoped: cycle through linked reviews only, no new queries
         if ($this->projectId) {
-            if (empty($this->history)) return;
+            if (empty($this->history)) {
+                return;
+            }
             $this->historyIndex = ($this->historyIndex + 1) % count($this->history);
             $this->current = $this->history[$this->historyIndex];
+
             return;
         }
 
@@ -197,6 +203,7 @@ class TestimonialsSection extends Component
         if ($this->historyIndex < count($this->history) - 1) {
             $this->historyIndex++;
             $this->current = $this->history[$this->historyIndex];
+
             return;
         }
 
@@ -206,7 +213,7 @@ class TestimonialsSection extends Component
             $next = Testimonial::query()
                 ->visible()
                 ->with('projects:id')
-                ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+                ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%'.$this->projectType.'%'))
                 ->whereNotIn('id', $this->shownIds ?: [0])
                 ->inRandomOrder()
                 ->first();
@@ -228,13 +235,13 @@ class TestimonialsSection extends Component
 
         // Load a new random testimonial not yet shown (only from last 6 years)
         $recentCutoff = now()->subYears(6)->startOfDay();
-        
+
         $testimonial = Testimonial::query()
             ->visible()
             ->whereNotNull('review_date')
             ->where('review_date', '>=', $recentCutoff)
             ->with('projects:id')
-            ->when($this->projectType, fn($q) => $q->where('project_type', 'LIKE', '%' . $this->projectType . '%'))
+            ->when($this->projectType, fn ($q) => $q->where('project_type', 'LIKE', '%'.$this->projectType.'%'))
             ->whereNotIn('id', $this->shownIds)
             ->inRandomOrder()
             ->first();
@@ -243,12 +250,13 @@ class TestimonialsSection extends Component
         if (! $testimonial) {
             $this->historyIndex = 0;
             $this->current = $this->history[$this->historyIndex];
+
             return;
         }
 
         $this->current = $this->formatTestimonial($testimonial);
         $this->shownIds[] = $testimonial->id;
-        
+
         // Add to history
         $this->history[] = $this->current;
         $this->historyIndex = count($this->history) - 1;
@@ -285,17 +293,24 @@ class TestimonialsSection extends Component
                         ->where('project_id', $this->projectId)
                         ->inRandomOrder()
                         ->first();
+
                 return $image?->getThumbnailUrl('medium');
             });
         }
 
-        if (!$imageUrl && $projectType) {
+        if (! $imageUrl && $projectType) {
             $cacheKey = "testimonial.project-image.{$testimonial->id}.{$projectType}.v3";
 
             $imageUrl = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($projectType) {
-                // Use any random image from any published project of this type.
+                // Use any random image from any published project of this
+                // type — photo-granular ofType() (this photo's OWN area,
+                // else its project's), never Project::scopeOfType() through
+                // whereHas, which would happily hand back a sibling area's
+                // photo just because the project reaches $projectType
+                // SOMEWHERE.
                 $image = ProjectImage::query()
-                    ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
+                    ->whereHas('project', fn ($q) => $q->published())
+                    ->ofType($projectType)
                     ->inRandomOrder()
                     ->first();
 
@@ -362,7 +377,7 @@ class TestimonialsSection extends Component
     protected static function citySlugMap(): array
     {
         return Cache::remember(
-            \App\Support\Tenancy::cacheKey('testimonials.city-slug-map'),
+            Tenancy::cacheKey('testimonials.city-slug-map'),
             now()->addMinutes(30),
             fn () => AreaServed::query()->pluck('slug', 'city')
                 ->mapWithKeys(fn ($slug, $city) => [mb_strtolower($city) => $slug])
@@ -410,7 +425,7 @@ class TestimonialsSection extends Component
             // Shown on the "All N reviews" link. A real count is a stronger
             // trust signal than a bare "read more", and it is already scoped
             // to this tenant by BelongsToSite.
-            'totalCount' => \App\Support\CompanyStats::reviewsTotal(),
+            'totalCount' => CompanyStats::reviewsTotal(),
         ]);
     }
 }

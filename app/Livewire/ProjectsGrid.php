@@ -4,7 +4,10 @@ namespace App\Livewire;
 
 use App\Models\AreaServed;
 use App\Models\Project;
+use App\Models\ProjectArea;
 use App\Models\ProjectTimelapse;
+use App\Support\SeededRandom;
+use App\Support\ServiceCatalog;
 use Illuminate\Pagination\Paginator;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -105,10 +108,19 @@ class ProjectsGrid extends Component
             // eager-constraint orders APPEND to it, so without the reset the
             // window function sorts by sort_order first and the admin-chosen
             // cover can never win.
-            ->with(['images' => fn($q) => $q->reorder()->orderByDesc('is_cover')->orderBy('sort_order')->limit(1)])
-            ->when($this->type, fn($q) => $q->where('project_type', $this->type))
+            ->with([
+                'images' => fn ($q) => $q->reorder()->orderByDesc('is_cover')->orderBy('sort_order')->limit(1),
+                // Area covers need the FULL set (IsProjectArea::cover() picks
+                // from the loaded collection, never a fresh query) — the
+                // limit(1) above is only safe for the project's OWN cover.
+                'areas.images',
+            ])
+            // A project belongs to a category through its own project_type OR
+            // any of its areas' — see Project::scopeOfType()
+            // (SsSystems\Platform\Projects\Concerns\HasProjectAreas).
+            ->when($this->type, fn ($q) => $q->ofType($this->type))
             ->orderByDesc('is_featured')
-            ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed));
+            ->tap(fn ($q) => SeededRandom::order($q, $this->randomSeed));
 
         // Area pages lead with that town's OWN projects, then its neighbours.
         //
@@ -130,13 +142,13 @@ class ProjectsGrid extends Component
             if ($ranked !== []) {
                 $projectsQuery->reorder()
                     ->orderByRaw(
-                        'CASE WHEN id IN (' . implode(',', array_fill(0, count($localIds) ?: 1, '?')) . ') THEN 0 '
-                        . 'WHEN id IN (' . implode(',', array_fill(0, count($nearbyIds) ?: 1, '?')) . ') THEN 1 '
-                        . 'ELSE 2 END',
+                        'CASE WHEN id IN ('.implode(',', array_fill(0, count($localIds) ?: 1, '?')).') THEN 0 '
+                        .'WHEN id IN ('.implode(',', array_fill(0, count($nearbyIds) ?: 1, '?')).') THEN 1 '
+                        .'ELSE 2 END',
                         array_merge($localIds ?: [0], $nearbyIds ?: [0])
                     )
                     ->orderByDesc('is_featured')
-                    ->tap(fn ($q) => \App\Support\SeededRandom::order($q, $this->randomSeed));
+                    ->tap(fn ($q) => SeededRandom::order($q, $this->randomSeed));
             }
         }
 
@@ -162,11 +174,21 @@ class ProjectsGrid extends Component
         // Every category GS Construction offers a service page for is shown, even
         // when no projects of that type are posted yet (the empty state then links
         // to the matching service page instead of showing a dead end).
-        $curatedOrder = \App\Support\ServiceCatalog::projectTypes()->all();
+        $curatedOrder = ServiceCatalog::projectTypes()->all();
+        // A project reaches a category through its own project_type OR any
+        // of its areas' — the filter list must offer both, or a project
+        // visible only via an area (e.g. a kitchen inside a "Home Remodel"
+        // job) would have no button that ever shows it.
         $existingTypes = Project::query()
             ->where('is_published', true)
             ->distinct()
             ->pluck('project_type')
+            ->merge(
+                ProjectArea::query()
+                    ->whereHas('project', fn ($q) => $q->where('is_published', true))
+                    ->distinct()
+                    ->pluck('project_type')
+            )
             ->filter()
             ->all();
 

@@ -512,7 +512,11 @@
                 $spokeProjects = $area->nearbyProjects(12);
                 $spokeTowns = $spokeProjects->map(fn ($p) => trim(\Illuminate\Support\Str::before((string) $p->location, ',')))
                     ->filter()->unique()->take(5)->values();
-                $spokeTypes = $spokeProjects->pluck('project_type')->filter()->unique()
+                // ->types(), not a bare project_type pluck: a project reaches
+                // a category through its own project_type OR any of its
+                // areas' (Project::types()), so a home-remodel job with a
+                // kitchen area still mentions "kitchen" in this intro.
+                $spokeTypes = $spokeProjects->flatMap(fn ($p) => $p->types())->filter()->unique()
                     ->map(fn ($t) => str_replace('-', ' ', (string) $t))->take(4)->values();
             @endphp
             @php

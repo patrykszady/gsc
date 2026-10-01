@@ -123,10 +123,21 @@
                                          is a route into the work rather than
                                          decoration. --}}
                                     @if($img->project)
+                                        @php
+                                            // This photo's own area, when it is one
+                                            // (localProjectImages()/curatedCovers()
+                                            // set this explicitly, never a fresh
+                                            // query) — the slide then names and
+                                            // links to that area's section.
+                                            $imgArea = $img->relationLoaded('area') ? $img->area : null;
+                                            $imgPresentation = $imgArea
+                                                ? \SsSystems\Platform\Projects\ProjectPresentation::forArea($img->project, $imgArea)
+                                                : \SsSystems\Platform\Projects\ProjectPresentation::wholeProject($img->project);
+                                        @endphp
                                         <div class="absolute top-4 left-4 z-10">
-                                            <a href="{{ route('projects.show', $img->project) }}" wire:navigate
+                                            <a href="{{ $imgPresentation->url() }}" wire:navigate
                                                class="inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/70">
-                                                {{ $img->project->title }}
+                                                {{ $imgPresentation->title() }}
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
                                         </div>

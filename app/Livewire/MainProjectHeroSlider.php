@@ -6,6 +6,7 @@ use App\Models\AreaServed;
 use App\Models\ProjectImage;
 use App\Support\ServiceImages;
 use Livewire\Component;
+use SsSystems\Platform\Projects\ProjectPresentation;
 
 class MainProjectHeroSlider extends Component
 {
@@ -16,16 +17,27 @@ class MainProjectHeroSlider extends Component
 
     // Custom content for service pages
     public ?string $projectType = null; // Filter to single project type
+
     public ?string $label = null;
+
     public ?string $primaryCtaText = null;
+
     public ?string $primaryCtaUrl = null;
+
     public ?string $secondaryCtaText = null;
+
     public ?string $secondaryCtaUrl = null;
+
     public int $slideCount = 3; // Number of slides for filtered mode
+
     public ?string $heightClasses = null;
+
     public int $autoplayInterval = 5000; // Autoplay interval in ms
+
     public bool $imagesOnly = false;
+
     public array $customSlides = [];
+
     // When the page already renders its own visible H1 (e.g. area pages), skip
     // the slider's sr-only H1 so the page has exactly one, matched heading.
     public bool $suppressH1 = false;
@@ -61,11 +73,11 @@ class MainProjectHeroSlider extends Component
     protected function randomCoverDataForType(string $projectType, ?int $excludeImageId = null): ?array
     {
         $image = $this->randomCoverForType($projectType, $excludeImageId);
-        
-        if (!$image) {
+
+        if (! $image) {
             return null;
         }
-        
+
         return $this->buildImageData($image);
     }
 
@@ -98,13 +110,21 @@ class MainProjectHeroSlider extends Component
         $mediumUrl = $image->getWebpThumbnailUrl('medium') ?? $image->getThumbnailUrl('medium');
         $smallUrl = $image->getWebpThumbnailUrl('small') ?? $image->getThumbnailUrl('small');
         $thumbUrl = $image->getWebpThumbnailUrl('thumb') ?? $image->getThumbnailUrl('thumb');
-        
+
         // For mobile LCP: use hero (1200px) as default instead of large (2400px)
         // This is better for mobile where viewport is typically under 640px
         $defaultUrl = $heroUrl ?? $largeUrl;
 
         $project = $image->project;
-        
+        // This image's own area, when curatedCover(s) matched it THROUGH one
+        // (set explicitly there — never a fresh query here) — the slide then
+        // names and links to that area's section, not the whole project. See
+        // ProjectImage::curatedCovers()/Project::presentFor().
+        $area = $image->relationLoaded('area') ? $image->area : null;
+        $presentation = $project
+            ? ($area ? ProjectPresentation::forArea($project, $area) : ProjectPresentation::wholeProject($project))
+            : null;
+
         return [
             'url' => $defaultUrl,
             'large' => $largeUrl,
@@ -113,8 +133,8 @@ class MainProjectHeroSlider extends Component
             'small' => $smallUrl,
             'thumb' => $thumbUrl,
             'alt' => $image->seo_alt_text,
-            'projectTitle' => $project?->title,
-            'projectUrl' => $project ? route('projects.show', $project) : null,
+            'projectTitle' => $presentation?->title(),
+            'projectUrl' => $presentation?->url(),
             'srcset' => implode(', ', array_filter([
                 $smallUrl ? "{$smallUrl} 300w" : null,
                 $mediumUrl ? "{$mediumUrl} 600w" : null,
@@ -151,7 +171,7 @@ class MainProjectHeroSlider extends Component
         $smallUrl = str_replace(['w=1920', 'q=80'], ['w=300', 'q=75'], $url);
         $mediumUrl = str_replace(['w=1920', 'q=80'], ['w=600', 'q=80'], $url);
         $heroUrl = str_replace(['w=1920', 'q=80'], ['w=1200', 'q=80'], $url);
-        
+
         return [
             'url' => $url,
             'hero' => $heroUrl,
@@ -189,7 +209,7 @@ class MainProjectHeroSlider extends Component
     public function render()
     {
         // Explicitly provided slides (used by individual project pages).
-        if (!empty($this->customSlides)) {
+        if (! empty($this->customSlides)) {
             return view('livewire.main-project-hero-slider', [
                 'renderedSlides' => $this->customSlides,
                 'area' => $this->area,
@@ -208,7 +228,7 @@ class MainProjectHeroSlider extends Component
         // When filtering to a specific project type (service pages)
         if ($this->projectType && $this->projectType !== 'mixed') {
             $images = $this->getFilteredSlideImages($this->projectType, $this->slideCount);
-            
+
             // Merge images with slides (slides contain heading/subheading)
             $renderedSlides = collect($this->slides)->map(function ($slide, $index) use ($images) {
                 $imageData = $images[$index] ?? $this->buildFallbackImageData($this->getFallbackForType($this->projectType));
@@ -216,6 +236,7 @@ class MainProjectHeroSlider extends Component
                 $slide['thumb'] = $imageData['thumb'];
                 $slide['srcset'] = $imageData['srcset'] ?? '';
                 $slide['imageAlt'] = $imageData['alt'];
+
                 return $slide;
             })->toArray();
 
@@ -241,6 +262,7 @@ class MainProjectHeroSlider extends Component
                 $slide['thumb'] = $imageData['thumb'];
                 $slide['srcset'] = $imageData['srcset'] ?? '';
                 $slide['imageAlt'] = $imageData['alt'];
+
                 return $slide;
             })->toArray();
 
@@ -280,6 +302,7 @@ class MainProjectHeroSlider extends Component
             $slide['imageAlt'] = $imageData['alt'];
             $slide['projectTitle'] = $imageData['projectTitle'] ?? null;
             $slide['projectUrl'] = $imageData['projectUrl'] ?? null;
+
             return $slide;
         })->toArray();
 

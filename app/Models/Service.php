@@ -83,7 +83,10 @@ class Service extends Model
     /** How many projects use this service — what makes a slug change or a delete unsafe. */
     public function projectsCount(): int
     {
-        return Project::where('project_type', $this->slug)->count();
+        // A project belongs to this service's category through its own
+        // project_type OR any of its areas' — see Project::scopeOfType()
+        // (SsSystems\Platform\Projects\Concerns\HasProjectAreas).
+        return Project::ofType($this->slug)->count();
     }
 
     /** The public service page for this service. */

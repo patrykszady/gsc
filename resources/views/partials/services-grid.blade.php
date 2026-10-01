@@ -22,11 +22,16 @@
             'mudroom' => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=50&q=30',
         ];
 
-        $image = ProjectImage::query()
-            ->where('is_cover', true)
-            ->whereHas('project', fn ($q) => $q->published()->ofType($projectType))
-            ->inRandomOrder()
-            ->first();
+        // ProjectImage::curatedCovers(), not a bare is_cover query: a project
+        // reaches $projectType through its OWN type OR any of its areas' —
+        // picking the project's generic is_cover photo for an area match
+        // would label some OTHER room as this category. curatedCovers()
+        // already resolves the right photo either way (the project's own
+        // cover, or that matching area's own cover) — see
+        // SsSystems\Platform\Projects\Concerns\IsProjectImage::scopeOfType()'s
+        // docblock for why this is the photo-granular rule, not the
+        // project-level one.
+        $image = ProjectImage::curatedCovers($projectType, 1)->first();
 
         if ($image) {
             return [
