@@ -5,6 +5,7 @@ use App\Models\ContactSubmission;
 use App\Models\Project;
 use App\Models\ReviewUrl;
 use App\Models\Testimonial;
+use App\Services\GoogleBusinessProfileService;
 use App\Services\TestimonialProjectTypeClassifier;
 use App\Services\YelpBusinessService;
 use App\Support\Reviews\ReviewImport;
@@ -162,14 +163,14 @@ Schedule::command('gbp:sync-service-areas')->weeklyOn(7, '04:10')
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled gbp:sync-service-areas failed'))
-    ->when(fn () => app(\App\Services\GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
 
 Schedule::command('google-business-profile:update-profile --categories')->weeklyOn(7, '04:20')
     ->timezone('America/Chicago')
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP category sync failed'))
-    ->when(fn () => app(\App\Services\GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
 Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP sync failed'));
@@ -235,7 +236,7 @@ Schedule::command('google-business-profile:sync-reviews')->dailyAt('06:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP review sync failed'))
-    ->when(fn () => app(\App\Services\GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
 
 // Google Business Profile: harvest deep links daily until all matched reviews have data URLs.
 Schedule::command('google-business-profile:match-reviews --normalize-google-urls')->dailyAt('06:15')
@@ -243,7 +244,7 @@ Schedule::command('google-business-profile:match-reviews --normalize-google-urls
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP review match failed'))
     ->when(function () {
-        if (! app(\App\Services\GoogleBusinessProfileService::class)->isConnected()) {
+        if (! app(GoogleBusinessProfileService::class)->isConnected()) {
             return false;
         }
 
@@ -580,7 +581,7 @@ Schedule::command('gbp:unresponded-reviews --max-age=24 --notify --notify-recent
     ->dailyAt('09:00')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/gbp-unresponded-reviews.log'))
-    ->when(fn () => app(\App\Services\GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
 
 // FAQ: weekly generation for website + AI model training.
 Schedule::command('faq:generate --ai')
@@ -694,14 +695,14 @@ Schedule::command('gbp:metrics-sync --days=14')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled gbp:metrics-sync failed'))
-    ->when(fn () => app(\App\Services\GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
 
 // GBP: weekly Performance API search-keyword sync (monthly granularity from Google).
 Schedule::command('gbp:metrics-sync --days=3 --with-keywords')
     ->weeklyOn(1, '05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
-    ->when(fn () => app(\App\Services\GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
 
 // SEO: daily PageSpeed Insights snapshot for key pages (mobile + desktop).
 Schedule::command('seo:psi-sync')
@@ -862,3 +863,9 @@ Schedule::call(function () {
         ->pluck('id')
         ->each(fn (int $id) => SendLeadToHive::dispatch($id));
 })->name('hive:resend-leads-safety-net')->everyMinute()->withoutOverlapping();
+
+// Headless Chrome orphaned by a Puppeteer script that died (one Instagram
+// browser ran 22 days on hive-prod, 2026-10-01) — see ReapOrphanedChrome.
+// Server-wide, not per tenant: it only touches orphaned headless browsers.
+Schedule::command('chrome:reap-orphans')->hourly()->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/chrome-reaper.log'));

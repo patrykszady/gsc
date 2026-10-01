@@ -14,6 +14,7 @@
  */
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { guardBrowser } from './lib/browser-guard.mjs';
 
 puppeteer.use(StealthPlugin());
 
@@ -37,7 +38,7 @@ const emit = (obj) => { process.stdout.write(JSON.stringify(obj) + '\n'); };
 
   let browser;
   try {
-    browser = await puppeteer.launch({
+    browser = guardBrowser(await puppeteer.launch({
       headless: 'new',
       userDataDir: args.userDataDir,
       defaultViewport: { width: 1280, height: 800 },
@@ -46,7 +47,7 @@ const emit = (obj) => { process.stdout.write(JSON.stringify(obj) + '\n'); };
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
       ],
-    });
+    }), { maxMs: args.timeoutMs + 3000 });
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
     await page.goto('https://www.instagram.com/', { waitUntil: 'networkidle2', timeout: args.timeoutMs });

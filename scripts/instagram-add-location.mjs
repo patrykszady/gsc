@@ -14,6 +14,7 @@
  */
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { guardBrowser } from './lib/browser-guard.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -252,12 +253,12 @@ async function addLocation(page, input, opts) {
     process.exit(2);
   }
 
-  const browser = await puppeteer.launch({
+  const browser = guardBrowser(await puppeteer.launch({
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir,
     defaultViewport: { width: 1366, height: 900 },
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled'],
-  });
+  }), { maxMs: 280_000 });
 
   let exitCode = 0;
   try {

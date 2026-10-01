@@ -23,6 +23,7 @@
  */
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { guardBrowser } from './lib/browser-guard.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -274,7 +275,7 @@ async function publish(page, input, opts) {
     process.exit(2);
   }
 
-  const browser = await puppeteer.launch({
+  const browser = guardBrowser(await puppeteer.launch({
     headless: args.headless ? 'new' : false,
     userDataDir: args.userDataDir,
     defaultViewport: { width: 1366, height: 900 },
@@ -283,7 +284,7 @@ async function publish(page, input, opts) {
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
     ],
-  });
+  }), { maxMs: 10 * 60 * 1000 });
 
   let exitCode = 0;
   try {

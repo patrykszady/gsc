@@ -20,6 +20,7 @@
  */
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { guardBrowser } from './lib/browser-guard.mjs';
 import fs from 'node:fs';
 
 puppeteer.use(StealthPlugin());
@@ -70,7 +71,7 @@ async function detectLoggedIn(page) {
   }
   fs.mkdirSync(args.userDataDir, { recursive: true });
 
-  const browser = await puppeteer.launch({
+  const browser = guardBrowser(await puppeteer.launch({
     headless: false,
     userDataDir: args.userDataDir,
     defaultViewport: { width: 1366, height: 900 },
@@ -80,7 +81,7 @@ async function detectLoggedIn(page) {
       '--disable-blink-features=AutomationControlled',
       '--start-maximized',
     ],
-  });
+  }), { maxMs: args.timeoutMs + 60_000 });
 
   const page = (await browser.pages())[0] || (await browser.newPage());
   // Visit instagram.com first — if cookies are still good, IG redirects
