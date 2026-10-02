@@ -224,6 +224,33 @@ class ZipCodeService
     }
 
     /**
+     * The ZIPs nearest a point by haversine, for a ZIP page's internal links.
+     * Only ZIPs with a page of their own: Hive's job ZIPs reach past the
+     * published area list, and those 301 to the index (9 such links on
+     * 2026-10-02).
+     *
+     * @param  \Illuminate\Support\Collection<int, array{zip: string, lat: float, lng: float}>  $points
+     * @return array<int, array{zip: string, lat: float, lng: float, miles: float}>
+     */
+    public function nearestServedZips(\Illuminate\Support\Collection $points, string $exceptZip, float $lat, float $lng, int $limit = 8): array
+    {
+        return $points
+            ->reject(fn ($p) => $p['zip'] === $exceptZip || ! $this->isServed((string) $p['zip']))
+            ->map(function ($p) use ($lat, $lng) {
+                $dLat = deg2rad($p['lat'] - $lat);
+                $dLng = deg2rad($p['lng'] - $lng);
+                $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat)) * cos(deg2rad($p['lat'])) * sin($dLng / 2) ** 2;
+                $p['miles'] = 3959 * 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+                return $p;
+            })
+            ->sortBy('miles')
+            ->take($limit)
+            ->values()
+            ->all();
+    }
+
+    /**
      * The published projects a ZIP service-area page renders, newest first.
      *
      * Extracted from ZipCodePage so the sitemap can declare the photos the page

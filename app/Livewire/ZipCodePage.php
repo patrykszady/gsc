@@ -115,20 +115,7 @@ class ZipCodePage extends Component
         $lat = (float) ($self['lat'] ?? $this->area?->latitude ?? 0);
         $lng = (float) ($self['lng'] ?? $this->area?->longitude ?? 0);
         if ($lat !== 0.0) {
-            $this->nearbyZips = $zipPoints
-                ->reject(fn ($p) => $p['zip'] === $this->zip)
-                ->map(function ($p) use ($lat, $lng) {
-                    $dLat = deg2rad($p['lat'] - $lat);
-                    $dLng = deg2rad($p['lng'] - $lng);
-                    $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat)) * cos(deg2rad($p['lat'])) * sin($dLng / 2) ** 2;
-                    $p['miles'] = 3959 * 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-                    return $p;
-                })
-                ->sortBy('miles')
-                ->take(8)
-                ->values()
-                ->all();
+            $this->nearbyZips = $zips->nearestServedZips($zipPoints, $this->zip, $lat, $lng);
         }
 
         $zipContent = $this->loadZipContent($this->zip);

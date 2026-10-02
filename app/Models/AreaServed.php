@@ -647,6 +647,20 @@ class AreaServed extends Model
     }
 
     /**
+     * The postal codes that have a ZIP page of their own: the ones to link.
+     * A ZIP outside the published area list 301s to the ZIP index, and a link
+     * to it only sends Google through a redirect (2026-10-02).
+     *
+     * @return array<int, string>
+     */
+    public function servedPostalCodes(): array
+    {
+        $zips = app(\App\Services\ZipCodeService::class);
+
+        return array_values(array_filter($this->postalCodes(), fn ($zip): bool => $zips->isServed((string) $zip)));
+    }
+
+    /**
      * Get areas with their project/testimonial counts, sorted by total count descending.
      * Used on homepage to display "most-served" cities with counts.
      *

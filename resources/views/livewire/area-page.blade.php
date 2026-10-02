@@ -80,7 +80,7 @@
                     : (string) $servicePhrases->first();
 
                 $nearbyFaqCities = $area->nearestCities(2)->pluck('city')->implode(' and ');
-                $homePostalCodes = array_values(array_slice($area->postalCodes(), 0, 10));
+                $homePostalCodes = array_slice($area->servedPostalCodes(), 0, 10);
                 $landmarkLine = filled($area->landmarks)
                     ? 'Local focus: ' . \Illuminate\Support\Str::limit((string) $area->landmarks, 140)
                     : null;
@@ -855,7 +855,7 @@
 
                 $serviceTone = abs(crc32($area->slug . '|' . $config['urlSlug'])) % 3;
                 $nearbyList = $nearbyAreas->take(3)->pluck('city')->implode(', ');
-                $servicePostalCodes = array_values(array_slice($area->postalCodes(), 0, 10));
+                $servicePostalCodes = array_slice($area->servedPostalCodes(), 0, 10);
                 $landmarkSnippet = filled($area->landmarks)
                     ? \Illuminate\Support\Str::limit((string) $area->landmarks, 140)
                     : null;
