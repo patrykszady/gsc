@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Storage;
  *   homeowner_cost, how_to_check_line, how_to_apply, notes, researched_at
  *
  * Pages render for every area; entries without found_official_info render
- * the generic Illinois-law content and are noindexed (thin-page guard).
+ * the generic Illinois-law content. All are indexable since 2026-10-02.
  */
 class LeadLineInfo
 {

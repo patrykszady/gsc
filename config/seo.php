@@ -372,10 +372,12 @@ return [
     // Town contact pages carry their own booking facts since 2026-09-17 (drive
     // time from the office, the village's permit rules, neighbours on the route)
     // and are indexed; set false to keep them out again. A town's projects/
-    // testimonials lists without a project or review of its own stay out: Google
-    // crawled them and declined (2026-09-17). Flip to open them again.
+    // testimonials lists are indexable too since 2026-10-02 (Patryk's call):
+    // closed 2026-09-17 for towns without a project or review of their own,
+    // they sat under "Excluded by noindex" while every town page linked them.
+    // Set false to keep those out again.
     'area_index_contact_pages' => (bool) env('SEO_AREA_INDEX_CONTACT_PAGES', true),
-    'area_index_list_spokes_without_proof' => (bool) env('SEO_AREA_INDEX_LIST_SPOKES_WITHOUT_PROOF', false),
+    'area_index_list_spokes_without_proof' => (bool) env('SEO_AREA_INDEX_LIST_SPOKES_WITHOUT_PROOF', true),
 
     /*
     | When a page FAMILY's template last changed in a way a reader would see.

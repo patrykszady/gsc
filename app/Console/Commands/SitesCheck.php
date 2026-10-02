@@ -225,7 +225,7 @@ class SitesCheck extends Command
         if ($site->slug === 'gsc') {
             $leadTowns = count(LeadLineInfo::all());
             if ($leadTowns === 0) {
-                $this->line('  <fg=red>lead-service-lines data missing — every lead-pipe page will noindex itself</>');
+                $this->line('  <fg=red>lead-service-lines data missing — every lead-pipe page falls back to the generic Illinois-law copy</>');
                 $failures++;
             } else {
                 $this->line("  lead-lines   {$leadTowns} towns");

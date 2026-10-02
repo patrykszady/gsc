@@ -549,17 +549,15 @@ class GenerateSitemap extends Command
                 $areaCount++;
             }
 
-            // Lead service line replacement guide — only when official municipal
-            // info was verified for this town (otherwise the page is noindexed).
-            if (LeadLineInfo::hasOfficialInfo($area->slug)) {
-                $sitemap->add(
-                    Url::create("{$baseUrl}/areas-served/{$area->slug}/lead-pipe-replacement")
-                        ->setLastModificationDate($familyLastmod('lead-pipe-replacement'))
-                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
-                        ->setPriority(0.6)
-                );
-                $urlCount++;
-            }
+            // Lead service line replacement guide, every town (2026-10-02): the
+            // generic Illinois-law version is indexable too.
+            $sitemap->add(
+                Url::create("{$baseUrl}/areas-served/{$area->slug}/lead-pipe-replacement")
+                    ->setLastModificationDate($familyLastmod('lead-pipe-replacement'))
+                    ->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)
+                    ->setPriority(LeadLineInfo::hasOfficialInfo($area->slug) ? 0.6 : 0.4)
+            );
+            $urlCount++;
 
             // Area-specific service pages — only for cities with real local proof.
             if ($includeAreaServicePages) {

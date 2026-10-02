@@ -119,11 +119,12 @@ class AreaSeoPolicy
                 return true;
             }
 
-            // A town's projects and testimonials lists are only its own when the
-            // town has a project or a review of its own; otherwise they list the
-            // neighbours' and read as a copy of the next town's (32 of them were
-            // "Crawled - currently not indexed" on 2026-09-17).
-            if ($page !== 'service' && ! (bool) config('seo.area_index_list_spokes_without_proof', false)) {
+            // A town's projects and testimonials lists without a project or
+            // review of its own list the neighbours'. Closed 2026-09-17 (32 were
+            // "Crawled - currently not indexed"), open again since 2026-10-02:
+            // every town page links them, and Google listed them all under
+            // "Excluded by noindex". seo.area_index_list_spokes_without_proof.
+            if ($page !== 'service' && ! (bool) config('seo.area_index_list_spokes_without_proof', true)) {
                 return false;
             }
 

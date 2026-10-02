@@ -402,9 +402,10 @@ Route::get('/areas-served/{area}/{page}', AreaPage::class)
     ->name('areas.page');
 
 // Per-municipality lead service line replacement guides. Data comes from the
-// official-source research stored in storage/app/lead-service-lines.json
+// official-source research in resources/data/lead-service-lines.json
 // (App\Support\LeadLineInfo); areas without verified official info render
-// generic Illinois-law content and are noindexed.
+// the generic Illinois-law content. Every one is indexable and sitemapped
+// since 2026-10-02 (Patryk: anything on the public site is indexable).
 Route::get('/areas-served/{area}/lead-pipe-replacement', function (AreaServed|string $area) {
     // The 'area' binding (AppServiceProvider) hands a served town as a model and
     // 301s a retired one itself, so by here $area is a model — or a plain
@@ -427,10 +428,6 @@ Route::get('/areas-served/{area}/lead-pipe-replacement', function (AreaServed|st
             158
         ))
         ->canonical(url("/areas-served/{$slug}/lead-pipe-replacement"));
-
-    if (! LeadLineInfo::hasOfficialInfo($slug)) {
-        $seo->markNoindex();
-    }
 
     return view('lead-line-page', ['area' => $model, 'info' => $info]);
 })->name('areas.lead-line');

@@ -35,15 +35,17 @@ class AreaServiceDemandGateTest extends TestCase
             $this->assertTrue(AreaSeoPolicy::shouldIndex($a, $page), "{$page} is indexable");
         }
         $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'service', 'basement-remodeling'), 'no proof, no demand, still indexable');
-        // Contact carries the town's own booking facts and is indexed; the
-        // projects/testimonials lists need a project or review of the town's own.
+        // Contact carries the town's own booking facts, and the projects and
+        // testimonials lists are indexed even without a project or review of
+        // the town's own (2026-10-02).
         $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'contact'));
-        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'projects'));
-        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'testimonials'));
-        config(['seo.area_index_contact_pages' => false, 'seo.area_index_list_spokes_without_proof' => true]);
+        $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'projects'));
+        $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'testimonials'));
+        config(['seo.area_index_contact_pages' => false, 'seo.area_index_list_spokes_without_proof' => false]);
         $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'contact'), 'the flag closes contact again');
-        $this->assertTrue(AreaSeoPolicy::shouldIndex($a, 'projects'), 'the flag opens the lists again');
-        config(['seo.area_index_contact_pages' => true, 'seo.area_index_list_spokes_without_proof' => false]);
+        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'projects'), 'the flag closes the lists again');
+        $this->assertFalse(AreaSeoPolicy::shouldIndex($a, 'testimonials'), 'the flag closes the lists again');
+        config(['seo.area_index_contact_pages' => true, 'seo.area_index_list_spokes_without_proof' => true]);
 
         $bare = AreaServed::create(['city' => 'Nowhere', 'slug' => 'nowhere']);
         $this->assertFalse(AreaSeoPolicy::shouldIndex($bare, 'home'));
