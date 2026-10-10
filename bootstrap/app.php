@@ -6,6 +6,7 @@ use App\Http\Middleware\DevSiteBar;
 use App\Http\Middleware\NoIndexHeader;
 use App\Http\Middleware\NoIndexNonProduction;
 use App\Http\Middleware\PinAdminApiTenant;
+use App\Http\Middleware\RedirectLegacyPaginationParams;
 use App\Http\Middleware\RedirectLegacyUrls;
 use App\Http\Middleware\ResolveSite;
 use App\Http\Middleware\SecurityHeaders;
@@ -76,6 +77,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // SEO: Track domain source for analytics, handle legacy redirects, cache static assets, and add security headers
         // DetectCountry: Uses Cloudflare CF-IPCountry header for geo-based features (GA only for US, visible Turnstile for non-US)
         $middleware->web(append: [
+            // Query-string cleanup, no tenant needed. Placed first here, but
+            // Laravel's priority sort still runs it after ResolveSite and
+            // SubstituteBindings regardless (unlisted custom middleware sorts
+            // after anything in $middlewarePriority — confirmed via
+            // Router::gatherRouteMiddleware()) — it still lands well before
+            // RedirectLegacyUrls, TrackDomainSource and the rest, so a
+            // request that is just going to 301 skips that heavier work.
+            RedirectLegacyPaginationParams::class,
             // Multi-tenant: resolve the Site from the request host. Appended,
             // so it sits after StartSession (which the ?site= session pin
             // needs) — see the priority tweak below for the one middleware it

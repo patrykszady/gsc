@@ -79,6 +79,18 @@
     @php
         $imageUrl = $current['image'] ?? asset('images/greg-patryk-thumb.jpg');
         $hasMultiple = count($history ?? []) > 1;
+        // Real data, not a generic placeholder: the same project-type
+        // humanizing already used for the badge below ("home-remodel" →
+        // "Home Remodel"), paired with the review's own town when it has
+        // one. Falls back to the brand the same way buildFallbackImageData()
+        // does elsewhere, never to an empty string.
+        $imageTypeLabel = ! empty($current['project_type'])
+            ? \Illuminate\Support\Str::title(str_replace('-', ' ', $current['project_type']))
+            : null;
+        $imageAlt = trim(implode(' ', array_filter([
+            $imageTypeLabel ? "{$imageTypeLabel} project" : 'Remodeling project',
+            ! empty($current['location']) ? "in {$current['location']}" : 'by '.config('brand.name'),
+        ])));
     @endphp
 
     <section class="{{ $sectionClasses }}">
@@ -146,7 +158,7 @@
                              broken fallback cannot loop the error handler. --}}
                         <img
                             src="{{ $imageUrl }}"
-                            alt=""
+                            alt="{{ $imageAlt }}"
                             loading="lazy"
                             class="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover/thumb:scale-105"
                             onload="window.imageCache?.set(this.src, this.src)"

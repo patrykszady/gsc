@@ -15,6 +15,9 @@ use RalphJSmit\Laravel\SEO\Support\SEOData;
  */
 class SEOBuilder
 {
+    /** Google's desktop SERP cuts titles near 600px, roughly 60 characters. */
+    private const TITLE_MAX = 60;
+
     protected ?Model $model = null;
     protected ?string $title = null;
     protected ?string $description = null;
@@ -149,9 +152,32 @@ class SEOBuilder
             // Autopilot path override, and the layout's title= prop), and
             // because config/brand.php is overlaid per TENANT at runtime — a
             // literal in config/seo.php would brand every site as GS.
+            //
+            // Every source above budgets the PRE-brand text for a flat 60
+            // (SeoService::normalizeMetaText(), TitleMetaGenerator being the
+            // one exception that already reserves room), so appending " |
+            // {brand}" unconditionally pushed the rendered <title> to 70-80+
+            // chars on area, service and compare pages alike — the town and
+            // service keywords a searcher is scanning for were fine; it was
+            // always the brand suffix Google truncated. The keyword text is
+            // never touched here: the brand is the first thing to give way,
+            // and only the rare title that still overflows on its own (a
+            // couple of hardcoded service titles) falls back to a word-safe
+            // trim, never a mid-word cut.
             $brand = (string) config('brand.name');
             if ($brand !== '' && ! str_contains($title, $brand)) {
-                $title = $title . ' | ' . $brand;
+                $withBrand = $title . ' | ' . $brand;
+                $title = match (true) {
+                    mb_strlen($withBrand) <= self::TITLE_MAX => $withBrand,
+                    mb_strlen($title) <= self::TITLE_MAX => $title,
+                    default => self::truncateAtWord($title, self::TITLE_MAX),
+                };
+            } elseif (mb_strlen($title) > self::TITLE_MAX) {
+                // Brand already embedded (e.g. trade()'s "{name} for Home
+                // Remodels | GS Construction") or no brand configured: the
+                // whole string is keyword content, so it gets the same
+                // word-safe trim instead of overflowing untouched.
+                $title = self::truncateAtWord($title, self::TITLE_MAX);
             }
         }
 
@@ -182,5 +208,29 @@ class SEOBuilder
     public function keywordList(): array
     {
         return $this->keywords;
+    }
+
+    /**
+     * Cut $text to the last whole word at or under $max.
+     *
+     * A title truncated mid-word ("...Remodeling Contra") reads as broken in
+     * the SERP; one that simply ends a little early does not. Used only as
+     * the fallback once dropping the brand suffix is not (or was never)
+     * enough — the normal case never reaches this.
+     */
+    private static function truncateAtWord(string $text, int $max): string
+    {
+        $text = trim($text);
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+
+        $cut = mb_substr($text, 0, $max);
+        $lastSpace = mb_strrpos($cut, ' ');
+        if ($lastSpace !== false) {
+            $cut = mb_substr($cut, 0, $lastSpace);
+        }
+
+        return rtrim($cut, " |\u{2013}\u{2014}\u{00B7},.;:-");
     }
 }

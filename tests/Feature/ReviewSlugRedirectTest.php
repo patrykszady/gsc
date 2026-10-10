@@ -33,11 +33,18 @@ class ReviewSlugRedirectTest extends TestCase
         $this->get("/reviews/{$review->slug}")->assertOk();
     }
 
-    public function test_pagination_state_from_an_older_build_is_kept_out_of_crawlers(): void
+    /**
+     * Superseded 2026-10-10: disallowing `/*_page=` stopped Google from
+     * re-crawling a URL it already had indexed, so it could never see the
+     * rel=canonical pointing at the bare page — Search Console reported
+     * "Indexed, though blocked by robots.txt" instead. App\Http\Middleware\
+     * RedirectLegacyPaginationParams now 301s the param away instead (see
+     * RedirectLegacyPaginationParamsTest), which Google CAN follow.
+     */
+    public function test_pagination_state_from_an_older_build_is_no_longer_blocked_by_robots(): void
     {
         $robots = \App\Support\Seo\CrawlFiles::robots();
 
-        // Googlebot's group and the default group both carry the rule.
-        $this->assertSame(3, substr_count($robots, 'Disallow: /*_page='));
+        $this->assertStringNotContainsString('_page=', $robots);
     }
 }

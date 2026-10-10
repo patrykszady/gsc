@@ -22,6 +22,13 @@
 
 <span {{ $attributes->class('inline-flex') }}
     @if($label !== '') role="img" aria-label="{{ $label }}" @else aria-hidden="true" @endif>
-    <img src="{{ asset('images/5-stars.svg') }}" alt="" width="140" height="20" class="{{ $size }} w-auto dark:hidden" />
-    <img src="{{ asset('images/5-stars-dark.svg') }}" alt="" width="140" height="20" class="hidden {{ $size }} w-auto dark:block" />
+    {{-- The accessible name (when there is one) lives on the wrapping span
+         above, via role="img"/aria-label — these two images are always
+         presentational duplicates (light/dark pair) and never need their
+         own. aria-hidden="true" is what a plain "does this image have alt
+         text" scan (ours and most third-party ones) treats as "correctly
+         decorative, don't count it" — alt="" alone, with the accessible
+         name one level up on the span, read as an image missing alt text. --}}
+    <img src="{{ asset('images/5-stars.svg') }}" alt="" aria-hidden="true" width="140" height="20" class="{{ $size }} w-auto dark:hidden" />
+    <img src="{{ asset('images/5-stars-dark.svg') }}" alt="" aria-hidden="true" width="140" height="20" class="hidden {{ $size }} w-auto dark:block" />
 </span>

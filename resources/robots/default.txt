@@ -18,7 +18,6 @@ Disallow: /api/
 Disallow: /horizon
 Disallow: /telescope
 Disallow: /_debugbar/
-Disallow: /*_page=
 Disallow: /storage/
 Disallow: /vendor/
 
