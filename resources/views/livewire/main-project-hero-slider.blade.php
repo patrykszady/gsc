@@ -206,7 +206,14 @@
                 :class="isThumbLoaded(0) ? 'opacity-100' : 'opacity-0'"
                 @load="thumbsLoaded.includes(0) || thumbsLoaded.push(0)"
             />
-            {{-- Full-size image with fetchpriority=high for LCP --}}
+            {{-- Full-size image with fetchpriority=high for LCP. No opacity
+                 transition here on purpose: this is the page's LCP candidate,
+                 and a fade-in (opacity-0 -> opacity-100 over a CSS transition)
+                 makes the browser delay the paint it reports for this element
+                 until the transition settles, adding its duration straight
+                 onto LCP's "render delay". It paints at full opacity the
+                 instant it decodes; the blur thumb above still covers it
+                 until then, so there is no flash of a half-loaded image. --}}
             <img
                 x-ref="firstSlideImg"
                 src="{{ $firstSlide['image'] }}"
@@ -218,7 +225,6 @@
                 fetchpriority="high"
                 decoding="async"
                 class="absolute inset-0 h-full w-full object-cover"
-                :class="firstSlideWasCached ? 'opacity-100' : (isLoaded(0) ? 'opacity-100 transition-opacity duration-500' : 'opacity-0')"
                 @load="loadedImages.includes(0) || loadedImages.push(0)"
             />
 

@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    {{-- Dynamic head content, pushed by individual views/components (e.g. the
+         hero slider's LCP image preload — see main-project-hero-slider.blade.php).
+         Rendered first, right after the charset/viewport/csrf meta tags and
+         before fonts, the Vite CSS/JS bundle, and the SEO/schema blocks below —
+         all of which are otherwise equal-or-higher network priority and would
+         compete with a page's own preloaded LCP image for bandwidth on a
+         throttled mobile connection if discovered first. --}}
+    @stack('head')
+
     {{-- Polyfill requestIdleCallback for Safari/iOS (< 17.4) so inline and bundled
          scripts don't throw "Can't find variable: requestIdleCallback". Must run
          before any other script. --}}
@@ -117,9 +126,6 @@
     <script>
         window.imageCache = window.imageCache || new Map();
     </script>
-
-    {{-- Dynamic head content (preload links, etc.) --}}
-    @stack('head')
 
     {{-- Client-side JavaScript error beacon. Registered at parse time (not
          deferred) so it captures errors during Alpine/Livewire hydration. The

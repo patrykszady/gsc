@@ -25,7 +25,14 @@ class IntelAutopilotTest extends TestCase
     public function test_action_hints_become_safe_ledger_actions_linked_back_to_the_finding(): void
     {
         Cache::flush();
-        config(['gbp-services.service_areas' => ['Wheeling, IL, USA', 'Palatine, IL, USA'], 'seo-intel.sources' => []]);
+        // reindex_actions defaults off (2026-10-10: ss.systems now requests
+        // indexing in Search Console daily); this test's job is the intel
+        // type-mapping itself, including 'reindex', so it opts back in.
+        config([
+            'gbp-services.service_areas' => ['Wheeling, IL, USA', 'Palatine, IL, USA'],
+            'seo-intel.sources' => [],
+            'seo.autopilot.reindex_actions' => true,
+        ]);
         $area = AreaServed::create(['city' => 'Palatine', 'slug' => 'palatine', 'local_intro' => 'Short copy about Palatine.']);
         Project::create(['title' => 'Palatine Kitchen', 'project_type' => 'kitchen', 'location' => 'Palatine, IL', 'is_published' => true, 'is_featured' => true]);
 

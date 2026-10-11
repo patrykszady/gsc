@@ -513,5 +513,13 @@ return [
         'research_min_volume' => (int) env('SEO_AUTOPILOT_RESEARCH_MIN_VOLUME', 30),
         // Copy refreshes per autopilot run (each is one Gemini call and a page rewrite).
         'content_refresh_per_run' => (int) env('SEO_AUTOPILOT_CONTENT_REFRESH_PER_RUN', 2),
+        // "Reindex" actions only ever reach IndexNow (Bing/Yandex/Seznam) —
+        // see App\Services\Seo\Appliers\ReindexApplier — never Google's
+        // Indexing API, which honours just JobPosting/BroadcastEvent pages.
+        // ss.systems presses "Request indexing" in Search Console for this
+        // site daily, which makes the autopilot's own proposals redundant.
+        // Off by default (2026-10-10); seo:autopilot-retire-reindex clears
+        // whatever is already open. Same key name on jpeterson-design.
+        'reindex_actions' => (bool) env('SEO_AUTOPILOT_REINDEX_ACTIONS', false),
     ],
 ];

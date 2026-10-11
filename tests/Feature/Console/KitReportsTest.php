@@ -130,6 +130,10 @@ class KitReportsTest extends TestCase
         // pillar measured too — faking the queue keeps this test's only
         // signal the one it actually seeds.
         Queue::fake();
+        // Kit 0.16.2: with no sitemap file the freshness pillar asks the site
+        // for /sitemap.xml over HTTP; a 404 keeps it unmeasured, as this
+        // test's arithmetic below assumes.
+        Http::fake(['*/sitemap.xml' => Http::response('', 404)]);
 
         AreaServed::create([
             'city' => 'Naperville', 'slug' => 'naperville',

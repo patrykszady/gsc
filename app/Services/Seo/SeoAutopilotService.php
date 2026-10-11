@@ -484,7 +484,9 @@ class SeoAutopilotService
             ->filter()->flip()->all();
         $generator = new LandingPageContentGenerator;
         $impact = ['critical' => 8.0, 'warn' => 5.0, 'info' => 2.5, 'win' => 1.0];
-        $budgets = ['title_meta' => 6, 'content_refresh' => (int) config('seo.autopilot.content_refresh_per_run', 2), 'create_page' => 3, 'reindex' => 10, 'llms_regen' => 1];
+        // 'reindex' budget follows the same gate as synthesizeReindex() above —
+        // one config flag controls every path that can create a reindex action.
+        $budgets = ['title_meta' => 6, 'content_refresh' => (int) config('seo.autopilot.content_refresh_per_run', 2), 'create_page' => 3, 'reindex' => config('seo.autopilot.reindex_actions', false) ? 10 : 0, 'llms_regen' => 1];
         $created = 0;
 
         foreach ($findings as $f) {
@@ -713,6 +715,14 @@ class SeoAutopilotService
     /** Coverage-problem URLs worth nudging back into the crawl queue. */
     private function synthesizeReindex(): int
     {
+        // Reindex actions only ever reach IndexNow (Bing/Yandex/Seznam), never
+        // Google — see ReindexApplier — and ss.systems now presses "Request
+        // indexing" in Search Console for this site daily, making these
+        // redundant. Off by default; seo:autopilot-retire-reindex clears
+        // whatever is already open. See config/seo.php: seo.autopilot.reindex_actions.
+        if (! config('seo.autopilot.reindex_actions', false)) {
+            return 0;
+        }
         if (! Schema::hasTable('gsc_coverage_states')) {
             return 0;
         }
