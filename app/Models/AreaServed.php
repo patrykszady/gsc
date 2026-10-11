@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Jobs\GenerateAreaContentJob;
 use App\Models\Concerns\BelongsToSite;
 use App\Services\HiveProjectsClient;
+use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Tenancy;
 use App\Support\TownCopy;
 use Illuminate\Database\Eloquent\Collection;
@@ -461,22 +462,110 @@ class AreaServed extends Model
 
         $key = "area:{$this->id}:local_testimonials:{$limit}";
 
-        return cache()->remember($key, 21600, function () use ($city, $limit) {
-            $needle = mb_strtolower($city);
+        return cache()->remember($key, 21600, fn () => $this->testimonialsInCity($city)->take($limit)->values());
+    }
 
-            return Testimonial::visible()
-                ->whereNotNull('project_location')
-                ->latest('review_date')
-                ->get()
-                ->filter(function (Testimonial $testimonial) use ($needle): bool {
-                    $parts = preg_split('/[,.]/', (string) $testimonial->project_location) ?: [];
-                    $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+    /**
+     * This town's own reviews that actually say something about ONE trade —
+     * matched by project_type tag or by naming it
+     * (AreaSeoPolicy::testimonialMatchesService()). Leads a service spoke's
+     * proof block (partials/area-service-proof) so a kitchen page opens with
+     * kitchen reviews rather than every review in town. One query, cached 6h:
+     * the block's first version resolved every visible review's town with a
+     * query of its own on every render (2026-10-10).
+     *
+     * @return Collection<int, Testimonial>
+     */
+    public function localTestimonialsAbout(string $service, int $limit = 3): Collection
+    {
+        $city = trim((string) $this->city);
+        if ($city === '') {
+            return new Collection;
+        }
 
-                    return $token === $needle;
-                })
-                ->take($limit)
-                ->values();
-        });
+        $key = "area:{$this->id}:local_testimonials_about:{$service}:{$limit}";
+
+        return cache()->remember($key, 21600, fn () => $this->testimonialsInCity($city)
+            ->filter(fn (Testimonial $testimonial): bool => AreaSeoPolicy::testimonialMatchesService($testimonial, $service))
+            ->take($limit)
+            ->values());
+    }
+
+    /**
+     * Every visible review placed in this city by its project_location's
+     * leading token ("Barrington, IL" → barrington), newest first. One query;
+     * the public callers cache their own slice of it.
+     *
+     * @return Collection<int, Testimonial>
+     */
+    private function testimonialsInCity(string $city): Collection
+    {
+        $needle = mb_strtolower($city);
+
+        return Testimonial::visible()
+            ->whereNotNull('project_location')
+            ->latest('review_date')
+            ->get()
+            ->filter(function (Testimonial $testimonial) use ($needle): bool {
+                $parts = preg_split('/[,.]/', (string) $testimonial->project_location) ?: [];
+                $token = mb_strtolower(trim((string) ($parts[0] ?? '')));
+
+                return $token === $needle;
+            })
+            ->values();
+    }
+
+    /**
+     * One whole sentence of fact about remodeling in this town, from data the
+     * town already has, for the top of a service spoke: the village's permit
+     * rule first (what a homeowner comparing contractors needs to know, and
+     * different in every town), else the lead of the town's own long copy.
+     * Never the landmark list — a comma list under a service heading reads
+     * as filler, not proof. Null when the town has neither.
+     *
+     * @return array{label: string, text: string}|null
+     */
+    public function serviceProofFact(): ?array
+    {
+        $city = trim((string) $this->city);
+
+        if (filled($this->permit_notes)) {
+            return ['label' => "Permits in {$city}:", 'text' => self::firstSentence((string) $this->permit_notes)];
+        }
+
+        if (filled($this->local_intro)) {
+            return ['label' => "About {$city}:", 'text' => self::firstSentence((string) $this->local_intro)];
+        }
+
+        return null;
+    }
+
+    /**
+     * The opening sentence of a text, whole. A very short first "sentence"
+     * (an abbreviation such as "St." splits it early) takes the next one along
+     * until at least $min characters are there; a sentence longer than $max is
+     * cut at a word with an ellipsis rather than mid-word.
+     */
+    public static function firstSentence(string $text, int $min = 40, int $max = 260): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+        $pieces = preg_split('/(?<=[.!?])\s+(?=[A-Z0-9"“(])/u', $text) ?: [$text];
+
+        $sentence = '';
+        foreach ($pieces as $piece) {
+            $sentence = trim($sentence.' '.$piece);
+            if (mb_strlen($sentence) >= $min) {
+                break;
+            }
+        }
+
+        if (mb_strlen($sentence) <= $max) {
+            return $sentence;
+        }
+
+        $cut = preg_replace('/\s+\S*$/u', '', mb_substr($sentence, 0, $max)) ?? '';
+
+        return rtrim($cut, ' ,;:—-').'…';
     }
 
     /**
@@ -557,17 +646,22 @@ class AreaServed extends Model
      * high-demand town has real projects within ~12 miles). Cards must label
      * each project with its real town — never presented as work in this city.
      *
+     * $projectType narrows the neighbours' own projects the same way
+     * localProjects() does, for a service spoke's fallback to a
+     * neighbouring town's work in THIS trade specifically (2026-10-10).
+     * Optional and defaults to every type, so existing callers are unaffected.
+     *
      * @return Collection<int, Project>
      */
-    public function nearbyProjects(int $limit = 6): Collection
+    public function nearbyProjects(int $limit = 6, ?string $projectType = null): Collection
     {
-        $key = "area:{$this->id}:nearby_projects:{$limit}";
+        $key = "area:{$this->id}:nearby_projects:{$limit}:".($projectType ?: 'all');
 
-        return cache()->remember($key, 21600, function () use ($limit) {
+        return cache()->remember($key, 21600, function () use ($limit, $projectType) {
             $collected = new Collection;
 
             foreach ($this->nearestCities(40) as $nearby) {
-                foreach ($nearby->localProjects($limit) as $project) {
+                foreach ($nearby->localProjects($limit, $projectType) as $project) {
                     if ($collected->count() >= $limit) {
                         return $collected->values();
                     }

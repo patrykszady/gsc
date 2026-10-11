@@ -971,12 +971,18 @@
             </div>
 
             {{-- About Section with service-specific keywords --}}
-            <livewire:about-section 
-                variant="service" 
-                :area="$area" 
-                :service-title="$config['label']" 
-                :service-short-title="$config['label']" 
+            <livewire:about-section
+                variant="service"
+                :area="$area"
+                :service-title="$config['label']"
+                :service-short-title="$config['label']"
             />
+
+            {{-- The town's OWN proof for this trade — real local projects,
+                 real local reviews, a fact built from data the town already
+                 has, and links onward — leading the generated copy below it
+                 rather than following it (2026-10-10). See the partial. --}}
+            @include('partials.area-service-proof', ['area' => $area, 'config' => $config])
 
             {{-- Copy written for THIS service in THIS town (AreaServiceContent):
                  the town's own description used to render here on all five

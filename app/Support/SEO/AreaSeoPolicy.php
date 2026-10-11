@@ -161,6 +161,33 @@ class AreaSeoPolicy
     ];
 
     /**
+     * Does this review name the service — DEMAND_KEYWORDS found in either
+     * its project_type tag or its own written text? A review's project_type
+     * is normally the cleanest signal (exactly 'kitchen', 'bathroom', ...,
+     * which is itself one of the keywords), but checking the text too
+     * catches a review that mentions the trade without a matching tag.
+     * Used to lead a service spoke with reviews that actually say something
+     * about that trade, rather than every review in town.
+     */
+    public static function testimonialMatchesService(Testimonial $testimonial, string $service): bool
+    {
+        $words = self::DEMAND_KEYWORDS[$service] ?? [];
+        if ($words === []) {
+            return false;
+        }
+
+        $haystack = ' '.mb_strtolower((string) $testimonial->project_type).' '.mb_strtolower((string) $testimonial->review_description).' ';
+
+        foreach ($words as $word) {
+            if (str_contains($haystack, mb_strtolower($word))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Impressions (last 28 full days of Search Console data) for queries that
      * name this town and this service. Cached per site for 12 hours; the whole
      * query table is read once per cache miss and folded per town+service.

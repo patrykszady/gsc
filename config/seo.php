@@ -364,20 +364,34 @@ return [
     | Console shows at least this many impressions/28d for queries naming that
     | town and service. See AreaSeoPolicy::shouldIndex().
     */
-    // 2026-09-14, Patryk's call: every page variant of a town is indexable
-    // as long as the town has its own copy. Set either to false to return to
-    // the proof/demand gates in AreaSeoPolicy without touching code.
+    // 2026-09-14, Patryk's call: a town's nav sub-pages (about/services) are
+    // indexable as long as the town has its own copy. Set false to return to
+    // the proof gate in AreaSeoPolicy without touching code.
     'area_index_subpages' => (bool) env('SEO_AREA_INDEX_SUBPAGES', true),
-    'area_index_service_pages' => (bool) env('SEO_AREA_INDEX_SERVICE_PAGES', true),
+    // Opened 2026-09-14 alongside area_index_subpages; gated again 2026-10-10.
+    // Search Console (2026-10-10): of the sitemap's town service spokes Google
+    // crawled, it indexed 118 and declined 43 as "Crawled - currently not
+    // indexed" — about three in four indexed, and the declined ones are
+    // overwhelmingly towns with neither a project/review of their own nor
+    // researched demand (only 21 of 66 towns have real proof — see
+    // AreaSeoPolicy::priorityCities() — and just 16 of the 97 declined pages
+    // had any impressions in 90 days). Defaults back to the proof-or-demand
+    // gate in AreaSeoPolicy::shouldIndex(); set true to reopen every service
+    // spoke regardless of proof or demand.
+    'area_index_service_pages' => (bool) env('SEO_AREA_INDEX_SERVICE_PAGES', false),
     // Town contact pages carry their own booking facts since 2026-09-17 (drive
     // time from the office, the village's permit rules, neighbours on the route)
-    // and are indexed; set false to keep them out again. A town's projects/
-    // testimonials lists are indexable too since 2026-10-02 (Patryk's call):
-    // closed 2026-09-17 for towns without a project or review of their own,
-    // they sat under "Excluded by noindex" while every town page linked them.
-    // Set false to keep those out again.
+    // and are indexed; set false to keep them out again.
     'area_index_contact_pages' => (bool) env('SEO_AREA_INDEX_CONTACT_PAGES', true),
-    'area_index_list_spokes_without_proof' => (bool) env('SEO_AREA_INDEX_LIST_SPOKES_WITHOUT_PROOF', true),
+    // A town's projects/testimonials lists were indexable without proof from
+    // 2026-10-02 (Patryk's call: every town page links them, and closed
+    // 2026-09-17 they sat under "Excluded by noindex") until gated again
+    // 2026-10-10. Search Console (2026-10-10) listed 12 testimonials lists
+    // and 11 projects lists as "Crawled - currently not indexed" — the same
+    // towns-without-proof pattern as the service spokes above. Defaults back
+    // to the proof gate in AreaSeoPolicy::shouldIndex() (isPriority()); set
+    // true to reopen every town's lists regardless of proof.
+    'area_index_list_spokes_without_proof' => (bool) env('SEO_AREA_INDEX_LIST_SPOKES_WITHOUT_PROOF', false),
 
     /*
     | When a page FAMILY's template last changed in a way a reader would see.
