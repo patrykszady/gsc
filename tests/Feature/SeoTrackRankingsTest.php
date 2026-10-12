@@ -19,8 +19,8 @@ class SeoTrackRankingsTest extends TestCase
     use LazilyRefreshDatabase;
 
     private const QUERIES = [
-        ['q' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine, Illinois, United States', 'city_slug' => 'palatine'],
-        ['q' => 'bathroom remodeling Schaumburg IL', 'location' => 'Schaumburg, Illinois, United States', 'city_slug' => 'schaumburg'],
+        ['q' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine,Illinois,United States', 'city_slug' => 'palatine'],
+        ['q' => 'bathroom remodeling Schaumburg IL', 'location' => 'Schaumburg,Illinois,United States', 'city_slug' => 'schaumburg'],
     ];
 
     protected function setUp(): void
@@ -68,7 +68,7 @@ class SeoTrackRankingsTest extends TestCase
     public function test_mid_loop_spend_stops_further_live_queries_within_budget(): void
     {
         config(['seo.rank_tracker.serp_mode' => 'live', 'seo.rank_tracker.web_queries' => array_merge(self::QUERIES, [
-            ['q' => 'general contractor Barrington IL', 'location' => 'Barrington, Illinois, United States', 'city_slug' => 'barrington'],
+            ['q' => 'general contractor Barrington IL', 'location' => 'Barrington,Illinois,United States', 'city_slug' => 'barrington'],
         ])]);
         Http::fake(array_merge($this->fakeBalance(50), [
             '*/serp/google/organic/live/advanced' => Http::response(['tasks' => [['cost' => 0.05, 'status_code' => 20000, 'result' => [['items' => [$this->organic(5, 'gs.construction')]]]]]]),
@@ -88,9 +88,9 @@ class SeoTrackRankingsTest extends TestCase
     public function test_fetch_failures_are_persisted_distinct_from_not_ranking_and_run_still_succeeds(): void
     {
         config(['seo.rank_tracker.serp_mode' => 'live', 'seo.rank_tracker.web_queries' => [
-            ['q' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine, Illinois, United States', 'city_slug' => 'palatine'],
-            ['q' => 'bathroom remodeling Schaumburg IL', 'location' => 'Schaumburg, Illinois, United States', 'city_slug' => 'schaumburg'],
-            ['q' => 'general contractor Barrington IL', 'location' => 'Barrington, Illinois, United States', 'city_slug' => 'barrington'],
+            ['q' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine,Illinois,United States', 'city_slug' => 'palatine'],
+            ['q' => 'bathroom remodeling Schaumburg IL', 'location' => 'Schaumburg,Illinois,United States', 'city_slug' => 'schaumburg'],
+            ['q' => 'general contractor Barrington IL', 'location' => 'Barrington,Illinois,United States', 'city_slug' => 'barrington'],
         ]]);
         Http::fake(array_merge($this->fakeBalance(50), [
             '*/serp/google/organic/live/advanced' => function ($request) {
@@ -152,12 +152,12 @@ class SeoTrackRankingsTest extends TestCase
 
         $this->artisan('seo:track-rankings', ['--budget' => 1])->assertExitCode(0);
 
-        $this->assertSame('Palatine, Illinois, United States', $seenLocations['kitchen remodeling Palatine IL']);
-        $this->assertSame('Schaumburg, Illinois, United States', $seenLocations['bathroom remodeling Schaumburg IL']);
+        $this->assertSame('Palatine,Illinois,United States', $seenLocations['kitchen remodeling Palatine IL']);
+        $this->assertSame('Schaumburg,Illinois,United States', $seenLocations['bathroom remodeling Schaumburg IL']);
 
         $rows = SeoRankSnapshot::where('engine', 'google')->get()->keyBy('query');
-        $this->assertSame('Palatine, Illinois, United States', $rows['kitchen remodeling Palatine IL']->location);
-        $this->assertSame('Schaumburg, Illinois, United States', $rows['bathroom remodeling Schaumburg IL']->location);
+        $this->assertSame('Palatine,Illinois,United States', $rows['kitchen remodeling Palatine IL']->location);
+        $this->assertSame('Schaumburg,Illinois,United States', $rows['bathroom remodeling Schaumburg IL']->location);
     }
 
     public function test_default_serp_mode_uses_the_standard_queue_and_skips_live(): void
@@ -195,7 +195,7 @@ class SeoTrackRankingsTest extends TestCase
         $this->assertCount(2, $rows);
         $this->assertSame(2, $rows['kitchen remodeling Palatine IL']->gsc_position);
         $this->assertSame('dataforseo_standard_advanced', $rows['kitchen remodeling Palatine IL']->meta['source']);
-        $this->assertSame('Palatine, Illinois, United States', $idsByKeyword['task-0']['location_name'] ?? null);
+        $this->assertSame('Palatine,Illinois,United States', $idsByKeyword['task-0']['location_name'] ?? null);
     }
 
     public function test_falls_back_to_live_when_the_standard_queue_fails_to_post(): void
@@ -213,5 +213,30 @@ class SeoTrackRankingsTest extends TestCase
         $rows = SeoRankSnapshot::where('engine', 'google')->get();
         $this->assertCount(2, $rows);
         $this->assertTrue($rows->every(fn ($r) => $r->meta['source'] === 'dataforseo_live_advanced'));
+    }
+
+    public function test_a_location_written_with_spaces_reaches_dataforseo_in_its_own_spelling(): void
+    {
+        config(['seo.rank_tracker.web_queries' => [
+            ['q' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine, Illinois, United States', 'city_slug' => 'palatine'],
+        ]]);
+        $sent = [];
+        Http::fake(array_merge($this->fakeBalance(50), [
+            '*/serp/google/organic/task_post' => function ($request) use (&$sent) {
+                foreach ($request->data() as $task) {
+                    $sent[] = $task['location_name'] ?? null;
+                }
+
+                return Http::response(['tasks' => [['id' => 'task-0', 'status_code' => 20100, 'cost' => 0.0006, 'data' => ['keyword' => 'kitchen remodeling Palatine IL']]]]);
+            },
+            '*/serp/google/organic/tasks_ready' => Http::response(['tasks' => [['result' => [['id' => 'task-0', 'endpoint_advanced' => '/v3/serp/google/organic/task_get/advanced/task-0']]]]]),
+            '*/serp/google/organic/task_get/advanced/*' => Http::response(['tasks' => [['status_code' => 20000, 'result' => [['items' => [$this->organic(3, 'https://gs.construction/areas-served/palatine')]]]]]]),
+        ]));
+
+        $this->artisan('seo:track-rankings');
+
+        // DataForSEO rejects "Palatine, Illinois, United States" (40501
+        // Invalid Field); the comma spelling is corrected at the boundary.
+        $this->assertSame(['Palatine,Illinois,United States'], $sent);
     }
 }

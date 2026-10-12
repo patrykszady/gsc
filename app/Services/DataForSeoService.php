@@ -118,7 +118,7 @@ class DataForSeoService
         foreach (array_chunk($keywords, 1000) as $chunk) {
             $data = $this->call('POST', '/keywords_data/google_ads/search_volume/live', [[
                 'keywords' => $chunk,
-                'location_name' => $locationName,
+                'location_name' => self::locationName($locationName),
                 'language_code' => 'en',
             ]]);
             foreach ((array) ($data['tasks'][0]['result'] ?? []) as $row) {
@@ -148,7 +148,7 @@ class DataForSeoService
     {
         $data = $this->call('POST', '/dataforseo_labs/google/ranked_keywords/live', [[
             'target' => $domain,
-            'location_name' => $locationName,
+            'location_name' => self::locationName($locationName),
             'language_code' => 'en',
             'limit' => $limit,
             'order_by' => ['keyword_data.keyword_info.search_volume,desc'],
@@ -188,7 +188,7 @@ class DataForSeoService
         }
         $data = $this->call('POST', '/dataforseo_labs/google/keyword_ideas/live', [[
             'keywords' => array_slice($seeds, 0, 200),
-            'location_name' => $locationName,
+            'location_name' => self::locationName($locationName),
             'language_code' => 'en',
             'limit' => $limit,
             'order_by' => ['keyword_info.search_volume,desc'],
@@ -420,6 +420,17 @@ class DataForSeoService
     }
 
     /**
+     * DataForSEO spells a location "Arlington Heights,Illinois,United States":
+     * no space after the commas. "Arlington Heights, Illinois, United States"
+     * is rejected with 40501 Invalid Field 'location_name' — which is how all
+     * 31 tracked queries failed every weekly run until 2026-10-11.
+     */
+    public static function locationName(string $name): string
+    {
+        return trim((string) preg_replace('/\s*,\s*/', ',', trim($name)));
+    }
+
+    /**
      * One live Google-organic SERP check.
      *
      * position = rank_absolute of the first result whose domain matches;
@@ -438,7 +449,7 @@ class DataForSeoService
             )->timeout(90)->retry(2, 1500, throw: false)
                 ->post(self::BASE.'/serp/google/organic/live/advanced', [[
                     'keyword' => $query,
-                    'location_name' => $locationName,
+                    'location_name' => self::locationName($locationName),
                     'language_code' => 'en',
                     'device' => 'desktop',
                     'depth' => 100,
@@ -474,7 +485,7 @@ class DataForSeoService
             )->timeout(90)->retry(2, 1500, throw: false)
                 ->post(self::BASE.'/serp/google/organic/live/advanced', [[
                     'keyword' => $query,
-                    'location_name' => $locationName,
+                    'location_name' => self::locationName($locationName),
                     'language_code' => 'en',
                     'device' => 'desktop',
                     'depth' => 100,
@@ -558,7 +569,7 @@ class DataForSeoService
             'language_code' => 'en',
             'device' => 'desktop',
             'depth' => 100,
-        ], $t), array_values($tasks));
+        ], $t, isset($t['location_name']) ? ['location_name' => self::locationName((string) $t['location_name'])] : []), array_values($tasks));
 
         $data = $this->call('POST', '/serp/google/organic/task_post', $payload);
         $idsByIndex = [];
