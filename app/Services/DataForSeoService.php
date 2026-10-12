@@ -45,6 +45,24 @@ class DataForSeoService
         return round($this->spent, 4);
     }
 
+    /**
+     * @var array<int, string> original index => task id, from the last
+     *                         googleOrganicStandardBatch() task_post
+     */
+    protected array $lastStandardTaskIds = [];
+
+    /**
+     * The task ids the last standard batch queued, by the caller's index, so
+     * a result that finishes after the wait window can still be collected
+     * (googleOrganicTaskResult) by a later run.
+     *
+     * @return array<int, string>
+     */
+    public function lastStandardTaskIds(): array
+    {
+        return $this->lastStandardTaskIds;
+    }
+
     /** Account balance in USD, or null when the call fails. */
     public function balance(): ?float
     {
@@ -579,6 +597,7 @@ class DataForSeoService
                 $idsByIndex[$i] = $id;
             }
         }
+        $this->lastStandardTaskIds = $idsByIndex;
 
         if ($idsByIndex === []) {
             // task_post failed outright — lastError is already set by call();
@@ -613,5 +632,51 @@ class DataForSeoService
         }
 
         return $out;
+    }
+
+    /**
+     * One standard-queue task's result, whenever it finished: 'ready' with
+     * the result envelope (the shape parseOrganicResult() takes), 'pending'
+     * while DataForSEO still has it queued (40601/40602), or 'error' with
+     * lastError set. Collecting is free — the task was paid for when posted.
+     *
+     * @return array{status: 'ready'|'pending'|'error', result: array<string, mixed>|null}
+     */
+    public function googleOrganicTaskResult(string $id): array
+    {
+        $this->lastError = null;
+        $envelope = $this->call('GET', "/serp/google/organic/task_get/advanced/{$id}");
+        $task = (array) ($envelope['tasks'][0] ?? []);
+        $status = (int) ($task['status_code'] ?? 0);
+
+        if ($status === 20000) {
+            $result = $task['result'][0] ?? null;
+
+            return is_array($result) ? ['status' => 'ready', 'result' => $result] : ['status' => 'error', 'result' => null];
+        }
+        if (in_array($status, [40601, 40602], true)) {
+            return ['status' => 'pending', 'result' => null];
+        }
+        $this->lastError ??= ($status ?: '?').' '.($task['status_message'] ?? 'no response');
+
+        return ['status' => 'error', 'result' => null];
+    }
+
+    /**
+     * The completed Google Organic tasks DataForSEO still holds for us,
+     * oldest first: id and when it was posted. Free to call.
+     *
+     * @return array<int, array{id: string, date_posted: string}>
+     */
+    public function googleOrganicReadyTasks(): array
+    {
+        $rows = [];
+        foreach (self::resultOf($this->call('GET', '/serp/google/organic/tasks_ready')) as $row) {
+            if (is_string($row['id'] ?? null)) {
+                $rows[] = ['id' => $row['id'], 'date_posted' => (string) ($row['date_posted'] ?? '')];
+            }
+        }
+
+        return $rows;
     }
 }

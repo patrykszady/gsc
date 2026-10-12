@@ -25,7 +25,8 @@ class TrackRankings extends Command
     protected $signature = 'seo:track-rankings
         {--query= : Run only queries containing this substring}
         {--dry-run : Compute but do not persist}
-        {--budget= : Max USD for the DataForSEO SERP pass this run (default config seo.rank_tracker.budget)}';
+        {--budget= : Max USD for the DataForSEO SERP pass this run (default config seo.rank_tracker.budget)}
+        {--collect : Only collect standard-queue results that finished after an earlier run stopped waiting, then exit}';
 
     protected $description = 'Snapshot Google rankings for tracked queries from synced Search Console data.';
 
@@ -113,6 +114,17 @@ class TrackRankings extends Command
         // (last real observation before this: 2026-07-06). The GSC-derived
         // pass above stays: two instruments, clearly labeled by engine.
         $dfs = app(DataForSeoService::class);
+
+        // The standard queue sometimes answers after the run's wait window
+        // (2026-10-12: 30 of 31 Monday checks, paid for, sat in tasks_ready
+        // while their rows said "failed"). Every run first collects what an
+        // earlier one left behind; --collect does only that.
+        if (! $dryRun) {
+            $this->collectLateResults($dfs);
+        }
+        if ($this->option('collect')) {
+            return self::SUCCESS;
+        }
         if (! $dfs->isConfigured()) {
             $this->comment('DataForSEO not configured (DATAFORSEO_LOGIN/PASSWORD) — real SERP pass skipped.');
 
@@ -177,7 +189,7 @@ class TrackRankings extends Command
                 'keyword' => (string) $cfg['q'],
                 'location_name' => (string) ($cfg['location'] ?? 'Chicago,Illinois,United States'),
                 'depth' => 100,
-            ], $queriesToRun));
+            ], $queriesToRun), (int) config('seo.rank_tracker.standard_wait_seconds', 600));
 
             if ($batch !== null) {
                 $usedStandard = true;
@@ -209,6 +221,7 @@ class TrackRankings extends Command
         }
 
         $sourceLabel = $usedStandard ? 'dataforseo_standard_advanced' : 'dataforseo_live_advanced';
+        $taskIds = $usedStandard ? $dfs->lastStandardTaskIds() : [];
         $rf = $rm = $failed = $attempted = 0;
 
         foreach ($queriesToRun as $i => $cfg) {
@@ -239,7 +252,10 @@ class TrackRankings extends Command
                         'gsc_match_title' => null,
                         'result_count' => null,
                         'top_results' => [],
-                        'meta' => ['source' => $sourceLabel, 'fetch_failed' => true, 'error' => $error],
+                        // The task id lets collectLateResults() fill this
+                        // row in once the queue answers.
+                        'meta' => ['source' => $sourceLabel, 'fetch_failed' => true, 'error' => $error]
+                            + (isset($taskIds[$i]) ? ['dataforseo_task_id' => $taskIds[$i]] : []),
                         'fetched_at' => Carbon::now(),
                     ]);
                 }
@@ -288,5 +304,99 @@ class TrackRankings extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Fill in "failed" standard-queue rows whose task finished after the run
+     * stopped waiting. Rows that kept their task id are asked for directly;
+     * rows from before ids were kept are matched to DataForSEO's ready list
+     * by keyword and posting time. Returns how many rows were filled.
+     */
+    protected function collectLateResults(DataForSeoService $dfs): int
+    {
+        $open = SeoRankSnapshot::query()
+            ->where('engine', 'google')
+            ->where('fetched_at', '>=', Carbon::now()->subDays(30))
+            ->orderBy('fetched_at')
+            ->get()
+            ->filter(fn (SeoRankSnapshot $row) => ! empty($row->meta['fetch_failed']))
+            ->values();
+
+        if ($open->isEmpty()) {
+            return 0;
+        }
+
+        $filled = $pending = $gone = 0;
+
+        $withIds = $open->filter(fn (SeoRankSnapshot $row) => filled($row->meta['dataforseo_task_id'] ?? null));
+        foreach ($withIds as $row) {
+            $answer = $dfs->googleOrganicTaskResult((string) $row->meta['dataforseo_task_id']);
+            if ($answer['status'] === 'ready') {
+                $this->fillLateRow($row, $answer['result'], 'kept task id');
+                $filled++;
+            } elseif ($answer['status'] === 'pending') {
+                $pending++;
+            } else {
+                // Not coming: keep the failure, drop the id so it is not asked again.
+                $meta = $row->meta;
+                unset($meta['dataforseo_task_id']);
+                $meta['error'] = $dfs->getLastError() ?? 'collect failed';
+                $row->update(['meta' => $meta]);
+                $gone++;
+            }
+        }
+
+        // Rows without an id (written before 2026-10-12): the only link to a
+        // ready task is its keyword, and that it was posted shortly before
+        // the row was written.
+        $orphans = $open->filter(fn (SeoRankSnapshot $row) => blank($row->meta['dataforseo_task_id'] ?? null))->values();
+        if ($orphans->isNotEmpty()) {
+            foreach ($dfs->googleOrganicReadyTasks() as $ready) {
+                $posted = $ready['date_posted'] !== '' ? Carbon::parse($ready['date_posted']) : null;
+                if (! $posted || $posted->lt(Carbon::now()->subDays(30))) {
+                    continue;
+                }
+                $answer = $dfs->googleOrganicTaskResult($ready['id']);
+                $keyword = (string) ($answer['result']['keyword'] ?? '');
+                if ($answer['status'] !== 'ready' || $keyword === '') {
+                    continue;
+                }
+                $row = $orphans->first(fn (SeoRankSnapshot $r) => strcasecmp($r->query, $keyword) === 0
+                    && ! empty($r->meta['fetch_failed'])
+                    && $r->fetched_at->between($posted, $posted->copy()->addHour()));
+                if (! $row) {
+                    continue;
+                }
+                $this->fillLateRow($row, $answer['result'], 'matched by keyword');
+                $row->meta = $row->meta + ['dataforseo_task_id' => $ready['id']];
+                $row->save();
+                $filled++;
+            }
+        }
+
+        $this->info("Late standard-queue results: filled={$filled}  still pending={$pending}  given up={$gone}");
+
+        return $filled;
+    }
+
+    /**
+     * @param  array<string, mixed>  $result  a task_get/advanced result envelope
+     */
+    protected function fillLateRow(SeoRankSnapshot $row, array $result, string $how): void
+    {
+        $obs = DataForSeoService::parseOrganicResult($result, 'gs.construction');
+        $meta = $row->meta;
+        unset($meta['fetch_failed'], $meta['error']);
+        $meta['matched_url'] = $obs['url'];
+        $meta['local_pack_present'] = $obs['local_pack'];
+        $meta['collected_late'] = ['at' => Carbon::now()->toIso8601String(), 'how' => $how];
+
+        $row->update([
+            'gsc_position' => $obs['position'],
+            'top_results' => array_slice($obs['top_domains'], 0, 10),
+            'meta' => $meta,
+        ]);
+
+        $this->line(sprintf('  [google] %-48s %s  (collected late, %s)', Str::limit($row->query, 48, ''), $obs['position'] === null ? 'not in top 100' : '#'.$obs['position'], $how));
     }
 }

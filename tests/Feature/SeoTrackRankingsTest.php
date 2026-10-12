@@ -239,4 +239,95 @@ class SeoTrackRankingsTest extends TestCase
         // Invalid Field); the comma spelling is corrected at the boundary.
         $this->assertSame(['Palatine,Illinois,United States'], $sent);
     }
+
+    public function test_a_failed_standard_row_keeps_its_task_id_and_is_filled_by_a_later_collect(): void
+    {
+        Http::fake(array_merge($this->fakeBalance(50), [
+            '*/serp/google/organic/task_post' => Http::response(['tasks' => [
+                ['id' => 'task-a', 'status_code' => 20100, 'status_message' => 'Task Created.'],
+                ['id' => 'task-b', 'status_code' => 20100, 'status_message' => 'Task Created.'],
+            ]]),
+            // Only the first task answers inside the wait window.
+            '*/serp/google/organic/tasks_ready' => Http::response(['tasks' => [['result' => [['id' => 'task-a']]]]]),
+            '*/serp/google/organic/task_get/advanced/task-a' => Http::response(['tasks' => [['status_code' => 20000, 'result' => [['items' => [$this->organic(4, 'gs.construction')]]]]]]),
+        ]));
+
+        $this->artisan('seo:track-rankings', ['--budget' => 1])->assertExitCode(0);
+
+        $late = SeoRankSnapshot::where('engine', 'google')->where('query', 'bathroom remodeling Schaumburg IL')->firstOrFail();
+        $this->assertTrue($late->meta['fetch_failed']);
+        $this->assertSame('task-b', $late->meta['dataforseo_task_id']);
+        $this->assertNull($late->gsc_position);
+
+        // Still queued at the first collect: nothing changes, the id is kept.
+        // (One stub whose answer changes: Http::fake keeps earlier stubs first.)
+        $taskB = ['tasks' => [['status_code' => 40602, 'status_message' => 'Task In Queue.']]];
+        Http::fake(['*/serp/google/organic/task_get/advanced/task-b' => function () use (&$taskB) {
+            return Http::response($taskB);
+        }]);
+        $this->artisan('seo:track-rankings', ['--collect' => true])
+            ->expectsOutputToContain('filled=0  still pending=1')
+            ->assertExitCode(0);
+        $this->assertSame('task-b', $late->fresh()->meta['dataforseo_task_id']);
+        $this->assertTrue($late->fresh()->meta['fetch_failed']);
+
+        // Answered later: the row is filled in place, no second row, no spend.
+        $taskB = ['tasks' => [['status_code' => 20000, 'result' => [['keyword' => 'bathroom remodeling Schaumburg IL', 'items' => [$this->organic(7, 'gs.construction')]]]]]];
+        $this->artisan('seo:track-rankings', ['--collect' => true])
+            ->expectsOutputToContain('filled=1')
+            ->assertExitCode(0);
+
+        $late->refresh();
+        $this->assertSame(7, $late->gsc_position);
+        $this->assertArrayNotHasKey('fetch_failed', $late->meta);
+        $this->assertSame('kept task id', $late->meta['collected_late']['how']);
+        $this->assertSame('dataforseo_standard_advanced', $late->meta['source']);
+        $this->assertSame(2, SeoRankSnapshot::where('engine', 'google')->count());
+        $this->assertEmpty(Http::recorded(fn ($r) => str_contains($r->url(), 'task_post') || str_contains($r->url(), 'live/advanced')));
+    }
+
+    public function test_collect_matches_a_ready_task_without_a_kept_id_by_keyword_and_posting_time(): void
+    {
+        // Rows written before ids were kept: the 2026-10-12 Monday run.
+        $row = SeoRankSnapshot::create([
+            'engine' => 'google', 'query' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine,Illinois,United States',
+            'top_results' => [], 'meta' => ['source' => 'dataforseo_standard_advanced', 'fetch_failed' => true, 'error' => 'failed'],
+            'fetched_at' => now()->subMinutes(50),
+        ]);
+        $other = SeoRankSnapshot::create([
+            'engine' => 'google', 'query' => 'kitchen remodeling Palatine IL', 'location' => 'Palatine,Illinois,United States',
+            'top_results' => [], 'meta' => ['source' => 'dataforseo_standard_advanced', 'fetch_failed' => true, 'error' => 'failed'],
+            'fetched_at' => now()->subDays(8),
+        ]);
+
+        Http::fake([
+            '*/serp/google/organic/tasks_ready' => Http::response(['tasks' => [['result' => [
+                ['id' => 'orphan-1', 'date_posted' => now()->subMinutes(54)->format('Y-m-d H:i:s').' +00:00'],
+                ['id' => 'stranger', 'date_posted' => now()->subMinutes(54)->format('Y-m-d H:i:s').' +00:00'],
+            ]]]]),
+            '*/serp/google/organic/task_get/advanced/orphan-1' => Http::response(['tasks' => [['status_code' => 20000, 'result' => [['keyword' => 'kitchen remodeling Palatine IL', 'items' => [$this->organic(5, 'gs.construction')]]]]]]),
+            '*/serp/google/organic/task_get/advanced/stranger' => Http::response(['tasks' => [['status_code' => 20000, 'result' => [['keyword' => 'plumber Palatine IL', 'items' => []]]]]]),
+        ]);
+
+        $this->artisan('seo:track-rankings', ['--collect' => true])
+            ->expectsOutputToContain('filled=1')
+            ->assertExitCode(0);
+
+        $row->refresh();
+        $this->assertSame(5, $row->gsc_position);
+        $this->assertSame('orphan-1', $row->meta['dataforseo_task_id']);
+        $this->assertSame('matched by keyword', $row->meta['collected_late']['how']);
+        $this->assertArrayNotHasKey('fetch_failed', $row->meta);
+        // The week-old row with the same keyword is not the one that task belongs to.
+        $this->assertTrue($other->fresh()->meta['fetch_failed']);
+    }
+
+    public function test_collect_with_nothing_open_calls_dataforseo_not_at_all(): void
+    {
+        Http::fake();
+
+        $this->artisan('seo:track-rankings', ['--collect' => true])->assertExitCode(0);
+
+        Http::assertNothingSent();
+    }
 }

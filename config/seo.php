@@ -182,6 +182,10 @@ return [
         // synchronously (~$0.002/check). TrackRankings and SerpSource fall
         // back to 'live' automatically when the standard queue errors.
         'serp_mode' => env('SEO_RANK_TRACKER_SERP_MODE', 'standard'),
+        // How long a run waits for the standard queue before writing the
+        // unanswered checks as failed rows; `--collect` (and the next run)
+        // fills those in once the queue answers.
+        'standard_wait_seconds' => (int) env('SEO_RANK_TRACKER_STANDARD_WAIT', 600),
 
         'identity_patterns' => [
             'gs construction',

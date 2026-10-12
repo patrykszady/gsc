@@ -366,6 +366,14 @@ Schedule::command('seo:track-rankings')
     ->appendOutputTo(storage_path('logs/seo-rankings.log'))
     ->onFailure(fn () => logger()->error('Scheduled SEO rank tracker failed'));
 
+// The standard queue sometimes answers after that run's wait window; the
+// checks are paid for and wait in DataForSEO's ready list, so collect them.
+Schedule::command('seo:track-rankings --collect')
+    ->weeklyOn(1, '10:00')
+    ->timezone('America/Chicago')
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/seo-rankings.log'));
+
 // SEO: weekly title-CTR audit — flag pages with high impressions but low CTR.
 Schedule::command('seo:title-audit --days=28 --min-impr=20 --max-ctr=2.0')
     ->weeklyOn(1, '08:15')
