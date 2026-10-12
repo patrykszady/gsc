@@ -40,6 +40,19 @@ class TrackRankings extends Command
 
         $filter = (string) ($this->option('query') ?? '');
         $dryRun = (bool) $this->option('dry-run');
+        $dfs = app(DataForSeoService::class);
+
+        // The standard queue sometimes answers after the run's wait window
+        // (2026-10-12: 30 of 31 Monday checks, paid for, sat in tasks_ready
+        // while their rows said "failed"). Every run first collects what an
+        // earlier one left behind; --collect does only that — before the
+        // Search Console snapshot below, which a collect must not repeat.
+        if (! $dryRun) {
+            $this->collectLateResults($dfs);
+        }
+        if ($this->option('collect')) {
+            return self::SUCCESS;
+        }
 
         $since = Carbon::today()->subDays(6)->toDateString();
         $found = $missed = 0;
@@ -113,18 +126,6 @@ class TrackRankings extends Command
         // engine='google' rows resume the series the retired scraper left off
         // (last real observation before this: 2026-07-06). The GSC-derived
         // pass above stays: two instruments, clearly labeled by engine.
-        $dfs = app(DataForSeoService::class);
-
-        // The standard queue sometimes answers after the run's wait window
-        // (2026-10-12: 30 of 31 Monday checks, paid for, sat in tasks_ready
-        // while their rows said "failed"). Every run first collects what an
-        // earlier one left behind; --collect does only that.
-        if (! $dryRun) {
-            $this->collectLateResults($dfs);
-        }
-        if ($this->option('collect')) {
-            return self::SUCCESS;
-        }
         if (! $dfs->isConfigured()) {
             $this->comment('DataForSEO not configured (DATAFORSEO_LOGIN/PASSWORD) — real SERP pass skipped.');
 

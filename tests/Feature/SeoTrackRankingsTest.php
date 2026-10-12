@@ -329,5 +329,7 @@ class SeoTrackRankingsTest extends TestCase
         $this->artisan('seo:track-rankings', ['--collect' => true])->assertExitCode(0);
 
         Http::assertNothingSent();
+        // A collect is not a run: no Search Console snapshot rows either.
+        $this->assertSame(0, SeoRankSnapshot::count());
     }
 }
