@@ -438,6 +438,14 @@ class EmailLeadReader
             return $summary + ['status' => EmailLeadIngest::STATUS_LEAD, 'confidence' => $verdict['confidence'], 'reason' => $verdict['reason']];
         }
 
+        // A client of the business writing about a problem on finished work
+        // ("grout is cracking in both bathrooms") is a service call in hive,
+        // not a lead (Katie Love, 2026-10-19). Hive knows its clients; ask it
+        // before filing — it opens the call — and leave the email alone.
+        if ($this->isHiveServiceCall($message, $base, $body, $identity)) {
+            return $this->skip($base, 'service_call', $dryRun, $summary);
+        }
+
         try {
             $submission = $this->createSubmission($message, $base, $body, $verdict, $identity);
 
@@ -473,6 +481,25 @@ class EmailLeadReader
 
             return $summary + ['status' => EmailLeadIngest::STATUS_FAILED, 'reason' => $e->getMessage()];
         }
+    }
+
+    /** Whether hive took this email as a client's service request. */
+    protected function isHiveServiceCall(array $message, array $base, string $body, string $identity): bool
+    {
+        $answer = $this->hive->serviceCallFromEmail(array_filter([
+            'message_key' => $identity,
+            'from_email' => (string) $base['from_email'],
+            'from_name' => $base['from_name'],
+            'to' => array_values(array_filter(array_column((array) ($message['to'] ?? []), 'email'))),
+            'cc' => array_values(array_filter(array_column((array) ($message['cc'] ?? []), 'email'))),
+            'subject' => (string) $base['subject'],
+            'body' => Str::limit($body, 20000, ''),
+            'mailbox' => $base['mailbox'],
+            'rfc_message_id' => $base['rfc_message_id'],
+            'received_at' => $base['message_at']?->toIso8601String(),
+        ], fn ($value) => $value !== null && $value !== ''));
+
+        return (bool) ($answer['service_call'] ?? false);
     }
 
     /** @return array<string, mixed> */

@@ -258,6 +258,50 @@ class HiveProjectsClient
     }
 
     /**
+     * Ask hive whether an email this site is about to file as a lead is
+     * really a client's service request (a problem on finished work). Hive
+     * decides once per message — opening the service call when it is one —
+     * and answers the same on every later ask. Null when hive is not
+     * connected or could not answer: the caller then carries on as before.
+     *
+     * Hive endpoint: POST {HIVE_API_URL}/api/v1/service-calls/from-email
+     *
+     * @param  array{message_key: string, from_email: string, from_name?: ?string, to?: list<string>, cc?: list<string>, subject?: string, body?: string, mailbox?: ?string, rfc_message_id?: ?string, received_at?: ?string}  $email
+     * @return array{service_call: bool, project_id: ?int}|null
+     */
+    public function serviceCallFromEmail(array $email): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        try {
+            $response = Http::baseUrl($this->baseUrl)
+                ->withToken($this->token)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(45)
+                ->connectTimeout(5)
+                ->post('/api/v1/service-calls/from-email', $email);
+        } catch (Throwable $e) {
+            Log::channel('submissions')->warning('Hive service-call check failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if (! $response->successful()) {
+            Log::channel('submissions')->warning('Hive service-call check refused', ['status' => $response->status()]);
+
+            return null;
+        }
+
+        return [
+            'service_call' => (bool) $response->json('service_call'),
+            'project_id' => $response->json('project_id') !== null ? (int) $response->json('project_id') : null,
+        ];
+    }
+
+    /**
      * POST a contact-form lead to hive.contractors. Returns the Hive lead id
      * on success, or throws RuntimeException on transient/permanent failure
      * so the queued job can decide whether to retry.

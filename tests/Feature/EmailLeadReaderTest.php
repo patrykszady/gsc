@@ -490,6 +490,49 @@ class EmailLeadReaderTest extends TestCase
         $this->assertSame(1, ContactSubmission::withoutSiteScope()->count());
     }
 
+    public function test_a_clients_service_request_is_left_to_hive_which_opens_the_service_call(): void
+    {
+        Config::set('services.hive.url', 'https://hive.test');
+        Config::set('services.hive.token', 'secret');
+
+        $this->fakeNylas([$this->message([
+            'from' => [['name' => 'Katie Love', 'email' => 'katie.love@example.test']],
+            'subject' => 'Grout',
+            'body' => '<div>I have officially noticed grout cracking in both bathrooms -- could we find a time for you to come seal those up?</div>',
+        ])], extra: [
+            'https://hive.test/api/v1/mailboxes' => Http::response(['data' => []]),
+            'https://hive.test/api/v1/service-calls/from-email' => Http::response(['service_call' => true, 'outcome' => 'opened', 'project_id' => 349, 'task_id' => 12]),
+        ]);
+
+        $this->artisan('leads:ingest-email')->assertSuccessful();
+
+        $this->assertSame(0, ContactSubmission::withoutSiteScope()->count());
+        $this->assertSame('service_call', EmailLeadIngest::sole()->skip_reason);
+        Queue::assertNotPushed(SendLeadToHive::class);
+        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/api/v1/service-calls/from-email')
+            && $r['message_key'] === sha1(strtolower(self::MESSAGE_ID))
+            && $r['from_email'] === 'katie.love@example.test'
+            && $r['mailbox'] === 'crew@gs.construction');
+    }
+
+    public function test_an_enquiry_is_filed_when_hive_says_it_is_no_service_call_or_cannot_answer(): void
+    {
+        Config::set('services.hive.url', 'https://hive.test');
+        Config::set('services.hive.token', 'secret');
+
+        $this->fakeNylas([$this->message(), $this->message(['id' => 'msg-2', 'from' => [['name' => 'Ann Novak', 'email' => 'ann.novak@example.test']], 'headers' => [['name' => 'Message-ID', 'value' => '<other@mail.gmail.com>']]])], extra: [
+            'https://hive.test/api/v1/mailboxes' => Http::response(['data' => []]),
+            'https://hive.test/api/v1/service-calls/from-email' => Http::sequence()
+                ->push(['service_call' => false, 'outcome' => null, 'project_id' => null, 'task_id' => null])
+                ->push(['message' => 'Server Error'], 500),
+            self::NYLAS.'/v3/grants/grant-p/messages/msg-*' => Http::response(['data' => ['raw_mime' => $this->rawMime([])]]),
+        ]);
+
+        $this->artisan('leads:ingest-email')->assertSuccessful();
+
+        $this->assertSame(2, ContactSubmission::withoutSiteScope()->count());
+    }
+
     public function test_nothing_is_read_without_configured_inboxes(): void
     {
         Config::set('services.email_leads.inboxes', []);
