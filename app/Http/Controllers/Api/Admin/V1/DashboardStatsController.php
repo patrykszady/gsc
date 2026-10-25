@@ -46,10 +46,11 @@ class DashboardStatsController extends Controller
                     'total' => Tag::query()->count(),
                 ],
                 'leads' => [
-                    'total' => ContactSubmission::query()->count(),
+                    // Spam is never a lead (2026-10-25): the counts are real submissions.
+                    'total' => ContactSubmission::query()->where('status', '!=', 'spam')->count(),
                     'pending' => ContactSubmission::query()->where('status', 'pending')->count(),
-                    'today' => ContactSubmission::query()->whereDate('created_at', now()->today())->count(),
-                    'this_week' => ContactSubmission::query()->where('created_at', '>=', now()->subWeek())->count(),
+                    'today' => ContactSubmission::query()->where('status', '!=', 'spam')->whereDate('created_at', now()->today())->count(),
+                    'this_week' => ContactSubmission::query()->where('status', '!=', 'spam')->where('created_at', '>=', now()->subWeek())->count(),
                 ],
                 // Built here rather than via Project::toApiArray() (owned by
                 // another agent, and columnless of created_at): the legacy

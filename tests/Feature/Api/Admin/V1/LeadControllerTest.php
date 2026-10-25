@@ -275,10 +275,11 @@ class LeadControllerTest extends TestCase
             ->assertOk()
             ->json('data');
 
-        $this->assertSame(3, $data['total']);
+        // Spam is never a lead: the Spam card is the one place it shows (2026-10-25).
+        $this->assertSame(1, $data['total']);
         $this->assertSame(2, $data['spam']);
-        $this->assertSame(['label' => 'Barrington', 'count' => 2], $data['top_cities'][0]);
-        $this->assertSame(['label' => 'google', 'count' => 2], $data['traffic_sources'][0]);
+        $this->assertSame([['label' => 'Chicago', 'count' => 1]], $data['top_cities']);
+        $this->assertSame([['label' => 'facebook', 'count' => 1]], $data['traffic_sources']);
         $this->assertArrayHasKey('today', $data);
         $this->assertArrayHasKey('week', $data);
         $this->assertArrayHasKey('month', $data);
@@ -297,7 +298,7 @@ class LeadControllerTest extends TestCase
             ->json('data');
 
         $this->assertSame(2, $data['new']);
-        $this->assertSame(4, $data['total'], 'the rest of the grid is untouched by since');
+        $this->assertSame(3, $data['total'], 'the rest of the grid is untouched by since (and never counts spam)');
 
         // Nothing asked, nothing answered — the Leads screen's own stats call.
         $this->assertNull($this->getJson('/api/admin/v1/leads/stats', $this->adminApiHeaders())->assertOk()->json('data.new'));

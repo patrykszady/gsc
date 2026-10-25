@@ -150,16 +150,20 @@ class LeadController extends Controller
             ? rescue(fn () => Carbon::parse($request->string('since')->toString()), null, false)
             : null;
 
+        // Spam is never a lead (2026-10-25): every card and breakdown here
+        // counts real submissions; the Spam card is the one place spam shows.
+        $real = fn () => ContactSubmission::query()->where('status', '!=', 'spam');
+
         $stats = [
-            'total' => ContactSubmission::count(),
+            'total' => $real()->count(),
             'new' => $since
                 ? ContactSubmission::where('status', '!=', 'spam')->where('created_at', '>', $since)->count()
                 : null,
-            'today' => ContactSubmission::whereDate('created_at', today())->count(),
-            'week' => ContactSubmission::where('created_at', '>=', now()->subWeek())->count(),
-            'month' => ContactSubmission::where('created_at', '>=', now()->subMonth())->count(),
+            'today' => $real()->whereDate('created_at', today())->count(),
+            'week' => $real()->where('created_at', '>=', now()->subWeek())->count(),
+            'month' => $real()->where('created_at', '>=', now()->subMonth())->count(),
             'spam' => ContactSubmission::where('status', 'spam')->count(),
-            'top_cities' => ContactSubmission::query()
+            'top_cities' => $real()
                 ->selectRaw('city, COUNT(*) as count')
                 ->whereNotNull('city')
                 ->where('city', '!=', '')
@@ -171,7 +175,7 @@ class LeadController extends Controller
                 ->all(),
             // Every channel with its count, for the Source filter's options
             // — so the admin lists what actually exists, not a guessed list.
-            'sources' => ContactSubmission::query()
+            'sources' => $real()
                 ->selectRaw('source, COUNT(*) as count')
                 ->whereNotNull('source')
                 ->where('source', '!=', '')
@@ -180,7 +184,7 @@ class LeadController extends Controller
                 ->get()
                 ->map(fn ($row) => ['source' => $row->source, 'count' => (int) $row->count])
                 ->all(),
-            'traffic_sources' => ContactSubmission::query()
+            'traffic_sources' => $real()
                 ->selectRaw('utm_source, COUNT(*) as count')
                 ->whereNotNull('utm_source')
                 ->where('utm_source', '!=', '')
