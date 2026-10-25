@@ -161,6 +161,12 @@
                     if (msg.indexOf('_AutofillCallbackHandler') !== -1) return;
                     if (msg.indexOf('__gCrWeb') !== -1) return;
                     if (msg.indexOf('window.webkit.messageHandlers') !== -1) return;
+                    // The same list the kit's beacon keeps off the board
+                    // (reviewed across every site, 2026-10-25): crypto-wallet
+                    // and messaging extensions, Facebook/Instagram's Android
+                    // WebView, Outlook's SafeLinks scanner, network drops,
+                    // Maps libraries an ad blocker kept out.
+                    if (/chrome-extension:|moz-extension:|safari-web-extension:|iabjs:|Java object is gone|runtime\.sendMessage|window\.ethereum|selectedAddress|Object Not Found Matching Id|ResizeObserver loop|^(Load failed|Failed to fetch|NetworkError|cancelled)\b|Could not load "/i.test(msg + ' ' + (data.source || ''))) return;
                     var sig = kind + '|' + msg + '|' + (data.source || '') + '|' + (data.line || '');
                     if (seen[sig]) return; // de-dupe storms (e.g. loops)
                     seen[sig] = true;
@@ -230,7 +236,7 @@
                 // back it calls showModal() on a dialog that is still open and
                 // throws. That throw is a symptom — the failed request is the
                 // fact, and it is reported by the Livewire hook below.
-                if (/showModal.*already open/i.test(message)) {
+                if (/showModal\(\).*(already open|open non-modal)/i.test(message)) {
                     return;
                 }
                 // A visitor whose page URL carries credentials (user:pass@host,
@@ -452,18 +458,19 @@
             }
         });
         
-        // Track phone/email clicks
+        // Track phone/text/email clicks (sms: is its own type since 2026-10-25;
+        // the number is kept without a prefilled ?body=)
         document.addEventListener('click', function(e) {
-            const link = e.target.closest('a[href^="tel:"], a[href^="mailto:"]');
+            const link = e.target.closest('a[href^="tel:"], a[href^="sms:"], a[href^="mailto:"]');
             if (link) {
-                const isPhone = link.href.startsWith('tel:');
+                const kind = link.href.startsWith('tel:') ? 'phone' : link.href.startsWith('sms:') ? 'text' : 'email';
                 const eventData = {
-                    contact_type: isPhone ? 'phone' : 'email',
-                    contact_value: link.href.replace(/^(tel:|mailto:)/, ''),
+                    contact_type: kind,
+                    contact_value: link.href.replace(/^(tel:|sms:|mailto:)/, '').replace(/[?&].*$/, ''),
                     page_path: window.location.pathname
                 };
                 window.trackEventLocal('contact_click', eventData);
-                window.trackServerEvent(isPhone ? 'phone_click' : 'email_click', eventData.contact_value);
+                window.trackServerEvent(kind + '_click', eventData.contact_value);
             }
         });
         }, { timeout: 2000 }); // End requestIdleCallback

@@ -17,6 +17,9 @@ class TrackedEvent extends Model
 
     public const TYPE_CTA_CLICK = 'cta_click';
 
+    /** sms: taps, a type of their own since 2026-10-25 (Text clicks on the Analytics screen). */
+    public const TYPE_TEXT_CLICK = 'text_click';
+
     protected $fillable = [
         'type',
         'label',
@@ -48,6 +51,7 @@ class TrackedEvent extends Model
             self::TYPE_EMAIL_CLICK,
             self::TYPE_FORM_SUBMIT,
             self::TYPE_CTA_CLICK,
+            self::TYPE_TEXT_CLICK,
         ];
     }
 
@@ -61,6 +65,7 @@ class TrackedEvent extends Model
             self::TYPE_EMAIL_CLICK => 'Email click',
             self::TYPE_FORM_SUBMIT => 'Form submission',
             self::TYPE_CTA_CLICK => 'CTA click',
+            self::TYPE_TEXT_CLICK => 'Text Click',
             default => ucfirst(str_replace('_', ' ', $type)),
         };
     }

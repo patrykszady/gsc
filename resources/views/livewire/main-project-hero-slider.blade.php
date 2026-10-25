@@ -310,7 +310,7 @@
         {{-- Service Page Content (per-slide) --}}
         <template x-for="(slide, index) in slides" :key="'content-' + index">
             <div
-                x-show="currentSlide === index"
+                x-show="typeof index !== 'undefined' && currentSlide === index"
                 x-transition:enter="transition-opacity ease-out duration-150"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
@@ -359,7 +359,7 @@
         {{-- Home Page Content (per-slide) --}}
         <template x-for="(slide, index) in slides" :key="'content-' + index">
             <div
-                x-show="currentSlide === index"
+                x-show="typeof index !== 'undefined' && currentSlide === index"
                 x-transition:enter="transition-opacity ease-out duration-150"
                 x-transition:enter-start="opacity-0"
                 x-transition:enter-end="opacity-100"
@@ -448,15 +448,18 @@
          without changing how they look. --}}
     <div x-show="hasMultipleSlides" class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-1">
         <template x-for="(slide, index) in slides" :key="'dot-' + index">
+            {{-- typeof guards, like the slide templates above: a page wire:navigate
+                 restores brings these clones back without their x-for scope,
+                 and a bare `index` then throws (Safari, 2026-10-14). --}}
             <button
                 type="button"
-                @click="goToSlide(index); stopAutoplay(); startAutoplay();"
-                :aria-label="'Go to slide ' + (index + 1)"
-                :aria-current="currentSlide === index"
+                @click="if (typeof index !== 'undefined') { goToSlide(index); stopAutoplay(); startAutoplay(); }"
+                :aria-label="typeof index !== 'undefined' ? 'Go to slide ' + (index + 1) : null"
+                :aria-current="typeof index !== 'undefined' && currentSlide === index"
                 class="group p-2 focus:outline-none"
             >
                 <span
-                    :class="currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3 group-hover:bg-white/80'"
+                    :class="typeof index !== 'undefined' && currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3 group-hover:bg-white/80'"
                     class="block h-3 rounded-full transition-all duration-300"
                 ></span>
             </button>
