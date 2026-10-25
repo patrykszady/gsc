@@ -95,6 +95,8 @@ class DashboardStatsControllerTest extends TestCase
             ->forceFill(['created_at' => now()->subDays(9)])->saveQuietly();
         ContactSubmission::create(['name' => 'Spam Last Week', 'email' => 'spam@example.com', 'message' => 'hi', 'status' => 'spam'])
             ->forceFill(['created_at' => now()->subDays(9)])->saveQuietly();
+        ContactSubmission::create(['name' => 'Six Weeks Ago', 'email' => 'old@example.com', 'message' => 'hi', 'status' => 'legitimate'])
+            ->forceFill(['created_at' => now()->subDays(40)])->saveQuietly();
         ContactSubmission::create([
             'name' => 'Today Lead', 'email' => 'today@example.com',
             'message' => 'hi', 'status' => 'pending', 'created_at' => now(),
@@ -108,7 +110,9 @@ class DashboardStatsControllerTest extends TestCase
         $this->assertSame(1, $data['tags']['total']);
         $this->assertSame(1, $data['leads']['today']);
         $this->assertSame(1, $data['leads']['this_week']);
-        $this->assertSame(1, $data['leads']['prior_week'], 'last week\'s lead, for the platform dashboard\'s arrow');
+        // The platform dashboard's window: the last 28 days (today's + last week's lead) against the 28 before (the six-week-old one).
+        $this->assertSame(2, $data['leads']['last_28']);
+        $this->assertSame(1, $data['leads']['prior_28']);
         $this->assertNotEmpty($data['recent_projects']);
         $this->assertArrayHasKey('created_at', $data['recent_projects'][0]);
         $this->assertNotNull($data['recent_projects'][0]['created_at']);
