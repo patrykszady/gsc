@@ -51,6 +51,8 @@ class DashboardStatsController extends Controller
                     'pending' => ContactSubmission::query()->where('status', 'pending')->count(),
                     'today' => ContactSubmission::query()->where('status', '!=', 'spam')->whereDate('created_at', now()->today())->count(),
                     'this_week' => ContactSubmission::query()->where('status', '!=', 'spam')->where('created_at', '>=', now()->subWeek())->count(),
+                    // The week before, for the platform dashboard's arrow (2026-10-25).
+                    'prior_week' => ContactSubmission::query()->where('status', '!=', 'spam')->whereBetween('created_at', [now()->subWeeks(2), now()->subWeek()])->count(),
                 ],
                 // Built here rather than via Project::toApiArray() (owned by
                 // another agent, and columnless of created_at): the legacy
