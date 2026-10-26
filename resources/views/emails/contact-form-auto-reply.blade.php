@@ -8,5 +8,5 @@ In the meantime, you are welcome to browse the site to see recent work.
 
 Thank you,  
 {{ config('brand.reply_signature', config('brand.name')) }} | {{ config('brand.phone') }}  
-<a href="{{ config('app.url') }}">{{ parse_url(config('app.url'), PHP_URL_HOST) }}</a>@if (config('socials.instagram.url')) | <a href="{{ config('socials.instagram.url') }}">Instagram</a>@endif
+<a href="{{ rtrim(config('app.url'), '/') }}/?utm_source=auto-reply&amp;utm_medium=email&amp;utm_campaign=contact-reply">{{ parse_url(config('app.url'), PHP_URL_HOST) }}</a>@if (config('socials.instagram.url')) | <a href="{{ config('socials.instagram.url') }}">Instagram</a>@endif
 </x-mail::message>

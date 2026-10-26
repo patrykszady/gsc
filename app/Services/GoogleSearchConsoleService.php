@@ -192,6 +192,39 @@ class GoogleSearchConsoleService implements SearchConsoleSyncClient
     }
 
     /**
+     * One search type's clicks and impressions for one day — web, image,
+     * video, news, discover or googleNews — for the kit's
+     * SearchConsoleCollector. Fresh numbers included; the collector re-reads
+     * recent days as Google finalises them.
+     *
+     * @return array{clicks: int, impressions: int}|null
+     */
+    public function searchTypeTotals(string $date, string $type): ?array
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            return null;
+        }
+
+        $resp = Http::withToken($token)->timeout(60)->post(self::API_BASE.'/sites/'.rawurlencode($this->siteUrl()).'/searchAnalytics/query', [
+            'startDate' => $date,
+            'endDate' => $date,
+            'type' => $type,
+            'dataState' => 'all',
+        ]);
+
+        if (! $resp->successful()) {
+            $this->lastError = ['status' => $resp->status(), 'body' => $resp->body()];
+
+            return null;
+        }
+
+        $row = $resp->json('rows.0') ?? [];
+
+        return ['clicks' => (int) ($row['clicks'] ?? 0), 'impressions' => (int) ($row['impressions'] ?? 0)];
+    }
+
+    /**
      * The property this site's sync runs against — the one method
      * SearchConsoleSyncClient adds beyond what SitemapStatus already needed.
      * Resolved without touching the network, so SearchConsoleSync can read

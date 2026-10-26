@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use SsSystems\Platform\Traffic\Arrival;
 
 class ContactSection extends Component
 {
@@ -913,6 +914,17 @@ class ContactSection extends Component
     protected function storeSubmission(string $status = 'pending', ?string $spamReason = null): void
     {
         try {
+            // Where the visit came from (kit 0.17): the beacon's arrival cookie,
+            // else the posted page's referrer (dropped when it is our own page) and
+            // the session's UTM tags.
+            $arrival = Arrival::attributesFor(
+                request(),
+                request()->header('referer'),
+                session('utm_source') ?? request()->input('utm_source'),
+                session('utm_medium') ?? request()->input('utm_medium'),
+                session('utm_campaign') ?? request()->input('utm_campaign'),
+            );
+
             $attributes = [
                 'name' => $this->name,
                 'email' => $this->email,
@@ -922,14 +934,14 @@ class ContactSection extends Component
                 'availability' => $this->availability,
                 'city' => $this->area?->city,
                 'source' => request()->header('X-Requested-With') === 'XMLHttpRequest' ? 'ajax' : 'web',
-                'referrer' => request()->header('referer'),
+                'referrer' => $arrival['referrer'],
                 'user_agent' => request()->userAgent(),
                 'ip_address' => request()->ip(),
                 'status' => $status,
                 'spam_reason' => $spamReason,
-                'utm_source' => session('utm_source') ?? request()->input('utm_source'),
-                'utm_medium' => session('utm_medium') ?? request()->input('utm_medium'),
-                'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
+                'utm_source' => $arrival['utm_source'],
+                'utm_medium' => $arrival['utm_medium'],
+                'utm_campaign' => $arrival['utm_campaign'],
             ];
 
             // Fill in city/state/zip from the street when the sender didn't

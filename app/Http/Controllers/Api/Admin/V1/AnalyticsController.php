@@ -31,7 +31,10 @@ class AnalyticsController extends Controller
 
     protected function analyticsEventReader(): AnalyticsEventReader
     {
-        return new TrackedEventReader(TrackedEvent::class);
+        // The site's own host, named outright: a dev copy of production's
+        // rows carries gs.construction referrers while APP_URL is 127.0.0.1,
+        // and those must read as Direct, not as "Other sites".
+        return new TrackedEventReader(TrackedEvent::class, ['gs.construction']);
     }
 
     /** This site's own effective zone — never a kit constant. */

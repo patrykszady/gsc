@@ -587,4 +587,13 @@ return [
         ],
     ],
 
+    /*
+    | Where visitors come from (kit 0.17): the nginx access logs the traffic
+    | collector reads for outside landings and crawls (hive-prod writes one
+    | per site since 2026-10-26). Missing on dev — the collector then skips.
+    */
+    'traffic' => [
+        'access_logs' => array_values(array_filter(explode(',', (string) env('TRAFFIC_ACCESS_LOGS', '/var/log/nginx/gs.construction-access.log')))),
+    ],
+
 ];

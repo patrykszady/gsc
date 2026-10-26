@@ -9,6 +9,7 @@ use App\Support\LeadInbox;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
+use SsSystems\Platform\Traffic\Arrival;
 
 /**
  * A plain inquiry form, for a tenant that does not book crew visits.
@@ -116,6 +117,17 @@ class EnquiryForm extends Component
         try {
             // Deliberately no SendLeadToHive: hive.contractors is GS
             // Construction's lead pipeline, not every tenant's.
+            // Where the visit came from (kit 0.17): the beacon's arrival cookie,
+            // else the posted page's referrer (dropped when it is our own page) and
+            // the session's UTM tags.
+            $arrival = Arrival::attributesFor(
+                request(),
+                request()->header('referer'),
+                session('utm_source') ?? request()->input('utm_source'),
+                session('utm_medium') ?? request()->input('utm_medium'),
+                session('utm_campaign') ?? request()->input('utm_campaign'),
+            );
+
             return ContactSubmission::create([
                 'name' => $this->name,
                 'email' => $this->email,
@@ -123,14 +135,14 @@ class EnquiryForm extends Component
                 'message' => $this->message,
                 'city' => $this->market ?: null,
                 'source' => 'web',
-                'referrer' => request()->header('referer'),
+                'referrer' => $arrival['referrer'],
                 'user_agent' => request()->userAgent(),
                 'ip_address' => request()->ip(),
                 'status' => $status,
                 'spam_reason' => $spamReason,
-                'utm_source' => session('utm_source') ?? request()->input('utm_source'),
-                'utm_medium' => session('utm_medium') ?? request()->input('utm_medium'),
-                'utm_campaign' => session('utm_campaign') ?? request()->input('utm_campaign'),
+                'utm_source' => $arrival['utm_source'],
+                'utm_medium' => $arrival['utm_medium'],
+                'utm_campaign' => $arrival['utm_campaign'],
             ]);
         } catch (\Throwable $e) {
             // A database that refuses the row must not cost the inquiry: the

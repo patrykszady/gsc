@@ -35,6 +35,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         __DIR__.'/../app/Console/Commands',
+        \SsSystems\Platform\Traffic\Console\CollectTrafficCommand::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

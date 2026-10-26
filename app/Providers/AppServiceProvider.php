@@ -39,6 +39,7 @@ use App\Support\Citations\SiteMailboxFactory;
 use App\Support\Citations\SitePendingCitationRepository;
 use App\Support\PublicFeeds;
 use App\Support\Seo\BingWriter;
+use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\TrackedPathsFromModel;
@@ -128,6 +129,16 @@ use SsSystems\Platform\Telemetry\Adapters\EloquentClientErrorWriter;
 use SsSystems\Platform\Telemetry\Adapters\EloquentTrackedEventWriter;
 use SsSystems\Platform\Telemetry\Contracts\ClientErrorWriter;
 use SsSystems\Platform\Telemetry\Contracts\TrackedEventWriter;
+use SsSystems\Platform\Traffic\Collectors\AccessLogCollector;
+use SsSystems\Platform\Traffic\Collectors\BingTotalsCollector;
+use SsSystems\Platform\Traffic\Collectors\BusinessProfileCollector;
+use SsSystems\Platform\Traffic\Collectors\ClarityCollector;
+use SsSystems\Platform\Traffic\Collectors\LeadsCollector;
+use SsSystems\Platform\Traffic\Collectors\PulseEventsCollector;
+use SsSystems\Platform\Traffic\Collectors\SearchConsoleCollector;
+use SsSystems\Platform\Traffic\Collectors\TrackedEventsCollector;
+use SsSystems\Platform\Traffic\TrafficCollectors;
+use SsSystems\Platform\Traffic\TrafficDays;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -353,6 +364,7 @@ class AppServiceProvider extends ServiceProvider
         ));
 
         $this->registerGoogle();
+        $this->registerTraffic();
     }
 
     /**
@@ -613,5 +625,57 @@ class AppServiceProvider extends ServiceProvider
         } catch (\Throwable) {
             // During install/migrate, settings table may be unavailable.
         }
+    }
+
+    /**
+     * Where visitors come from (kit 0.17): every provider's per-source numbers
+     * into traffic_source_days, scoped to the current tenant like the rest of
+     * the app. Contacts come from tracked_events (the /track tracker), so the
+     * beacon collector counts visits only and nothing is counted twice.
+     */
+    protected function registerTraffic(): void
+    {
+        $tenant = fn () => Tenancy::currentId();
+        $own = ['gs.construction'];
+
+        $this->app->bind(TrafficDays::class, fn () => new TrafficDays(DB::connection(), 'traffic_source_days', 'site_id', $tenant));
+
+        $this->app->bind(TrafficCollectors::class, fn ($app) => new TrafficCollectors($app->make(TrafficDays::class), [
+            new PulseEventsCollector(DB::connection(), 'site_events', [], 'site_id', $tenant),
+            new TrackedEventsCollector(DB::connection(), 'tracked_events', ownHosts: $own, tenantColumn: 'site_id', tenantId: $tenant),
+            new LeadsCollector(DB::connection(), 'contact_submissions', $own, 'site_id', $tenant),
+            new ClarityCollector(fn () => $app->make(ClaritySettings::class)->apiToken(), ownHosts: $own),
+            new SearchConsoleCollector(fn (string $type, string $date) => $app->make(GoogleSearchConsoleService::class)->searchTypeTotals($date, $type)),
+            new BingTotalsCollector(DB::connection(), 'bing_daily_totals'),
+            new BusinessProfileCollector(fn (string $date) => self::businessProfileDay($date)),
+            new AccessLogCollector((array) config('services.traffic.access_logs', []), $own),
+        ]));
+    }
+
+    /**
+     * One day of Business Profile actions from gbp_daily_metrics (filled by
+     * gbp:metrics-sync), or null when that day has not synced yet.
+     *
+     * @return array{views: int, website_clicks: int, calls: int, directions: int}|null
+     */
+    public static function businessProfileDay(string $date): ?array
+    {
+        $metrics = DB::table('gbp_daily_metrics')
+            ->where('site_id', Tenancy::currentId())
+            ->whereDate('date', $date)
+            ->groupBy('metric')
+            ->selectRaw('metric, SUM(value) as value')
+            ->pluck('value', 'metric');
+
+        if ($metrics->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'views' => (int) $metrics->filter(fn ($v, $m) => str_starts_with((string) $m, 'BUSINESS_IMPRESSIONS_'))->sum(),
+            'website_clicks' => (int) ($metrics['WEBSITE_CLICKS'] ?? 0),
+            'calls' => (int) ($metrics['CALL_CLICKS'] ?? 0),
+            'directions' => (int) ($metrics['BUSINESS_DIRECTION_REQUESTS'] ?? 0),
+        ];
     }
 }

@@ -40,7 +40,7 @@ class PingControllerTest extends TestCase
         $this->assertEqualsCanonicalizing([
             'dashboard-stats', 'projects', 'tags', 'testimonials', 'blog', 'areas', 'leads',
             'landing-pages', 'social-media', 'analytics', 'js-errors', 'seo', 'platforms',
-            'timelapses', 'before-afters', 'image-tags', 'image-move', 'areas-map',
+            'timelapses', 'traffic', 'before-afters', 'image-tags', 'image-move', 'areas-map',
             'review-platforms', 'testimonial-projects', 'collaborators', 'area-content',
             'citations', 'services', 'service-content', 'pages', 'project-areas', 'ai-project-details',
         ], $data['domains']);

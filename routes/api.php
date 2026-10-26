@@ -134,4 +134,5 @@ Route::prefix('admin/v1')->name('api.admin.v1.')->middleware(['throttle:6000,1',
     require __DIR__.'/api-admin/areas-ext.php';
     require __DIR__.'/api-admin/services.php';
     require __DIR__.'/api-admin/pages.php';
+    require __DIR__.'/api-admin/traffic.php';
 });

@@ -400,7 +400,9 @@ Schedule::command('seo:clarity-sync --days=3')
     ->dailyAt('08:32')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-clarity-sync.log'))
-    ->onFailure(fn () => logger()->error('Scheduled seo:clarity-sync failed'));
+    ->onFailure(fn () => logger()->error('Scheduled seo:clarity-sync failed'))
+    // New numbers landed: refresh where visitors come from for these days.
+    ->then(fn () => Artisan::call('traffic:collect', ['--days' => 5, '--provider' => ['clarity']]));
 
 // SEO: weekly GSC week-over-week regression monitor (runs after Mon sync).
 Schedule::command($perTenant('seo:gsc-monitor --window=7 --markdown'))
@@ -695,7 +697,9 @@ Schedule::command($perTenant('seo:gsc-sync --days='.SearchConsoleSyncRule::DEFAU
     // this site's own schedule must stop firing it too, or every tenant
     // syncs twice. The command and the admin's on-demand "sync now" are not
     // gated by this — only the scheduled tick.
-    ->when(fn () => config('services.google.search_console.enabled') && SearchConsoleSyncOwnership::ownedHere());
+    ->when(fn () => config('services.google.search_console.enabled') && SearchConsoleSyncOwnership::ownedHere())
+    // New numbers landed: refresh where visitors come from for these days.
+    ->then(fn () => Artisan::call('traffic:collect', ['--days' => 5, '--provider' => ['search_console']]));
 
 // GBP: daily Performance API sync (impressions/calls/website clicks/direction requests).
 Schedule::command('gbp:metrics-sync --days=14')
@@ -703,14 +707,18 @@ Schedule::command('gbp:metrics-sync --days=14')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled gbp:metrics-sync failed'))
-    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected())
+    // New numbers landed: refresh where visitors come from for these days.
+    ->then(fn () => Artisan::call('traffic:collect', ['--days' => 5, '--provider' => ['business_profile']]));
 
 // GBP: weekly Performance API search-keyword sync (monthly granularity from Google).
 Schedule::command('gbp:metrics-sync --days=3 --with-keywords')
     ->weeklyOn(1, '05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/gbp-metrics-sync.log'))
-    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
+    ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected())
+    // New numbers landed: refresh where visitors come from for these days.
+    ->then(fn () => Artisan::call('traffic:collect', ['--days' => 5, '--provider' => ['business_profile']]));
 
 // SEO: daily PageSpeed Insights snapshot for key pages (mobile + desktop).
 Schedule::command('seo:psi-sync')
@@ -728,7 +736,9 @@ Schedule::command('seo:bing-sync')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-bing-sync.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-sync failed'))
-    ->when(fn () => app(BingSettings::class)->isConfigured());
+    ->when(fn () => app(BingSettings::class)->isConfigured())
+    // New numbers landed: refresh where visitors come from for these days.
+    ->then(fn () => Artisan::call('traffic:collect', ['--days' => 5, '--provider' => ['bing']]));
 
 // Social automation: Instagram/Facebook/Google Business posts and the GBP
 // catch-up safety net used to be hard-coded, single-tenant Schedule blocks
@@ -878,3 +888,19 @@ Schedule::call(function () {
 // touches browsers Puppeteer launched, never the Menards one.
 Schedule::command('chrome:reap-orphans')->everyMinute()->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/chrome-reaper.log'));
+
+// Where visitors come from (kit 0.17): every provider's per-source numbers
+// into traffic_source_days for the SEO screen. Early in the day (Clarity only
+// reports the last 24 hours), after the overnight Bing and Business Profile
+// syncs; the last five days are re-read as Search Console fills in late.
+Schedule::command('traffic:collect --days=5')
+    ->dailyAt('07:30')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/traffic-collect.log'))
+    ->onFailure(fn () => logger()->error('Scheduled traffic:collect failed'));
+
+// Our own visitors and contacts refresh every hour, today included; the
+// platforms' numbers refresh right after each of their syncs above.
+Schedule::command('traffic:collect --date=today --provider=beacon --provider=tracked_events --provider=leads')
+    ->hourly()
+    ->withoutOverlapping();
