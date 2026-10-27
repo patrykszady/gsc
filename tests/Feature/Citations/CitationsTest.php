@@ -78,6 +78,20 @@ class CitationsTest extends TestCase
         $this->assertArrayHasKey('BBB', $p['profiles']);
     }
 
+    public function test_expertise_com_is_on_the_board_as_a_request_for_review(): void
+    {
+        // SEO/GEO review, 2026-10-27: AI assistants quote Expertise.com's
+        // hand-picked "best of" lists; Home Improvement businesses ask to be reviewed.
+        $this->artisan('citations:sync')->assertExitCode(0);
+
+        $expertise = Citation::where('slug', 'expertise')->sole();
+        $this->assertSame('Expertise.com', $expertise->name);
+        $this->assertSame('planned', $expertise->status);
+        $this->assertSame(1, $expertise->tier);
+        $this->assertSame('https://www.expertise.com/review-me', $expertise->start_url);
+        $this->assertStringContainsString('Provider Portal', (string) data_get($expertise->definition(), 'note'));
+    }
+
     public function test_sync_registers_every_directory_once_and_keeps_existing_status(): void
     {
         $this->artisan('citations:sync')->assertExitCode(0);

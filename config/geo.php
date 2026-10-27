@@ -8,7 +8,10 @@ return [
     |--------------------------------------------------------------------------
     | Used in llms.txt, Organization schema, and AI feed metadata.
     */
-    'site_name'        => env('GEO_SITE_NAME', 'GS Construction'),
+    // Full entity name: brand search is ambiguous with other "GS
+    // Construction" businesses nationwide, so llms.txt and the GEO
+    // dashboard carry the full, disambiguating name.
+    'site_name'        => env('GEO_SITE_NAME', config('brand.display_name', 'GS Construction & Remodeling')),
     'site_description' => env('GEO_SITE_DESCRIPTION', 'Family-owned kitchen, bathroom, and home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English & Polish.'),
     'site_url'         => env('GEO_SITE_URL', env('APP_URL', 'https://gs.construction')),
 

@@ -163,14 +163,10 @@ $localBusiness = [
         'opens' => '08:00',
         'closes' => '18:00',
     ],
-    'sameAs' => array_filter([
-        config('socials.facebook.url'),
-        config('socials.instagram.url'),
-        config('socials.google.url'),
-        config('socials.houzz.url'),
-        config('socials.yelp.url'),
-        config('socials.angi.url'),
-    ]),
+    // Configured socials + every live directory citation's own listing URL
+    // (deduped) — one source so this never disagrees with the Organization
+    // node below or the per-town HomeAndConstructionBusiness nodes.
+    'sameAs' => \App\Support\Seo\SameAsLinks::urls(),
     'hasOfferCatalog' => [
         '@type' => 'OfferCatalog',
         'name' => 'Home Remodeling Services',
@@ -306,14 +302,7 @@ $organization = [
     // Reuse canonical logo entity defined in LocalBusiness schema above.
     'logo' => ['@id' => 'https://gs.construction/#logo'],
     'image' => ['@id' => 'https://gs.construction/#logo'],
-    'sameAs' => array_filter([
-        config('socials.facebook.url'),
-        config('socials.instagram.url'),
-        config('socials.google.url'),
-        config('socials.houzz.url'),
-        config('socials.yelp.url'),
-        config('socials.angi.url'),
-    ]),
+    'sameAs' => \App\Support\Seo\SameAsLinks::urls(),
     'contactPoint' => [
         '@type' => 'ContactPoint',
         'telephone' => '+1-224-735-4200',

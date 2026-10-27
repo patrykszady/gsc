@@ -43,6 +43,12 @@ class AreaServed extends Model
         'sections',
         'ig_location_id',
         'fb_place_id',
+        // The building-code edition(s) hive.contractors found adopted for
+        // this town — see areas:sync-building-codes.
+        'building_codes',
+        'building_codes_source_url',
+        'building_codes_note',
+        'building_codes_checked_at',
     ];
 
     /**
@@ -89,6 +95,8 @@ class AreaServed extends Model
         'faq' => 'array',
         'sections' => 'array',
         'intro_folds' => 'array',
+        'building_codes' => 'array',
+        'building_codes_checked_at' => 'datetime',
     ];
 
     /**
@@ -197,6 +205,22 @@ class AreaServed extends Model
     public function faqItems(): array
     {
         return self::normaliseFaq($this->faq);
+    }
+
+    /**
+     * This town's adopted building-code edition(s), as found by
+     * hive.contractors (areas:sync-building-codes) — never written until
+     * Hive answers "found", so an empty list here means no answer yet, not
+     * "no codes". Used to decide whether the building-codes section renders.
+     *
+     * @return list<string>
+     */
+    public function buildingCodesList(): array
+    {
+        return array_values(array_filter(
+            (array) $this->building_codes,
+            fn ($code) => is_string($code) && trim($code) !== ''
+        ));
     }
 
     /** @return list<array{question: string, answer: string}> */

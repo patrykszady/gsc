@@ -105,6 +105,14 @@ Schedule::command('hive:sync')->dailyAt('02:00')
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled hive:sync failed'));
 
+// Village building codes: a fresh town starts a background lookup on hive's
+// side and answers "pending" for a few days, so this is a daily poll rather
+// than a one-shot — see App\Console\Commands\AreasSyncBuildingCodes. No-op
+// (logged, not an error) when services.hive.token is empty.
+Schedule::command('areas:sync-building-codes')->dailyAt('02:10')
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error('Scheduled areas:sync-building-codes failed'));
+
 // Mirror leads hive captured that did not originate on this site — currently
 // inquiries emailed to crew@gs.construction, which hive reads via its Nylas
 // grant. Without this the leads admin shows only web-form submissions and

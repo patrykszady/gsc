@@ -178,7 +178,7 @@
         'category'    => 'Home Improvement',
         'brand'       => [
             '@type' => 'Brand',
-            'name'  => 'GS Construction',
+            'name'  => config('brand.display_name'),
         ],
         'manufacturer' => [
             '@id' => 'https://gs.construction/#business',

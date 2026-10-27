@@ -107,6 +107,11 @@ return [
         'cylex' => ['name' => 'Cylex', 'tier' => 1, 'mechanism' => 'form', 'homepage' => 'https://www.cylex.us.com/', 'start_url' => 'https://www.cylex.us.com/', 'needs' => ['email'], 'photos' => true],
         'brownbook' => ['name' => 'Brownbook', 'tier' => 1, 'mechanism' => 'form', 'homepage' => 'https://www.brownbook.net/', 'start_url' => 'https://www.brownbook.net/', 'needs' => ['email'], 'photos' => true],
         'chamberofcommerce' => ['name' => 'ChamberofCommerce.com', 'tier' => 1, 'mechanism' => 'form', 'homepage' => 'https://www.chamberofcommerce.com/', 'start_url' => 'https://www.chamberofcommerce.com/members/add-business', 'needs' => ['email'], 'photos' => true],
+        // Hand-picked "best of" lists (expertise.com/il/chicago/kitchen-remodeling …)
+        // that ChatGPT and Perplexity quote when asked for the best contractors in a
+        // town (SEO/GEO review, 2026-10-27). Not a directory form: Home Improvement
+        // businesses ask to be evaluated, and a pick is managed in the Provider Portal.
+        'expertise' => ['name' => 'Expertise.com', 'tier' => 1, 'mechanism' => 'account', 'homepage' => 'https://www.expertise.com/', 'start_url' => 'https://www.expertise.com/review-me', 'needs' => ['email', 'phone'], 'photos' => false, 'note' => 'Request a Review (Home Improvement), then manage the listing in the Provider Portal: https://expertise.my.site.com/providers/s/login/SelfRegister. Picks are based on licence, years in business and reviews across sites — not paid.'],
         'superpages' => ['name' => 'Superpages', 'tier' => 1, 'mechanism' => 'claim', 'homepage' => 'https://www.superpages.com/', 'start_url' => 'https://www.superpages.com/', 'needs' => ['email', 'phone'], 'photos' => true],
 
         // ---- Tier 2: link-gap directories with a real free listing form

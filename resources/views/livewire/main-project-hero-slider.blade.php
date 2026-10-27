@@ -18,6 +18,17 @@
     $citySuffix = ($area && $srOnlyHeading && ! str_contains(mb_strtolower($srOnlyHeading), mb_strtolower($area->city)))
         ? ' in ' . $area->city
         : '';
+    // The visible "Home Page Content" heading below is x-html-bound to
+    // slide.title and only ever filled in by Alpine, so a crawler that
+    // doesn't run JavaScript (most AI crawlers) saw an empty <h2> — the
+    // homepage/area hero's main heading was invisible in the raw HTML.
+    // Pre-render the FIRST slide's own title (escaped, first "\n" to "<br>",
+    // matching Alpine's own `.replace('\n', '<br>')`) as that element's
+    // static content; Alpine still overwrites it the same way once it
+    // hydrates, so the rendered page is unchanged.
+    $firstSlideTitleHtml = (! $isServiceMode && ! $isImagesOnly && filled($firstSlide['title'] ?? null))
+        ? preg_replace('/\n/', '<br>', e($firstSlide['title']), 1)
+        : '';
 @endphp
 
 {{-- Preload the LCP image (first slide) for faster rendering with responsive srcset --}}
@@ -376,7 +387,7 @@
                     <h2
                         class="font-heading text-4xl font-bold text-white drop-shadow-lg sm:text-5xl lg:text-6xl"
                         x-html="slide.title.replace('\n', '<br>')"
-                    ></h2>
+                    >{!! $firstSlideTitleHtml !!}</h2>
                     <p 
                         x-show="areaCity" 
                         x-text="'in ' + areaCity"

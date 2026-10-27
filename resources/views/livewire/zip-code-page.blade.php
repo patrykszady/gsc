@@ -14,7 +14,7 @@
             '@context' => 'https://schema.org',
             '@type' => 'LocalBusiness',
             '@id' => $entityId,
-            'name' => 'GS Construction',
+            'name' => config('brand.display_name'),
             'description' => "Family-owned kitchen, bathroom and home remodeling contractor serving {$city}, IL " . $zip . " and the surrounding ZIP codes.",
             'url' => url('/service-area/' . $zip),
             'telephone' => '+1-224-735-4200',

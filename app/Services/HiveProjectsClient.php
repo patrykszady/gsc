@@ -302,6 +302,66 @@ class HiveProjectsClient
     }
 
     /**
+     * Ask hive for the building-code edition(s) one town's building
+     * department has adopted. A town hive has never been asked about has no
+     * answer yet: it starts a background lookup there and replies status
+     * "pending", which a later daily sync picks up. Null when hive is not
+     * connected, could not be reached, or refused the request — never
+     * thrown, so a sync loop can log and move on to the next town.
+     *
+     * Hive endpoint: GET {HIVE_API_URL}/api/v1/building-codes?town=&state=
+     *
+     * @return array{town: string, state: string, status: string, codes: list<string>, source_url: ?string, note: ?string, checked_at: ?string}|null
+     */
+    public function buildingCodes(string $town, string $state): ?array
+    {
+        if (! $this->isConfigured()) {
+            return null;
+        }
+
+        try {
+            $response = Http::baseUrl($this->baseUrl)
+                ->withToken($this->token)
+                ->acceptJson()
+                ->timeout(20)
+                ->connectTimeout(5)
+                ->retry(2, 500, throw: false)
+                ->get('/api/v1/building-codes', ['town' => $town, 'state' => $state]);
+        } catch (ConnectionException $e) {
+            Log::warning('HiveProjectsClient building-codes: could not reach hive', ['town' => $town, 'state' => $state, 'error' => $e->getMessage()]);
+
+            return null;
+        } catch (Throwable $e) {
+            Log::warning('HiveProjectsClient building-codes: request failed', ['town' => $town, 'state' => $state, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+
+        if (! $response->successful()) {
+            Log::warning('HiveProjectsClient building-codes refused', ['town' => $town, 'state' => $state, 'status' => $response->status()]);
+
+            return null;
+        }
+
+        $data = (array) $response->json('data', []);
+        if (! isset($data['status'])) {
+            Log::warning('HiveProjectsClient building-codes: malformed payload', ['town' => $town, 'state' => $state]);
+
+            return null;
+        }
+
+        return [
+            'town' => (string) ($data['town'] ?? $town),
+            'state' => (string) ($data['state'] ?? $state),
+            'status' => (string) $data['status'],
+            'codes' => array_values(array_filter((array) ($data['codes'] ?? []), fn ($code) => is_string($code) && trim($code) !== '')),
+            'source_url' => filled($data['source_url'] ?? null) ? (string) $data['source_url'] : null,
+            'note' => filled($data['note'] ?? null) ? (string) $data['note'] : null,
+            'checked_at' => filled($data['checked_at'] ?? null) ? (string) $data['checked_at'] : null,
+        ];
+    }
+
+    /**
      * POST a contact-form lead to hive.contractors. Returns the Hive lead id
      * on success, or throws RuntimeException on transient/permanent failure
      * so the queued job can decide whether to retry.

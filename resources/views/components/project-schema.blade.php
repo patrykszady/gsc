@@ -178,7 +178,7 @@ $article = [
     'author'          => [
         '@type' => 'Organization',
         '@id'   => 'https://gs.construction/#organization',
-        'name'  => 'GS Construction',
+        'name'  => config('brand.display_name'),
         'url'   => 'https://gs.construction',
     ],
     'publisher'       => ['@id' => 'https://gs.construction/#organization'],

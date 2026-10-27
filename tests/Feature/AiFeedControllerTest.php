@@ -56,7 +56,10 @@ class AiFeedControllerTest extends TestCase
     {
         $data = $this->getJson('/ai-feed.json')->assertOk()->json();
 
-        $this->assertSame('GS Construction', $data['business']['name']);
+        // Full entity name — brand search is ambiguous with other "GS
+        // Construction" businesses nationwide (2026-10-27).
+        $this->assertSame(config('brand.display_name'), $data['business']['name']);
+        $this->assertSame(config('brand.legal_name'), $data['business']['legal_name']);
         $this->assertSame('+1-224-735-4200', $data['business']['phone']);
         $this->assertArrayHasKey('rating', $data['business']);
         $this->assertArrayHasKey('$schema', $data);

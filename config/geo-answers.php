@@ -8,7 +8,10 @@
  */
 return [
     'meta' => [
-        'business' => 'GS Construction',
+        // Full entity name everywhere this feeds — brand search is ambiguous
+        // with other "GS Construction" businesses nationwide, and AI engines
+        // quote this field verbatim as the publisher/business name.
+        'business' => config('brand.display_name', 'GS Construction & Remodeling'),
         'service_area' => 'Chicago and surrounding suburbs (Cook, Lake, DuPage counties), IL',
         'phone' => '+1-224-735-4200',
         'email' => 'crew@gs.construction',

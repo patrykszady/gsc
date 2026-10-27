@@ -266,6 +266,11 @@
                  figures in config/geo-answers.php + /faq. --}}
             <x-area-pricing-guide :area="$area" />
 
+            {{-- The town's adopted building-code edition(s), from hive.contractors
+                 (areas:sync-building-codes). Renders only once Hive has found an
+                 answer for this town. --}}
+            @include('partials.area-building-codes', ['area' => $area])
+
             {{-- Lead service line replacement (per-municipality program guide).
                  Summary comes from official-source research; the detail page is
                  noindexed until official info is verified for this town.
@@ -327,8 +332,19 @@
                 <livewire:timelapse-section />
             </div>
 
+            {{-- Generic review carousel ("Your Neighbours in {City} Love Us").
+                 @include('livewire.partials.town-review-quotes') above already
+                 rendered up to 3 REAL quotes from this town or its neighbours
+                 ("What homeowners near {City} say") when any exist — this
+                 second, generic carousel then just repeated the same handful
+                 of reviews under a second heading. Render it only when the
+                 partial found none, using the exact same call
+                 ($area->testimonialsWithNeighbours(3)) so the two can never
+                 disagree about whether this town has quotes. --}}
+            @if($area->testimonialsWithNeighbours(3)->isEmpty())
             <livewire:testimonials-section :area="$area" />
-            
+            @endif
+
             <livewire:map-section :area="$area" />
 
             {{-- Nearby Areas — internal linking + local SEO signal --}}

@@ -29,7 +29,7 @@ class GeoAnswersController extends Controller
 
     protected function faqBusinessName(): string
     {
-        return (string) config('geo-answers.meta.business', 'GS Construction');
+        return (string) config('geo-answers.meta.business', config('brand.display_name', 'GS Construction & Remodeling'));
     }
 
     protected function faqPhone(): ?string

@@ -61,7 +61,7 @@
         '@context' => 'https://schema.org',
         '@type' => 'HomeAndConstructionBusiness',
         '@id' => $entityId,
-        'name' => "GS Construction — {$city}",
+        'name' => config('brand.display_name') . " — {$city}",
         'parentOrganization' => ['@id' => 'https://gs.construction/#organization'],
         'brand' => ['@id' => 'https://gs.construction/#business'],
         'description' => "Family-owned kitchen, bathroom, and home remodeling contractor serving {$city}, IL and the surrounding area. 40+ years combined experience, free in-home estimates.",
@@ -78,14 +78,10 @@
             'minValue' => 5,
             'maxValue' => 15,
         ],
-        'sameAs' => array_values(array_filter([
-            config('socials.facebook.url'),
-            config('socials.instagram.url'),
-            config('socials.google.url'),
-            config('socials.houzz.url'),
-            config('socials.yelp.url'),
-            config('socials.angi.url'),
-        ])),
+        // Configured socials + every live directory citation's own listing
+        // URL (deduped) — same list the site-wide Organization/LocalBusiness
+        // nodes claim, so this town's node never disagrees with them.
+        'sameAs' => \App\Support\Seo\SameAsLinks::urls(),
         'image' => (\App\Models\ProjectImage::curatedCover()?->url) ?: asset('images/greg-patryk.jpg'),
         'logo' => \App\Support\SiteIcons::url('android-chrome-512x512.png'),
         'address' => $address,

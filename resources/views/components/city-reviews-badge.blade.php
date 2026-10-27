@@ -71,7 +71,7 @@
         '@context'        => 'https://schema.org',
         '@type'           => 'LocalBusiness',
         '@id'             => url($area->url) . '#city-reviews',
-        'name'            => 'GS Construction',
+        'name'            => config('brand.display_name'),
         // Service-area business: single real HQ address. The city this node is
         // about is conveyed via areaServed below, not a fabricated local address.
         'address'         => [

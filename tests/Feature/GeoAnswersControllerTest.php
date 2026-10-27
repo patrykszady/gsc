@@ -26,7 +26,7 @@ class GeoAnswersControllerTest extends TestCase
         $data = $response->json();
 
         $this->assertSame('FAQPage', $data['@type']);
-        $this->assertSame('GS Construction', $data['publisher']['name']);
+        $this->assertSame(config('brand.display_name'), $data['publisher']['name']);
 
         $questions = array_column($data['mainEntity'], 'name');
         $this->assertContains('Who is GS Construction?', $questions);

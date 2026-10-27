@@ -101,7 +101,7 @@ $schema = [
     '@context' => 'https://schema.org',
     '@type' => 'LocalBusiness',
     '@id' => 'https://gs.construction/#business',
-    'name' => 'GS Construction',
+    'name' => config('brand.display_name'),
     'url' => 'https://gs.construction',
     // Service-area business: single real HQ address (no storefront per city).
     // Per-city relevance is expressed via areaServed/serviceArea elsewhere.

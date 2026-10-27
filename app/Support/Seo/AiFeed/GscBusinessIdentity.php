@@ -21,12 +21,15 @@ final class GscBusinessIdentity implements BusinessIdentity
 {
     public function name(): string
     {
-        return 'GS Construction';
+        // Full entity name — brand search is ambiguous with other "GS
+        // Construction" businesses nationwide, and this feed's `business.name`
+        // is one of the fields AI engines quote verbatim.
+        return (string) config('brand.display_name', 'GS Construction & Remodeling');
     }
 
     public function legalName(): ?string
     {
-        return 'GS Construction & Remodeling';
+        return (string) config('brand.legal_name', 'GS Construction & Remodeling, Inc.');
     }
 
     public function url(): string
