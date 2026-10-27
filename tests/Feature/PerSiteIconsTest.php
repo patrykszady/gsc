@@ -52,6 +52,22 @@ class PerSiteIconsTest extends TestCase
         $this->assertStringNotContainsString('/icons/gsc/', $jpd, 'never another site\'s icons');
     }
 
+    /**
+     * gs.construction's icon is the original GS badge (Patryk, 2026-10-27:
+     * "it should be our original logo"). The 2026-09-24 square mark — the
+     * badge's letters and roof on a navy disc, made for Google's 18 px
+     * result slot — was rejected and removed.
+     */
+    public function test_gs_construction_wears_its_original_badge_icon(): void
+    {
+        $svg = (string) file_get_contents(public_path('icons/gsc/favicon.svg'));
+
+        $this->assertStringNotContainsString('<circle', $svg, 'the rejected navy-disc mark is not the icon');
+        $this->assertStringContainsString('<rect width="144" height="144" fill="#ffffff"/>', $svg, 'the badge sits on white');
+        $this->assertStringContainsString('fill="#50c8ec"', $svg, 'with its light-blue outline');
+        $this->assertFileDoesNotExist(resource_path('brand/gsc-favicon-mark.svg'));
+    }
+
     public function test_the_manifest_and_root_favicon_are_answered_per_host(): void
     {
         $this->jpd();
