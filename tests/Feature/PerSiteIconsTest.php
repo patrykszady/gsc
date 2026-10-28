@@ -53,19 +53,28 @@ class PerSiteIconsTest extends TestCase
     }
 
     /**
-     * gs.construction's icon is the original GS badge (Patryk, 2026-10-27:
-     * "it should be our original logo"). The 2026-09-24 square mark — the
-     * badge's letters and roof on a navy disc, made for Google's 18 px
-     * result slot — was rejected and removed.
+     * gs.construction's icon is the logo's own GS letters, navy (#132146) on
+     * the logo's light blue (#50c8ec) — Patryk, 2026-10-27: the full badge
+     * was "hard to read" small; "just use GS, light blue background and navy
+     * GS, our logo colours and GS font". The 2026-09-24 navy-disc mark stays
+     * rejected. Sources in resources/brand/gsc-icon-gs*.svg.
      */
-    public function test_gs_construction_wears_its_original_badge_icon(): void
+    public function test_gs_construction_wears_its_gs_letters_on_light_blue(): void
     {
-        $svg = (string) file_get_contents(public_path('icons/gsc/favicon.svg'));
+        foreach (['public/icons/gsc/favicon.svg', 'resources/brand/gsc-icon-gs-full.svg', 'resources/brand/gsc-icon-gs-maskable.svg'] as $file) {
+            $svg = (string) file_get_contents(base_path($file));
 
-        $this->assertStringNotContainsString('<circle', $svg, 'the rejected navy-disc mark is not the icon');
-        $this->assertStringContainsString('<rect width="144" height="144" fill="#ffffff"/>', $svg, 'the badge sits on white');
-        $this->assertStringContainsString('fill="#50c8ec"', $svg, 'with its light-blue outline');
+            $this->assertStringNotContainsString('<circle', $svg, $file.': not the rejected navy-disc mark');
+            $this->assertMatchesRegularExpression('/<rect width="144" height="144"( rx="\d+")? fill="#50c8ec"\/>/', $svg, $file.': light-blue background');
+            $this->assertSame(2, substr_count($svg, 'fill="#132146"'), $file.': the navy G and S, nothing else');
+        }
+
         $this->assertFileDoesNotExist(resource_path('brand/gsc-favicon-mark.svg'));
+
+        // The raster icons are the same artwork: light blue at the edge, navy in the letters.
+        $touch = imagecreatefrompng(public_path('icons/gsc/apple-touch-icon.png'));
+        $edge = imagecolorsforindex($touch, imagecolorat($touch, 2, 2));
+        $this->assertSame([80, 200, 236], [$edge['red'], $edge['green'], $edge['blue']]);
     }
 
     public function test_the_manifest_and_root_favicon_are_answered_per_host(): void
