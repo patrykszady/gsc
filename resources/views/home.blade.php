@@ -1,6 +1,6 @@
 <x-layouts.app
     title="Remodeling Contractors"
-    metaDescription="Professional kitchen, bathroom, and home remodeling services. GS Construction is a family-owned business serving the Chicagoland area."
+    metaDescription="Professional kitchen, bathroom, and home remodeling services. GS Construction & Remodeling is a family-owned business serving the Chicagoland area."
 >
     {{-- ItemList (summary-page carousel) for the remodeling services linked in the
          "Explore Our Remodeling Services" section below. Each ListItem points at a
@@ -30,7 +30,7 @@
             '@context'        => 'https://schema.org',
             '@type'           => 'ItemList',
             '@id'             => url('/') . '#services-list',
-            'name'            => 'Remodeling Services — GS Construction',
+            'name'            => 'Remodeling Services — '.config('brand.display_name'),
             'itemListOrder'   => 'https://schema.org/ItemListOrderAscending',
             'numberOfItems'   => count($homeServiceItems),
             'itemListElement' => $homeServiceItems,
@@ -40,9 +40,9 @@
 
     {{-- Voice / AI: 'About this business' speakable summary (visible to humans, --}}
     {{-- emphasized for voice assistants, AI Overviews, and ChatGPT browse). --}}
-    <section class="speakable mx-auto max-w-7xl px-6 pt-6 lg:px-8" aria-label="About GS Construction">
+    <section class="speakable mx-auto max-w-7xl px-6 pt-6 lg:px-8" aria-label="About {{ config('brand.display_name') }}">
         <p class="sr-only" data-speakable="business-summary">
-            GS Construction is a family-owned kitchen, bathroom, and home remodeling contractor
+            {{ config('brand.display_name') }} is a family-owned kitchen, bathroom, and home remodeling contractor
             based in Arlington Heights, Illinois, founded in 2015 by Gregory and Patryk.
             We serve {{ \App\Support\CompanyStats::citiesServedLabel() }} cities across the Chicago suburbs, hold a 5-star rating
             across {{ \App\Support\CompanyStats::reviewsTotal() }} verified customer reviews on Google, Houzz, Yelp, and Angi,

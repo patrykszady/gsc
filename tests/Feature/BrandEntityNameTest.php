@@ -63,4 +63,22 @@ class BrandEntityNameTest extends TestCase
         $expectedName = json_encode(config('brand.display_name').' — Schaumburg', JSON_UNESCAPED_SLASHES);
         $this->assertStringContainsString('"name": '.$expectedName, $html);
     }
+
+    /**
+     * Google shows "gs.construction" instead of the name when the home page
+     * names the business two ways (2026-10-30): the header, the opening
+     * summary and the services list now all carry
+     * "GS Construction & Remodeling", like the markup and the title.
+     */
+    public function test_the_homepage_names_the_business_the_same_way_everywhere_a_reader_sees_it(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+        $full = e(config('brand.display_name'));
+
+        $this->assertMatchesRegularExpression('#uppercase tracking-wide[^>]*>\s*'.preg_quote(e(config('brand.name')), '#').'\s*</span>(?:\s|<!--.*?-->)*<span[^>]*>\s*&amp; Remodeling\s*</span>#s', $html, 'the header carries the full name');
+        $this->assertStringContainsString('aria-label="About '.$full.'"', $html);
+        $this->assertMatchesRegularExpression('#data-speakable="business-summary">\s*'.preg_quote($full, '#').' is a family-owned#', $html);
+        $this->assertStringContainsString(json_encode('Remodeling Services — '.config('brand.display_name'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $html);
+        $this->assertStringNotContainsString('>GS CONSTRUCTION<', $html);
+    }
 }
