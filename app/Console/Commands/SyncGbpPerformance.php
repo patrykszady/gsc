@@ -109,7 +109,7 @@ class SyncGbpPerformance extends Command
         if ($this->option('with-keywords')) {
             $now = Carbon::now();
             // Pull current + previous month
-            foreach ([$now->copy()->subMonth(), $now] as $m) {
+            foreach ([$now->copy()->subMonthNoOverflow(), $now] as $m) {
                 $year = (int) $m->format('Y');
                 $month = (int) $m->format('n');
                 $rows = $svc->fetchSearchKeywords($locationId, $year, $month);

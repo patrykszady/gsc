@@ -2,6 +2,8 @@
 
 namespace App\Support\Seo;
 
+use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoCredentials;
+
 /**
  * DataForSEO's per-site credential (a login + password) — but, unlike
  * Bing/Clarity/PageSpeed, this site never collects it from its OWN /admin.
@@ -13,8 +15,13 @@ namespace App\Support\Seo;
  * this site never needs to know where the key came from. The
  * DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD env values stay as the transition
  * fallback — see seo:credentials-import-from-env.
+ *
+ * Implements the kit's DataForSeoCredentials contract (0.19.0 port, 2026-11-01)
+ * so the kit's DataForSeoClient reads the exact same credential this site's
+ * own App\Services\DataForSeoService always has — one source of truth, not
+ * two copies that could drift.
  */
-final class DataForSeoSettings
+final class DataForSeoSettings implements DataForSeoCredentials
 {
     public const SETTING_LOGIN = 'seo.dataforseo.login';
 

@@ -40,7 +40,10 @@ use App\Support\Citations\SitePendingCitationRepository;
 use App\Support\PublicFeeds;
 use App\Support\Seo\BingWriter;
 use App\Support\Seo\ClaritySettings;
+use App\Support\Seo\DataForSeoSettings;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
+use App\Support\Seo\GscMapPackContext;
+use App\Support\Seo\GscSeoProfile;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\TrackedPathsFromModel;
 use App\Support\SEO\RecrawlNudger;
@@ -55,6 +58,7 @@ use App\Support\Seo\Reports\HttpSiteCatalog;
 use App\Support\Seo\Reports\LaravelSimpleCache;
 use App\Support\Seo\SearchConsoleWriter as SiteSearchConsoleWriter;
 use App\Support\SEO\SEOBuilder;
+use App\Support\Seo\SeoReportSink;
 use App\Support\Seo\TenantScopedReportStorage;
 use App\Support\Social\EloquentRankedTowns;
 use App\Support\Social\SeoIntelTrendsIntel;
@@ -105,8 +109,13 @@ use SsSystems\Platform\Reports\Contracts\QueryMetricsReader;
 use SsSystems\Platform\Reports\Contracts\ReportStorage;
 use SsSystems\Platform\Reports\Contracts\SiteCatalog;
 use SsSystems\Platform\Reports\Contracts\SiteIdentity;
+use SsSystems\Platform\Seo\AiTraffic\AiTrafficStore;
 use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
 use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
+use SsSystems\Platform\Seo\Contracts\SeoSiteProfile;
+use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoApi;
+use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoCredentials;
+use SsSystems\Platform\Seo\DataForSeo\DataForSeoClient;
 use SsSystems\Platform\Seo\Faq\Contracts\FaqCatalog;
 use SsSystems\Platform\Seo\Inspection\Contracts\CoverageStore as CoverageStoreContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\SitemapSource as SitemapSourceContract;
@@ -115,9 +124,21 @@ use SsSystems\Platform\Seo\Inspection\Contracts\UrlInspector as UrlInspectorCont
 use SsSystems\Platform\Seo\Inspection\EloquentCoverageStore;
 use SsSystems\Platform\Seo\Inspection\SearchConsoleUrlInspector;
 use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuota;
+use SsSystems\Platform\Seo\KeywordResearch\Console\KeywordResearchCommand;
+use SsSystems\Platform\Seo\KeywordResearch\KeywordResearchSnapshot;
+use SsSystems\Platform\Seo\MapPack\Contracts\MapPackContext;
+use SsSystems\Platform\Seo\MapPack\MapPackStore;
+use SsSystems\Platform\Seo\Rankings\RankingsSnapshot;
+use SsSystems\Platform\Seo\Rankings\RankSnapshotStore;
+use SsSystems\Platform\Seo\Rankings\TrackedQueries;
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
+use SsSystems\Platform\Seo\Visibility\AiMentionStore;
+use SsSystems\Platform\Seo\Visibility\BacklinkProspectStore;
+use SsSystems\Platform\Seo\Visibility\Console\CompetitorBrandTrackCommand;
+use SsSystems\Platform\Seo\Visibility\Contracts\ReportSink;
+use SsSystems\Platform\Seo\Visibility\DomainOverviewStore;
 use SsSystems\Platform\Social\Adapters\OAuthTokenCredentialStore;
 use SsSystems\Platform\Social\Contracts\MetaCredentialStore;
 use SsSystems\Platform\Social\Contracts\PlatformAvailability as SocialPlatformAvailabilityContract;
@@ -365,6 +386,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->registerGoogle();
         $this->registerTraffic();
+        $this->registerSeoTools();
     }
 
     /**
@@ -433,6 +455,88 @@ class AppServiceProvider extends ServiceProvider
     protected static function isDefaultSite(): bool
     {
         return Site::current()->slug === (string) config('sites.default', 'gsc');
+    }
+
+    /**
+     * The kit's SEO tools (0.19.1, 2026-11-01, phase 3 of the port — see
+     * J. Peterson Design's identical wiring, done the same day): this
+     * site's own DataForSEO credential/client, site profile (read straight
+     * from config/seo.php — the same keys the retired TrackRankings/
+     * SeoKeywordResearch/SeoDomainOverview/SeoMapPackGrid/SeoAiMentions
+     * commands read directly), map-pack context, and report sink — plus
+     * every tenant-scoped store/snapshot the tools need. gs.construction is
+     * multi-tenant (site_id on every row), so every store below passes
+     * `tenantColumn: 'site_id'` and a CLOSURE reading Tenancy::currentId()
+     * at call time — never a captured value — the same convention as
+     * registerTraffic()'s collectors and the Pulse Recorder/SnapshotBuilder
+     * above. KeywordResearchCommand and CompetitorBrandTrackCommand build
+     * their own store inline from constructor arguments rather than taking
+     * an injected store, so they get the same tenant column/closure
+     * through a contextual binding instead of a singleton.
+     *
+     * Intel stays on this site's own App\Services\Seo\Intel\* (a much
+     * larger source set than the kit's Intel module has ported so far) —
+     * nothing here binds the kit's own Intel contracts, so
+     * BuildsSeoToolBlocks's 'intel' entry falls back to its empty shape
+     * and SeoReportController overrides it with its own intelSnapshot()
+     * after the spread.
+     *
+     * seo:map-pack-competitors stays this site's OWN command (it reads a
+     * competitor's homepage via CompetitorSiteFetcher, which the kit's
+     * MapPackCompetitorsCommand does not do — see that command's own
+     * docblock): the kit's version is never registered in
+     * bootstrap/app.php, so MapPackStore here only needs to serve
+     * seo:map-pack-grid and the report snapshot.
+     */
+    protected function registerSeoTools(): void
+    {
+        $tenant = fn () => Tenancy::currentId();
+
+        $this->app->bind(DataForSeoCredentials::class, DataForSeoSettings::class);
+        $this->app->singleton(DataForSeoApi::class, fn ($app) => new DataForSeoClient(
+            $app->make(DataForSeoCredentials::class),
+            $app->make(HttpFactory::class),
+            (float) config('seo.dataforseo.min_balance', 10.0),
+        ));
+        $this->app->bind(SeoSiteProfile::class, GscSeoProfile::class);
+        $this->app->bind(ReportSink::class, SeoReportSink::class);
+        $this->app->bind(MapPackContext::class, GscMapPackContext::class);
+
+        $this->app->singleton(RankSnapshotStore::class, fn () => new RankSnapshotStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->singleton(TrackedQueries::class, fn () => new TrackedQueries(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->singleton(RankingsSnapshot::class, fn ($app) => new RankingsSnapshot(
+            $app->make(RankSnapshotStore::class), DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+
+        $this->app->singleton(KeywordResearchSnapshot::class, fn () => new KeywordResearchSnapshot(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->when(KeywordResearchCommand::class)->needs('$tenantColumn')->give('site_id');
+        $this->app->when(KeywordResearchCommand::class)->needs('$tenantId')->give(fn () => $tenant);
+
+        $this->app->singleton(DomainOverviewStore::class, fn () => new DomainOverviewStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->singleton(BacklinkProspectStore::class, fn () => new BacklinkProspectStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->singleton(AiMentionStore::class, fn () => new AiMentionStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->when(CompetitorBrandTrackCommand::class)->needs('$tenantColumn')->give('site_id');
+        $this->app->when(CompetitorBrandTrackCommand::class)->needs('$tenantId')->give(fn () => $tenant);
+
+        $this->app->singleton(AiTrafficStore::class, fn () => new AiTrafficStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+
+        $this->app->singleton(MapPackStore::class, fn () => new MapPackStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
     }
 
     /**

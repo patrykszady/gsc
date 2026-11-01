@@ -12,7 +12,6 @@ use App\Http\Middleware\ResolveSite;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TenantRouteGuard;
 use App\Http\Middleware\Track404Responses;
-use App\Http\Middleware\TrackAiTraffic;
 use App\Http\Middleware\TrackDomainSource;
 use App\Models\Project;
 use App\Models\Site;
@@ -30,12 +29,36 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use SsSystems\Platform\Http\Admin\AuthenticateAdminApi;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Projects\MergedProjectRedirectResponse;
+use SsSystems\Platform\Seo\AiTraffic\TrackAiTraffic;
+use SsSystems\Platform\Seo\KeywordResearch\Console\KeywordResearchCommand;
+use SsSystems\Platform\Seo\MapPack\Console\MapPackGridCommand;
+use SsSystems\Platform\Seo\Rankings\Console\ShowRankingsCommand;
+use SsSystems\Platform\Seo\Rankings\Console\TrackRankingsCommand;
+use SsSystems\Platform\Seo\Visibility\Console\AiMentionsCommand;
+use SsSystems\Platform\Seo\Visibility\Console\BacklinkGapCommand;
+use SsSystems\Platform\Seo\Visibility\Console\CompetitorBrandTrackCommand;
+use SsSystems\Platform\Seo\Visibility\Console\DomainOverviewCommand;
+use SsSystems\Platform\Traffic\Console\CollectTrafficCommand;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         __DIR__.'/../app/Console/Commands',
-        \SsSystems\Platform\Traffic\Console\CollectTrafficCommand::class,
+        CollectTrafficCommand::class,
+        // The kit's SEO tools (0.19.1, 2026-11-01): same command names this
+        // site always ran (routes/console.php's schedules are unchanged),
+        // now backed by the shared kit classes. seo:map-pack-competitors
+        // stays App\Console\Commands\SeoMapPackCompetitors (below, via the
+        // app/Console/Commands autoload) — the kit's own
+        // MapPackCompetitorsCommand is deliberately never registered here.
+        TrackRankingsCommand::class,
+        ShowRankingsCommand::class,
+        KeywordResearchCommand::class,
+        DomainOverviewCommand::class,
+        BacklinkGapCommand::class,
+        AiMentionsCommand::class,
+        CompetitorBrandTrackCommand::class,
+        MapPackGridCommand::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

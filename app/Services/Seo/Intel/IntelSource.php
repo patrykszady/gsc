@@ -2,9 +2,10 @@
 
 namespace App\Services\Seo\Intel;
 
-use App\Console\Commands\SeoDomainOverview;
 use App\Models\AreaServed;
 use App\Services\DataForSeoService;
+use App\Support\Seo\CompetitorDomainSources;
+use Illuminate\Support\Collection;
 
 /**
  * One DataForSEO API family as a scheduled collector.
@@ -92,13 +93,13 @@ abstract class IntelSource
     }
 
     /** Every subject's latest-day snapshot for a kind, keyed by subject. */
-    protected function latestSet(string $kind): \Illuminate\Support\Collection
+    protected function latestSet(string $kind): Collection
     {
         return $this->store->latestSet($this->family(), $kind);
     }
 
     /** Every subject's previous-day snapshot for a kind, keyed by subject. */
-    protected function previousSet(string $kind): \Illuminate\Support\Collection
+    protected function previousSet(string $kind): Collection
     {
         return $this->store->previousSet($this->family(), $kind);
     }
@@ -112,7 +113,7 @@ abstract class IntelSource
     /** Map-pack leaders then organic page-one competitors, bare domains. */
     protected function competitorDomains(int $limit = 8): array
     {
-        return SeoDomainOverview::competitorDomains($limit);
+        return CompetitorDomainSources::competitorDomains($limit);
     }
 
     /** The six towns with the most projects — the ones the business is built on. */
@@ -130,6 +131,6 @@ abstract class IntelSource
     /** A finding builder that prefixes the code with the family. */
     protected function finding(string $code, string $severity, string $title, string $detail = '', ?string $subject = null, ?string $key = null, array $delta = [], ?array $action = null): Finding
     {
-        return new Finding($this->family() . '.' . $code, $severity, $title, $detail, $subject, $key, $delta, $action);
+        return new Finding($this->family().'.'.$code, $severity, $title, $detail, $subject, $key, $delta, $action);
     }
 }

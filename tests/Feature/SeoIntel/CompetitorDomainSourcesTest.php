@@ -2,19 +2,28 @@
 
 namespace Tests\Feature\SeoIntel;
 
-use App\Console\Commands\SeoDomainOverview;
+use App\Support\Seo\CompetitorDomainSources;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * SeoDomainOverview::competitorDomains() is the shared source every other
- * family reads through IntelSource::competitorDomains() (LabsSource's
- * fallback, BacklinksSource, DomainAnalyticsSource) plus SeoKeywordResearch —
- * so filtering it here fixes those transitively.
+ * CompetitorDomainSources::competitorDomains() is the shared source every
+ * SEO intel family reads through App\Services\Seo\Intel\IntelSource::
+ * competitorDomains() (LabsSource's fallback, BacklinksSource,
+ * DomainAnalyticsSource) — so filtering it here fixes those transitively.
+ *
+ * Kit SEO tools port (0.19.1, 2026-11-01): extracted from the retired
+ * App\Console\Commands\SeoDomainOverview when that command was replaced by
+ * the kit's SsSystems\Platform\Seo\Visibility\Console\DomainOverviewCommand
+ * (a different domain source — the site profile + seo_rank_snapshots, see
+ * that command's own docblock). SeoDomainOverview::shareOfVoiceDomains()
+ * (the owner-curated /compare companies first, read only by that retired
+ * command's own weekly footprint list) is gone with it — nothing else ever
+ * called it — so its test is gone too, not carried over.
  */
-class SeoDomainOverviewCompetitorDomainsTest extends TestCase
+class CompetitorDomainSourcesTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
@@ -35,7 +44,7 @@ class SeoDomainOverviewCompetitorDomainsTest extends TestCase
             ],
         ]));
 
-        $domains = SeoDomainOverview::competitorDomains(10);
+        $domains = CompetitorDomainSources::competitorDomains(10);
 
         $this->assertContains('realrivalco.com', $domains);
         $this->assertContains('brandnewrival.com', $domains);
@@ -43,12 +52,8 @@ class SeoDomainOverviewCompetitorDomainsTest extends TestCase
         $this->assertNotContains('houzz.com', $domains, 'the discovery-report aggregator host must be dropped even though it is listed first');
     }
 
-    public function test_the_share_of_voice_set_leads_with_the_curated_compare_companies_then_discovery_then_the_map_pack(): void
+    public function test_map_pack_hosts_lead_and_the_discovery_file_fills_the_rest(): void
     {
-        config(['competitors.competitors' => [
-            ['name' => 'Curated One', 'website' => 'https://www.curatedone.com'],
-            ['name' => 'Curated Two', 'website' => 'https://curatedtwo.com/'],
-        ]]);
         DB::table('map_pack_competitors')->insert([
             ['site_id' => null, 'place_id' => 'p1', 'keyword' => 'kitchen remodeling', 'name' => 'Map Pack Host', 'url' => 'https://mappackhost.com/', 'host' => 'mappackhost.com', 'pack_points' => 99, 'created_at' => now(), 'updated_at' => now()],
         ]);
@@ -58,17 +63,9 @@ class SeoDomainOverviewCompetitorDomainsTest extends TestCase
             'domains' => [['host' => 'discoveredrival.com', 'areas' => 3, 'best_pos' => 2, 'known' => false]],
         ]));
 
-        // The map-pack host has the most points and, in the shared source
-        // the other intel families read, still comes first. The weekly
-        // footprint's own list leads with the owner's /compare companies,
-        // then discovery, then the map pack fills what is left.
-        $this->assertSame(
-            ['curatedone.com', 'curatedtwo.com', 'discoveredrival.com', 'mappackhost.com'],
-            SeoDomainOverview::shareOfVoiceDomains(10),
-        );
-        $this->assertSame(['mappackhost.com', 'discoveredrival.com'], SeoDomainOverview::competitorDomains(10), 'the shared source is unchanged: map pack first, discovery second, and it never reads the curated list');
+        $this->assertSame(['mappackhost.com', 'discoveredrival.com'], CompetitorDomainSources::competitorDomains(10));
 
-        // The limit trims from the END, so it is never a curated company that goes.
-        $this->assertSame(['curatedone.com', 'curatedtwo.com', 'discoveredrival.com'], SeoDomainOverview::shareOfVoiceDomains(3));
+        // The limit trims from the end.
+        $this->assertSame(['mappackhost.com'], CompetitorDomainSources::competitorDomains(1));
     }
 }

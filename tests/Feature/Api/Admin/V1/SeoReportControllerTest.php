@@ -186,7 +186,7 @@ class SeoReportControllerTest extends TestCase
             ->assertOk()
             ->json('data');
 
-        foreach (['health', 'report_stats', 'diagnostic', 'search', 'trend', 'top_queries', 'top_pages', 'clarity', 'geo', 'ai_traffic', 'gsc_errors', 'pulse'] as $key) {
+        foreach (['health', 'report_stats', 'diagnostic', 'search', 'trend', 'top_queries', 'top_pages', 'clarity', 'geo', 'rankings', 'keyword_research', 'dataforseo', 'map_pack', 'intel', 'ai_traffic', 'gsc_errors', 'pulse'] as $key) {
             $this->assertArrayHasKey($key, $data, "snapshot payload missing \"{$key}\"");
         }
 
@@ -198,6 +198,22 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame([], $data['clarity']['pages']);
         $this->assertArrayHasKey('channels', $data['search']);
         $this->assertArrayHasKey('gsc', $data['search']['channels']);
+
+        // The kit's SEO tools (0.19.1): every block answers its own empty
+        // shape with no data seeded, same as J. Peterson Design's identical
+        // KitSeoToolsTest — see tests/Feature/Seo/KitSeoToolsTest.php for
+        // the dedicated coverage (profile/credentials/commands/schedule).
+        $this->assertFalse($data['rankings']['available']);
+        $this->assertFalse($data['keyword_research']['available']);
+        $this->assertSame([], $data['dataforseo']['share_of_voice']);
+        $this->assertNull($data['dataforseo']['balance']);
+        $this->assertFalse($data['map_pack']['available']);
+        // Not the kit's empty fallback (nothing here binds the kit's own
+        // Intel contracts): this site's own intelSnapshot(), which lists
+        // every configured family even before its first run.
+        $this->assertNotEmpty($data['intel']['families']);
+        $this->assertArrayHasKey('onpage', $data['intel']['families']);
+        $this->assertSame(['referrals' => [], 'crawlers' => [], 'total_referrals' => 0, 'total_crawls' => 0], $data['ai_traffic']);
 
         // Neither gsc nor jpeterson has a search feature: the builder gets
         // no `search_event`, so these must be genuinely ABSENT, not zeroed.
@@ -390,8 +406,13 @@ class SeoReportControllerTest extends TestCase
     {
         Cache::flush();
         $area = AreaServed::create(['city' => 'Prospect Heights', 'slug' => 'prospect-heights', 'latitude' => 42.0953, 'longitude' => -87.9373]);
-        $grid = [['lat' => 42.1028, 'lng' => -87.9276, 'rank' => 4], ['lat' => 42.30, 'lng' => -87.60, 'rank' => false]];
-        $raw = fn (array $extra) => json_encode(['detail' => array_merge(['grid' => $grid, 'points_total' => 2, 'pack_leaders' => [['business' => 'Prism Kitchen', 'appearances' => 15]], 'public_url' => 'https://localrankingtracker.com/scan-report/x/y/', 'radius' => '15mi'], $extra)]);
+        // A not-found grid point is JSON null (MapPackSnapshot checks
+        // `=== null`), not the retired SeoMapPackGrid's `false`.
+        $grid = [['lat' => 42.1028, 'lng' => -87.9276, 'rank' => 4], ['lat' => 42.30, 'lng' => -87.60, 'rank' => null]];
+        // The kit's MapPackStore stores the scan's detail unwrapped (no
+        // 'detail' envelope — see SsSystems\Platform\Seo\MapPack\
+        // Console\MapPackGridCommand), unlike the retired SeoMapPackGrid.
+        $raw = fn (array $extra) => json_encode(array_merge(['grid' => $grid, 'points_total' => 2, 'pack_leaders' => [['business' => 'Prism Kitchen', 'appearances' => 15]], 'radius' => '15mi'], $extra));
         foreach ([['2026-08-28 12:00:00', 9.0, 0.0], ['2026-09-04 12:00:00', 4.0, 0.0]] as [$at, $arp, $solv]) {
             DB::table('map_pack_scans')->insert(['site_id' => $area->site_id, 'scan_id' => md5($at), 'keyword' => 'bathroom remodeling', 'scanned_at' => $at, 'arp' => $arp, 'atrp' => 20.9, 'solv' => $solv, 'grid_points' => 11, 'in_top3' => 0, 'raw' => $raw([]), 'created_at' => now(), 'updated_at' => now()]);
         }
@@ -424,11 +445,12 @@ class SeoReportControllerTest extends TestCase
         // A 2x2 grid, row-major: [rank 1, not-found], [not-found, rank 4].
         $grid = [
             ['lat' => 42.11, 'lng' => -87.93, 'rank' => 1],
-            ['lat' => 42.11, 'lng' => -87.90, 'rank' => false],
-            ['lat' => 42.09, 'lng' => -87.93, 'rank' => false],
+            ['lat' => 42.11, 'lng' => -87.90, 'rank' => null],
+            ['lat' => 42.09, 'lng' => -87.93, 'rank' => null],
             ['lat' => 42.09, 'lng' => -87.90, 'rank' => 4],
         ];
-        $raw = json_encode(['detail' => ['grid' => $grid, 'points_total' => 4]]);
+        // Unwrapped — see the note on the sibling map-pack test above.
+        $raw = json_encode(['grid' => $grid, 'points_total' => 4]);
         DB::table('map_pack_scans')->insert([
             'site_id' => $area->site_id, 'scan_id' => 'grid-1', 'keyword' => 'kitchen remodeling', 'scanned_at' => now(),
             'arp' => 2.5, 'atrp' => 2.5, 'solv' => 50, 'grid_points' => 2, 'in_top3' => 2, 'raw' => $raw,
@@ -442,8 +464,12 @@ class SeoReportControllerTest extends TestCase
     public function test_ranking_snapshot_reports_the_distribution_per_engine_without_double_counting(): void
     {
         Cache::flush();
+        // The kit's RankSnapshotStore scopes every read to the current
+        // tenant (site_id = Tenancy::currentId()), not gsc's own
+        // OR-site_id-IS-NULL-tolerant Tenancy::table() helper — a row
+        // seeded with site_id null would simply never be read back.
         $row = fn (array $overrides) => array_merge([
-            'site_id' => null, 'location' => null, 'city_slug' => null, 'gsc_match_title' => null, 'result_count' => null,
+            'site_id' => Tenancy::currentId(), 'location' => null, 'city_slug' => null, 'gsc_match_title' => null, 'result_count' => null,
             'top_results' => json_encode([]), 'meta' => json_encode([]),
         ], $overrides);
 
@@ -497,12 +523,18 @@ class SeoReportControllerTest extends TestCase
     public function test_dataforseo_snapshot_surfaces_keyword_churn_ai_answer_text_link_gap_reasons_and_balance(): void
     {
         Cache::flush();
+        // The kit's DomainOverviewStore/BacklinkProspectStore/AiMentionStore
+        // scope every read to the current tenant (site_id =
+        // Tenancy::currentId()), not gsc's own OR-site_id-IS-NULL-tolerant
+        // Tenancy::table() helper — a row seeded with site_id null would
+        // simply never be read back.
+        $siteId = Tenancy::currentId();
         DB::table('seo_domain_overviews')->insert([
-            ['site_id' => null, 'domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-08-25', 'pos_1' => 5, 'pos_2_3' => 3, 'pos_4_10' => 2, 'pos_11_20' => 1, 'keywords_total' => 11, 'etv' => 100, 'is_new' => 2, 'is_lost' => 1, 'created_at' => now(), 'updated_at' => now()],
-            ['site_id' => null, 'domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-09-01', 'pos_1' => 6, 'pos_2_3' => 3, 'pos_4_10' => 2, 'pos_11_20' => 1, 'keywords_total' => 12, 'etv' => 120, 'is_new' => 5, 'is_lost' => 3, 'created_at' => now(), 'updated_at' => now()],
+            ['site_id' => $siteId, 'domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-08-25', 'pos_1' => 5, 'pos_2_3' => 3, 'pos_4_10' => 2, 'pos_11_20' => 1, 'keywords_total' => 11, 'etv' => 100, 'is_new' => 2, 'is_lost' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['site_id' => $siteId, 'domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-09-01', 'pos_1' => 6, 'pos_2_3' => 3, 'pos_4_10' => 2, 'pos_11_20' => 1, 'keywords_total' => 12, 'etv' => 120, 'is_new' => 5, 'is_lost' => 3, 'created_at' => now(), 'updated_at' => now()],
         ]);
         $prospect = fn (array $overrides) => array_merge([
-            'site_id' => null, 'rank' => 40, 'competitor_count' => 2, 'links_to_us' => false, 'spam_score' => null,
+            'site_id' => $siteId, 'rank' => 40, 'competitor_count' => 2, 'links_to_us' => false, 'spam_score' => null,
             'created_at' => now(), 'updated_at' => now(),
         ], $overrides);
         DB::table('seo_backlink_prospects')->insert([
@@ -512,7 +544,7 @@ class SeoReportControllerTest extends TestCase
             $prospect(['domain' => 'freehost.blogspot.com', 'links_to' => json_encode(['a.com' => 1, 'b.com' => 1])]),
         ]);
         DB::table('seo_ai_mentions')->insert([
-            ['site_id' => null, 'platform' => 'chatgpt', 'prompt' => 'best kitchen remodeler in Mundelein', 'town' => 'Mundelein', 'mentioned' => true, 'businesses_named' => json_encode(['GS Construction']), 'answer_excerpt' => str_repeat('a', 400), 'asked_on' => '2026-09-08', 'created_at' => now(), 'updated_at' => now()],
+            ['site_id' => $siteId, 'platform' => 'chatgpt', 'prompt' => 'best kitchen remodeler in Mundelein', 'town' => 'Mundelein', 'mentioned' => true, 'businesses_named' => json_encode(['GS Construction']), 'answer_excerpt' => str_repeat('a', 400), 'asked_on' => '2026-09-08', 'created_at' => now(), 'updated_at' => now()],
         ]);
         Cache::put('seo.dataforseo.balance', 42.5, now()->addDay());
 
@@ -546,41 +578,36 @@ class SeoReportControllerTest extends TestCase
         $this->assertNull($dfs['balance']);
     }
 
-    public function test_keyword_research_snapshot_carries_prior_run_totals_for_a_chevron(): void
+    /**
+     * The kit's KeywordResearchSnapshot deliberately drops the week-over-week
+     * chevron fields (total_prev/volume_total_prev/opportunities_count_prev)
+     * gs.construction's own keywordResearchSnapshot() used to read from a
+     * small ad hoc Cache ledger — see KeywordResearchSnapshot's own
+     * docblock. There is no replacement: the report card's required keys
+     * never read them, so this behaviour is gone, not moved.
+     */
+    public function test_keyword_research_snapshot_carries_the_current_totals_with_no_chevron(): void
     {
-        $seedKeywords = function (int $n, int $volumeEach): void {
-            DB::table('seo_keywords')->truncate();
-            for ($i = 0; $i < $n; $i++) {
-                DB::table('seo_keywords')->insert([
-                    'site_id' => null, 'keyword' => "kitchen remodel {$i}", 'volume' => $volumeEach,
-                    'opportunity' => 5, 'researched_at' => now(), 'created_at' => now(), 'updated_at' => now(),
-                ]);
-            }
-        };
-
         Cache::flush();
-        Carbon::setTestNow('2026-09-01 06:00:00');
-        $seedKeywords(10, 100);
-        $first = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.keyword_research');
-        $this->assertSame(10, $first['total']);
-        $this->assertNull($first['total_prev'], 'no prior run recorded yet');
+        $siteId = Tenancy::currentId();
+        for ($i = 0; $i < 10; $i++) {
+            DB::table('seo_keywords')->insert([
+                'site_id' => $siteId, 'keyword' => "kitchen remodel {$i}", 'volume' => 100,
+                'opportunity' => 5, 'researched_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
 
-        // Bust only the 15-minute snapshot cache — Cache::flush() would also wipe
-        // the rolling totals ledger this feature depends on for its own history.
-        Cache::forget(Tenancy::cacheKey('seo_reports_keywords_v1'));
-        Carbon::setTestNow('2026-09-08 06:00:00');
-        $seedKeywords(14, 100);
-        $second = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.keyword_research');
-        $this->assertSame(14, $second['total']);
-        $this->assertSame(10, $second['total_prev']);
-        $this->assertSame(1000, $second['volume_total_prev']);
-        $this->assertSame(1400, $second['volume_total']);
+        $data = $this->getJson('/api/admin/v1/seo/snapshot', $this->adminApiHeaders())->assertOk()->json('data.keyword_research');
+
+        $this->assertSame(10, $data['total']);
+        $this->assertSame(1000, $data['volume_total']);
+        $this->assertArrayNotHasKey('total_prev', $data);
     }
 
     public function test_share_of_voice_shows_only_the_latest_run_and_never_a_directory(): void
     {
         Cache::flush();
-        $row = fn (array $o) => array_merge(['site_id' => null, 'is_us' => false, 'pos_1' => 1, 'pos_2_3' => 1, 'pos_4_10' => 1, 'pos_11_20' => 0, 'keywords_total' => 3, 'etv' => 10, 'is_new' => 0, 'is_lost' => 0, 'created_at' => now(), 'updated_at' => now()], $o);
+        $row = fn (array $o) => array_merge(['site_id' => Tenancy::currentId(), 'is_us' => false, 'pos_1' => 1, 'pos_2_3' => 1, 'pos_4_10' => 1, 'pos_11_20' => 0, 'keywords_total' => 3, 'etv' => 10, 'is_new' => 0, 'is_lost' => 0, 'created_at' => now(), 'updated_at' => now()], $o);
         DB::table('seo_domain_overviews')->insert([
             $row(['domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-09-06']),
             $row(['domain' => 'gs.construction', 'is_us' => true, 'date' => '2026-09-13']),
@@ -603,7 +630,7 @@ class SeoReportControllerTest extends TestCase
     public function test_link_gap_hides_directories_and_says_so(): void
     {
         Cache::flush();
-        $prospect = fn (array $o) => array_merge(['site_id' => null, 'rank' => 40, 'competitor_count' => 3, 'links_to_us' => false, 'spam_score' => null, 'links_to' => json_encode(['a.com' => 1, 'b.com' => 1, 'c.com' => 1]), 'created_at' => now(), 'updated_at' => now()], $o);
+        $prospect = fn (array $o) => array_merge(['site_id' => Tenancy::currentId(), 'rank' => 40, 'competitor_count' => 3, 'links_to_us' => false, 'spam_score' => null, 'links_to' => json_encode(['a.com' => 1, 'b.com' => 1, 'c.com' => 1]), 'created_at' => now(), 'updated_at' => now()], $o);
         DB::table('seo_backlink_prospects')->insert([
             $prospect(['domain' => 'localpaper.com']),
             $prospect(['domain' => 'yelp.com', 'rank' => 900]),
@@ -679,8 +706,12 @@ class SeoReportControllerTest extends TestCase
     public function test_rankings_carry_bings_report_beside_googles(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-19'));
+        // The kit's RankingsSnapshot::bingBuckets() scopes bing_traffic_stats
+        // to the current tenant (site_id = Tenancy::currentId()) the same
+        // way RankSnapshotStore does — a row with no site_id would never be
+        // read back.
         $row = fn (int $daysAgo, string $query, float $position, string $hash) => DB::table('bing_traffic_stats')->insert([
-            'date' => now()->subDays($daysAgo)->toDateString(), 'site_url' => 'https://example.test/', 'query' => $query,
+            'site_id' => Tenancy::currentId(), 'date' => now()->subDays($daysAgo)->toDateString(), 'site_url' => 'https://example.test/', 'query' => $query,
             'impressions' => 10, 'clicks' => 1, 'position' => $position, 'dim_hash' => $hash, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
