@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -49,6 +50,10 @@ class AiTrafficTrackingTest extends TestCase
 
     public function test_seo_reports_renders_the_ai_traffic_section(): void
     {
+        // The page queues stale-report regens on mount; with the sync queue in
+        // tests that would run seo:gbp-parity against the live site.
+        Bus::fake();
+
         $this->actingAs(User::factory()->create(['site_id' => null]))
             ->get('http://gs.construction/admin-legacy/gs.construction/seo-reports')
             ->assertOk()

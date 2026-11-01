@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 /**
@@ -23,6 +24,10 @@ class SeoReportsAutopilotMergeTest extends TestCase
 
     public function test_seo_reports_renders_the_autopilot_panel(): void
     {
+        // The page queues stale-report regens on mount; with the sync queue in
+        // tests that would run seo:gbp-parity against the live site.
+        Bus::fake();
+
         $this->actingAs($this->operator())
             ->get('http://gs.construction/admin-legacy/gs.construction/seo-reports')
             ->assertOk()
@@ -32,6 +37,10 @@ class SeoReportsAutopilotMergeTest extends TestCase
 
     public function test_seo_reports_renders_clarity_and_geo_cards(): void
     {
+        // The page queues stale-report regens on mount; with the sync queue in
+        // tests that would run seo:gbp-parity against the live site.
+        Bus::fake();
+
         $this->actingAs($this->operator())
             ->get('http://gs.construction/admin-legacy/gs.construction/seo-reports')
             ->assertOk()
