@@ -7,8 +7,6 @@ use App\Jobs\RunSeoChannelSyncJob;
 use App\Models\GscCoverageState;
 use App\Models\SeoAction;
 use App\Models\Testimonial;
-use App\Services\Seo\Intel\IntelRunner;
-use App\Services\Seo\Intel\IntelStore;
 use App\Support\Seo\BingSettings;
 use App\Support\Seo\CrawlFiles;
 use App\Support\Seo\FrustratedPages;
@@ -23,6 +21,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Seo\Intel\IntelRunner;
+use SsSystems\Platform\Seo\Intel\IntelStore;
 
 /**
  * Generates the SEO report's "Priority Actions" and "Where the clicks come

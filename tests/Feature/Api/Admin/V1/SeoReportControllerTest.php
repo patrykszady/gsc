@@ -199,7 +199,7 @@ class SeoReportControllerTest extends TestCase
         $this->assertArrayHasKey('channels', $data['search']);
         $this->assertArrayHasKey('gsc', $data['search']['channels']);
 
-        // The kit's SEO tools (0.19.1): every block answers its own empty
+        // The kit's SEO tools (0.19.2): every block answers its own empty
         // shape with no data seeded, same as J. Peterson Design's identical
         // KitSeoToolsTest — see tests/Feature/Seo/KitSeoToolsTest.php for
         // the dedicated coverage (profile/credentials/commands/schedule).
@@ -208,10 +208,10 @@ class SeoReportControllerTest extends TestCase
         $this->assertSame([], $data['dataforseo']['share_of_voice']);
         $this->assertNull($data['dataforseo']['balance']);
         $this->assertFalse($data['map_pack']['available']);
-        // Not the kit's empty fallback (nothing here binds the kit's own
-        // Intel contracts): this site's own intelSnapshot(), which lists
-        // every configured family even before its first run.
-        $this->assertNotEmpty($data['intel']['families']);
+        // The kit's own IntelSnapshot (App\Providers\AppServiceProvider binds
+        // IntelRunner with this site's nine families): it lists every
+        // registered family even before its first run.
+        $this->assertCount(9, $data['intel']['families']);
         $this->assertArrayHasKey('onpage', $data['intel']['families']);
         $this->assertSame(['referrals' => [], 'crawlers' => [], 'total_referrals' => 0, 'total_crawls' => 0], $data['ai_traffic']);
 

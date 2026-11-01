@@ -8,8 +8,6 @@ use App\Models\AreaServed;
 use App\Models\GscCoverageState;
 use App\Models\GscDailyTotal;
 use App\Models\Site;
-use App\Services\Seo\Intel\IntelRunner;
-use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\RecommendationEngine;
 use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Seo\FrustratedPages;
@@ -189,23 +187,19 @@ class SeoReportController extends Controller
 
         $search = $this->searchSnapshot($trendDays);
 
-        // The kit's SEO tools (0.19.1, 2026-11-01): rankings, keyword
-        // research, competitor visibility (dataforseo), AI traffic and the
-        // map-pack grid, all built and cached by the shared kit the same
-        // way ss.systems' hub and every other adopter read them —
-        // BuildsSeoToolBlocks::seoToolBlockCacheKeys() is what
-        // refreshSnapshot() forgets below. 'intel' is overridden straight
-        // after: this site's own App\Services\Seo\Intel\* has far more
-        // sources than the kit's Intel module has ported so far, so the
-        // kit's empty fallback is replaced with intelSnapshot() rather than
-        // used. 'balance' is written by the (unported) daily
-        // seo:dataforseo-balance-check command, straight into Cache, not
-        // through any kit store — merged in here same as before.
+        // The kit's SEO tools (0.19.2, 2026-11-01): rankings, keyword
+        // research, competitor visibility (dataforseo), AI traffic, the
+        // map-pack grid AND change intel, all built and cached by the
+        // shared kit the same way ss.systems' hub and every other adopter
+        // read them — BuildsSeoToolBlocks::seoToolBlockCacheKeys() is what
+        // refreshSnapshot() forgets below. 'balance' is written by the
+        // (unported) daily seo:dataforseo-balance-check command, straight
+        // into Cache, not through any kit store — merged in here same as
+        // before.
         $seoToolBlocks = $this->seoToolBlocks(
             $this->normalizeWindowDays((int) $request->integer('rank_days', 7)),
             fn (string $key, int $ttl, callable $build): array => Cache::remember(Tenancy::cacheKey($key), $ttl, $build),
         );
-        $seoToolBlocks['intel'] = $this->intelSnapshot();
         $seoToolBlocks['dataforseo']['balance'] = Cache::get('seo.dataforseo.balance');
 
         return $this->itemResponse([
@@ -1079,63 +1073,6 @@ class SeoReportController extends Controller
             }
 
             return ['feeds' => $feeds];
-        });
-    }
-
-    /**
-     * DataForSEO intelligence: every API family's latest run, its report
-     * (uniform tiles + tables), open findings and the run ledger.
-     */
-    protected function intelSnapshot(): array
-    {
-        return Cache::remember(Tenancy::cacheKey(IntelRunner::CACHE_KEY), 1800, function (): array {
-            $store = app(IntelStore::class);
-            if (! $store->ready()) {
-                return ['families' => [], 'open_findings' => 0, 'critical' => 0, 'spent_30d' => 0];
-            }
-            $families = [];
-            $labels = [];
-            foreach (app(IntelRunner::class)->sources() as $family => $source) {
-                $labels[$family] = $source->label();
-                $runs = $store->runs($family, 8);
-                $last = $runs->first();
-                try {
-                    $report = $last ? $source->report() : ['tiles' => [], 'tables' => [], 'note' => 'Not collected yet.'];
-                } catch (Throwable $e) {
-                    report($e);
-                    $report = ['tiles' => [], 'tables' => [], 'note' => 'Report unavailable: '.mb_substr($e->getMessage(), 0, 120)];
-                }
-                $open = $store->openFindings($family, 200);
-                $families[$family] = [
-                    'label' => $source->label(),
-                    'taken_on' => $last->taken_on ?? null,
-                    'prev_taken_on' => $runs->skip(1)->first()->taken_on ?? null,
-                    'cost' => $last ? round((float) $last->cost, 3) : null,
-                    'error' => $last->error ?? null,
-                    'estimate' => round($source->estimateCost(), 3),
-                    'report' => $report,
-                    'findings' => $open->take(10)->map(fn ($f) => [
-                        'severity' => $f->severity, 'code' => $f->code, 'title' => $f->title, 'detail' => $f->detail, 'key' => $f->key,
-                        'first_seen_on' => substr((string) $f->first_seen_on, 0, 10), 'delta' => $f->delta, 'action' => $f->action,
-                    ])->values()->all(),
-                    'findings_open' => $open->count(),
-                    'findings_by_severity' => $open->countBy('severity')->all(),
-                    'runs' => $runs->map(fn ($r) => ['taken_on' => $r->taken_on, 'cost' => round((float) $r->cost, 3), 'new' => (int) $r->findings_new, 'resolved' => (int) $r->findings_resolved, 'error' => $r->error])->values()->all(),
-                ];
-            }
-            $all = $store->openFindings(null, 1000);
-            $spent = Tenancy::table('seo_intel_runs')->where('taken_on', '>=', now()->subDays(30)->toDateString())->sum('cost');
-
-            return [
-                'families' => $families,
-                'open_findings' => $all->count(),
-                'critical' => $all->where('severity', 'critical')->count(),
-                'spent_30d' => round((float) $spent, 2),
-                // 'title' is the plain finding text (never vendor/family-prefixed);
-                // 'source' is the family's human label, for a Details accordion —
-                // 'family' (the raw slug) stays for backward-compatible filtering.
-                'top_findings' => $all->take(12)->map(fn ($f) => ['family' => $f->family, 'source' => $labels[$f->family] ?? $f->family, 'severity' => $f->severity, 'title' => $f->title, 'detail' => $f->detail, 'key' => $f->key, 'action' => $f->action])->values()->all(),
-            ];
         });
     }
 

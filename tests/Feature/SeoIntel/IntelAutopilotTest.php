@@ -5,12 +5,12 @@ namespace Tests\Feature\SeoIntel;
 use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\SeoAction;
-use App\Services\Seo\Intel\Finding;
-use App\Services\Seo\Intel\IntelStore;
 use App\Services\Seo\SeoAutopilotService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use SsSystems\Platform\Seo\Intel\Finding;
+use SsSystems\Platform\Seo\Intel\IntelStore;
 use Tests\TestCase;
 
 /**
@@ -30,7 +30,6 @@ class IntelAutopilotTest extends TestCase
         // type-mapping itself, including 'reindex', so it opts back in.
         config([
             'gbp-services.service_areas' => ['Wheeling, IL, USA', 'Palatine, IL, USA'],
-            'seo-intel.sources' => [],
             'seo.autopilot.reindex_actions' => true,
         ]);
         $area = AreaServed::create(['city' => 'Palatine', 'slug' => 'palatine', 'local_intro' => 'Short copy about Palatine.']);

@@ -16,7 +16,6 @@ use App\Services\Seo\Appliers\GbpDescriptionApplier;
 use App\Services\Seo\Appliers\LlmsRegenApplier;
 use App\Services\Seo\Appliers\ReindexApplier;
 use App\Services\Seo\Appliers\TitleMetaApplier;
-use App\Services\Seo\Intel\IntelStore;
 use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Seo\CrawlFiles;
 use App\Support\SEO\ServicePageTarget;
@@ -27,6 +26,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use SsSystems\Platform\Seo\Intel\IntelStore;
 use Throwable;
 
 /**
@@ -463,11 +463,17 @@ class SeoAutopilotService
 
     /**
      * DataForSEO intelligence findings that carry an action hint (see
-     * App\Services\Seo\Intel\Finding) become ledger actions through the same
-     * appliers as every other signal: the finding says what is wrong, the
-     * action fixes it, the measurement says whether it helped. Only the
-     * safe categories are accepted; everything else stays a finding on the
-     * SEO page for a human.
+     * SsSystems\Platform\Seo\Intel\Finding, kit 0.19.2) become ledger actions
+     * through the same appliers as every other signal: the finding says
+     * what is wrong, the action fixes it, the measurement says whether it
+     * helped. Only the safe categories are accepted; everything else stays
+     * a finding on the SEO page for a human.
+     *
+     * Every created action's row updates the matching seo_intel_findings
+     * row's own seo_action_id (below) — a column the kit's IntelStore
+     * doesn't know about (its ported findings table has no such FK), so
+     * this stays a direct query against this site's table rather than
+     * anything IntelStore exposes.
      */
     private function synthesizeIntel(): int
     {

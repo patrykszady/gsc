@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Seo;
 
+use App\Support\Seo\Reports\ReportCapabilities;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use SsSystems\Platform\Seo\Contracts\SeoSiteProfile;
@@ -9,14 +10,15 @@ use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoApi;
 use Tests\TestCase;
 
 /**
- * The kit's SEO tools (0.19.1, 2026-11-01) wired directly into
- * gs.construction's own container/commands/schedule — phase 3 of the port
- * (see J. Peterson Design's identical KitSeoToolsTest, the reference this
- * mirrors). The report-snapshot shape itself (rankings/keyword_research/
- * dataforseo/map_pack/intel/ai_traffic keys) is covered by
- * SeoReportControllerTest; this file covers the container bindings, the
- * commands this site registers, and their schedule — the parts a snapshot
- * request never exercises directly.
+ * The kit's SEO tools (0.19.3, 2026-11-01) wired directly into
+ * gs.construction's own container/commands/schedule — phases 3-5 of the
+ * port (see J. Peterson Design's identical KitSeoToolsTest, the reference
+ * this mirrors; PageSpeed Insights and the last own map-pack-competitors
+ * copy, phase 5, landed 2026-11-01). The report-snapshot shape itself
+ * (rankings/keyword_research/dataforseo/map_pack/intel/ai_traffic keys) is
+ * covered by SeoReportControllerTest; this file covers the container
+ * bindings, the commands this site registers, and their schedule — the
+ * parts a snapshot request never exercises directly.
  */
 class KitSeoToolsTest extends TestCase
 {
@@ -51,10 +53,15 @@ class KitSeoToolsTest extends TestCase
         foreach ([
             'seo:track-rankings', 'seo:show-rankings', 'seo:keyword-research', 'seo:domain-overview',
             'seo:backlink-gap', 'seo:ai-mentions', 'seo:competitor-brand-track', 'seo:map-pack-grid',
-            // This site's OWN command (it reads a competitor's homepage,
-            // which the kit's own MapPackCompetitorsCommand does not do) —
-            // never the kit's class, but the same artisan name either way.
+            // The kit's own MapPackCompetitorsCommand (kit 0.19.3) — this
+            // site's former App\Console\Commands\SeoMapPackCompetitors is gone.
             'seo:map-pack-competitors',
+            // Change intel (kit 0.19.2): the kit's own IntelCommand, registered
+            // directly in bootstrap/app.php — App\Console\Commands\SeoIntel is gone.
+            'seo:intel',
+            // PageSpeed Insights (kit 0.19.3): the kit's own PageSpeedSyncCommand
+            // — this site's former App\Console\Commands\SyncPageSpeedInsights is gone.
+            'seo:psi-sync',
         ] as $name) {
             $this->assertContains($name, $commands, "{$name} is registered");
         }
@@ -70,7 +77,18 @@ class KitSeoToolsTest extends TestCase
             ->expectsOutputToContain('seo:ai-mentions')
             ->expectsOutputToContain('seo:competitor-brand-track')
             ->expectsOutputToContain('seo:map-pack-grid')
-            ->expectsOutputToContain('seo:map-pack-competitors');
+            ->expectsOutputToContain('seo:map-pack-competitors')
+            ->expectsOutputToContain('seo:intel')
+            ->expectsOutputToContain('seo:psi-sync');
+    }
+
+    public function test_page_speed_measurements_are_a_capability_this_site_provides(): void
+    {
+        $this->assertTrue(ReportCapabilities::availability('cwv-template')['available'], 'CWV by template is runnable through the kit\'s PsiSnapshotStore');
+
+        Http::fake();
+        $this->artisan('seo:psi-sync')->assertExitCode(0);
+        Http::assertNothingSent();
     }
 
     public function test_a_paid_command_stops_cleanly_without_credentials(): void
@@ -83,6 +101,7 @@ class KitSeoToolsTest extends TestCase
         $this->artisan('seo:backlink-gap --budget=1')->assertExitCode(0);
         $this->artisan('seo:ai-mentions --budget=1')->assertExitCode(0);
         $this->artisan('seo:map-pack-grid --budget=1')->assertExitCode(0);
+        $this->artisan('seo:intel --budget=1')->assertExitCode(0);
         Http::assertNothingSent();
     }
 }

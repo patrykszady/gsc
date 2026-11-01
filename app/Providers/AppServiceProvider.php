@@ -43,15 +43,17 @@ use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\DataForSeoSettings;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
 use App\Support\Seo\GscMapPackContext;
+use App\Support\Seo\GscOwnReviews;
+use App\Support\Seo\GscPageSpeedUrls;
 use App\Support\Seo\GscSeoProfile;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\TrackedPathsFromModel;
+use App\Support\Seo\PsiSettings;
 use App\Support\SEO\RecrawlNudger;
 use App\Support\Seo\Reports\ConfigSiteIdentity;
 use App\Support\Seo\Reports\EloquentAreaCatalog;
 use App\Support\Seo\Reports\EloquentClarityMetricsReader;
 use App\Support\Seo\Reports\EloquentHealthDataReader;
-use App\Support\Seo\Reports\EloquentPsiSnapshotReader;
 use App\Support\Seo\Reports\EloquentQueryMetricsReader;
 use App\Support\Seo\Reports\HttpPageFetcher;
 use App\Support\Seo\Reports\HttpSiteCatalog;
@@ -124,10 +126,27 @@ use SsSystems\Platform\Seo\Inspection\Contracts\UrlInspector as UrlInspectorCont
 use SsSystems\Platform\Seo\Inspection\EloquentCoverageStore;
 use SsSystems\Platform\Seo\Inspection\SearchConsoleUrlInspector;
 use SsSystems\Platform\Seo\Inspection\UrlInspectionQuota as KitUrlInspectionQuota;
+use SsSystems\Platform\Seo\Intel\Contracts\OwnReviewsSource;
+use SsSystems\Platform\Seo\Intel\IntelRunner;
+use SsSystems\Platform\Seo\Intel\IntelSettings;
+use SsSystems\Platform\Seo\Intel\IntelStore;
+use SsSystems\Platform\Seo\Intel\Sources\AiOptimizationSource;
+use SsSystems\Platform\Seo\Intel\Sources\BacklinksSource;
+use SsSystems\Platform\Seo\Intel\Sources\BusinessDataSource;
+use SsSystems\Platform\Seo\Intel\Sources\ContentAnalysisSource;
+use SsSystems\Platform\Seo\Intel\Sources\DomainAnalyticsSource;
+use SsSystems\Platform\Seo\Intel\Sources\LabsSource;
+use SsSystems\Platform\Seo\Intel\Sources\OnPageSource;
+use SsSystems\Platform\Seo\Intel\Sources\SerpSource;
+use SsSystems\Platform\Seo\Intel\Sources\TrendsSource;
 use SsSystems\Platform\Seo\KeywordResearch\Console\KeywordResearchCommand;
 use SsSystems\Platform\Seo\KeywordResearch\KeywordResearchSnapshot;
 use SsSystems\Platform\Seo\MapPack\Contracts\MapPackContext;
 use SsSystems\Platform\Seo\MapPack\MapPackStore;
+use SsSystems\Platform\Seo\PageSpeed\Contracts\PageSpeedCredentials;
+use SsSystems\Platform\Seo\PageSpeed\Contracts\PageSpeedUrlSource;
+use SsSystems\Platform\Seo\PageSpeed\PsiSnapshotStore;
+use SsSystems\Platform\Seo\PageSpeed\SitemapUrlSource;
 use SsSystems\Platform\Seo\Rankings\RankingsSnapshot;
 use SsSystems\Platform\Seo\Rankings\RankSnapshotStore;
 use SsSystems\Platform\Seo\Rankings\TrackedQueries;
@@ -268,7 +287,10 @@ class AppServiceProvider extends ServiceProvider
         // jpeterson-design's AreaCatalog) simply never binds it and that
         // report reads as "not available" instead of throwing.
         $this->app->bind(QueryMetricsReader::class, EloquentQueryMetricsReader::class);
-        $this->app->bind(PsiSnapshotReader::class, EloquentPsiSnapshotReader::class);
+        // PsiSnapshotReader is bound in registerSeoTools() instead, to the
+        // kit's own tenant-scoped PsiSnapshotStore (kit 0.19.3) — see that
+        // method's docblock; App\Support\Seo\Reports\EloquentPsiSnapshotReader
+        // is gone.
         $this->app->bind(PageFetcher::class, HttpPageFetcher::class);
         $this->app->bind(SiteCatalog::class, HttpSiteCatalog::class);
         $this->app->bind(SiteIdentity::class, ConfigSiteIdentity::class);
@@ -474,19 +496,37 @@ class AppServiceProvider extends ServiceProvider
      * an injected store, so they get the same tenant column/closure
      * through a contextual binding instead of a singleton.
      *
-     * Intel stays on this site's own App\Services\Seo\Intel\* (a much
-     * larger source set than the kit's Intel module has ported so far) —
-     * nothing here binds the kit's own Intel contracts, so
-     * BuildsSeoToolBlocks's 'intel' entry falls back to its empty shape
-     * and SeoReportController overrides it with its own intelSnapshot()
-     * after the spread.
+     * Change intel (kit 0.19.2, 2026-11-01): the nine DataForSEO families
+     * this site runs, each built below with this site's own DataForSeoApi/
+     * IntelStore/SeoSiteProfile/IntelSettings plus the tenant scope
+     * (`competitorDomains()`'s map_pack_competitors/seo_rank_snapshots reads
+     * must stay site-scoped, same as every store above) — never resolved
+     * generically through the container, since BusinessDataSource alone
+     * takes two extra optional dependencies (the ListingStore bound above
+     * and GscOwnReviews). BuildsSeoToolBlocks's 'intel' entry now serves the
+     * kit's own IntelSnapshot (SeoReportController no longer overrides it).
      *
-     * seo:map-pack-competitors stays this site's OWN command (it reads a
-     * competitor's homepage via CompetitorSiteFetcher, which the kit's
-     * MapPackCompetitorsCommand does not do — see that command's own
-     * docblock): the kit's version is never registered in
-     * bootstrap/app.php, so MapPackStore here only needs to serve
-     * seo:map-pack-grid and the report snapshot.
+     * PageSpeed Insights (kit 0.19.3, 2026-11-01): the kit's own
+     * seo:psi-sync replaces this site's former App\Console\Commands\
+     * SyncPageSpeedInsights — PsiSettings now gates it (PageSpeedCredentials)
+     * and PsiSnapshotStore is the one `psi_snapshots` table this site has
+     * ever written (16,985+ existing rows, already site_id-scoped by the
+     * 2026-07-30 add_site_id_to_seo_and_analytics_tables migration — no new
+     * migration needed, its columns already match the kit's stub exactly).
+     * GscPageSpeedUrls serves the pinned config('seo.psi_urls') list first,
+     * topped up by the kit's own SitemapUrlSource reading this site's
+     * sitemap.xml — gsc's own top-Search-Console-pages expansion and
+     * dead-URL probe/circuit-breaker have no kit equivalent and are gone
+     * with the retired command (see GscPageSpeedUrls's own docblock).
+     *
+     * seo:map-pack-competitors is now the kit's own MapPackCompetitorsCommand
+     * (kit 0.19.3), registered directly in bootstrap/app.php — it reads a
+     * competitor's homepage through the kit's own CompetitorSiteReader
+     * (SeoSiteProfile::services()/towns()/competitorExclusions(), already
+     * bound above), so this site's former App\Console\Commands\
+     * SeoMapPackCompetitors and App\Services\Seo\CompetitorSiteFetcher are
+     * gone; MapPackStore below now serves all three of seo:map-pack-grid,
+     * seo:map-pack-competitors and the report snapshot.
      */
     protected function registerSeoTools(): void
     {
@@ -537,6 +577,54 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(MapPackStore::class, fn () => new MapPackStore(
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
         ));
+
+        // PageSpeed Insights (kit 0.19.3) — see this method's own docblock.
+        $this->app->bind(PageSpeedCredentials::class, PsiSettings::class);
+        $this->app->bind(SitemapUrlSource::class, fn ($app) => new SitemapUrlSource(
+            rtrim((string) config('app.url'), '/').'/sitemap.xml',
+            $app->make(HttpFactory::class),
+        ));
+        $this->app->bind(PageSpeedUrlSource::class, GscPageSpeedUrls::class);
+        $this->app->singleton(PsiSnapshotStore::class, fn () => new PsiSnapshotStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->bind(PsiSnapshotReader::class, fn ($app) => $app->make(PsiSnapshotStore::class));
+
+        // Change intel: config/seo-intel.php's 'families' array, read through
+        // IntelSettings (the kit has no config() dependency of its own) —
+        // IntelSettings::withFamily() per family so a config change here
+        // takes effect without touching this provider.
+        $this->app->singleton(IntelSettings::class, function (): IntelSettings {
+            $settings = new IntelSettings;
+            foreach ((array) config('seo-intel.families', []) as $family => $values) {
+                $settings = $settings->withFamily((string) $family, (array) $values);
+            }
+
+            return $settings;
+        });
+        $this->app->bind(OwnReviewsSource::class, GscOwnReviews::class);
+        $this->app->singleton(IntelStore::class, fn () => new IntelStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->singleton(IntelRunner::class, function ($app) use ($tenant): IntelRunner {
+            $dfs = $app->make(DataForSeoApi::class);
+            $store = $app->make(IntelStore::class);
+            // Every source's common constructor args, positional:
+            // dfs, store, profile, settings, connection, tenantColumn, tenantId.
+            $base = [$dfs, $store, $app->make(SeoSiteProfile::class), $app->make(IntelSettings::class), DB::connection(), 'site_id', $tenant];
+
+            return new IntelRunner($dfs, $store, [
+                new SerpSource(...$base),
+                new TrendsSource(...$base),
+                new OnPageSource(...$base),
+                new LabsSource(...$base),
+                new BacklinksSource(...$base),
+                new DomainAnalyticsSource(...$base),
+                new BusinessDataSource(...$base, listings: $app->make(ListingStore::class), ownReviews: $app->make(OwnReviewsSource::class)),
+                new ContentAnalysisSource(...$base),
+                new AiOptimizationSource(...$base),
+            ]);
+        });
     }
 
     /**

@@ -1,42 +1,45 @@
 <?php
 
-use App\Services\Seo\Intel\Sources\AiOptimizationSource;
-use App\Services\Seo\Intel\Sources\BacklinksSource;
-use App\Services\Seo\Intel\Sources\BusinessDataSource;
-use App\Services\Seo\Intel\Sources\ContentAnalysisSource;
-use App\Services\Seo\Intel\Sources\DomainAnalyticsSource;
-use App\Services\Seo\Intel\Sources\LabsSource;
-use App\Services\Seo\Intel\Sources\OnPageSource;
-use App\Services\Seo\Intel\Sources\SerpSource;
-use App\Services\Seo\Intel\Sources\TrendsSource;
-
 /*
 |--------------------------------------------------------------------------
-| DataForSEO intelligence sources
+| DataForSEO intelligence — per-family knobs
 |--------------------------------------------------------------------------
-| Each family is an App\Services\Seo\Intel\IntelSource run by `seo:intel`
-| on its own schedule (routes/console.php). Every run stores snapshots,
-| compares them with the previous run and opens/resolves findings that the
-| SEO page, the recommendation engine and the autopilot consume.
-| Per-family knobs live under 'families' and are read via $this->config().
+| Kit 0.19.2 (2026-11-01): the nine families are SsSystems\Platform\Seo\
+| Intel\Sources\* now, each already constructed (with this site's
+| DataForSeoApi/IntelStore/SeoSiteProfile/IntelSettings/connection/tenant
+| scope) in App\Providers\AppServiceProvider::registerSeoTools() — the
+| kit's IntelRunner takes a plain list of built sources, not a class-string
+| 'sources' array read through the container, so that key is gone from
+| here. These knobs reach each source through SsSystems\Platform\Seo\Intel\
+| IntelSettings (App\Providers\AppServiceProvider binds it from this file's
+| 'families' array via IntelSettings::withFamily() per family) rather than
+| the old $this->config('seo-intel.families.<family>.<key>') read straight
+| off Laravel's config() — see IntelSettings's own docblock.
+|
+| Three keys from the pre-port config are gone, not merely left stale:
+|   - 'backlinks.max_findings' was ALREADY a dead key before this port —
+|     BacklinksSource has always read 'max_findings_per_type' instead — so
+|     it is renamed here (keeping the tuned value) rather than left
+|     orphaned a second time under a new runner.
+|   - 'ai_optimization.keyword_limit' and 'serp.per_city' governed the
+|     seo_keywords-table "researched phrases" augmentation that the kit
+|     does not carry over (that table belongs to a different, unported
+|     keyword-research module — see AiOptimizationSource's and
+|     SerpSource's own class docblocks). SerpSource now falls back to
+|     $this->profile->trackedQueries() (GscSeoProfile, i.e.
+|     seo.rank_tracker.web_queries — the same list seo:track-rankings
+|     tracks) ahead of the service×town anchor fallback, since
+|     'serp.queries' below is empty.
+|
+| One key is new here: 'backlinks.citations' carries over
+| config('brand.profiles') (the directory/review profile URLs the
+| backlinks citation-check finding used to read straight off that config
+| key via a brand.profiles merge that the kit's BacklinksSource dropped —
+| see its own docblock) so that finding keeps checking the same profiles.
 */
 
 return [
 
-    'sources' => [
-        OnPageSource::class,
-        BacklinksSource::class,
-        LabsSource::class,
-        SerpSource::class,
-        BusinessDataSource::class,
-        ContentAnalysisSource::class,
-        AiOptimizationSource::class,
-        DomainAnalyticsSource::class,
-        TrendsSource::class,
-    ],
-
-    // Per-family knobs (each source also carries these defaults in code).
-    // max_cost is the hard USD ceiling for one run of that family.
     'families' => [
         'onpage' => [
             'max_pages' => (int) env('SEO_INTEL_ONPAGE_MAX_PAGES', 600),
@@ -54,7 +57,8 @@ return [
             'max_cost' => 0.40,
             'max_referring_domains' => 300,
             'money_anchor_pct_warn' => 30,
-            'max_findings' => 25,
+            'max_findings_per_type' => 25,
+            'citations' => (array) config('brand.profiles', []),
         ],
         'labs' => [
             'competitor_limit' => 15,
@@ -70,9 +74,8 @@ return [
             'max_cost' => 0.60,
         ],
         'serp' => [
-            'queries' => [],   // empty = derived from seo_keywords + core towns × services
+            'queries' => [],   // empty = $this->profile->trackedQueries() (seo.rank_tracker.web_queries), then service×town anchors
             'tracked' => 30,
-            'per_city' => 4,              // researched phrases per town, so Chicago cannot take every slot
             'metro_cities' => ['chicago'], // their local pack informs instead of warning
             'depth' => 20,
             'max_findings' => 25,
@@ -102,8 +105,7 @@ return [
             'max_cost' => 0.30,
         ],
         'ai_optimization' => [
-            'keywords' => [],  // empty = seo_keywords by opportunity + core phrases
-            'keyword_limit' => 100,
+            'keywords' => [],  // empty = core phrases + town/service anchors (see AiOptimizationSource)
             'competitors' => 5,
             'max_findings' => 10,
             'max_cost' => 0.40,

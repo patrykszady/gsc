@@ -2,14 +2,20 @@
 
 namespace Tests\Feature;
 
-use App\Services\Seo\Intel\IntelSource;
 use App\Services\Seo\RecommendationEngine;
+use App\Support\Tenancy;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use ReflectionMethod;
+use SsSystems\Platform\Seo\Contracts\SeoSiteProfile;
+use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoApi;
+use SsSystems\Platform\Seo\Intel\IntelRunner;
+use SsSystems\Platform\Seo\Intel\IntelSettings;
+use SsSystems\Platform\Seo\Intel\IntelSource;
+use SsSystems\Platform\Seo\Intel\IntelStore;
 use Tests\TestCase;
 
-/** Stands in for LabsSource (owned by another in-flight branch) just to exercise its label. */
+/** Stands in for LabsSource (a real DataForSEO source, tested separately) just to exercise its label. */
 class FakeLabsSourceForRecTitles extends IntelSource
 {
     public function family(): string
@@ -91,11 +97,22 @@ class RecommendationEngineIntelTitlesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config([
-            'services.dataforseo.login' => 'u',
-            'services.dataforseo.password' => 'p',
-            'seo-intel.sources' => [FakeLabsSourceForRecTitles::class, FakeBusinessDataSourceForRecTitles::class],
-        ]);
+        config(['services.dataforseo.login' => 'u', 'services.dataforseo.password' => 'p']);
+
+        // The kit's IntelRunner takes a plain, already-constructed list of
+        // sources (no more config('seo-intel.sources') resolved through the
+        // container) — swap the app's real nine-family runner for one
+        // carrying just these two fakes, reusing this site's own bound
+        // DataForSeoApi/IntelStore/SeoSiteProfile/IntelSettings.
+        $dfs = $this->app->make(DataForSeoApi::class);
+        $store = $this->app->make(IntelStore::class);
+        $profile = $this->app->make(SeoSiteProfile::class);
+        $settings = $this->app->make(IntelSettings::class);
+
+        $this->app->instance(IntelRunner::class, new IntelRunner($dfs, $store, [
+            new FakeLabsSourceForRecTitles($dfs, $store, $profile, $settings),
+            new FakeBusinessDataSourceForRecTitles($dfs, $store, $profile, $settings),
+        ]));
     }
 
     /** @return array{0: list<string>, 1: list<array<string, mixed>>} */
@@ -111,14 +128,18 @@ class RecommendationEngineIntelTitlesTest extends TestCase
     public function test_intel_recommendation_and_action_item_titles_never_carry_a_vendor_or_family_prefix(): void
     {
         $today = now()->toDateString();
+        // site_id matches this test's current tenant: the kit's IntelStore
+        // (ss-platform-kit 0.19.2) scopes every read by an exact site_id
+        // match, unlike the retired App\Services\Seo\Intel\IntelStore's
+        // Tenancy::table() reads, which also matched a NULL site_id.
         DB::table('seo_intel_findings')->insert([
             [
-                'site_id' => null, 'fingerprint' => 'fp-labs-1', 'family' => 'fake_labs', 'code' => 'fake_labs.lost_keywords',
+                'site_id' => Tenancy::currentId(), 'fingerprint' => 'fp-labs-1', 'family' => 'fake_labs', 'code' => 'fake_labs.lost_keywords',
                 'severity' => 'warn', 'title' => 'Page lost ranking keywords', 'detail' => 'Mundelein service page.',
                 'first_seen_on' => $today, 'last_seen_on' => $today, 'last_run_id' => 'r1', 'created_at' => now(), 'updated_at' => now(),
             ],
             [
-                'site_id' => null, 'fingerprint' => 'fp-bd-1', 'family' => 'fake_business_data', 'code' => 'fake_business_data.unanswered_reviews',
+                'site_id' => Tenancy::currentId(), 'fingerprint' => 'fp-bd-1', 'family' => 'fake_business_data', 'code' => 'fake_business_data.unanswered_reviews',
                 'severity' => 'critical', 'title' => '16 review(s) awaiting an owner response', 'detail' => '',
                 'first_seen_on' => $today, 'last_seen_on' => $today, 'last_run_id' => 'r1', 'created_at' => now(), 'updated_at' => now(),
             ],

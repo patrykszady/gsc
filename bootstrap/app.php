@@ -30,8 +30,11 @@ use SsSystems\Platform\Http\Admin\AuthenticateAdminApi;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Projects\MergedProjectRedirectResponse;
 use SsSystems\Platform\Seo\AiTraffic\TrackAiTraffic;
+use SsSystems\Platform\Seo\Intel\Console\IntelCommand;
 use SsSystems\Platform\Seo\KeywordResearch\Console\KeywordResearchCommand;
+use SsSystems\Platform\Seo\MapPack\Console\MapPackCompetitorsCommand;
 use SsSystems\Platform\Seo\MapPack\Console\MapPackGridCommand;
+use SsSystems\Platform\Seo\PageSpeed\Console\PageSpeedSyncCommand;
 use SsSystems\Platform\Seo\Rankings\Console\ShowRankingsCommand;
 use SsSystems\Platform\Seo\Rankings\Console\TrackRankingsCommand;
 use SsSystems\Platform\Seo\Visibility\Console\AiMentionsCommand;
@@ -45,12 +48,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([
         __DIR__.'/../app/Console/Commands',
         CollectTrafficCommand::class,
-        // The kit's SEO tools (0.19.1, 2026-11-01): same command names this
+        // The kit's SEO tools (0.19.3, 2026-11-01): same command names this
         // site always ran (routes/console.php's schedules are unchanged),
-        // now backed by the shared kit classes. seo:map-pack-competitors
-        // stays App\Console\Commands\SeoMapPackCompetitors (below, via the
-        // app/Console/Commands autoload) — the kit's own
-        // MapPackCompetitorsCommand is deliberately never registered here.
+        // now backed by the shared kit classes.
         TrackRankingsCommand::class,
         ShowRankingsCommand::class,
         KeywordResearchCommand::class,
@@ -59,6 +59,20 @@ return Application::configure(basePath: dirname(__DIR__))
         AiMentionsCommand::class,
         CompetitorBrandTrackCommand::class,
         MapPackGridCommand::class,
+        // seo:map-pack-competitors is now the kit's own command too (kit
+        // 0.19.3) — it reads a competitor's homepage through the kit's own
+        // CompetitorSiteReader (App\Console\Commands\SeoMapPackCompetitors
+        // and App\Services\Seo\CompetitorSiteFetcher are gone).
+        MapPackCompetitorsCommand::class,
+        // Change intel (kit 0.19.2): same seo:intel signature this site
+        // always ran, now the kit's own command — App\Console\Commands\
+        // SeoIntel (far fewer sources than the kit's nine) is gone.
+        IntelCommand::class,
+        // PageSpeed Insights (kit 0.19.3): same seo:psi-sync signature this
+        // site always ran (routes/console.php's schedule is unchanged), now
+        // gated on PsiSettings' own key and reading PsiSnapshotStore —
+        // App\Console\Commands\SyncPageSpeedInsights is gone.
+        PageSpeedSyncCommand::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

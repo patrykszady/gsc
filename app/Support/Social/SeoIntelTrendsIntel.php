@@ -2,8 +2,8 @@
 
 namespace App\Support\Social;
 
-use App\Services\Seo\Intel\IntelStore;
 use Illuminate\Support\Facades\Schema;
+use SsSystems\Platform\Seo\Intel\IntelStore;
 use SsSystems\Platform\Social\Contracts\TrendsIntel;
 
 /**
@@ -13,8 +13,9 @@ use SsSystems\Platform\Social\Contracts\TrendsIntel;
  * `App\Services\Social\GbpPostTheme::risingService()`/`serviceFor()` (this
  * is where the phrase→service vocabulary now lives — kitchen/bathroom/
  * basement/addition/home-remodel is this site's own trades wording, and
- * the kit contract never sees it, only the resolved answer). `IntelStore`
- * reads through `Tenancy::table()`, so this is tenant-scoped for free.
+ * the kit contract never sees it, only the resolved answer). {@see IntelStore}
+ * (kit 0.19.2) is bound in `AppServiceProvider::registerSeoTools()` with
+ * this site's tenant column/id closure, so this is tenant-scoped for free.
  */
 final class SeoIntelTrendsIntel implements TrendsIntel
 {
