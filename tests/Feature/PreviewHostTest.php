@@ -19,6 +19,11 @@ class PreviewHostTest extends TestCase
 {
     public function test_a_preview_host_reaches_its_own_inactive_tenant(): void
     {
+        // Pin the seeded row's state: in parallel runs another test in the
+        // same process can have activated jpeterson, and this test is about
+        // preview resolution, not about what the seed happens to say.
+        Site::query()->where('slug', 'jpeterson')->update(['is_active' => false]);
+
         $site = Site::forPreviewHost('dev-jpeterson.ss.systems');
 
         $this->assertNotNull($site, 'preview host must resolve');
