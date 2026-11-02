@@ -331,7 +331,7 @@ Schedule::command('seo:domain-overview --budget=2')->weeklyOn(0, '05:00')
 Schedule::command('seo:backlink-gap --budget=1')->monthlyOn(2, '05:15')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
-Schedule::command('seo:ai-mentions --budget=2')->twiceMonthly(1, 15, '05:30')
+Schedule::command('seo:ai-mentions --budget=2')->weeklyOn(1, '05:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 Schedule::command('seo:keyword-research --budget=4 --ideas')->weeklyOn(0, '04:30')
