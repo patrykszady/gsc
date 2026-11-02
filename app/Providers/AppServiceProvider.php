@@ -38,6 +38,7 @@ use App\Support\Citations\SiteKnownListingsSource;
 use App\Support\Citations\SiteMailboxFactory;
 use App\Support\Citations\SitePendingCitationRepository;
 use App\Support\PublicFeeds;
+use App\Support\Seo\BingSettings;
 use App\Support\Seo\BingWriter;
 use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\DataForSeoSettings;
@@ -46,6 +47,7 @@ use App\Support\Seo\GscMapPackContext;
 use App\Support\Seo\GscOwnReviews;
 use App\Support\Seo\GscPageSpeedUrls;
 use App\Support\Seo\GscSeoProfile;
+use App\Support\Seo\IndexNowSiteKey;
 use App\Support\Seo\Inspection\FileSitemapSource;
 use App\Support\Seo\Inspection\TrackedPathsFromModel;
 use App\Support\Seo\PsiSettings;
@@ -112,6 +114,7 @@ use SsSystems\Platform\Reports\Contracts\ReportStorage;
 use SsSystems\Platform\Reports\Contracts\SiteCatalog;
 use SsSystems\Platform\Reports\Contracts\SiteIdentity;
 use SsSystems\Platform\Seo\AiTraffic\AiTrafficStore;
+use SsSystems\Platform\Seo\Bing\BingWebmasterApi;
 use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
 use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
 use SsSystems\Platform\Seo\Contracts\SeoSiteProfile;
@@ -119,6 +122,8 @@ use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoApi;
 use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoCredentials;
 use SsSystems\Platform\Seo\DataForSeo\DataForSeoClient;
 use SsSystems\Platform\Seo\Faq\Contracts\FaqCatalog;
+use SsSystems\Platform\Seo\IndexNow\Contracts\IndexNowKey;
+use SsSystems\Platform\Seo\IndexNow\IndexNowLedger;
 use SsSystems\Platform\Seo\Inspection\Contracts\CoverageStore as CoverageStoreContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\SitemapSource as SitemapSourceContract;
 use SsSystems\Platform\Seo\Inspection\Contracts\TrackedPaths as TrackedPathsContract;
@@ -206,6 +211,16 @@ class AppServiceProvider extends ServiceProvider
         // site's writer, the client built from this site's key.
         $this->app->bind(KitBingWriter::class, BingWriter::class);
         $this->app->bind(BingWebmasterClient::class, BingWebmasterService::class);
+        // seo:bing-submit-sitemaps (kit 0.19.4) type-hints the concrete
+        // BingWebmasterApi class directly rather than the BingWebmasterClient
+        // interface above (BingWebmasterService wraps one internally for
+        // seo:bing-sync) — built from this site's own BingSettings the same
+        // way jpeterson-design's AppServiceProvider binds it.
+        $this->app->bind(BingWebmasterApi::class, fn ($app) => new BingWebmasterApi(
+            $app->make(BingSettings::class)->apiKey(),
+            $app->make(BingSettings::class)->siteUrl(),
+            $app->make(HttpFactory::class),
+        ));
         // The citation builder's remote-browser session (kit 0.11.0, ported
         // verbatim from this file's own former App\Services\Citations\
         // CitationSessionService — see vendor/ss-systems/platform-kit's
@@ -589,6 +604,20 @@ class AppServiceProvider extends ServiceProvider
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
         ));
         $this->app->bind(PsiSnapshotReader::class, fn ($app) => $app->make(PsiSnapshotStore::class));
+
+        // IndexNow (kit 0.19.4): seo:indexnow's key/key-file (IndexNowSiteKey —
+        // config('services.indexnow.key')/env INDEXNOW_KEY, else a platform
+        // setting generated on first use, so no hand-made key is ever needed)
+        // and its ledger of what has already been submitted, tenant-scoped the
+        // same way every other store in this method is. App\Support\Seo\
+        // IndexNowSubmitter (this site's ad hoc single/batch pings — observers,
+        // the autopilot appliers, the dead-404 sweep) resolves both of these
+        // too, replacing the kit's retired SsSystems\Platform\Indexing\
+        // IndexNowService it used to call directly.
+        $this->app->bind(IndexNowKey::class, IndexNowSiteKey::class);
+        $this->app->singleton(IndexNowLedger::class, fn () => new IndexNowLedger(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
 
         // Change intel: config/seo-intel.php's 'families' array, read through
         // IntelSettings (the kit has no config() dependency of its own) —

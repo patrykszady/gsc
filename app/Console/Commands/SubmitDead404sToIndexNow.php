@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Tracked404;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Submit persistent 404 URLs to IndexNow so search engines re-crawl and
@@ -21,7 +21,7 @@ class SubmitDead404sToIndexNow extends Command
 
     protected $description = 'Submit persistent 404 URLs to IndexNow for deindexing';
 
-    public function handle(IndexNowService $indexNow): int
+    public function handle(IndexNowSubmitter $indexNow): int
     {
         $minHits = (int) $this->option('min-hits');
         $limit = (int) $this->option('limit');

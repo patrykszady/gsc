@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\GscCoverageState;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Surface URLs where Google picked a different canonical than what we declared via `<link rel="canonical">`
@@ -27,7 +27,7 @@ class SeoGscCanonicalConflicts extends Command
 
     protected $description = 'Report URLs where Google chose a different canonical than what we declared.';
 
-    public function handle(IndexNowService $indexNow): int
+    public function handle(IndexNowSubmitter $indexNow): int
     {
         $rows = GscCoverageState::query()
             ->whereNotNull('google_canonical')

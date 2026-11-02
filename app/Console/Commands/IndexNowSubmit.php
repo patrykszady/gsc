@@ -6,13 +6,13 @@ use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Support\Seo\CrawlFiles;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 class IndexNowSubmit extends Command
 {
-    protected $signature = 'indexnow:submit 
+    protected $signature = 'indexnow:submit
                             {--url=* : Specific URLs to submit}
                             {--all : Submit all public URLs (sitemap + models + static)}
                             {--models : Submit all model URLs (projects, testimonials, areas)}
@@ -21,7 +21,7 @@ class IndexNowSubmit extends Command
     protected $description = 'Submit URLs to IndexNow for faster search engine indexing';
 
     public function __construct(
-        protected IndexNowService $indexNow
+        protected IndexNowSubmitter $indexNow
     ) {
         parent::__construct();
     }
@@ -29,7 +29,7 @@ class IndexNowSubmit extends Command
     public function handle(): int
     {
         if (! $this->indexNow->isEnabled()) {
-            $this->error('IndexNow is not enabled. Set INDEXNOW_ENABLED=true and INDEXNOW_KEY in your .env file.');
+            $this->error('IndexNow has no key configured — see App\Support\Seo\IndexNowSiteKey (services.indexnow.key / env INDEXNOW_KEY, or one is generated on first use).');
 
             return self::FAILURE;
         }

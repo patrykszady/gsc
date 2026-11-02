@@ -4,14 +4,14 @@ namespace App\Observers;
 
 use App\Jobs\SubmitUrlsToIndexNow;
 use App\Models\Testimonial;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 class TestimonialObserver
 {
     public function __construct(
-        protected IndexNowService $indexNow
+        protected IndexNowSubmitter $indexNow
     ) {}
 
     public function created(Testimonial $testimonial): void

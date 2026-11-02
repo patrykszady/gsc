@@ -13,15 +13,15 @@ use App\Services\GoogleBusinessProfileService;
 use App\Services\OpenStreetMapGeocoder;
 use App\Services\YelpBusinessService;
 use App\Support\GbpPhotoOwnership;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 class ProjectObserver
 {
     public function __construct(
-        protected IndexNowService $indexNow,
+        protected IndexNowSubmitter $indexNow,
         protected OpenStreetMapGeocoder $geocoder,
     ) {}
 

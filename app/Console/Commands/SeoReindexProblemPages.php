@@ -7,12 +7,12 @@ use App\Models\GscCoverageState;
 use App\Models\GscCoverageStateHistory;
 use App\Models\OAuthToken;
 use App\Support\Seo\CrawlFiles;
+use App\Support\Seo\IndexNowSubmitter;
 use App\Support\Seo\SearchConsoleProperty;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Push the current GSC "problem" URLs back through IndexNow + warm Cloudflare cache so the next
@@ -36,7 +36,7 @@ class SeoReindexProblemPages extends Command
 
     protected $description = 'Resubmit problem URLs to IndexNow + warm cache so Googlebot re-crawls them sooner.';
 
-    public function handle(IndexNowService $indexNow): int
+    public function handle(IndexNowSubmitter $indexNow): int
     {
         $this->excludedGone410 = [];
         $this->excludedNotInSitemap = [];

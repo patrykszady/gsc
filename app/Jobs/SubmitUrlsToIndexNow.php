@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Submits URLs to IndexNow asynchronously so model saves stay fast.
- * The IndexNowService HTTP call has a 30s timeout that we never want to block on.
+ * The underlying HTTP call has a 30s timeout that we never want to block on.
  */
 class SubmitUrlsToIndexNow implements ShouldQueue
 {
@@ -26,7 +26,7 @@ class SubmitUrlsToIndexNow implements ShouldQueue
      */
     public function __construct(public array $urls) {}
 
-    public function handle(IndexNowService $indexNow): void
+    public function handle(IndexNowSubmitter $indexNow): void
     {
         if (empty($this->urls)) {
             return;

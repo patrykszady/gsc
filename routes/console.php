@@ -86,6 +86,16 @@ Schedule::command($perTenant('seo:gsc-submit-sitemaps'))->dailyAt('00:30')
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-submit-sitemaps failed'))
     ->when(fn () => config('services.google.search_console.enabled'));
 
+// Bing's own sitemap submission (kit 0.19.4): same per-tenant robots.txt-read
+// nudge as Google above, just for Bing Webmaster — mozaika.haus turned out to
+// have no sitemap there at all until this existed. Idempotent (submits only
+// what Bing doesn't already have), so a daily run is cheap either way.
+Schedule::command($perTenant('seo:bing-submit-sitemaps'))->dailyAt('01:50')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/seo-bing-submit-sitemaps.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:bing-submit-sitemaps failed'));
+
 // GEO/AI: regenerate AI-crawler feeds daily so llms.txt, llms-full.txt and the
 // product feed stay fresh for ChatGPT/Gemini/Perplexity crawlers as content changes.
 Schedule::command('geo:llms-txt')->dailyAt('01:40')
@@ -614,6 +624,17 @@ Schedule::command('seo:404-indexnow --min-hits=3')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/seo-404-indexnow.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:404-indexnow failed'));
+
+// SEO: hourly IndexNow sweep (kit 0.19.4) — only pages IndexNowLedger says
+// are new or changed since the last tick (App\Support\Seo\IndexNowSiteKey
+// supplies the key; no admin setup needed before this starts working).
+Schedule::command('seo:indexnow')
+    ->hourlyAt(40)
+    ->timezone('America/Chicago')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/seo-indexnow.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:indexnow failed'));
 
 // SEO: weekly URL Inspection sweep — persists coverage states to
 // gsc_coverage_states and re-pushes "Crawled - currently not indexed" /

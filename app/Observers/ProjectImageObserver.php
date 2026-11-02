@@ -12,14 +12,14 @@ use App\Models\ProjectImage;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\YelpBusinessService;
 use App\Support\GbpPhotoOwnership;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 class ProjectImageObserver
 {
     public function __construct(
-        protected IndexNowService $indexNow
+        protected IndexNowSubmitter $indexNow
     ) {}
 
     /**

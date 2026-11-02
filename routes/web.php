@@ -85,6 +85,7 @@ use SsSystems\Platform\Google\Http\OAuthCallback;
 use SsSystems\Platform\Google\OAuthClient;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Pulse\BeaconController;
+use SsSystems\Platform\Seo\IndexNow\Http\IndexNowKeyController;
 
 // The crawl files, per tenant. They were static files under public/, which
 // nginx serves for EVERY host of this deployment — another site's domain
@@ -126,16 +127,10 @@ Route::get('/{file}', function (string $file) {
 })->where('file', 'favicon-(?:16x16|32x32|48x48|96x96|144x144)\.png|favicon(?:-dark)?\.svg|apple-touch-icon\.png|android-chrome-(?:192x192|512x512)\.png')
     ->name('site.legacy-icon');
 
-// IndexNow key verification file
-Route::get('/{key}.txt', function (string $key) {
-    $indexNowKey = config('indexnow.key');
-
-    if (! $indexNowKey || $key !== $indexNowKey) {
-        abort(404);
-    }
-
-    return response($indexNowKey, 200)->header('Content-Type', 'text/plain');
-})->where('key', '[a-z0-9\-]{8,128}');
+// IndexNow key verification file — IndexNow/Bing fetch this before accepting
+// a submission signed with the key (kit 0.19.4). See App\Support\Seo\
+// IndexNowSiteKey for where the key itself comes from.
+Route::get('/{key}.txt', IndexNowKeyController::class)->where('key', '[a-z0-9-]{8,128}');
 
 // Short links (used in Instagram captions, etc.)
 Route::get('/s/{code}', function (string $code) {

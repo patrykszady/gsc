@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "757c5fa18085b7eea6e8dab5aa65e838",
+    "content-hash": "3484c83b71cf7a039afc19228e65ea11",
     "packages": [
         {
             "name": "brick/math",
@@ -5515,11 +5515,11 @@
         },
         {
             "name": "ss-systems/platform-kit",
-            "version": "0.19.3",
+            "version": "0.19.4",
             "dist": {
                 "type": "zip",
-                "url": "packages/ss-systems-platform-kit-0.19.3.zip",
-                "shasum": "c9912264328dd56d36c12b4dd8b6fbbdac657881"
+                "url": "packages/ss-systems-platform-kit-0.19.4.zip",
+                "shasum": "8be8cd7327d060f52e2e4d30793db89290e94acf"
             },
             "require": {
                 "illuminate/bus": "^12.0|^13.0",

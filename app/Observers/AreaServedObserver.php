@@ -4,13 +4,13 @@ namespace App\Observers;
 
 use App\Jobs\SubmitUrlsToIndexNow;
 use App\Models\AreaServed;
+use App\Support\Seo\IndexNowSubmitter;
 use Illuminate\Support\Facades\Log;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 class AreaServedObserver
 {
     public function __construct(
-        protected IndexNowService $indexNow
+        protected IndexNowSubmitter $indexNow
     ) {}
 
     public function created(AreaServed $area): void

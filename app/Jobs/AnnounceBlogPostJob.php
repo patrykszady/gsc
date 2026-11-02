@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\BlogPost;
+use App\Support\Seo\IndexNowSubmitter;
 use App\Support\SEO\RecrawlNudger;
 use App\Support\Tenancy;
 use Illuminate\Bus\Queueable;
@@ -13,7 +14,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use SsSystems\Platform\Indexing\IndexNowService;
 
 /**
  * Tell the crawlers about a post the moment it is published — the same
@@ -37,7 +37,7 @@ class AnnounceBlogPostJob implements ShouldQueue
 
     public function __construct(public BlogPost $post) {}
 
-    public function handle(IndexNowService $indexNow): void
+    public function handle(IndexNowSubmitter $indexNow): void
     {
         $run = function () use ($indexNow): void {
             $post = $this->post->fresh('project');

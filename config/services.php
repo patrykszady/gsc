@@ -196,6 +196,14 @@ return [
         'site_url' => env('APP_URL'),
     ],
 
+    // IndexNow (free, no account — a self-chosen key proven by the key file
+    // at App\Support\Seo\IndexNowSiteKey::keyLocation()). An operator-supplied
+    // key wins when set; otherwise one is generated on first use and stored
+    // per tenant, so no key ever needs to be created by hand.
+    'indexnow' => [
+        'key' => env('INDEXNOW_KEY'),
+    ],
+
     'microsoft' => [
         // Client-side Clarity project ID (used for JS snippet rendering).
         'clarity_id' => env('MICROSOFT_CLARITY_ID'),
