@@ -31,6 +31,7 @@ use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Projects\MergedProjectRedirectResponse;
 use SsSystems\Platform\Seo\AiTraffic\TrackAiTraffic;
 use SsSystems\Platform\Seo\Bing\Console\BingSubmitSitemapsCommand;
+use SsSystems\Platform\Seo\Clarity\Console\ClaritySyncCommand;
 use SsSystems\Platform\Seo\IndexNow\Console\IndexNowCommand;
 use SsSystems\Platform\Seo\Intel\Console\IntelCommand;
 use SsSystems\Platform\Seo\KeywordResearch\Console\KeywordResearchCommand;
@@ -75,6 +76,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // gated on PsiSettings' own key and reading PsiSnapshotStore —
         // App\Console\Commands\SyncPageSpeedInsights is gone.
         PageSpeedSyncCommand::class,
+        // Microsoft Clarity (kit 0.20.0): same seo:clarity-sync signature this
+        // site always ran (routes/console.php's schedule is unchanged), now
+        // reading the shared ClarityClient/ClarityMetricsStore — see
+        // App\Providers\AppServiceProvider's registerSeoTools(). App\Console\
+        // Commands\SyncMicrosoftClarity is gone.
+        ClaritySyncCommand::class,
         // Bing sitemap submission + IndexNow (kit 0.19.4): the kit's own
         // seo:bing-submit-sitemaps and seo:indexnow — see
         // App\Providers\AppServiceProvider's BingWebmasterApi/IndexNowKey/

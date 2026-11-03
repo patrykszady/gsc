@@ -4,6 +4,7 @@ namespace App\Support\Seo;
 
 use App\Support\Tenancy;
 use Illuminate\Support\Facades\Cache;
+use SsSystems\Platform\Seo\Clarity\Contracts\ClarityCredentials;
 
 /**
  * Microsoft Clarity's per-site credential (a project id + API token),
@@ -15,8 +16,14 @@ use Illuminate\Support\Facades\Cache;
  * print the Clarity tag (resources/views/components/layouts/app.blade.php),
  * and that layout renders on every page of every tenant — so it is cached
  * rather than hitting platform_settings on each request.
+ *
+ * Implements the kit's ClarityCredentials (bound in
+ * AppServiceProvider::registerSeoTools()) so the shared SsSystems\Platform\
+ * Seo\Clarity module — ClarityClient, ClarityMetricsStore,
+ * ClaritySyncCommand — reads this site's stored/env credential the same
+ * way the retired App\Services\MicrosoftClarityService did.
  */
-final class ClaritySettings
+final class ClaritySettings implements ClarityCredentials
 {
     public const SETTING_PROJECT_ID = 'seo.clarity.project_id';
 
@@ -96,12 +103,6 @@ final class ClaritySettings
     public function apiToken(): ?string
     {
         return PlatformSettingCredential::get(self::SETTING_API_TOKEN, config('services.microsoft.clarity.api_token'));
-    }
-
-    /** Not a credential — Clarity's fixed export API base URL. */
-    public function baseUrl(): string
-    {
-        return (string) config('services.microsoft.clarity.base_url', 'https://www.clarity.ms/export-data/api/v1');
     }
 
     public function isConfigured(): bool

@@ -5,6 +5,7 @@ namespace App\Support\Seo;
 use App\Support\Tenancy;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
+use SsSystems\Platform\Seo\Clarity\ClarityClient;
 
 /**
  * The pages where visitors are getting frustrated — and getting MORE
@@ -144,13 +145,9 @@ final class FrustratedPages
         return $byPath;
     }
 
-    /** The same normalisation the Clarity sync applies before writing. */
+    /** The same normalisation the kit's Clarity sync applies before writing. */
     public static function normalisePath(string $urlOrPath): string
     {
-        $path = parse_url($urlOrPath, PHP_URL_PATH);
-        $path = is_string($path) && $path !== '' ? rawurldecode($path) : '/';
-        $path = '/'.ltrim($path, '/');
-
-        return $path === '/' ? '/' : rtrim($path, '/');
+        return ClarityClient::normalisePath($urlOrPath);
     }
 }

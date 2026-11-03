@@ -12,10 +12,10 @@ use Tests\TestCase;
  * The public layout's Clarity tag (resources/views/components/layouts/app.blade.php)
  * used to read config('services.microsoft.clarity_id') directly. It now
  * goes through ClaritySettings::projectId() — the same admin-stored-first,
- * env-fallback resolver the export sync (SyncMicrosoftClarity) reads — so a
- * project id saved from /admin actually reaches the public page, and a
- * retired env key can't silently blank the tag for a tenant that already
- * moved to the stored value.
+ * env-fallback resolver the export sync (seo:clarity-sync, now the kit's
+ * ClaritySyncCommand) reads — so a project id saved from /admin actually
+ * reaches the public page, and a retired env key can't silently blank the
+ * tag for a tenant that already moved to the stored value.
  */
 class ClarityTagFromSettingsTest extends TestCase
 {

@@ -4,17 +4,23 @@ namespace Tests\Feature\Seo;
 
 use App\Models\ClarityDailyMetric;
 use App\Models\ClarityPageMetric;
-use App\Services\MicrosoftClarityService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use SsSystems\Platform\Reports\Contracts\ClarityMetricsReader;
+use SsSystems\Platform\Seo\Clarity\ClarityClient;
+use SsSystems\Platform\Seo\Clarity\Contracts\ClaritySiteHosts;
+use SsSystems\Platform\Seo\Clarity\StoreClarityMetricsReader;
 use Tests\TestCase;
 
 /**
- * The per-page half of the Clarity sync, built against the real response
- * shape (captured from production 2026-09-19): the dimension key comes back
- * as "Url", Traffic lists every host that carries the tag — local dev
- * included — and bots are counted inside the session total.
+ * The kit's Clarity sync (seo:clarity-sync, now
+ * SsSystems\Platform\Seo\Clarity\Console\ClaritySyncCommand), wired into
+ * this site's container in App\Providers\AppServiceProvider::
+ * registerSeoTools() — built against the real response shape (captured from
+ * production 2026-09-19): the dimension key comes back as "Url", Traffic
+ * lists every host that carries the tag — local dev included — and bots
+ * are counted inside the session total.
  */
 class ClarityPageSyncTest extends TestCase
 {
@@ -27,7 +33,6 @@ class ClarityPageSyncTest extends TestCase
         config([
             'services.microsoft.clarity.project_id' => 'proj-test',
             'services.microsoft.clarity.api_token' => 'token-test',
-            'services.microsoft.clarity.base_url' => 'https://clarity.test/export-data/api/v1',
         ]);
     }
 
@@ -81,7 +86,7 @@ class ClarityPageSyncTest extends TestCase
     private function fakeClarity(): void
     {
         Http::fake([
-            'clarity.test/*' => fn (Request $request) => Http::response(
+            ClarityClient::ENDPOINT.'*' => fn (Request $request) => Http::response(
                 ($request['dimension1'] ?? '') === 'URL' ? $this->urlPayload() : $this->osPayload()
             ),
         ]);
@@ -91,7 +96,8 @@ class ClarityPageSyncTest extends TestCase
     {
         $this->fakeClarity();
 
-        $rows = collect(app(MicrosoftClarityService::class)->fetchPageMetrics())->keyBy('path');
+        $hosts = app(ClaritySiteHosts::class)->hosts();
+        $rows = collect(app(ClarityClient::class)->pageMetrics($hosts))->keyBy('path');
 
         // Local dev, the null row and the never-visited page are all gone.
         $this->assertSame(['/', '/kitchens'], $rows->keys()->sort()->values()->all());
@@ -117,7 +123,7 @@ class ClarityPageSyncTest extends TestCase
         $this->fakeClarity();
 
         $this->artisan('seo:clarity-sync', ['--days' => 1])
-            ->expectsOutputToContain('Upserted 2 per-page rows.')
+            ->expectsOutputToContain('Clarity per page: 2 paths.')
             ->assertSuccessful();
 
         $this->assertSame(1, ClarityDailyMetric::count());
@@ -147,16 +153,31 @@ class ClarityPageSyncTest extends TestCase
     public function test_a_failed_page_request_does_not_fail_the_run(): void
     {
         Http::fake([
-            'clarity.test/*' => fn (Request $request) => ($request['dimension1'] ?? '') === 'URL'
+            ClarityClient::ENDPOINT.'*' => fn (Request $request) => ($request['dimension1'] ?? '') === 'URL'
                 ? Http::response('rate limited', 429)
                 : Http::response($this->osPayload()),
         ]);
 
         $this->artisan('seo:clarity-sync', ['--days' => 1])
-            ->expectsOutputToContain('site-wide rows were still written')
+            ->expectsOutputToContain('the site-wide row was still written')
             ->assertSuccessful();
 
         $this->assertSame(1, ClarityDailyMetric::count());
         $this->assertSame(0, ClarityPageMetric::count());
+    }
+
+    public function test_the_bound_clarity_metrics_reader_is_the_kits_store_backed_reader(): void
+    {
+        $this->fakeClarity();
+
+        $this->artisan('seo:clarity-sync', ['--days' => 1, '--no-pages' => true])->assertSuccessful();
+
+        $reader = app(ClarityMetricsReader::class);
+        $this->assertInstanceOf(StoreClarityMetricsReader::class, $reader);
+
+        $stored = $reader->latestStoredMetric();
+        $this->assertNotNull($stored, 'the tenant\'s just-synced day comes back through the bound reader');
+        $this->assertSame(now()->toDateString(), $stored['date']);
+        $this->assertSame(1, $reader->storedRowCount());
     }
 }

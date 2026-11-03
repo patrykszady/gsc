@@ -43,6 +43,7 @@ use App\Support\Seo\BingWriter;
 use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\DataForSeoSettings;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
+use App\Support\Seo\GscClaritySiteHosts;
 use App\Support\Seo\GscMapPackContext;
 use App\Support\Seo\GscOwnReviews;
 use App\Support\Seo\GscPageSpeedUrls;
@@ -54,7 +55,6 @@ use App\Support\Seo\PsiSettings;
 use App\Support\SEO\RecrawlNudger;
 use App\Support\Seo\Reports\ConfigSiteIdentity;
 use App\Support\Seo\Reports\EloquentAreaCatalog;
-use App\Support\Seo\Reports\EloquentClarityMetricsReader;
 use App\Support\Seo\Reports\EloquentHealthDataReader;
 use App\Support\Seo\Reports\EloquentQueryMetricsReader;
 use App\Support\Seo\Reports\HttpPageFetcher;
@@ -117,6 +117,11 @@ use SsSystems\Platform\Seo\AiTraffic\AiTrafficStore;
 use SsSystems\Platform\Seo\Bing\BingWebmasterApi;
 use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
 use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
+use SsSystems\Platform\Seo\Clarity\ClarityClient;
+use SsSystems\Platform\Seo\Clarity\ClarityMetricsStore;
+use SsSystems\Platform\Seo\Clarity\Contracts\ClarityCredentials;
+use SsSystems\Platform\Seo\Clarity\Contracts\ClaritySiteHosts;
+use SsSystems\Platform\Seo\Clarity\StoreClarityMetricsReader;
 use SsSystems\Platform\Seo\Contracts\SeoSiteProfile;
 use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoApi;
 use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoCredentials;
@@ -311,7 +316,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SiteIdentity::class, ConfigSiteIdentity::class);
         $this->app->bind(AreaCatalog::class, EloquentAreaCatalog::class);
         $this->app->bind(HealthDataReader::class, EloquentHealthDataReader::class);
-        $this->app->bind(ClarityMetricsReader::class, EloquentClarityMetricsReader::class);
+        // ClarityMetricsReader is bound in registerSeoTools() instead, to the
+        // kit's own tenant-scoped Clarity module (kit 0.20.0) — see that
+        // method's docblock; App\Support\Seo\Reports\EloquentClarityMetricsReader
+        // is gone.
         $this->app->bind(CacheInterface::class, LaravelSimpleCache::class);
         // /geo/answers.json's Q&A list (kit 0.13.0) — the fixed
         // config/geo-answers.php list alone, no Service/Area FAQ merge.
@@ -534,6 +542,20 @@ class AppServiceProvider extends ServiceProvider
      * dead-URL probe/circuit-breaker have no kit equivalent and are gone
      * with the retired command (see GscPageSpeedUrls's own docblock).
      *
+     * Microsoft Clarity (kit 0.20.0, 2026-11-02): the kit's own
+     * SsSystems\Platform\Seo\Clarity module — a port of this site's own
+     * App\Services\MicrosoftClarityService, the most complete of the five
+     * copies the sites carried — replaces it, App\Console\Commands\
+     * SyncMicrosoftClarity and App\Support\Seo\Reports\
+     * EloquentClarityMetricsReader, all three now gone. ClarityMetricsStore
+     * writes the same clarity_daily_metrics/clarity_page_metrics tables this
+     * site always wrote (already site_id-scoped; no new migration needed,
+     * their columns already match the kit's stubs exactly); ClarityClient
+     * keeps the exact parsing (dailySnapshot()/pageMetrics()/
+     * normalisePath()) App\Support\Seo\FrustratedPages now delegates to.
+     * GscClaritySiteHosts rebuilds Site::current()'s hosts exactly as the
+     * retired service's siteHosts() did.
+     *
      * seo:map-pack-competitors is now the kit's own MapPackCompetitorsCommand
      * (kit 0.19.3), registered directly in bootstrap/app.php — it reads a
      * competitor's homepage through the kit's own CompetitorSiteReader
@@ -604,6 +626,34 @@ class AppServiceProvider extends ServiceProvider
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
         ));
         $this->app->bind(PsiSnapshotReader::class, fn ($app) => $app->make(PsiSnapshotStore::class));
+
+        // Microsoft Clarity (kit 0.20.0, 2026-11-02): the kit's own
+        // SsSystems\Platform\Seo\Clarity module replaces this site's former
+        // App\Services\MicrosoftClarityService, App\Console\Commands\
+        // SyncMicrosoftClarity and App\Support\Seo\Reports\
+        // EloquentClarityMetricsReader — all three are gone. ClaritySettings
+        // (unchanged) now implements the kit's ClarityCredentials directly;
+        // GscClaritySiteHosts rebuilds Site::current()'s hosts exactly as
+        // MicrosoftClarityService::siteHosts() did; ClarityMetricsStore is
+        // tenant-scoped like every other store in this method, over the same
+        // clarity_daily_metrics/clarity_page_metrics tables this site always
+        // wrote. StoreClarityMetricsReader replaces EloquentClarityMetricsReader
+        // for the `clarity_metrics` capability (ClarityHealthReport), with the
+        // same ClientError beacon count the original reader used.
+        $this->app->bind(ClarityCredentials::class, ClaritySettings::class);
+        $this->app->bind(ClaritySiteHosts::class, GscClaritySiteHosts::class);
+        $this->app->singleton(ClarityMetricsStore::class, fn () => new ClarityMetricsStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
+        $this->app->bind(ClarityClient::class, fn ($app) => new ClarityClient(
+            $app->make(ClarityCredentials::class), $app->make(HttpFactory::class),
+        ));
+        $this->app->bind(ClarityMetricsReader::class, fn ($app) => new StoreClarityMetricsReader(
+            $app->make(ClarityClient::class),
+            $app->make(ClarityMetricsStore::class),
+            $app->make(ClarityCredentials::class),
+            fn (\DateTimeInterface $since) => ClientError::query()->where('last_seen_at', '>=', $since)->count(),
+        ));
 
         // IndexNow (kit 0.19.4): seo:indexnow's key/key-file (IndexNowSiteKey —
         // config('services.indexnow.key')/env INDEXNOW_KEY, else a platform
