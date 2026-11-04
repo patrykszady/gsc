@@ -176,6 +176,7 @@
             'home-additions' => 'home-additions',
             'basement-remodeling' => 'basement-remodeling',
             'mudroom-remodeling' => 'mudroom-remodeling',
+            'exterior-siding' => 'exterior-siding',
         ];
         $serviceSlug = $serviceSlugMap[$service] ?? null;
 

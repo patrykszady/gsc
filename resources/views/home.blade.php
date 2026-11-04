@@ -15,6 +15,7 @@
             'home-additions'      => 'Home Additions',
             'home-remodeling'     => 'Whole-Home Remodeling',
             'mudroom-remodeling'  => 'Mudroom & Laundry Remodeling',
+            'exterior-siding'     => 'Exterior & Siding Remodeling',
         ];
         $homeServiceItems = [];
         $homeServicePos = 0;
@@ -148,6 +149,7 @@
             'basement' => 'Basement Remodel',
             'addition' => 'Home Addition',
             'mudroom' => 'Mudroom Remodel',
+            'exterior' => 'Exterior & Siding',
         ];
     @endphp
     {{-- Auto-refreshing internal links to striking-distance area pages --}}

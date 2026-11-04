@@ -216,6 +216,8 @@ class GenerateSitemap extends Command
             'services/home-remodeling' => 0.9,
             'services/basement-remodeling' => 0.9,
             'services/home-additions' => 0.9,
+            'services/mudroom-remodeling' => 0.9,
+            'services/exterior-siding' => 0.9,
         ];
 
         $changeFrequencies = [
@@ -229,6 +231,8 @@ class GenerateSitemap extends Command
             'services/home-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
             'services/basement-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
             'services/home-additions' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'services/mudroom-remodeling' => Url::CHANGE_FREQUENCY_WEEKLY,
+            'services/exterior-siding' => Url::CHANGE_FREQUENCY_WEEKLY,
         ];
 
         foreach ($staticRoutes as $route) {

@@ -151,6 +151,8 @@ class SeoAutopilotService
         'basement' => 'basement-remodeling',
         'addition' => 'home-additions',
         'mudroom' => 'mudroom-remodeling',
+        'siding' => 'exterior-siding',
+        'exterior' => 'exterior-siding',
         'whole home' => 'home-remodeling',
         'whole-home' => 'home-remodeling',
         'home remodel' => 'home-remodeling',

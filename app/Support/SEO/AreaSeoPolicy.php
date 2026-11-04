@@ -159,6 +159,7 @@ class AreaSeoPolicy
         'basement-remodeling' => ['basement'],
         'home-additions' => ['addition'],
         'mudroom-remodeling' => ['mudroom', 'mud room', 'laundry'],
+        'exterior-siding' => ['siding', 'exterior', 'soffit', 'fascia'],
     ];
 
     /**

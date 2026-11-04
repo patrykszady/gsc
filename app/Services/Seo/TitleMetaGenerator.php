@@ -2,10 +2,9 @@
 
 namespace App\Services\Seo;
 
-use Illuminate\Support\Str;
-
 use App\Models\AreaServed;
 use App\Models\Project;
+use Illuminate\Support\Str;
 
 /**
  * Deterministic, rules-based CTR-optimized title + meta generator.
@@ -42,7 +41,7 @@ class TitleMetaGenerator
     private function titleBudget(): int
     {
         $brand = (string) config('brand.name');
-        $suffix = $brand === '' ? 0 : mb_strlen(' | ' . $brand);
+        $suffix = $brand === '' ? 0 : mb_strlen(' | '.$brand);
 
         return max(30, self::TITLE_PIXEL_BUDGET_CHARS - $suffix);
     }
@@ -55,6 +54,7 @@ class TitleMetaGenerator
         'basement-remodeling' => 'Basement Remodeling',
         'home-additions' => 'Home Additions',
         'mudroom-remodeling' => 'Mudroom Remodeling',
+        'exterior-siding' => 'Exterior & Siding',
     ];
 
     /**
@@ -71,7 +71,7 @@ class TitleMetaGenerator
             $phrase = trim(preg_replace('/\s+/', ' ', $phrase) ?? $phrase);
             $title = $this->fitTitle($phrase, ['Free Estimate']);
             $desc = $this->fitDesc(
-                ucfirst(mb_strtolower(trim($targetPhrase))) . " by a family-owned, 5-star rated contractor: clear pricing, a dedicated project lead, licensed & insured. Free in-home estimate."
+                ucfirst(mb_strtolower(trim($targetPhrase))).' by a family-owned, 5-star rated contractor: clear pricing, a dedicated project lead, licensed & insured. Free in-home estimate.'
             );
 
             return ['title' => $title, 'description' => $desc];
@@ -86,7 +86,7 @@ class TitleMetaGenerator
             // and every one of the 40 area descriptions was cut before it.
             $desc = $this->fitDesc(
                 "Free estimate on {$city} {$serviceLower}. Clear pricing, a dedicated project lead, "
-                . "and 5-star reviews. Family-owned, 40+ yrs combined experience."
+                .'and 5-star reviews. Family-owned, 40+ yrs combined experience.'
             );
 
             return ['title' => $title, 'description' => $desc];
@@ -112,7 +112,7 @@ class TitleMetaGenerator
         // pricing and…" off the long ones.
         $desc = $this->fitDesc(
             "Free estimate on {$city} kitchen, bathroom & whole-home remodeling. "
-            . "Family-owned, 5-star rated, clear pricing and timelines."
+            .'Family-owned, 5-star rated, clear pricing and timelines.'
         );
 
         return ['title' => $title, 'description' => $desc];
@@ -135,14 +135,14 @@ class TitleMetaGenerator
             $phrase = trim(preg_replace('/\s+/', ' ', $phrase) ?? $phrase);
             $title = $this->fitTitle($phrase, ['Free Estimate']);
             $desc = $this->fitDesc(
-                ucfirst(mb_strtolower(trim($targetPhrase))) . " across the {$region}: free in-home estimate, clear itemized pricing, a dedicated project lead, licensed & insured. Family-owned, 5-star rated."
+                ucfirst(mb_strtolower(trim($targetPhrase)))." across the {$region}: free in-home estimate, clear itemized pricing, a dedicated project lead, licensed & insured. Family-owned, 5-star rated."
             );
 
             return ['title' => $title, 'description' => $desc];
         }
         $title = $this->fitTitle("{$service} Contractors, {$region}", ['Free Estimate']);
         $desc = $this->fitDesc(
-            'Free estimate on ' . strtolower($service) . " across the {$region}. Clear itemized pricing, a dedicated project lead, and 5-star reviews. Family-owned, 40+ yrs combined experience."
+            'Free estimate on '.strtolower($service)." across the {$region}. Clear itemized pricing, a dedicated project lead, and 5-star reviews. Family-owned, 40+ yrs combined experience."
         );
 
         return ['title' => $title, 'description' => $desc];
@@ -175,7 +175,7 @@ class TitleMetaGenerator
         };
         $desc = $this->fitDesc(
             "See this {$name}{$where} by GS Construction — real photos, materials and layout. "
-            . "Family-owned, 5-star rated, 40+ yrs combined experience. Free estimate."
+            .'Family-owned, 5-star rated, 40+ yrs combined experience. Free estimate.'
         );
 
         return ['title' => $title, 'description' => $desc];
@@ -185,7 +185,7 @@ class TitleMetaGenerator
      * Assemble "{core} | {hook}" appending as many hooks as fit under the budget,
      * separated by " · ". Guarantees the core is never truncated.
      *
-     * @param array<int,string> $hooks
+     * @param  array<int,string>  $hooks
      */
     private function fitTitle(string $core, array $hooks): string
     {
@@ -195,12 +195,12 @@ class TitleMetaGenerator
 
         foreach ($hooks as $hook) {
             $candidateSuffix = $suffix === '' ? " | {$hook}" : "{$suffix} · {$hook}";
-            if (mb_strlen($core . $candidateSuffix) <= $this->titleBudget()) {
+            if (mb_strlen($core.$candidateSuffix) <= $this->titleBudget()) {
                 $suffix = $candidateSuffix;
             }
         }
 
-        return $core . $suffix;
+        return $core.$suffix;
     }
 
     private function fitDesc(string $text): string
@@ -227,6 +227,6 @@ class TitleMetaGenerator
             $cut = mb_substr($cut, 0, $lastSpace);
         }
 
-        return rtrim($cut, " ,.·-") . '…';
+        return rtrim($cut, ' ,.·-').'…';
     }
 }

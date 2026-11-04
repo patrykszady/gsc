@@ -33,6 +33,7 @@
         'basement-remodeling' => 'basement',
         'home-additions'      => 'addition',
         'mudroom-remodeling'  => 'mudroom',
+        'exterior-siding'     => 'exterior',
     ];
     $projectType = $typeMap[$serviceSlug] ?? 'kitchen';
 
@@ -79,6 +80,13 @@
             'image'       => 'images/services/mudroom-hero.jpg',
             'lowPrice'    => '8000',
             'highPrice'   => '25000',
+        ],
+        'exterior-siding' => [
+            'name'        => 'Exterior & Siding Remodeling',
+            'description' => 'Siding and exterior remodeling: vinyl, fiber cement and wood siding, trim, soffit and fascia, with the housewrap and flashing done right underneath.',
+            'image'       => 'images/services/exterior-hero.jpg',
+            'lowPrice'    => '12000',
+            'highPrice'   => '60000',
         ],
     ];
     $c = $copy[$serviceSlug] ?? $copy['kitchen-remodeling'];

@@ -78,6 +78,7 @@ class AreaServiceContent extends Model
             'basement-remodeling' => 'basement finishing',
             'home-additions' => 'home additions',
             'mudroom-remodeling' => 'mudroom and laundry room remodeling',
+            'exterior-siding' => 'siding and exterior remodeling',
             default => str_replace('-', ' ', $service),
         };
     }

@@ -49,7 +49,7 @@ class SitemapPerTenantTest extends TestCase
 
         foreach ([
             '/services/kitchen-remodeling', '/services/bathroom-remodeling', '/services/home-remodeling',
-            '/services/basement-remodeling', '/services/home-additions', '/services/mudroom-remodeling',
+            '/services/basement-remodeling', '/services/home-additions', '/services/mudroom-remodeling', '/services/exterior-siding',
             '/design-partners', '/projects', '/reviews', '/areas-served',
         ] as $theirs) {
             $this->assertNotContains($theirs, $paths, "{$theirs} 404s on the studio's site");

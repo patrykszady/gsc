@@ -230,6 +230,7 @@ class SearchConsoleAudit extends Command
             $base.'/services/home-remodeling',
             $base.'/services/basement-remodeling',
             $base.'/services/home-additions',
+            $base.'/services/exterior-siding',
             $base.'/areas-served',
         ];
         AreaServed::query()->orderBy('city')->limit(10)->get()

@@ -778,6 +778,7 @@ PROMPT;
             'basement-remodeling' => 'egress windows, ceiling height, moisture and drain tile, bathroom rough-ins and ejector pumps, and finishing around mechanicals',
             'home-additions' => 'zoning, setbacks and lot coverage, foundations and tying a new roof into the old one, matching exterior materials, and plan review timelines',
             'mudroom-remodeling' => 'built-in lockers and benches sized to the family, floors that take salt and slush, moving a washer, dryer vent or utility sink, and the garage or side-entry door and step',
+            'exterior-siding' => 'the siding material (vinyl, fiber cement, wood), housewrap and flashing, rot found under the old siding, matching trim and soffit, and the village permit for exterior changes',
             default => 'permits, sequencing and the decisions that shape the budget',
         };
 
@@ -1024,6 +1025,7 @@ PROMPT;
             'basement-remodeling' => 'basements: ceiling height, moisture and drain tile in that era of construction, egress, ejector pumps, mechanicals in the way, and what the local ground and flood history mean',
             'home-additions' => 'additions: lot sizes and setbacks in each era of subdivision, roof lines and foundations to tie into, and how the village reviews exterior changes',
             'mudroom-remodeling' => 'mudrooms and laundry rooms: how the era\'s houses meet the garage or side door, where the laundry sat (basement, kitchen or upstairs), and the plumbing and venting a move means',
+            'exterior-siding' => 'exteriors: what the era clad the house in (brick, cedar, aluminum, vinyl), what sits under it, how the village reviews exterior changes, and what the winters do to it',
             default => 'this trade',
         };
 

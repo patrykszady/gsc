@@ -65,6 +65,12 @@ $serviceTypes = [
         'serviceType' => 'Mudroom Remodeling',
         'category' => 'Home Improvement',
     ],
+    'exterior-siding' => [
+        'name' => 'Exterior & Siding Remodeling',
+        'description' => 'Siding and exterior remodeling including vinyl, fiber cement and wood siding, trim, soffit and fascia replacement, and housewrap and flashing done right.',
+        'serviceType' => 'Siding Installation',
+        'category' => 'Home Improvement',
+    ],
 ];
 
 $serviceKey = $service['projectType'] ?? 'kitchen';
@@ -74,6 +80,7 @@ $serviceSlug = match($serviceKey) {
     'home-remodel' => 'home-remodeling',
     'addition' => 'home-additions',
     'mudroom' => 'mudroom-remodeling',
+    'exterior' => 'exterior-siding',
     default => 'basement-remodeling',
 };
 

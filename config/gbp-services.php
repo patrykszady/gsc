@@ -35,11 +35,13 @@ return [
      */
     'slug_aliases' => [
         'basement-finishing' => 'basement-remodeling',
-        'room-addition'      => 'home-additions',
-        'room-additions'     => 'home-additions',
-        'mudroom'            => 'mudroom-remodeling',
-        'mudrooms'           => 'mudroom-remodeling',
-        'laundry-room'       => 'mudroom-remodeling',
+        'room-addition' => 'home-additions',
+        'room-additions' => 'home-additions',
+        'mudroom' => 'mudroom-remodeling',
+        'mudrooms' => 'mudroom-remodeling',
+        'laundry-room' => 'mudroom-remodeling',
+        'siding' => 'exterior-siding',
+        'exterior' => 'exterior-siding',
     ],
 
     /*
@@ -135,7 +137,7 @@ return [
         ['name' => 'Design-Build Remodeling',       'parent' => 'home-remodeling',         'description' => 'Integrated design-build process from concept, selections, and planning through construction.'],
         ['name' => 'Interior Renovation Services',  'parent' => 'home-remodeling',         'description' => 'Interior renovation work including layout improvements, finish updates, and carpentry details.'],
         ['name' => 'Project Management',            'parent' => 'home-remodeling',         'description' => 'Remodeling project management with scheduling, trade coordination, and quality control.'],
-        ['name' => 'Permit & Inspection Management','parent' => 'home-remodeling',         'description' => 'Permit coordination and inspection management for village and municipal compliance.'],
+        ['name' => 'Permit & Inspection Management', 'parent' => 'home-remodeling',         'description' => 'Permit coordination and inspection management for village and municipal compliance.'],
         ['name' => 'Custom Carpentry & Millwork',   'parent' => 'home-remodeling',         'description' => 'Custom trim, built-ins, and finish carpentry to complete premium remodeling projects.'],
     ],
 ];

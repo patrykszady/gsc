@@ -53,15 +53,28 @@ class AreaServicesFromAdminTest extends TestCase
     public function test_a_service_without_a_public_page_is_left_out_of_every_town_and_the_admin_api_says_so(): void
     {
         Service::create(['name' => 'Kitchen Remodel', 'slug' => 'kitchen', 'sort_order' => 1]);
-        $exterior = Service::create(['name' => 'Exterior/Siding', 'slug' => 'exterior', 'sort_order' => 2]);
+        $outdoor = Service::create(['name' => 'Outdoor Living', 'slug' => 'outdoor-living', 'sort_order' => 2]);
         $kenilworth = $this->town('Kenilworth', 'kenilworth');
         Cache::flush();
 
         $this->assertSame(['kitchen-remodeling'], $kenilworth->serviceSlugs());
-        $this->assertNull($exterior->url());
-        $this->assertNull($exterior->toApiArray()['public_url']);
+        $this->assertNull($outdoor->url());
+        $this->assertNull($outdoor->toApiArray()['public_url']);
         $this->assertSame(url('/services/kitchen-remodeling'), Service::firstWhere('slug', 'kitchen')->toApiArray()['public_url']);
-        $this->get('/areas-served/kenilworth/services/exterior')->assertNotFound();
+        $this->get('/areas-served/kenilworth/services/outdoor-living')->assertNotFound();
+    }
+
+    public function test_exterior_siding_is_a_service_page_and_so_every_town_has_it(): void
+    {
+        Service::create(['name' => 'Exterior/Siding', 'slug' => 'exterior', 'sort_order' => 1]);
+        $kenilworth = $this->town('Kenilworth', 'kenilworth');
+        Cache::flush();
+
+        $this->assertSame(['exterior-siding'], $kenilworth->serviceSlugs());
+        $this->get('/services/exterior-siding')->assertOk()->assertSee('Exterior &amp; Siding Remodeling', false);
+        $this->get('/areas-served/kenilworth/services/exterior-siding')->assertOk()
+            ->assertSee('Kenilworth Siding &amp; Exterior Remodeling', false)
+            ->assertSee('Siding and exterior remodeling in Kenilworth, IL');
     }
 
     public function test_with_no_services_in_admin_yet_every_catalog_service_with_a_project_type_counts(): void
@@ -70,7 +83,7 @@ class AreaServicesFromAdminTest extends TestCase
 
         Tenancy::for(Site::query()->where('slug', 'gsc')->firstOrFail(), function (): void {
             $this->assertSame(
-                ['kitchen-remodeling', 'bathroom-remodeling', 'basement-remodeling', 'home-additions', 'home-remodeling', 'mudroom-remodeling'],
+                ['kitchen-remodeling', 'bathroom-remodeling', 'basement-remodeling', 'home-additions', 'home-remodeling', 'mudroom-remodeling', 'exterior-siding'],
                 AreaServiceContent::services(),
             );
         });
@@ -82,6 +95,16 @@ class AreaServicesFromAdminTest extends TestCase
      * list is never empty there — on 2026-11-04 it was, and the prod sitemap
      * lost every town service page.
      */
+    /** Prod's console (2026-11-04): the site current and bound, its config never applied — the catalog applies it. */
+    public function test_a_site_bound_without_its_config_applied_still_gets_its_catalog(): void
+    {
+        Service::create(['name' => 'Kitchen Remodel', 'slug' => 'kitchen']);
+        app()->instance('site.current', Site::query()->where('slug', 'gsc')->firstOrFail());
+        config(['services-content' => []]);
+
+        $this->assertSame(['kitchen-remodeling'], AreaServiceContent::services());
+    }
+
     public function test_the_list_is_the_same_with_no_site_bound_as_after_a_request_binds_one(): void
     {
         Service::create(['name' => 'Kitchen Remodel', 'slug' => 'kitchen']);

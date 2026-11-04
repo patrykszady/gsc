@@ -14,6 +14,7 @@
                 'basement-remodeling' => 'Basement Remodeling',
                 'home-additions' => 'Home Additions',
                 'mudroom-remodeling' => 'Mudroom Remodeling',
+                'exterior-siding' => 'Exterior & Siding',
             ];
             $breadcrumbItems[] = ['name' => 'Services', 'url' => $area->pageUrl('services')];
             $breadcrumbItems[] = ['name' => $serviceNames[$service] ?? ucfirst($service)];
@@ -878,6 +879,28 @@
                             ['question' => "Can you combine my mudroom and laundry room?", 'answer' => "Yes. We plan cabinetry, folding counters, hanging space, utility sinks and drop zones so one room handles laundry and everyday entry clutter."],
                             ['question' => "How long does a mudroom remodel take?", 'answer' => "A typical mudroom or laundry/mudroom remodel takes 2–5 weeks, depending on cabinetry lead times, tile work, and any plumbing or electrical changes. You get a written schedule before we start."],
                             ['question' => "Do mudroom projects in {$area->city} need permits?", 'answer' => "Simple built-ins and finishes usually do not, but adding or relocating plumbing (a utility sink or washer) or electrical circuits typically does. We pull any permits {$area->city} requires and meet the inspections."],
+                        ],
+                    ],
+                    'exterior-siding' => [
+                        'label' => 'Exterior & Siding',
+                        'projectType' => 'exterior',
+                        'urlSlug' => 'exterior-siding',
+                        'heading' => $area->city . ' Siding & Exterior Remodeling',
+                        'subheading' => 'Vinyl, fiber cement or wood siding with the trim, soffit, fascia and flashing done right underneath',
+                        'description' => "Re-siding a home in {$area->city}? GS Construction takes the old siding off, fixes what it was hiding — rot, missing housewrap, bad flashing — and installs the new siding, trim, soffit and fascia with the same owner on site and the same written warranty as our interior work.",
+                        'features' => [
+                            'Vinyl, fiber cement and wood siding',
+                            'Trim, soffit and fascia replacement',
+                            'Housewrap and flashing done right',
+                            'Rot and sheathing repair under old siding',
+                            'Windows and doors replaced in the same pass',
+                            'Permits and inspections handled',
+                        ],
+                        'faqs' => [
+                            ['question' => "How much does new siding cost in {$area->city}?", 'answer' => "It depends on the size of the house, the material (vinyl, fiber cement or wood) and how much repair the old siding was hiding. Your {$area->city} estimate is itemized line by line — labor, materials and disposal — before anything comes off the house."],
+                            ['question' => "Which siding holds up best in {$area->city} winters?", 'answer' => "Fiber cement handles freeze-thaw and lake-effect weather very well and takes paint; vinyl is the most economical and lowest-maintenance; wood looks best and needs the most upkeep. We walk through the trade-offs for your house and budget."],
+                            ['question' => "How long does a siding project take?", 'answer' => "Most siding projects run 4–8 weeks from the start of construction, depending on the size of the house, the material and any repairs found once the old siding is off. You get a written schedule before we start."],
+                            ['question' => "Do I need a permit for new siding in {$area->city}?", 'answer' => "Many villages require a permit for siding replacement or significant exterior changes. We pull any permit {$area->city} requires and meet the inspections."],
                         ],
                     ],
                 ];

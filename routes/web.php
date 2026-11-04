@@ -506,6 +506,9 @@ Route::get('/services/home-additions', ServicePage::class)
 Route::get('/services/mudroom-remodeling', ServicePage::class)
     ->defaults('service', 'mudroom-remodeling')
     ->name('services.mudroom');
+Route::get('/services/exterior-siding', ServicePage::class)
+    ->defaults('service', 'exterior-siding')
+    ->name('services.exterior');
 
 // 301 redirects from old short service URLs
 Route::redirect('/services/mudroom', '/services/mudroom-remodeling', 301);

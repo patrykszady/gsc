@@ -28,8 +28,8 @@ class SeoCloudflare403Audit extends Command
 
     private const UAS = [
         'googlebot' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-        'bingbot'   => 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
-        'browser'   => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+        'bingbot' => 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+        'browser' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
     ];
 
     public function handle(): int
@@ -39,29 +39,30 @@ class SeoCloudflare403Audit extends Command
 
         $base = rtrim((string) config('app.url'), '/');
         $urls = [
-            $base . '/',
-            $base . '/about',
-            $base . '/contact',
-            $base . '/testimonials',
-            $base . '/projects',
-            $base . '/areas-served',
-            $base . '/services/kitchen-remodeling',
-            $base . '/services/bathroom-remodeling',
-            $base . '/services/home-remodeling',
-            $base . '/services/basement-remodeling',
-            $base . '/services/home-additions',
-            $base . '/sitemap.xml',
-            $base . '/robots.txt',
+            $base.'/',
+            $base.'/about',
+            $base.'/contact',
+            $base.'/testimonials',
+            $base.'/projects',
+            $base.'/areas-served',
+            $base.'/services/kitchen-remodeling',
+            $base.'/services/bathroom-remodeling',
+            $base.'/services/home-remodeling',
+            $base.'/services/basement-remodeling',
+            $base.'/services/home-additions',
+            $base.'/services/exterior-siding',
+            $base.'/sitemap.xml',
+            $base.'/robots.txt',
         ];
 
         AreaServed::query()->orderBy('city')->limit($limit - count($urls))->get()
             ->each(function ($a) use (&$urls, $base) {
-                $urls[] = $base . '/areas-served/' . $a->slug;
-                $urls[] = $base . '/areas-served/' . $a->slug . '/services/kitchen-remodeling';
+                $urls[] = $base.'/areas-served/'.$a->slug;
+                $urls[] = $base.'/areas-served/'.$a->slug.'/services/kitchen-remodeling';
             });
 
         $urls = array_slice(array_values(array_unique($urls)), 0, $limit);
-        $this->info('Probing ' . count($urls) . " URLs as: {$ua}");
+        $this->info('Probing '.count($urls)." URLs as: {$ua}");
 
         $blocked = [];
         $ok = 0;
@@ -90,7 +91,7 @@ class SeoCloudflare403Audit extends Command
             usleep(150_000);
         }
 
-        $this->info("\nResults: OK={$ok}  BLOCKED=" . count($blocked));
+        $this->info("\nResults: OK={$ok}  BLOCKED=".count($blocked));
 
         if ($this->option('markdown')) {
             $this->writeReport($urls, $blocked, $ua, $ok);
@@ -100,17 +101,17 @@ class SeoCloudflare403Audit extends Command
     }
 
     /**
-     * @param array<int,string> $urls
-     * @param array<int,array{u:string,code:int,cfRay:string,cfMit:string,server:string}> $blocked
+     * @param  array<int,string>  $urls
+     * @param  array<int,array{u:string,code:int,cfRay:string,cfMit:string,server:string}>  $blocked
      */
     protected function writeReport(array $urls, array $blocked, string $ua, int $ok): void
     {
         $md = "# Cloudflare / WAF 403 Audit\n\n";
-        $md .= '_Generated: ' . now()->toIso8601String() . "_\n\n";
+        $md .= '_Generated: '.now()->toIso8601String()."_\n\n";
         $md .= "User-Agent: `{$ua}`\n\n";
-        $md .= '- URLs probed: ' . count($urls) . "\n";
+        $md .= '- URLs probed: '.count($urls)."\n";
         $md .= "- 2xx/3xx: {$ok}\n";
-        $md .= '- 4xx/5xx: ' . count($blocked) . "\n\n";
+        $md .= '- 4xx/5xx: '.count($blocked)."\n\n";
 
         if (empty($blocked)) {
             $md .= "**No bot-targeted blocks detected.** GSC's 403 bucket is likely historical or from URLs not in this probe list.\n\n";
@@ -118,7 +119,7 @@ class SeoCloudflare403Audit extends Command
             $md .= "## Blocked URLs\n\n";
             $md .= "| Status | CF-Mitigated | URL |\n|---|---|---|\n";
             foreach ($blocked as $b) {
-                $md .= "| {$b['code']} | " . ($b['cfMit'] ?: '–') . " | {$b['u']} |\n";
+                $md .= "| {$b['code']} | ".($b['cfMit'] ?: '–')." | {$b['u']} |\n";
             }
             $md .= "\n";
         }
@@ -127,7 +128,7 @@ class SeoCloudflare403Audit extends Command
         $gscForbidden = GscCoverageState::query()
             ->where(function ($q) {
                 $q->where('coverage_state', 'like', '%forbidden%')
-                  ->orWhere('page_fetch_state', 'ACCESS_DENIED');
+                    ->orWhere('page_fetch_state', 'ACCESS_DENIED');
             })
             ->orderByDesc('last_changed_at')
             ->limit(50)
@@ -137,7 +138,7 @@ class SeoCloudflare403Audit extends Command
             $md .= "## GSC URL Inspection: forbidden / access-denied\n\n";
             $md .= "| URL | Coverage | Fetch | Last change |\n|---|---|---|---|\n";
             foreach ($gscForbidden as $g) {
-                $md .= "| {$g->url} | " . ($g->coverage_state ?: '–') . " | " . ($g->page_fetch_state ?: '–') . " | " . ($g->last_changed_at?->toDateString() ?: '–') . " |\n";
+                $md .= "| {$g->url} | ".($g->coverage_state ?: '–').' | '.($g->page_fetch_state ?: '–').' | '.($g->last_changed_at?->toDateString() ?: '–')." |\n";
             }
             $md .= "\n";
         }

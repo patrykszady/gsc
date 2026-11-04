@@ -346,6 +346,52 @@ return [
             ],
             'ctaHeading' => 'Ready to Build Your Mudroom?',
         ],
+        'exterior-siding' => [
+            'title' => 'Exterior & Siding',
+            'heroTitle' => 'Exterior & Siding Remodeling',
+            'heroSubtitle' => 'Siding, trim, soffit and fascia replaced the way we run every job — scoped line by line, permits pulled, owner on site',
+            'projectType' => 'exterior',
+            'shortLabel' => 'Exterior',
+            'description' => 'Siding is the one job the whole street sees. We take the old siding off, fix what it was hiding — rot, missing housewrap, bad flashing — and put the new skin on with the same owner on site and the same written warranty as a kitchen. Vinyl, fiber cement or wood: you choose the material, we price it line by line and install it right.',
+
+            'facts' => [
+                'Scope' => 'Siding, trim, soffit, fascia and the flashing behind them',
+                'Materials' => 'Vinyl, fiber cement or wood — your choice, priced line by line',
+                'Permits' => 'Pulled by us where the village requires one',
+                'Warranty' => ['value' => 'Workmanship, in writing', 'note' => 'Our commitment never expires', 'href' => '/warranty'],
+            ],
+
+            'features' => [
+                ['title' => 'Siding replacement', 'description' => 'Old siding off, sheathing checked and repaired, housewrap and flashing done right before the new siding goes on.'],
+                ['title' => 'Trim, soffit & fascia', 'description' => 'Rotted trim replaced, soffit and fascia tied into the roof edge so water goes where it should.'],
+                ['title' => 'Water management', 'description' => 'Flashing at windows, doors and roof lines, kick-out flashing and drip edges — the parts that fail first on older houses.'],
+                ['title' => 'Windows & doors in the same pass', 'description' => 'Replacing a window or entry door while the wall is open costs less than doing it later.'],
+                ['title' => 'Matching an addition', 'description' => 'New siding on an addition blended with the existing house, or the whole house re-sided so it reads as one.'],
+                ['title' => 'Village sign-off', 'description' => 'Permits and inspections handled where your village requires them for exterior work.'],
+            ],
+
+            'included' => [
+                'Removal and disposal of the existing siding and trim',
+                'Sheathing inspection and repair where rot or damage is found',
+                'Housewrap, flashing and trim detailing',
+                'Siding, soffit and fascia installation',
+                'Caulking, touch-up and site clean-up',
+                'Final walkthrough, punch list and warranty paperwork',
+            ],
+            'notIncluded' => [
+                'Finish materials — siding, trim boards, soffit and fascia stock, and any windows or doors',
+                'Roofing, gutters and masonry, quoted separately when they are part of the plan',
+            ],
+
+            'faqs' => [
+                ['question' => 'How much does new siding cost?', 'answer' => 'It depends on the size of the house, the material (vinyl, fiber cement or wood) and how much repair the old siding was hiding. GS Construction provides a free, itemized estimate, so you see labor, materials and disposal line by line before anything comes off the house.'],
+                ['question' => 'Which siding material should I choose?', 'answer' => 'Vinyl is the most economical and lowest-maintenance; fiber cement costs more, takes paint and handles Chicago winters very well; wood looks best and needs the most upkeep. We walk through the trade-offs for your house and budget — the material is your choice, the installation is ours.'],
+                ['question' => 'How long does a siding project take?', 'answer' => 'Most exterior siding projects run 4–8 weeks from the start of construction, depending on the size of the house, the material and any repairs found once the old siding is off. You get a written schedule before we start.'],
+                ['question' => 'Do I need a permit for new siding?', 'answer' => 'Many Chicago-area villages require a permit for siding replacement or significant exterior changes. GS Construction manages the permit application and inspections on your behalf.'],
+                ['question' => 'Can you replace windows or doors at the same time?', 'answer' => 'Yes — with the wall open it is the right moment. We flash and trim new windows and doors as part of the same scope.'],
+            ],
+            'ctaHeading' => 'Ready to Re-Side Your Home?',
+        ],
     ],
 
     // Attached to every service below, so the service pages and /process can
@@ -443,6 +489,19 @@ return [
                 'Built-in lockers, benches & cubbies',
                 'Combined laundry/mudroom layouts',
                 'Durable tile floors & utility sinks',
+            ],
+        ],
+        [
+            'slug' => 'exterior-siding',
+            'urlSlug' => 'exterior-siding',
+            'title' => 'Exterior & Siding',
+            'projectType' => 'exterior',
+            'description' => 'New siding, trim, soffit and fascia with the water management done right underneath – vinyl, fiber cement or wood, installed by the same crew and owner that run our interior jobs.',
+            'gradient' => 'from-slate-500 to-zinc-600',
+            'features' => [
+                'Vinyl, fiber cement & wood siding',
+                'Trim, soffit & fascia',
+                'Flashing & housewrap done right',
             ],
         ],
     ],

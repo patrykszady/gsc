@@ -27,7 +27,7 @@ class SitemapTenantFilterTest extends TestCase
 
     public function test_a_service_sub_page_needs_that_slug_in_the_tenants_own_services_config(): void
     {
-        foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions', 'mudroom-remodeling'] as $slug) {
+        foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions', 'mudroom-remodeling', 'exterior-siding'] as $slug) {
             $this->assertTrue(SitemapTenantFilter::allows("/services/{$slug}", $this->gsc()), "gsc serves /services/{$slug}");
             $this->assertFalse(SitemapTenantFilter::allows("/services/{$slug}", $this->jpd()), "/services/{$slug} 404s on the studio's site");
         }

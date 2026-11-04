@@ -70,6 +70,7 @@
                         'basement-remodeling' => 'basement remodeling',
                         'home-additions' => 'home additions',
                         'mudroom-remodeling' => 'mudroom remodeling',
+                        'exterior-siding' => 'siding and exterior remodeling',
                         'home-remodeling' => 'home remodeling',
                     ];
 

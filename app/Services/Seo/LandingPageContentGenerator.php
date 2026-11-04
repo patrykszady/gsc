@@ -25,6 +25,7 @@ class LandingPageContentGenerator
         'basement-remodeling' => 'home-remodel',
         'home-additions' => 'home-remodel',
         'mudroom-remodeling' => 'mudroom',
+        'exterior-siding' => 'exterior',
     ];
 
     private const MODIFIER_LABEL = [
@@ -42,6 +43,7 @@ class LandingPageContentGenerator
         'basement-remodeling' => '$45,000–$150,000',
         'home-additions' => '$60,000–$350,000+',
         'mudroom-remodeling' => '$8,000–$25,000',
+        'exterior-siding' => '$12,000–$60,000+, by house size and material',
     ];
 
     public function __construct(private readonly TitleMetaGenerator $titles = new TitleMetaGenerator) {}

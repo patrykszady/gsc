@@ -39,28 +39,31 @@ class SeoGscCriticalHealth extends Command
     public function handle(): int
     {
         $token = $this->gscAccessToken();
-        if (! $token) return self::FAILURE;
+        if (! $token) {
+            return self::FAILURE;
+        }
 
         $site = $this->gscSiteUrl($this->option('site'));
         $base = $this->gscBaseUrl($this->option('site'));
 
         $critical = [
-            $base . '/',
-            $base . '/reviews',
-            $base . '/projects',
-            $base . '/areas-served',
-            $base . '/services/kitchen-remodeling',
-            $base . '/services/bathroom-remodeling',
-            $base . '/services/home-remodeling',
-            $base . '/services/basement-remodeling',
-            $base . '/services/home-additions',
+            $base.'/',
+            $base.'/reviews',
+            $base.'/projects',
+            $base.'/areas-served',
+            $base.'/services/kitchen-remodeling',
+            $base.'/services/bathroom-remodeling',
+            $base.'/services/home-remodeling',
+            $base.'/services/basement-remodeling',
+            $base.'/services/home-additions',
+            $base.'/services/exterior-siding',
         ];
         AreaServed::query()
             ->orderByDesc('city')
             ->limit((int) $this->option('top-areas'))
             ->get()
             ->each(function ($a) use (&$critical, $base) {
-                $critical[] = $base . '/areas-served/' . $a->slug;
+                $critical[] = $base.'/areas-served/'.$a->slug;
             });
 
         $alerts = [];
@@ -74,7 +77,8 @@ class SeoGscCriticalHealth extends Command
             );
             usleep(250_000);
             if (! $resp->successful()) {
-                $alerts[] = ['url' => $url, 'kind' => 'api_error', 'detail' => 'HTTP ' . $resp->status()];
+                $alerts[] = ['url' => $url, 'kind' => 'api_error', 'detail' => 'HTTP '.$resp->status()];
+
                 continue;
             }
             $r = $resp->json()['inspectionResult']['indexStatusResult'] ?? [];
@@ -87,7 +91,7 @@ class SeoGscCriticalHealth extends Command
 
             $regressed = $prev && $prev->verdict === 'PASS' && $verdict !== 'PASS';
             $robotsChanged = $prev && $prev->robots_txt_state && $prev->robots_txt_state !== $robots;
-            $homeCovChanged = $url === ($base . '/') && $prev && $prev->coverage_state !== $coverage;
+            $homeCovChanged = $url === ($base.'/') && $prev && $prev->coverage_state !== $coverage;
 
             $rows[] = compact('url', 'verdict', 'coverage', 'robots');
 
@@ -105,11 +109,11 @@ class SeoGscCriticalHealth extends Command
         }
 
         if ($alerts) {
-            $this->error('Critical-health alerts: ' . count($alerts));
+            $this->error('Critical-health alerts: '.count($alerts));
             foreach ($alerts as $a) {
                 $msg = sprintf('[%s] %s — %s', $a['kind'], $a['url'], $a['detail']);
-                $this->error('  ' . $msg);
-                Log::channel(config('logging.default'))->error('seo:gsc-critical-health ' . $msg);
+                $this->error('  '.$msg);
+                Log::channel(config('logging.default'))->error('seo:gsc-critical-health '.$msg);
             }
         } else {
             $this->info('All critical URLs PASS.');
@@ -167,15 +171,15 @@ class SeoGscCriticalHealth extends Command
     }
 
     /**
-     * @param array<int,array<string,mixed>> $rows
-     * @param array<int,array<string,mixed>> $alerts
+     * @param  array<int,array<string,mixed>>  $rows
+     * @param  array<int,array<string,mixed>>  $alerts
      */
     protected function writeReport(array $rows, array $alerts): void
     {
         $lines = [];
         $lines[] = '# GSC Critical-page health';
         $lines[] = '';
-        $lines[] = '_Generated: ' . now()->toIso8601String() . '_';
+        $lines[] = '_Generated: '.now()->toIso8601String().'_';
         $lines[] = '';
         $lines[] = '_Note: Google does not expose Manual Actions or Security Issues via API. This daily canary watches the most critical URLs for verdict regressions, which is the best automated proxy for those events plus Cloudflare / robots / canonical incidents._';
         $lines[] = '';

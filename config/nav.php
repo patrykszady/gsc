@@ -2,7 +2,7 @@
 
 /**
  * Navigation links - single source of truth for desktop and mobile nav.
- * 
+ *
  * Flags:
  * - bold: true = bold text styling
  * - moreOnly: true = only shows in "More" dropdown on desktop
@@ -21,6 +21,7 @@ return [
         ['label' => 'Additions', 'href' => '/services/home-additions', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Whole-Home', 'href' => '/services/home-remodeling', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Mudrooms', 'href' => '/services/mudroom-remodeling', 'bold' => false, 'moreOnly' => true],
+        ['label' => 'Exteriors', 'href' => '/services/exterior-siding', 'bold' => false, 'moreOnly' => true],
         ['label' => 'Projects', 'href' => '/projects', 'bold' => false],
         ['label' => 'Services', 'href' => '/services', 'bold' => false],
         ['label' => 'About', 'href' => '/about', 'bold' => false],

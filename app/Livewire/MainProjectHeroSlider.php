@@ -201,7 +201,7 @@ class MainProjectHeroSlider extends Component
             'kitchen' => 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80',
             'bathroom' => 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1920&q=80',
             'mudroom' => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80',
-            'home-remodel', 'basement' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
+            'home-remodel', 'basement', 'exterior' => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
             default => 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&q=80',
         };
     }

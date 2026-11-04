@@ -51,6 +51,7 @@ class GscPageOverrideStore implements PageOverrideStore
         'services/basement-remodeling' => ['services.basement', 'service'],
         'services/home-additions' => ['services.additions', 'service'],
         'services/mudroom-remodeling' => ['services.mudroom', 'service'],
+        'services/exterior-siding' => ['services.exterior', 'service'],
         'areas-served' => ['areas.index', 'page'],
     ];
 

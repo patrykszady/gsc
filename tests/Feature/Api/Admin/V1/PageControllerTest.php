@@ -71,7 +71,7 @@ class PageControllerTest extends TestCase
         $byType = collect($rows)->pluck('count', 'type');
 
         $this->assertSame(1, $byType['home']);
-        $this->assertSame(6, $byType['service']);
+        $this->assertSame(7, $byType['service']); // one per /services/* page, Exterior & Siding since 2026-11-04
         $this->assertGreaterThanOrEqual(1, $byType['page']);
     }
 

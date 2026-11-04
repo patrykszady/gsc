@@ -30,12 +30,13 @@ class ServiceCatalog
     {
         $services = (array) config('services-content.services', []);
 
-        // The per-site file reaches config() when the site is bound
-        // (SiteConfig::applyRuntime, via ResolveSite / tenants:run). A bare
-        // console run — `php artisan sitemap:generate` on the box — binds
-        // nothing, and on 2026-11-04 that wrote a sitemap with no town service
-        // page at all. Apply the current (default) site's config ourselves.
-        if ($services === [] && ! app()->bound('site.current')) {
+        // The per-site file reaches config() only when SiteConfig::applyRuntime
+        // has run for the site (ResolveSite, Tenancy::bind, tenants:run). A
+        // bare console run on the box — `php artisan sitemap:generate` — has
+        // the site current but never applied (prod config is cached, and the
+        // console fallback binds without applying): on 2026-11-04 that wrote
+        // a sitemap with no town service page at all. Apply it ourselves.
+        if ($services === []) {
             SiteConfig::applyRuntime(Site::current());
             $services = (array) config('services-content.services', []);
         }
@@ -50,12 +51,12 @@ class ServiceCatalog
                     'slug' => $slug,
                     'label' => $label,
                     'shortLabel' => $short,
-                    'url' => url('/services/' . $slug),
+                    'url' => url('/services/'.$slug),
                     'projectType' => $type,
                     // The projects index filters by type via query string, so a
                     // type needs no dedicated route to be linkable.
-                    'projectsUrl' => $type ? url('/projects?type=' . $type) : null,
-                    'projectsLabel' => $type ? $short . ' Projects' : null,
+                    'projectsUrl' => $type ? url('/projects?type='.$type) : null,
+                    'projectsLabel' => $type ? $short.' Projects' : null,
                 ];
             });
     }

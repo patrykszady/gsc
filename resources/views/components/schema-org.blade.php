@@ -267,6 +267,22 @@ $localBusiness = [
                     'serviceType' => 'Mudroom Remodeling',
                 ],
             ],
+            [
+                '@type' => 'Offer',
+                'itemOffered' => [
+                    '@type' => 'Service',
+                    'name' => 'Exterior & Siding Remodeling',
+                    'description' => 'Siding and exterior remodeling: vinyl, fiber cement and wood siding, trim, soffit and fascia, with the housewrap and flashing done right underneath.',
+                    'url' => url('/services/exterior-siding'),
+                    'provider' => ['@id' => 'https://gs.construction/#business'],
+                    'areaServed' => [
+                        '@type' => 'State',
+                        'name' => 'Illinois',
+                        'addressCountry' => 'US',
+                    ],
+                    'serviceType' => 'Siding Installation',
+                ],
+            ],
         ],
     ],
 ];

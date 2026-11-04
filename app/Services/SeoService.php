@@ -468,6 +468,12 @@ class SeoService
                 'description' => 'Custom mudroom & laundry room remodeling in Chicago\'s NW suburbs: built-in lockers, benches, cubbies, drop zones & laundry combos. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['mudroom remodel', 'mudroom builders', 'custom mudroom', 'laundry room remodel', 'mudroom lockers', 'laundry mudroom combo', 'mudroom remodeling near me'],
             ],
+            'exterior-siding' => [
+                'label' => 'Exterior & Siding Remodeling',
+                'title' => "Chicago Suburbs Siding & Exterior Remodeling — {$reviewBadge}",
+                'description' => 'Siding & exterior remodeling in Chicago\'s NW suburbs: vinyl, fiber cement & wood siding, trim, soffit & fascia, flashing done right. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['siding contractors', 'siding replacement', 'vinyl siding', 'fiber cement siding', 'exterior remodeling', 'soffit and fascia', 'siding contractors near me'],
+            ],
         ];
 
         $service = $services[$serviceType] ?? ['label' => 'Remodeling', 'title' => 'Remodeling Services', 'description' => 'Expert remodeling services.', 'keywords' => []];
@@ -484,6 +490,7 @@ class SeoService
             'basement-remodeling' => 'basement',
             'home-additions' => 'addition',
             'mudroom-remodeling' => 'mudroom',
+            'exterior-siding' => 'exterior',
             default => null,
         };
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
@@ -513,6 +520,7 @@ class SeoService
             'basement-remodeling' => 'basement',
             'home-additions' => 'addition',
             'mudroom-remodeling' => 'mudroom',
+            'exterior-siding' => 'exterior',
             default => null,
         };
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
@@ -688,6 +696,13 @@ class SeoService
                 'descriptionTemplate' => '%s, IL mudroom & laundry remodeling: built-in lockers, benches, cubbies and laundry combos. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['mudroom remodel', 'laundry room remodel', 'custom mudroom', 'mudroom lockers', 'mudroom contractors', 'laundry mudroom combo'],
             ],
+            'exterior-siding' => [
+                'label' => 'Siding & Exterior Remodeling',
+                'shortLabel' => 'Siding',
+                'titleTemplate' => '%s Siding & Exterior Remodeling — %s',
+                'descriptionTemplate' => '%s, IL siding & exterior remodeling: vinyl, fiber cement & wood siding, trim, soffit & fascia, flashing done right. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['siding contractors', 'siding replacement', 'vinyl siding', 'fiber cement siding', 'exterior remodeling', 'soffit and fascia'],
+            ],
         ];
 
         $service = $services[$serviceType] ?? [
@@ -762,6 +777,14 @@ class SeoService
                 'Durable Floors for Salt and Slush',
                 'Garage and Side-Entry Transitions',
                 'Laundry Plumbing and Venting Moves',
+            ],
+            'exterior-siding' => [
+                'Vinyl, Fiber Cement and Wood Siding',
+                'Trim, Soffit and Fascia Replacement',
+                'Flashing and Housewrap Done Right',
+                'Rot Found and Fixed Under Old Siding',
+                'Windows and Doors in the Same Pass',
+                'Permit-Ready Exterior Work',
             ],
         ];
 
@@ -843,6 +866,11 @@ class SeoService
                 'Mudroom remodeling in %s, IL: built-in lockers, benches, cubbies and mudroom-laundry combinations.',
                 'Planning a %s, IL mudroom? We measure how your family comes through the door and build storage around it.',
                 '%s, IL mudroom and laundry rooms with durable floors, custom built-ins and the plumbing moved where needed.',
+            ],
+            'exterior-siding' => [
+                'Siding and exterior remodeling in %s, IL: vinyl, fiber cement or wood siding, trim, soffit and fascia, flashing done right.',
+                'Re-siding a %s, IL home? We take the old siding off, fix what it was hiding and install the new one right.',
+                '%s, IL siding replacement with the housewrap, flashing and trim detailed so water goes where it should.',
             ],
         ];
         $openerPool = $descriptionOpeners[$serviceType] ?? [$service['descriptionTemplate']];
