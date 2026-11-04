@@ -356,6 +356,14 @@ PROMPT;
             $errorMessage = $response->json('error.message') ?? $response->body();
             $this->lastError = 'API error '.$response->status().': '.$errorMessage;
 
+            // Text-only copy can come from OpenAI instead: on 2026-11-04
+            // Gemini answered 402 (prepaid credits gone) for all 132 town
+            // service pages and the nightly copy jobs would have starved the
+            // same way. Image prompts stay Gemini-only.
+            if ($imagesData === []) {
+                return $this->callOpenAi($prompt, $maxOutputTokens, $temperature, $json);
+            }
+
             return null;
         }
 
@@ -366,6 +374,58 @@ PROMPT;
 
             return null;
         }
+
+        return trim($content);
+    }
+
+    /**
+     * The same text prompt through OpenAI's chat completions, used only when
+     * Gemini could not answer. Keeps Gemini's error in lastError when OpenAI
+     * is not configured or fails too, so the caller sees why.
+     */
+    protected function callOpenAi(string $prompt, int $maxOutputTokens, float $temperature, bool $json): ?string
+    {
+        $apiKey = (string) config('services.openai.api_key', '');
+        if ($apiKey === '') {
+            return null;
+        }
+
+        $geminiError = $this->lastError;
+        $body = [
+            'model' => (string) config('services.openai.content_model', 'gpt-4.1-mini'),
+            'messages' => [['role' => 'user', 'content' => $prompt]],
+            'max_tokens' => $maxOutputTokens,
+            'temperature' => $temperature,
+        ];
+        if ($json) {
+            $body['response_format'] = ['type' => 'json_object'];
+        }
+
+        try {
+            $response = Http::timeout(120)
+                ->withToken($apiKey)
+                ->acceptJson()
+                ->post('https://api.openai.com/v1/chat/completions', $body);
+        } catch (ConnectionException $e) {
+            $this->lastError = $geminiError.' / OpenAI connection error: '.$e->getMessage();
+
+            return null;
+        }
+
+        if (! $response->successful()) {
+            $this->lastError = $geminiError.' / OpenAI error '.$response->status().': '.($response->json('error.message') ?? $response->body());
+
+            return null;
+        }
+
+        $content = $response->json('choices.0.message.content');
+        if (! is_string($content) || trim($content) === '') {
+            $this->lastError = $geminiError.' / Empty response from OpenAI';
+
+            return null;
+        }
+
+        $this->lastError = null;
 
         return trim($content);
     }

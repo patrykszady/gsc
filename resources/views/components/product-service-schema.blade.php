@@ -85,8 +85,11 @@
             'name'        => 'Exterior & Siding Remodeling',
             'description' => 'Siding and exterior remodeling: vinyl, fiber cement and wood siding, trim, soffit and fascia, with the housewrap and flashing done right underneath.',
             'image'       => 'images/services/exterior-hero.jpg',
-            'lowPrice'    => '12000',
-            'highPrice'   => '60000',
+            // No price range yet: the company has not published one for
+            // siding, so this Product carries no AggregateOffer (rating +
+            // reviews still make it eligible for review stars).
+            'lowPrice'    => null,
+            'highPrice'   => null,
         ],
     ];
     $c = $copy[$serviceSlug] ?? $copy['kitchen-remodeling'];
@@ -230,6 +233,10 @@
                 : ['@type' => 'State', 'name' => 'Illinois', 'addressCountry' => 'US'],
         ],
     ];
+
+    if ($c['lowPrice'] === null || $c['highPrice'] === null) {
+        unset($schema['offers']);
+    }
 
     // "ONE unambiguous rated item" has to hold between Product nodes too, not
     // just between this component and the sitewide business node. An area page

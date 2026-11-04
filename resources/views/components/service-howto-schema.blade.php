@@ -32,7 +32,7 @@
         'basement-remodeling' => [25000, 90000],
         'home-additions' => [60000, 275000],
         'mudroom-remodeling' => [8000, 25000],
-        'exterior-siding' => [12000, 60000],
+        'exterior-siding' => [null, null], // no published range yet — no estimatedCost
         default => [25000, 100000],
     };
 
@@ -70,6 +70,10 @@
         'about' => ['@id' => 'https://gs.construction/#business'],
         'step' => $steps,
     ];
+
+    if ($minCost === null || $maxCost === null) {
+        unset($schema['estimatedCost']);
+    }
 @endphp
 
 <script type="application/ld+json">

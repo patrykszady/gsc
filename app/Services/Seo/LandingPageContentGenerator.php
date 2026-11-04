@@ -43,7 +43,7 @@ class LandingPageContentGenerator
         'basement-remodeling' => '$45,000–$150,000',
         'home-additions' => '$60,000–$350,000+',
         'mudroom-remodeling' => '$8,000–$25,000',
-        'exterior-siding' => '$12,000–$60,000+, by house size and material',
+        'exterior-siding' => 'scoped on a free in-home visit — it depends on the house size, the material (vinyl, fiber cement or wood) and what the old siding was hiding',
     ];
 
     public function __construct(private readonly TitleMetaGenerator $titles = new TitleMetaGenerator) {}

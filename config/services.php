@@ -298,6 +298,9 @@ return [
 
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
+        // Stands in for Gemini on text-only copy when Gemini cannot answer
+        // (AiContentService::callOpenAi) — 2026-11-04 its prepaid credits ran out mid-run.
+        'content_model' => env('OPENAI_CONTENT_MODEL', 'gpt-4.1-mini'),
         'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
         'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o'), // For image analysis
     ],
