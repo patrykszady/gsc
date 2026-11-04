@@ -76,11 +76,18 @@ class AreaServicesFromAdminTest extends TestCase
         });
     }
 
-    public function test_the_list_is_empty_only_while_no_site_is_bound_and_is_never_remembered_that_way(): void
+    /**
+     * A bare console run (`php artisan sitemap:generate` on the box) binds no
+     * site; the catalog then loads the default site's config itself, so the
+     * list is never empty there — on 2026-11-04 it was, and the prod sitemap
+     * lost every town service page.
+     */
+    public function test_the_list_is_the_same_with_no_site_bound_as_after_a_request_binds_one(): void
     {
         Service::create(['name' => 'Kitchen Remodel', 'slug' => 'kitchen']);
 
-        $this->assertSame([], AreaServiceContent::services());
+        $this->assertFalse(app()->bound('site.current'));
+        $this->assertSame(['kitchen-remodeling'], AreaServiceContent::services());
         $this->get('/areas-served')->assertOk();
         $this->assertSame(['kitchen-remodeling'], AreaServiceContent::services());
     }

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Site;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,7 +28,19 @@ class ServiceCatalog
      */
     public static function all(): Collection
     {
-        return collect((array) config('services-content.services', []))
+        $services = (array) config('services-content.services', []);
+
+        // The per-site file reaches config() when the site is bound
+        // (SiteConfig::applyRuntime, via ResolveSite / tenants:run). A bare
+        // console run — `php artisan sitemap:generate` on the box — binds
+        // nothing, and on 2026-11-04 that wrote a sitemap with no town service
+        // page at all. Apply the current (default) site's config ourselves.
+        if ($services === [] && ! app()->bound('site.current')) {
+            SiteConfig::applyRuntime(Site::current());
+            $services = (array) config('services-content.services', []);
+        }
+
+        return collect($services)
             ->map(function (array $config, string $slug): array {
                 $label = $config['title'] ?? str($slug)->replace('-', ' ')->title()->toString();
                 $short = $config['shortLabel'] ?? $label;
