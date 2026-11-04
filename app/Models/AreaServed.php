@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Jobs\GenerateAreaContentJob;
 use App\Models\Concerns\BelongsToSite;
 use App\Services\HiveProjectsClient;
+use App\Services\ZipCodeService;
 use App\Support\SEO\AreaSeoPolicy;
 use App\Support\Tenancy;
 use App\Support\TownCopy;
@@ -279,6 +280,23 @@ class AreaServed extends Model
     public function serviceUrl(string $service): string
     {
         return route('areas.service', ['area' => $this->slug, 'service' => $service]);
+    }
+
+    /**
+     * The service spokes this town has, by URL slug: every service on the
+     * admin's Services screen (AreaServiceContent::services()) — areas ×
+     * services. The one place to add a gate if a spoke is ever conditional.
+     *
+     * @return list<string>
+     */
+    public function serviceSlugs(): array
+    {
+        return AreaServiceContent::services();
+    }
+
+    public function hasServicePage(string $service): bool
+    {
+        return in_array($service, $this->serviceSlugs(), true);
     }
 
     /**
@@ -773,7 +791,7 @@ class AreaServed extends Model
      */
     public function servedPostalCodes(): array
     {
-        $zips = app(\App\Services\ZipCodeService::class);
+        $zips = app(ZipCodeService::class);
 
         return array_values(array_filter($this->postalCodes(), fn ($zip): bool => $zips->isServed((string) $zip)));
     }

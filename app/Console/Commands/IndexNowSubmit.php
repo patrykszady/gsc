@@ -144,8 +144,8 @@ class IndexNowSubmit extends Command
                     $urls[] = route('areas.page', ['area' => $area, 'page' => $page]);
                 }
                 // Include service-specific pages for each area
-                foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'] as $service) {
-                    $urls[] = route('areas.page', ['area' => $area, 'page' => $service]);
+                foreach ($area->serviceSlugs() as $service) {
+                    $urls[] = $area->serviceUrl($service);
                 }
             }
         }

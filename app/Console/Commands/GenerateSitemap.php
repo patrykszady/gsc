@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\AreaServed;
+use App\Models\AreaServiceContent;
 use App\Models\BlogPost;
 use App\Models\LandingPage;
 use App\Models\Project;
@@ -437,7 +438,7 @@ class GenerateSitemap extends Command
         $this->info('Adding area-served pages to sitemap...');
         $areas = AreaServed::orderBy('city')->get();
         $areaPages = ['', 'contact', 'testimonials', 'projects', 'about', 'services'];
-        $areaServicePages = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
+        $areaServicePages = AreaServiceContent::services();
         $includeAreaServicePages = (bool) config('seo.sitemap_generation.include_area_service_pages', true);
         $areaCount = 0;
         $areaImageCount = 0;
@@ -561,7 +562,7 @@ class GenerateSitemap extends Command
 
             // Area-specific service pages — only for cities with real local proof.
             if ($includeAreaServicePages) {
-                foreach ($areaServicePages as $servicePage) {
+                foreach ($area->serviceSlugs() as $servicePage) {
                     if (! AreaSeoPolicy::shouldIndex($area, 'service', $servicePage)) {
                         continue;
                     }

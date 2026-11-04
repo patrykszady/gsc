@@ -32,8 +32,8 @@ class GenerateAreaServicePotential extends Command
         $limit = (int) $this->option('limit');
 
         $service = trim((string) $this->option('service'));
-        if ($service !== '' && ! in_array($service, AreaServiceContent::SERVICES, true)) {
-            $this->error('Unknown service. One of: '.implode(', ', AreaServiceContent::SERVICES));
+        if ($service !== '' && ! in_array($service, AreaServiceContent::services(), true)) {
+            $this->error('Unknown service. One of: '.implode(', ', AreaServiceContent::services()));
 
             return self::FAILURE;
         }

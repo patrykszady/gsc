@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Jobs\GenerateServiceContentJob;
+use App\Support\ServiceCatalog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -89,10 +90,16 @@ class Service extends Model
         return Project::ofType($this->slug)->count();
     }
 
-    /** The public service page for this service. */
-    public function url(): string
+    /**
+     * The public service page for this service — the catalog page for its
+     * project type (/services/kitchen-remodeling for 'kitchen'), or null
+     * while it has none: /services/{project type} was never a page here.
+     * Null also keeps the service out of every area's spokes
+     * (AreaServiceContent::services()), and the admin says so.
+     */
+    public function url(): ?string
     {
-        return url('/services/'.$this->slug);
+        return ServiceCatalog::forProjectType($this->slug)['url'] ?? null;
     }
 
     /**

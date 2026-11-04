@@ -13,6 +13,7 @@
                 'home-remodeling' => 'Home Remodeling',
                 'basement-remodeling' => 'Basement Remodeling',
                 'home-additions' => 'Home Additions',
+                'mudroom-remodeling' => 'Mudroom Remodeling',
             ];
             $breadcrumbItems[] = ['name' => 'Services', 'url' => $area->pageUrl('services')];
             $breadcrumbItems[] = ['name' => $serviceNames[$service] ?? ucfirst($service)];
@@ -132,14 +133,16 @@
                 ];
 
                 // Slides deep-link the per-town service spokes (not the generic
-                // services hub) — stronger anchors and one less hop.
-                $homeSlides = [
+                // services hub) — stronger anchors and one less hop. Only
+                // spokes the town has (the admin's Services, serviceSlugs()).
+                $homeSlides = array_values(array_filter([
                     [
                         'title' => 'Kitchens',
                         'button' => 'Kitchen Remodeling',
                         'link' => $area->serviceUrl('kitchen-remodeling'),
                         'projectType' => 'kitchen',
                         'alt' => "Kitchen remodeling services in {$area->city}",
+                        'service' => 'kitchen-remodeling',
                     ],
                     [
                         'title' => 'Bathrooms',
@@ -147,6 +150,7 @@
                         'link' => $area->serviceUrl('bathroom-remodeling'),
                         'projectType' => 'bathroom',
                         'alt' => "Bathroom remodeling services in {$area->city}",
+                        'service' => 'bathroom-remodeling',
                     ],
                     [
                         'title' => 'Home Remodels',
@@ -154,8 +158,9 @@
                         'link' => $area->serviceUrl('home-remodeling'),
                         'projectType' => 'home-remodel',
                         'alt' => "Whole home remodeling services in {$area->city}",
+                        'service' => 'home-remodeling',
                     ],
-                ];
+                ], fn (array $slide): bool => $area->hasServicePage($slide['service'])));
             @endphp
             
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -230,7 +235,7 @@
                  results on "{service} {city}" searches. @id points at each canonical
                  /areas-served/{area}/services/{slug} detail page. Mirrors the visible
                  service links in the section that follows. --}}
-            @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'] as $areaHomeServiceSlug)
+            @foreach ($area->serviceSlugs() as $areaHomeServiceSlug)
                 <x-product-service-schema :service-slug="$areaHomeServiceSlug" :area="$area" />
             @endforeach
 
@@ -709,14 +714,11 @@
                  area services listing page becomes eligible for review-star / offer
                  rich results on "{service} {city}" searches. @id points at each
                  canonical /areas-served/{area}/services/{slug} detail page. --}}
-            {{-- Five services, matching the route constraint in routes/web.php
-                 exactly. This list carried mudroom-remodeling, which the route
-                 does not allow — so every area page's Product schema advertised
-                 /areas-served/{city}/services/mudroom-remodeling, a hard 404,
-                 to Google: 87 distinct 404 paths, 966 hits, Googlebot
-                 confirmed. The services GRID lower down was already correct;
-                 the two lists had drifted. --}}
-            @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'] as $areaServicesSlug)
+            {{-- The town's spokes (AreaServed::serviceSlugs()), all six since
+                 2026-11-03. Until then this list advertised a mudroom URL the
+                 route did not serve — 87 distinct 404 paths, 966 Googlebot
+                 hits — so it reads the one list the route also reads. --}}
+            @foreach ($area->serviceSlugs() as $areaServicesSlug)
                 <x-product-service-schema :service-slug="$areaServicesSlug" :area="$area" />
             @endforeach
 
@@ -854,6 +856,28 @@
                             ['question' => "How long does a home addition take?", 'answer' => "Timelines depend on design, permitting, and construction scope. Most additions take multiple phases, and we provide a project timeline before work begins."],
                             ['question' => "Will a new addition match my current home?", 'answer' => "Yes. We design and build additions to align with your existing rooflines, materials, and architectural style for a cohesive final result."],
                             ['question' => "Do you handle permits and inspections for additions in {$area->city}?", 'answer' => "Absolutely. We coordinate permits, inspections, and code compliance from planning through final walkthrough."],
+                        ],
+                    ],
+                    'mudroom-remodeling' => [
+                        'label' => 'Mudroom Remodeling',
+                        'projectType' => 'mudroom',
+                        'urlSlug' => 'mudroom-remodeling',
+                        'heading' => $area->city . ' Mudroom Remodeling',
+                        'subheading' => 'Built-in lockers, benches and laundry combinations measured to how your family comes through the door',
+                        'description' => "Planning a mudroom or laundry room in {$area->city}? GS Construction builds custom lockers, benches, cubbies and mudroom-laundry combinations, priced line by line and run with the same owner on site as a full kitchen.",
+                        'features' => [
+                            'Built-in lockers, benches and cubbies',
+                            'Mudroom and laundry room combinations',
+                            'Tile and LVP floors for salt and slush',
+                            'Coat, boot and sports gear storage',
+                            'Lighting, outlets and charging drop zones',
+                            'Garage and side-entry transitions',
+                        ],
+                        'faqs' => [
+                            ['question' => "How much does a mudroom remodel cost in {$area->city}?", 'answer' => "Most mudroom projects run \$8,000–\$25,000+, depending on the size of the space, the amount of custom cabinetry and built-in lockers, the flooring, and whether laundry or plumbing work is included. Your estimate is itemized line by line."],
+                            ['question' => "Can you combine my mudroom and laundry room?", 'answer' => "Yes. We plan cabinetry, folding counters, hanging space, utility sinks and drop zones so one room handles laundry and everyday entry clutter."],
+                            ['question' => "How long does a mudroom remodel take?", 'answer' => "A typical mudroom or laundry/mudroom remodel takes 2–5 weeks, depending on cabinetry lead times, tile work, and any plumbing or electrical changes. You get a written schedule before we start."],
+                            ['question' => "Do mudroom projects in {$area->city} need permits?", 'answer' => "Simple built-ins and finishes usually do not, but adding or relocating plumbing (a utility sink or washer) or electrical circuits typically does. We pull any permits {$area->city} requires and meet the inspections."],
                         ],
                     ],
                 ];
@@ -1195,15 +1219,12 @@
                 <a href="{{ $area->url }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'home' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Home
                 </a>
-                <a href="{{ $area->serviceUrl('kitchen-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'kitchen-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
-                    Kitchen
-                </a>
-                <a href="{{ $area->serviceUrl('bathroom-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'bathroom-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
-                    Bathroom
-                </a>
-                <a href="{{ $area->serviceUrl('home-remodeling') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === 'home-remodeling' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
-                    Home Remodel
-                </a>
+                {{-- Every service the town has (the admin's Services), by its short label. --}}
+                @foreach($area->serviceSlugs() as $navServiceSlug)
+                    <a href="{{ $area->serviceUrl($navServiceSlug) }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $service === $navServiceSlug ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
+                        {{ \App\Support\ServiceCatalog::all()[$navServiceSlug]['shortLabel'] ?? \Illuminate\Support\Str::of($navServiceSlug)->replace('-', ' ')->title() }}
+                    </a>
+                @endforeach
                 <a href="{{ $area->pageUrl('projects') }}" wire:navigate class="rounded-lg px-4 py-2 text-sm font-medium {{ $page === 'projects' ? 'bg-sky-600 text-white' : 'bg-white text-zinc-700 hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700' }}">
                     Projects
                 </a>

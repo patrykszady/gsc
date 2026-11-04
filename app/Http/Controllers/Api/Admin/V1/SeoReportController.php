@@ -1308,7 +1308,6 @@ class SeoReportController extends Controller
 
             $areas = AreaServed::all();
             $areaPageTypes = ['home', 'contact', 'testimonials', 'projects', 'about', 'services'];
-            $areaServices = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
             $indexable = 0;
             $total = 0;
             foreach ($areas as $area) {
@@ -1318,7 +1317,7 @@ class SeoReportController extends Controller
                         $indexable++;
                     }
                 }
-                foreach ($areaServices as $svc) {
+                foreach ($area->serviceSlugs() as $svc) {
                     $total++;
                     if (AreaSeoPolicy::shouldIndex($area, 'service', $svc)) {
                         $indexable++;

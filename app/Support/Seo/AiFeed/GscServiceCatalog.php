@@ -21,10 +21,12 @@ final class GscServiceCatalog implements ServiceCatalogFeed
 {
     public function services(): array
     {
+        // A service with no page of its own yet (Service::url() null) links
+        // the services index — /services/{project type} was never a page.
         return Service::ordered()->get()->map(fn (Service $s): array => array_filter([
             'slug' => $s->slug,
             'name' => $s->name,
-            'url' => $s->url(),
+            'url' => $s->url() ?? url('/services'),
             'description' => $s->blurb,
         ]))->values()->all();
     }

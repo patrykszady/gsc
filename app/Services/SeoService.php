@@ -512,6 +512,7 @@ class SeoService
             'home-remodeling' => 'home-remodel',
             'basement-remodeling' => 'basement',
             'home-additions' => 'addition',
+            'mudroom-remodeling' => 'mudroom',
             default => null,
         };
         $image = $projectType ? self::getCoverImageForType($projectType) : null;
@@ -680,6 +681,13 @@ class SeoService
                 'descriptionTemplate' => '%s, IL home additions: room additions, master suite additions, sunrooms, second-story expansions. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
                 'keywords' => ['home addition', 'room addition', 'master suite addition', 'sunroom', 'second story addition', 'addition contractors', 'addition builders'],
             ],
+            'mudroom-remodeling' => [
+                'label' => 'Mudroom Remodeling',
+                'shortLabel' => 'Mudroom',
+                'titleTemplate' => '%s Mudroom Remodeling — %s',
+                'descriptionTemplate' => '%s, IL mudroom & laundry remodeling: built-in lockers, benches, cubbies and laundry combos. %s 5-star reviews, licensed & insured. Free in-home estimate — (224) 735-4200.',
+                'keywords' => ['mudroom remodel', 'laundry room remodel', 'custom mudroom', 'mudroom lockers', 'mudroom contractors', 'laundry mudroom combo'],
+            ],
         ];
 
         $service = $services[$serviceType] ?? [
@@ -746,6 +754,14 @@ class SeoService
                 'Permit-Ready Addition Construction',
                 'Layout, Structural and Utility Coordination',
                 'Space Expansion with Design-Build Delivery',
+            ],
+            'mudroom-remodeling' => [
+                'Built-In Lockers, Benches and Cubbies',
+                'Mudroom and Laundry Combinations',
+                'Entry Storage Measured to Your Family',
+                'Durable Floors for Salt and Slush',
+                'Garage and Side-Entry Transitions',
+                'Laundry Plumbing and Venting Moves',
             ],
         ];
 
@@ -823,6 +839,11 @@ class SeoService
                 'Adding space to your %s, IL home? We handle structural, framing, utility and permit planning from day one.',
                 '%s, IL additions from bump-outs to full expansions, designed and built with a single project team.',
             ],
+            'mudroom-remodeling' => [
+                'Mudroom remodeling in %s, IL: built-in lockers, benches, cubbies and mudroom-laundry combinations.',
+                'Planning a %s, IL mudroom? We measure how your family comes through the door and build storage around it.',
+                '%s, IL mudroom and laundry rooms with durable floors, custom built-ins and the plumbing moved where needed.',
+            ],
         ];
         $openerPool = $descriptionOpeners[$serviceType] ?? [$service['descriptionTemplate']];
         $opener = sprintf($openerPool[($seed >> 7) % count($openerPool)], $city);
@@ -833,6 +854,7 @@ class SeoService
             'bathroom-remodeling' => 'Most baths run $15k–$60k+.',
             'basement-remodeling' => 'Most build-outs run $45k–$90k.',
             'home-additions' => 'Additions run $60k–$350k+.',
+            'mudroom-remodeling' => 'Most mudrooms run $8k–$25k+.',
         ];
         $costHint = $costHints[$serviceType] ?? '';
         $closer = ($costHint !== '' ? " {$costHint}" : '')

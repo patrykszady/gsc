@@ -57,6 +57,8 @@
         ];
     }
 
+    $serviceCatalog = \App\Support\ServiceCatalog::all();
+
     $schema = [
         '@context' => 'https://schema.org',
         '@type' => 'HomeAndConstructionBusiness',
@@ -102,41 +104,19 @@
         'hasOfferCatalog' => [
             '@type' => 'OfferCatalog',
             'name' => "Remodeling Services in {$city}, IL",
-            'itemListElement' => [
-                [
-                    '@type' => 'Offer',
-                    'url' => url('/areas-served/' . $slug . '/services/kitchen-remodeling'),
-                    'itemOffered' => [
-                        '@type' => 'Service',
-                        'name' => "Kitchen Remodeling in {$city}",
-                        'serviceType' => 'Kitchen Remodeling',
-                        'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
-                        'provider' => ['@id' => $entityId],
-                    ],
+            // Every service the town has (the admin's Services —
+            // AreaServed::serviceSlugs()), each pointing at its town page.
+            'itemListElement' => collect($area->serviceSlugs())->map(fn (string $serviceSlug): array => [
+                '@type' => 'Offer',
+                'url' => $area->serviceUrl($serviceSlug),
+                'itemOffered' => [
+                    '@type' => 'Service',
+                    'name' => ($serviceCatalog[$serviceSlug]['label'] ?? \Illuminate\Support\Str::of($serviceSlug)->replace('-', ' ')->title()) . " in {$city}",
+                    'serviceType' => $serviceCatalog[$serviceSlug]['label'] ?? \Illuminate\Support\Str::of($serviceSlug)->replace('-', ' ')->title()->toString(),
+                    'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
+                    'provider' => ['@id' => $entityId],
                 ],
-                [
-                    '@type' => 'Offer',
-                    'url' => url('/areas-served/' . $slug . '/services/bathroom-remodeling'),
-                    'itemOffered' => [
-                        '@type' => 'Service',
-                        'name' => "Bathroom Remodeling in {$city}",
-                        'serviceType' => 'Bathroom Remodeling',
-                        'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
-                        'provider' => ['@id' => $entityId],
-                    ],
-                ],
-                [
-                    '@type' => 'Offer',
-                    'url' => url('/areas-served/' . $slug . '/services/home-remodeling'),
-                    'itemOffered' => [
-                        '@type' => 'Service',
-                        'name' => "Home Remodeling in {$city}",
-                        'serviceType' => 'Home Remodeling',
-                        'areaServed' => ['@type' => 'City', 'name' => $city, 'addressRegion' => 'IL'],
-                        'provider' => ['@id' => $entityId],
-                    ],
-                ],
-            ],
+            ])->values()->all(),
         ],
     ];
 

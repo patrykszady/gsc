@@ -15,9 +15,6 @@ use SsSystems\Platform\Seo\AiFeed\Contracts\ServiceAreaCatalog;
  */
 final class GscServiceAreaCatalog implements ServiceAreaCatalog
 {
-    /** Kept in step with the flat 5-entry catalog `GscServiceCatalog` now reads live — this list still drives per-service matrix columns, not the feed's own `services` array. */
-    private const SERVICE_SLUGS = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
-
     public function serviceAreaMatrix(): array
     {
         return $this->areas()->map(function (AreaServed $a): array {
@@ -30,7 +27,7 @@ final class GscServiceAreaCatalog implements ServiceAreaCatalog
                 'zipcodes' => $a->postalCodes(),
                 'services' => [],
             ];
-            foreach (self::SERVICE_SLUGS as $slug) {
+            foreach ($a->serviceSlugs() as $slug) {
                 $row['services'][$slug] = $a->serviceUrl($slug);
             }
 

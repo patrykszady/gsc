@@ -1069,7 +1069,6 @@ class SeoReports extends Component
             // How hard the area sprawl is being pruned (mirrors the sitemap).
             $areas = \App\Models\AreaServed::all();
             $areaPageTypes = ['home', 'contact', 'testimonials', 'projects', 'about', 'services'];
-            $areaServices = ['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling', 'basement-remodeling', 'home-additions'];
             $indexable = 0;
             $total = 0;
             foreach ($areas as $area) {
@@ -1079,7 +1078,7 @@ class SeoReports extends Component
                         $indexable++;
                     }
                 }
-                foreach ($areaServices as $svc) {
+                foreach ($area->serviceSlugs() as $svc) {
                     $total++;
                     if (\App\Support\SEO\AreaSeoPolicy::shouldIndex($area, 'service', $svc)) {
                         $indexable++;

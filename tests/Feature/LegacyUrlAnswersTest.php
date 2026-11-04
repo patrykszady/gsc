@@ -6,6 +6,7 @@ use App\Models\AreaServed;
 use App\Models\Project;
 use App\Models\ProjectImage;
 use App\Models\Testimonial;
+use App\Support\Seo\CrawlFiles;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -36,7 +37,6 @@ class LegacyUrlAnswersTest extends TestCase
             '/areas-served/kenilworth/kitchen-remodeling' => '/areas-served/kenilworth/services/kitchen-remodeling',
             '/areas-served/kenilworth/home-remodeling' => '/areas-served/kenilworth/services/home-remodeling',
             '/areas-served/kenilworth/basement-remodeling' => '/areas-served/kenilworth/services/basement-remodeling',
-            '/areas-served/kenilworth/services/mudroom-remodeling' => '/services/mudroom-remodeling',
         ] as $old => $target) {
             $response = $this->get($old);
             $response->assertStatus(301)->assertRedirect($target);
@@ -51,7 +51,8 @@ class LegacyUrlAnswersTest extends TestCase
         // Orland Park is in the gazetteer, not served; Tinley Park is nearest.
         $this->get('/areas-served/orland-park/services/kitchens')->assertStatus(301)->assertRedirect('/areas-served/tinley-park/services/kitchen-remodeling');
         $this->get('/areas-served/orland-park/home-remodeling')->assertStatus(301)->assertRedirect('/areas-served/tinley-park/services/home-remodeling');
-        $this->get('/areas-served/orland-park/services/mudroom-remodeling')->assertStatus(301)->assertRedirect('/services/mudroom-remodeling');
+        // Mudroom is a town page since 2026-11-03, so it goes to the neighbour's like the rest.
+        $this->get('/areas-served/orland-park/services/mudroom-remodeling')->assertStatus(301)->assertRedirect('/areas-served/tinley-park/services/mudroom-remodeling');
     }
 
     public function test_a_served_towns_lead_pipe_page_is_a_page_again(): void
@@ -110,7 +111,7 @@ class LegacyUrlAnswersTest extends TestCase
 
     public function test_the_geo_admin_screens_are_kept_from_crawlers_but_the_public_answers_feed_is_not(): void
     {
-        $robots = \App\Support\Seo\CrawlFiles::robots();
+        $robots = CrawlFiles::robots();
 
         $this->assertSame(3, substr_count($robots, "Disallow: /geo/\n"));
         $this->assertSame(3, substr_count($robots, "Allow: /geo/answers.json\n"));

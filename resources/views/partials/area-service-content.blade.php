@@ -15,6 +15,7 @@
         'home-remodeling'     => "Whole-home remodeling in {$area->city}, IL",
         'basement-remodeling' => "Basement finishing in {$area->city}, IL",
         'home-additions'      => "Home additions in {$area->city}, IL",
+        'mudroom-remodeling'  => "Mudroom and laundry remodeling in {$area->city}, IL",
         default               => "{$config['label']} in {$area->city}, IL",
     };
 @endphp

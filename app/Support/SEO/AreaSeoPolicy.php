@@ -158,6 +158,7 @@ class AreaSeoPolicy
         'home-remodeling' => ['home remodel', 'home renovation', 'whole home', 'remodeling contractor', 'renovation services', 'renovation contractor'],
         'basement-remodeling' => ['basement'],
         'home-additions' => ['addition'],
+        'mudroom-remodeling' => ['mudroom', 'mud room', 'laundry'],
     ];
 
     /**

@@ -427,18 +427,8 @@ Route::get('/areas-served/{area}/lead-pipe-replacement', function (AreaServed|st
     return view('lead-line-page', ['area' => $model, 'info' => $info]);
 })->name('areas.lead-line');
 
-// Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchen-remodeling)
-Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
-    ->defaults('page', 'service')
-    ->where('service', 'kitchen-remodeling|bathroom-remodeling|home-remodeling|basement-remodeling|home-additions')
-    ->name('areas.service');
-
-// Google found ~50 /areas-served/{town}/services/mudroom-remodeling URLs that
-// never existed — mudroom is not a town-level service. One hop to the real
-// mudroom page (RetiredAreaRedirect does the same for retired towns).
-Route::get('/areas-served/{area}/services/mudroom-remodeling', fn () => redirect('/services/mudroom-remodeling', 301));
-
-// 301 redirects from old short slugs to keyword-rich canonical URLs
+// 301 redirects from old short slugs to keyword-rich canonical URLs —
+// registered before the area service route below, which matches any slug.
 Route::get('/areas-served/{area}/services/kitchens', function (AreaServed|string $area) {
     $area = $area instanceof AreaServed ? $area->slug : $area;
 
@@ -449,6 +439,16 @@ Route::get('/areas-served/{area}/services/bathrooms', function (AreaServed|strin
 
     return redirect("/areas-served/{$area}/services/bathroom-remodeling", 301);
 });
+
+// Area-specific service pages (e.g., /areas-served/arlington-heights/services/kitchen-remodeling):
+// areas × services, every service on the admin's Services screen
+// (AreaServiceContent::services()); AreaPage 404s a slug the admin does not
+// list. The town's mudroom URL was a 301 to /services/mudroom-remodeling
+// until 2026-11-03.
+Route::get('/areas-served/{area}/services/{service}', AreaPage::class)
+    ->defaults('page', 'service')
+    ->where('service', '[a-z0-9-]+')
+    ->name('areas.service');
 
 // ZIP-code service-area landing pages (drives long-tail local search)
 Route::get('/service-area', ServiceAreaIndex::class)->name('service-area.index');

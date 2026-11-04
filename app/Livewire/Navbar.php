@@ -17,7 +17,7 @@ class Navbar extends Component
 
     protected function transformLink(array $link): array
     {
-        if (!$this->area) {
+        if (! $this->area) {
             return $link;
         }
 
@@ -31,19 +31,17 @@ class Navbar extends Component
             '/services' => 'services',
         ];
 
-        // Map service-specific hrefs to area-specific service pages
-        $areaServiceMap = [
-            '/services/kitchen-remodeling' => 'kitchen-remodeling',
-            '/services/bathroom-remodeling' => 'bathroom-remodeling',
-            '/services/home-remodeling' => 'home-remodeling',
-            '/services/basement-remodeling' => 'basement-remodeling',
-            '/services/home-additions' => 'home-additions',
-        ];
+        // A service link becomes the town's own service page when the town
+        // has one (every service on the admin's Services screen —
+        // AreaServed::hasServicePage()); otherwise it stays site-wide.
+        $serviceSlug = str_starts_with((string) $link['href'], '/services/')
+            ? trim(substr((string) $link['href'], strlen('/services/')), '/')
+            : '';
 
         if (isset($areaPageMap[$link['href']])) {
             $link['href'] = $this->area->pageUrl($areaPageMap[$link['href']]);
-        } elseif (isset($areaServiceMap[$link['href']])) {
-            $link['href'] = $this->area->serviceUrl($areaServiceMap[$link['href']]);
+        } elseif ($serviceSlug !== '' && $this->area->hasServicePage($serviceSlug)) {
+            $link['href'] = $this->area->serviceUrl($serviceSlug);
         }
 
         return $link;

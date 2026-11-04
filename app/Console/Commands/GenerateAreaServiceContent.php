@@ -16,7 +16,7 @@ class GenerateAreaServiceContent extends Command
 {
     protected $signature = 'seo:generate-area-service-content
         {--slug= : One town by slug}
-        {--service= : One service slug (kitchen-remodeling, bathroom-remodeling, home-remodeling, basement-remodeling, home-additions)}
+        {--service= : One service slug (one of AreaServiceContent::services(), e.g. kitchen-remodeling)}
         {--limit=0 : Stop after this many pairs (0 = all)}
         {--force : Regenerate pairs that already have copy}
         {--dry-run : Show what would be written without saving}';
@@ -31,7 +31,7 @@ class GenerateAreaServiceContent extends Command
         $force = (bool) $this->option('force');
         $limit = (int) $this->option('limit');
 
-        $services = AreaServiceContent::SERVICES;
+        $services = AreaServiceContent::services();
         if ($service = trim((string) $this->option('service'))) {
             if (! in_array($service, $services, true)) {
                 $this->error('Unknown service. One of: '.implode(', ', $services));

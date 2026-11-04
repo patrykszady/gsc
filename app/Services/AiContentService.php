@@ -769,7 +769,7 @@ PROMPT;
         $stateName = TownCatalog::stateName($place['state'] ?? TownCatalog::homeState());
         $brand = (string) config('brand.display_name', config('brand.name'));
         $label = AreaServiceContent::label($service);
-        $siblings = collect(AreaServiceContent::SERVICES)->reject(fn ($s) => $s === $service)->map(fn ($s) => AreaServiceContent::label($s))->implode(', ');
+        $siblings = collect($area->serviceSlugs())->reject(fn ($s) => $s === $service)->map(fn ($s) => AreaServiceContent::label($s))->implode(', ');
 
         $tradeNotes = match ($service) {
             'kitchen-remodeling' => 'electrical and plumbing permits, gas line work, load-bearing walls when a kitchen is opened up, ventilation, and the lead time on cabinets',
@@ -777,6 +777,7 @@ PROMPT;
             'home-remodeling' => 'structural permits and engineering, phasing a whole-home job so the family can stay, knob-and-tube or galvanized replacement in older homes, and sequencing trades',
             'basement-remodeling' => 'egress windows, ceiling height, moisture and drain tile, bathroom rough-ins and ejector pumps, and finishing around mechanicals',
             'home-additions' => 'zoning, setbacks and lot coverage, foundations and tying a new roof into the old one, matching exterior materials, and plan review timelines',
+            'mudroom-remodeling' => 'built-in lockers and benches sized to the family, floors that take salt and slush, moving a washer, dryer vent or utility sink, and the garage or side-entry door and step',
             default => 'permits, sequencing and the decisions that shape the budget',
         };
 
@@ -1022,6 +1023,7 @@ PROMPT;
             'home-remodeling' => 'whole-home work: what the era\'s floor plan, structure, wiring and plumbing mean for opening a house up, and sequencing a family living through it',
             'basement-remodeling' => 'basements: ceiling height, moisture and drain tile in that era of construction, egress, ejector pumps, mechanicals in the way, and what the local ground and flood history mean',
             'home-additions' => 'additions: lot sizes and setbacks in each era of subdivision, roof lines and foundations to tie into, and how the village reviews exterior changes',
+            'mudroom-remodeling' => 'mudrooms and laundry rooms: how the era\'s houses meet the garage or side door, where the laundry sat (basement, kitchen or upstairs), and the plumbing and venting a move means',
             default => 'this trade',
         };
 

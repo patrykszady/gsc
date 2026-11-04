@@ -38,10 +38,11 @@
         ->mapWithKeys(fn (array $s): array => [$s['slug'] => $s['label']])
         ->all();
 
-    // Area pages have no mudroom spoke, so a city-prefixed mudroom chip would
-    // 404. Site-wide mode links to /services/* where the page does exist.
+    // A town links the spokes it has (AreaServed::serviceSlugs()) — every
+    // service since 2026-11-03, mudroom included. Site-wide mode links to
+    // /services/*.
     if ($area) {
-        unset($serviceChips['mudroom-remodeling']);
+        $serviceChips = array_intersect_key($serviceChips, array_flip($area->serviceSlugs()));
     }
 
     $serviceChips = array_merge($serviceChips, $labels);

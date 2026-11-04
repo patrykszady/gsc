@@ -25,15 +25,19 @@ class AiFeedControllerTest extends TestCase
     {
         Service::create(['name' => 'Outdoor Living', 'sort_order' => 1, 'blurb' => 'Decks, patios and outdoor kitchens.']);
         Service::create(['name' => 'Custom Millwork', 'sort_order' => 2]);
+        Service::create(['name' => 'Kitchen Remodel', 'slug' => 'kitchen', 'sort_order' => 3]);
 
         $data = $this->getJson('/ai-feed.json')->assertOk()->json();
 
         $this->assertSame(
-            ['outdoor-living', 'custom-millwork'],
+            ['outdoor-living', 'custom-millwork', 'kitchen'],
             array_column($data['services'], 'slug'),
         );
         $this->assertSame('Decks, patios and outdoor kitchens.', $data['services'][0]['description']);
-        $this->assertSame(url('/services/outdoor-living'), $data['services'][0]['url']);
+        // A service's URL is its real page (by project type); one with no page
+        // yet links the services index, never /services/{slug} (a 404 here).
+        $this->assertSame(url('/services'), $data['services'][0]['url']);
+        $this->assertSame(url('/services/kitchen-remodeling'), $data['services'][2]['url']);
         // None of the formerly-hardcoded slugs survive when the admin hasn't created them.
         $this->assertNotContains('kitchen-remodeling', array_column($data['services'], 'slug'));
     }

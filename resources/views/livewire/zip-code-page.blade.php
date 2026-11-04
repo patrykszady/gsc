@@ -51,7 +51,13 @@
          when we have a matching area — so long-tail "{service} {zip}" / "{service}
          in {city}" queries are eligible for review-star + offer rich results.
          Slugs mirror the visible "services available in {city}" list below. --}}
-    @foreach (['kitchen-remodeling', 'bathroom-remodeling', 'home-remodeling'] as $zipServiceSlug)
+    @php
+        // The services this ZIP's town has (the admin's Services), or every
+        // service site-wide when no town matches the ZIP.
+        $zipServiceCatalog = \App\Support\ServiceCatalog::all();
+        $zipServiceSlugs = $area ? $area->serviceSlugs() : $zipServiceCatalog->keys()->all();
+    @endphp
+    @foreach ($zipServiceSlugs as $zipServiceSlug)
         <x-product-service-schema :service-slug="$zipServiceSlug" :area="$area" />
     @endforeach
 
@@ -141,18 +147,15 @@
         </h2>
         <div class="mt-6 grid gap-4 sm:grid-cols-3">
             @php
-                $services = [
-                    ['slug' => 'kitchen-remodeling', 'label' => "Kitchen Remodeling in {$city}"],
-                    ['slug' => 'bathroom-remodeling', 'label' => "Bathroom Remodeling in {$city}"],
-                    ['slug' => 'home-remodeling', 'label' => "Whole-Home Remodeling in {$city}"],
-                    ['slug' => 'basement-remodeling', 'label' => "Basement Remodeling in {$city}"],
-                    ['slug' => 'home-additions', 'label' => "Home Additions in {$city}"],
-                ];
+                $services = collect($zipServiceSlugs)->map(fn (string $zipSlug): array => [
+                    'slug' => $zipSlug,
+                    'label' => ($zipServiceCatalog[$zipSlug]['label'] ?? \Illuminate\Support\Str::of($zipSlug)->replace('-', ' ')->title()) . " in {$city}",
+                ])->all();
             @endphp
             @foreach ($services as $svc)
                 @php
                     $href = $area
-                        ? url('/areas-served/' . $area->slug . '/services/' . $svc['slug'])
+                        ? $area->serviceUrl($svc['slug'])
                         : url('/services/' . $svc['slug']);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
