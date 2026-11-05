@@ -139,12 +139,15 @@ class ProjectImagePage extends Component
         // These fields feed SEOBuilder directly (not SeoService::setTags), so
         // clamp here: alt-text titles ran to 125+ chars and captions to 286 —
         // both far past what Google displays, and both got rewritten in SERPs.
+        // "· Photo N": two photos with the same alt text (the same kitchen
+        // from two angles, or one alt reused across projects) shared a
+        // <title> — 21 pairs on 2026-11-05. The position makes each its own.
         $title = Str::limit(
             $this->localizeText($this->image->seo_alt_text)
                 ?: "{$this->project->title} - Photo {$this->currentPosition}",
-            60,
+            48,
             ''
-        );
+        )." · Photo {$this->currentPosition}";
 
         // ->caption, not ->seo_caption: seo_caption is not a column on
         // project_images (the columns are alt_text, caption, seo_alt_text), so

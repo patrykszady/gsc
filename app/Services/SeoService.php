@@ -12,6 +12,7 @@ use App\Support\CompanyStats;
 use App\Support\OfficeTrip;
 use App\Support\SEO\SEOBuilder;
 use App\Support\ServiceImages;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class SeoService
@@ -178,6 +179,14 @@ class SeoService
         $shortName = strlen($name) > 15 ? explode(' ', $name)[0] : $name;
         $title = "{$shortName}'s {$projectType} Remodel Review";
 
+        // Janine S reviewed two kitchens (reviews 12 and 84): the month and
+        // year of the review keep the two pages' titles apart.
+        $twice = Testimonial::query()->where('is_hidden', false)->where('reviewer_name', $testimonial->reviewer_name)
+            ->where('id', '!=', $testimonial->id)->where('project_type', $testimonial->project_type)->exists();
+        if ($twice && $testimonial->review_date) {
+            $title .= ' ('.Carbon::parse($testimonial->review_date)->format('M Y').')';
+        }
+
         $description = Str::limit($testimonial->review_description, 155);
 
         // Use a project cover image matching the review's service type
@@ -332,6 +341,16 @@ class SeoService
         $city = trim(Str::before((string) $project->location, ','));
         if ($city !== '' && ! str_contains(mb_strtolower($title), mb_strtolower($city))) {
             $title .= " in {$city}";
+        }
+
+        // Two "Palatine Kitchen Remodel" projects shared a <title>; the year
+        // (or month and year when they share that too) tells them apart —
+        // through the builder, so an autopilot title override keeps it.
+        $sameName = Project::query()->where('is_published', true)->where('title', $project->title)->where('id', '!=', $project->id)->get(['id', 'completed_at', 'created_at']);
+        if ($sameName->isNotEmpty()) {
+            $when = $project->completed_at ?? $project->created_at;
+            $sameYear = $sameName->contains(fn (Project $p) => ($p->completed_at ?? $p->created_at)?->format('Y') === $when?->format('Y'));
+            self::seo()->disambiguator($when ? '('.$when->format($sameYear ? 'M Y' : 'Y').')' : "(#{$project->id})");
         }
 
         // Build description
