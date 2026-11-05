@@ -757,7 +757,9 @@ class PlatformsController extends Controller
 
         $username = null;
         $log = (string) @shell_exec(sprintf(
-            '%s %s --user-data-dir=%s --timeout-ms=20000 2>/dev/null',
+            // Bounded like InstagramRemoteLoginService::checkSession(): a hung
+            // Puppeteer must never outlive the request (2026-11-05).
+            'timeout -k 10 30 %s %s --user-data-dir=%s --timeout-ms=20000 2>/dev/null',
             escapeshellarg((string) config('services.instagram.node_binary', 'node')),
             escapeshellarg(base_path('scripts/instagram-check-session.mjs')),
             escapeshellarg($remote->userDataDir())

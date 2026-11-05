@@ -31,6 +31,16 @@ const emit = (obj) => { process.stdout.write(JSON.stringify(obj) + '\n'); };
 
 (async () => {
   const args = parseArgs(process.argv);
+
+  // A deadline from the first line, not from launch(): guardBrowser() is
+  // only attached once launch() resolves, so a launch that hangs had no
+  // limit at all (2026-11-05). process.exit() runs the guard's 'exit'
+  // listener once a browser exists, and a pipe-mode Chrome dies with Node.
+  setTimeout(() => {
+    console.error('instagram-check-session: deadline reached, exiting');
+    process.exit(124);
+  }, args.timeoutMs + 8000).unref();
+
   if (!args.userDataDir) {
     emit({ ok: false, error: '--user-data-dir is required' });
     process.exit(2);

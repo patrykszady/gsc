@@ -94,4 +94,48 @@ class ReapOrphanedChromeTest extends TestCase
         $this->assertSame('/x', ReapOrphanedChrome::profileOf(self::CHROME.' --allow-pre-commit-input --proxy-server=http://user:secret@host:1 --user-data-dir=/x'));
         $this->assertSame('(temporary)', ReapOrphanedChrome::profileOf(self::CHROME.' --allow-pre-commit-input'));
     }
+    /**
+     * 2026-11-05: many browsers, each under its own limits, can still fill
+     * the box together. Over the server-wide budget the biggest go first,
+     * and only until what is left fits.
+     */
+    public function test_browsers_each_under_their_limits_are_cut_back_to_the_server_wide_budget(): void
+    {
+        $rows = [];
+        foreach ([[700000, 900000], [710000, 600000], [720000, 300000]] as [$root, $rssKb]) {
+            $rows[] = sprintf('%d 999 600 %d CHROME --allow-pre-commit-input --remote-debugging-pipe --user-data-dir=/tmp/p%d', $root, $rssKb, $root);
+            foreach (range(1, 40) as $i) {
+                $rows[] = sprintf('%d %d 600 1000 CHROME --type=renderer --enable-automation', $root + $i, $root);
+            }
+        }
+        $ps = "999 1 600 50000 node scripts/some-script.mjs\n".implode("\n", $rows);
+
+        $processes = ReapOrphanedChrome::parse(str_replace('CHROME', self::CHROME, $ps));
+
+        // 3 browsers × 41 processes = 123: under 150, so nothing goes.
+        $this->assertSame([], ReapOrphanedChrome::doomedTrees($processes, 120, 60, 2048 * 1024, 10800, 150, PHP_INT_MAX));
+
+        // Over a 100-process budget: only the biggest (by memory) goes.
+        $doomed = ReapOrphanedChrome::doomedTrees($processes, 120, 60, 2048 * 1024, 10800, 100, PHP_INT_MAX);
+        $this->assertSame([700000], array_keys($doomed));
+        $this->assertSame('server-wide Puppeteer limit', $doomed[700000]['reason']);
+        $this->assertCount(41, $doomed[700000]['pids']);
+
+        // Over a 900 MB budget (the three hold 1.92 GB; 980 MB without the
+        // biggest): the two biggest go.
+        $doomed = ReapOrphanedChrome::doomedTrees($processes, 120, 60, 2048 * 1024, 10800, PHP_INT_MAX, 900 * 1024);
+        $this->assertSame([700000, 710000], array_keys($doomed));
+    }
+
+    /** The reaper must be the first scheduled event: each minute's events run in order. */
+    public function test_the_reaper_is_the_first_event_in_the_schedule_file_with_a_short_overlap_lock(): void
+    {
+        $console = (string) file_get_contents(dirname(__DIR__, 2).'/routes/console.php');
+
+        preg_match_all('/Schedule::(command|call|job)\(/', $console, $m, PREG_OFFSET_CAPTURE);
+        $first = substr($console, $m[0][0][1], 120);
+
+        $this->assertStringContainsString("chrome:reap-orphans", $first);
+        $this->assertStringContainsString('withoutOverlapping(5)', $first);
+    }
 }

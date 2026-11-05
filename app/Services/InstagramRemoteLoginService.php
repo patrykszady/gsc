@@ -76,7 +76,12 @@ class InstagramRemoteLoginService
             escapeshellarg($userDataDir),
             $timeoutSeconds * 1000
         );
-        $output = (string) @shell_exec('timeout ' . ($timeoutSeconds + 5) . ' ' . $cmd);
+        // -k 10: SIGKILL Node ten seconds after the SIGTERM. Puppeteer's own
+        // SIGTERM handler awaits a graceful browser close; on 2026-11-05 that
+        // close never finished, `timeout` never escalated, and the 02:35
+        // check (with its Chrome, 283 processes by then) ran 2 h 14 m until
+        // hive-prod stopped answering. A pipe-mode Chrome dies with Node.
+        $output = (string) @shell_exec('timeout -k 10 ' . ($timeoutSeconds + 5) . ' ' . $cmd);
         $output = trim($output);
         if ($output === '') return null;
         // Take the last JSON line.
@@ -178,8 +183,11 @@ class InstagramRemoteLoginService
             '--user-data-dir=' . escapeshellarg($userDataDir),
             '--timeout-ms=' . escapeshellarg((string) ($maxTtl * 1000)),
         ];
+        // timeout -k: the session's own TTL plus a minute, then SIGKILL a Node
+        // that ignores the SIGTERM — its pipe-mode Chrome dies with it
+        // (2026-11-05: a hung Puppeteer Chrome took hive-prod down).
         $chromePid = $this->spawn(
-            'DISPLAY=' . escapeshellarg($display) . ' ' . implode(' ', $cmdParts),
+            'DISPLAY=' . escapeshellarg($display) . ' timeout -k 10 ' . ($maxTtl + 60) . ' ' . implode(' ', $cmdParts),
             $chromeLog
         );
         if (! $chromePid) {

@@ -48,4 +48,53 @@ class PuppeteerScriptsDieWithTheirScriptTest extends TestCase
 
         $this->assertSame([], array_values(array_unique($offenders)), 'Launch Chrome with pipe: true under guardBrowser() (scripts/lib/browser-guard.mjs).');
     }
+    /**
+     * 2026-11-05: `timeout N node …` only sends SIGTERM, Puppeteer's own
+     * SIGTERM handler waits for a graceful close, and the 02:35 Instagram
+     * check ran 2 h 14 m with a 283-process Chrome until hive-prod stopped
+     * answering. Any shell_exec of a scripts/*.mjs must use `timeout -k`, so
+     * Node is SIGKILLed (and its pipe-mode Chrome with it) when it ignores
+     * the SIGTERM. Symfony Process timeouts already end in SIGKILL.
+     */
+    public function test_every_shell_launch_of_a_node_script_hard_kills_on_timeout(): void
+    {
+        $offenders = [];
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(dirname(__DIR__, 2).'/app', FilesystemIterator::SKIP_DOTS)) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            // Method by method: the command is usually built a few lines
+            // above the shell_exec()/spawn() that runs it.
+            $methods = preg_split('/\bfunction\s+(?=\w+\s*\()/', (string) file_get_contents($file->getPathname()));
+
+            foreach ($methods as $method) {
+                if (! preg_match("#scripts/[\\w-]+\\.mjs#", $method) || str_contains($method, 'new Process')) {
+                    continue;
+                }
+
+                preg_match_all('/shell_exec\((.{0,300}?)\);/s', $method, $calls);
+                $launchesByShell = collect($calls[1])->contains(fn (string $call) => ! preg_match('/pkill|pgrep|rm -rf|command -v/', $call));
+
+                if (($launchesByShell || str_contains($method, '->spawn(')) && ! str_contains($method, 'timeout -k')) {
+                    $offenders[] = basename($file->getPathname()).'::'.strtok($method, '(');
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, "Launches a Node script without `timeout -k`:\n".implode("\n", $offenders));
+    }
+
+    /** The session check ends itself from its first line, even when launch() hangs. */
+    public function test_the_instagram_session_check_arms_its_deadline_before_launching(): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 2).'/scripts/instagram-check-session.mjs');
+
+        $deadline = strpos($source, 'process.exit(124)');
+        $launch = strpos($source, 'puppeteer.launch(');
+
+        $this->assertNotFalse($deadline);
+        $this->assertLessThan($launch, $deadline);
+    }
 }

@@ -265,8 +265,11 @@ class YelpRemoteLoginService
         if ($key = config('services.twocaptcha.api_key')) {
             $cmdParts[] = '--twocaptcha-key=' . escapeshellarg((string) $key);
         }
+        // timeout -k: the session's own TTL plus a minute, then SIGKILL a Node
+        // that ignores the SIGTERM — its pipe-mode Chrome dies with it
+        // (2026-11-05: a hung Puppeteer Chrome took hive-prod down).
         $chromePid = $this->spawn(
-            'DISPLAY=' . escapeshellarg($display) . ' ' . implode(' ', $cmdParts),
+            'DISPLAY=' . escapeshellarg($display) . ' timeout -k 10 ' . ($maxTtl + 60) . ' ' . implode(' ', $cmdParts),
             $chromeLog
         );
         if (! $chromePid) {

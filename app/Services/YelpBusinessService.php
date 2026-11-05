@@ -188,9 +188,12 @@ class YelpBusinessService
         }
 
         // Fully detach so the HTTP request returns immediately and the
-        // browser keeps running independently of php-fpm.
+        // browser keeps running independently of php-fpm. `timeout -k` caps
+        // it a minute past the script's own 10-minute limit and SIGKILLs a
+        // Node that ignores the SIGTERM (2026-11-05: a hung Puppeteer Chrome
+        // took hive-prod down); its pipe-mode Chrome dies with it.
         $cmd = sprintf(
-            '%snohup %s >> %s 2>&1 < /dev/null & echo $!',
+            '%snohup timeout -k 10 660 %s >> %s 2>&1 < /dev/null & echo $!',
             $envPrefix,
             implode(' ', $cmdParts),
             escapeshellarg($logFile)

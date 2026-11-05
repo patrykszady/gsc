@@ -16,6 +16,20 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
+
+// Puppeteer Chrome that outlived its script or ran away (2026-10-01: one ran
+// 22 days; another grew to ~8 GB in half an hour and took hive-prod down) —
+// see ReapOrphanedChrome. Server-wide, not per tenant, every minute: it only
+// touches browsers Puppeteer launched, never the Menards one.
+//
+// FIRST in this file on purpose (2026-11-05): schedule:run runs a minute's
+// events in order, in the foreground, so at the bottom it waited behind
+// every earlier event — on a box already slowing down it never ran, and a
+// 283-process Instagram Chrome took hive-prod down for two hours. The
+// overlap lock expires after 5 minutes, not the default 24 hours, so a run
+// killed mid-way cannot keep the net off for a day.
+Schedule::command('chrome:reap-orphans')->everyMinute()->withoutOverlapping(5)
+    ->appendOutputTo(storage_path('logs/chrome-reaper.log'));
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use SsSystems\Platform\Citations\VerificationInbox;
@@ -910,13 +924,6 @@ Schedule::call(function () {
         ->pluck('id')
         ->each(fn (int $id) => SendLeadToHive::dispatch($id));
 })->name('hive:resend-leads-safety-net')->everyMinute()->withoutOverlapping();
-
-// Puppeteer Chrome that outlived its script or ran away (2026-10-01: one ran
-// 22 days; another grew to ~8 GB in half an hour and took hive-prod down) —
-// see ReapOrphanedChrome. Server-wide, not per tenant, every minute: it only
-// touches browsers Puppeteer launched, never the Menards one.
-Schedule::command('chrome:reap-orphans')->everyMinute()->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/chrome-reaper.log'));
 
 // Where visitors come from (kit 0.17): every provider's per-source numbers
 // into traffic_source_days for the SEO screen. Early in the day (Clarity only

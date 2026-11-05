@@ -28,6 +28,17 @@ use Symfony\Component\Process\Process;
  *    and older than --orphan-age;
  *  - bigger than --max-processes processes or --max-rss-mb in memory;
  *  - older than --max-age.
+ *
+ * And because many browsers each under those limits can still fill the box
+ * together, the largest go first while all Puppeteer browsers on the server
+ * add up to more than --max-total-processes or --max-total-rss-mb.
+ *
+ * 2026-11-05: the 02:35 instagram:check-session Chrome reached 283
+ * processes and took hive-prod down for two hours — this command, the net,
+ * was registered at the bottom of routes/console.php in the foreground, so
+ * each minute it waited behind every earlier event and never got to run.
+ * It is now the first event of every minute, with a 5-minute overlap lock,
+ * and every line it writes carries a UTC timestamp.
  */
 class ReapOrphanedChrome extends Command
 {
@@ -36,6 +47,8 @@ class ReapOrphanedChrome extends Command
         {--max-processes=60 : Processes in one browser\'s tree before it is killed}
         {--max-rss-mb=2048 : Memory of one browser\'s tree before it is killed}
         {--max-age=10800 : Seconds any Puppeteer browser may run}
+        {--max-total-processes=150 : Processes across every Puppeteer browser on the server}
+        {--max-total-rss-mb=3072 : Memory across every Puppeteer browser on the server}
         {--dry : List what would be killed}';
 
     protected $description = 'Kill Puppeteer Chrome that outlived its script or ran away';
@@ -46,7 +59,7 @@ class ReapOrphanedChrome extends Command
         $ps->run();
 
         if (! $ps->isSuccessful()) {
-            $this->warn('ps failed: '.trim($ps->getErrorOutput()));
+            $this->warn(self::stamp().'ps failed: '.trim($ps->getErrorOutput()));
 
             return self::FAILURE;
         }
@@ -58,17 +71,20 @@ class ReapOrphanedChrome extends Command
             (int) $this->option('max-processes'),
             (int) $this->option('max-rss-mb') * 1024,
             (int) $this->option('max-age'),
+            (int) $this->option('max-total-processes'),
+            (int) $this->option('max-total-rss-mb') * 1024,
         );
 
         if ($doomed === []) {
-            $this->info('No runaway or orphaned Puppeteer Chrome.');
+            $this->info(self::stamp().'No runaway or orphaned Puppeteer Chrome.');
 
             return self::SUCCESS;
         }
 
         foreach ($doomed as $root => $tree) {
             $line = sprintf(
-                '%s browser %d (%s; %d processes, %d MB, running %s), profile %s',
+                '%s%s browser %d (%s; %d processes, %d MB, running %s), profile %s',
+                self::stamp(),
                 $this->option('dry') ? 'Would kill' : 'Killing',
                 $root,
                 $tree['reason'],
@@ -114,7 +130,7 @@ class ReapOrphanedChrome extends Command
      * @param  array<int, array{pid: int, ppid: int, age: int, rss: int, args: string}>  $processes
      * @return array<int, array{reason: string, pids: array<int, int>, rss_kb: int}>
      */
-    public static function doomedTrees(array $processes, int $orphanAge, int $maxProcesses, int $maxRssKb, int $maxAge): array
+    public static function doomedTrees(array $processes, int $orphanAge, int $maxProcesses, int $maxRssKb, int $maxAge, int $maxTotalProcesses = PHP_INT_MAX, int $maxTotalRssKb = PHP_INT_MAX): array
     {
         $children = [];
         foreach ($processes as $process) {
@@ -122,6 +138,7 @@ class ReapOrphanedChrome extends Command
         }
 
         $doomed = [];
+        $spared = [];
         foreach ($processes as $process) {
             if (! self::isPuppeteerBrowser($process['args'])) {
                 continue;
@@ -146,10 +163,34 @@ class ReapOrphanedChrome extends Command
 
             if ($reason !== null) {
                 $doomed[$process['pid']] = ['reason' => $reason, 'pids' => $tree, 'rss_kb' => $rssKb];
+            } else {
+                $spared[$process['pid']] = ['pids' => $tree, 'rss_kb' => $rssKb];
             }
         }
 
+        // Every browser under its own limits, yet together over the server's:
+        // the biggest go first until what is left fits.
+        $totalProcesses = array_sum(array_map(fn (array $t) => count($t['pids']), $spared));
+        $totalRssKb = array_sum(array_column($spared, 'rss_kb'));
+        uasort($spared, fn (array $a, array $b) => $b['rss_kb'] <=> $a['rss_kb'] ?: count($b['pids']) <=> count($a['pids']));
+
+        foreach ($spared as $root => $tree) {
+            if ($totalProcesses <= $maxTotalProcesses && $totalRssKb <= $maxTotalRssKb) {
+                break;
+            }
+
+            $doomed[$root] = ['reason' => 'server-wide Puppeteer limit', 'pids' => $tree['pids'], 'rss_kb' => $tree['rss_kb']];
+            $totalProcesses -= count($tree['pids']);
+            $totalRssKb -= $tree['rss_kb'];
+        }
+
         return $doomed;
+    }
+
+    /** UTC time at the start of each log line, so a run can be placed in time. */
+    private static function stamp(): string
+    {
+        return '['.gmdate('Y-m-d H:i:s').'] ';
     }
 
     /**
