@@ -515,9 +515,13 @@ class AppServiceProvider extends ServiceProvider
      * at call time — never a captured value — the same convention as
      * registerTraffic()'s collectors and the Pulse Recorder/SnapshotBuilder
      * above. KeywordResearchCommand and CompetitorBrandTrackCommand build
-     * their own store inline from constructor arguments rather than taking
-     * an injected store, so they get the same tenant column/closure
-     * through a contextual binding instead of a singleton.
+     * their own query inline from constructor arguments rather than taking
+     * an injected store, so they are built here with the same tenant
+     * column/closure. Not through when()->needs('$tenantId'): the kit types
+     * that argument ?\Closure, a class, so the container skips primitive
+     * contextual bindings for it and quietly passed null — both commands
+     * crashed with "Value of type null is not callable" on every run
+     * (competitor-brand-track daily from 2026-11-02 until 2026-11-08).
      *
      * Change intel (kit 0.19.2, 2026-11-01): the nine DataForSEO families
      * this site runs, each built below with this site's own DataForSeoApi/
@@ -592,8 +596,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(KeywordResearchSnapshot::class, fn () => new KeywordResearchSnapshot(
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
         ));
-        $this->app->when(KeywordResearchCommand::class)->needs('$tenantColumn')->give('site_id');
-        $this->app->when(KeywordResearchCommand::class)->needs('$tenantId')->give(fn () => $tenant);
+        $this->app->bind(KeywordResearchCommand::class, fn ($app) => new KeywordResearchCommand(
+            $app->make(DataForSeoApi::class), $app->make(SeoSiteProfile::class), DB::connection(),
+            tenantColumn: 'site_id', tenantId: $tenant,
+        ));
 
         $this->app->singleton(DomainOverviewStore::class, fn () => new DomainOverviewStore(
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
@@ -604,8 +610,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AiMentionStore::class, fn () => new AiMentionStore(
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
         ));
-        $this->app->when(CompetitorBrandTrackCommand::class)->needs('$tenantColumn')->give('site_id');
-        $this->app->when(CompetitorBrandTrackCommand::class)->needs('$tenantId')->give(fn () => $tenant);
+        $this->app->bind(CompetitorBrandTrackCommand::class, fn ($app) => new CompetitorBrandTrackCommand(
+            DB::connection(), $app->make(SeoSiteProfile::class), reportSink: $app->make(ReportSink::class),
+            tenantColumn: 'site_id', tenantId: $tenant,
+        ));
 
         $this->app->singleton(AiTrafficStore::class, fn () => new AiTrafficStore(
             DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
