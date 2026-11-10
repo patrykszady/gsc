@@ -10,12 +10,17 @@ use Tests\TestCase;
  * models may not. A crawler reads every group naming it together, and Google
  * lets "Allow: /" beat "Disallow: /" at the same length, so a leftover Allow
  * group for a training crawler would quietly undo the block.
+ *
+ * Changed 2026-11-10: GPTBot, ClaudeBot (and the old anthropic-ai token) and
+ * Google-Extended are let in — the site wants to be known by the AI models
+ * people ask, and Google-Extended also decides whether Gemini grounds its
+ * answers on the site. Only bulk training scrapers stay out.
  */
 class AiCrawlerRobotsTest extends TestCase
 {
-    private const TRAINING = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Google-Extended', 'Applebot-Extended', 'CCBot', 'Bytespider', 'meta-externalagent', 'cohere-ai'];
+    private const TRAINING = [ 'Applebot-Extended', 'CCBot', 'Bytespider', 'meta-externalagent', 'cohere-ai'];
 
-    private const ANSWERING = ['OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Googlebot', 'Bingbot', 'Amazonbot'];
+    private const ANSWERING = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Google-Extended', 'OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Googlebot', 'Bingbot', 'Amazonbot'];
 
     /** @return array<string, list<string>> lowercase user-agent => its rules, every group naming it combined */
     private function robotsGroups(string $robots): array
