@@ -38,6 +38,8 @@ use App\Support\Citations\SiteKnownListingsSource;
 use App\Support\Citations\SiteMailboxFactory;
 use App\Support\Citations\SitePendingCitationRepository;
 use App\Support\PublicFeeds;
+use App\Support\Seo\BingCoverageUrls;
+use App\Support\Seo\BingCoverageWriter;
 use App\Support\Seo\BingSettings;
 use App\Support\Seo\BingWriter;
 use App\Support\Seo\ClaritySettings;
@@ -117,6 +119,9 @@ use SsSystems\Platform\Seo\AiTraffic\AiTrafficStore;
 use SsSystems\Platform\Seo\Bing\BingWebmasterApi;
 use SsSystems\Platform\Seo\Bing\BingWebmasterClient;
 use SsSystems\Platform\Seo\Bing\BingWriter as KitBingWriter;
+use SsSystems\Platform\Seo\Bing\Contracts\BingCoverageClient;
+use SsSystems\Platform\Seo\Bing\Contracts\BingCoverageUrls as KitBingCoverageUrls;
+use SsSystems\Platform\Seo\Bing\Contracts\BingCoverageWriter as KitBingCoverageWriter;
 use SsSystems\Platform\Seo\Clarity\ClarityClient;
 use SsSystems\Platform\Seo\Clarity\ClarityMetricsStore;
 use SsSystems\Platform\Seo\Clarity\Contracts\ClarityCredentials;
@@ -226,6 +231,16 @@ class AppServiceProvider extends ServiceProvider
             $app->make(BingSettings::class)->siteUrl(),
             $app->make(HttpFactory::class),
         ));
+        // Bing coverage (kit 0.22.0, 2026-11-10): what Bing's index holds of
+        // the site, for the hub's Bing card. BingCoverageClient resolves
+        // through the SAME BingWebmasterApi factory bound just above — same
+        // key, same site URL — rather than a second construction of it, so
+        // the submission and coverage sides can never drift onto different
+        // properties. This site's own writer and sitemap URL list are bound
+        // the same way the Search Console ones are above.
+        $this->app->bind(BingCoverageClient::class, fn ($app) => $app->make(BingWebmasterApi::class));
+        $this->app->bind(KitBingCoverageWriter::class, BingCoverageWriter::class);
+        $this->app->bind(KitBingCoverageUrls::class, BingCoverageUrls::class);
         // The citation builder's remote-browser session (kit 0.11.0, ported
         // verbatim from this file's own former App\Services\Citations\
         // CitationSessionService — see vendor/ss-systems/platform-kit's

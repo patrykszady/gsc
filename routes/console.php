@@ -783,6 +783,20 @@ Schedule::command('seo:bing-sync')
     // New numbers landed: refresh where visitors come from for these days.
     ->then(fn () => Artisan::call('traffic:collect', ['--days' => 5, '--provider' => ['bing']]));
 
+// SEO: daily Bing coverage sync (kit 0.22.0) — what Bing's index holds of
+// the site, for the hub's Bing card. 40 minutes after the query-stats sync
+// above so both read a settled morning. Production only: it spends real
+// GetUrlInfo calls against Bing's own per-property daily allowance, which
+// a dev/staging box must never draw down.
+Schedule::command('seo:bing-coverage --limit=300')
+    ->dailyAt('06:25')
+    ->timezone('America/Chicago')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->environments('production')
+    ->appendOutputTo(storage_path('logs/seo-bing-coverage.log'))
+    ->onFailure(fn () => logger()->error('Scheduled seo:bing-coverage failed'));
+
 // Social automation: Instagram/Facebook/Google Business posts and the GBP
 // catch-up safety net used to be hard-coded, single-tenant Schedule blocks
 // right here — each platform's days and start time drawn from one seeded

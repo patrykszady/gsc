@@ -30,6 +30,7 @@ use SsSystems\Platform\Http\Admin\AuthenticateAdminApi;
 use SsSystems\Platform\Http\Middleware\DetectCountry;
 use SsSystems\Platform\Projects\MergedProjectRedirectResponse;
 use SsSystems\Platform\Seo\AiTraffic\TrackAiTraffic;
+use SsSystems\Platform\Seo\Bing\Console\BingCoverageCommand;
 use SsSystems\Platform\Seo\Bing\Console\BingSubmitSitemapsCommand;
 use SsSystems\Platform\Seo\Clarity\Console\ClaritySyncCommand;
 use SsSystems\Platform\Seo\IndexNow\Console\IndexNowCommand;
@@ -88,6 +89,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // IndexNowLedger bindings and routes/console.php's schedules.
         BingSubmitSitemapsCommand::class,
         IndexNowCommand::class,
+        // Bing coverage (kit 0.22.0): seo:bing-coverage — see
+        // App\Providers\AppServiceProvider's BingCoverageClient/
+        // BingCoverageWriter/BingCoverageUrls bindings and
+        // routes/console.php's schedule.
+        BingCoverageCommand::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

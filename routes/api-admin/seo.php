@@ -8,6 +8,7 @@
 // GscErrors}.php. See those Livewire classes' controller counterparts under
 // Api\Admin\V1 for what each endpoint computes.
 
+use App\Http\Controllers\Api\Admin\V1\BingCoverageController;
 use App\Http\Controllers\Api\Admin\V1\GscErrorController;
 use App\Http\Controllers\Api\Admin\V1\SeoAutopilotController;
 use App\Http\Controllers\Api\Admin\V1\SeoOverrideController;
@@ -60,4 +61,10 @@ Route::prefix('seo')->group(function () {
     Route::get('gsc-errors/sitemaps', [GscErrorController::class, 'sitemaps']);
     Route::post('gsc-errors/sitemaps', [GscErrorController::class, 'submitSitemap']);
     Route::delete('gsc-errors/sitemaps', [GscErrorController::class, 'deleteSitemap']);
+
+    // BingCoverage: what Bing's index holds of the site — crawl stats,
+    // shown-in-results figures and the fetch state of every sitemap URL
+    // (ServesBingCoverage, kit 0.22.0).
+    Route::get('bing-coverage', [BingCoverageController::class, 'index']);
+    Route::post('bing-coverage/refresh', [BingCoverageController::class, 'refresh']);
 });
