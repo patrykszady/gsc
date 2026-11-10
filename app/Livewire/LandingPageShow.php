@@ -14,6 +14,10 @@ use Livewire\Component;
  * Drafts 404 for the public but are previewable by an authenticated admin via
  * ?preview=1. Pages that don't clear the proof gate render noindex so a
  * thin page can never leak into the index.
+ *
+ * One component, two views: the town template keeps
+ * livewire/landing-page-show exactly as it was; a guide (LandingPage
+ * template "guide", no city) renders livewire/landing-page-guide.
  */
 #[Layout('components.layouts.app')]
 class LandingPageShow extends Component
@@ -36,7 +40,12 @@ class LandingPageShow extends Component
             ->description($this->page->meta_description)
             ->canonical($this->page->url())
             ->url($this->page->url())
-            ->type('website');
+            ->type($this->page->isGuide() ? 'article' : 'website');
+
+        if ($this->page->isGuide()) {
+            $seo->publishedTime($this->page->published_at)
+                ->modifiedTime($this->page->updated_at);
+        }
 
         if ($this->page->hero_image) {
             $seo->image($this->page->hero_image);
@@ -50,7 +59,7 @@ class LandingPageShow extends Component
 
     public function render()
     {
-        return view('livewire.landing-page-show', [
+        return view($this->page->isGuide() ? 'livewire.landing-page-guide' : 'livewire.landing-page-show', [
             'projects' => $this->page->proofProjects(),
         ]);
     }

@@ -28,6 +28,25 @@ class HeroSlides
     }
 
     /**
+     * Slides from specific photos — a guide page's own proof covers — sized
+     * exactly like fromProjects() so both heroes share the same derivatives.
+     *
+     * @param  iterable<int, ProjectImage|null>  $images
+     * @return array<int, array{url: string, alt: string, srcset: string}>
+     */
+    public static function fromImages(iterable $images, int $count = 5): array
+    {
+        return collect($images)
+            ->filter(static fn ($image): bool => $image instanceof ProjectImage)
+            ->unique(static fn (ProjectImage $image) => $image->id ?? spl_object_id($image))
+            ->take($count)
+            ->map(static fn (ProjectImage $image): ?array => self::slide($image))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Stand-in slides for a tenant that has no photography of its own yet.
      *
      * Inline SVG data URIs rather than stock imagery: a client site may only

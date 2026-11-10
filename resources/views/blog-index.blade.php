@@ -46,5 +46,9 @@
         @endif
     </div>
 
+    {{-- The guide pages (/remodeling/…, template guide): long-form answers
+         that only their service page linked to. --}}
+    @include('partials.landing-page-links', ['pages' => \App\Models\LandingPage::publishedGuides(), 'heading' => 'Guides'])
+
     <x-cta-section variant="blue" heading="Have a project like these in mind?" class="mt-16" />
 </x-layouts.app>

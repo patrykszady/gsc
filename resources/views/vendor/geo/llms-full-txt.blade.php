@@ -9,6 +9,11 @@
         ->map(fn ($c) => \Illuminate\Support\Str::of($c)->title())
         ->implode(', ');
     $stories = \Illuminate\Support\Facades\Schema::hasTable('blog_posts') ? \App\Models\BlogPost::published()->with('project')->orderByDesc('dated_at')->limit(30)->get() : collect();
+    // Guide pages (/remodeling/…): the same published + indexed + proof gate
+    // the sitemap applies — a draft or a thin page is never listed here.
+    $guidePages = \Illuminate\Support\Facades\Schema::hasTable('landing_pages')
+        ? \App\Models\LandingPage::published()->orderBy('title')->get()->filter(fn ($guide) => $guide->shouldIndex())->values()
+        : collect();
 @endphp# llms-full.txt for {{ $site_name }}
 
 > {{ $description ?: 'Family-owned kitchen, bathroom, and whole-home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English & Polish.' }}
@@ -59,6 +64,15 @@ Each is a first-person account of one completed project: what the homeowners ask
 @foreach($stories as $story)
 - {!! $story->title !!} ({{ $story->displayDate()?->format('F Y') }}): {{ $story->url() }}
   {!! \Illuminate\Support\Str::limit((string) $story->excerpt, 220) !!}
+@endforeach
+
+@endif
+@if($guidePages->isNotEmpty())
+## Remodeling guides
+Long-form answers to the questions homeowners search before hiring — what a project includes, what it costs in the Chicago suburbs, what the village requires — each backed by completed GS Construction projects.
+@foreach($guidePages as $guide)
+- {{ $guide->title }}: {{ $guide->url() }}
+  {{ \Illuminate\Support\Str::limit((string) $guide->meta_description, 220) }}
 @endforeach
 
 @endif

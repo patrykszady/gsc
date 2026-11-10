@@ -92,5 +92,8 @@
     {{-- Onward links between posts: same trade first, never this post. --}}
     @include('partials.blog-strip', ['posts' => \App\Models\BlogPost::forStrip($project?->project_type, null, 3, $post->id), 'heading' => 'More from the blog', 'exclude' => $post->id])
 
+    {{-- This trade's guide pages (/remodeling/…, template guide). --}}
+    @include('partials.landing-page-links', ['pages' => \App\Models\LandingPage::publishedGuides(\App\Models\LandingPage::serviceForProjectType($post->project?->project_type)), 'heading' => 'Guides'])
+
     <x-cta-section variant="blue" heading="Ready to scope your own {{ strtolower($typeLabel) }}?" class="mt-16" />
 </x-layouts.app>

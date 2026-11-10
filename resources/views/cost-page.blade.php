@@ -68,6 +68,9 @@
         />
     </div>
 
+    {{-- This service's guide pages (/remodeling/…, template guide). --}}
+    @include('partials.landing-page-links', ['pages' => \App\Models\LandingPage::publishedGuides($guide['service'] ?? null), 'heading' => 'Guides'])
+
     <x-cta-section
         variant="blue"
         heading="Want your exact number?"

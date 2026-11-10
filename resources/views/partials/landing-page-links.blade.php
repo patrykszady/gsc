@@ -13,7 +13,7 @@
             @foreach ($guidePages as $guide)
                 <li>
                     <a href="{{ $guide->url() }}" wire:navigate class="group block rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-sky-300 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800/75">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">{{ $guide->city ?: 'Chicago suburbs' }}</span>
+                        <span class="text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">{{ $guide->city ?: ($guide->isGuide() ? 'Guide' : 'Chicago suburbs') }}</span>
                         <span class="mt-1 block font-semibold text-zinc-900 group-hover:text-sky-700 dark:text-white">{{ $guide->h1 ?: $guide->title }}</span>
                     </a>
                 </li>

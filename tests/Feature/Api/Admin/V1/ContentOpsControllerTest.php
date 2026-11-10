@@ -142,6 +142,39 @@ class ContentOpsControllerTest extends TestCase
             ->assertJsonPath('data.status', 'draft');
     }
 
+    public function test_landing_pages_index_keeps_its_shape_for_a_guide_page_and_publishes_it(): void
+    {
+        $project = $this->publishedProject('bathroom');
+        $page = LandingPage::create([
+            'slug' => 'small-bathroom-remodels',
+            'template' => LandingPage::TEMPLATE_GUIDE,
+            'service' => 'bathroom-remodeling',
+            'title' => 'Small Bathroom Remodels',
+            'h1' => 'Bathroom remodels for small bathrooms',
+            'status' => LandingPage::STATUS_DRAFT,
+            'source' => 'manual',
+            'indexed' => true,
+            'proof_project_ids' => [$project->id],
+        ]);
+
+        $row = $this->getJson('/api/admin/v1/landing-pages', $this->adminApiHeaders())->assertOk()->json('data.0');
+
+        // The hub's Landing Pages screen reads exactly these keys for every
+        // template; a guide adds nothing and takes nothing away.
+        $this->assertSame(
+            ['id', 'slug', 'title', 'h1', 'status', 'source', 'indexed', 'has_proof', 'should_index', 'proof_count', 'url', 'published_at', 'created_at'],
+            array_keys($row)
+        );
+        $this->assertSame('/remodeling/small-bathroom-remodels', $row['url']);
+        $this->assertTrue($row['has_proof']);
+        $this->assertFalse($row['should_index'], 'a draft is not indexable until published');
+
+        $this->patchJson("/api/admin/v1/landing-pages/{$page->id}/publish", [], $this->adminApiHeaders())
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.should_index', true);
+    }
+
     public function test_delete_removes_the_page(): void
     {
         $page = LandingPage::create([

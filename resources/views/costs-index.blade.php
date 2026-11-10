@@ -58,6 +58,10 @@
         </div>
     </div>
 
+    {{-- The guide pages (/remodeling/…, template guide): the long-form
+         answers behind these numbers. --}}
+    @include('partials.landing-page-links', ['pages' => \App\Models\LandingPage::publishedGuides(), 'heading' => 'Guides'])
+
     <x-cta-section
         variant="blue"
         heading="Want your exact number?"

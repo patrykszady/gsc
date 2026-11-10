@@ -35,12 +35,14 @@ class AiFeedController extends Controller
 
     private function builder(): AiFeedBuilder
     {
+        $content = new GscContentCatalog;
+
         return new AiFeedBuilder(
             business: new GscBusinessIdentity,
             identity: app(SiteIdentity::class),
             services: new GscServiceCatalog,
             projects: new GscProjectCatalog,
-            content: new GscContentCatalog,
+            content: $content,
             reviews: new GscReviewCatalog,
             areas: new GscServiceAreaCatalog,
             links: [
@@ -52,6 +54,8 @@ class AiFeedController extends Controller
             extra: [
                 '$schema' => 'https://gs.construction/ai-feed.schema.json',
                 'service_area' => AreaServed::orderBy('city')->pluck('city')->all(),
+                // The /remodeling/ guide and town pages the sitemap lists — see GscContentCatalog::guides().
+                'guides' => $content->guides(),
                 'credentials' => [
                     'licensed' => true,
                     'insured' => true,
