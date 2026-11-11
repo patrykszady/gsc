@@ -14,6 +14,13 @@
     $guidePages = \Illuminate\Support\Facades\Schema::hasTable('landing_pages')
         ? \App\Models\LandingPage::published()->orderBy('title')->get()->filter(fn ($guide) => $guide->shouldIndex())->values()
         : collect();
+    // The FAQ bank (kit 0.24.0): the answers seo:faq-bank derived from this
+    // site's own pages, by kind, page and position — grouped under the page
+    // each came from below, at most 2,000 of them; none until the tables
+    // exist or the first run has been. Printed raw ({!! !!}): this is a
+    // text file, and a model's "&" must not become "&amp;".
+    $faqBank = app(\SsSystems\Platform\Seo\Faq\Bank\FaqBankStore::class);
+    $bankAnswers = $faqBank->exists() ? collect($faqBank->all(2000))->groupBy('url') : collect();
 @endphp# llms-full.txt for {{ $site_name }}
 
 > {{ $description ?: 'Family-owned kitchen, bathroom, and whole-home remodeling contractor serving the Chicago suburbs since 2015. 40+ years combined experience, 5-star rated, English & Polish.' }}
@@ -92,3 +99,16 @@ Long-form answers to the questions homeowners search before hiring — what a pr
 - Feed URL: {{ $feed_url }}
 - Sitemap URL: {{ $sitemap_url }}
 - Generated At: {{ $generated_at }}
+@if($bankAnswers->isNotEmpty())
+
+## Questions and answers
+Derived from this site's own pages — each answer restates only what the page under its heading says. The same answers, with the hand-written ones above them, are served as FAQPage JSON-LD at {{ $siteUrl }}/geo/answers.json.
+@foreach($bankAnswers as $pageUrl => $pairs)
+
+### {{ $pageUrl }}
+@foreach($pairs as $pair)
+Q: {!! $pair['q'] !!}
+A: {!! $pair['a'] !!}
+@endforeach
+@endforeach
+@endif

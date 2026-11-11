@@ -33,6 +33,7 @@ use SsSystems\Platform\Seo\AiTraffic\TrackAiTraffic;
 use SsSystems\Platform\Seo\Bing\Console\BingCoverageCommand;
 use SsSystems\Platform\Seo\Bing\Console\BingSubmitSitemapsCommand;
 use SsSystems\Platform\Seo\Clarity\Console\ClaritySyncCommand;
+use SsSystems\Platform\Seo\Faq\Bank\Console\FaqBankCommand;
 use SsSystems\Platform\Seo\IndexNow\Console\IndexNowCommand;
 use SsSystems\Platform\Seo\Intel\Console\IntelCommand;
 use SsSystems\Platform\Seo\KeywordResearch\Console\KeywordResearchCommand;
@@ -94,6 +95,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // BingCoverageWriter/BingCoverageUrls bindings and
         // routes/console.php's schedule.
         BingCoverageCommand::class,
+        // The FAQ bank (kit 0.24.0): seo:faq-bank — see App\Providers\
+        // AppServiceProvider's FaqBankSource/TextGenerator/FaqBankStore
+        // bindings and routes/console.php's per-tenant schedule.
+        FaqBankCommand::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

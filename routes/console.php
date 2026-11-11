@@ -110,6 +110,19 @@ Schedule::command($perTenant('seo:bing-submit-sitemaps'))->dailyAt('01:50')
     ->appendOutputTo(storage_path('logs/seo-bing-submit-sitemaps.log'))
     ->onFailure(fn () => logger()->error('Scheduled seo:bing-submit-sitemaps failed'));
 
+// The FAQ bank (kit 0.24.0): seo:faq-bank derives /geo/answers.json's and
+// llms-full.txt's answers from each site's own pages — never-seen pages
+// first, then the longest ago checked, 150 a night, an unchanged page costing
+// no model call (see App\Support\Seo\FaqBank\GscFaqBankSource). Per tenant,
+// like the town copy above: the pages, the towns and the bank rows are each
+// site's own. 04:20 Chicago, after the night's content jobs and before the
+// evening llms-full.txt rebuild picks the new answers up.
+Schedule::command($perTenant('seo:faq-bank --limit=150'))->dailyAt('04:20')
+    ->timezone('America/Chicago')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/seo-faq-bank.log'))
+    ->onFailure(fn () => logger()->warning('Scheduled seo:faq-bank failed'));
+
 // GEO/AI: regenerate AI-crawler feeds daily so llms.txt, llms-full.txt and the
 // product feed stay fresh for ChatGPT/Gemini/Perplexity crawlers as content changes.
 Schedule::command('geo:llms-txt')->dailyAt('01:40')

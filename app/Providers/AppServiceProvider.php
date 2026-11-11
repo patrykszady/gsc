@@ -45,6 +45,7 @@ use App\Support\Seo\BingWriter;
 use App\Support\Seo\ClaritySettings;
 use App\Support\Seo\DataForSeoSettings;
 use App\Support\Seo\Faq\ConfigFaqCatalog;
+use App\Support\Seo\FaqBank\GscFaqBankSource;
 use App\Support\Seo\GscClaritySiteHosts;
 use App\Support\Seo\GscMapPackContext;
 use App\Support\Seo\GscOwnReviews;
@@ -131,6 +132,12 @@ use SsSystems\Platform\Seo\Contracts\SeoSiteProfile;
 use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoApi;
 use SsSystems\Platform\Seo\DataForSeo\Contracts\DataForSeoCredentials;
 use SsSystems\Platform\Seo\DataForSeo\DataForSeoClient;
+use SsSystems\Platform\Seo\Faq\Bank\Contracts\FaqBankSource;
+use SsSystems\Platform\Seo\Faq\Bank\Contracts\TextGenerator;
+use SsSystems\Platform\Seo\Faq\Bank\FaqBankStore;
+use SsSystems\Platform\Seo\Faq\Bank\Generators\FirstConfiguredTextGenerator;
+use SsSystems\Platform\Seo\Faq\Bank\Generators\GeminiTextGenerator;
+use SsSystems\Platform\Seo\Faq\Bank\Generators\OpenAiTextGenerator;
 use SsSystems\Platform\Seo\Faq\Contracts\FaqCatalog;
 use SsSystems\Platform\Seo\IndexNow\Contracts\IndexNowKey;
 use SsSystems\Platform\Seo\IndexNow\IndexNowLedger;
@@ -337,8 +344,37 @@ class AppServiceProvider extends ServiceProvider
         // is gone.
         $this->app->bind(CacheInterface::class, LaravelSimpleCache::class);
         // /geo/answers.json's Q&A list (kit 0.13.0) — the fixed
-        // config/geo-answers.php list alone, no Service/Area FAQ merge.
+        // config/geo-answers.php list first, no Service/Area FAQ merge; since
+        // kit 0.24.0 the FAQ bank below follows it (FaqBankCatalog::merge).
         $this->app->bind(FaqCatalog::class, ConfigFaqCatalog::class);
+
+        // The FAQ bank (kit 0.24.0, 2026-11-10): seo:faq-bank derives many
+        // more answers from this site's own pages for /geo/answers.json and
+        // llms-full.txt. The source is this site's sitemap URL set labelled
+        // by path (GscFaqBankSource); the generator is Gemini — the key the
+        // area descriptions already use — with OpenAI behind it, both over
+        // the Http facade's factory so a test's Http::fake() applies; the
+        // store is tenant-scoped like every store in registerSeoTools(),
+        // built with an explicit `new` in a singleton: the kit types
+        // $tenantId ?\Closure, a class, so when()->needs('$tenantId') would
+        // be skipped and null passed through (the same trap that crashed
+        // competitor-brand-track nightly in November).
+        $this->app->bind(FaqBankSource::class, GscFaqBankSource::class);
+        $this->app->bind(TextGenerator::class, fn ($app) => new FirstConfiguredTextGenerator([
+            new GeminiTextGenerator(
+                config('services.google.gemini_api_key'),
+                (string) config('services.google.gemini_model', 'gemini-2.5-flash'),
+                $app->make(HttpFactory::class),
+            ),
+            new OpenAiTextGenerator(
+                config('services.openai.api_key'),
+                (string) config('services.openai.content_model', 'gpt-4.1-mini'),
+                $app->make(HttpFactory::class),
+            ),
+        ]));
+        $this->app->singleton(FaqBankStore::class, fn () => new FaqBankStore(
+            DB::connection(), tenantColumn: 'site_id', tenantId: fn () => Tenancy::currentId(),
+        ));
 
         // GbpPostTheme (kit 0.13.0, moved verbatim from this file's own former
         // App\Services\Social\GbpPostTheme — jpeterson's byte-identical copy

@@ -32,6 +32,7 @@ use SsSystems\Platform\Http\Admin\Concerns\BuildsApiResponses;
 use SsSystems\Platform\Pulse\SnapshotBuilder;
 use SsSystems\Platform\Reports\Console\ReportRun;
 use SsSystems\Platform\Reports\Jobs\RunArtisanCommandDetached;
+use SsSystems\Platform\Seo\Faq\Bank\FaqBankStore;
 use SsSystems\Platform\Seo\Http\Concerns\BuildsSeoToolBlocks;
 use SsSystems\Platform\Seo\SearchAppearance;
 use SsSystems\Platform\Seo\SitemapStatus;
@@ -1072,7 +1073,17 @@ class SeoReportController extends Controller
                 $feeds[] = ['label' => $label, 'url' => url($uri), 'ok' => true, 'age' => null, 'stale' => false];
             }
 
-            return ['feeds' => $feeds];
+            // The FAQ bank (kit 0.24.0): how many derived answers sit behind
+            // /geo/answers.json and llms-full.txt, from how many pages, and
+            // when a page was last built — zeros until the tables exist and
+            // seo:faq-bank has run (this tenant's rows only, like every
+            // store in AppServiceProvider::registerSeoTools()).
+            $bank = app(FaqBankStore::class);
+
+            return [
+                'feeds' => $feeds,
+                'faq_bank' => $bank->exists() ? $bank->summary() : ['answers' => 0, 'pages' => 0, 'last_generated_at' => null],
+            ];
         });
     }
 
