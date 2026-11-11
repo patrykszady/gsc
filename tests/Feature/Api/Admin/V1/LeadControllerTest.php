@@ -306,4 +306,19 @@ class LeadControllerTest extends TestCase
         // A moment the site cannot read is the same as none, never a 500.
         $this->assertNull($this->getJson('/api/admin/v1/leads/stats?since=not-a-moment', $this->adminApiHeaders())->assertOk()->json('data.new'));
     }
+
+    public function test_search_matches_the_phone_too(): void
+    {
+        // The hub opens a lead made from a call or text tap (Analytics "Make
+        // lead") by its lead_contact — the number, stored as digits.
+        $this->makeLead(['name' => 'Sarah', 'email' => '', 'phone' => '6305550142']);
+        $this->makeLead(['name' => 'Jane Doe', 'email' => 'jane@example.com', 'phone' => '5551212']);
+
+        $data = $this->getJson('/api/admin/v1/leads?search=6305550142', $this->adminApiHeaders())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertCount(1, $data);
+        $this->assertSame('Sarah', $data[0]['name']);
+    }
 }

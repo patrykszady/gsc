@@ -33,7 +33,9 @@ class ContactFormSubmission extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            replyTo: [new Address($this->email, $this->name)],
+            // A lead made from a call tap (AnalyticsEventLeadMaker) may have no
+            // email; an empty reply-to address would refuse the whole message.
+            replyTo: $this->email !== '' ? [new Address($this->email, $this->name)] : [],
             subject: 'New Consultation Request from ' . $this->name,
         );
     }

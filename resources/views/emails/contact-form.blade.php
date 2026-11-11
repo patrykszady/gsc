@@ -31,9 +31,11 @@ You've received a new consultation request from your website.
 </x-mail::table>
 @endif
 
+@if($email !== '')
 <x-mail::button :url="'mailto:' . $email">
 Reply to {{ $name }}
 </x-mail::button>
+@endif
 
 Thanks,<br>
 {{ config('app.name') }}

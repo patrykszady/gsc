@@ -40,7 +40,10 @@ class LeadController extends Controller
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    // The hub opens a lead made from a call or text tap by its
+                    // number (Analytics "Make lead" -> lead_contact), stored as digits.
+                    ->orWhere('phone', 'like', "%{$search}%");
             });
         }
 

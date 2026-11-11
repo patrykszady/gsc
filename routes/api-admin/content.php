@@ -35,6 +35,10 @@ Route::put('social-media/automation/{platform}', [SocialMediaController::class, 
 // raw rows.
 Route::get('analytics/events', [AnalyticsController::class, 'events']);
 Route::get('analytics/summary', [AnalyticsController::class, 'summary']);
+// "Make lead" on a call, text or email tap (2026-11-10): the team fills in
+// who reached out and the tap becomes a ContactSubmission, delivered like a
+// form lead — App\Services\AnalyticsEventLeadMaker; the endpoint is the kit's.
+Route::post('analytics/events/{event}/lead', [AnalyticsController::class, 'lead']);
 
 // JS errors (aggregated client_errors — see the public beacon controller,
 // App\Http\Controllers\ClientErrorController, for how these rows are made).

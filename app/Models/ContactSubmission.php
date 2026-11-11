@@ -45,6 +45,7 @@ class ContactSubmission extends Model
         'subject',
         'email_message_id',
         'extracted',
+        'analytics_event_id',
     ];
 
     protected $casts = [
