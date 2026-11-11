@@ -146,8 +146,10 @@ class FaqBankCommandTest extends TestCase
             $this->assertSame([], $store->takenKeys('https://nowhere.test/'));
             $this->assertSame([], array_filter(app(FaqCatalog::class)->items(), fn (array $item): bool => isset($item['url'])), 'the studio\'s feed carries none of gsc\'s bank');
 
-            // Its own sitemap has not been generated: nothing to mine, and
-            // the run forgets nothing of gsc's.
+            // Without a sitemap of its own (another test in this process
+            // may have written one) there is nothing to mine, and the run
+            // forgets nothing of gsc's.
+            @unlink(CrawlFiles::sitemapPath());
             $this->artisan('seo:faq-bank', ['--pause' => 0])
                 ->expectsOutputToContain('The bank holds 0 answers from 0 pages.')
                 ->assertExitCode(0);
