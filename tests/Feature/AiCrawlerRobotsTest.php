@@ -15,12 +15,17 @@ use Tests\TestCase;
  * Google-Extended are let in — the site wants to be known by the AI models
  * people ask, and Google-Extended also decides whether Gemini grounds its
  * answers on the site. Only bulk training scrapers stay out.
+ *
+ * Changed 2026-11-11: CCBot (Common Crawl, the open corpus most models are
+ * trained on) and Applebot-Extended (Apple's opt-out token for Apple
+ * Intelligence, not a crawler) are let in too. The rest of the group stays
+ * out.
  */
 class AiCrawlerRobotsTest extends TestCase
 {
-    private const TRAINING = [ 'Applebot-Extended', 'CCBot', 'Bytespider', 'meta-externalagent', 'cohere-ai'];
+    private const TRAINING = ['Bytespider', 'meta-externalagent', 'FacebookBot', 'cohere-ai', 'cohere-training-data-crawler', 'Diffbot', 'omgili', 'omgilibot', 'Timpibot', 'ImagesiftBot'];
 
-    private const ANSWERING = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Google-Extended', 'OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Googlebot', 'Bingbot', 'Amazonbot'];
+    private const ANSWERING = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Google-Extended', 'CCBot', 'Applebot-Extended', 'OAI-SearchBot', 'ChatGPT-User', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User', 'Googlebot', 'Bingbot', 'Amazonbot'];
 
     /** @return array<string, list<string>> lowercase user-agent => its rules, every group naming it combined */
     private function robotsGroups(string $robots): array
