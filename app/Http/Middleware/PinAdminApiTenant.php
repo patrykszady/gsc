@@ -25,9 +25,12 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class PinAdminApiTenant
 {
+    /** The one tenant this API answers for. */
+    public const SLUG = 'gsc';
+
     public function handle(Request $request, Closure $next): Response
     {
-        Site::setCurrent(Site::query()->where('slug', 'gsc')->firstOrFail());
+        Site::setCurrent(Site::query()->where('slug', self::SLUG)->firstOrFail());
 
         return $next($request);
     }

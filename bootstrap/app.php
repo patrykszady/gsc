@@ -42,6 +42,7 @@ use SsSystems\Platform\Seo\MapPack\Console\MapPackGridCommand;
 use SsSystems\Platform\Seo\PageSpeed\Console\PageSpeedSyncCommand;
 use SsSystems\Platform\Seo\Rankings\Console\ShowRankingsCommand;
 use SsSystems\Platform\Seo\Rankings\Console\TrackRankingsCommand;
+use SsSystems\Platform\Seo\Snapshot\Console\StoreSeoSnapshotCommand;
 use SsSystems\Platform\Seo\Visibility\Console\AiMentionsCommand;
 use SsSystems\Platform\Seo\Visibility\Console\BacklinkGapCommand;
 use SsSystems\Platform\Seo\Visibility\Console\CompetitorBrandTrackCommand;
@@ -99,6 +100,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // AppServiceProvider's FaqBankSource/TextGenerator/FaqBankStore
         // bindings and routes/console.php's per-tenant schedule.
         FaqBankCommand::class,
+        // The stored SEO snapshot (kit 0.26.0, 2026-11-11): seo:snapshot-store
+        // — see App\Providers\AppServiceProvider's SeoSnapshotStore/
+        // SeoSnapshotSource bindings and routes/console.php's schedule.
+        StoreSeoSnapshotCommand::class,
     ])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

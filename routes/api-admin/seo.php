@@ -30,6 +30,8 @@ Route::prefix('seo')->group(function () {
     Route::get('snapshot', [SeoReportController::class, 'snapshot']);
     Route::get('top-rows', [SeoReportController::class, 'topRowsPage']);
     Route::post('snapshot/refresh', [SeoReportController::class, 'refreshSnapshot']);
+    // The platform dashboard card's figures without the snapshot (kit 0.26.0).
+    Route::get('summary', [SeoReportController::class, 'summary']);
 
     // SeoAutopilotPanel: the scored action ledger + learned weights.
     Route::get('autopilot', [SeoAutopilotController::class, 'index']);

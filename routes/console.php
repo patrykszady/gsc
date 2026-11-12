@@ -580,6 +580,20 @@ Schedule::command('seo:reports-refresh --stale --automatic --site=gsc')
     ->onOneServer()
     ->appendOutputTo(storage_path('logs/seo-reports-refresh.log'));
 
+// The stored SEO snapshot (kit 0.26.0, 2026-11-11): GET seo/snapshot hands
+// ss.systems the copy this builds instead of building it while the hub
+// waits (4.7 s at the median, up to 11 s, before), so the SEO screen is at
+// most fifteen minutes old. Pinned to gsc like the line above — the admin
+// API serves no other tenant. seo:gsc-sync runs it too, the moment new
+// Search Console numbers land.
+Schedule::command('tenants:run seo:snapshot-store --site=gsc')
+    ->everyFifteenMinutes()
+    ->name('seo-snapshot-store')
+    ->withoutOverlapping(10)
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/seo-snapshot-store.log'))
+    ->onFailure(fn () => logger()->warning('Scheduled seo:snapshot-store failed'));
+
 // SEO: weekly internal-link audit — orphans + weakly linked pages.
 Schedule::command('seo:internal-link-audit --min=3')
     ->weeklyOn(1, '08:30')

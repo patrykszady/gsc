@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\Api\Admin\V1\SeoReportController;
 use App\Http\Middleware\ResolveAdminSite;
 use App\Http\Middleware\ResolveSite;
 use App\Jobs\RunCitationsBatch;
@@ -175,6 +176,8 @@ use SsSystems\Platform\Seo\Rankings\TrackedQueries;
 use SsSystems\Platform\Seo\SearchConsoleClient;
 use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
+use SsSystems\Platform\Seo\Snapshot\Contracts\SeoSnapshotSource;
+use SsSystems\Platform\Seo\Snapshot\SeoSnapshotStore;
 use SsSystems\Platform\Seo\Visibility\AiMentionStore;
 use SsSystems\Platform\Seo\Visibility\BacklinkProspectStore;
 use SsSystems\Platform\Seo\Visibility\Console\CompetitorBrandTrackCommand;
@@ -432,6 +435,17 @@ class AppServiceProvider extends ServiceProvider
             keyPrefix: Tenancy::cacheKey('gsc.url-inspection'),
             dailyLimitValue: (int) config('services.google.search_console.inspection_daily_quota', 2000),
             perMinuteLimitValue: (int) config('services.google.search_console.inspection_per_minute_quota', 600),
+        ));
+
+        // The stored SEO snapshot (kit 0.26.0, 2026-11-11): seo:snapshot-store
+        // builds it through SeoReportController, and the store's keys carry
+        // the CURRENT tenant's prefix — a factory, for the same reason as
+        // the quota above. Only the gsc tenant's is ever built (the admin API
+        // is pinned to it, App\Http\Middleware\PinAdminApiTenant).
+        $this->app->bind(SeoSnapshotSource::class, SeoReportController::class);
+        $this->app->bind(SeoSnapshotStore::class, fn ($app) => new SeoSnapshotStore(
+            $app->make('cache.store'),
+            Tenancy::cacheKey('admin.seo-snapshot'),
         ));
 
         // Site Pulse (SsSystems\Platform\Pulse, kit 0.10.0) — first-party

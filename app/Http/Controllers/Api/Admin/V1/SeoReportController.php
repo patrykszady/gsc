@@ -34,8 +34,10 @@ use SsSystems\Platform\Reports\Console\ReportRun;
 use SsSystems\Platform\Reports\Jobs\RunArtisanCommandDetached;
 use SsSystems\Platform\Seo\Faq\Bank\FaqBankStore;
 use SsSystems\Platform\Seo\Http\Concerns\BuildsSeoToolBlocks;
+use SsSystems\Platform\Seo\Http\Concerns\ServesStoredSeoSnapshot;
 use SsSystems\Platform\Seo\SearchAppearance;
 use SsSystems\Platform\Seo\SitemapStatus;
+use SsSystems\Platform\Seo\Snapshot\Contracts\SeoSnapshotSource;
 use Throwable;
 
 /**
@@ -53,11 +55,18 @@ use Throwable;
  * Livewire original — some of those commands call external APIs (PageSpeed
  * Search, etc.). Never exercised against the live app in verification; see
  * the phpunit coverage instead.
+ *
+ * The snapshot is stored (kit 0.26.0, 2026-11-11): seo:snapshot-store builds
+ * it for the gsc tenant every 15 minutes and after each Search Console sync,
+ * and GET seo/snapshot hands out that copy with `computed_at` (`?fresh=1`
+ * builds it now) — see the kit's ServesStoredSeoSnapshot. GET seo/summary
+ * answers the platform dashboard card without building it.
  */
-class SeoReportController extends Controller
+class SeoReportController extends Controller implements SeoSnapshotSource
 {
     use BuildsApiResponses;
     use BuildsSeoToolBlocks;
+    use ServesStoredSeoSnapshot;
 
     protected function reports(): array
     {
@@ -179,6 +188,16 @@ class SeoReportController extends Controller
 
     public function snapshot(Request $request): JsonResponse
     {
+        return $this->itemResponse($this->storedSnapshot($request));
+    }
+
+    /**
+     * Every block of the snapshot, built from the tables now.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildSnapshot(Request $request): array
+    {
         $trendDays = $this->normalizeTrendDays((int) $request->integer('trend_days', 14));
         $topDays = $this->normalizeTopDays((int) $request->integer('top_days', 28));
         $topQueriesSort = $request->string('top_queries_sort', 'clicks')->toString();
@@ -203,7 +222,7 @@ class SeoReportController extends Controller
         );
         $seoToolBlocks['dataforseo']['balance'] = Cache::get('seo.dataforseo.balance');
 
-        return $this->itemResponse([
+        return [
             'health' => $this->healthSnapshot(),
             'report_stats' => $this->reportStats($this->files()),
             'diagnostic' => $this->diagnostic(),
@@ -234,7 +253,67 @@ class SeoReportController extends Controller
             // minutes like Dawn's own (shorter than most sections here,
             // which run 15/30 min, per the shared kit's spec).
             'pulse' => $this->pulseSnapshot(),
-        ]);
+        ];
+    }
+
+    /**
+     * What the snapshot's blocks cache for themselves (this tenant's keys):
+     * health, search, the diagnostic, clarity, geo, pulse, sitemaps and the
+     * SEO-tool blocks — so a build that must be fresh reads the tables.
+     */
+    public function forgetSnapshotCaches(Request $request): void
+    {
+        $keys = [
+            Tenancy::cacheKey('admin.seo-reports.health-snapshot'),
+            $this->searchSnapshotCacheKey($this->normalizeTrendDays((int) $request->integer('trend_days', 14))),
+            Tenancy::cacheKey('seo_reports_diagnostic'),
+            Tenancy::cacheKey('seo_reports_clarity_v3_'.$this->normalizeWindowDays((int) $request->integer('clarity_days', 7))),
+            Tenancy::cacheKey('seo_reports_geo_v1'),
+            Tenancy::cacheKey('admin.seo-reports.pulse'),
+            ...array_map(static fn (string $key): string => Tenancy::cacheKey($key), self::seoToolBlockCacheKeys()),
+        ];
+
+        foreach ($keys as $key) {
+            Cache::forget($key);
+        }
+
+        SitemapStatus::forget(SearchConsoleProperty::url());
+    }
+
+    /**
+     * seo/summary's `health`: the newest stored snapshot's block, else the
+     * 15-minute cached one (computed when cold). This site's prior score is
+     * the ledger's entry closest to a week back whatever window is asked —
+     * the same as its snapshot, which reads no `prior_days`.
+     *
+     * @param  array<string, mixed>|null  $stored
+     * @return array{score: ?int, prior_score: ?int, prior_as_of: ?string, pillars: list<array<string, mixed>>}
+     */
+    protected function summaryHealth(Request $request, ?array $stored): array
+    {
+        $health = $stored ?? $this->healthSnapshot();
+
+        return [
+            'score' => isset($health['score']) ? (int) $health['score'] : null,
+            'prior_score' => isset($health['prior_score']) ? (int) $health['prior_score'] : null,
+            'prior_as_of' => $health['prior_as_of'] ?? null,
+            'pillars' => array_values((array) ($health['pillars'] ?? [])),
+        ];
+    }
+
+    /**
+     * seo/summary's `gsc_errors`: whether pages are inspected at all, and
+     * the four tile counts — none of the buckets, rows or week-ago totals.
+     *
+     * @return array{available: bool, totals: array{tracked: int, problem: int, pass: int, not_indexed: int}}
+     */
+    protected function summaryGscErrors(): array
+    {
+        if (! Schema::hasTable('gsc_coverage_states')) {
+            return ['available' => false, 'totals' => ['tracked' => 0, 'problem' => 0, 'pass' => 0, 'not_indexed' => 0]];
+        }
+
+        return ['available' => true, 'totals' => $this->gscErrorTotals()];
     }
 
     public function refreshSnapshot(Request $request): JsonResponse
@@ -272,6 +351,9 @@ class SeoReportController extends Controller
             }
             $cachesCleared = [$healthKey, $searchKey, $pulseKey, 'sitemap-status', ...$seoToolKeys];
 
+            // Built now and stored, rather than the copy from before the
+            // caches above were forgotten (the snapshot is stored, kit 0.26.0).
+            $request->merge(['fresh' => 1]);
             $response = $this->snapshot($request);
             $data = $response->getData(true)['data'];
 
@@ -1100,18 +1182,7 @@ class SeoReportController extends Controller
             ];
         }
 
-        $tracked = (int) GscCoverageState::query()->count();
-
-        $problemQuery = GscCoverageState::query()->where(function ($q) {
-            $q->where('verdict', '!=', 'PASS')
-                ->orWhereNull('verdict')
-                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%forbidden%'])
-                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])
-                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%'])
-                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%']);
-        });
-
-        $problem = (int) (clone $problemQuery)->count();
+        $problemQuery = $this->gscProblemQuery();
 
         $bucketSpecs = [
             'Blocked (robots/forbidden)' => ['%forbidden%', '%blocked by robots.txt%'],
@@ -1157,17 +1228,49 @@ class SeoReportController extends Controller
             ->all();
 
         $latestInspected = GscCoverageState::query()->max('inspected_at');
-        $notIndexed = (int) GscCoverageState::query()->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])->count();
 
         return [
             'available' => true,
-            'totals' => ['tracked' => $tracked, 'problem' => $problem, 'pass' => max(0, $tracked - $problem), 'not_indexed' => $notIndexed],
+            'totals' => $this->gscErrorTotals(),
             // The tiles' ▲/▼: the same totals a week ago, from the inspection history.
             'totals_prev' => $this->coverageTotalsAsOf(now()->subDays(7)),
             'buckets' => $buckets,
             'latest_inspected' => $latestInspected ? Carbon::parse((string) $latestInspected)->diffForHumans() : null,
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * The coverage rows Google has a problem with — not PASS, never
+     * inspected, or a forbidden/not-indexed/duplicate/soft-404 state.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<GscCoverageState>
+     */
+    protected function gscProblemQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return GscCoverageState::query()->where(function ($q) {
+            $q->where('verdict', '!=', 'PASS')
+                ->orWhereNull('verdict')
+                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%forbidden%'])
+                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])
+                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%duplicate%'])
+                ->orWhereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%soft 404%']);
+        });
+    }
+
+    /**
+     * The trouble tiles' four counts — shared by the snapshot's `gsc_errors`
+     * block and seo/summary.
+     *
+     * @return array{tracked: int, problem: int, pass: int, not_indexed: int}
+     */
+    protected function gscErrorTotals(): array
+    {
+        $tracked = (int) GscCoverageState::query()->count();
+        $problem = (int) $this->gscProblemQuery()->count();
+        $notIndexed = (int) GscCoverageState::query()->whereRaw('LOWER(COALESCE(coverage_state, "")) like ?', ['%not indexed%'])->count();
+
+        return ['tracked' => $tracked, 'problem' => $problem, 'pass' => max(0, $tracked - $problem), 'not_indexed' => $notIndexed];
     }
 
     /**

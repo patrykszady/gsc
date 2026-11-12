@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Middleware\PinAdminApiTenant;
+use App\Models\Site;
 use App\Services\GoogleSearchConsoleService;
 use App\Support\Seo\SearchConsoleWriter;
 use Illuminate\Console\Command;
@@ -87,6 +89,13 @@ class SyncGoogleSearchConsole extends Command
         $this->info("Done. Inserted={$summary['inserted']} Updated={$summary['updated']}{$dryNote}");
         $this->info("Daily totals upserted: {$summary['daily_totals']} day(s){$dryNote}");
         $this->info("Search-appearance rows: {$summary['appearance_rows']}{$dryNote}");
+
+        // New numbers landed: the admin API's tenant rebuilds its stored SEO
+        // snapshot now rather than at the next quarter hour (kit 0.26.0).
+        // Its own failure is its own log line, never this sync's.
+        if ($summary['status'] !== 'dry-run' && Site::current()->slug === PinAdminApiTenant::SLUG) {
+            $this->call('seo:snapshot-store', ['--fresh' => true]);
+        }
 
         return self::SUCCESS;
     }

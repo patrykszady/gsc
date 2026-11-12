@@ -5,11 +5,15 @@ namespace Tests\Feature\Console;
 use App\Models\GscDailyTotal;
 use App\Models\GscQueryMetric;
 use App\Models\OAuthToken;
+use App\Models\Site;
+use App\Support\Tenancy;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use SsSystems\Platform\Seo\SearchAppearance;
 use SsSystems\Platform\Seo\SearchConsoleSyncRule;
+use SsSystems\Platform\Seo\Snapshot\SeoSnapshotStore;
 use Tests\TestCase;
 
 /**
@@ -237,5 +241,46 @@ class SyncGoogleSearchConsoleTest extends TestCase
         $sync = $this->syncMetadata();
         $this->assertSame('error', $sync['status']);
         $this->assertNotNull($sync['error']);
+    }
+
+    /**
+     * New numbers landed, so the admin API's tenant stores its SEO snapshot
+     * (kit 0.26.0) without waiting for the quarter-hour schedule.
+     */
+    public function test_a_finished_sync_stores_the_admin_apis_seo_snapshot(): void
+    {
+        $this->connect();
+        $this->fakeAnalytics();
+
+        $this->artisan('seo:gsc-sync', ['--days' => 1, '--lag-days' => 1])
+            ->expectsOutputToContain('Stored the SEO snapshot for no query in')
+            ->assertSuccessful();
+
+        $this->assertNotNull(app(SeoSnapshotStore::class)->get([]));
+    }
+
+    public function test_a_dry_run_or_another_tenants_sync_leaves_the_stored_snapshot_alone(): void
+    {
+        $this->connect();
+        $this->fakeAnalytics();
+
+        $this->artisan('seo:gsc-sync', ['--days' => 1, '--lag-days' => 1, '--dry-run' => true])->assertSuccessful();
+        $this->assertNull(app(SeoSnapshotStore::class)->get([]));
+
+        $other = Site::query()->where('slug', 'jpeterson')->firstOrFail();
+        Tenancy::for($other, function (): void {
+            OAuthToken::create([
+                'provider' => 'google_search_console',
+                'refresh_token' => 'refresh-token',
+                'access_token' => 'access-token',
+                'access_token_expires_at' => now()->addHour(),
+                'scopes' => ['https://www.googleapis.com/auth/webmasters'],
+            ]);
+
+            $this->assertSame(0, Artisan::call('seo:gsc-sync', ['--days' => 1, '--lag-days' => 1]));
+            $this->assertNull(app(SeoSnapshotStore::class)->get([]), "jpeterson's own tenant row is never the admin API's");
+        });
+
+        $this->assertNull(app(SeoSnapshotStore::class)->get([]));
     }
 }
