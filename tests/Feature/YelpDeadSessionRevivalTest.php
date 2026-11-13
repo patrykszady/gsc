@@ -6,6 +6,7 @@ use App\Exceptions\YelpSessionExpiredException;
 use App\Jobs\YelpAutoLogin;
 use App\Mail\YelpSessionExpired;
 use App\Services\YelpBusinessService;
+use App\Services\YelpRemoteLoginService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
@@ -301,6 +302,59 @@ class YelpDeadSessionRevivalTest extends TestCase
 
         $this->assertFileExists($this->jar());
         $this->assertTrue(Cache::has('yelp.session_dead'));
+    }
+
+    /**
+     * Which jar the operator's sign-in window would load, if any.
+     */
+    private function jarTheSignInWindowLoads(): ?string
+    {
+        $window = new class extends YelpRemoteLoginService
+        {
+            public function jarToLoad(): ?string
+            {
+                return $this->cookieJarWorthInjecting();
+            }
+        };
+
+        return $window->jarToLoad();
+    }
+
+    public function test_the_sign_in_window_leaves_a_dead_sessions_jar_out_so_it_goes_through_the_proxy(): void
+    {
+        $this->markDead();
+        $this->writeJarFromBeforeTheSignIn();
+
+        $this->assertNull($this->jarTheSignInWindowLoads(), 'with the jar loaded the window skipped the proxy and Yelp answered the server with a 403');
+    }
+
+    public function test_the_sign_in_window_leaves_the_jar_out_while_the_session_has_been_dead_for_days(): void
+    {
+        Cache::forever('yelp.session_dead_since', now()->subDays(40)->toIso8601String());
+        $this->writeJarFromBeforeTheSignIn();
+
+        $this->assertNull($this->jarTheSignInWindowLoads());
+    }
+
+    public function test_the_sign_in_window_leaves_the_jar_out_after_the_last_check_found_it_signed_out(): void
+    {
+        Cache::put('yelp.last_auth', false, now()->addHours(6));
+        $this->writeJarFromBeforeTheSignIn();
+
+        $this->assertNull($this->jarTheSignInWindowLoads());
+    }
+
+    public function test_the_sign_in_window_still_loads_a_live_sessions_jar(): void
+    {
+        Cache::put('yelp.last_auth', true, now()->addHours(6));
+        $this->writeJarFromBeforeTheSignIn();
+
+        $this->assertSame($this->jar(), $this->jarTheSignInWindowLoads());
+    }
+
+    public function test_the_sign_in_window_loads_no_jar_when_there_is_none(): void
+    {
+        $this->assertNull($this->jarTheSignInWindowLoads());
     }
 
     // ---- The queued job and the command ------------------------------------

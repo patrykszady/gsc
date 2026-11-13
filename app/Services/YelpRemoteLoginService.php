@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\YelpCookieJar;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -247,14 +249,14 @@ class YelpRemoteLoginService
             // cookies back over the ones the operator just earned.
             '--export-cookies=' . escapeshellarg(\App\Support\YelpCookieJar::path()),
         ];
-        // Cookie injection: when a cookies file is present we skip the
-        // proxy entirely. Cookies are bound by Yelp to the IP that issued
+        // Cookie injection: when a live session's cookies are on file we skip
+        // the proxy entirely. Cookies are bound by Yelp to the IP that issued
         // them; pairing them with a fresh proxy IP raises DataDome's
-        // suspicion. Connecting direct from this host (where the operator
-        // also runs their personal browser) keeps the IP fingerprint
-        // consistent with the cookies.
-        $cookiesFile = \App\Support\YelpCookieJar::path();
-        $hasCookies = is_file($cookiesFile) && filesize($cookiesFile) > 0;
+        // suspicion. A dead session's cookies are another matter (see
+        // cookieJarWorthInjecting()): they are left out and the window goes
+        // through the proxy.
+        $cookiesFile = $this->cookieJarWorthInjecting();
+        $hasCookies = $cookiesFile !== null;
         if ($hasCookies) {
             $cmdParts[] = '--cookies-file=' . escapeshellarg($cookiesFile);
         }
@@ -644,6 +646,36 @@ class YelpRemoteLoginService
      *   IPRoyal:    user_session-OLD_lifetime-30m  →  user_session-NEW_lifetime-30m
      *   Bright Data brd-customer-X-zone-Y-session-OLD → -session-NEW (or appended)
      */
+    /**
+     * The cookie jar to load into the sign-in window, or null.
+     *
+     * Not when the session is known to be dead: the jar then holds that dead
+     * session's cookies, and loading them also sent the window straight from
+     * this server instead of through the proxy — where DataDome answers
+     * biz.yelp.com/login with a 403, so the window opened on a blank error
+     * page and nobody could sign in (2026-11-12, the jar dated from October).
+     */
+    protected function cookieJarWorthInjecting(): ?string
+    {
+        $cookiesFile = YelpCookieJar::path();
+
+        if (! is_file($cookiesFile) || filesize($cookiesFile) === 0) {
+            return null;
+        }
+
+        $knownDead = Cache::has('yelp.session_dead')
+            || Cache::has('yelp.session_dead_since')
+            || Cache::get('yelp.last_auth') === false;
+
+        if ($knownDead) {
+            Log::channel('yelp')->info('Yelp remote login: the stored cookies belong to a dead session; not loading them, going through the proxy');
+
+            return null;
+        }
+
+        return $cookiesFile;
+    }
+
     protected function forceUniqueProxySession(string $proxyUrl, string $tag = 'GSC'): string
     {
         $token = $tag . time() . random_int(100, 999);
