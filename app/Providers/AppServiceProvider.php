@@ -67,6 +67,7 @@ use App\Support\Seo\Reports\LaravelSimpleCache;
 use App\Support\Seo\SearchConsoleWriter as SiteSearchConsoleWriter;
 use App\Support\SEO\SEOBuilder;
 use App\Support\Seo\SeoReportSink;
+use App\Support\Seo\TenantHeartbeatStore;
 use App\Support\Seo\TenantScopedReportStorage;
 use App\Support\Social\EloquentRankedTowns;
 use App\Support\Social\SeoIntelTrendsIntel;
@@ -178,6 +179,8 @@ use SsSystems\Platform\Seo\SearchConsoleSyncClient;
 use SsSystems\Platform\Seo\SearchConsoleWriter as SearchConsoleWriterContract;
 use SsSystems\Platform\Seo\Snapshot\Contracts\SeoSnapshotSource;
 use SsSystems\Platform\Seo\Snapshot\SeoSnapshotStore;
+use SsSystems\Platform\Seo\Status\Contracts\HeartbeatStore;
+use SsSystems\Platform\Seo\Status\DataThrough;
 use SsSystems\Platform\Seo\Visibility\AiMentionStore;
 use SsSystems\Platform\Seo\Visibility\BacklinkProspectStore;
 use SsSystems\Platform\Seo\Visibility\Console\CompetitorBrandTrackCommand;
@@ -777,6 +780,23 @@ class AppServiceProvider extends ServiceProvider
                 new AiOptimizationSource(...$base),
             ]);
         });
+
+        // SEO data status (kit 0.28.0, 2026-11-12): every collector leaves a
+        // heartbeat and GET seo/status reads them back. The other five sites
+        // need no code for it; this one is multi-tenant and had no
+        // seo_sync_runs table, so it says where the heartbeats go
+        // (TenantHeartbeatStore — the current tenant's row, and the
+        // scheduler's beat once for all of them) and scopes the "data
+        // through" dates, one MAX(date) per collector table, with the same
+        // column and closure as every store above. Unbound, that reader
+        // would answer with the newest date of whichever tenant synced last.
+        // The other half is in App\Console\Commands\TenantsRun, which
+        // reports the commands it runs: `$this->call()` raises no console
+        // event for the kit's listener to hear.
+        $this->app->singleton(HeartbeatStore::class, TenantHeartbeatStore::class);
+        $this->app->singleton(DataThrough::class, fn () => new DataThrough(
+            DB::connection(), tenantColumn: 'site_id', tenantId: $tenant,
+        ));
     }
 
     /**

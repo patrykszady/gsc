@@ -4,8 +4,11 @@ namespace Tests\Feature\Seo;
 
 use App\Models\BingCrawlStat;
 use App\Models\BingUrlInfo;
+use App\Models\Site;
 use App\Support\Seo\BingCoverageWriter;
+use App\Support\Tenancy;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use SsSystems\Platform\Seo\Bing\Contracts\CountsSitemapUrls;
 use Tests\TestCase;
 
 /**
@@ -150,5 +153,32 @@ class BingCoverageWriterTest extends TestCase
 
         // Already-forgotten rows are not re-counted on a second run that still omits them.
         $this->assertSame(0, $this->writer()->forgetUrlsNotIn([$kept]));
+    }
+
+    /**
+     * The kit's optional CountsSitemapUrls (kit 0.28.0): the figure
+     * SitemapShrinkGuard compares a sitemap list with — see
+     * BingCoverageCommandTest for the guard itself.
+     */
+    public function test_sitemap_url_count_is_this_tenants_urls_still_marked_as_in_the_sitemap(): void
+    {
+        $this->assertInstanceOf(CountsSitemapUrls::class, $this->writer());
+        $this->assertSame(0, $this->writer()->sitemapUrlCount());
+
+        foreach (['a' => true, 'b' => true, 'left' => false] as $path => $inSitemap) {
+            $url = 'https://gs.construction/'.$path;
+            BingUrlInfo::create(['url' => $url, 'url_hash' => sha1($url), 'in_sitemap' => $inSitemap]);
+        }
+
+        $other = Site::query()->where('slug', 'jpeterson')->firstOrFail();
+        Tenancy::for($other, function (): void {
+            foreach (['a', 'b', 'c', 'd'] as $path) {
+                $url = 'https://jpeterson-design.com/'.$path;
+                BingUrlInfo::create(['url' => $url, 'url_hash' => sha1($url), 'in_sitemap' => true]);
+            }
+        });
+
+        $this->assertSame(2, $this->writer()->sitemapUrlCount(), "neither the URL that left nor the other tenant's four");
+        $this->assertSame(4, Tenancy::for($other, fn (): int => $this->writer()->sitemapUrlCount()));
     }
 }

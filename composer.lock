@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8e6781000b37bfaf69d11cfb3515d69d",
+    "content-hash": "7946d79c8cdf94dcaf8e7ec7f05ef80e",
     "packages": [
         {
             "name": "brick/math",
@@ -5516,11 +5516,11 @@
         },
         {
             "name": "ss-systems/platform-kit",
-            "version": "0.27.0",
+            "version": "0.28.0",
             "dist": {
                 "type": "zip",
-                "url": "packages/ss-systems-platform-kit-0.27.0.zip",
-                "shasum": "55fe1dec52742f5cbb5f86c8c11f6833f372de8c"
+                "url": "packages/ss-systems-platform-kit-0.28.0.zip",
+                "shasum": "c65b5044b98693cb765a05c9bfac5532740d800d"
             },
             "require": {
                 "illuminate/bus": "^12.0|^13.0",
@@ -5541,6 +5541,13 @@
                 "phpunit/phpunit": "^11.0"
             },
             "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "SsSystems\\Platform\\Seo\\Status\\SeoStatusServiceProvider"
+                    ]
+                }
+            },
             "autoload": {
                 "psr-4": {
                     "SsSystems\\Platform\\": "src/"

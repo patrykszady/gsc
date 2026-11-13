@@ -137,6 +137,35 @@ class BingCoverageCommandTest extends TestCase
         $this->assertFalse(BingUrlInfo::where('url', 'https://gs.construction/retired')->first()->in_sitemap);
     }
 
+    /**
+     * The kit's SitemapShrinkGuard (kit 0.28.0) with this site's writer
+     * behind it: the writer can count what it holds
+     * (BingCoverageWriter::sitemapUrlCount()), so a sitemap that comes
+     * back with under half of the stored URLs is taken for a broken
+     * sitemap source — nothing is marked as having left and the run fails
+     * — until `--accept-shrink` says the site really did shrink.
+     */
+    public function test_a_sitemap_that_lost_most_of_its_urls_marks_nothing_until_the_shrink_is_accepted(): void
+    {
+        $this->bindFakeClient([]);
+        $stored = array_map(fn (int $n): string => "https://gs.construction/page-{$n}", range(1, 12));
+
+        foreach ($stored as $url) {
+            BingUrlInfo::create(['url' => $url, 'url_hash' => sha1($url), 'in_sitemap' => true, 'inspected_at' => now()]);
+        }
+
+        $this->writeSitemap(array_slice($stored, 0, 2));
+
+        $this->artisan('seo:bing-coverage')->assertExitCode(1);
+
+        $this->assertSame(12, BingUrlInfo::where('in_sitemap', true)->count(), 'a list of 2 against 12 stored must mark nothing');
+
+        $this->artisan('seo:bing-coverage', ['--accept-shrink' => true])->assertExitCode(0);
+
+        $this->assertSame(2, BingUrlInfo::where('in_sitemap', true)->count());
+        $this->assertSame(12, BingUrlInfo::count(), 'marked, never deleted');
+    }
+
     public function test_without_a_configured_client_it_skips_plainly_and_writes_nothing(): void
     {
         $this->writeSitemap(['https://gs.construction/a']);

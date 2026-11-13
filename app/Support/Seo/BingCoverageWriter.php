@@ -5,14 +5,20 @@ namespace App\Support\Seo;
 use App\Models\BingCrawlStat;
 use App\Models\BingUrlInfo;
 use SsSystems\Platform\Seo\Bing\BingCoverageSync;
+use SsSystems\Platform\Seo\Bing\Contracts\CountsSitemapUrls;
 
 /**
  * This site's half of the kit's SsSystems\Platform\Seo\Bing\Contracts\
  * BingCoverageWriter — where BingCoverageSync::run()'s rows land, next to
  * the existing BingWriter. Both models carry BelongsToSite, so a row is
  * the current tenant's without anything said here.
+ *
+ * Also the kit's optional CountsSitemapUrls (kit 0.28.0), which is what
+ * switches on the second half of SitemapShrinkGuard for this site: a
+ * sitemap list under half of what is stored is taken for a broken sitemap
+ * source and nothing is marked as having left.
  */
-final class BingCoverageWriter implements \SsSystems\Platform\Seo\Bing\Contracts\BingCoverageWriter
+final class BingCoverageWriter implements \SsSystems\Platform\Seo\Bing\Contracts\BingCoverageWriter, CountsSitemapUrls
 {
     /**
      * whereDate(), never updateOrCreate(['date' => $date, …]) — same reason
@@ -93,5 +99,15 @@ final class BingCoverageWriter implements \SsSystems\Platform\Seo\Bing\Contracts
             ->where('in_sitemap', true)
             ->whereNotIn('url_hash', $hashes)
             ->update(['in_sitemap' => false]);
+    }
+
+    /**
+     * The same rows forgetUrlsNotIn() chooses from — this tenant's, still
+     * marked as in the sitemap — so the guard compares the list it is
+     * handed with exactly what that method would otherwise go through.
+     */
+    public function sitemapUrlCount(): int
+    {
+        return BingUrlInfo::query()->where('in_sitemap', true)->count();
     }
 }

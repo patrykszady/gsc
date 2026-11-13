@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Site;
 use App\Support\Tenancy;
 use Illuminate\Console\Command;
+use SsSystems\Platform\Seo\Status\CommandHeartbeat;
 use Throwable;
 
 class TenantsRun extends Command
@@ -17,6 +18,17 @@ class TenantsRun extends Command
 
     protected $description = 'Run an artisan command once per tenant, with that site bound as current';
 
+    /**
+     * Each tenant's run goes through the kit's CommandHeartbeat::around()
+     * (kit 0.28.0, 2026-11-12), inside Tenancy::for() so the heartbeat is
+     * that tenant's: a command started with `$this->call()` raises no
+     * CommandStarting/CommandFinished event, so the kit's listener never
+     * hears of it and `seo:snapshot-store`, `seo:gsc-sync`, `seo:faq-bank`
+     * and the rest would leave nothing for `GET seo/status` to read. A
+     * failing exit and a thrown exception are recorded as failed runs, the
+     * exception thrown on to the handling below; a command no data source
+     * knows passes straight through.
+     */
     public function handle(): int
     {
         $keys = (array) $this->option('site');
@@ -49,7 +61,10 @@ class TenantsRun extends Command
             $this->line("<fg=cyan>┌ {$site->slug}</> <fg=gray>({$site->primary_host})</> → {$name}");
 
             try {
-                $code = Tenancy::for($site, fn () => $this->call($name, $args));
+                $code = Tenancy::for($site, fn () => CommandHeartbeat::around(
+                    (string) $this->argument('cmd'),
+                    fn (): int => $this->call($name, $args),
+                ));
 
                 if ($code !== self::SUCCESS) {
                     $failed[] = "{$site->slug} (exit {$code})";

@@ -148,9 +148,12 @@ class SeoSnapshotStoreTest extends TestCase
 
         $data = $this->getJson('/api/admin/v1/seo/summary?prior_days=28', $this->adminApiHeaders())->assertOk()->json('data');
 
-        $this->assertSame(['health', 'gsc_errors', 'computed_at'], array_keys($data));
+        // `status` since kit 0.28.0: how the data collection itself is doing
+        // — see SeoStatusTest for what it counts.
+        $this->assertSame(['health', 'gsc_errors', 'computed_at', 'status'], array_keys($data));
         $this->assertSame(['available' => true, 'totals' => ['tracked' => 2, 'problem' => 1, 'pass' => 1, 'not_indexed' => 1]], $data['gsc_errors']);
         $this->assertSame(['score', 'prior_score', 'prior_as_of', 'pillars'], array_keys($data['health']));
+        $this->assertSame(['worst', 'failing', 'late', 'sources', 'scheduler'], array_keys($data['status']));
         $this->assertNull($this->store()->get([]), 'the summary never builds or stores the snapshot');
     }
 
