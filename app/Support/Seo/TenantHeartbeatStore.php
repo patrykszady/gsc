@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Schema;
 use SsSystems\Platform\Seo\Status\Contracts\HeartbeatStore;
+use SsSystems\Platform\Seo\Status\Contracts\ReadsAllHeartbeats;
 use SsSystems\Platform\Seo\Status\SchedulerBeat;
 use Throwable;
 
@@ -38,8 +39,12 @@ use Throwable;
  *
  * As the contract asks, a missing table is not an error: reads answer null
  * and writes do nothing until the migration has run.
+ *
+ * It also reads everything at once (the kit's ReadsAllHeartbeats): without
+ * that `GET seo/status` and the `status` block of `seo/summary` asked for
+ * each source's key in turn, nineteen single-row reads per answer.
  */
-final class TenantHeartbeatStore implements HeartbeatStore
+final class TenantHeartbeatStore implements HeartbeatStore, ReadsAllHeartbeats
 {
     /** Keys kept once for the whole app instead of once per tenant. */
     private const SHARED_KEYS = [SchedulerBeat::KEY];
@@ -55,6 +60,45 @@ final class TenantHeartbeatStore implements HeartbeatStore
         $summary = $this->rows($key)->first()?->summary;
 
         return is_array($summary) ? $summary : null;
+    }
+
+    /**
+     * Every summary the current tenant's status is made of, in one query:
+     * its own rows and the shared ones (the scheduler's beat) — the same
+     * rows read() would find key by key, another tenant's never among them.
+     * Read oldest first so that, of a doubled shared row, the newest is the
+     * one kept, as in read().
+     */
+    public function all(): array
+    {
+        if (! $this->ready()) {
+            return [];
+        }
+
+        $tenant = Tenancy::currentId();
+
+        $runs = SeoSyncRun::withoutSiteScope()
+            ->where(function (Builder $rows) use ($tenant): void {
+                $rows->where(function (Builder $own) use ($tenant): void {
+                    ($tenant === null ? $own->whereNull('site_id') : $own->where('site_id', $tenant))
+                        ->whereNotIn('sync_key', self::SHARED_KEYS);
+                })->orWhere(function (Builder $shared): void {
+                    $shared->whereNull('site_id')->whereIn('sync_key', self::SHARED_KEYS);
+                });
+            })
+            ->orderBy('updated_at')
+            ->orderBy('id')
+            ->get(['id', 'site_id', 'sync_key', 'summary']);
+
+        $summaries = [];
+
+        foreach ($runs as $run) {
+            if (is_array($run->summary)) {
+                $summaries[(string) $run->sync_key] = $run->summary;
+            }
+        }
+
+        return $summaries;
     }
 
     public function write(string $key, array $summary): void

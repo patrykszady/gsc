@@ -207,6 +207,61 @@ class TenantHeartbeatStoreTest extends TestCase
      * must then land on the row the first one made — simulated by slipping
      * the rival's row in just before this store's own INSERT runs.
      */
+    public function test_everything_a_tenants_status_reads_comes_back_in_one_query_and_never_another_tenants(): void
+    {
+        Carbon::setTestNow('2026-11-12 09:00:00');
+        $gsc = $this->site('gsc');
+        $jpeterson = $this->site('jpeterson');
+
+        Tenancy::for($gsc, function (): void {
+            Heartbeat::succeeded('bing', ['fetched' => 412]);
+            Heartbeat::failed('clarity', 'HTTP 429');
+        });
+        Tenancy::for($jpeterson, fn () => Heartbeat::failed('bing', 'InvalidApiKey'));
+        app()->forgetInstance('site.current');
+        $this->store()->write(SchedulerBeat::KEY, ['last_beat_at' => '2026-11-12T09:00:00+00:00']);
+
+        $this->assertInstanceOf(\SsSystems\Platform\Seo\Status\Contracts\ReadsAllHeartbeats::class, $this->store());
+
+        $mine = Tenancy::for($gsc, fn (): array => $this->store()->all());
+        $theirs = Tenancy::for($jpeterson, fn (): array => $this->store()->all());
+
+        $this->assertEqualsCanonicalizing(['bing', 'clarity', SchedulerBeat::KEY], array_keys($mine));
+        $this->assertSame('ok', $mine['bing']['last_status']);
+        $this->assertEqualsCanonicalizing(['bing', SchedulerBeat::KEY], array_keys($theirs));
+        $this->assertSame('InvalidApiKey', $theirs['bing']['last_error'], 'each tenant gets its own row for the same source');
+        $this->assertSame($mine[SchedulerBeat::KEY], $theirs[SchedulerBeat::KEY], 'the scheduler\'s beat is the one shared row');
+
+        // The same rows read() finds key by key.
+        foreach (['bing', 'clarity', SchedulerBeat::KEY, 'pagespeed'] as $key) {
+            $this->assertSame(Tenancy::for($gsc, fn () => $this->store()->read($key)), $mine[$key] ?? null, $key);
+        }
+
+        // And the status feed asks the store once, not once per source.
+        DB::enableQueryLog();
+        Tenancy::for($gsc, fn (): array => SeoStatus::payload());
+        $reads = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'seo_sync_runs') && str_starts_with(ltrim($query['query']), 'select'));
+        DB::disableQueryLog();
+
+        $this->assertCount(1, $reads, 'one read of seo_sync_runs for the whole status');
+    }
+
+    public function test_of_a_doubled_shared_row_the_newest_is_the_one_read_at_once_too(): void
+    {
+        app()->forgetInstance('site.current');
+        foreach (['2026-11-12 09:00:00' => '2026-11-12T09:00:00+00:00', '2026-11-12 09:15:00' => '2026-11-12T09:15:00+00:00'] as $at => $beat) {
+            $run = new SeoSyncRun(['sync_key' => SchedulerBeat::KEY, 'summary' => ['last_beat_at' => $beat]]);
+            $run->site_id = null;
+            $run->created_at = $run->updated_at = Carbon::parse($at);
+            $run->saveQuietly();
+        }
+
+        $all = Tenancy::for($this->site('gsc'), fn (): array => $this->store()->all());
+
+        $this->assertSame('2026-11-12T09:15:00+00:00', $all[SchedulerBeat::KEY]['last_beat_at']);
+        $this->assertSame($this->store()->read(SchedulerBeat::KEY), $all[SchedulerBeat::KEY]);
+    }
+
     public function test_losing_the_race_for_a_tenants_first_row_ends_on_the_winners_row(): void
     {
         $gsc = $this->site('gsc');

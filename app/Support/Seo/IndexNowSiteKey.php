@@ -5,6 +5,7 @@ namespace App\Support\Seo;
 use App\Models\PlatformSetting;
 use App\Models\Site;
 use SsSystems\Platform\Seo\IndexNow\Contracts\IndexNowKey;
+use SsSystems\Platform\Seo\IndexNow\Contracts\PeeksIndexNowKey;
 
 /**
  * This site's IndexNow key and key file — bound to the kit's IndexNowKey
@@ -29,11 +30,30 @@ use SsSystems\Platform\Seo\IndexNow\Contracts\IndexNowKey;
  * verify the submitting host, so another tenant's key file must resolve on
  * ITS OWN host.
  */
-final class IndexNowSiteKey implements IndexNowKey
+final class IndexNowSiteKey implements IndexNowKey, PeeksIndexNowKey
 {
     public const SETTING_KEY = 'seo.indexnow.key';
 
     public function key(): ?string
+    {
+        $existing = $this->existingKey();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $generated = bin2hex(random_bytes(16));
+        PlatformSetting::put(self::SETTING_KEY, $generated);
+
+        return $generated;
+    }
+
+    /**
+     * The current tenant's key as it stands — the operator's, else the
+     * stored one — or null when none has been made yet. Reads only: this is
+     * what `GET seo/status` asks (kit PeeksIndexNowKey), so that finding
+     * out whether IndexNow is set up for a tenant never sets it up.
+     */
+    public function existingKey(): ?string
     {
         $configured = trim((string) config('services.indexnow.key', ''));
         if ($configured !== '') {
@@ -41,14 +61,8 @@ final class IndexNowSiteKey implements IndexNowKey
         }
 
         $stored = PlatformSetting::get(self::SETTING_KEY);
-        if (is_string($stored) && trim($stored) !== '') {
-            return trim($stored);
-        }
 
-        $generated = bin2hex(random_bytes(16));
-        PlatformSetting::put(self::SETTING_KEY, $generated);
-
-        return $generated;
+        return is_string($stored) && trim($stored) !== '' ? trim($stored) : null;
     }
 
     public function keyLocation(): string

@@ -112,6 +112,32 @@ class SeoStatusTest extends TestCase
         $this->assertSame('fresh', $this->source($theirs, 'reports')['state']);
     }
 
+    public function test_reading_the_status_never_makes_an_indexnow_key_for_a_tenant_that_has_none(): void
+    {
+        config(['services.indexnow.key' => null]);
+        $jpeterson = $this->site('jpeterson');
+        $keys = fn (): int => \App\Models\PlatformSetting::withoutGlobalScopes()->where('key', \App\Support\Seo\IndexNowSiteKey::SETTING_KEY)->count();
+        $this->assertSame(0, $keys(), 'no tenant has a key yet');
+
+        // Asked over HTTP as ss.systems asks, for the status and for the summary block, and for the other tenant.
+        $gsc = $this->gscStatus();
+        $this->getJson('/api/admin/v1/seo/summary', $this->adminApiHeaders())->assertOk();
+        $theirs = $this->statusFor($jpeterson);
+
+        $this->assertSame(0, $keys(), 'finding out whether IndexNow is set up must not set it up');
+        $this->assertSame('not_connected', $this->source($gsc, 'indexnow')['state']);
+        $this->assertSame('not_connected', $this->source($theirs, 'indexnow')['state']);
+
+        // The collector asking is what makes it — for that tenant alone.
+        $made = Tenancy::for($jpeterson, fn (): ?string => app(\SsSystems\Platform\Seo\IndexNow\Contracts\IndexNowKey::class)->key());
+
+        $this->assertSame(1, $keys());
+        $this->assertSame($made, Tenancy::for($jpeterson, fn (): ?string => app(\App\Support\Seo\IndexNowSiteKey::class)->existingKey()));
+        $this->assertTrue($this->source($this->statusFor($jpeterson), 'indexnow')['connected']);
+        $this->assertSame('not_connected', $this->source($this->gscStatus(), 'indexnow')['state'], 'the other tenant still has none');
+        $this->assertSame(1, $keys());
+    }
+
     public function test_the_scheduler_beat_is_reported_to_every_tenant(): void
     {
         Carbon::setTestNow('2026-11-12 09:15:00');
