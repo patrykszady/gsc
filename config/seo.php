@@ -15,6 +15,17 @@ return [
     */
     'crawl_files_root' => env('SEO_CRAWL_FILES_ROOT'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Where the Search Console alerts are mailed
+    |--------------------------------------------------------------------------
+    | routes/console.php mails the output of seo:gsc-sitemap-status and
+    | seo:gsc-critical-health to this address when either fails. Empty = no
+    | mail. It lives here because the deploy caches config: an env() call
+    | in the schedule file answers its default in production.
+    */
+    'alert_email' => env('SEO_ALERT_EMAIL'),
+
     /**
      * The SEO model. You can use this setting to override the model used by the package.
      * Make sure to always extend the old model, so that you'll not lose functionality during upgrades.

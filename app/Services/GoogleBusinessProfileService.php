@@ -11,11 +11,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
 use SsSystems\Platform\Google\BusinessProfile\Client;
 use SsSystems\Platform\Google\BusinessProfile\Contracts\ListingStore;
+use SsSystems\Platform\Google\BusinessProfile\Failure;
 use SsSystems\Platform\Google\Contracts\TokenStore;
 use SsSystems\Platform\Google\OAuthClient;
 use SsSystems\Platform\Media\GooglePhotoCopy;
@@ -52,6 +54,16 @@ use SsSystems\Platform\Media\GooglePhotoCopy;
  */
 class GoogleBusinessProfileService extends Client
 {
+    /** How many times in all withTransientRetry() makes a call that keeps failing for a passing reason. */
+    public const TRANSIENT_ATTEMPTS = 3;
+
+    /**
+     * Seconds waited before the second and before the third try.
+     *
+     * @var list<int>
+     */
+    protected const TRANSIENT_BACKOFF_SECONDS = [2, 6];
+
     public function __construct(
         OAuthClient $oauth,
         TokenStore $tokens,
@@ -167,12 +179,15 @@ class GoogleBusinessProfileService extends Client
     public function uploadProjectImage(ProjectImage $image): ?array
     {
         if (! $this->isConfigured()) {
+            $this->lastError = ['message' => 'GBP not configured', 'reason' => Failure::NO_GRANT, 'description' => 'Google Business Profile is not connected on this site.'];
+
             return null;
         }
 
         $imageUrl = $this->getPublicImageUrl($image);
         if (! $imageUrl) {
             Log::channel('gbp')->warning('GBP: Image URL not available', ['image_id' => $image->id]);
+            $this->lastError = ['message' => 'Image URL not available', 'reason' => Failure::ERROR, 'description' => 'This site has no file to hand Google for that photo.'];
 
             return null;
         }
@@ -314,7 +329,14 @@ class GoogleBusinessProfileService extends Client
     }
 
     /**
-     * List ALL media items on this site's own listing (auto-paginating).
+     * List ALL media items on this site's own listing (auto-paginating),
+     * each page asked again after a passing Google failure — its callers are
+     * console commands, which can afford the wait.
+     *
+     * It stops at the first page Google would not give even then and returns
+     * what it read so far: getLastError() is null after a whole list and set
+     * after a cut-short one, so check it before treating the list as all of
+     * Google's media.
      */
     public function listAllMedia(): array
     {
@@ -322,7 +344,7 @@ class GoogleBusinessProfileService extends Client
         $pageToken = null;
 
         do {
-            $result = $this->listMedia($pageToken);
+            $result = $this->withTransientRetry(fn (): ?array => $this->listMedia($pageToken));
             if ($result === null) {
                 break;
             }
@@ -1057,6 +1079,80 @@ class GoogleBusinessProfileService extends Client
         Log::channel('gbp')->info('GBP: Updated service items', ['count' => count($serviceItems)]);
 
         return $data;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Passing failures */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * Run one of this service's Google calls, and run it again when it
+     * failed for a passing reason — Google answered 5xx ("503 UNAVAILABLE"
+     * on List media, production 2026-11), did not answer, or is rate
+     * limiting — waiting 2 seconds and then 6 between the tries. The kit's
+     * client makes every call exactly once, so one bad minute at Google was
+     * a failed run here.
+     *
+     * $call is a closure over a method that returns null or false on failure
+     * with getLastError() set (every wrapper in this class). Anything else
+     * — a refused grant, a missing scope, a rejected photo — is returned at
+     * once: asking again cannot change it.
+     *
+     * Pass $idempotent false for a call that creates something (a photo
+     * upload). Google may have carried out a request it then answered 500 or
+     * 504 to, or never answered, and sending it again would put the same
+     * photo on the listing twice; only the two answers that mean "not taken"
+     * (503, 429) are asked again then.
+     *
+     * For console commands and queued jobs only — it sleeps. A screen that
+     * waits on Google calls the wrapper directly.
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $call
+     * @return TResult
+     */
+    public function withTransientRetry(callable $call, bool $idempotent = true): mixed
+    {
+        for ($attempt = 1; ; $attempt++) {
+            $result = $call();
+
+            if (($result !== null && $result !== false) || $attempt >= self::TRANSIENT_ATTEMPTS || ! $this->lastErrorIsWorthAskingAgain($idempotent)) {
+                return $result;
+            }
+
+            $wait = self::TRANSIENT_BACKOFF_SECONDS[$attempt - 1];
+
+            Log::channel('gbp')->info('GBP: passing Google failure, asking again', [
+                'attempt' => $attempt,
+                'of' => self::TRANSIENT_ATTEMPTS,
+                'wait_seconds' => $wait,
+                'message' => $this->lastError['message'] ?? null,
+                'status' => $this->lastError['status'] ?? null,
+                'reason' => $this->lastError['reason'] ?? null,
+            ]);
+
+            Sleep::for($wait)->seconds();
+        }
+    }
+
+    /**
+     * Whether the last failure was Google having a bad moment (5xx, no
+     * answer, rate limiting) rather than something about this grant, this
+     * listing or this photo that will fail the same way tomorrow.
+     */
+    public function lastErrorIsTransient(): bool
+    {
+        return in_array($this->lastError['reason'] ?? null, [Failure::UNAVAILABLE, Failure::NO_ANSWER, Failure::RATE_LIMITED], true);
+    }
+
+    protected function lastErrorIsWorthAskingAgain(bool $idempotent): bool
+    {
+        if (! $this->lastErrorIsTransient()) {
+            return false;
+        }
+
+        return $idempotent || in_array((int) ($this->lastError['status'] ?? 0), [429, 503], true);
     }
 
     /* ------------------------------------------------------------------ */

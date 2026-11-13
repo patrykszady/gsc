@@ -22,12 +22,17 @@ class GoogleBusinessProfileHealth extends Command
             return self::FAILURE;
         }
 
-        // Minimal API call to verify access token works.
-        $result = $service->listMedia(null, 1);
+        // Minimal API call to verify access token works. Asked again after a
+        // passing Google failure: one "503 UNAVAILABLE" on this call was a
+        // failed health check, and the grant it is here to verify was fine.
+        $result = $service->withTransientRetry(fn (): ?array => $service->listMedia(null, 1));
 
         if ($result === null) {
             $error = $service->getLastError();
-            $message = 'GBP health check failed: unable to list media.';
+            $status = (int) ($error['status'] ?? 0);
+            $message = 'GBP health check failed: unable to list media'
+                .($status > 0 ? " (HTTP {$status})" : '')
+                .(($error['description'] ?? '') !== '' ? ' — '.$error['description'] : '.');
             $this->error($message);
             Log::error($message, [
                 'error' => $error,

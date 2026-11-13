@@ -33,10 +33,14 @@ class CheckInstagramSession extends Command
         }
 
         $authed = $service->checkSession();
+        $couldNotRun = $authed === null
+            ? ($service->lastCheckFailure() ?? 'the check gave no reason')
+            : null;
 
         Cache::put('instagram.session.last_check', [
             'at' => now()->toIso8601String(),
             'authenticated' => $authed,
+            'could_not_run' => $couldNotRun,
         ], now()->addDays(3));
 
         if ($authed === true) {
@@ -52,9 +56,13 @@ class CheckInstagramSession extends Command
             return self::FAILURE;
         }
 
-        // null = the check itself could not run (script/chrome failure).
-        Log::warning('Instagram daily session check could not run (script error)');
-        $this->error('Instagram session check could not run');
+        // null = the check itself could not run (script/chrome failure). Still
+        // a failure — nobody knows whether the session is alive — but with
+        // the reason, as the last line, where the schedule's output file and
+        // the log both keep it. "(script error)" alone said nothing for weeks
+        // while Chrome reopened ~100 saved tabs every night and was reaped.
+        Log::warning('Instagram daily session check could not run: '.$couldNotRun);
+        $this->error('Instagram session check could not run: '.$couldNotRun);
 
         return self::FAILURE;
     }

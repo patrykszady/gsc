@@ -55,31 +55,25 @@ class YelpAutoLogin implements ShouldQueue, ShouldBeUnique
 
         $result = $service->loginHeadless();
 
-        Cache::put('yelp.auto_login_result', $result, now()->addDays(30));
-        Cache::put('yelp.auto_login_at', now()->toIso8601String(), now()->addDays(30));
+        // Stores the result the admin shows and — for a rejected password or
+        // a verification prompt, which no retry can clear — pauses further
+        // automatic attempts and emails the owner. Until this existed the job
+        // logged and stopped: markSessionDead() emails ONLY when it decides
+        // not to auto-login, so once auto-login was viable the operator heard
+        // nothing at all when it then failed. That is the same silent hole
+        // that let a dead session sit from June 14 to July 14 while every new
+        // project photo skipped Yelp.
+        //
+        // 'busy', 'crashed' and the rest are retried by the next keepalive or
+        // check, and markSessionDead() tells the owner when hours of those
+        // have not brought the session back.
+        $service->recordAutoLoginResult($result);
 
         if ($result['ok']) {
             Log::channel('yelp')->info('Yelp auto-login: success');
             return;
         }
 
-        // A rejected password or a verification prompt cannot be fixed by
-        // trying again — surface it so the admin UI can say what to do.
         Log::channel('yelp')->warning('Yelp auto-login: failed', $result);
-
-        // ...and tell a human, for the codes only a human can clear. Until now
-        // this job logged and stopped: markSessionDead() emails ONLY when it
-        // decides not to auto-login, so once auto-login was viable the operator
-        // heard nothing at all when it then failed. That is the same silent
-        // hole that let a dead session sit from June 14 to July 14 while every
-        // new project photo skipped Yelp.
-        //
-        // 'busy' and 'crashed' are transient — the next keepalive or upload
-        // retries them — so they must not page anyone.
-        if (in_array($result['code'] ?? '', ['needs_verification', 'bad_credentials'], true)) {
-            $service->reportAutoLoginUnrecoverable(
-                sprintf('Automatic re-login failed (%s). %s', $result['code'], $result['hint'] ?? '')
-            );
-        }
     }
 }

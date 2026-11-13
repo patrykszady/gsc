@@ -8,6 +8,7 @@ use App\Models\Testimonial;
 use App\Services\GoogleBusinessProfileService;
 use App\Services\TestimonialProjectTypeClassifier;
 use App\Services\YelpBusinessService;
+use App\Support\GbpPhotoOwnership;
 use App\Support\Reviews\ReviewImport;
 use App\Support\Seo\BingSettings;
 use App\Support\Seo\SearchConsoleSyncOwnership;
@@ -72,6 +73,13 @@ Artisan::command('seo:gbp-metrics-sync
 // ACTIVE site, as that site (tenants:run); a site whose domain is not live
 // yet is skipped until it is.
 $perTenant = fn (string $command) => 'tenants:run '.escapeshellarg($command).' --continue-on-error';
+
+// What a failure hook logs: which command, and where its own words are. A
+// hook cannot know why its command failed — the ones that guessed ("failed
+// (balance?)") sent whoever read the log after the wrong cause — so it names
+// the command and points at the file the command's output is appended to;
+// the command's last line there is the reason.
+$failedSee = fn (string $command, string $log = 'schedule.log') => "Scheduled {$command} failed — the reason is at the end of storage/logs/{$log}";
 
 // Schedule sitemap regeneration daily
 Schedule::command($perTenant('sitemap:generate'))->daily();
@@ -216,9 +224,15 @@ Schedule::command('google-business-profile:update-profile --categories')->weekly
     ->appendOutputTo(storage_path('logs/schedule.log'))
     ->onFailure(fn () => logger()->error('Scheduled GBP category sync failed'))
     ->when(fn () => app(GoogleBusinessProfileService::class)->isConnected());
+// Queues the photos Google does not have yet — no browser, no Google call in
+// this process. Not run at all when the central admin uploads this site's
+// photos (GBP_PHOTOS_OWNED_BY=ss-systems, production): until 2026-11-12 the
+// command refused with exit 1 there, so "Scheduled GBP sync failed" was
+// logged every night for a job that had nothing to do.
 Schedule::command('google-business-profile:sync --upload --queue')->dailyAt('02:30')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled GBP sync failed'));
+    ->onFailure(fn () => logger()->error($failedSee('google-business-profile:sync --upload --queue')))
+    ->when(fn () => GbpPhotoOwnership::ownedHere());
 Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
@@ -227,19 +241,32 @@ Schedule::command('gsc:cleanup-gbp-jpegs --age=24')->dailyAt('03:30')
 // batch), not after. Ran at 04:00 until 2026-08-02, when a dead session was
 // only detected an hour AFTER the whole upload batch had burned DataDome
 // attempts against the login wall. A failed check sets yelp.session_dead
-// (jobs fail fast without launching Chromium) and emails the admin.
+// (jobs that USE the session fail fast without launching Chromium) and
+// queues the automatic sign-in on media-sync — a headed Chromium for up to
+// ~8 minutes, 02:15 to about 02:24 — or, when that cannot run, emails the
+// owner. Exit 1 = not signed in. The overlap lock expires after 10 minutes
+// (the check is bounded to 90 s), not the default 24 hours, so a run killed
+// mid-way cannot switch the next night's check off.
 Schedule::command('yelp:check-session')->dailyAt('02:15')
-    ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/schedule.log'));
+    ->withoutOverlapping(10)
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error($failedSee('yelp:check-session')));
 
 // Instagram: same daily authenticated-session check as Yelp. The headless
 // visit doubles as the keepalive — the profile otherwise only sees traffic
 // on the twice-a-week posting schedule, and an expired session's first
 // symptom used to be a silently failed post.
-Schedule::command('instagram:check-session')->dailyAt('02:35')
-    ->withoutOverlapping()
+//
+// 02:05, not 02:35 (2026-11-12): the Yelp sign-in below can hold a headed
+// Chromium from 02:15 to about 02:24 and again from 02:30 to about 02:39,
+// and chrome:reap-orphans' server-wide limits count every browser together
+// — two at once is how the largest one, possibly the paid Yelp sign-in, gets
+// killed. Nothing else opens a browser at 02:05, and the check is bounded to
+// a minute.
+Schedule::command('instagram:check-session')->dailyAt('02:05')
+    ->withoutOverlapping(10)
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->error('Scheduled instagram:check-session failed'));
+    ->onFailure(fn () => logger()->error($failedSee('instagram:check-session')));
 
 // Yelp biz: keep the session alive from the SERVER, every 6 hours.
 //
@@ -254,7 +281,7 @@ Schedule::command('instagram:check-session')->dailyAt('02:35')
 // never lands on the same minute as the 02:15 check or the nightly batch, and
 // withoutOverlapping because it shares the Chromium profile with uploads.
 Schedule::command('yelp:keep-session')->cron('20 */6 * * *')
-    ->withoutOverlapping()
+    ->withoutOverlapping(10) // bounded to 90 s; a killed run must not skip the next four
     ->appendOutputTo(storage_path('logs/schedule.log'));
 
 // Yelp biz: pull Request-a-Quote leads into contact submissions every half
@@ -271,10 +298,30 @@ Schedule::command('yelp:sync-leads')->cron('10,40 7-18 * * *')
 // after the check above has had its say. Only runs when a captcha key AND a
 // proxy are configured (see canAutoLogin) — without both, DataDome cannot be
 // cleared and the attempt would just burn a Chromium launch.
+//
+// A backstop, not a second attempt: the 02:15 check queues its own sign-in,
+// and each one is a residential-proxy session plus paid captcha solves, so
+// this stands down when an automatic attempt ran in the last 30 minutes
+// (yelp.auto_login_attempted) — it runs on the nights the check could not
+// tell (DataDome blocked the probe) or the queue did not take the job — and
+// while automatic sign-in is paused because only a person can clear what
+// Yelp asked for (autoLoginPaused), or has used its attempts for the day
+// (autoLoginBudgetSpent). In the background: a sign-in can take ~9 minutes
+// and schedule:run would hold every later 02:30 event behind it.
 Schedule::command('yelp:login')->dailyAt('02:30')
-    ->withoutOverlapping()
-    ->when(fn () => Cache::has('yelp.session_dead') && app(YelpBusinessService::class)->canAutoLogin())
-    ->appendOutputTo(storage_path('logs/schedule.log'));
+    ->withoutOverlapping(20)
+    ->runInBackground()
+    ->when(function (): bool {
+        $yelp = app(YelpBusinessService::class);
+
+        return Cache::has('yelp.session_dead')
+            && ! Cache::has('yelp.auto_login_attempted')
+            && $yelp->canAutoLogin()
+            && $yelp->autoLoginPaused() === null
+            && ! $yelp->autoLoginBudgetSpent();
+    })
+    ->appendOutputTo(storage_path('logs/schedule.log'))
+    ->onFailure(fn () => logger()->error($failedSee('yelp:login')));
 
 // Google Business Profile: sync new reviews daily at 06:00 AM CT
 Schedule::command('google-business-profile:sync-reviews')->dailyAt('06:00')
@@ -364,7 +411,7 @@ Schedule::command('seo:ai-mentions --budget=2')->weeklyOn(1, '05:30')
 Schedule::command('seo:keyword-research --budget=4 --ideas')->weeklyOn(0, '04:30')
     ->timezone('America/Chicago')
     ->appendOutputTo(storage_path('logs/schedule.log'))
-    ->onFailure(fn () => logger()->warning('Scheduled seo:keyword-research failed (balance?)'));
+    ->onFailure(fn () => logger()->warning($failedSee('seo:keyword-research')));
 // DataForSEO intelligence, one API family per slot (seo:intel --list shows
 // the per-run estimates). Each run is stored and compared with the previous.
 foreach ([
@@ -381,7 +428,7 @@ foreach ([
         ->timezone('America/Chicago')
         ->withoutOverlapping(90)
         ->appendOutputTo(storage_path('logs/schedule.log'))
-        ->onFailure(fn () => logger()->warning("Scheduled seo:intel {$family} failed (balance?)"));
+        ->onFailure(fn () => logger()->warning($failedSee("seo:intel {$family}")));
 }
 // The Monday crawl is posted at 03:30; DataForSEO can hold it in the queue for
 // hours, so these pickups collect it when it is finished (free calls, no-op otherwise).
@@ -714,7 +761,11 @@ Schedule::command($perTenant('seo:gsc-prune-retired'))
     ->onFailure(fn () => logger()->error('Scheduled seo:gsc-prune-retired failed'));
 
 // SEO: daily sitemap submission-status check (errors, warnings, stale lastDownloaded).
-$seoAlertEmail = (string) env('SEO_ALERT_EMAIL', '');
+//
+// The address comes from config/seo.php, never env(): the deploy caches
+// config, env() then answers its default, and for as long as this read
+// env('SEO_ALERT_EMAIL') neither alert below was ever attached in production.
+$seoAlertEmail = trim((string) config('seo.alert_email'));
 $sitemapStatus = Schedule::command($perTenant('seo:gsc-sitemap-status --markdown'))
     ->dailyAt('05:30')
     ->timezone('America/Chicago')

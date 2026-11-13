@@ -26,7 +26,19 @@ class CheckYelpSession extends Command
         }
         if ($authed === false) {
             Log::channel('yelp')->warning('Yelp daily session check: NOT authenticated');
-            $this->error('Yelp session: NOT authenticated - manual login required');
+
+            // checkSession() has already marked the session dead, which queues
+            // the automatic sign-in when one can run. Say which it is — this
+            // used to print "manual login required" either way. Still a
+            // failure: leads and photo uploads are stopped until it is back.
+            $paused = $service->autoLoginPaused();
+            $this->error('Yelp session: NOT authenticated — '.match (true) {
+                $paused !== null => "automatic sign-in is paused ({$paused['code']}); sign in from Admin → Platforms (Verify Login)",
+                $service->canAutoLogin() && $service->autoLoginBudgetSpent() => 'automatic sign-in has used its '.YelpBusinessService::AUTO_LOGIN_DAILY_LIMIT.' attempts for the day; sign in from Admin → Platforms (Verify Login)',
+                $service->canAutoLogin() => 'automatic sign-in has been queued (result in storage/logs/yelp-*.log)',
+                default => 'automatic sign-in needs a captcha key and a proxy; sign in from Admin → Platforms (Verify Login)',
+            });
+
             return self::FAILURE;
         }
 

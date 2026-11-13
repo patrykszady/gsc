@@ -15,6 +15,7 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { guardBrowser } from './lib/browser-guard.mjs';
+import { forgetSavedSession } from './lib/chrome-profile.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -252,6 +253,10 @@ async function addLocation(page, input, opts) {
     emit({ ok: false, error: 'locationQuery is required' });
     process.exit(2);
   }
+
+  // Nothing to reopen: Chrome restores the profile's previous tabs at launch
+  // and every run used to leave more behind (lib/chrome-profile.mjs).
+  forgetSavedSession(args.userDataDir);
 
   const browser = guardBrowser(await puppeteer.launch({
     pipe: true, // Chrome exits with this script, however it dies (lib/browser-guard.mjs)

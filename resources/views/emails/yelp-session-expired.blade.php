@@ -1,8 +1,8 @@
 <x-mail::message>
 # Yelp session expired
 
-The Yelp for Business browser session is no longer authenticated, so photo
-uploads to Yelp are **paused**.
+The Yelp for Business browser session is no longer authenticated, so new Yelp
+leads are **not being pulled in** and photo uploads to Yelp are **paused**.
 
 @if($note)
 Detail: {{ $note }}
@@ -15,8 +15,9 @@ in the embedded browser window:
 Open Platforms Settings
 </x-mail::button>
 
-Photos that could not upload while the session was down will re-upload
-automatically once you're logged back in — nothing else to run.
+Leads and photos that were missed while the session was down are picked up
+automatically once you're logged back in — nothing else to run. This reminder
+repeats once a day until then.
 
 {{ config('app.name') }}
 </x-mail::message>

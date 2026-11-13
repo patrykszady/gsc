@@ -7,6 +7,7 @@ use App\Models\ProjectImage;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use App\Exceptions\YelpUploadThrottledException;
 use App\Exceptions\YelpSessionExpiredException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -42,6 +43,60 @@ class YelpBusinessService
     // Live status published by withAutomationLock for the operator-facing
     // sync command's progress bar. JSON: {operation, image_id, started_at}.
     private const CURRENT_OP_KEY = 'yelp:browser-automation:current';
+
+    /**
+     * Operations whose whole purpose is to bring a dead session BACK. They
+     * are the only ones let past the dead-session fail-fast in
+     * withAutomationLock(): that guard exists so jobs that USE the session
+     * (uploads, the lead read) do not launch Chromium against the login wall,
+     * and from early October to 2026-11-12 it also aborted the one job meant
+     * to revive the session — every automatic login "crashed" in the same
+     * second it started, so a dead session could never recover on its own.
+     * Never add an operation that merely needs a session.
+     *
+     * @var list<string>
+     */
+    private const SESSION_RESTORING_OPERATIONS = ['headless_login'];
+
+    /**
+     * Login results no retry can clear — Yelp wants an emailed/SMS code, or
+     * rejected the password. Automatic attempts stop after one of these
+     * (see autoLoginPaused()) and the owner is told straight away.
+     *
+     * @var list<string>
+     */
+    public const HUMAN_ONLY_LOGIN_CODES = ['needs_verification', 'bad_credentials'];
+
+    /** When the current dead-session episode began (ISO time; cleared on recovery). */
+    private const DEAD_SINCE_KEY = 'yelp.session_dead_since';
+
+    /** Set after a human-only login failure: {code, hint, at, credentials}. */
+    private const AUTO_LOGIN_PAUSED_KEY = 'yelp.auto_login_paused';
+
+    /** Times (epoch seconds) of the automatic sign-ins of the last day. */
+    private const AUTO_LOGIN_ATTEMPTS_KEY = 'yelp.auto_login_attempts';
+
+    /**
+     * Automatic sign-ins allowed in any 24 hours. Each one is a
+     * residential-proxy browser session, paid captcha solves and a password
+     * login on the owner's account. The schedule alone asks for about five a
+     * day while a session stays dead, and a sign-in that "works" but does not
+     * stick would otherwise be repeated after every half-hourly lead read.
+     */
+    public const AUTO_LOGIN_DAILY_LIMIT = 4;
+
+    /**
+     * A session still dead this long after it was first seen dead has had
+     * its automatic attempts; from here the owner is told whatever the reason.
+     */
+    private const ESCALATE_AFTER_HOURS = 3;
+
+    /**
+     * While the session stays dead the alert repeats daily. Half an hour
+     * under 24h so the same scheduled tick that sent yesterday's is not
+     * still inside the window by a few seconds today.
+     */
+    private const ALERT_REPEAT_MINUTES = 24 * 60 - 30;
 
     /**
      * Cache key flagging an in-flight upload attempt. Set BEFORE the Chromium
@@ -358,6 +413,8 @@ class YelpBusinessService
         // New episode, new alert: if the session dies again later, the admin
         // should hear about it even though an email went out for the last one.
         Cache::forget('yelp.session_dead_notified');
+        Cache::forget(self::DEAD_SINCE_KEY);
+        Cache::forget(self::AUTO_LOGIN_PAUSED_KEY);
 
         if (! $wasDead) {
             return 0;
@@ -433,17 +490,204 @@ class YelpBusinessService
             'note' => $note,
         ], now()->addHours(12));
 
+        // When this episode began. Outlives the 12h flag above (which every
+        // failed check renews) and is cleared only by markSessionFresh().
+        $since = Carbon::parse(Cache::rememberForever(self::DEAD_SINCE_KEY, fn (): string => now()->toIso8601String()));
+
+        // Yelp wants a code or rejected the password: another automatic
+        // attempt can only spend a captcha solve and fail the same way, so
+        // none is made until a person signs in or the stored login changes.
+        if ($paused = $this->autoLoginPaused()) {
+            Log::channel('yelp')->warning('Yelp: session dead, automatic sign-in is paused until a person signs in', [
+                'code' => $paused['code'],
+            ]);
+            $this->notifySessionDead(sprintf(
+                'Automatic sign-in stopped after "%s": %s',
+                $paused['code'],
+                $paused['hint'] !== '' ? $paused['hint'] : 'a person has to sign in.',
+            ));
+
+            return;
+        }
+
         // Try to fix it ourselves before bothering anyone. The job rate-limits
-        // itself to one attempt per 30 minutes and only emails if it cannot
-        // recover — so the operator hears about a dead session only when
-        // their input is genuinely required.
+        // itself to one attempt per 30 minutes and emails at once when only a
+        // person can clear what it met.
         if ($this->canAutoLogin()) {
+            // ...within a day's allowance. Past it, something is wrong that
+            // another attempt will not fix — sign-ins that fail the same way,
+            // or that work and do not stick — and that is the owner's to know.
+            if ($this->autoLoginBudgetSpent()) {
+                Log::channel('yelp')->warning('Yelp: session dead, automatic sign-in not queued — the day\'s attempts are used', [
+                    'attempts_24h' => $this->autoLoginAttemptsToday(),
+                    'limit' => self::AUTO_LOGIN_DAILY_LIMIT,
+                ]);
+                $this->notifySessionDead($this->stillDeadNote($since, $note));
+
+                return;
+            }
+
             \App\Jobs\YelpAutoLogin::dispatch()->onQueue('media-sync');
             Log::channel('yelp')->info('Yelp: session dead, dispatched auto-login attempt');
+
+            // ...but "it will fix itself" was the assumption that hid a dead
+            // session for five weeks: the attempts all failed with a code
+            // nobody is paged for, so nobody was told. Still dead hours after
+            // it was first seen dead means the attempts are not working —
+            // say so, whatever the reason.
+            if ($since->diffInHours(now()) >= self::ESCALATE_AFTER_HOURS) {
+                $this->notifySessionDead($this->stillDeadNote($since, $note));
+            }
+
             return;
         }
 
         $this->notifySessionDead($note);
+    }
+
+    /**
+     * The alert's detail line for a session automatic sign-in has not
+     * brought back: since when, and what the last attempt reported.
+     */
+    protected function stillDeadNote(Carbon $since, ?string $note): string
+    {
+        $last = Cache::get('yelp.auto_login_result');
+        $lastAt = Cache::get('yelp.auto_login_at');
+        $when = is_string($lastAt) ? ' ('.Carbon::parse($lastAt)->format('M j, H:i T').')' : '';
+
+        $attempt = match (true) {
+            ! is_array($last) => 'No automatic attempt has reported a result — check that the media-sync queue worker is running.',
+            (bool) ($last['ok'] ?? false) => "The last attempt{$when} signed in, but the session did not stay signed in.",
+            default => sprintf(
+                'The last attempt%s ended with "%s": %s',
+                $when,
+                (string) ($last['code'] ?? 'unknown'),
+                (string) ($last['hint'] ?? ''),
+            ),
+        };
+
+        $attempts = $this->autoLoginAttemptsToday();
+
+        return trim(sprintf(
+            'Signed out since %s and automatic sign-in has not brought it back%s. %s %s',
+            $since->format('M j, H:i T'),
+            $attempts >= self::AUTO_LOGIN_DAILY_LIMIT
+                ? sprintf(' (%d attempts in the last 24 hours; no more until one of them is a day old)', $attempts)
+                : '',
+            $attempt,
+            $note ? '('.$note.')' : '',
+        ));
+    }
+
+    /** Automatic sign-ins that reached the browser in the last 24 hours, whoever started them. */
+    public function autoLoginAttemptsToday(): int
+    {
+        return count($this->recentAutoLoginAttempts());
+    }
+
+    /** Has the day's allowance of automatic sign-ins been used? "Log in now" in the admin is not held by it. */
+    public function autoLoginBudgetSpent(): bool
+    {
+        return $this->autoLoginAttemptsToday() >= self::AUTO_LOGIN_DAILY_LIMIT;
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function recentAutoLoginAttempts(): array
+    {
+        $dayAgo = now()->subDay()->getTimestamp();
+
+        return array_values(array_filter(
+            array_map('intval', (array) Cache::get(self::AUTO_LOGIN_ATTEMPTS_KEY, [])),
+            fn (int $at): bool => $at > $dayAgo,
+        ));
+    }
+
+    /**
+     * Is automatic sign-in on hold because only a person can clear what the
+     * last attempt met?
+     *
+     * Lifted by markSessionFresh() (someone signed in) and, on its own, the
+     * moment the stored email or password changes — the pause remembers
+     * which login it was about. The admin's "Log in now" is not held by it:
+     * that is a person asking.
+     *
+     * @return array{code: string, hint: string, at: string}|null
+     */
+    public function autoLoginPaused(): ?array
+    {
+        $paused = Cache::get(self::AUTO_LOGIN_PAUSED_KEY);
+
+        if (! is_array($paused) || ($paused['credentials'] ?? null) !== $this->credentialsFingerprint()) {
+            return null;
+        }
+
+        return [
+            'code' => (string) ($paused['code'] ?? 'unknown'),
+            'hint' => (string) ($paused['hint'] ?? ''),
+            'at' => (string) ($paused['at'] ?? ''),
+        ];
+    }
+
+    /**
+     * What every automatic sign-in attempt leaves behind, whoever started it
+     * (the queued job, the 02:30 schedule line, a person at a terminal): the
+     * result the admin's "Last recovery attempt" shows, the pause after a
+     * failure only a person can clear, and — for those — the owner's email.
+     *
+     * Until 2026-11-12 only the queued job did this, so a `yelp:login` that
+     * met a verification prompt told nobody.
+     *
+     * @param  array{ok: bool, code: string, hint: string}  $result
+     */
+    public function recordAutoLoginResult(array $result): void
+    {
+        Cache::put('yelp.auto_login_result', $result, now()->addDays(30));
+        Cache::put('yelp.auto_login_at', now()->toIso8601String(), now()->addDays(30));
+
+        $code = (string) ($result['code'] ?? '');
+
+        // Counted against the day's allowance when a browser was really
+        // started — a success too: a sign-in that works and does not stick
+        // is the loop the allowance is there to stop.
+        if (! in_array($code, ['busy', 'not_configured'], true)) {
+            Cache::put(
+                self::AUTO_LOGIN_ATTEMPTS_KEY,
+                [...$this->recentAutoLoginAttempts(), now()->getTimestamp()],
+                now()->addDays(2),
+            );
+        }
+
+        if ($result['ok'] ?? false) {
+            Cache::forget(self::AUTO_LOGIN_PAUSED_KEY);
+
+            return;
+        }
+
+        if (! in_array($code, self::HUMAN_ONLY_LOGIN_CODES, true)) {
+            // 'busy', 'crashed', a DataDome block, an unknown landing page:
+            // the next keepalive or check tries again, and markSessionDead()
+            // tells the owner if hours of those have not brought it back.
+            return;
+        }
+
+        Cache::forever(self::AUTO_LOGIN_PAUSED_KEY, [
+            'code' => $code,
+            'hint' => (string) ($result['hint'] ?? ''),
+            'at' => now()->toIso8601String(),
+            'credentials' => $this->credentialsFingerprint(),
+        ]);
+
+        $this->reportAutoLoginUnrecoverable(
+            sprintf('Automatic re-login failed (%s). %s', $code, $result['hint'] ?? '')
+        );
+    }
+
+    /** Identifies the stored login without storing it. */
+    protected function credentialsFingerprint(): string
+    {
+        return hash('sha256', $this->getEmail()."\n".$this->getPassword());
     }
 
     /**
@@ -469,9 +713,11 @@ class YelpBusinessService
      * session could sit unnoticed for weeks (June 14 → July 14 in production)
      * while every new project photo silently skipped Yelp.
      *
-     * Throttled to once per episode: the flag's own 12h TTL is the window,
-     * and markSessionFresh() clears the throttle so a *new* death after a
-     * recovery alerts again. Same recipient chain as the GBP review alerts.
+     * Repeats once a day for as long as the session stays dead (it was
+     * "once per 12h notice", and in the automatic-login path it was never
+     * reached at all); markSessionFresh() clears the throttle so a *new*
+     * death after a recovery alerts at once. Same recipient as the GBP
+     * review alerts.
      */
     protected function notifySessionDead(?string $note): void
     {
@@ -480,7 +726,13 @@ class YelpBusinessService
         // logged in — and with MAIL_MAILER=smtp that is a real email. Config
         // rather than a bare environment() check so tests can exercise the
         // send path without pretending to be production.
-        if (! config('services.yelp.business.alert_emails', app()->environment('production'))) {
+        //
+        // Null (YELP_ALERT_EMAILS unset) means "production only". Not
+        // config($key, $default): the key always exists, so the default was
+        // never used and an unset env switched the alert off in production
+        // as well.
+        $enabled = config('services.yelp.business.alert_emails');
+        if (! ($enabled ?? app()->environment('production'))) {
             Log::channel('yelp')->info('Yelp session-dead alert suppressed (alert_emails disabled)');
             return;
         }
@@ -488,13 +740,12 @@ class YelpBusinessService
         if (Cache::has('yelp.session_dead_notified')) {
             return;
         }
-        Cache::put('yelp.session_dead_notified', true, now()->addHours(12));
 
-        $to = config('mail.review_alert_to')
-            ?: env('REVIEW_ALERT_TO')
-            ?: config('mail.from.address');
+        // config() only — the deploy caches config, so env() answers null in
+        // production and REVIEW_ALERT_TO was silently skipped.
+        $to = config('mail.review_alert_to') ?: config('mail.from.address');
         if (! $to) {
-            Log::channel('yelp')->warning('Yelp session-dead alert skipped: no recipient configured');
+            Log::channel('yelp')->warning('Yelp session-dead alert skipped: no recipient configured (REVIEW_ALERT_TO)');
             return;
         }
 
@@ -507,6 +758,9 @@ class YelpBusinessService
         try {
             \Illuminate\Support\Facades\Mail::to($to)
                 ->send(new \App\Mail\YelpSessionExpired($note, $url));
+            // Only a sent alert starts the quiet period: a mail failure must
+            // not buy a day of silence.
+            Cache::put('yelp.session_dead_notified', true, now()->addMinutes(self::ALERT_REPEAT_MINUTES));
             Log::channel('yelp')->info('Yelp: session-dead alert email sent', ['to' => $to]);
         } catch (\Throwable $e) {
             // Mail must never break the upload/check path that detected the
@@ -522,8 +776,9 @@ class YelpBusinessService
      * This is the ONE thing no automation can clear — Yelp asking for an
      * emailed/SMS 2FA code, or a rejected password. Everything else the loop
      * retries silently on the next cycle. Routes through notifySessionDead(),
-     * which throttles to one alert per 12h episode and carries the admin
-     * Platforms link (where "Verify Login" opens the noVNC screen).
+     * which throttles to one alert a day while the session stays dead and
+     * carries the admin Platforms link (where "Verify Login" opens the noVNC
+     * screen).
      *
      * Public so YelpAutoLogin can call it — the alert must fire from the job
      * that discovered the failure, not only from the checks that mark a
@@ -702,7 +957,14 @@ class YelpBusinessService
             // Bounded: nobody is watching, so waiting out the 10-minute
             // interactive budget only holds the automation lock hostage.
             '--timeout-ms=' . (int) ($cfg['login_timeout_ms'] ?? 180000),
+            // Every other Yelp run injects the jar before it navigates. A
+            // sign-in that leaves the jar as it was leaves the DEAD session's
+            // cookies in it, and the next check or lead read writes them over
+            // the fresh ones. Written only from an authenticated page.
+            '--export-cookies=' . \App\Support\YelpCookieJar::path(),
         ];
+
+        $startedAt = time();
 
         // The captcha solver REQUIRES a proxy: DataDome ties the solved token
         // to the IP that requested the challenge, so a solve bought from a
@@ -731,39 +993,7 @@ class YelpBusinessService
         // Chromium against the SAME profile the upload jobs use, and two
         // Chromiums on one user_data_dir corrupt the cookie store.
         try {
-            $payload = $this->withAutomationLock('headless_login', function () use ($args, $cfg) {
-                // The script's timeout-ms bounds only its post-setup polling
-                // loop. Setup — proxy wrap, up to three ~100s captcha solves,
-                // autofill — happens before that clock starts, so the outer
-                // budgets must be internal + solver headroom, not internal + 60.
-                $internal = (int) (($cfg['login_timeout_ms'] ?? 180000) / 1000);
-                $env = $this->browserProcessEnv();
-                $env['YELP_RUN_TIMEOUT'] = (string) ($internal + 300); // flock wrapper hard-kill
-
-                // yelp-login.mjs runs modeLogin HEADED — always, including
-                // --unattended — because Yelp flags headless credential
-                // submits. On a server there is no X display, so the scheduled
-                // 02:30 recovery could never actually paint a browser and the
-                // whole auto-recovery path was dead on production. Give it a
-                // virtual one. Xvfb is already a dependency of the noVNC
-                // viewer, so nothing new to install.
-                if (empty($env['DISPLAY'])) {
-                    $display = $this->ensureVirtualDisplay();
-                    if ($display) {
-                        $env['DISPLAY'] = $display;
-                    }
-                }
-                $process = new Process($this->wrapWithFlock($args), base_path(), $env);
-                $process->setTimeout($internal + 360);
-                $process->run();
-
-                $line = $this->lastJsonLine(trim($process->getOutput()));
-
-                return [
-                    'payload' => $line ? json_decode($line, true) : null,
-                    'stderr' => \App\Support\SecretRedactor::redact(mb_substr($process->getErrorOutput(), -4000)),
-                ];
-            });
+            $payload = $this->withAutomationLock('headless_login', fn (): array => $this->runHeadlessLoginScript($args, $cfg));
         } catch (YelpUploadThrottledException $e) {
             return ['ok' => false, 'code' => 'busy', 'hint' => 'Another Yelp automation is running; try again shortly.'];
         } catch (\Throwable $e) {
@@ -775,6 +1005,8 @@ class YelpBusinessService
         $data = is_array($payload['payload'] ?? null) ? $payload['payload'] : null;
 
         if (is_array($data) && ! empty($data['authenticated'])) {
+            $this->retireCookieJarOlderThan($startedAt);
+
             // Proven-good session: clears the dead flag AND re-queues the
             // photos that piled up while login was broken.
             $requeued = $this->markSessionFresh();
@@ -802,6 +1034,89 @@ class YelpBusinessService
         ]);
 
         return ['ok' => false, 'code' => $code, 'hint' => $hint];
+    }
+
+    /**
+     * After a sign-in that worked: a jar the sign-in did not rewrite is the
+     * dead session's, and injecting it would sign the profile back out on
+     * the very next run. Set it aside (kept as *.stale, never deleted); with
+     * no jar the scripts use the profile's own cookies, and the next
+     * keep-alive writes a fresh one.
+     */
+    protected function retireCookieJarOlderThan(int $startedAt): void
+    {
+        $jar = \App\Support\YelpCookieJar::path();
+
+        clearstatcache(true, $jar);
+
+        if (! is_file($jar) || (int) filemtime($jar) >= $startedAt) {
+            return;
+        }
+
+        if (@rename($jar, $jar . '.stale')) {
+            Log::channel('yelp')->warning('Yelp: the cookie jar predates this sign-in and was set aside so it cannot overwrite the new session', [
+                'jar' => $jar . '.stale',
+            ]);
+        }
+    }
+
+    /**
+     * Run scripts/yelp-login.mjs for loginHeadless() and hand back what it
+     * printed. Its own method so tests can stand in for the browser — no
+     * test may launch Chromium or reach Yelp.
+     *
+     * @param  list<string>  $args
+     * @param  array<string, mixed>  $cfg
+     * @return array{payload: array<string, mixed>|null, stderr: string}
+     */
+    protected function runHeadlessLoginScript(array $args, array $cfg): array
+    {
+        // The script's timeout-ms bounds only its post-setup polling
+        // loop. Setup — proxy wrap, up to three ~100s captcha solves,
+        // autofill — happens before that clock starts, so the outer
+        // budgets must be internal + solver headroom, not internal + 60.
+        $internal = (int) (($cfg['login_timeout_ms'] ?? 180000) / 1000);
+        $env = $this->browserProcessEnv();
+        $env['YELP_RUN_TIMEOUT'] = (string) ($internal + 300); // flock wrapper hard-kill
+
+        // yelp-login.mjs runs modeLogin HEADED — always, including
+        // --unattended — because Yelp flags headless credential
+        // submits. On a server there is no X display, so the scheduled
+        // 02:30 recovery could never actually paint a browser and the
+        // whole auto-recovery path was dead on production. Give it a
+        // virtual one. Xvfb is already a dependency of the noVNC
+        // viewer, so nothing new to install.
+        if (empty($env['DISPLAY'])) {
+            $display = $this->ensureVirtualDisplay();
+            if ($display) {
+                $env['DISPLAY'] = $display;
+            }
+        }
+        $process = new Process($this->wrapWithFlock($args), base_path(), $env);
+        $process->setTimeout($internal + 360);
+
+        try {
+            $process->run();
+        } catch (ProcessSignaledException $e) {
+            // scripts/yelp-run-locked.sh ends every run with
+            // `pkill -KILL -f "user-data-dir=<profile>"`, and this command
+            // line carries that very string — so the wrapper kills ITSELF
+            // once the script has exited, and Symfony reports signal 9 for
+            // a login that has already printed its verdict. Left uncaught,
+            // a sign-in that worked came back as "crashed" and the session
+            // stayed flagged dead. Read what the script printed: a kill that
+            // really cut it short left no JSON and is a failed login below.
+            Log::channel('yelp')->info('Yelp: login wrapper ended by signal after the script reported; reading its output', [
+                'signal' => $e->getSignal(),
+            ]);
+        }
+
+        $line = $this->lastJsonLine(trim($process->getOutput()));
+
+        return [
+            'payload' => $line ? json_decode($line, true) : null,
+            'stderr' => \App\Support\SecretRedactor::redact(mb_substr($process->getErrorOutput(), -4000)),
+        ];
     }
 
     /**
@@ -1494,7 +1809,9 @@ class YelpBusinessService
         //     hitting Yelp's "Oops" page (which then escalates the host-wide
         //     cooldown to 10min and burns the rest of the queue's worker time).
         //     Cleared by markSessionFresh()/checkSession()/Verify Login.
-        if (Cache::has('yelp.session_dead')) {
+        //     The login is the exception: reviving the session is its job, and
+        //     this guard aborting it is what kept the session dead for weeks.
+        if (! in_array($operation, self::SESSION_RESTORING_OPERATIONS, true) && Cache::has('yelp.session_dead')) {
             Log::channel('yelp')->warning('Yelp: session dead, aborting job without launching Chromium', [
                 'operation' => $operation,
             ] + $context);

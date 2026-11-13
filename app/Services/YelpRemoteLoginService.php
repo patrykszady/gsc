@@ -242,6 +242,10 @@ class YelpRemoteLoginService
             '--email=' . escapeshellarg($email),
             '--password=' . escapeshellarg($password),
             '--timeout-ms=' . escapeshellarg((string) ($maxTtl * 1000)),
+            // A sign-in that worked rewrites the jar every other Yelp run
+            // injects — otherwise the next check writes the dead session's
+            // cookies back over the ones the operator just earned.
+            '--export-cookies=' . escapeshellarg(\App\Support\YelpCookieJar::path()),
         ];
         // Cookie injection: when a cookies file is present we skip the
         // proxy entirely. Cookies are bound by Yelp to the IP that issued

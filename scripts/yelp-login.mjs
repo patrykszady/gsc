@@ -898,6 +898,16 @@ async function modeLogin(args) {
               console.error('[yelp-login] cookie dump failed: ' + (e?.message || e));
             }
 
+            // Hand the session that was just signed in to the jar every other
+            // Yelp run injects before it navigates (--cookies-file). Without
+            // this the jar still holds the DEAD session's cookies, and the
+            // next check, lead read or upload writes them over the fresh ones
+            // — signing the profile straight back out. Same rule as the
+            // keep-alive: only ever from a confirmed-authenticated page.
+            if (args.exportCookies && isAuthedUrl(authedUrl)) {
+              await exportCookiesTo(authedPage, args.exportCookies);
+            }
+
             // Give Chromium time to flush its cookie SQLite DB to disk BEFORE
             // we tear it down. The earlier code SIGKILL'd after 7ms which
             // bypassed the cookie write -> upload script 8 min later sees a

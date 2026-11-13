@@ -119,4 +119,20 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Owner alerts
+    |--------------------------------------------------------------------------
+    |
+    | Where "something needs you" mail goes: the Yelp dead-session alert and
+    | the unanswered Google review alert. Read with config('mail.review_alert_to')
+    | only — the deploy caches config, so an env('REVIEW_ALERT_TO') call in
+    | application code answers null in production, and until 2026-11-12 both
+    | alerts fell through to the from-address above because this key did not
+    | exist. Unset = the from-address.
+    |
+    */
+
+    'review_alert_to' => env('REVIEW_ALERT_TO'),
+
 ];

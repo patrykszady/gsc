@@ -21,6 +21,8 @@ class InstagramRemoteLoginService
 {
     protected string $stateFile;
 
+    protected ?string $lastCheckFailure = null;
+
     public function __construct()
     {
         $this->stateFile = storage_path('app/instagram-remote-login.json');
@@ -59,10 +61,13 @@ class InstagramRemoteLoginService
 
     /**
      * Headlessly probe the persisted profile for a live IG session. Returns
-     * true=logged in, false=not logged in, null=unable to determine.
+     * true=logged in, false=not logged in, null=unable to determine — and
+     * then lastCheckFailure() says why.
      */
     public function checkSession(int $timeoutSeconds = 45): ?bool
     {
+        $this->lastCheckFailure = null;
+
         $node = (string) (config('services.instagram.node_binary', 'node'));
         $script = base_path('scripts/instagram-check-session.mjs');
         $userDataDir = $this->userDataDir();
@@ -81,10 +86,21 @@ class InstagramRemoteLoginService
         // close never finished, `timeout` never escalated, and the 02:35
         // check (with its Chrome, 283 processes by then) ran 2 h 14 m until
         // hive-prod stopped answering. A pipe-mode Chrome dies with Node.
-        $output = (string) @shell_exec('timeout -k 10 ' . ($timeoutSeconds + 5) . ' ' . $cmd);
-        $output = trim($output);
-        if ($output === '') return null;
+        //
+        // The exit status rides along on a last line of its own: a check that
+        // could not answer used to come back as a bare null, and the nightly
+        // log said "script error" for weeks without saying which.
+        $limit = $timeoutSeconds + 5;
+        $output = trim((string) @shell_exec('timeout -k 10 ' . $limit . ' ' . $cmd . '; printf \'\\nexit=%s\\n\' "$?"'));
+
+        $exitCode = null;
+        if (preg_match('/(?:^|\R)exit=(\d+)\s*$/', $output, $m)) {
+            $exitCode = (int) $m[1];
+            $output = trim((string) substr($output, 0, -strlen($m[0])));
+        }
+
         // Take the last JSON line.
+        $said = null;
         $lines = preg_split('/\r?\n/', $output) ?: [];
         for ($i = count($lines) - 1; $i >= 0; $i--) {
             $line = trim($lines[$i]);
@@ -93,8 +109,46 @@ class InstagramRemoteLoginService
             if (is_array($data) && array_key_exists('authenticated', $data)) {
                 return (bool) $data['authenticated'];
             }
+            if (is_array($data) && $said === null) {
+                $said = $data;
+            }
         }
+
+        $this->lastCheckFailure = $this->describeCheckFailure($said, $exitCode, $limit);
+
         return null;
+    }
+
+    /**
+     * Why the last checkSession() came back null (it could not tell), in
+     * words for the log; null when it did answer.
+     */
+    public function lastCheckFailure(): ?string
+    {
+        return $this->lastCheckFailure;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $said  the script's own last JSON line, when it printed one
+     */
+    protected function describeCheckFailure(?array $said, ?int $exitCode, int $limitSeconds): string
+    {
+        $error = trim((string) ($said['error'] ?? ''));
+        $reason = trim((string) ($said['reason'] ?? ''));
+
+        if ($error !== '' || $reason !== '') {
+            $text = Str::limit((string) preg_replace('/\s+/', ' ', $error !== '' ? $error : $reason), 300);
+
+            return $error !== '' && $reason !== '' ? "{$reason}: {$text}" : $text;
+        }
+
+        return match (true) {
+            $exitCode === 124 => "no answer within {$limitSeconds} s — the script was stopped at the time limit",
+            $exitCode === 137 => 'no answer — the script ignored the stop signal and was killed '.($limitSeconds + 10).' s in',
+            $exitCode === 126, $exitCode === 127 => "node could not be started (exit {$exitCode}) — check INSTAGRAM_NODE_BINARY",
+            $exitCode === null => 'the script printed nothing',
+            default => "the script printed nothing and exited with code {$exitCode}",
+        };
     }
 
     /**

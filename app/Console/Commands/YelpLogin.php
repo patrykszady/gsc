@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\YelpBusinessService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Log in to biz.yelp.com headlessly with the stored credentials.
@@ -46,15 +47,26 @@ class YelpLogin extends Command
         }
 
         $this->info('Launching headless Chromium and logging in…');
+
+        // The same 30-minute floor the queued job keeps, so the job a failed
+        // check queues and this command never buy two captcha solves back to
+        // back (the 02:30 schedule line also stands down while it is set).
+        Cache::put('yelp.auto_login_attempted', true, now()->addMinutes(30));
+
         $result = $service->loginHeadless();
+
+        // What the queued job leaves behind too: the result the admin shows,
+        // and for a verification prompt or a rejected password the pause and
+        // the owner's email.
+        $service->recordAutoLoginResult($result);
 
         if ($result['ok']) {
             $this->info('✓ ' . $result['hint']);
             return self::SUCCESS;
         }
 
-        $this->error("✗ {$result['code']}");
-        $this->line('  ' . $result['hint']);
+        // Last line on purpose: it is what the schedule's failure hook points at.
+        $this->error("✗ Yelp sign-in failed ({$result['code']}): {$result['hint']}");
 
         return self::FAILURE;
     }

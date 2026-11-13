@@ -9,11 +9,13 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Admin alert: the Yelp for Business browser session died and photo uploads
- * are paused until someone re-logs-in on /admin/{site}/platforms.
+ * Admin alert: the Yelp for Business browser session died, so the lead sync
+ * and photo uploads are stopped until someone re-logs-in on
+ * /admin/{site}/platforms.
  *
- * Sent by YelpBusinessService::markSessionDead(), throttled to once per
- * episode. A Mailable (not Mail::raw) so tests can assert on it.
+ * Sent by YelpBusinessService::notifySessionDead(), once a day for as long
+ * as the session stays dead. A Mailable (not Mail::raw) so tests can assert
+ * on it.
  */
 class YelpSessionExpired extends Mailable
 {
@@ -27,7 +29,7 @@ class YelpSessionExpired extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Yelp session expired — photo uploads paused',
+            subject: 'Yelp session expired — leads and photo uploads paused',
         );
     }
 

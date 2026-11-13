@@ -178,13 +178,13 @@ class GbpUnrespondedReviews extends Command
 
     protected function sendAlertEmail(array $unresponded, int $hours, bool $recentMode = false): void
     {
-        $to = config('mail.review_alert_to')
-            ?: env('REVIEW_ALERT_TO')
-            ?: config('mail.from.address');
+        // config() only: the deploy caches config, so env() answers null in
+        // production. config/mail.php carries REVIEW_ALERT_TO.
+        $to = config('mail.review_alert_to') ?: config('mail.from.address');
         if (! $to) {
             $this->warn('REVIEW_ALERT_TO not set — skipping email.');
             logger()->error('GBP alert email skipped: no recipient configured', [
-                'expected' => ['mail.review_alert_to', 'REVIEW_ALERT_TO', 'mail.from.address'],
+                'expected' => ['mail.review_alert_to (REVIEW_ALERT_TO)', 'mail.from.address'],
             ]);
             return;
         }
